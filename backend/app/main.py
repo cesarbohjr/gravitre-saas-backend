@@ -138,6 +138,7 @@ from app.routers.webhooks import (
 )
 from app.routers import freshservice_triggers, run_cost
 from app.routers import settings_api_keys, settings_security
+from app.routers import companion_auth
 from app.routers.webhooks import stripe as stripe_webhooks
 from app.samples.stripe_connect_v2.router import router as stripe_connect_sample_router
 from app.routers.webhooks import workflow_triggers
@@ -246,6 +247,11 @@ allowed_origins = [
     "http://127.0.0.1:3000",
     "https://gravitre.app",
     "https://www.gravitre.app",
+    # Desktop app webview (macOS/Linux, Windows) and its dev server.
+    "tauri://localhost",
+    "http://tauri.localhost",
+    "https://tauri.localhost",
+    "http://localhost:1420",
 ]
 if public_app_url:
     allowed_origins.append(public_app_url.rstrip("/"))
@@ -741,6 +747,8 @@ async def billing_access_gate(request: Request, call_next):
 
 app.include_router(health.router)
 app.include_router(auth.router)
+# Desktop app and browser extension sessions, separate from the web session.
+app.include_router(companion_auth.router)
 app.include_router(sso.router)
 app.include_router(org.router)
 app.include_router(org.organizations_router)

@@ -1,10 +1,15 @@
 import { defineConfig } from "vite"
 import react from "@vitejs/plugin-react"
+import { fileURLToPath } from "node:url"
 
 const host = process.env.TAURI_DEV_HOST
 
 export default defineConfig({
   plugins: [react()],
+  // Pure view-model modules shared with the web app (no web-only imports).
+  resolve: {
+    alias: { "@web": fileURLToPath(new URL("../web", import.meta.url)) },
+  },
   clearScreen: false,
   server: {
     port: 1420,
@@ -17,6 +22,7 @@ export default defineConfig({
           port: 1421,
         }
       : undefined,
+    fs: { allow: [".."] },
     watch: {
       ignored: ["**/src-tauri/**"],
     },

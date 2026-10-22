@@ -2,36 +2,23 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Gravitre</title>
-    <link rel="stylesheet" href="popup.css" />
-    <style>
-      body {
-        width: auto;
-      }
-      main {
-        max-width: 420px;
-      }
-    </style>
+    <link rel="stylesheet" href="ui.css" />
   </head>
-  <body>
-    <main>
-      <h1>Gravitre</h1>
-      <section class="gvt-section" aria-label="Context">
-        <div class="gvt-section-title">Context</div>
-        <p class="muted">
-          Enrich the page with your connected tools. Review proposed changes
-          before approving them, then follow the results in Activity.
-        </p>
-      </section>
-      <section class="gvt-section" aria-label="Status">
-        <div class="gvt-section-title">Status</div>
-        <p id="status" class="muted" role="status" aria-live="polite">Checking session…</p>
-      </section>
-      <section class="gvt-section" aria-label="Action">
-        <div class="gvt-section-title">Action</div>
-        <div id="actions" class="actions"></div>
-      </section>
-    </main>
-    <script src="popup.js"></script>
+  <body class="panel">
+    <header class="sp-head">
+      <span id="mark"></span>
+      <span class="stack grow">
+        <span style="font-weight: 600">Gravitre</span>
+        <span id="ws" class="sub ellipsis"></span>
+      </span>
+      <button id="open-app" class="ib hidden" title="Open Gravitre" aria-label="Open Gravitre"></button>
+    </header>
+    <nav id="tabs" class="sp-tabs hidden" aria-label="Sections"></nav>
+    <main id="body" class="sp-body"></main>
+    <footer id="foot" class="sp-foot hidden"></footer>
+    <script src="ui.js"></script>
+    <script src="sidepanel.js"></script>
   </body>
 </html>

@@ -10,10 +10,11 @@ Help operators enrich supported web pages and approve governed Gravitre catalog 
 
 | Permission / host | Justification |
 |-------------------|---------------|
-| `storage` | Persist access token + org id after `/extension/connect` |
+| `storage` | Persist the extension's own renewable session + org id after `/extension/connect` |
 | `activeTab` | Inject company-site overlay only when the user invokes Enrich |
 | `scripting` | Inject overlay UI on allowlisted / active-tab pages |
-| `sidePanel` | Optional side panel UI |
+| `sidePanel` | Side panel with Ask, Approvals and Activity |
+| `alarms` | Refresh the pending-approvals count on the toolbar badge once a minute |
 | `linkedin.com` / `www.linkedin.com` | Read visible profile context for catalog enrich |
 | `mail.google.com` | Read visible message/context for enrich |
 | `outlook.office.com` / `outlook.live.com` / `outlook.office365.com` | Same for Outlook web |

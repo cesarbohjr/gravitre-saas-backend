@@ -1,9 +1,15 @@
 {
   "manifest_version": 3,
   "name": "Gravitre",
-  "version": "0.5.1",
-  "description": "Enrich pages and approve governed CRM writes — same Gravitre catalog, approvals, and Outcomes.",
-  "permissions": ["activeTab", "storage", "sidePanel", "scripting"],
+  "version": "0.6.0",
+  "description": "Ask about any page, approve what your agents propose and follow their work, with the same Gravitre workspace.",
+  "permissions": [
+    "activeTab",
+    "storage",
+    "sidePanel",
+    "scripting",
+    "alarms"
+  ],
   "host_permissions": [
     "https://www.linkedin.com/*",
     "https://linkedin.com/*",
@@ -38,14 +44,26 @@
         "https://www.linkedin.com/*",
         "https://linkedin.com/*"
       ],
-      "js": ["content/shared.js", "content/linkedin.js"],
-      "css": ["content/overlay.css"],
+      "js": [
+        "content/shared.js",
+        "content/linkedin.js"
+      ],
+      "css": [
+        "content/overlay.css"
+      ],
       "run_at": "document_idle"
     },
     {
-      "matches": ["https://mail.google.com/*"],
-      "js": ["content/shared.js", "content/gmail.js"],
-      "css": ["content/overlay.css"],
+      "matches": [
+        "https://mail.google.com/*"
+      ],
+      "js": [
+        "content/shared.js",
+        "content/gmail.js"
+      ],
+      "css": [
+        "content/overlay.css"
+      ],
       "run_at": "document_idle"
     },
     {
@@ -54,8 +72,13 @@
         "https://outlook.live.com/*",
         "https://outlook.office365.com/*"
       ],
-      "js": ["content/shared.js", "content/outlook.js"],
-      "css": ["content/overlay.css"],
+      "js": [
+        "content/shared.js",
+        "content/outlook.js"
+      ],
+      "css": [
+        "content/overlay.css"
+      ],
       "run_at": "document_idle"
     },
     {
@@ -64,14 +87,26 @@
         "https://*.salesforce.com/*",
         "https://*.force.com/*"
       ],
-      "js": ["content/shared.js", "content/salesforce.js"],
-      "css": ["content/overlay.css"],
+      "js": [
+        "content/shared.js",
+        "content/salesforce.js"
+      ],
+      "css": [
+        "content/overlay.css"
+      ],
       "run_at": "document_idle"
     },
     {
-      "matches": ["https://app.slack.com/*"],
-      "js": ["content/shared.js", "content/slack.js"],
-      "css": ["content/overlay.css"],
+      "matches": [
+        "https://app.slack.com/*"
+      ],
+      "js": [
+        "content/shared.js",
+        "content/slack.js"
+      ],
+      "css": [
+        "content/overlay.css"
+      ],
       "run_at": "document_idle"
     }
   ],

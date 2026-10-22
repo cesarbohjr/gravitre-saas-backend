@@ -1,577 +1,300 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import {
-  decideApproval,
-  fetchVoiceStatus,
-  fetchActivity,
-  fetchApprovals,
-  openDeepLink,
-  sendChat,
-  synthesizeVoiceReply,
-  type ActivityEvent,
-  type DesktopChatTurn,
-  type ApprovalItem,
-} from "./lib/api"
-import {
-  clearSession,
-  loadSession,
-  parseAuthDeepLink,
-  saveSession,
-  type DesktopSession,
-} from "./lib/session"
+import { useCallback, useEffect, useState } from "react"
+import { StoreProvider, useStore, type View } from "./store"
+import { clearPendingSignIn, loadPendingSignIn, loadSession, parseAuthDeepLink, saveSession, type DesktopSession } from "./lib/session"
+import { isNewer, latestDesktopRelease, openWeb } from "./lib/api"
+import { Avatar, Icon, Mark, MOD, SHIFT, type IconName } from "./ui"
+import { CommandBar, Notifications, QuickAsk, UserMenu, VIEW_KEYS, WorkspaceMenu } from "./Overlays"
+import { SignIn } from "./views/SignIn"
+import { Home } from "./views/Home"
+import { Ask } from "./views/Ask"
+import { Voice } from "./views/Voice"
+import { Assignments } from "./views/Assignments"
+import { Approvals } from "./views/Approvals"
+import { Activity } from "./views/Activity"
+import { Settings, useAppVersion } from "./views/Settings"
 
-type Tab = "chat" | "activity" | "approvals"
-type Modality = "text" | "voice"
+const NAV: (null | [View, string, IconName])[] = [
+  ["home", "Home", "home"],
+  ["ask", "Ask", "ask"],
+  ["voice", "Voice", "voice"],
+  null,
+  ["assign", "Assignments", "assign"],
+  ["appr", "Approvals", "appr"],
+  ["act", "Activity", "act"],
+]
 
-type ChatMessage = {
-  id: string
-  role: "user" | "assistant"
-  text: string
+/** Links inside answers and pages open in the default browser, never inside the app window. */
+function useExternalLinks(appBase: string) {
+  useEffect(() => {
+    const onClick = (e: MouseEvent) => {
+      const a = (e.target as HTMLElement | null)?.closest?.("a")
+      const href = a?.getAttribute("href")
+      if (!a || !href || !/^https?:\/\//.test(href)) return
+      e.preventDefault()
+      void openWeb(appBase, href)
+    }
+    document.addEventListener("click", onClick)
+    return () => document.removeEventListener("click", onClick)
+  }, [appBase])
 }
 
-const CONNECT_URL = "https://gravitre.app/desktop/connect"
+function UpdateBanner() {
+  const version = useAppVersion()
+  const { web } = useStore()
+  const [latest, setLatest] = useState<string | null>(null)
+  const [dismissed, setDismissed] = useState(false)
+  useEffect(() => {
+    if (!version) return
+    void latestDesktopRelease().then((r) => r && isNewer(r.version, version) && setLatest(r.version))
+  }, [version])
+  if (!latest || dismissed) return null
+  return (
+    <div role="status" style={{ display: "flex", alignItems: "center", gap: 12, minHeight: 44, padding: "0 10px 0 24px", background: "var(--sigs)", borderBottom: "1px solid var(--bd)" }}>
+      <Icon name="download" style={{ color: "var(--sig)" }} />
+      <span style={{ fontSize: 13, flex: 1 }}>
+        <b>Gravitre {latest} is out.</b> Download it to update. Your work stays put.
+      </span>
+      <button className="btn btn-k btn-sm" onClick={() => web("/download")}>
+        Download update
+      </button>
+      <button className="ib" aria-label="Dismiss" onClick={() => setDismissed(true)}>
+        <Icon name="x" />
+      </button>
+    </div>
+  )
+}
+
+function Shell() {
+  const store = useStore()
+  const { nav, go, overlay, setOverlay, prefs, setPrefs, dark, me, session, approvals, assignments, toasts, web } = store
+  useExternalLinks(session.appBase)
+  const wide = prefs.railWide
+  const pending = approvals.data.length + assignments.data.filter((a) => a.status === "waiting").length
+  const ws = me?.organizations.find((o) => o.id === session.orgId)
+
+  // Shortcuts from the operating system (tray, global shortcuts) arrive as Tauri events.
+  useEffect(() => {
+    const off: (() => void)[] = []
+    let alive = true
+    void import("@tauri-apps/api/event")
+      .then(async ({ listen }) => {
+        const add = async (name: string, fn: (payload: unknown) => void) => {
+          const un = await listen(name, (e) => fn(e.payload))
+          if (alive) off.push(un)
+          else un()
+        }
+        await add("quick-ask", () => setOverlay("quick"))
+        await add("push-to-talk", () => {
+          if (store.nav.view === "voice") window.dispatchEvent(new Event("gravitre:ptt"))
+          else go({ view: "voice", listen: true })
+        })
+        await add("open-view", (payload) => {
+          const v = String(payload) as View
+          if (["home", "ask", "voice", "assign", "appr", "act", "settings"].includes(v)) go(v)
+        })
+      })
+      .catch(() => {})
+    return () => {
+      alive = false
+      off.forEach((f) => f())
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [store.nav.view])
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const mod = e.metaKey || e.ctrlKey
+      if (e.key === "Escape" && overlay) {
+        setOverlay(null)
+        return
+      }
+      if (!mod) return
+      const k = e.key.toLowerCase()
+      if (k === "k") (e.preventDefault(), setOverlay(overlay === "cmd" ? null : "cmd"))
+      else if (k === ",") (e.preventDefault(), go("settings"))
+      else if (k === "n") (e.preventDefault(), go({ view: "ask", select: null }))
+      else if (e.shiftKey && e.code === "Space") (e.preventDefault(), setOverlay("quick"))
+      else {
+        const hit = VIEW_KEYS.find(([, , , n]) => n === e.key)
+        if (hit) (e.preventDefault(), go(hit[0]))
+      }
+    }
+    window.addEventListener("keydown", onKey)
+    return () => window.removeEventListener("keydown", onKey)
+  }, [go, overlay, setOverlay])
+
+  const view = nav.view
+  return (
+    <div className={`g ${dark ? "dark" : ""}`}>
+      <div className="shell">
+        <div className="body">
+          <nav className={`rail ${wide ? "" : "mini"}`} aria-label="Main">
+            <div style={{ height: 12, flex: "none" }} />
+            <button className="wsbtn" onClick={() => setOverlay("ws")} aria-label={`Switch workspace, current ${ws?.name || "workspace"}`}>
+              <Mark />
+              <span className="lbl" style={{ flex: 1, textAlign: "left", display: "flex", flexDirection: "column", lineHeight: 1.2, minWidth: 0 }}>
+                <span style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{ws?.name || "Gravitre"}</span>
+                <span style={{ fontSize: 11, fontWeight: 400, color: "var(--t3)", display: "inline-flex", alignItems: "center", gap: 5 }}>
+                  <span className="dot" style={{ background: approvals.error ? "var(--ap)" : approvals.at ? "var(--ok)" : "var(--bx)" }} />
+                  {approvals.error ? "Reconnecting" : approvals.at ? "Synced" : "Connecting"}
+                </span>
+              </span>
+              <span className="lbl" style={{ flex: "none", display: "inline-flex" }}>
+                <Icon name="chevrons" style={{ color: "var(--t3)" }} />
+              </span>
+            </button>
+            <span className="rsep" />
+            {NAV.map((n, i) =>
+              n ? (
+                <button key={n[0]} className={`rn ${view === n[0] ? "on" : ""}`} aria-current={view === n[0] ? "page" : undefined} aria-label={n[1]} title={n[1]} onClick={() => go(n[0])}>
+                  <Icon name={n[2]} />
+                  <span className="lbl">{n[1]}</span>
+                  {n[0] === "appr" && approvals.data.length ? (
+                    <span className="rdot" style={{ background: "#e2a33a" }}>
+                      {approvals.data.length}
+                    </span>
+                  ) : null}
+                </button>
+              ) : (
+                <span key={`s${i}`} className="rhead">
+                  Work
+                </span>
+              ),
+            )}
+            <span style={{ flex: 1 }} />
+            <button className="rn" aria-label="Open Gravitre on the web" title="Open Gravitre on the web" onClick={() => web("/home")}>
+              <Icon name="ext" />
+              <span className="lbl">Open on web</span>
+            </button>
+            <button className={`rn ${view === "settings" ? "on" : ""}`} aria-label="Settings" title="Settings" onClick={() => go("settings")}>
+              <Icon name="settings" />
+              <span className="lbl">Settings</span>
+            </button>
+            <span className="rsep" />
+            <button className="rn" onClick={() => setOverlay("user")} aria-label="Account menu">
+              <Avatar name={me?.name || "You"} size={24} color="#2b59e0" />
+              <span className="lbl" style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                {me?.name || "Account"}
+              </span>
+            </button>
+          </nav>
+          <div className="col">
+            <header className="top">
+              <button className="tb" aria-label={wide ? "Collapse sidebar" : "Show sidebar"} title={wide ? "Collapse sidebar" : "Show sidebar"} onClick={() => setPrefs({ railWide: !wide })}>
+                <Icon name="rail" />
+              </button>
+              <span style={{ flex: 1 }} />
+              <button className="search" onClick={() => setOverlay("cmd")}>
+                <Icon name="search" />
+                <span style={{ flex: 1, textAlign: "left" }}>Search or command…</span>
+                <span className="k">{MOD}K</span>
+              </button>
+              <span style={{ flex: 1 }} />
+              <button className="btn btn-sm" onClick={() => setOverlay("quick")} title={`Quick Ask ${MOD}${SHIFT}Space`}>
+                <Icon name="ask" size={14} style={{ color: "var(--br)" }} />
+                Quick Ask
+              </button>
+              <button className="tb" aria-label="Notifications" onClick={() => setOverlay("notif")}>
+                <Icon name="bell" />
+                {pending ? <span style={{ position: "absolute", top: 6, right: 6, width: 8, height: 8, borderRadius: "50%", background: "#e2a33a", boxShadow: "0 0 0 2px var(--cv)" }} /> : null}
+              </button>
+            </header>
+            <main className="main">
+              <UpdateBanner />
+              {view === "home" ? <Home /> : null}
+              {view === "ask" ? <Ask /> : null}
+              {view === "voice" ? <Voice /> : null}
+              {view === "assign" ? <Assignments /> : null}
+              {view === "appr" ? <Approvals /> : null}
+              {view === "act" ? <Activity /> : null}
+              {view === "settings" ? <Settings /> : null}
+            </main>
+          </div>
+        </div>
+      </div>
+      {toasts.map((t, i) => (
+        <div key={t.id} className="toast fade" role="status" style={{ bottom: 28 + i * 52 }}>
+          <Icon name={t.tone === "error" ? "alert" : "check"} style={{ color: t.tone === "error" ? "#ec9a9a" : "#19c37d" }} />
+          <span>{t.text}</span>
+        </div>
+      ))}
+      {overlay === "ws" ? <WorkspaceMenu /> : null}
+      {overlay === "user" ? <UserMenu /> : null}
+      {overlay === "notif" ? <Notifications /> : null}
+      {overlay === "cmd" ? <CommandBar /> : null}
+      {overlay === "quick" ? <QuickAsk /> : null}
+    </div>
+  )
+}
+
+function useSystemDark(): boolean {
+  const [dark, setDark] = useState(() => window.matchMedia?.("(prefers-color-scheme: dark)").matches ?? false)
+  useEffect(() => {
+    const mq = window.matchMedia?.("(prefers-color-scheme: dark)")
+    if (!mq) return
+    const on = (e: MediaQueryListEvent) => setDark(e.matches)
+    mq.addEventListener("change", on)
+    return () => mq.removeEventListener("change", on)
+  }, [])
+  return dark
+}
 
 export default function App() {
   const [session, setSession] = useState<DesktopSession | null>(() => loadSession())
-  const [tab, setTab] = useState<Tab>("chat")
-  const [modality, setModality] = useState<Modality>("text")
-  const [input, setInput] = useState("")
-  const [busy, setBusy] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [messages, setMessages] = useState<ChatMessage[]>([])
-  const [activity, setActivity] = useState<ActivityEvent[]>([])
-  const [approvals, setApprovals] = useState<ApprovalItem[]>([])
-  const [voiceEntitled, setVoiceEntitled] = useState(true)
-  const [voiceUnavailableReason, setVoiceUnavailableReason] = useState<string | null>(null)
-  const [voiceListening, setVoiceListening] = useState(false)
-  const [voiceSpeaking, setVoiceSpeaking] = useState(false)
-  const audioRef = useRef<HTMLAudioElement | null>(null)
-  const audioUrlRef = useRef<string | null>(null)
-  const speechRecognitionRef = useRef<any>(null)
+  const [notice, setNotice] = useState<string | null>(null)
+  const systemDark = useSystemDark()
 
-  const connected = Boolean(session?.accessToken && session.orgId)
-
-  const applySession = useCallback((next: DesktopSession) => {
-    saveSession(next)
-    setSession(next)
+  const onSession = useCallback((next: DesktopSession | null) => {
+    setSession((prev) => {
+      if (!next && prev) setNotice("You're signed out of this computer.")
+      return next
+    })
   }, [])
 
-  const stopVoicePlayback = useCallback(() => {
-    if (audioRef.current) {
-      try {
-        audioRef.current.pause()
-      } catch {
-        // noop
-      }
-      audioRef.current.src = ""
-      audioRef.current = null
-    }
-    if (audioUrlRef.current) {
-      URL.revokeObjectURL(audioUrlRef.current)
-      audioUrlRef.current = null
-    }
-    setVoiceSpeaking(false)
-  }, [])
-
-  const stopVoiceListening = useCallback(() => {
-    const rec = speechRecognitionRef.current
-    if (rec) {
-      try {
-        rec.stop()
-      } catch {
-        // noop
-      }
-    }
-    setVoiceListening(false)
-  }, [])
-
-  const playVoiceReply = useCallback(
-    async (replyText: string) => {
-      if (!session || !voiceEntitled) return
-      const text = String(replyText || "").trim()
-      if (!text) return
-      stopVoicePlayback()
-      const blob = await synthesizeVoiceReply(session, text)
-      const objectUrl = URL.createObjectURL(blob)
-      const audio = new Audio(objectUrl)
-      audioRef.current = audio
-      audioUrlRef.current = objectUrl
-      setVoiceSpeaking(true)
-      audio.onended = () => stopVoicePlayback()
-      audio.onerror = () => {
-        stopVoicePlayback()
-        setError("Voice playback failed")
-      }
-      await audio.play()
-    },
-    [session, stopVoicePlayback, voiceEntitled],
-  )
-
+  // gravitre://auth links come from /desktop/connect; only the sign-in started here is accepted.
   useEffect(() => {
-    const cleanups: Array<() => void> = []
-    ;(async () => {
-      try {
-        const { onOpenUrl } = await import("@tauri-apps/plugin-deep-link")
-        const unlistenAuth = await onOpenUrl((urls) => {
-          for (const url of urls) {
-            const parsed = parseAuthDeepLink(url)
-            if (parsed) applySession(parsed)
-          }
-        })
-        cleanups.push(unlistenAuth)
-      } catch {
-        // Browser/dev preview — deep links unavailable.
-      }
-
-      try {
-        const { listen } = await import("@tauri-apps/api/event")
-        const { invoke } = await import("@tauri-apps/api/core")
-        const unlistenSummon = await listen("companion-summoned", async () => {
-          // Yield to paint, then focus the composer and report input-ready latency.
-          await new Promise((r) => requestAnimationFrame(() => r(null)))
-          const el = document.querySelector<HTMLTextAreaElement>("textarea")
-          el?.focus()
-          const ms = await invoke<number>("report_input_ready")
-          if (ms > 0) {
-            console.info(`[gravitre-desktop] summon_to_input_ready_ms=${ms}`)
-            ;(window as unknown as { __gravitreSummonMs?: number }).__gravitreSummonMs = ms
-          }
-        })
-        cleanups.push(unlistenSummon)
-      } catch {
-        // Native shell only.
-      }
-    })()
-    return () => {
-      for (const stop of cleanups) stop()
-    }
-  }, [applySession])
-
-  const refreshSidePanels = useCallback(async () => {
-    if (!session) return
-    try {
-      const [events, pending] = await Promise.all([
-        fetchActivity(session),
-        fetchApprovals(session),
-      ])
-      setActivity(events)
-      setApprovals(pending)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to refresh")
-    }
-  }, [session])
-
-  useEffect(() => {
-    if (!session) return
-    void refreshSidePanels()
-    const id = window.setInterval(() => void refreshSidePanels(), 30_000)
-    return () => window.clearInterval(id)
-  }, [session, refreshSidePanels])
-
-  useEffect(() => {
-    if (!session) {
-      setVoiceEntitled(true)
-      setVoiceUnavailableReason(null)
-      return
-    }
-    let cancelled = false
-    void fetchVoiceStatus(session)
-      .then((status) => {
-        if (cancelled) return
-        setVoiceEntitled(Boolean(status.enabled))
-        setVoiceUnavailableReason(status.enabled ? null : status.reason || "Voice unavailable right now.")
-      })
-      .catch(() => {
-        if (cancelled) return
-        // Keep voice available when status check fails transiently.
-        setVoiceEntitled(true)
-        setVoiceUnavailableReason(null)
-      })
-    return () => {
-      cancelled = true
-    }
-  }, [session])
-
-  useEffect(() => {
-    return () => {
-      stopVoiceListening()
-      stopVoicePlayback()
-    }
-  }, [stopVoiceListening, stopVoicePlayback])
-
-  useEffect(() => {
-    if (tab === "chat") return
-    stopVoiceListening()
-    stopVoicePlayback()
-  }, [tab, stopVoiceListening, stopVoicePlayback])
-
-  useEffect(() => {
-    if (voiceEntitled || modality !== "voice") return
-    setModality("text")
-    stopVoiceListening()
-    stopVoicePlayback()
-  }, [modality, stopVoiceListening, stopVoicePlayback, voiceEntitled])
-
-  useEffect(() => {
-    if (!session || approvals.length === 0) return
-    ;(async () => {
-      try {
-        const { isPermissionGranted, requestPermission, sendNotification } = await import(
-          "@tauri-apps/plugin-notification"
-        )
-        let granted = await isPermissionGranted()
-        if (!granted) {
-          const permission = await requestPermission()
-          granted = permission === "granted"
+    const handle = (urls: string[]) => {
+      for (const url of urls) {
+        const link = parseAuthDeepLink(url)
+        if (!link) continue
+        const expected = loadPendingSignIn()
+        if (!expected || link.code !== expected) {
+          setNotice("That sign-in link doesn't match this computer's code. Start again from here.")
+          continue
         }
-        if (!granted) return
-        const first = approvals[0]
-        sendNotification({
-          title: "Approval needed",
-          body: first.title || first.summary || "A Gravitre action is waiting for approval.",
-        })
-      } catch {
-        // Notifications require the native shell.
+        clearPendingSignIn()
+        saveSession(link.session)
+        setNotice(null)
+        setSession(link.session)
       }
-    })()
-  }, [approvals, session])
+    }
+    let off: (() => void) | null = null
+    let alive = true
+    void import("@tauri-apps/plugin-deep-link")
+      .then(async ({ onOpenUrl, getCurrent }) => {
+        const started = await getCurrent().catch(() => null)
+        if (started?.length) handle(started)
+        const un = await onOpenUrl(handle)
+        if (alive) off = un
+        else un()
+      })
+      .catch(() => {})
+    return () => {
+      alive = false
+      off?.()
+    }
+  }, [])
 
-  const statusLabel = useMemo(() => {
-    if (!session) return "Signed out"
-    return `Org ${session.orgId.slice(0, 8)}…`
-  }, [session])
-
-  const toggleVoiceListening = useCallback(() => {
-    if (!voiceEntitled || modality !== "voice") return
-    const Ctor =
-      (window as unknown as { SpeechRecognition?: any; webkitSpeechRecognition?: any })
-        .SpeechRecognition ||
-      (window as unknown as { SpeechRecognition?: any; webkitSpeechRecognition?: any })
-        .webkitSpeechRecognition
-    if (!Ctor) {
-      setError("Voice input is not supported in this desktop runtime.")
-      return
-    }
-    let rec = speechRecognitionRef.current
-    if (!rec) {
-      rec = new Ctor()
-      rec.lang = "en-US"
-      rec.continuous = false
-      rec.interimResults = false
-      rec.onresult = (event: any) => {
-        const transcript = String(event?.results?.[0]?.[0]?.transcript || "").trim()
-        if (!transcript) return
-        setInput((prev) => {
-          const current = prev.trim()
-          return current ? `${current} ${transcript}` : transcript
-        })
-      }
-      rec.onerror = () => {
-        setVoiceListening(false)
-        setError("Microphone capture failed")
-      }
-      rec.onend = () => {
-        setVoiceListening(false)
-      }
-      speechRecognitionRef.current = rec
-    }
-    if (voiceListening) {
-      stopVoiceListening()
-      return
-    }
-    try {
-      rec.start()
-      setVoiceListening(true)
-      setError(null)
-    } catch {
-      setError("Could not start microphone")
-    }
-  }, [modality, stopVoiceListening, voiceEntitled, voiceListening])
-
-  const onSend = async () => {
-    if (!session || !input.trim() || busy) return
-    const text = input.trim()
-    stopVoiceListening()
-    setInput("")
-    setBusy(true)
-    setError(null)
-    const userMsg: ChatMessage = { id: crypto.randomUUID(), role: "user", text }
-    setMessages((prev) => [...prev, userMsg])
-    try {
-      const history: DesktopChatTurn[] = messages
-        .filter((row) => row.role === "user" || row.role === "assistant")
-        .map((row) => ({ role: row.role, text: row.text }))
-      const reply = await sendChat(session, text, modality === "voice", history)
-      setMessages((prev) => [
-        ...prev,
-        { id: crypto.randomUUID(), role: "assistant", text: reply },
-      ])
-      if (modality === "voice" && voiceEntitled) {
-        await playVoiceReply(reply)
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Chat failed")
-    } finally {
-      setBusy(false)
-    }
-  }
-
-  const onApprove = async (item: ApprovalItem, decision: "approve" | "reject") => {
-    if (!session) return
-    const runId = item.run_id || item.runId || item.id
-    if (!runId) return
-    setBusy(true)
-    setError(null)
-    try {
-      await decideApproval(session, runId, decision)
-      await refreshSidePanels()
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Decision failed")
-    } finally {
-      setBusy(false)
-    }
-  }
-
-  if (!connected) {
+  if (!session) {
     return (
-      <div className="auth">
-        <h1>Gravitre</h1>
-        <p className="muted">
-          Desktop companion — chat, glanceable activity, and approvals. Settings, Meson, Agents,
-          and Billing open in your browser.
-        </p>
-        <button
-          className="btn"
-          type="button"
-          onClick={() => void openDeepLink("/desktop/connect")}
-        >
-          Connect with browser session
-        </button>
-        <p className="muted">
-          Opens {CONNECT_URL}. Uses your existing gravitre.app login — no second account.
-        </p>
-        <button
-          className="btn ghost"
-          type="button"
-          onClick={() => {
-            const sample = window.prompt("Paste gravitre://auth… deep link (dev)")
-            if (!sample) return
-            const parsed = parseAuthDeepLink(sample)
-            if (parsed) applySession(parsed)
-            else setError("Could not parse auth deep link")
-          }}
-        >
-          Paste auth link (dev)
-        </button>
-        {error ? <p className="muted">{error}</p> : null}
+      <div className={`g ${systemDark ? "dark" : ""}`}>
+        <SignIn notice={notice} />
       </div>
     )
   }
-
   return (
-    <div className="app">
-      <header className="topbar">
-        <div className="brand">Gravitre</div>
-        <span className={`pill ${connected ? "ok" : ""}`}>{statusLabel}</span>
-        <button
-          className="btn ghost"
-          type="button"
-          onClick={() => {
-            stopVoiceListening()
-            stopVoicePlayback()
-            clearSession()
-            setSession(null)
-          }}
-        >
-          Sign out
-        </button>
-      </header>
-
-      <nav className="tabs">
-        {(
-          [
-            ["chat", "Chat"],
-            ["activity", "Activity"],
-            ["approvals", "Approvals"],
-          ] as const
-        ).map(([id, label]) => (
-          <button
-            key={id}
-            type="button"
-            className={`tab ${tab === id ? "active" : ""}`}
-            aria-pressed={tab === id}
-            onClick={() => setTab(id)}
-          >
-            {label}
-          </button>
-        ))}
-      </nav>
-
-      <main className="main">
-        {error ? <p className="muted">{error}</p> : null}
-
-        {tab === "chat" ? (
-          <>
-            <div className="modality">
-              <button
-                type="button"
-                className={modality === "text" ? "active" : ""}
-                onClick={() => {
-                  setModality("text")
-                  stopVoiceListening()
-                  stopVoicePlayback()
-                }}
-              >
-                Text
-              </button>
-              <button
-                type="button"
-                className={modality === "voice" ? "active" : ""}
-                disabled={!voiceEntitled}
-                title={!voiceEntitled && voiceUnavailableReason ? voiceUnavailableReason : "Voice mode"}
-                onClick={() => {
-                  if (!voiceEntitled) {
-                    if (voiceUnavailableReason) setError(voiceUnavailableReason)
-                    return
-                  }
-                  setModality("voice")
-                }}
-              >
-                Voice
-              </button>
-            </div>
-            {!voiceEntitled && voiceUnavailableReason ? (
-              <p className="muted">{voiceUnavailableReason}</p>
-            ) : null}
-            {modality === "voice" ? (
-              <div className={`wave ${busy || voiceListening || voiceSpeaking ? "live" : ""}`} aria-hidden>
-                {Array.from({ length: 7 }).map((_, i) => (
-                  <span key={i} style={{ animationDelay: `${i * 0.08}s`, height: "40%" }} />
-                ))}
-              </div>
-            ) : null}
-            {modality === "voice" && voiceEntitled ? (
-              <div className="voice-controls">
-                <button
-                  className={`btn ghost ${voiceListening ? "active" : ""}`}
-                  type="button"
-                  onClick={toggleVoiceListening}
-                  disabled={busy}
-                >
-                  {voiceListening ? "Stop mic" : "Start mic"}
-                </button>
-                <button
-                  className="btn ghost"
-                  type="button"
-                  onClick={stopVoicePlayback}
-                  disabled={!voiceSpeaking}
-                >
-                  Stop audio
-                </button>
-              </div>
-            ) : null}
-            <div className="messages">
-              {messages.length === 0 ? (
-                <p className="muted">Ask anything. Press Alt+Space (Option+Space on Mac) anytime.</p>
-              ) : null}
-              {messages.map((msg) => (
-                <div key={msg.id} className={`bubble ${msg.role}`}>
-                  {msg.text}
-                </div>
-              ))}
-            </div>
-          </>
-        ) : null}
-
-        {tab === "activity" ? (
-          <div className="list">
-            {activity.length === 0 ? (
-              <p className="muted">No recent activity yet.</p>
-            ) : (
-              activity.map((event, index) => (
-                <button
-                  key={event.id || `${index}`}
-                  type="button"
-                  className="card"
-                  onClick={() => void openDeepLink(event.href || "/activity")}
-                >
-                  <h3>{event.title || "Activity"}</h3>
-                  <p>{event.summary || event.source || "Open in web for detail"}</p>
-                </button>
-              ))
-            )}
-            <button className="btn ghost" type="button" onClick={() => void openDeepLink("/activity")}>
-              Open full Activity
-            </button>
-          </div>
-        ) : null}
-
-        {tab === "approvals" ? (
-          <div className="list">
-            {approvals.length === 0 ? (
-              <p className="muted">No pending approvals.</p>
-            ) : (
-              approvals.map((item, index) => {
-                const runId = item.run_id || item.runId || item.id || `${index}`
-                return (
-                  <div key={runId} className="card">
-                    <h3>{item.title || "Pending approval"}</h3>
-                    <p>{item.summary || "Approve or reject without leaving your current app."}</p>
-                    <div className="card-actions">
-                      <button
-                        className="btn"
-                        type="button"
-                        disabled={busy}
-                        onClick={() => void onApprove(item, "approve")}
-                      >
-                        Approve
-                      </button>
-                      <button
-                        className="btn danger"
-                        type="button"
-                        disabled={busy}
-                        onClick={() => void onApprove(item, "reject")}
-                      >
-                        Reject
-                      </button>
-                      <button
-                        className="btn ghost"
-                        type="button"
-                        onClick={() => void openDeepLink(`/approvals?id=${encodeURIComponent(runId)}`)}
-                      >
-                        Details
-                      </button>
-                    </div>
-                  </div>
-                )
-              })
-            )}
-          </div>
-        ) : null}
-      </main>
-
-      {tab === "chat" ? (
-        <footer className="composer">
-          <div className="composer-row">
-            <textarea
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              placeholder={modality === "voice" ? "Speak or type…" : "Message Gravitre…"}
-              rows={2}
-              aria-label="Message Gravitre"
-              onKeyDown={(e) => {
-                if (e.nativeEvent.isComposing || e.keyCode === 229) return
-                if (e.key === "Enter" && !e.shiftKey) {
-                  e.preventDefault()
-                  void onSend()
-                }
-              }}
-            />
-            <button className="btn" type="button" disabled={busy || !input.trim()} onClick={() => void onSend()}>
-              {busy ? "…" : "Send"}
-            </button>
-          </div>
-        </footer>
-      ) : null}
-    </div>
+    <StoreProvider session={session} onSession={onSession}>
+      <Shell />
+    </StoreProvider>
   )
 }
