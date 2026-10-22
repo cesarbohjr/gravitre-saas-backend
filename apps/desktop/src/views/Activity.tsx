@@ -40,7 +40,7 @@ export function Activity() {
         <div style={{ flex: 1, minWidth: 0, overflow: "auto", padding: "8px 14px 14px" }}>
           {events.length === 0 ? (
             activity.at ? (
-              <Empty art={ART.opsActivity} title="Nothing has run yet" body="Runs, changes and decisions show up here as they happen." />
+              <Empty art={ART.reports} title="Nothing has run yet" body="Runs, changes and decisions show up here as they happen." />
             ) : (
               <div className="sub" style={{ padding: 16 }}>
                 Loading…

@@ -128,7 +128,7 @@ export function Home() {
         </div>
       </div>
       <div className="hero-art" aria-hidden="true">
-        <Art src={nDec === 0 && loaded ? ART.homeAllClear : ART.homeHero} width={400} float style={{ width: "100%" }} />
+        <Art src={nDec === 0 && loaded ? ART.siteHealth : ART.pipeline} width={400} float style={{ width: "100%" }} />
         {loaded ? (
           <div className="hero-chips">
             {nDec ? (
@@ -194,7 +194,7 @@ export function Home() {
         >
           {waitingRows.length === 0 ? (
             <div style={{ padding: 22, display: "flex", flexDirection: "column", alignItems: "center", gap: 12, textAlign: "center" }} className="sub">
-              {loaded ? <Art src={ART.homeAllClear} width={180} /> : null}
+              {loaded ? <Art src={ART.checklist} width={180} /> : null}
               {loaded ? "All clear. New requests land here the moment an agent pauses." : "Loading…"}
             </div>
           ) : (
@@ -223,7 +223,7 @@ export function Home() {
         >
           {inProgress.length === 0 ? (
             <div style={{ padding: 22, display: "flex", flexDirection: "column", alignItems: "center", gap: 12, textAlign: "center" }} className="sub">
-              {assignments.at ? <Art src={ART.spotAgents} width={180} /> : null}
+              {assignments.at ? <Art src={ART.schedules} width={180} /> : null}
               {assignments.at ? "Nothing is running right now." : "Loading…"}
             </div>
           ) : (

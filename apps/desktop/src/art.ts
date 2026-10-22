@@ -1,11 +1,10 @@
-// Illustrations shared with the web app (apps/web/public/illustrations), bundled at build time.
-import homeHero from "@web/public/illustrations/home-hero.svg?url"
-import homeAllClear from "@web/public/illustrations/home-all-clear.svg?url"
-import inboxZero from "@web/public/illustrations/moment-inbox-zero.svg?url"
-import opsActivity from "@web/public/illustrations/ops-activity.svg?url"
-import spotAgents from "@web/public/illustrations/spot-agents.svg?url"
-import spotWorkflows from "@web/public/illustrations/spot-workflows.svg?url"
-import focusTime from "@web/public/illustrations/moment-focus-time.svg?url"
-import welcome from "@web/public/illustrations/moment-welcome.svg?url"
+import pipeline from "@web/public/illustrations/market-pipeline.svg?url"
+import siteHealth from "@web/public/illustrations/market-site-health.svg?url"
+import checklist from "@web/public/illustrations/market-compliance.svg?url"
+import reports from "@web/public/illustrations/spot-reports.svg?url"
+import schedules from "@web/public/illustrations/spot-schedules.svg?url"
+import workflows from "@web/public/illustrations/spot-workflows.svg?url"
+import conversation from "@web/public/illustrations/market-support.svg?url"
 
-export const ART = { homeHero, homeAllClear, inboxZero, opsActivity, spotAgents, spotWorkflows, focusTime, welcome }
+// Object-only scenes (no people) so the art stays quiet next to real work.
+export const ART = { pipeline, siteHealth, checklist, reports, schedules, workflows, conversation }

@@ -225,7 +225,7 @@ export function Assignments() {
               </div>
             </div>
           ) : assignments.at ? (
-            <Empty art={ART.spotWorkflows} title="Nothing selected" body="Pick an assignment to see its steps and outcome." />
+            <Empty art={ART.workflows} title="Nothing selected" body="Pick an assignment to see its steps and outcome." />
           ) : null}
         </div>
       </div>

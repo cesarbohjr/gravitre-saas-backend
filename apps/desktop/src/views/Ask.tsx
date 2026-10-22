@@ -249,7 +249,7 @@ export function Ask() {
               {loadingMsgs ? <span className="sub">Loading the conversation…</span> : null}
               {!loadingMsgs && msgs.length === 0 ? (
                 <div style={{ margin: "auto", display: "flex", flexDirection: "column", alignItems: "center", gap: 10, textAlign: "center", maxWidth: 460 }}>
-                  <Art src={ART.focusTime} width={220} style={{ marginBottom: 8 }} />
+                  <Art src={ART.conversation} width={220} style={{ marginBottom: 8 }} />
                   <span className="eyebrow">New conversation</span>
                   <span style={{ fontSize: 26, fontWeight: 600, letterSpacing: "-0.01em" }}>What should {agent} work on?</span>
                   <span className="sub" style={{ fontSize: 14 }}>
