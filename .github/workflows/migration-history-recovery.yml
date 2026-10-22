@@ -167,6 +167,10 @@ jobs:
           mkdir -p "$RUNNER_TEMP/migration-recovery/supported/supabase/migrations"
           cp "$RUNNER_TEMP/migration-recovery/local/supabase/config.toml" "$RUNNER_TEMP/migration-recovery/supported/supabase/config.toml"
           cp -a supabase/templates "$RUNNER_TEMP/migration-recovery/supported/supabase/templates"
+          # Squash requires a prior local migration; with baseline alone the CLI
+          # exits early and never exercises the metadata transaction.
+          printf '%s\\n' '-- Disposable metadata drill fixture 1' > "$RUNNER_TEMP/migration-recovery/supported/supabase/migrations/20261022162551_recovery_fixture_a.sql"
+          printf '%s\\n' '-- Disposable metadata drill fixture 2' > "$RUNNER_TEMP/migration-recovery/supported/supabase/migrations/20261022162552_recovery_fixture_b.sql"
           cp test-results/production-schema-baseline.sql "$RUNNER_TEMP/migration-recovery/supported/supabase/migrations/20261022162553_production_replay_baseline.sql"
           python scripts/migration_recovery/metadata_drill.py prepare postgresql://postgres:postgres@127.0.0.1:54322/postgres "$RUNNER_TEMP/migration-recovery/original-history.json" 20261022162553 test-results/migration-history-supported-baseline.json
           supabase migration squash --help > "$RUNNER_TEMP/migration-recovery/squash-help.txt"
