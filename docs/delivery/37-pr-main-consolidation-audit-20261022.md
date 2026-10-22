@@ -13,7 +13,7 @@ Audit initiated 2026-10-22. Audit base: `main` at `32f0d96792ee5b73622968fe0ca89
 - GitHub lists exactly **37 open PRs**.
 - Git history comparisons: **2 ahead** (#555, #556); **35 diverged**; **0 behind/identical**. These results do **not** establish functional gaps.
 - #556 modifies package manifests and pnpm locks; dependency security audit must pass.
-- #555 changes desktop latest.json; validate v0.3.0 against existing main/download endpoints.
+- #555 **verified missing and implemented in this consolidation branch**: main advertised desktop v0.1.0, PR #555 advertises v0.3.0; GitHub release `desktop-v0.3.0` exists, is published, and its nine assets include all five manifest downloads. Consolidation commit `70db9d7ee2ef8e9e4bdc6c19f47b774d08284874` updates `apps/web/public/desktop/latest.json`. CI/deployment not yet certified.
 - #553 adds migration-history recovery workflow/scripts; previously observed metadata rollback drill failure, so retain release block until recovery gate succeeds.
 - #540 adds seven-layer intelligence certification workflow and tests.
 - #504 changes Stripe invoice webhook authority and billing tests; verify current main behavior, do not merge historical webhook implementation blindly.
@@ -24,7 +24,7 @@ Audit initiated 2026-10-22. Audit base: `main` at `32f0d96792ee5b73622968fe0ca89
 ## Source PR inventory — equivalence not yet certified
 ### Security / desktop / database
 - [ ] [#556](https://github.com/cesarbohjr/gravitre-saas-backend/pull/556): classify changed behaviors against main; capture file/test evidence and missing delta.
-- [ ] [#555](https://github.com/cesarbohjr/gravitre-saas-backend/pull/555): classify changed behaviors against main; capture file/test evidence and missing delta.
+- [x] [#555](https://github.com/cesarbohjr/gravitre-saas-backend/pull/555): classify changed behaviors against main; capture file/test evidence and missing delta.
 - [ ] [#553](https://github.com/cesarbohjr/gravitre-saas-backend/pull/553): classify changed behaviors against main; capture file/test evidence and missing delta.
 
 ### Intelligence / acceptance / billing / audit
