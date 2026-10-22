@@ -11,6 +11,10 @@ url=local_url(url); original=json.loads(Path(history_path).read_text())
 expected=[(r['version'],r['name'],r['statements']) for r in original]
 with psycopg.connect(url) as conn:
     if mode=='prepare':
+        # Baseline restores may not preserve Supabase-managed migration metadata.
+        # Recreate only the CLI's metadata table in this loopback test database.
+        conn.execute('create schema if not exists supabase_migrations')
+        conn.execute('create table if not exists supabase_migrations.schema_migrations (version text primary key, statements text[], name text)')
         assert conn.execute('select count(*) from supabase_migrations.schema_migrations').fetchone()[0]==0
         for row in expected:
             conn.execute('insert into supabase_migrations.schema_migrations(version,name,statements) values (%s,%s,%s)',row)
