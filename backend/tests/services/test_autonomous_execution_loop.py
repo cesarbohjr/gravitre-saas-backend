@@ -106,3 +106,25 @@ def test_iteration_budget_stops_loop():
     assert d.action == "stop"
     assert d.reason == "iteration_budget"
 
+
+
+def test_verified_flag_without_provider_proof_cannot_complete():
+    p = plan(ExecutionStep("w1", "send", "write", status="completed"))
+    d = decide_execution_loop(
+        plan=p,
+        task_state={"provider_result_evidence": {"verification_status": "verified", "verified": True}},
+        observations=[{"success": True}],
+    )
+    assert d.action == "verify"
+    assert d.reason == "write_unverified"
+
+
+def test_running_step_cannot_complete_even_with_provider_proof():
+    p = plan(ExecutionStep("w1", "send", "write", status="running"))
+    d = decide_execution_loop(
+        plan=p,
+        task_state={"provider_result_evidence": {"verification_status": "verified", "verified": True, "provider_record_id": "msg-123"}},
+        observations=[{"success": True}],
+    )
+    assert d.action == "verify"
+    assert d.reason == "steps_not_terminal"
