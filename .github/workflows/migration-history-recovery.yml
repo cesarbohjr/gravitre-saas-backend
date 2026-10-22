@@ -1,0 +1,63 @@
+name: Migration history recovery
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'scripts/migration_recovery/**'
+      - '.github/workflows/migration-history-recovery.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: migration-history-recovery-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  recorded-history-replay:
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: supabase/setup-cli@v3
+        with:
+          version: 2.121.0
+      - name: Install PostgreSQL driver
+        run: python -m pip install 'psycopg[binary]==3.2.9'
+      - name: Export original production migration metadata (read only)
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          RECOVERY_SOURCE_PROJECT_REF: smyeexlrqdpymwjmgzqu
+          RECOVERY_HISTORY_PATH: ${{ runner.temp }}/migration-recovery/original-history.json
+        run: python scripts/migration_recovery/export_history.py
+      - name: Start empty local Supabase (no application migrations or seed)
+        run: |
+          mkdir -p "$RUNNER_TEMP/migration-recovery/local/supabase/migrations"
+          cp supabase/config.toml "$RUNNER_TEMP/migration-recovery/local/supabase/config.toml"
+          cd "$RUNNER_TEMP/migration-recovery/local"
+          supabase start -x studio,imgproxy,edge-runtime,logflare,vector
+      - name: Replay exact recorded statements without CI compatibility patches
+        run: >-
+          python scripts/migration_recovery/replay.py
+          --history "$RUNNER_TEMP/migration-recovery/original-history.json"
+          --database-url postgresql://postgres:postgres@127.0.0.1:54322/postgres
+          --report test-results/migration-history-replay.json
+      - name: Preserve sanitized failure or success evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: migration-history-replay
+          path: test-results/migration-history-replay.json
+          if-no-files-found: warn
+          retention-days: 14
+      - name: Stop local compute and remove original SQL export
+        if: always()
+        run: |
+          if [ -f "$RUNNER_TEMP/migration-recovery/local/supabase/config.toml" ]; then
+            supabase stop --workdir "$RUNNER_TEMP/migration-recovery/local" --no-backup
+          fi
+          rm -f "$RUNNER_TEMP/migration-recovery/original-history.json"
