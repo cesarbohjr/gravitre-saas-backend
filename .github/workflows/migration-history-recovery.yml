@@ -62,21 +62,32 @@ jobs:
           --history "$RUNNER_TEMP/migration-recovery/candidate-history.json"
           --database-url postgresql://postgres:postgres@127.0.0.1:54322/postgres
           --report test-results/migration-history-candidate.json
+      - name: Restore original migration metadata backup and verify exact SQL arrays
+        run: >-
+          python scripts/migration_recovery/rollback_drill.py
+          postgresql://postgres:postgres@127.0.0.1:54322/postgres
+          "$RUNNER_TEMP/migration-recovery/original-history.json"
+          test-results/migration-history-rollback-drill.json
       - name: Reconcile isolated schema to captured production definitions and verify parity
         run: >-
           python scripts/migration_recovery/validate_baseline.py
           postgresql://postgres:postgres@127.0.0.1:54322/postgres
           "$RUNNER_TEMP/migration-recovery"
           test-results/migration-history-schema-parity.json
-      - name: Real PostgreSQL concurrency, authorization and fail-closed acceptance
-        run: >-
-          python scripts/migration_recovery/acceptance.py
-          postgresql://postgres:postgres@127.0.0.1:54322/postgres
-          test-results/migration-history-acceptance.json
       - name: Generate data-free baseline from verified isolated schema
         run: |
           docker exec supabase_db_gravitre-operator-ai pg_dump -U postgres --schema-only --schema public --no-owner postgres > test-results/production-schema-baseline.sql
           sha256sum test-results/production-schema-baseline.sql > test-results/production-schema-baseline.sha256
+      - name: Restore baseline into a fresh database and verify without repairs
+        run: |
+          supabase db reset --local --no-seed --workdir "$RUNNER_TEMP/migration-recovery/local"
+          docker exec -i supabase_db_gravitre-operator-ai psql -U postgres -d postgres -v ON_ERROR_STOP=1 < test-results/production-schema-baseline.sql
+          python scripts/migration_recovery/validate_baseline.py postgresql://postgres:postgres@127.0.0.1:54322/postgres "$RUNNER_TEMP/migration-recovery" test-results/migration-history-baseline-restore.json --verify-only
+      - name: Real PostgreSQL concurrency, authorization and fail-closed acceptance on restored baseline
+        run: >-
+          python scripts/migration_recovery/acceptance.py
+          postgresql://postgres:postgres@127.0.0.1:54322/postgres
+          test-results/migration-history-acceptance.json
       - name: Preserve sanitized failure or success evidence
         if: always()
         uses: actions/upload-artifact@v4

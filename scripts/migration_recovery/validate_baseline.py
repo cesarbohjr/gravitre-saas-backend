@@ -29,7 +29,7 @@ def main():
     prod_columns=json.loads((folder/'production-columns.json').read_text())
     with psycopg.connect(url,autocommit=True,row_factory=dict_row) as conn:
         before,cols=snapshot(conn)
-        sql=render(prod,before,prod_columns,cols)
+        sql=[] if '--verify-only' in sys.argv[4:] else render(prod,before,prod_columns,cols)
         with conn.transaction():
             for statement in sql: conn.execute(statement,prepare=False)
         after,cols=snapshot(conn)

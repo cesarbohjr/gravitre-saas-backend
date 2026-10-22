@@ -56,13 +56,18 @@ def render(p,c,cols,local_cols):
         if r not in c['triggers']:
             out.append(f'DROP TRIGGER IF EXISTS {q(r["name"])} ON public.{q(r["table"])};')
             out.append(r['definition']+';')
-    privileges=dict(a='INSERT',r='SELECT',w='UPDATE',d='DELETE',D='TRUNCATE',x='REFERENCES',t='TRIGGER',m='MAINTAIN',X='EXECUTE')
-    for kind in ['tables','functions']:
-        for r in p[kind]:
+    privileges=dict(U='USAGE',a='INSERT',r='SELECT',w='UPDATE',d='DELETE',D='TRUNCATE',x='REFERENCES',t='TRIGGER',m='MAINTAIN',X='EXECUTE')
+    for r in p.get('views') or []:
+        out.append(f'CREATE OR REPLACE VIEW public.{q(r["name"])} AS '+r['definition'].rstrip().rstrip(';')+';')
+        if r.get('options'): out.append(f'ALTER VIEW public.{q(r["name"])} SET ('+','.join(r['options'])+');')
+    for kind in ['tables','functions','views','sequences']:
+        for r in p.get(kind) or []:
             if kind=='tables':
                 target='TABLE public.'+q(r['name'])
                 out.append(f'ALTER TABLE public.{q(r["name"])} '+('ENABLE' if r['rls'] else 'DISABLE')+' ROW LEVEL SECURITY;')
                 out.append(f'ALTER TABLE public.{q(r["name"])} '+('FORCE' if r['force_rls'] else 'NO FORCE')+' ROW LEVEL SECURITY;')
+            elif kind=='views': target='TABLE public.'+q(r['name'])
+            elif kind=='sequences': target='SEQUENCE public.'+q(r['name'])
             else: target=f'FUNCTION public.{q(r["name"])}({r["identity"]})'
             out.append(f'REVOKE ALL ON {target} FROM PUBLIC,anon,authenticated,service_role;')
             for entry in r.get('acl') or []:
