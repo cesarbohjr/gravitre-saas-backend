@@ -30,16 +30,24 @@ function gvIcon(name, size) {
   return svg
 }
 
-function gvMark(w = 22, h = 16) {
+const GV_MARK_BAR = "M6 160C1 160-2 156 1 152L59 72C91 27 138 0 186 0H628C636 0 640 6 635 13L576 94C543 137 498 160 450 160Z"
+
+/** The Gravitre two-bar mark, the same one the web app's sidebar shows. */
+function gvMark(w = 24, h = 14) {
   const svg = document.createElementNS(SVG_NS, "svg")
   svg.setAttribute("width", String(w))
   svg.setAttribute("height", String(h))
-  svg.setAttribute("viewBox", "0 0 30 22")
+  svg.setAttribute("viewBox", "0 0 640 367")
   svg.setAttribute("aria-hidden", "true")
-  const path = document.createElementNS(SVG_NS, "path")
-  path.setAttribute("d", "M7 0h23l-4 6H3z M5 8h22l-4 6H1z M3 16h20l-4 6H0z")
-  path.setAttribute("fill", "#0b8a5c")
-  svg.appendChild(path)
+  svg.setAttribute("fill", "currentColor")
+  svg.style.color = "var(--br)"
+  svg.style.flex = "none"
+  for (const y of [0, 207]) {
+    const path = document.createElementNS(SVG_NS, "path")
+    path.setAttribute("d", GV_MARK_BAR)
+    if (y) path.setAttribute("transform", `translate(0 ${y})`)
+    svg.appendChild(path)
+  }
   return svg
 }
 

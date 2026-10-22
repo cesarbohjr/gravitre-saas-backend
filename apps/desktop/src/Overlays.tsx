@@ -339,7 +339,7 @@ export function QuickAsk() {
     <div className="scrim" onClick={() => setOverlay(null)} style={{ background: "transparent", justifyContent: "flex-end", alignItems: "flex-start", padding: "56px 56px 0 0" }}>
       <div className="pop fade" role="dialog" aria-label="Quick Ask" style={{ width: 420, height: 520, display: "flex", flexDirection: "column", overflow: "hidden", background: "var(--cv)", borderRadius: 16 }} onClick={(e) => e.stopPropagation()}>
         <div style={{ height: 44, display: "flex", alignItems: "center", gap: 10, padding: "0 8px 0 14px", background: "var(--s3)", borderBottom: "1px solid var(--bd)", flex: "none" }}>
-          <Mark width={20} height={15} />
+          <Mark width={20} height={12} />
           <span style={{ fontSize: 14, fontWeight: 600, flex: 1 }}>Quick Ask</span>
           <button aria-label="Close" className="ib" onClick={() => setOverlay(null)}>
             <Icon name="x" />

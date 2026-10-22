@@ -18,7 +18,7 @@ export function SignIn({ notice }: { notice: string | null }) {
   return (
     <div className="shell" style={{ background: "var(--s3)", alignItems: "center", justifyContent: "center" }}>
       <div className="fade" style={{ width: 440, padding: 36, borderRadius: 20, background: "var(--s1)", border: "1px solid var(--bd)", boxShadow: "var(--el)", display: "flex", flexDirection: "column", gap: 14 }}>
-        <Mark width={34} height={25} />
+        <Mark width={36} height={21} />
         <span className="eyebrow">Desktop · sign in</span>
         {code ? (
           <>

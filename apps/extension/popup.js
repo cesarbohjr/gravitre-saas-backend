@@ -3,7 +3,7 @@ const footEl = document.getElementById("foot")
 const wsEl = document.getElementById("ws")
 const openAppEl = document.getElementById("open-app")
 
-document.getElementById("mark").appendChild(gvMark(24, 18))
+document.getElementById("mark").appendChild(gvMark(24, 14))
 openAppEl.appendChild(gvIcon("ext"))
 openAppEl.addEventListener("click", () => {
   void gvSend({ type: "OPEN_APP", path: "/home" })

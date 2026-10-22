@@ -48,10 +48,14 @@ export function Icon({ name, size, style, strokeWidth }: { name: IconName; size?
   )
 }
 
-export function Mark({ width = 24, height = 18 }: { width?: number; height?: number }) {
+const MARK_BAR = "M6 160C1 160-2 156 1 152L59 72C91 27 138 0 186 0H628C636 0 640 6 635 13L576 94C543 137 498 160 450 160Z"
+
+/** The Gravitre two-bar mark, the same one the web app's sidebar shows. */
+export function Mark({ width = 24, height = 14 }: { width?: number; height?: number }) {
   return (
-    <svg width={width} height={height} viewBox="0 0 30 22" aria-hidden="true" style={{ flex: "none" }}>
-      <path d="M7 0h23l-4 6H3z M5 8h22l-4 6H1z M3 16h20l-4 6H0z" fill="#0b8a5c" />
+    <svg width={width} height={height} viewBox="0 0 640 367" aria-hidden="true" fill="currentColor" style={{ flex: "none", color: "var(--br)" }}>
+      <path d={MARK_BAR} />
+      <path d={MARK_BAR} transform="translate(0 207)" />
     </svg>
   )
 }

@@ -4,7 +4,7 @@ const tabsEl = document.getElementById("tabs")
 const wsEl = document.getElementById("ws")
 const openAppEl = document.getElementById("open-app")
 
-document.getElementById("mark").appendChild(gvMark(24, 18))
+document.getElementById("mark").appendChild(gvMark(24, 14))
 openAppEl.appendChild(gvIcon("ext"))
 openAppEl.addEventListener("click", () => void gvSend({ type: "OPEN_APP", path: "/home" }))
 
@@ -76,7 +76,7 @@ function renderSignedOut() {
     h(
       "div",
       { class: "empty fade" },
-      gvMark(34, 25),
+      gvMark(36, 21),
       h("b", null, "Connect Gravitre"),
       h("span", null, "Ask about any page, approve what your agents propose and follow their work, without leaving the tab."),
       h("button", { class: "btn btn-k", style: { marginTop: "8px" }, onclick: () => void gvSend({ type: "OPEN_CONNECT" }) }, "Connect Gravitre"),
@@ -112,7 +112,7 @@ function renderAsk() {
           : h(
               "div",
               { class: "abub fade" },
-              gvMark(18, 13),
+              gvMark(18, 11),
               h(
                 "div",
                 { class: "stack grow", style: { gap: "6px" } },
@@ -136,7 +136,7 @@ function renderAsk() {
           h("span", null, "Gravitre reads the page you're on alongside your connected apps. Anything that writes to an app still asks you first."),
         ),
       ]
-  if (state.sending) list.push(h("div", { class: "abub" }, gvMark(18, 13), h("span", { class: "typing", "aria-label": "Gravitre is answering" }, h("span"), h("span"), h("span"))))
+  if (state.sending) list.push(h("div", { class: "abub" }, gvMark(18, 11), h("span", { class: "typing", "aria-label": "Gravitre is answering" }, h("span"), h("span"), h("span"))))
   if (state.error) list.push(errorLine(state.error))
   bodyEl.replaceChildren(...list)
   bodyEl.scrollTop = bodyEl.scrollHeight
