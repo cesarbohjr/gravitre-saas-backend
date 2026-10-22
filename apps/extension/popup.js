@@ -1,9 +1,8 @@
 const bodyEl = document.getElementById("body")
 const footEl = document.getElementById("foot")
-const wsEl = document.getElementById("ws")
 const openAppEl = document.getElementById("open-app")
 
-document.getElementById("mark").appendChild(gvMark(24, 14))
+document.getElementById("mark").appendChild(gvMark(31, 18))
 openAppEl.appendChild(gvIcon("ext"))
 openAppEl.addEventListener("click", () => {
   void gvSend({ type: "OPEN_APP", path: "/home" })
@@ -37,7 +36,6 @@ function action(icon, label, onClick) {
 }
 
 function renderSignedOut(notice) {
-  wsEl.textContent = "Not connected"
   openAppEl.classList.add("hidden")
   footEl.classList.add("hidden")
   bodyEl.replaceChildren(
@@ -87,7 +85,6 @@ function enrich() {
 
 function renderSignedIn(session, me, approvals) {
   const org = (me?.organizations || []).find((o) => String(o.id) === String(session.orgId))
-  wsEl.textContent = org?.name || "Your workspace"
   openAppEl.classList.remove("hidden")
 
   const count = approvals.length
@@ -150,7 +147,7 @@ function renderSignedIn(session, me, approvals) {
 
   footEl.classList.remove("hidden")
   footEl.replaceChildren(
-    h("span", { class: "grow ellipsis" }, me?.email || ""),
+    h("span", { class: "grow ellipsis" }, [org?.name, me?.email].filter(Boolean).join(" · ")),
     h(
       "button",
       {

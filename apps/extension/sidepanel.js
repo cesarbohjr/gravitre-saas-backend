@@ -1,10 +1,9 @@
 const bodyEl = document.getElementById("body")
 const footEl = document.getElementById("foot")
 const tabsEl = document.getElementById("tabs")
-const wsEl = document.getElementById("ws")
 const openAppEl = document.getElementById("open-app")
 
-document.getElementById("mark").appendChild(gvMark(24, 14))
+document.getElementById("mark").appendChild(gvMark(31, 18))
 openAppEl.appendChild(gvIcon("ext"))
 openAppEl.addEventListener("click", () => void gvSend({ type: "OPEN_APP", path: "/home" }))
 
@@ -71,7 +70,6 @@ function renderSignedOut() {
   tabsEl.classList.add("hidden")
   footEl.classList.add("hidden")
   openAppEl.classList.add("hidden")
-  wsEl.textContent = "Not connected"
   bodyEl.replaceChildren(
     h(
       "div",
@@ -418,7 +416,7 @@ async function start() {
   const [me, , page] = await Promise.all([gvSend({ type: "GET_ME" }), loadConversation(), readPage()])
   state.page = page
   const org = (me.ok ? me.me?.organizations || [] : []).find((o) => String(o.id) === String(res.session?.orgId))
-  wsEl.textContent = org?.name || "Your workspace"
+  document.getElementById("mark").title = org?.name ? `Gravitre · ${org.name}` : "Gravitre"
   setTab(state.tab)
   void loadApprovals()
 }

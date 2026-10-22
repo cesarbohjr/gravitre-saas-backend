@@ -130,18 +130,8 @@ function Shell() {
         <div className="body">
           <nav className={`rail ${wide ? "" : "mini"}`} aria-label="Main">
             <div style={{ height: 12, flex: "none" }} />
-            <button className="wsbtn" onClick={() => setOverlay("ws")} aria-label={`Switch workspace, current ${ws?.name || "workspace"}`}>
-              <Mark />
-              <span className="lbl" style={{ flex: 1, textAlign: "left", display: "flex", flexDirection: "column", lineHeight: 1.2, minWidth: 0 }}>
-                <span style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{ws?.name || "Gravitre"}</span>
-                <span style={{ fontSize: 11, fontWeight: 400, color: "var(--t3)", display: "inline-flex", alignItems: "center", gap: 5 }}>
-                  <span className="dot" style={{ background: approvals.error ? "var(--ap)" : approvals.at ? "var(--ok)" : "var(--bx)" }} />
-                  {approvals.error ? "Reconnecting" : approvals.at ? "Synced" : "Connecting"}
-                </span>
-              </span>
-              <span className="lbl" style={{ flex: "none", display: "inline-flex" }}>
-                <Icon name="chevrons" style={{ color: "var(--t3)" }} />
-              </span>
+            <button className="wsbtn" onClick={() => setOverlay("ws")} title={`Gravitre · ${ws?.name || "workspace"}`} aria-label={`Switch workspace, current ${ws?.name || "workspace"}`}>
+              <Mark width={35} height={20} />
             </button>
             <span className="rsep" />
             {NAV.map((n, i) =>
