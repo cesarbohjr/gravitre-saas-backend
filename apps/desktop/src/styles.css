@@ -152,3 +152,20 @@ body{background:#f4f4f1}
 @keyframes gvdot{0%,100%{opacity:.3}50%{opacity:1}}
 @media (prefers-reduced-motion: reduce){.g .typing span{animation:none}}
 .g .main > .page{min-height:100%}
+/* Illustrations from the web library */
+.g .art{display:block;border-radius:14px;overflow:hidden;flex:none;background:#ece8df;line-height:0}
+.g .art img{display:block;width:100%;height:auto}
+.g .art.float img{animation:gartdrift 14s ease-in-out infinite alternate;transform-origin:50% 60%}
+@keyframes gartdrift{from{transform:scale(1) translateY(0)}to{transform:scale(1.04) translateY(-4px)}}
+.g .hero{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:32px;align-items:center}
+.g .hero-art{position:relative;width:clamp(300px,30vw,400px);border-radius:18px;border:1px solid var(--bd);box-shadow:var(--el);animation:gheroin .7s cubic-bezier(.22,1,.36,1) both}
+.g .hero-art .art{border-radius:17px}
+.g .hero-chips{position:absolute;left:12px;bottom:12px;display:flex;gap:6px;flex-wrap:wrap}
+.g .hero-chip{display:inline-flex;align-items:center;gap:7px;height:28px;padding:0 10px;border-radius:9px;background:rgb(251 248 242/.94);border:1px solid #d9d1c2;color:#141513;font-size:12px;font-weight:600;box-shadow:0 4px 12px -6px rgb(21 22 24/.25);animation:gheroin .6s cubic-bezier(.22,1,.36,1) both}
+.g .hero-chip:nth-child(2){animation-delay:.12s}
+.g .hero-chip .cdot{position:relative;display:inline-block;flex:none;width:8px;height:8px;border-radius:50%}
+.g .hero-chip .cdot.ping::after{content:"";position:absolute;inset:0;border-radius:50%;background:inherit;animation:gping 1.8s ease-out infinite}
+@keyframes gping{0%{transform:scale(1);opacity:.55}100%{transform:scale(2.8);opacity:0}}
+@keyframes gheroin{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+@media (max-width:1080px){.g .hero{grid-template-columns:minmax(0,1fr)}.g .hero-art{display:none}}
+@media (prefers-reduced-motion:reduce){.g .art.float img,.g .hero-art,.g .hero-chip,.g .hero-chip .cdot.ping::after{animation:none}}

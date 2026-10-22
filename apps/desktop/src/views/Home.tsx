@@ -1,6 +1,7 @@
 import { useState } from "react"
 import { useStore } from "../store"
-import { Avatar, Card, ErrorLine, Icon, Live, StatusPill } from "../ui"
+import { Art, Avatar, Card, ErrorLine, Icon, Live, StatusPill } from "../ui"
+import { ART } from "../art"
 import { clock, timeAgo } from "../lib/model"
 import { policyLine } from "@web/components/approvals/decision-queue/model"
 
@@ -89,7 +90,8 @@ export function Home() {
         <span style={{ flex: 1 }} />
         <Live at={approvals.at} />
       </div>
-      <div style={{ display: "flex", flexDirection: "column", gap: 14, padding: "18px 0 6px" }}>
+      <div className="hero">
+      <div style={{ display: "flex", flexDirection: "column", gap: 14, padding: "18px 0 6px", minWidth: 0 }}>
         <span className="eyebrow">{greeting(me?.name)}</span>
         <h2 style={{ margin: 0, fontSize: 44, fontWeight: 600, letterSpacing: "-0.025em", lineHeight: 1.05 }}>
           {!loaded ? (
@@ -124,6 +126,24 @@ export function Home() {
             Review approvals →
           </button>
         </div>
+      </div>
+      <div className="hero-art" aria-hidden="true">
+        <Art src={nDec === 0 && loaded ? ART.homeAllClear : ART.homeHero} width={400} float style={{ width: "100%" }} />
+        {loaded ? (
+          <div className="hero-chips">
+            {nDec ? (
+              <span className="hero-chip">
+                <span className="cdot ping" style={{ background: "#e2a33a" }} />
+                {nDec} waiting on you
+              </span>
+            ) : null}
+            <span className="hero-chip">
+              <span className={`cdot ${nRun ? "ping" : ""}`} style={{ background: nRun ? "#19c37d" : "#9aa29d" }} />
+              {nRun ? `${nRun} running` : "Agents idle"}
+            </span>
+          </div>
+        ) : null}
+      </div>
       </div>
       <div className="askbar">
         <Icon name="spark" size={20} style={{ color: "var(--ok)" }} />
@@ -173,7 +193,8 @@ export function Home() {
           }
         >
           {waitingRows.length === 0 ? (
-            <div style={{ padding: 22, textAlign: "center" }} className="sub">
+            <div style={{ padding: 22, display: "flex", flexDirection: "column", alignItems: "center", gap: 12, textAlign: "center" }} className="sub">
+              {loaded ? <Art src={ART.homeAllClear} width={180} /> : null}
               {loaded ? "All clear. New requests land here the moment an agent pauses." : "Loading…"}
             </div>
           ) : (
@@ -201,7 +222,8 @@ export function Home() {
           }
         >
           {inProgress.length === 0 ? (
-            <div style={{ padding: 22, textAlign: "center" }} className="sub">
+            <div style={{ padding: 22, display: "flex", flexDirection: "column", alignItems: "center", gap: 12, textAlign: "center" }} className="sub">
+              {assignments.at ? <Art src={ART.spotAgents} width={180} /> : null}
               {assignments.at ? "Nothing is running right now." : "Loading…"}
             </div>
           ) : (

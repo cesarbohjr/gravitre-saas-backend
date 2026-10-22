@@ -159,23 +159,36 @@ export function Live({ at }: { at: number | null }) {
   )
 }
 
-export function Empty({ title, body, icon = "check" }: { title: string; body: string; icon?: IconName }) {
+/** A library illustration in a soft frame; `float` adds a slow drift for larger cards. */
+export function Art({ src, width, float, style }: { src: string; width: number; float?: boolean; style?: CSSProperties }) {
   return (
-    <div style={{ padding: "48px 16px", textAlign: "center", display: "flex", flexDirection: "column", gap: 8, alignItems: "center" }}>
-      <span
-        style={{
-          width: 52,
-          height: 52,
-          borderRadius: "50%",
-          background: "var(--brs)",
-          color: "var(--brk)",
-          display: "inline-flex",
-          alignItems: "center",
-          justifyContent: "center",
-        }}
-      >
-        <Icon name={icon} size={20} />
-      </span>
+    <span className={`art ${float ? "float" : ""}`} style={{ width, ...style }}>
+      <img src={src} alt="" draggable={false} />
+    </span>
+  )
+}
+
+export function Empty({ title, body, icon = "check", art }: { title: string; body: string; icon?: IconName; art?: string }) {
+  return (
+    <div style={{ padding: "40px 16px", textAlign: "center", display: "flex", flexDirection: "column", gap: 8, alignItems: "center" }}>
+      {art ? (
+        <Art src={art} width={220} style={{ marginBottom: 6 }} />
+      ) : (
+        <span
+          style={{
+            width: 52,
+            height: 52,
+            borderRadius: "50%",
+            background: "var(--brs)",
+            color: "var(--brk)",
+            display: "inline-flex",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <Icon name={icon} size={20} />
+        </span>
+      )}
       <span style={{ fontSize: 17, fontWeight: 600 }}>{title}</span>
       <span style={{ fontSize: 14, color: "var(--t2)", maxWidth: 420 }}>{body}</span>
     </div>

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react"
+import { ART } from "../art"
 import {
   isPastSla,
   lockNote,
@@ -160,7 +161,7 @@ export function Approvals() {
         </div>
         {rows.length === 0 ? (
           approvals.at ? (
-            <Empty title="All clear" body={n ? "Nothing at this priority." : "No decisions are waiting. New requests appear the moment an agent pauses for a human."} />
+            <Empty art={ART.inboxZero} title="All clear" body={n ? "Nothing at this priority." : "No decisions are waiting. New requests appear the moment an agent pauses for a human."} />
           ) : (
             <div className="sub" style={{ padding: 24 }}>
               Loading…

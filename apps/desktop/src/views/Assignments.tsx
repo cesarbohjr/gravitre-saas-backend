@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react"
+import { ART } from "../art"
 import { useStore } from "../store"
 import { Avatar, Empty, ErrorLine, Icon, Logo, PageHead, StatusPill, StepDot } from "../ui"
 import { timeAgo, type Assignment, type Status } from "../lib/model"
@@ -224,7 +225,7 @@ export function Assignments() {
               </div>
             </div>
           ) : assignments.at ? (
-            <Empty title="Nothing selected" body="Pick an assignment to see its steps and outcome." icon="assign" />
+            <Empty art={ART.spotWorkflows} title="Nothing selected" body="Pick an assignment to see its steps and outcome." />
           ) : null}
         </div>
       </div>

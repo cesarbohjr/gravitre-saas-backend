@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react"
+import { ART } from "../art"
 import { useStore } from "../store"
-import { Avatar, ErrorLine, Icon, Logo, PageHead } from "../ui"
+import { Avatar, Empty, ErrorLine, Icon, Logo, PageHead } from "../ui"
 import { activityActor, activityStatus, clock, dayLabel, systemBadge } from "../lib/model"
 import type { ActivityEvent } from "../lib/api"
 
@@ -38,9 +39,13 @@ export function Activity() {
       <div className="card split" style={{ height: 620, overflow: "hidden" }}>
         <div style={{ flex: 1, minWidth: 0, overflow: "auto", padding: "8px 14px 14px" }}>
           {events.length === 0 ? (
-            <div className="sub" style={{ padding: 16 }}>
-              {activity.at ? "Nothing has run yet. Runs, changes and decisions show up here as they happen." : "Loading…"}
-            </div>
+            activity.at ? (
+              <Empty art={ART.opsActivity} title="Nothing has run yet" body="Runs, changes and decisions show up here as they happen." />
+            ) : (
+              <div className="sub" style={{ padding: 16 }}>
+                Loading…
+              </div>
+            )
           ) : null}
           {events.map((e) => {
             const group = dayLabel(e.created_at)
