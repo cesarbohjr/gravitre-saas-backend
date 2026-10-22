@@ -77,7 +77,7 @@ jobs:
       - name: Generate data-free baseline from verified isolated schema
         run: |
           supabase db dump --help > "$RUNNER_TEMP/migration-recovery/db-dump-help.txt"
-          supabase db dump --local --schema public --file test-results/production-schema-baseline.sql --workdir "$RUNNER_TEMP/migration-recovery/local"
+          supabase db dump --local --schema public --file "$GITHUB_WORKSPACE/test-results/production-schema-baseline.sql" --workdir "$RUNNER_TEMP/migration-recovery/local"
           python scripts/migration_recovery/append_dependencies.py "$RUNNER_TEMP/migration-recovery/production-inventory.json" test-results/production-schema-baseline.sql
           sha256sum test-results/production-schema-baseline.sql > test-results/production-schema-baseline.sha256
       - name: Restore baseline into a fresh database and verify without repairs

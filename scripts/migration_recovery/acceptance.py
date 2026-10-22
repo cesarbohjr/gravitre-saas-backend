@@ -11,6 +11,7 @@ import json
 from pathlib import Path
 import sys
 from types import SimpleNamespace
+from threading import Barrier
 from uuid import UUID, uuid4
 
 from fastapi import HTTPException
@@ -93,7 +94,9 @@ def main():
         with psycopg.connect(url) as conn: return conn.execute('select count(*) from recovery_acceptance.write_probe').fetchone()[0]
     try:
         rec=seed()
+        barrier=Barrier(12)
         def claim(_):
+            barrier.wait(timeout=20)
             try:
                 scope['_single_claim'](client,rec_id=rec,org_id=org,operator_type='workflow-param-suggester',status='claimed',user_id=user)
                 return 1
@@ -105,6 +108,8 @@ def main():
         for role in ['anon','authenticated']:
             with psycopg.connect(url) as conn:
                 try:
+                    for privilege in ['SELECT','INSERT','UPDATE','DELETE']:
+                        assert not conn.execute('select has_table_privilege(%s,%s,%s)',(role,'public.operator_recommendations',privilege)).fetchone()[0]
                     conn.execute(sql.SQL('SET LOCAL ROLE {}').format(sql.Identifier(role)))
                     conn.execute('select * from public.operator_recommendations')
                 except psycopg.errors.InsufficientPrivilege: pass
