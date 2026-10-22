@@ -85,6 +85,7 @@ def test_write_completes_only_with_verified_provider_proof():
         task_state={
             "provider_result_evidence": {
                 "verification_status": "verified",
+                "verified": True,
                 "provider_record_id": "msg-123",
             }
         },
