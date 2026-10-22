@@ -37,9 +37,12 @@ def main():
         for category in prod:
             if normalize(prod[category])!=normalize(after[category]): differences[category]='mismatch'
         if normalize(prod_columns)!=normalize(cols): differences['columns']='mismatch'
+        extension_details = {'production': prod.get('extensions'), 'replayed': after.get('extensions')}
+
         result={'passed':not differences,'differences':differences,
                 'columns':len(cols),'objects':{kind:len(rows or []) for kind,rows in after.items()},
-                'reconciliation_statement_count':len(sql),'production_mutated':False}
+                'reconciliation_statement_count':len(sql),'production_mutated':False,
+                'extension_details': extension_details if 'extensions' in differences else None}
         report.parent.mkdir(parents=True,exist_ok=True)
         report.write_text(json.dumps(result,indent=2)+'\n')
         print(json.dumps(result,indent=2))
