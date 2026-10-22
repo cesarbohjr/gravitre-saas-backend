@@ -38,20 +38,35 @@ jobs:
         run: |
           mkdir -p "$RUNNER_TEMP/migration-recovery/local/supabase/migrations"
           cp supabase/config.toml "$RUNNER_TEMP/migration-recovery/local/supabase/config.toml"
+          cp -a supabase/templates "$RUNNER_TEMP/migration-recovery/local/supabase/templates"
           cd "$RUNNER_TEMP/migration-recovery/local"
           supabase start -x studio,imgproxy,edge-runtime,logflare,vector
-      - name: Replay exact recorded statements without CI compatibility patches
+      - name: Reproduce original history failure and validate exact SQLSTATE
+        run: |
+          python scripts/migration_recovery/replay.py --history "$RUNNER_TEMP/migration-recovery/original-history.json" --database-url postgresql://postgres:postgres@127.0.0.1:54322/postgres --report test-results/migration-history-original.json && exit 1
+          python - <<'PYCODE'
+          import json
+          report=json.load(open('test-results/migration-history-original.json'))
+          assert report['failure']['version']=='20250220000006', report
+          assert report['failure']['sqlstate']=='42P13', report
+          assert len(report['applied'])==18, report
+          PYCODE
+      - name: Recreate empty local database and build corrected replay candidate
+        run: |
+          supabase db reset --local --no-seed --workdir "$RUNNER_TEMP/migration-recovery/local"
+          python scripts/migration_recovery/candidate.py "$RUNNER_TEMP/migration-recovery/original-history.json" "$RUNNER_TEMP/migration-recovery/candidate-history.json"
+      - name: Replay all corrected recorded migrations on real PostgreSQL
         run: >-
           python scripts/migration_recovery/replay.py
-          --history "$RUNNER_TEMP/migration-recovery/original-history.json"
+          --history "$RUNNER_TEMP/migration-recovery/candidate-history.json"
           --database-url postgresql://postgres:postgres@127.0.0.1:54322/postgres
-          --report test-results/migration-history-replay.json
+          --report test-results/migration-history-candidate.json
       - name: Preserve sanitized failure or success evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: migration-history-replay
-          path: test-results/migration-history-replay.json
+          path: test-results/migration-history-*.json
           if-no-files-found: warn
           retention-days: 14
       - name: Stop local compute and remove original SQL export
@@ -60,4 +75,4 @@ jobs:
           if [ -f "$RUNNER_TEMP/migration-recovery/local/supabase/config.toml" ]; then
             supabase stop --workdir "$RUNNER_TEMP/migration-recovery/local" --no-backup
           fi
-          rm -f "$RUNNER_TEMP/migration-recovery/original-history.json"
+          rm -f "$RUNNER_TEMP/migration-recovery/"*-history.json
