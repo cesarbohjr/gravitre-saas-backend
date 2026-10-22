@@ -5,7 +5,10 @@ import sys
 from reconcile import q
 source,dump=map(Path,sys.argv[1:])
 metadata=json.loads(source.read_text())
-prefix='\n'.join([
+prefix='CREATE SCHEMA IF NOT EXISTS extensions;\n'
+for extension in metadata.get('extensions') or []:
+    prefix+='CREATE EXTENSION IF NOT EXISTS '+q(extension['name'])+' WITH SCHEMA '+q(extension['schema'])+" VERSION '"+extension['version'].replace("'","''")+"';\n"
+prefix+='\n'.join([
     'ALTER DEFAULT PRIVILEGES IN SCHEMA public REVOKE ALL ON TABLES FROM anon,authenticated,service_role;',
     'ALTER DEFAULT PRIVILEGES IN SCHEMA public REVOKE ALL ON SEQUENCES FROM anon,authenticated,service_role;',
     'ALTER DEFAULT PRIVILEGES IN SCHEMA public REVOKE ALL ON FUNCTIONS FROM PUBLIC,anon,authenticated,service_role;',
