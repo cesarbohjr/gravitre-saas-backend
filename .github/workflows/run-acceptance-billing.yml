@@ -1,0 +1,12 @@
+name: Run isolated billing Playwright acceptance
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  billing:
+    name: Dedicated acceptance-project billing suite
+    uses: ./.github/workflows/isolated-acceptance.yml
+    with:
+      suite: billing
+    secrets: inherit
