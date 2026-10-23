@@ -9,8 +9,9 @@ on:
 
 concurrency:
   group: ci-${{ github.ref }}
-  # Keep in-flight main CI (esp. Backend pytest) so Railway Wait-for-CI can pass.
-  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+  # Long backend and billing acceptance jobs must not be interrupted by
+  # unrelated reruns or branch updates. Every run retains its own commit SHA.
+  cancel-in-progress: false
 
 jobs:
   web:
@@ -209,8 +210,17 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements-dev.txt
 
-      - name: Install bounded media decoder
-        run: sudo apt-get update -y -q && sudo apt-get install -y -q ffmpeg
+      - name: Verify bounded media decoder
+        run: |
+          # GitHub-hosted Ubuntu runners generally ship with ffmpeg. Avoid an
+          # unnecessary full apt index refresh and recommended-package download.
+          if command -v ffmpeg >/dev/null 2>&1; then
+            ffmpeg -version | head -n 1
+          else
+            sudo env DEBIAN_FRONTEND=noninteractive timeout 180s apt-get update -y -q
+            sudo env DEBIAN_FRONTEND=noninteractive timeout 180s apt-get install -y -q --no-install-recommends ffmpeg
+            ffmpeg -version | head -n 1
+          fi
 
       # tests/db/*_pg.py start a throwaway PostgreSQL from the runner's server
       # binaries; the retrieval migration test also needs pgvector. Best effort:
