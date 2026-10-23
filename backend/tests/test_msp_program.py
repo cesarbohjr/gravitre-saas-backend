@@ -460,7 +460,7 @@ def _activate(world, client_org, plan):
 def test_quantity_sync_sets_absolute_quantities_with_proration(world):
     world.db.tables["msp_billing_accounts"] = [{"msp_org_id": world.msp, "stripe_subscription_id": "sub_w", "status": "active"}]
     second = world.db.add_org("Second Co")
-    sub = {"items": {"data": [{"id": "si_node", "quantity": 0, "price": {"id": "price_w_node"}}]}}
+    sub = {"items": {"data": [{"id": "si_node", "quantity": 0, "price": {"id": "price_w_node", "recurring": {"interval": "month"}}}]}}
     with patch.object(msp_billing.stripe.Subscription, "retrieve", return_value=sub), \
          patch.object(msp_billing.stripe.Subscription, "modify") as modify:
         _activate(world, world.client, "node")
@@ -476,7 +476,7 @@ def test_quantity_sync_sets_absolute_quantities_with_proration(world):
 def test_detach_reduces_quantity(world):
     world.db.tables["msp_billing_accounts"] = [{"msp_org_id": world.msp, "stripe_subscription_id": "sub_w", "status": "active"}]
     with patch.object(msp_billing.stripe.Subscription, "retrieve",
-                      return_value={"items": {"data": [{"id": "si_node", "quantity": 1, "price": {"id": "price_w_node"}}]}}), \
+                      return_value={"items": {"data": [{"id": "si_node", "quantity": 1, "price": {"id": "price_w_node", "recurring": {"interval": "month"}}}]}}), \
          patch.object(msp_billing.stripe.Subscription, "modify") as modify:
         rel = _activate(world, world.client, "node")
         modify.reset_mock()
