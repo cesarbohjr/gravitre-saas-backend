@@ -30,3 +30,5 @@ Provider contract references used while implementing: [Okta lifecycle suspension
 The clean build initially encountered a generated Turbopack persistence-cache error on a repeated local build. The generated cache was moved aside and the build rerun; this is distinct from a source-code build failure. Final-head CI uses a clean runner.
 
 The first complete broad run after publication reached **11,995 passed / 281 skipped** and exposed five failures sharing one cause: the new containment action lacked its declarative chat workflow schema. Added the real schema with a sensitive, non-inferable user ID and fixed SUSPENDED target; no debt allowlist was expanded. The full regression is rerun after this correction.
+
+Final review also requires the actual installed dataset/dashboard configurations to match the pack before install/KPI checks pass, and preserves the organization's disabled-sentiment preference in background consumers. Targeted regressions cover removed dashboards and disabled analysis.

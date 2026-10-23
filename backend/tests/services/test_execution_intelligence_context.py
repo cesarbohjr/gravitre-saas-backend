@@ -4,6 +4,11 @@ import pytest
 from app.services.execution_intelligence_context import execution_intelligence_context
 from app.services.intelligence_router import CAPABILITY_NAMES
 
+@pytest.fixture(autouse=True)
+def dialogue_preferences():
+    with patch("app.services.execution_intelligence_context.load_chat_dialogue_settings", new_callable=AsyncMock, return_value={"sentiment_detection_enabled": True}):
+        yield
+
 @pytest.mark.asyncio
 async def test_background_consumer_uses_same_router_and_carries_changed_evidence_as_data():
     router = SimpleNamespace(_understanding=SimpleNamespace(understand=AsyncMock(return_value={"intent": "review"})),
@@ -59,3 +64,16 @@ async def test_three_domain_scenarios_cross_real_shared_router_and_prompt_bounda
     assert 'grants no permissions or approval' in changed
     assert router._get_predictions.call_args.args[0] == 'tenant-a'
     assert router._get_relational_context.call_args.args[0] == 'tenant-a'
+
+
+@pytest.mark.asyncio
+async def test_background_consumer_respects_disabled_org_sentiment_preference():
+    analyze = AsyncMock()
+    facade = SimpleNamespace(_router=SimpleNamespace(_understanding=SimpleNamespace(understand=AsyncMock(return_value={})),
+        _task_classifier=SimpleNamespace(classify=AsyncMock(return_value={})), _sentiment=SimpleNamespace(analyze=analyze)),
+        run_router_enrichments=AsyncMock(return_value={"capabilities": {"sentiment": {"status": "disabled"}}}))
+    with patch("app.services.execution_intelligence_context.load_chat_dialogue_settings", new_callable=AsyncMock, return_value={"sentiment_detection_enabled": False}), patch("app.services.chat_intelligence_facade.get_chat_intelligence_facade", return_value=facade):
+        result = await execution_intelligence_context(settings=None, org_id="org", task="Review", agent={}, briefing={})
+    analyze.assert_not_called()
+    assert facade.run_router_enrichments.call_args.kwargs['context']['sentiment_detection_enabled'] is False
+    assert 'disabled' in result

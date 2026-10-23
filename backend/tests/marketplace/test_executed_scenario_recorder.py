@@ -65,6 +65,8 @@ def world():
     bad = {**rows['workflow_runs'][0], "id": "denied", "status": "failed"}
     rows['workflow_runs'].append(bad)
     rows['workflow_steps'].append({"run_id": "denied", "org_id": "org", "status": "failed", "step_type": "invoke_tool", "error_code": "APPROVAL_DENIED", "output_snapshot": {}})
+    rows['marketplace_dataset_pack_installations'] = [{"org_id": "org", "asset_id": "pack", "status": "active", "config": config.dataset.model_dump(mode="json")}]
+    rows['marketplace_dashboard_pack_installations'] = [{"org_id": "org", "asset_id": "pack", "status": "active", "config": config.dashboard.model_dump(mode="json")}]
     return DB(rows), config, {"id": "pack", "org_id": "org", "config": raw}
 
 @pytest.mark.asyncio
@@ -114,3 +116,13 @@ async def test_graph_rewiring_cannot_reuse_unchanged_steps_as_certification():
     with patch('app.marketplace.marketplace3.scenario_runner.probe_outcome_pack_permissions', new_callable=AsyncMock, return_value={"passed": True}):
         result = await record_executed_scenarios(db, None, org_id='org', asset=asset, config=config, access_token='test-token')
     assert result['checks']['golden_path_passed'] is False
+
+
+@pytest.mark.asyncio
+async def test_missing_materialized_dashboard_blocks_install_and_kpi_certification():
+    db, config, asset = world()
+    db.rows['marketplace_dashboard_pack_installations'] = []
+    with patch('app.marketplace.marketplace3.scenario_runner.probe_outcome_pack_permissions', new_callable=AsyncMock, return_value={"passed": True}):
+        result = await record_executed_scenarios(db, None, org_id='org', asset=asset, config=config, access_token='test-token')
+    assert result['checks']['fresh_install_passed'] is False
+    assert result['checks']['kpi_reconciliation_passed'] is False

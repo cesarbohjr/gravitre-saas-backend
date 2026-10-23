@@ -55,12 +55,19 @@ def _collect_scenario_facts(client, *, org_id, asset, config):
             if (steps and all(safe_step(step) for step in steps)
                     and any(step.get("error_code") in {"APPROVAL_REQUIRED", "APPROVAL_DENIED", "POLICY_DENIED", "TOOL_NOT_ALLOWED", "CANCELLED_BEFORE_INVOKE"} for step in steps)):
                 failure_refs.append(str(run["id"]))
+    def component_current(table, expected_config):
+        rows = (client.table(table).select("org_id,asset_id,status,config").eq("org_id", org_id)
+                .eq("asset_id", asset_id).eq("status", "active").limit(1).execute().data or [])
+        return any(row.get("org_id") == org_id and str(row.get("asset_id")) == asset_id
+            and row.get("status") == "active" and row.get("config") == expected_config for row in rows)
+    data_current = component_current("marketplace_dataset_pack_installations", config.dataset.model_dump(mode="json"))
+    dashboard_current = component_current("marketplace_dashboard_pack_installations", config.dashboard.model_dump(mode="json"))
     checks = {
-        "fresh_install_passed": bool(expected) and expected <= installed and expected <= bound,
+        "fresh_install_passed": bool(expected) and expected <= installed and expected <= bound and data_current and dashboard_current,
         "golden_path_passed": bool(expected) and expected <= proof.play_keys,
         "failure_path_passed": bool(failure_refs),
         "permissions_passed": False,
-        "kpi_reconciliation_passed": bool(config.outcome_contract.kpis) and {k.key for k in config.outcome_contract.kpis if k.kind in {"business", "funnel"}} <= proof.measured_metric_keys,
+        "kpi_reconciliation_passed": data_current and dashboard_current and bool(config.outcome_contract.kpis) and {k.key for k in config.outcome_contract.kpis if k.kind in {"business", "funnel"}} <= proof.measured_metric_keys,
         "source_of_record_verification_passed": bool(proof.actions) and {a for p in config.runtime_profiles for a in p.actions} <= proof.actions,
     }
     return checks, proof, workflows, failure_refs
