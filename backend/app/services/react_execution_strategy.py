@@ -41,7 +41,7 @@ class ReactPlanRuntime:
             iterations_used=iteration,
         )
         self.plan = decision.plan
-        if decision.action in {"stop", "wait_approval", "wait_user", "verify"}:
+        if decision.action in {"stop", "wait_approval", "wait_user"}:
             raise RuntimeError(f"react_dispatch_blocked:{decision.reason}")
         pending = [
             s
