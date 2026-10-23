@@ -15,11 +15,11 @@ def _msp_config() -> OutcomePackAssetConfig:
     )
 
 
-def test_msp_service_desk_v1_is_production_verified_for_freshservice() -> None:
+def test_msp_service_desk_blueprint_cannot_self_certify_for_freshservice() -> None:
     report = certify_outcome_pack(_msp_config())
 
-    assert report.publish_ready is True
-    assert report.level == "production_verified"
+    assert report.publish_ready is False
+    assert report.level == "governed"
     assert report.unresolved_skill_requirements == []
     assert "freshservice.tickets.update_status" in report.runtime_actions
     assert not any(finding.blocking for finding in report.findings)
@@ -43,5 +43,29 @@ def test_outcome_verified_requires_measured_verified_outcome_event() -> None:
         outcome_evidence={"verified_outcome_events": ["ticket_sla_saved"]},
     )
 
-    assert without_evidence.level == "production_verified"
-    assert with_evidence.level == "outcome_verified"
+    assert without_evidence.level == "governed"
+    assert with_evidence.level == "governed"
+
+
+def test_production_requires_complete_independent_evidence_not_runtime_labels():
+    from app.marketplace.marketplace3.production_evidence import ProductionEvidence, REQUIRED_CHECKS
+    config = _msp_config()
+    actions = {action for profile in config.runtime_profiles for action in profile.actions}
+    proof = ProductionEvidence("org", "pack", "digest", frozenset(actions), {key: True for key in REQUIRED_CHECKS}, ("run",))
+    assert not certify_outcome_pack(config, production_evidence=proof).publish_ready
+    report = certify_outcome_pack(config, production_evidence=proof, resolved_skill_ids=set(config.skill_bindings.values()))
+    assert report.publish_ready
+    assert report.level == "production_verified"
+    assert not certify_outcome_pack(config, production_evidence={"actions": list(actions), "passed": True}).publish_ready
+
+
+def test_actual_production_evidence_promotes_without_editing_runtime_status_tags():
+    from app.marketplace.marketplace3.production_evidence import ProductionEvidence, REQUIRED_CHECKS
+    config = _msp_config()
+    for profile in config.runtime_profiles:
+        profile.status = "tested"
+    actions = {action for profile in config.runtime_profiles for action in profile.actions}
+    evidence = ProductionEvidence("org", "pack", "digest", frozenset(actions), {key: True for key in REQUIRED_CHECKS})
+    report = certify_outcome_pack(config, resolved_skill_ids=set(config.skill_bindings.values()), production_evidence=evidence)
+    assert report.publish_ready
+    assert all(profile.status == "tested" for profile in config.runtime_profiles)

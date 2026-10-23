@@ -229,7 +229,7 @@ def should_skip_unified_live_for_compiled_read(
 
     if match_catalog_search_intent(message or "") or match_diagnostic_recipe(message or ""):
         return True
-    from app.services.listing_f2_read_turn import match_listing_f2_intent
+    from app.services.listing_f2_read_turn import match_listing_f2_intent, resolve_listing_read_message
     from app.services.entity_join_answer_turn import match_cross_system_entity_intent
     from app.services.computer_browser_read_turn import (
         match_computer_browser_followup,
@@ -238,7 +238,7 @@ def should_skip_unified_live_for_compiled_read(
     )
 
     if (
-        match_listing_f2_intent(message or "")
+        match_listing_f2_intent(resolve_listing_read_message(message or "", task_state))
         or match_cross_system_entity_intent(message or "")
         or match_computer_browser_intent(message or "")
         or match_computer_browser_followup(message or "", task_state)
@@ -432,10 +432,11 @@ async def try_compiled_operational_read_turn(
     )
     if interact:
         return interact
-    from app.services.listing_f2_read_turn import try_listing_f2_read_turn
+    from app.services.listing_f2_read_turn import try_listing_f2_read_turn, resolve_listing_read_message
+    from app.core.io_pool import run_io
 
-    listing = try_listing_f2_read_turn(
-        message=message,
+    listing = await run_io(try_listing_f2_read_turn,
+        message=resolve_listing_read_message(message, task_state),
         org_id=org_id,
         client=client,
         settings=settings,

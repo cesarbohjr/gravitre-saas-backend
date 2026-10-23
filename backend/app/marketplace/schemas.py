@@ -835,7 +835,7 @@ def _assert_publish_ready(asset_type: str, parsed: BaseModel) -> None:
         from app.marketplace.marketplace3.certification import certify_outcome_pack
 
         certification = certify_outcome_pack(pack)  # type: ignore[arg-type]
-        if not certification.publish_ready:
+        if certification.level not in {"governed", "production_verified", "outcome_verified"} or certification.unresolved_skill_requirements:
             blocking = [
                 finding.code
                 for finding in certification.findings

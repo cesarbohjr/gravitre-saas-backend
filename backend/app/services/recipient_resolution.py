@@ -533,9 +533,11 @@ async def resolve_email_recipient(
         return unavailable(name, source="gmail", object_type="person", reason="not_connected")
     started = time.perf_counter()
     deadline = time.monotonic() + LOOKUP_BUDGET_S
+    from app.core.io_pool import run_io
+
     try:
         scan = await asyncio.wait_for(
-            asyncio.to_thread(
+            run_io(
                 _scan_gmail_sync,
                 name,
                 account=account,

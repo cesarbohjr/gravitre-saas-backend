@@ -91,13 +91,24 @@ export function deriveAiRuntimeState(input: AiRuntimeStateInput): AiRuntimeState
     if (lifecycle.customerStage === "verifying") return "verifying"
     if (lifecycle.customerStage === "cancelled") return "cancelled"
     if (lifecycle.customerStage === "failed") return "failed"
-    if (lifecycle.customerStage === "verified" && lifecycle.executionVerified) return "completed"
+    if (lifecycle.customerStage === "verified") return lifecycle.executionVerified ? "completed" : "verifying"
+    if (lifecycle.customerStage === "accepted") return "verifying"
   }
   if (result && result.success === false) return "failed"
 
   if (input.canContinueAfterStop) return "partial"
 
   if (result && result.success === true) {
+    const structured = result.structured as Record<string, unknown> | null | undefined
+    const proof = structured?.verification as Record<string, unknown> | undefined
+    const vendorProof = structured?.vendor_verification as Record<string, unknown> | undefined
+    if (proof?.required === true || vendorProof) {
+      const evidence = vendorProof ?? proof
+      const attributed = evidence?.verified === true && Boolean(
+        evidence.method || evidence.kind || evidence.read_action || evidence.mode,
+      )
+      if (!attributed) return "verifying"
+    }
     return hasFailedStep(result) ? "partial" : "completed"
   }
 

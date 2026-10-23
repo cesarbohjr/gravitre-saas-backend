@@ -350,6 +350,7 @@ def synthesize_speech(
     text: str,
     voice_key: str | None = None,
     model_id: str | None = None,
+    http_client: httpx.Client | None = None,
 ) -> tuple[bytes, str, dict[str, Any]]:
     api_key = (settings.elevenlabs_api_key or "").strip()
     if not api_key:
@@ -382,13 +383,14 @@ def synthesize_speech(
         "model_id": model,
         "voice_settings": dict(CONVERSATIONAL_VOICE_SETTINGS),
     }
-    client = _get_elevenlabs_http_client(60.0)
+    client = http_client or _get_elevenlabs_http_client(60.0)
     resp = client.post(url, headers=headers, json=body)
     if resp.status_code >= 400:
         _raise_upstream("ElevenLabs", resp)
     meta = {
         "provider": "elevenlabs",
         "voice_key": key,
+        "request_id": resp.headers.get("request-id") or resp.headers.get("x-request-id"),
         "voice_id": voice_id,
         "model": model,
         "bytes": len(resp.content),
@@ -480,6 +482,7 @@ def transcribe_audio(
     audio_bytes: bytes,
     content_type: str = "audio/webm",
     filename: str = "audio.webm",
+    http_client: httpx.Client | None = None,
 ) -> tuple[str, dict[str, Any]]:
     api_key = (settings.deepgram_api_key or "").strip()
     if not api_key:
@@ -500,7 +503,8 @@ def transcribe_audio(
         "Authorization": f"Token {api_key}",
         "Content-Type": content_type or "application/octet-stream",
     }
-    with httpx.Client(timeout=60.0) as client:
+    from contextlib import nullcontext
+    with (nullcontext(http_client) if http_client is not None else httpx.Client(timeout=60.0)) as client:
         resp = client.post(url, headers=headers, content=audio_bytes)
     if resp.status_code >= 400:
         _raise_upstream("Deepgram", resp)
@@ -514,6 +518,7 @@ def transcribe_audio(
         transcript = ""
     meta = {
         "provider": "deepgram",
+        "request_id": (data.get("metadata") or {}).get("request_id"),
         "model": model,
         "filename": filename,
         "audio_bytes": len(audio_bytes),

@@ -2205,6 +2205,8 @@ export interface MarketplaceAssetCheckoutResult {
 }
 
 export interface MarketplaceRoiAssetRow {
+  verifiedOutcomeEvents?: number
+  measurementBasis?: string
   assetId: string
   installId: string
   slug?: string | null
@@ -2218,6 +2220,8 @@ export interface MarketplaceRoiAssetRow {
 }
 
 export interface MarketplaceRoiSummary {
+  totalVerifiedOutcomeEvents?: number
+  verifiedOutcomeCountIsLowerBound?: boolean
   orgId: string
   activeInstalls: number
   assetsWithUsage: number

@@ -421,6 +421,22 @@ class CognitiveTurnKernel:
                 logger.debug("cognitive_objective_plan_skipped error=%s", exc)
                 objective_brief = None
 
+        # Project durable state into the canonical execution-context contract.
+        # This is read-only planning input, never approval or write authority.
+        from app.services.execution_context import build_execution_context
+
+        execution_context = build_execution_context(
+            task_state=planner_state,
+            conversation_history=request.conversation_history,
+            surface=request.surface,
+            entry_point=request.entry_point,
+            originating_modality="voice" if request.spoken_mode else "text",
+        )
+        planner_state = {
+            **(planner_state if isinstance(planner_state, dict) else {}),
+            "execution_context": execution_context,
+        }
+
         # 4 PLAN
         t0 = time.perf_counter()
         try:

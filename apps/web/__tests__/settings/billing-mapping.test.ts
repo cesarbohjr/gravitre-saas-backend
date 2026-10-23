@@ -59,11 +59,11 @@ describe("Billing usage tiles", () => {
 
 describe("Billing plan card", () => {
   it("prefers the live Stripe price and its interval", () => {
-    expect(planPriceLabel({ unitAmountCents: 29900, interval: "month", catalogPrice: "$349", catalogMonthly: true })).toMatchObject({
+    expect(planPriceLabel({ unitAmountCents: 29900, interval: "month", catalogPrice: "$599", catalogMonthly: true })).toMatchObject({
       period: "/ month",
     })
-    expect(planPriceLabel({ unitAmountCents: 349200, interval: "year", catalogPrice: "$349" })?.period).toBe("/ year")
-    expect(planPriceLabel({ unitAmountCents: null, catalogPrice: "$349", catalogMonthly: true })).toEqual({ amount: "$349", period: "/ month" })
+    expect(planPriceLabel({ unitAmountCents: 349200, interval: "year", catalogPrice: "$599" })?.period).toBe("/ year")
+    expect(planPriceLabel({ unitAmountCents: null, catalogPrice: "$599", catalogMonthly: true })).toEqual({ amount: "$599", period: "/ month" })
     expect(planPriceLabel({ unitAmountCents: null, catalogPrice: "Custom", catalogMonthly: false })).toEqual({ amount: "Custom", period: null })
   })
 

@@ -1634,6 +1634,11 @@ class AgentIntelligence:
             ).strip()
             or None,
         )
+        from app.services.execution_intelligence_context import execution_intelligence_context
+        shared_intelligence = await execution_intelligence_context(settings=active_settings, org_id=org_id,
+            task=task_text, agent=agent, briefing=effective_briefing)
+        if shared_intelligence:
+            system_prompt += "\n\n" + shared_intelligence
         persona = get_agent_persona(agent)
         model = select_model_for_agent(agent, client, org_id, task_text, parameters=params)
         available_tools = await self.get_agent_tools(
@@ -6820,7 +6825,7 @@ class AgentIntelligence:
     ) -> str:
         parts = [f"Task:\n{task}"]
         if briefing:
-            parts.append(f"<handoff_briefing>{json.dumps(briefing, default=str)[:8000]}</handoff_briefing>")
+            parts.append(f"<handoff_briefing>{json.dumps(briefing, default=str).replace("<", "\\u003c").replace(">", "\\u003e")[:8000]}</handoff_briefing>")
         if task_history:
             parts.append(f"<task_history>{json.dumps(task_history, default=str)[:4000]}</task_history>")
         parts.append(f"<org_context>{json.dumps(org_context, default=str)[:4000]}</org_context>")

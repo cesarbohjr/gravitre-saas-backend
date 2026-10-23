@@ -1,0 +1,12 @@
+name: Run live ElevenLabs and Deepgram acceptance
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  voice:
+    name: Bounded live provider and cancelled-write acceptance
+    uses: ./.github/workflows/isolated-acceptance.yml
+    with:
+      suite: voice
+    secrets: inherit

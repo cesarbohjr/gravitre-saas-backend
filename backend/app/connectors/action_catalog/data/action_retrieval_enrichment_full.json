@@ -13762,6 +13762,21 @@
         "engagements",
         "evidence"
       ]
+    },
+    "okta.users.suspend": {
+      "examples": [
+        "Suspend the approved compromised Okta account",
+        "Contain this identity by suspending the exact approved user",
+        "After explicit approval suspend this compromised identity and verify its stored status"
+      ],
+      "tags": [
+        "okta",
+        "security",
+        "identity",
+        "containment",
+        "suspend",
+        "approval"
+      ]
     }
   }
 }

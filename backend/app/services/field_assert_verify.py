@@ -173,6 +173,13 @@ def verify_field_assert(
                 out = invoke_compiled_read(ctx, read_action, params)
                 payload = out.data if isinstance(getattr(out, "data", None), dict) else {}
                 if getattr(out, "success", False):
+                    returned_id = extract_entity_id(payload, "id")
+                    if returned_id != entity_id:
+                        return _unverified(
+                            f"entity_id_mismatch:{returned_id}" if returned_id else "entity_id_absent_from_read_back",
+                            read_action=read_action, entity_id=entity_id, field=assert_field,
+                            expected=expected, follow_up_attempted=True,
+                        )
                     observed = find_stored_value(payload, assert_field)
                     if observed is not None and _normalize(observed) == _normalize(expected):
                         return FieldAssertResult(

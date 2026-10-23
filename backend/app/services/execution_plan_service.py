@@ -569,6 +569,13 @@ def apply_observations_to_plan(
     """Associate step observations and derive terminal status when possible."""
     from app.services.outcome_verification import evidence_is_verified, is_uncertain
 
+    # Cancellation is authoritative. Late provider callbacks must not turn a
+    # cancelled plan back into a completed/running plan or reopen its write.
+    # The bounded observation policy makes the same decision, but the plan
+    # reconciler is also called independently by execution surfaces.
+    if plan.terminal_status == "cancelled":
+        return plan
+
     obs_by_step = {o.step_id: o for o in observations}
     updated_steps: list[ExecutionStep] = []
     any_failed = False

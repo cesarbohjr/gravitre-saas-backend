@@ -621,6 +621,8 @@ class ReActEngine:
         # can still unlock rounds N+1..new_max.
         iteration = 0
         effective_max = max(1, int(max_iterations))
+        if plan_runtime is not None:
+            plan_runtime.iteration_budget = effective_max + 1
         if routing_control is not None:
             effective_max = max(
                 effective_max,
@@ -644,6 +646,8 @@ class ReActEngine:
                     effective_max,
                     max(1, int(getattr(routing_control, "max_iterations", 0) or 0)),
                 )
+            if plan_runtime is not None:
+                plan_runtime.iteration_budget = effective_max + 1
             if iteration >= effective_max:
                 break
             iteration += 1
@@ -1068,15 +1072,6 @@ class ReActEngine:
         """Route a model tool call through ToolRegistry → invoke_tool."""
         from dataclasses import replace as dc_replace
 
-        if plan_runtime is not None:
-            step_id = plan_runtime.next_step_id(tool_name, iteration)
-            ctx = dc_replace(
-                ctx,
-                plan_id=plan_runtime.plan.plan_id,
-                step_id=step_id,
-                cognitive_invoke=True,
-                capability_id=plan_runtime.plan.capability_id,
-            )
         if allowed_tool_names is not None and tool_name not in allowed_tool_names:
             return {
                 "success": False,
@@ -1103,6 +1098,25 @@ class ReActEngine:
             self.registry,
             connected_integrations=connected,
         )
+        if plan_runtime is not None:
+            try:
+                step_id = plan_runtime.next_step_id(tool_name, iteration, is_write=requires_write)
+            except RuntimeError as exc:
+                if not str(exc).startswith("react_dispatch_blocked:"):
+                    raise
+                return {
+                    "success": False,
+                    "tool": tool_name,
+                    "error": str(exc),
+                    "error_code": "execution_loop_blocked",
+                }
+            ctx = dc_replace(
+                ctx,
+                plan_id=plan_runtime.plan.plan_id,
+                step_id=step_id,
+                cognitive_invoke=True,
+                capability_id=plan_runtime.plan.capability_id,
+            )
         if requires_write:
             from app.workers.workflow_queue import assert_current_workflow_claim_live
 

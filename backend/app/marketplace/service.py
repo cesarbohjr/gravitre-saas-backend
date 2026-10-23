@@ -696,6 +696,10 @@ def _install_workflow_entity(
         agent_ids=resolved_agent_ids,
         connector_ids=connector_ids or {},
     )
+    if asset.get("asset_type") == "outcome_pack":
+        for step in steps:
+            if step.get("type") == "agent":
+                step.setdefault("metadata", {}).setdefault("briefing_from_steps", True)
     from app.marketplace.pack_prewiring import (
         definition_with_sequential_graph,
         materialize_pack_canvas_graph,
@@ -714,6 +718,11 @@ def _install_workflow_entity(
     }
     assert_bindings_valid(definition, declared_parameters=declared)
     workflow_config = {"marketplaceAssetId": asset["id"]}
+    if asset.get("asset_type") == "outcome_pack":
+        from app.marketplace.marketplace3.certification_store import outcome_pack_config_digest
+        workflow_config["marketplaceConfigDigest"] = outcome_pack_config_digest(asset["config"])
+        if workflow_label and workflow_label.startswith("play:"):
+            workflow_config["marketplacePlayKey"] = workflow_label.removeprefix("play:")
     from app.marketplace.workflow_contract import steps_to_rich_contract
 
     contract_nodes, contract_edges = steps_to_rich_contract(steps)
@@ -847,6 +856,10 @@ def _install_play_asset(
         environment_name=environment_name,
     )
 
+    certification_config = {}
+    if asset.get("asset_type") == "outcome_pack":
+        from app.marketplace.marketplace3.certification_store import outcome_pack_config_digest
+        certification_config["marketplaceConfigDigest"] = outcome_pack_config_digest(asset["config"])
     installation_payload = {
         "org_id": org_id,
         "play_key": platform_play.key,
@@ -857,6 +870,7 @@ def _install_play_asset(
         "configuration": {
             "marketplaceAssetId": str(asset["id"]),
             "marketplaceSlug": asset.get("slug"),
+            **certification_config,
             "trigger": config.trigger,
             "outcomeEvents": config.outcome_events,
             "kpiKeys": config.kpi_keys,

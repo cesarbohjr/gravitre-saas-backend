@@ -1923,3 +1923,7 @@ def marketplace_asset_install(
                 details={"assetRef": asset_ref, "reason": str(exc)[:500]},
             )
         ) from exc
+
+# Outcome Pack evidence is a separate contract from partner connector scanning.
+from app.marketplace.marketplace3.certification_routes import router as outcome_certification_router
+router.include_router(outcome_certification_router)

@@ -1,0 +1,174 @@
+name: Isolated billing and live voice acceptance
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      suite:
+        description: 'Choose isolated acceptance suite'
+        required: true
+        type: choice
+        options: [all, billing, voice]
+        default: all
+  workflow_call:
+    inputs:
+      suite:
+        description: 'Which isolated suite to execute'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: external-acceptance-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  billing-e2e:
+    name: Billing Playwright (isolated test)
+    if: ${{ (github.event_name == 'workflow_dispatch' || github.event_name == 'workflow_call' || vars.ACCEPTANCE_AUTOMATION_ENABLED == 'true') && (inputs.suite == '' || inputs.suite == 'all' || inputs.suite == 'billing') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    environment: acceptance
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+      - name: Assert dedicated test credentials (never production)
+        env:
+          E2E_SUPABASE_URL: ${{ secrets.E2E_SUPABASE_URL }}
+          E2E_SUPABASE_ALLOWED_URL: ${{ vars.E2E_SUPABASE_ALLOWED_URL }}
+          E2E_STRIPE_SECRET_KEY: ${{ secrets.E2E_STRIPE_SECRET_KEY }}
+          E2E_STRIPE_PRICE_ID_NODE_MONTHLY: ${{ secrets.E2E_STRIPE_PRICE_ID_NODE_MONTHLY }}
+          E2E_SUPABASE_ANON_KEY: ${{ secrets.E2E_SUPABASE_ANON_KEY }}
+          E2E_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.E2E_SUPABASE_SERVICE_ROLE_KEY }}
+          E2E_SUPABASE_JWT_SECRET: ${{ secrets.E2E_SUPABASE_JWT_SECRET }}
+        run: |
+          python - <<'PY'
+          import os
+          from urllib.parse import urlsplit
+          required = ('E2E_SUPABASE_URL', 'E2E_SUPABASE_ALLOWED_URL',
+                      'E2E_STRIPE_SECRET_KEY', 'E2E_STRIPE_PRICE_ID_NODE_MONTHLY',
+                      'E2E_SUPABASE_ANON_KEY', 'E2E_SUPABASE_SERVICE_ROLE_KEY',
+                      'E2E_SUPABASE_JWT_SECRET')
+          if any(not os.environ.get(key) for key in required):
+              raise SystemExit('Acceptance NOT RUN: configure isolated E2E secrets and allowed URL')
+          url = os.environ['E2E_SUPABASE_URL'].rstrip('/')
+          allowed = os.environ['E2E_SUPABASE_ALLOWED_URL'].rstrip('/')
+          parsed = urlsplit(url)
+          if (url != 'https://aadnwmjzrmbvadszroqt.supabase.co' or url != allowed\n                  or parsed.scheme != 'https' or not parsed.hostname
+                  or not parsed.hostname.endswith('.supabase.co')
+                  or parsed.username or parsed.password or parsed.query or parsed.fragment
+                  or not os.environ['E2E_STRIPE_SECRET_KEY'].startswith('sk_test_')):
+              raise SystemExit('Acceptance blocked: test-mode Stripe and exact allowed Supabase URL required')
+          print('Isolated billing target and Stripe test mode verified (values redacted)')
+          PY
+      - name: Read-only application schema readiness preflight
+        env:
+          E2E_SUPABASE_URL: ${{ secrets.E2E_SUPABASE_URL }}
+          E2E_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.E2E_SUPABASE_SERVICE_ROLE_KEY }}
+        run: python scripts/check-isolated-acceptance-db.py
+      - name: Install dependencies
+        run: |
+          pnpm install --frozen-lockfile --ignore-scripts
+          pnpm --dir apps/web install --frozen-lockfile
+          python -m pip install -r backend/requirements-dev.txt
+          npx playwright install --with-deps chromium
+      - name: Run authenticated billing E2E
+        env:
+          CI: 'true'
+          APP_ENV: dev
+          SUPABASE_URL: ${{ secrets.E2E_SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.E2E_SUPABASE_ANON_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.E2E_SUPABASE_SERVICE_ROLE_KEY }}
+          SUPABASE_JWT_SECRET: ${{ secrets.E2E_SUPABASE_JWT_SECRET }}
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.E2E_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.E2E_SUPABASE_ANON_KEY }}
+          STRIPE_SECRET_KEY: ${{ secrets.E2E_STRIPE_SECRET_KEY }}
+          STRIPE_PRICE_ID_NODE_MONTHLY: ${{ secrets.E2E_STRIPE_PRICE_ID_NODE_MONTHLY }}
+          FASTAPI_BASE_URL: http://127.0.0.1:8000
+          PLAYWRIGHT_BASE_URL: http://127.0.0.1:3000
+          NEXT_PUBLIC_PLAYWRIGHT_E2E: '1'
+        run: npm run test:e2e
+      - name: Publish billing evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: billing-e2e-${{ github.sha }}
+          path: |
+            playwright-report/
+            test-results/
+          if-no-files-found: ignore
+          retention-days: 7
+
+  live-provider-voice:
+    name: ElevenLabs + Deepgram synthetic live acceptance
+    if: ${{ (github.event_name == 'workflow_dispatch' || github.event_name == 'workflow_call' || vars.ACCEPTANCE_AUTOMATION_ENABLED == 'true') && (inputs.suite == '' || inputs.suite == 'all' || inputs.suite == 'voice') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    environment: acceptance
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+      - name: Install voice dependencies
+        run: python -m pip install -r backend/requirements-dev.txt
+      - name: Validate synthetic provider runner contracts
+        working-directory: backend
+        run: python -m pytest -q tests/scripts/test_voice_provider_roundtrip.py
+        env:
+          APP_ENV: dev
+      - name: Live provider roundtrip and final write-gate check
+        env:
+          APP_ENV: dev
+          DEEPGRAM_API_KEY: ${{ secrets.ACCEPTANCE_DEEPGRAM_API_KEY }}
+          ELEVENLABS_API_KEY: ${{ secrets.ACCEPTANCE_ELEVENLABS_API_KEY }}
+          ELEVENLABS_VOICE_ID: ${{ vars.ACCEPTANCE_ELEVENLABS_VOICE_ID }}
+        run: |
+          mkdir -p acceptance-results
+          python scripts/verify-voice-provider-roundtrip.py --output acceptance-results/provider-roundtrip.json
+      - name: Publish sanitized voice evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: voice-provider-${{ github.sha }}
+          path: acceptance-results/provider-roundtrip.json
+          if-no-files-found: ignore
+          retention-days: 7
+
+  physical-voice-readiness:
+    name: Physical voice human acceptance reserved
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+      - name: Install tests
+        run: python -m pip install -r backend/requirements-dev.txt
+      - name: Verify acceptance schema preflight fail-closed contracts
+        run: python -m pytest -q tests/test_isolated_acceptance_db.py tests/test_acceptance_initialization_preflight.py tests/test_manual_acceptance_workflows.py
+      - name: Exercise twenty simulated cancelled turns
+        working-directory: backend
+        run: python -m pytest -q tests/scripts/test_voice_provider_roundtrip.py -k twenty_cancelled
+        env:
+          APP_ENV: dev
+      - name: Declare physical acceptance boundary
+        run: echo 'Physical microphone/speaker and natural full-duplex usability acceptance remain NOT RUN; no synthetic test can certify them.'

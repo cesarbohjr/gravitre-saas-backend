@@ -48,6 +48,7 @@ def _parse_json(text: str, path: str) -> dict[str, Any]:
 def _pick_manifest(files: dict[str, str]) -> tuple[dict[str, Any], str | None]:
     candidates = (
         "gravitre-plugin.json",
+        "manifest.json",
         ".codex-plugin/plugin.json",
         ".claude-plugin/plugin.json",
         "plugin.json",
@@ -58,7 +59,10 @@ def _pick_manifest(files: dict[str, str]) -> tuple[dict[str, Any], str | None]:
     for candidate in candidates:
         exact = lowered.get(candidate.lower())
         if exact:
-            return _parse_json(files[exact], exact), exact
+            parsed = _parse_json(files[exact], exact)
+            if candidate == "manifest.json" and parsed.get("schema") != "gravitre.capability.v1":
+                continue
+            return parsed, exact
         suffix = "/" + candidate.lower()
         nested = sorted(
             (original for lower, original in lowered.items() if lower.endswith(suffix)),
@@ -66,7 +70,10 @@ def _pick_manifest(files: dict[str, str]) -> tuple[dict[str, Any], str | None]:
         )
         if nested:
             path = nested[0]
-            return _parse_json(files[path], path), path
+            parsed = _parse_json(files[path], path)
+            if candidate == "manifest.json" and parsed.get("schema") != "gravitre.capability.v1":
+                continue
+            return parsed, path
     return {}, None
 
 

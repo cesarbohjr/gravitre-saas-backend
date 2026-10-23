@@ -9,8 +9,8 @@ on:
 
 concurrency:
   group: ci-${{ github.ref }}
-  # Keep in-flight main CI (esp. Backend pytest) so Railway Wait-for-CI can pass.
-  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+  # Preserve long-running backend and billing acceptance on new branch updates.
+  cancel-in-progress: false
 
 jobs:
   web:
@@ -209,8 +209,15 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements-dev.txt
 
-      - name: Install bounded media decoder
-        run: sudo apt-get update -y -q && sudo apt-get install -y -q ffmpeg
+      - name: Verify bounded media decoder
+        run: |
+          if command -v ffmpeg >/dev/null 2>&1; then
+            ffmpeg -version | head -n 1
+          else
+            sudo env DEBIAN_FRONTEND=noninteractive timeout 600s apt-get -o Acquire::Retries=3 update -y -q
+            sudo env DEBIAN_FRONTEND=noninteractive timeout 900s apt-get -o Acquire::Retries=3 install -y -q --no-install-recommends ffmpeg
+            ffmpeg -version | head -n 1
+          fi
 
       # tests/db/*_pg.py start a throwaway PostgreSQL from the runner's server
       # binaries; the retrieval migration test also needs pgvector. Best effort:
@@ -252,6 +259,9 @@ jobs:
           APP_ENV: dev
           GRAVITRE_REQUIRE_PG: "1"
 
+      - name: Marketplace certification PostgreSQL acceptance (must not skip)
+        working-directory: backend
+        run: GRAVITRE_REQUIRE_PG=1 APP_ENV=dev python -m pytest -q tests/db/test_marketplace_certification_pg.py
       - name: Founder billing safety PostgreSQL acceptance (must not skip)
         run: python -m pytest tests/db/test_founder_billing_safety_pg.py tests/billing/test_billing_safety_controls.py -q --no-header
         env:

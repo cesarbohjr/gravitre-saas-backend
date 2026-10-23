@@ -45,7 +45,7 @@ def agent_step(step_id: str, name: str, agent_seed: str, task: str) -> dict[str,
         "id": step_id,
         "name": name,
         "type": "agent",
-        "metadata": {"agent_seed": agent_seed, "task": task},
+        "metadata": {"agent_seed": agent_seed, "task": task, "briefing_from_steps": True},
     }
 
 

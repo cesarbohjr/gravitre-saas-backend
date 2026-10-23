@@ -1,0 +1,32 @@
+{
+  "schema": "gravitre.capability.v1",
+  "format": "gravitre",
+  "name": "Finance Operations Skills",
+  "version": "1.0.0",
+  "description": "First-party guidance skills for the Gravitre Marketplace 3.0 Finance Operations pack.",
+  "license": "MIT",
+  "skills": [
+    {
+      "name": "ar-prioritization"
+    },
+    {
+      "name": "collections-analysis"
+    },
+    {
+      "name": "cash-risk-analysis"
+    },
+    {
+      "name": "invoice-exception-analysis"
+    },
+    {
+      "name": "expense-anomaly-analysis"
+    },
+    {
+      "name": "renewal-audit"
+    },
+    {
+      "name": "month-end-readiness"
+    }
+  ],
+  "permissions": []
+}

@@ -133,6 +133,9 @@ _SEED_VERIFIED_OUTPUT_ACTIONS: frozenset[str] = frozenset(
         "engagebay.contacts.create",
         "engagebay.contacts.update",
         "freshservice.tickets.update_status",
+        # Managed executor returns the explicit user ID and an acceptance-only
+        # summary; independent field_assert proof owns final containment truth.
+        "okta.users.suspend",
     }
 )
 

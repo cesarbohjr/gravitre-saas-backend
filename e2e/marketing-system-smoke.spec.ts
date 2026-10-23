@@ -23,7 +23,7 @@ const ROUTES = [
     path: "/pricing",
     titleFragment: "pricing",
     // Authorized PLAN_CATALOG amounts — regression guard, not invented
-    mustInclude: [/\$59/, /\$149/, /\$349/, /Plan/i, /Role/i, /Outcome/i],
+    mustInclude: [/\$79/, /\$249/, /\$599/, /Plan/i, /Role/i, /Outcome/i],
   },
   {
     path: "/features",

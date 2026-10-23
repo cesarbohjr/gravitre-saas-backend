@@ -1,0 +1,200 @@
+"""Persistence and publish gating for Marketplace 3.0 Outcome Pack certification."""
+from __future__ import annotations
+
+import hashlib
+import json
+from datetime import datetime, timedelta, timezone
+from typing import Any
+
+from app.marketplace.marketplace3.certification import certify_outcome_pack
+from app.marketplace.schemas import OutcomePackAssetConfig
+from app.marketplace.marketplace3.production_evidence import collect_production_evidence
+
+
+class OutcomePackCertificationError(Exception):
+    code = "OUTCOME_PACK_CERTIFICATION_REQUIRED"
+
+    def __init__(self, message: str, *, code: str | None = None, details: dict[str, Any] | None = None) -> None:
+        super().__init__(message)
+        if code:
+            self.code = code
+        self.details = details or {}
+
+
+def _now() -> str:
+    return datetime.now(timezone.utc).isoformat()
+
+
+def outcome_pack_config_digest(config: dict[str, Any] | OutcomePackAssetConfig) -> str:
+    parsed = config if isinstance(config, OutcomePackAssetConfig) else OutcomePackAssetConfig.model_validate(config)
+    payload = parsed.model_dump(mode="json")
+    canonical = json.dumps(
+        payload,
+        sort_keys=True,
+        separators=(",", ":"),
+        ensure_ascii=False,
+    ).encode("utf-8")
+    return hashlib.sha256(canonical).hexdigest()
+
+
+def collect_reviewed_skill_ids(client: Any, *, org_id: str, config: OutcomePackAssetConfig) -> set[str]:
+    """Resolve published packages against current approved source snapshots."""
+    from app.marketplace.publish import MarketplacePublishError, _assert_capability_provenance_current
+
+    reviewed: set[str] = set()
+    for slug in sorted(set(config.skill_bindings.values())):
+        rows = (client.table("marketplace_assets").select("*").eq("slug", slug)
+                .eq("asset_type", "capability_package").eq("status", "published")
+                .limit(1).execute().data or [])
+        if len(rows) != 1:
+            continue
+        asset = rows[0]
+        if (asset.get("asset_type") != "capability_package" or asset.get("status") != "published"
+                or asset.get("slug") != slug
+                or (asset.get("org_id") != org_id and asset.get("visibility") != "public")):
+            continue
+        try:
+            _assert_capability_provenance_current(client, asset)
+        except MarketplacePublishError:
+            continue
+        reviewed.add(slug)
+    return reviewed
+
+
+def certify_and_record_outcome_pack(
+    client: Any,
+    *,
+    org_id: str,
+    asset_id: str,
+    config: dict[str, Any] | OutcomePackAssetConfig,
+    actor_id: str,
+    resolved_skill_ids: set[str] | None = None,
+    evidence: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    parsed = config if isinstance(config, OutcomePackAssetConfig) else OutcomePackAssetConfig.model_validate(config)
+    asset_rows = (client.table("marketplace_assets").select("id,org_id,asset_type,config")
+                  .eq("id", asset_id).eq("org_id", org_id).limit(1).execute().data or [])
+    if len(asset_rows) != 1 or asset_rows[0].get("org_id") != org_id or asset_rows[0].get("asset_type") != "outcome_pack":
+        raise OutcomePackCertificationError("Outcome Pack not found in organization")
+    snapshot = asset_rows[0].get("config")
+    if not isinstance(snapshot, dict) or outcome_pack_config_digest(snapshot) != outcome_pack_config_digest(parsed):
+        raise OutcomePackCertificationError("Outcome Pack configuration changed before certification")
+    trusted = collect_production_evidence(client, org_id=org_id, asset_id=asset_id,
+                                          config_digest=outcome_pack_config_digest(parsed), config=parsed)
+    report = certify_outcome_pack(
+        parsed,
+        resolved_skill_ids=collect_reviewed_skill_ids(client, org_id=org_id, config=parsed),
+        production_evidence=trusted,
+    )
+    digest = outcome_pack_config_digest(parsed)
+    row = {
+        "org_id": org_id,
+        "asset_id": asset_id,
+        "config_digest": digest,
+        "config_snapshot": parsed.model_dump(mode="json"),
+        "environment": "production",
+        "certification_level": report.level,
+        "publish_ready": report.publish_ready,
+        "report": report.as_dict(),
+        "evidence": trusted.as_dict(),
+        "certified_by": actor_id,
+        "certified_at": _now(),
+        "expires_at": (datetime.now(timezone.utc) + timedelta(days=30)).isoformat(),
+        "updated_at": _now(),
+    }
+    result = (
+        client.table("marketplace_outcome_pack_certifications")
+        .upsert(row, on_conflict="asset_id,config_digest")
+        .execute()
+    )
+    if not result.data:
+        raise OutcomePackCertificationError("Certification evidence was not persisted")
+    stored = dict(result.data[0])
+    return {
+        "id": stored.get("id"),
+        "assetId": asset_id,
+        "configDigest": digest,
+        "level": report.level,
+        "publishReady": report.publish_ready,
+        "report": report.as_dict(),
+        "evidence": trusted.as_dict(),
+        "certifiedAt": stored.get("certified_at") or row["certified_at"],
+    }
+
+
+def get_outcome_pack_certification(
+    client: Any,
+    *,
+    org_id: str,
+    asset_id: str,
+    config: dict[str, Any] | OutcomePackAssetConfig,
+) -> dict[str, Any] | None:
+    digest = outcome_pack_config_digest(config)
+    result = (
+        client.table("marketplace_outcome_pack_certifications")
+        .select("*")
+        .eq("org_id", org_id)
+        .eq("asset_id", asset_id)
+        .eq("config_digest", digest)
+        .eq("environment", "production")
+        .gt("expires_at", _now())
+        .limit(1)
+        .execute()
+    )
+    rows = result.data or []
+    if not rows:
+        return None
+    row = dict(rows[0])
+    return {
+        "id": row.get("id"),
+        "assetId": asset_id,
+        "configDigest": digest,
+        "level": row.get("certification_level"),
+        "publishReady": row.get("publish_ready") is True,
+        "report": row.get("report") if isinstance(row.get("report"), dict) else {},
+        "evidence": row.get("evidence") if isinstance(row.get("evidence"), dict) else {},
+        "certifiedAt": row.get("certified_at"),
+    }
+
+
+def assert_outcome_pack_publish_ready(
+    client: Any,
+    *,
+    org_id: str,
+    asset_id: str,
+    config: dict[str, Any] | OutcomePackAssetConfig,
+) -> dict[str, Any]:
+    certification = get_outcome_pack_certification(
+        client,
+        org_id=org_id,
+        asset_id=asset_id,
+        config=config,
+    )
+    if certification is None:
+        raise OutcomePackCertificationError(
+            "Marketplace 3.0 Outcome Pack must be certified against its current configuration before publication.",
+            details={"assetId": asset_id, "reason": "certification_missing"},
+        )
+    if not certification["publishReady"] or certification["level"] not in {
+        "production_verified",
+        "outcome_verified",
+    }:
+        raise OutcomePackCertificationError(
+            "Marketplace 3.0 Outcome Pack has not reached Production Verified certification.",
+            details={
+                "assetId": asset_id,
+                "reason": "certification_not_publish_ready",
+                "level": certification["level"],
+                "report": certification["report"],
+            },
+        )
+    parsed = config if isinstance(config, OutcomePackAssetConfig) else OutcomePackAssetConfig.model_validate(config)
+    reviewed = collect_reviewed_skill_ids(client, org_id=org_id, config=parsed)
+    unresolved = [requirement for requirement in parsed.skill_requirements
+                  if parsed.skill_bindings.get(requirement) not in reviewed]
+    if unresolved:
+        raise OutcomePackCertificationError(
+            "Required skill package approval or source snapshot changed after certification",
+            details={"assetId": asset_id, "reason": "skill_provenance_changed", "requirements": unresolved},
+        )
+    return certification

@@ -1,0 +1,43 @@
+name: Repair root npm lockfile (guarded)
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/repair-root-npm-lock.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  repair-root-npm-lock:
+    if: github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.number == 557
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: true
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Generate and verify committed root npm lockfile
+        run: |
+          npm install --package-lock-only --ignore-scripts --no-audit --no-fund
+          npm ci --ignore-scripts --no-audit --no-fund
+      - name: Commit only corrected npm lockfile, if changed
+        env:
+          TARGET_BRANCH: ${{ github.event.pull_request.head.ref }}
+        run: |
+          if git diff --quiet -- package-lock.json; then
+            echo 'Root lockfile already matches package manifest.'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -- package-lock.json
+          git commit -m 'fix: synchronize root npm lockfile for frozen billing acceptance'
+          git push origin HEAD:"$TARGET_BRANCH"

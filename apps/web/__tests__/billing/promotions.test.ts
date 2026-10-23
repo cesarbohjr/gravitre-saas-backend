@@ -117,9 +117,9 @@ describe("founder offer value cap (mirrors backend promotion_value_cents)", () =
 
   it("suggests the largest reachable value so checkout is never blocked", () => {
     const discount = suggestedPromotionCap({ offerType: "discount", percentOff: 30, months: 3 })
-    expect(discount).toMatchObject({ cents: 104760, plan: "command", interval: "annual" })
+    expect(discount).toMatchObject({ cents: 179640, plan: "command", interval: "annual" })
     const trial = suggestedPromotionCap({ offerType: "trial", trialDays: 30 })
-    expect(trial).toMatchObject({ cents: 37393, plan: "command", interval: "monthly" })
+    expect(trial).toMatchObject({ cents: 64179, plan: "command", interval: "monthly" })
     expect(trial?.explanation).toContain("Command monthly")
   })
 })

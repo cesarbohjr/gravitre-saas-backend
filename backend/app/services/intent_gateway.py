@@ -120,6 +120,14 @@ def response_cache_eligible(question: str) -> bool:
         return False
     if CONFIRM_PATTERN.match(text) or DECLINE_PATTERN.match(text):
         return False
+    # Live account reads must revisit the connected source; an old refusal or
+    # first-page response cannot stand in for a current provider total.
+    from app.services.connector_semantic_registry import resolve_all_connectors_from_text
+    business_records = re.search(r"(?i)\b(companies|contacts|leads|deals|invoices|tickets|records)\b", text)
+    if (resolve_all_connectors_from_text(text) or business_records) and re.search(
+        r"(?i)\b(how many|count|list|show|check|latest|current|refresh)\b", text
+    ):
+        return False
     if is_operator_task_shaped(text):
         return False
     from app.services.connector_status_reply_service import is_connector_status_question
