@@ -25,6 +25,8 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
           pip install pytest pytest-asyncio
+      - name: Compile Python sources before contract tests
+        run: python -m py_compile app/operators/agent_intelligence.py
       - name: Strict Phase 3 contract evidence
         run: python scripts/phase3_offline_12_scenarios.py
         env:
