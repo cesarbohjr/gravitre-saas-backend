@@ -6825,7 +6825,8 @@ class AgentIntelligence:
     ) -> str:
         parts = [f"Task:\n{task}"]
         if briefing:
-            parts.append(f"<handoff_briefing>{json.dumps(briefing, default=str).replace("<", "\\u003c").replace(">", "\\u003e")[:8000]}</handoff_briefing>")
+            safe_briefing = json.dumps(briefing, default=str).replace("<", "\\u003c").replace(">", "\\u003e")[:8000]
+            parts.append(f"<handoff_briefing>{safe_briefing}</handoff_briefing>")
         if task_history:
             parts.append(f"<task_history>{json.dumps(task_history, default=str)[:4000]}</task_history>")
         parts.append(f"<org_context>{json.dumps(org_context, default=str)[:4000]}</org_context>")
