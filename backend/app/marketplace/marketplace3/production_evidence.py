@@ -141,6 +141,7 @@ def collect_production_evidence(client, *, org_id, asset_id, config_digest, conf
                 .eq("org_id", org_id).eq("run_id", run["id"]).execute().data or [])
             definitions = {step["id"]: step for step in (binding.get("definition") or {}).get("steps", [])}
             proven = set()
+            verified_step_ids: set[str] = set()
             for step in steps:
                 definition = definitions.get(step.get("step_id"), {})
                 declared = safe_normalize_stored_dict(definition.get("config"))
@@ -156,10 +157,16 @@ def collect_production_evidence(client, *, org_id, asset_id, config_digest, conf
                         or not (verification.get("resource_id") or verification.get("entity_id"))):
                     continue
                 proven.add(action)
-            required = {str(s.get("config", {}).get("action") or s.get("config", {}).get("tool_action") or "")
-                        for s in expected[key].workflow_steps if s.get("type") == "invoke_tool"}
+                verified_step_ids.add(str(step["step_id"]))
+            # Repeated uses of the same connector action are distinct required
+            # invocations. An action-name set alone cannot prove the Play ran
+            # every step (or that each write received its own readback).
+            required_step_ids = {
+                str(step["id"]) for step in (binding.get("definition") or {}).get("steps", [])
+                if step.get("type") == "invoke_tool" and step.get("id")
+            }
             actions.update(proven)
-            if required and required <= proven:
+            if required_step_ids and required_step_ids <= verified_step_ids:
                 play_keys.add(key)
             if proven:
                 run_ids.append(str(run["id"]))
