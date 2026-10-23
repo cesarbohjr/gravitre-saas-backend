@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from app.connectors.action_catalog.models import VendorCatalogSpec
+from app.connectors.action_catalog.models import VendorCatalogSpec, ActionWorkflowSchema, WorkflowFieldSpec
 from app.connectors.action_catalog.builder import action, build_vendor
 
 # Static extensions are kept here so newly managed providers can ship without
@@ -130,9 +130,14 @@ _OKTA = build_vendor(
             "okta", "users.suspend", "Suspend compromised Okta user",
             tier="v2", kind="write", scope_suffix="users:manage", requires_approval=True,
             api_reference="POST /api/v1/users/{user_id}/lifecycle/suspend",
+            workflow_schema=ActionWorkflowSchema(
+                intent_label="Suspend an explicitly selected compromised Okta account",
+                known_defaults=(("Target status", "SUSPENDED"),),
+                required_fields=(WorkflowFieldSpec("target Okta user ID", ("user_id",), sensitive=True, inferrable=False),),
+            ),
             input_schema={"type": "object", "properties": {
                 "user_id": {"type": "string", "minLength": 1},
-                "status": {"type": "string", "const": "SUSPENDED"},
+                "status": {"type": "string", "const": "SUSPENDED", "default": "SUSPENDED"},
                 "connector_id": {"type": "string"}},
                 "required": ["user_id", "status"], "additionalProperties": False},
         ),

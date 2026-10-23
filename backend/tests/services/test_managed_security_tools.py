@@ -75,6 +75,12 @@ def test_containment_contract_requires_approval_and_has_exact_status_readback():
     spec = get_action_spec('okta.users.suspend')
     assert spec.kind == 'write' and spec.requires_approval
     assert spec.input_schema['properties']['status']['const'] == 'SUSPENDED'
+    from app.connectors.action_catalog.action_workflow_schema import get_workflow_schema
+    schema = get_workflow_schema(spec.id)
+    assert schema is not None
+    assert schema.required_fields[0].arg_keys == ("user_id",)
+    assert schema.required_fields[0].inferrable is False
+    assert schema.required_fields[0].sensitive is True
     verification = resolve_success_verification(spec.id)
     assert verification.mode == 'follow_up_field_assert'
     assert verification.read_action == 'okta.users.get'

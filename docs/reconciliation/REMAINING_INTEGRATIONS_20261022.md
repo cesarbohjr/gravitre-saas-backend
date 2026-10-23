@@ -28,3 +28,5 @@ Do not merge or deploy on the strength of offline tests alone. Finish final-head
 Provider contract references used while implementing: [Okta lifecycle suspension](https://www.okta.com/integrate/documentation/security-enforcement-integrations/), [ElevenLabs speech conversion](https://elevenlabs.io/docs/api-reference/text-to-speech/convert), [Deepgram prerecorded transcription](https://developers.deepgram.com/reference/speech-to-text/listen-pre-recorded).
 
 The clean build initially encountered a generated Turbopack persistence-cache error on a repeated local build. The generated cache was moved aside and the build rerun; this is distinct from a source-code build failure. Final-head CI uses a clean runner.
+
+The first complete broad run after publication reached **11,995 passed / 281 skipped** and exposed five failures sharing one cause: the new containment action lacked its declarative chat workflow schema. Added the real schema with a sensitive, non-inferable user ID and fixed SUSPENDED target; no debt allowlist was expanded. The full regression is rerun after this correction.
