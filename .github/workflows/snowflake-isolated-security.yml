@@ -28,4 +28,4 @@ jobs:
       - name: Audit installed Snowflake environment (fail closed)
         working-directory: backend
         run: |
-          python -m pip_audit --disable-pip --progress-spinner off
+          python -m pip_audit --progress-spinner off
