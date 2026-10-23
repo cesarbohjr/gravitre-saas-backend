@@ -340,13 +340,6 @@ def sync_wholesale_quantities(client: Any, settings: Settings, msp_org_id: str) 
         needed = any(quantities.values())
         return {"status": "checkout_required" if needed else "no_change", "quantities": quantities}
 
-    # Existing subscriptions determine their own interval, not the default monthly catalog.\n    prices = wholesale_price_ids(settings)\n    missing = []
-    if missing:
-        return {
-            "status": "error",
-            "quantities": quantities,
-            "message": f"Wholesale price for {', '.join(missing)} isn't set up yet.",
-        }
     try:
         stripe.api_key = settings.stripe_secret_key
         subscription = stripe.Subscription.retrieve(sub_id)
@@ -356,11 +349,40 @@ def sync_wholesale_quantities(client: Any, settings: Settings, msp_org_id: str) 
             pid = price.get("id") if isinstance(price, dict) else str(price or "")
             if pid:
                 items_by_price[str(pid)] = item
-        # Preserve the subscription\'s existing billing cadence. Changing a\n        # configured default must never reprice active MSP client seats.\n        subscription_interval = str((((subscription.get("items") or {}).get("data") or [{}])[0].get("price") or {}).get("recurring", {}).get("interval") or "month")\n        if subscription_interval not in {"month", "year"}:\n            return {"status": "error", "quantities": quantities, "message": "Unsupported MSP billing interval. Contact support."}\n        prices = wholesale_price_ids(settings, subscription_interval)\n        updates: list[dict[str, Any]] = []\n        for tier, qty in quantities.items():
+        # Keep each existing wholesale item's price while synchronizing quantities.
+        # Prior wholesale prices remain valid after a catalog price increase.
+        items = (subscription.get("items") or {}).get("data") or []
+        old_wholesale = {
+            "price_1USKrMGkcGZTLqrPaV5Q6W0F": "command",
+            "price_1USKduGkcGZTLqrPpspvne6F": "control",
+            "price_1USKbbGkcGZTLqrPmUlAPRes": "node",
+        }
+        existing_by_tier = {}
+        intervals = set()
+        for item in items:
+            price = item.get("price") or {}
+            if not isinstance(price, dict):
+                return {"status": "error", "quantities": quantities, "message": "Cannot identify existing wholesale price."}
+            pid = str(price.get("id") or "")
+            intervals.add(str((price.get("recurring") or {}).get("interval") or ""))
+            tier = old_wholesale.get(pid) or tier_for_wholesale_price(settings, pid)
+            if not tier:
+                tier = next((name for name in MSP_TIERS if wholesale_price_ids(settings, "year").get(name) == pid), None)
+            if not tier or tier in existing_by_tier:
+                return {"status": "error", "quantities": quantities, "message": "Cannot safely reconcile existing wholesale items."}
+            existing_by_tier[tier] = item
+        if len(intervals) != 1 or next(iter(intervals)) not in {"month", "year"}:
+            return {"status": "error", "quantities": quantities, "message": "Unsupported or mixed wholesale billing intervals."}
+        subscription_interval = next(iter(intervals))
+        prices = wholesale_price_ids(settings, subscription_interval)
+        missing = [tier for tier, qty in quantities.items() if qty and tier not in existing_by_tier and not prices.get(tier)]
+        if missing:
+            return {"status": "error", "quantities": quantities, "message": "Wholesale price is not configured for " + ", ".join(missing)}
+        updates: list[dict[str, Any]] = []\n        for tier, qty in quantities.items():
             pid = prices.get(tier)
             if not pid:
                 continue
-            item = items_by_price.get(pid)
+            item = existing_by_tier.get(tier)
             if item is not None:
                 if int(item.get("quantity") or 0) != qty:
                     updates.append({"id": item["id"], "quantity": qty})
