@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import hashlib
 import json
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from app.marketplace.marketplace3.certification import certify_outcome_pack
@@ -99,6 +99,7 @@ def certify_and_record_outcome_pack(
         "evidence": trusted.as_dict(),
         "certified_by": actor_id,
         "certified_at": _now(),
+        "expires_at": (datetime.now(timezone.utc) + timedelta(days=30)).isoformat(),
         "updated_at": _now(),
     }
     result = (

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from copy import deepcopy
+from datetime import datetime, timedelta
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -87,6 +88,7 @@ def test_certify_and_record_binds_report_to_exact_config_digest(mock_certify) ->
 
     payload = table.upsert.call_args.args[0]
     assert payload["config_digest"] == outcome_pack_config_digest(config)
+    assert timedelta(days=29) < (datetime.fromisoformat(payload["expires_at"]) - datetime.fromisoformat(payload["certified_at"])) <= timedelta(days=30, seconds=1)
     assert payload["publish_ready"] is True
     assert payload["certification_level"] == "production_verified"
     assert result["publishReady"] is True
