@@ -150,6 +150,8 @@ jobs:
           cache-dependency-path: backend/requirements.txt
       - name: Install tests
         run: python -m pip install -r backend/requirements-dev.txt
+      - name: Verify acceptance schema preflight fail-closed contracts
+        run: python -m pytest -q tests/test_isolated_acceptance_db.py
       - name: Exercise twenty simulated cancelled turns
         working-directory: backend
         run: python -m pytest -q tests/scripts/test_voice_provider_roundtrip.py -k twenty_cancelled
