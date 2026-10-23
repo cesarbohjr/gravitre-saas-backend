@@ -90,13 +90,13 @@ def wholesale_setup(settings: Settings) -> dict[str, Any]:
     }
 
 
-def wholesale_price_info(settings: Settings, tier: str) -> dict[str, Any] | None:
+def wholesale_price_info(settings: Settings, tier: str, interval: str = "month") -> dict[str, Any] | None:
     """Unit amount (cents), currency and interval of a tier's wholesale Price.
 
     Read from Stripe and cached briefly. None when not configured or unreadable,
     so callers show "not available" rather than inventing a number.
     """
-    price_id = wholesale_price_ids(settings).get(tier) or ""
+    price_id = wholesale_price_ids(settings, interval).get(tier) or ""
     if not price_id or not getattr(settings, "stripe_secret_key", ""):
         return None
     cached = _PRICE_CACHE.get(price_id)
