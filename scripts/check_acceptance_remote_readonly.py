@@ -11,7 +11,7 @@ import urllib.request
 ACCEPTANCE_PROJECT_REF = "aadnwmjzrmbvadszroqt"
 SQL = """SELECT
  (SELECT count(*) FROM information_schema.tables WHERE table_schema='public' AND table_type='BASE TABLE') AS public_tables,
- (SELECT count(*) FROM supabase_migrations.schema_migrations) AS recorded_migrations;"""
+ (to_regclass('supabase_migrations.schema_migrations') IS NOT NULL) AS migration_history_exists;"""
 
 
 def inspect(ref: str, token: str, *, open_request=urllib.request.urlopen) -> dict:
@@ -33,7 +33,27 @@ def inspect(ref: str, token: str, *, open_request=urllib.request.urlopen) -> dic
     if not isinstance(rows, list) or len(rows) != 1:
         raise ValueError("Unexpected read-only Supabase query response")
     tables = int(rows[0]["public_tables"])
-    migrations = int(rows[0]["recorded_migrations"])
+    # A fresh Supabase project has no migration-history table yet. Treat that
+    # absence as zero rather than querying a relation that does not exist.
+    # An initialized project requires an independent read-only count.
+    migration_history_exists = rows[0].get("migration_history_exists")
+    if migration_history_exists is None:
+        # Backward compatible with test doubles providing the legacy result.
+        migrations = int(rows[0]["recorded_migrations"])
+    elif migration_history_exists is False:
+        migrations = 0
+    else:
+        history_request = urllib.request.Request(
+            f"https://api.supabase.com/v1/projects/{ACCEPTANCE_PROJECT_REF}/database/query",
+            data=json.dumps({"query": "SELECT count(*) AS recorded_migrations FROM supabase_migrations.schema_migrations;", "read_only": True}).encode(),
+            headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
+            method="POST",
+        )
+        with open_request(history_request, timeout=30) as history_response:
+            history_rows = json.load(history_response)
+        if not isinstance(history_rows, list) or len(history_rows) != 1:
+            raise ValueError("Unexpected migration-history response")
+        migrations = int(history_rows[0]["recorded_migrations"])
     if tables != 0 or migrations != 0:
         raise ValueError("Acceptance database is not empty; review state before initialization")
     return {
