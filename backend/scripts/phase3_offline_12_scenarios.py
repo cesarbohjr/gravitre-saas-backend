@@ -53,6 +53,8 @@ def run():
         entry={"id":ident,"dimension":dimension,"evidence_level":"offline_mock_or_synthetic_contract","status":status,"exit_code":exit_code,"pytest":summary,"wall_clock_test_seconds":round(time.perf_counter()-start,3),"first_useful_text_ms":None,"full_response_ms":None,"first_answer_audio_ms":None,"interruption_to_silence_ms":None,"physical_voice_verified":False,"live_tool_readback_verified":False,"end_to_end_business_outcome_verified":False,"quality_parity_verified":False,"selectors":selectors}
         results.append(entry)
         print(ident,status,summary["tests"],"tests",entry["wall_clock_test_seconds"],"s",flush=True)
+        if status != "PASS_OFFLINE_CONTRACT":
+            print(f"--- {ident} pytest failure diagnostics ---\n{log[-12000:]}\n--- end {ident} ---",flush=True)
     report={"schema":"gravitre.phase3.offline_eval.v1","timestamp_utc":datetime.now(timezone.utc).isoformat(),"github_sha":os.environ.get("GITHUB_SHA","unknown"),"source":"checked_out_repository","measurement_notice":"wall_clock_test_seconds and testcase durations measure pytest execution, NOT conversational turn or provider latency. No model/physical/provider SLA claim.","results":results,"total_cases":len(results),"passed_cases":sum(x["status"]=="PASS_OFFLINE_CONTRACT" for x in results),"failed_cases":sum(x["status"]=="FAIL_OFFLINE_CONTRACT" for x in results),"overall_live_acceptance":"NOT_PROVEN","phase3_complete":False}
     (output/"phase3-12-cases.json").write_text(json.dumps(report,indent=2)+"\n")
     return 0 if report["passed_cases"]==12 else 1
