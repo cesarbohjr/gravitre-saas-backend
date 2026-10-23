@@ -4,6 +4,19 @@ on:
   pull_request:
     branches: [main]
   workflow_dispatch:
+    inputs:
+      suite:
+        description: 'Choose isolated acceptance suite'
+        required: true
+        type: choice
+        options: [all, billing, voice]
+        default: all
+  workflow_call:
+    inputs:
+      suite:
+        description: 'Which isolated suite to execute'
+        required: true
+        type: string
 
 permissions:
   contents: read
@@ -15,7 +28,7 @@ concurrency:
 jobs:
   billing-e2e:
     name: Billing Playwright (isolated test)
-    if: ${{ github.event_name == 'workflow_dispatch' || vars.ACCEPTANCE_AUTOMATION_ENABLED == 'true' }}
+    if: ${{ (github.event_name == 'workflow_dispatch' || github.event_name == 'workflow_call' || vars.ACCEPTANCE_AUTOMATION_ENABLED == 'true') && (inputs.suite == '' || inputs.suite == 'all' || inputs.suite == 'billing') }}
     runs-on: ubuntu-latest
     timeout-minutes: 25
     environment: acceptance
@@ -68,7 +81,7 @@ jobs:
         run: python scripts/check-isolated-acceptance-db.py
       - name: Install dependencies
         run: |
-          npm install
+          pnpm install --frozen-lockfile --ignore-scripts
           pnpm --dir apps/web install --frozen-lockfile
           python -m pip install -r backend/requirements-dev.txt
           npx playwright install --with-deps chromium
