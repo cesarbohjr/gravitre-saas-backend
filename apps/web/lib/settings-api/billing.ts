@@ -15,7 +15,7 @@ export function formatMoney(cents: number | null | undefined, currency = "usd"):
   }
 }
 
-/** "$349" + "/ month" from the live Stripe price on the subscription, else the catalog list price. */
+/** "Price" + "/ month" from the live Stripe price on the subscription, else the catalog list price. */
 export function planPriceLabel(input: {
   unitAmountCents?: number | null
   interval?: string | null
