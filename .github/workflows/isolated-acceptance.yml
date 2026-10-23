@@ -54,13 +54,18 @@ jobs:
           url = os.environ['E2E_SUPABASE_URL'].rstrip('/')
           allowed = os.environ['E2E_SUPABASE_ALLOWED_URL'].rstrip('/')
           parsed = urlsplit(url)
-          if (url != allowed or parsed.scheme != 'https' or not parsed.hostname
+          if (url != 'https://aadnwmjzrmbvadszroqt.supabase.co' or url != allowed\n                  or parsed.scheme != 'https' or not parsed.hostname
                   or not parsed.hostname.endswith('.supabase.co')
                   or parsed.username or parsed.password or parsed.query or parsed.fragment
                   or not os.environ['E2E_STRIPE_SECRET_KEY'].startswith('sk_test_')):
               raise SystemExit('Acceptance blocked: test-mode Stripe and exact allowed Supabase URL required')
           print('Isolated billing target and Stripe test mode verified (values redacted)')
           PY
+      - name: Read-only application schema readiness preflight
+        env:
+          E2E_SUPABASE_URL: ${{ secrets.E2E_SUPABASE_URL }}
+          E2E_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.E2E_SUPABASE_SERVICE_ROLE_KEY }}
+        run: python scripts/check-isolated-acceptance-db.py
       - name: Install dependencies
         run: |
           npm install
