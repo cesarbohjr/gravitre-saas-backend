@@ -43,6 +43,8 @@ pypdf>=6.9.1,<7.0
 python-docx>=1.1.0,<2.0
 # Lazy-loaded for cross-encoder rerank (STA-150); set RAG_DISABLE_CROSS_ENCODER=true to skip.
 sentence-transformers>=5.0.0,<6.0
+# Transitive dependency used by transformers/huggingface-hub; older releases have three reported CVEs.
+filelock>=4.2.1,<5.0
 transformers>=5.0.0,<6.0
 # External database connectivity (data landscape)
 asyncpg>=0.29.0,<1.0
