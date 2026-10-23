@@ -94,6 +94,16 @@ def decide_execution_loop(
     state = task_state if isinstance(task_state, dict) else {}
     obs = [row for row in (observations or state.get("execution_observations") or []) if isinstance(row, dict)]
 
+    # A persisted cancellation is terminal, regardless of a stale pending action
+    # or observations arriving after the cancellation. Never resume a write.
+    session = state.get("durable_session") if isinstance(state.get("durable_session"), dict) else {}
+    if (
+        str(plan.terminal_status).lower() == "cancelled"
+        or str(session.get("phase") or "").upper() == "CANCELLED"
+    ):
+        plan.terminal_status = "cancelled"
+        return ExecutionLoopDecision("stop", "cancelled", plan, terminal=True)
+
     wait_action, wait_reason = _waiting_state(state)
     if wait_action is not None:
         plan.terminal_status = "waiting_for_approval" if wait_action == "wait_approval" else "clarification_required"
