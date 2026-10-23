@@ -40,8 +40,8 @@ export const PLAN_CATALOG: Record<PlanCode, Plan> = {
   node: {
     code: "node",
     name: "Node",
-    price: 59,
-    annualPrice: 49,
+    price: 79,
+    annualPrice: 65,
     tagline: "For individual operators",
     features: [
       "1 core user",
@@ -56,8 +56,8 @@ export const PLAN_CATALOG: Record<PlanCode, Plan> = {
   control: {
     code: "control",
     name: "Control",
-    price: 149,
-    annualPrice: 124,
+    price: 249,
+    annualPrice: 207,
     tagline: "For growing teams",
     features: [
       "5 lite seats",
@@ -73,8 +73,8 @@ export const PLAN_CATALOG: Record<PlanCode, Plan> = {
   command: {
     code: "command",
     name: "Command",
-    price: 349,
-    annualPrice: 291,
+    price: 599,
+    annualPrice: 499,
     tagline: "For scaling organizations",
     features: [
       "Unlimited lite seats",
