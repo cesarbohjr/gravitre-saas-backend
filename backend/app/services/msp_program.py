@@ -760,6 +760,14 @@ def overview(client: Any, settings: Any, *, org_id: str, user_id: str) -> dict[s
             )
             for tier in msp_billing.MSP_TIERS
         }
+        result["wholesale"]["annual_prices"] = {
+            tier: (
+                {"annual_cents": info["unit_amount_cents"], "monthly_cents": info["monthly_cents"], "currency": info["currency"]}
+                if (info := msp_billing.wholesale_price_info(settings, tier, "year"))
+                else None
+            )
+            for tier in msp_billing.MSP_TIERS
+        }
     if live:
         msp_id = str(live["msp_org_id"])
         msp_name = org_names(client, [msp_id]).get(msp_id, "Your partner")
