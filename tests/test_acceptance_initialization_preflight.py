@@ -59,3 +59,54 @@ def test_remote_refuses_nonempty_target():
             remote.inspect(remote.ACCEPTANCE_PROJECT_REF, "fake", open_request=request)
     finally:
         remote.json.load = old
+
+
+def test_remote_accepts_fresh_target_without_migration_history():
+    class Response:
+        def __enter__(self):
+            return self
+        def __exit__(self, *_):
+            return False
+
+    requests = []
+    def request(req, **kwargs):
+        requests.append(json.loads(req.data))
+        assert requests[-1]["read_only"] is True
+        return Response()
+
+    old = remote.json.load
+    try:
+        remote.json.load = lambda _: [{"public_tables": 0, "migration_history_exists": False}]
+        result = remote.inspect(remote.ACCEPTANCE_PROJECT_REF, "fake", open_request=request)
+    finally:
+        remote.json.load = old
+    assert result["status"] == "EMPTY_TARGET_VERIFIED"
+    assert result["recorded_migrations"] == 0
+    assert len(requests) == 1
+
+
+def test_remote_rejects_existing_migration_history():
+    class Response:
+        def __enter__(self):
+            return self
+        def __exit__(self, *_):
+            return False
+
+    requests = []
+    def request(req, **kwargs):
+        requests.append(json.loads(req.data))
+        assert requests[-1]["read_only"] is True
+        return Response()
+
+    answers = iter([
+        [{"public_tables": 0, "migration_history_exists": True}],
+        [{"recorded_migrations": 1}],
+    ])
+    old = remote.json.load
+    try:
+        remote.json.load = lambda _: next(answers)
+        with pytest.raises(ValueError, match="not empty"):
+            remote.inspect(remote.ACCEPTANCE_PROJECT_REF, "fake", open_request=request)
+    finally:
+        remote.json.load = old
+    assert len(requests) == 2
