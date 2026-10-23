@@ -84,6 +84,38 @@ def test_independent_checks_and_measured_kpi_are_required_and_bound():
     proof = collect_production_evidence(client, org_id="org", asset_id="pack", config_digest="digest", config=config)
     assert proof.covers({"hubspot.contacts.update"})
     assert proof.measured_outcome_events == {"recovery_confirmed"}
+    # Two required writes using the same action are not a single execution.
+    # Both canonical step IDs must have independently verified snapshots.
+    from app.marketplace.pack_prewiring import definition_with_sequential_graph
+    original_definition = definition
+    duplicate_steps = [
+        *definition["steps"],
+        {"id": "write_again", "name": "Update again", "type": "invoke_tool",
+         "config": {"action": "hubspot.contacts.update"}},
+    ]
+    duplicate_definition = definition_with_sequential_graph(duplicate_steps)
+    datasets["workflow_defs"][0]["definition"] = duplicate_definition
+    run["definition_snapshot"] = duplicate_definition
+    config.plays[0].workflow_steps = duplicate_steps
+    partial_proof = collect_production_evidence(
+        client, org_id="org", asset_id="pack", config_digest="digest", config=config,
+    )
+    assert "hubspot.contacts.update" in partial_proof.actions
+    assert "recover" not in partial_proof.play_keys
+    datasets["workflow_steps"].append({
+        "id": "step-two", "org_id": "org", "step_id": "write_again",
+        "status": "completed", "output_snapshot": {
+            "invoke_action": "hubspot.contacts.update", "success": True,
+            "verification": _row()["parameters"]["verification"],
+        },
+    })
+    completed_proof = collect_production_evidence(
+        client, org_id="org", asset_id="pack", config_digest="digest", config=config,
+    )
+    assert "recover" in completed_proof.play_keys
+    datasets["workflow_defs"][0]["definition"] = original_definition
+    run["definition_snapshot"] = original_definition
+    config.plays[0].workflow_steps = original_definition["steps"]
     measured["workflow_run_id"] = "unrelated"
     check_rows.insert(0, {**check_rows[0], "passed": False})
     proof = collect_production_evidence(client, org_id="org", asset_id="pack", config_digest="digest", config=config)
