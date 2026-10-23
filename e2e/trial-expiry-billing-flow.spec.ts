@@ -81,9 +81,9 @@ test.describe("Trial expiry billing flow", () => {
     for (const plan of ["node", "control", "command"] as const) {
       const card = modal.getByTestId(`upgrade-plan-${plan}`)
       await expect(card).toBeVisible()
-      if (plan === "node") await expect(card).toContainText("$59/mo")
-      if (plan === "control") await expect(card).toContainText("$149/mo")
-      if (plan === "command") await expect(card).toContainText("$349/mo")
+      if (plan === "node") await expect(card).toContainText("$79/mo")
+      if (plan === "control") await expect(card).toContainText("$249/mo")
+      if (plan === "command") await expect(card).toContainText("$599/mo")
     }
 
     await modal.getByTestId("upgrade-plan-node").click()

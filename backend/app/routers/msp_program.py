@@ -222,8 +222,13 @@ def rebilling_statement(
     )
 
 
+class WholesaleCheckoutRequest(BaseModel):
+    interval: Interval = "month"
+
+
 @router.post("/billing/checkout")
 def start_wholesale_billing(
+    body: WholesaleCheckoutRequest,
     user: Annotated[dict, Depends(get_current_user)],
     org_id: Annotated[str | None, Depends(get_org_context)],
     settings: Annotated[Settings, Depends(get_settings)],
@@ -232,7 +237,7 @@ def start_wholesale_billing(
     msp_org_id = _require_org(org_id)
     msp_program.require_msp_manager(client, msp_org_id, user["user_id"])
     try:
-        url = msp_billing.create_wholesale_checkout(client, settings, msp_org_id=msp_org_id, user_id=user["user_id"])
+        url = msp_billing.create_wholesale_checkout(client, settings, msp_org_id=msp_org_id, user_id=user["user_id"], interval=body.interval)
     except msp_billing.WholesaleBillingError as exc:
         status = 503 if exc.code == "not_configured" else 409
         raise HTTPException(status, {"code": exc.code, "message": exc.message}) from exc

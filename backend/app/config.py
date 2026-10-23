@@ -428,6 +428,10 @@ class Settings(BaseSettings):
     stripe_price_id_msp_node_wholesale: str = ""
     stripe_price_id_msp_control_wholesale: str = ""
     stripe_price_id_msp_command_wholesale: str = ""
+    # Optional annual MSP wholesale catalog; the existing monthly IDs stay unchanged.
+    stripe_price_id_msp_node_wholesale_annual: str = ""
+    stripe_price_id_msp_control_wholesale_annual: str = ""
+    stripe_price_id_msp_command_wholesale_annual: str = ""
     public_app_url: str = Field(
         default="",
         validation_alias=AliasChoices("NEXT_PUBLIC_APP_URL", "PUBLIC_APP_URL"),
