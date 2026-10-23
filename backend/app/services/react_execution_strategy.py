@@ -26,8 +26,23 @@ class ReactPlanRuntime:
     observations: list[ExecutionObservation] = field(default_factory=list)
     step_index: int = 0
     repair_budget: RepairBudget = field(default_factory=RepairBudget.fresh)
+    task_state: dict[str, Any] = field(default_factory=dict)
 
     def next_step_id(self, tool_name: str, iteration: int) -> str:
+        # Gate new tool dispatch through the bounded observation policy. This
+        # policy does not grant approval or execute tools; it can only stop or
+        # pause a ReAct step when durable state prohibits continuation.
+        from app.services.autonomous_execution_loop import decide_execution_loop
+
+        decision = decide_execution_loop(
+            plan=self.plan,
+            task_state=self.task_state,
+            observations=[o.as_dict() for o in self.observations],
+            iterations_used=iteration,
+        )
+        self.plan = decision.plan
+        if decision.action in {"stop", "wait_approval", "wait_user", "verify"}:
+            raise RuntimeError(f"react_dispatch_blocked:{decision.reason}")
         pending = [
             s
             for s in self.plan.steps
@@ -138,7 +153,7 @@ def prepare_react_execution_plan(
                 meta={"strategy": "REACT"},
             )
         ]
-    return ReactPlanRuntime(plan=plan)
+    return ReactPlanRuntime(plan=plan, task_state=dict(task_state or {}))
 
 
 def react_observation_from_tool_call(
