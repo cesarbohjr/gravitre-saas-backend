@@ -1,4 +1,4 @@
-# Railway runtime — core + optional data connectors + optional voice (Pipecat)
+# Railway runtime — core + browser connectors + voice (Pipecat). Snowflake is isolated.
 -r requirements-core.txt
 -r requirements-extras-data.txt
 -r requirements-extras-voice.txt
