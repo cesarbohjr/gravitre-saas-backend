@@ -12,9 +12,9 @@ describe("marketing plan prices", () => {
   })
 
   it("uses current voice-included list prices (not legacy Stripe amounts)", () => {
-    expect(PLAN_CATALOG.node.price).toBe(59)
-    expect(PLAN_CATALOG.control.price).toBe(149)
-    expect(PLAN_CATALOG.command.price).toBe(349)
-    expect(formatMarketingPlanPriceLabel(getPlan("command"))).toBe("$349")
+    expect(PLAN_CATALOG.node.price).toBe(79)
+    expect(PLAN_CATALOG.control.price).toBe(249)
+    expect(PLAN_CATALOG.command.price).toBe(599)
+    expect(formatMarketingPlanPriceLabel(getPlan("command"))).toBe("$599")
   })
 })
