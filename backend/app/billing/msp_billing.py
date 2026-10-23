@@ -378,7 +378,8 @@ def sync_wholesale_quantities(client: Any, settings: Settings, msp_org_id: str) 
         missing = [tier for tier, qty in quantities.items() if qty and tier not in existing_by_tier and not prices.get(tier)]
         if missing:
             return {"status": "error", "quantities": quantities, "message": "Wholesale price is not configured for " + ", ".join(missing)}
-        updates: list[dict[str, Any]] = []\n        for tier, qty in quantities.items():
+        updates: list[dict[str, Any]] = []
+        for tier, qty in quantities.items():
             pid = prices.get(tier)
             if not pid:
                 continue
