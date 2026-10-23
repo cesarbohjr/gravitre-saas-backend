@@ -50,3 +50,13 @@ The existing `gravitre-acceptance` project (`aadnwmjzrmbvadszroqt`) is healthy b
 The manual-only workflow `.github/workflows/acceptance-db-preflight.yml` downloads that artifact, verifies checksum and rejects data imports, then checks only the exact acceptance target's table/migration counts through the Supabase Management API with `read_only: true`. It emits a short readiness report and **never applies remote SQL**. It uses the existing repository `SUPABASE_ACCESS_TOKEN` if configured. The guard functions have PR CI tests.
 
 Before remote installation, review target-specific roles, extensions, auth triggers and a transactional rollout/rollback. Historical production migration SQL must not be replayed blindly because the original history has known dependency failures. Keep `ACCEPTANCE_AUTOMATION_ENABLED` disabled until schema parity, E2E secrets and security checks are verified. The connected GitHub tool cannot dispatch workflows or edit environment secrets/repository variables.
+
+
+## Manually selectable GitHub acceptance workflows
+
+- `.github/workflows/acceptance-db-preflight.yml`: verify the known migration-recovery artifact and that the dedicated acceptance database is still empty; **read-only only**, it does not initialize the remote schema.
+- `.github/workflows/run-acceptance-billing.yml`: call the shared `isolated-acceptance.yml` with `suite=billing`. Uses the GitHub `acceptance` environment secrets, exact pinned `aadnwmjzrmbvadszroqt` project, read-only table preflight, and a Stripe `sk_test_` key. Intentionally fails if schema or secrets are missing.
+- `.github/workflows/run-acceptance-voice.yml`: call the same runner with `suite=voice`; invokes bounded live ElevenLabs/Deepgram audio and cancellation/write-gate tests. **Does not certify physical microphone/speaker usability**.
+- The shared runner also has a manual `suite` selector for `all`, `billing`, or `voice`, preserving the original automatic PR gate. New entrypoints share implementations to avoid diverging business-write guards. Contract regression tests validate routing and target pinning.
+
+**GitHub workflow registration:** these files currently live only in PR #557's branch and are **not** on `main`. GitHub requires a manually dispatched workflow to be present on the repository default branch; do not promise that the direct Actions launch buttons are available yet. Make a small reviewed workflow-only change on `main` to register them, or merge a reviewed release later. Never merge the entire draft consolidation PR just to expose a workflow. Once registered, choose the consolidation branch in **Run workflow**. Running billing before the acceptance schema is installed is expected to fail closed.
