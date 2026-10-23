@@ -33,6 +33,13 @@ STRIPE_PLAN_PRICE_AMOUNTS: dict[str, dict[str, Any]] = {
     "price_1U2SQtGkcGZTLqrPE2cE8JIo": {"plan": "control", "unit_amount": 148800, "interval": "year"},
     "price_1U2SQtGkcGZTLqrPRHfZZSEm": {"plan": "command", "unit_amount": 34900, "interval": "month"},
     "price_1U2SQtGkcGZTLqrPKAoonF7g": {"plan": "command", "unit_amount": 349200, "interval": "year"},
+    # 2026-10 pricing (new checkouts; legacy subscriptions keep old Stripe Prices)
+    "price_1UTbJWGkcGZTLqrPoxQXC4pn": {"plan": "node", "unit_amount": 7900, "interval": "month"},
+    "price_1UTbJXGkcGZTLqrPo6rlGopl": {"plan": "node", "unit_amount": 78000, "interval": "year"},
+    "price_1UTbJZGkcGZTLqrPLQKClauC": {"plan": "control", "unit_amount": 24900, "interval": "month"},
+    "price_1UTbJaGkcGZTLqrPdBLVUXsD": {"plan": "control", "unit_amount": 248400, "interval": "year"},
+    "price_1UTbJcGkcGZTLqrPdIH2iTND": {"plan": "command", "unit_amount": 59900, "interval": "month"},
+    "price_1UTbSUGkcGZTLqrPsKN0HHy6": {"plan": "command", "unit_amount": 598800, "interval": "year"},
 }
 
 
