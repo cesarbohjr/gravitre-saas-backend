@@ -191,7 +191,7 @@ export const mspProgramApi = {
   approve: (id: string, body: { access_level: MspAccessLevel; member_user_ids: string[] }) =>
     request<{ id: string; status: "active" }>(`${BASE}/requests/${encodeURIComponent(id)}/approve`, json("POST", body)),
   decline: (id: string) => request<{ id: string }>(`${BASE}/requests/${encodeURIComponent(id)}/decline`, json("POST")),
-  startBilling: () => request<{ url: string }>(`${BASE}/billing/checkout`, json("POST")),
+  startBilling: (interval: MspInterval = "month") => request<{ url: string }>(`${BASE}/billing/checkout`, json("POST", { interval })),
   syncBilling: () => request<BillingSync>(`${BASE}/billing/sync`, json("POST")),
   /** Raw CSV download through the authenticated fetch (keeps the org header). */
   statement: async (period?: string): Promise<{ blob: Blob; filename: string }> => {
