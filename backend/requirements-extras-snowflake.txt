@@ -1,0 +1,3 @@
+# Isolated Snowflake connector environment. Do not install alongside core filelock>=4.2.1.
+# Snowflake 4.x currently requires filelock<4; independent security audit MUST pass before enablement.
+snowflake-connector-python>=4.4.0,<5.0
