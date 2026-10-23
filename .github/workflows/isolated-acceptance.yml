@@ -114,7 +114,7 @@ jobs:
 
   live-provider-voice:
     name: ElevenLabs + Deepgram synthetic live acceptance
-    if: ${{ github.event_name == 'workflow_dispatch' || vars.ACCEPTANCE_AUTOMATION_ENABLED == 'true' }}
+    if: ${{ (github.event_name == 'workflow_dispatch' || github.event_name == 'workflow_call' || vars.ACCEPTANCE_AUTOMATION_ENABLED == 'true') && (inputs.suite == '' || inputs.suite == 'all' || inputs.suite == 'voice') }}
     runs-on: ubuntu-latest
     timeout-minutes: 12
     environment: acceptance
