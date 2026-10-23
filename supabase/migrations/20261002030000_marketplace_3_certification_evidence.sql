@@ -77,6 +77,9 @@ CREATE OR REPLACE FUNCTION public.enforce_outcome_pack_publication()
 RETURNS trigger LANGUAGE plpgsql SECURITY INVOKER SET search_path = '' AS $$
 BEGIN
   IF NEW.asset_type = 'outcome_pack' AND NEW.status = 'published' THEN
+    IF current_user IN ('anon', 'authenticated') THEN
+      RAISE EXCEPTION 'Outcome Pack publication requires the governed server path' USING ERRCODE = '42501';
+    END IF;
     PERFORM 1 FROM public.marketplace_outcome_pack_certifications c
       WHERE c.asset_id = NEW.id AND c.org_id = NEW.org_id
         AND c.config_snapshot = NEW.config AND c.environment = 'production'

@@ -36,7 +36,7 @@ migration reliability and establishes separate database acceptance evidence.
    `auth.users`, restore into a fresh local database, and compare without repairs.
 6. Run shipped confirmation/claim function bodies against independent PostgreSQL
    sessions with a durable local dispatch probe. No vendor requests are made.
-7. Test the pinned CLI's atomic migration-history baseline operation locally,
+7. Test an explicit atomic PostgreSQL metadata replacement on loopback locally,
    including an intentionally rejected INSERT that must roll back the preceding
    history DELETE without losing any original SQL arrays.
 8. Always stop disposable compute and remove transient original SQL exports.
@@ -45,9 +45,9 @@ migration reliability and establishes separate database acceptance evidence.
 
 Production metadata has not been repaired by merely adding this workflow. Before
 adopting the baseline: require baseline restore, schema parity, PostgreSQL
-acceptance, supported-command rollback proof and current required CI to pass.
+acceptance, atomic transaction rollback proof and current required CI to pass.
 Preserve the complete off-database backup. Verify production has not changed
-since the snapshot, use the supported CLI baseline operation, and verify that
+since the snapshot, use a separately reviewed production adoption procedure, and verify that
 only migration metadata changed. Do not replay the baseline DDL on production.
 
 Align Git's active migration source and its audit archive with the adopted
@@ -55,5 +55,7 @@ baseline. A final data-free Supabase preview must replay it successfully and be
 deleted immediately after validation. Do not describe release as complete until
 those operations and required deployment checks have actual evidence.
 
-Pinned supported procedure:
-https://github.com/supabase/cli/blob/v2.121.0/apps/cli/src/commands/migration/squash/SIDE_EFFECTS.md
+CLI reference: https://supabase.com/docs/reference/cli/supabase-migration-squash
+
+
+Correction from CI run 39898462502: the pinned squash command edits local migration files and explicitly requests a separate repair for remote history. It is not an atomic metadata replacement. The recovery gate now tests `atomic_baseline.py`, restricted to loopback PostgreSQL, with metadata locking, exact original-history comparison, deliberate INSERT failure, rollback and successful replacement. This is not a production executor. A production adoption procedure and vendor supportability review remain separate release requirements.

@@ -40,3 +40,6 @@ prove completion of that operation.
 
 Pinned implementation reference:
 https://github.com/supabase/cli/blob/v2.121.0/apps/cli/src/commands/migration/squash/SIDE_EFFECTS.md
+
+
+Correction from CI run 39898462502: the pinned squash command edits local migration files and explicitly requests a separate repair for remote history. It is not an atomic metadata replacement. The recovery gate now tests `atomic_baseline.py`, restricted to loopback PostgreSQL, with metadata locking, exact original-history comparison, deliberate INSERT failure, rollback and successful replacement. This is not a production executor. A production adoption procedure and vendor supportability review remain separate release requirements.

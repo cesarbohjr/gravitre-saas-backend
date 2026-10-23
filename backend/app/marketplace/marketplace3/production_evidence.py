@@ -8,6 +8,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from typing import Any
+from math import isfinite
 
 from app.core.safe_dict import safe_normalize_stored_dict
 from app.services.outcome_verification import evidence_is_verified
@@ -39,7 +40,7 @@ class ProductionEvidence:
                 "run_ids": list(self.run_ids), "verified_outcome_events": sorted(self.measured_outcome_events)}
 
 
-def collect_production_evidence(client: Any, *, org_id: str, asset_id: str, config_digest: str) -> ProductionEvidence:
+def collect_production_evidence(client: Any, *, org_id: str, asset_id: str, config_digest: str, config: Any = None) -> ProductionEvidence:
     """Require exact pack/digest provenance and fresh attributable read-back.
 
     The canonical workflow recorder must stamp certification context on runs;
@@ -95,4 +96,31 @@ def collect_production_evidence(client: Any, *, org_id: str, asset_id: str, conf
         except (TypeError, ValueError):
             continue
         checks[kind] = row.get("passed") is True and bool(str(row.get("evidence_ref") or "").strip())
-    return ProductionEvidence(org_id, asset_id, config_digest, frozenset(actions), checks, tuple(refs))
+    measured_events: set[str] = set()
+    if refs and config is not None:
+        plays = {play.key: play for play in config.plays}
+        results = (client.table("intelligence_outcome_events")
+            .select("org_id,workflow_run_id,measurement_status,before_value,after_value,metadata,measured_at")
+            .eq("org_id", org_id).eq("outcome_event", "play_business_result")
+            .eq("measurement_status", "recorded").in_("workflow_run_id", refs)
+            .gte("measured_at", cutoff.isoformat()).limit(1000).execute().data or [])
+        for row in results:
+            meta = safe_normalize_stored_dict(row.get("metadata"))
+            play = plays.get(str(meta.get("play_key") or ""))
+            if (row.get("org_id") != org_id or str(row.get("workflow_run_id")) not in refs
+                    or row.get("measurement_status") != "recorded" or play is None
+                    or meta.get("contract") != "play_business_result/v1" or meta.get("verified") is not True
+                    or meta.get("verification_state") != "VERIFIED SUCCESS" or not meta.get("verification_method")
+                    or not meta.get("source_records") or not meta.get("evidence_ids")
+                    or meta.get("metric_key") not in play.kpi_keys):
+                continue
+            try:
+                stamp = datetime.fromisoformat(str(row.get("measured_at")).replace("Z", "+00:00"))
+                if stamp.tzinfo is None or stamp < cutoff or stamp > datetime.now(timezone.utc):
+                    continue
+                if not all(isfinite(float(row[key])) for key in ("before_value", "after_value")):
+                    continue
+            except (TypeError, ValueError, KeyError):
+                continue
+            measured_events.update(play.outcome_events)
+    return ProductionEvidence(org_id, asset_id, config_digest, frozenset(actions), checks, tuple(refs), frozenset(measured_events))

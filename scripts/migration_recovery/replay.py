@@ -24,7 +24,7 @@ def validate_history(rows):
 
 def local_url(value):
     parsed = urlsplit(value)
-    if parsed.scheme not in {'postgres', 'postgresql'} or parsed.hostname not in {'localhost', '127.0.0.1', '::1'}:
+    if parsed.scheme not in {'postgres', 'postgresql'} or parsed.hostname not in {'localhost', '127.0.0.1', '::1'} or parsed.query or parsed.fragment:
         raise ValueError('Only loopback disposable database URLs are allowed')
     return value
 

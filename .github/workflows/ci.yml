@@ -254,7 +254,7 @@ jobs:
 
       - name: Marketplace certification PostgreSQL acceptance (must not skip)
         working-directory: backend
-        run: GRAVITRE_REQUIRE_PG=1 pytest -q tests/db/test_marketplace_certification_pg.py
+        run: GRAVITRE_REQUIRE_PG=1 APP_ENV=dev python -m pytest -q tests/db/test_marketplace_certification_pg.py
       - name: Founder billing safety PostgreSQL acceptance (must not skip)
         run: python -m pytest tests/db/test_founder_billing_safety_pg.py tests/billing/test_billing_safety_controls.py -q --no-header
         env:

@@ -45,3 +45,15 @@ def test_outcome_verified_requires_measured_verified_outcome_event() -> None:
 
     assert without_evidence.level == "governed"
     assert with_evidence.level == "governed"
+
+
+def test_production_requires_complete_independent_evidence_not_runtime_labels():
+    from app.marketplace.marketplace3.production_evidence import ProductionEvidence, REQUIRED_CHECKS
+    config = _msp_config()
+    actions = {action for profile in config.runtime_profiles for action in profile.actions}
+    proof = ProductionEvidence("org", "pack", "digest", frozenset(actions), {key: True for key in REQUIRED_CHECKS}, ("run",))
+    assert not certify_outcome_pack(config, production_evidence=proof).publish_ready
+    report = certify_outcome_pack(config, production_evidence=proof, resolved_skill_ids=set(config.skill_bindings.values()))
+    assert report.publish_ready
+    assert report.level == "production_verified"
+    assert not certify_outcome_pack(config, production_evidence={"actions": list(actions), "passed": True}).publish_ready

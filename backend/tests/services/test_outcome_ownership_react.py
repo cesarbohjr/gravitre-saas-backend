@@ -47,7 +47,7 @@ def test_react_verified_write_can_complete() -> None:
     runtime.record_tool_observation(
         step_id="w",
         tool_name="hubspot",
-        observation={"success": True, "verified": True, "id": "123"},
+        observation={"success": True, "verification": {"verified": True, "method": "entity_get", "resource_id": "123"}},
     )
     plan, _ = finalize_react_execution_plan(runtime, react_status="done")
     assert plan.terminal_status == "completed"

@@ -171,7 +171,9 @@ def certify_outcome_pack(
                         )
                     )
 
-    resolved_package_ids = set(resolved_skill_ids or set()) | set(config.skills)
+    resolved_package_ids = set(resolved_skill_ids or set())
+    if production_evidence is None:
+        resolved_package_ids |= set(config.skills)
     bound_requirements = {
         requirement
         for requirement, package_id in config.skill_bindings.items()

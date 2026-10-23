@@ -69,3 +69,8 @@ def test_config_edit_of_published_asset_cannot_bypass_gate(pg):
 def test_expired_certification_cannot_publish(pg):
     pg.psql(f"SET ROLE service_role; {CERT_SQL} UPDATE marketplace_outcome_pack_certifications SET expires_at=now()-interval '1 second';")
     assert pg.psql(f"SET ROLE service_role; UPDATE marketplace_assets SET status='published' WHERE id='{ASSET}';", check=False).returncode != 0
+
+
+def test_member_cannot_bypass_server_review_even_with_valid_certificate(pg):
+    pg.psql(f"SET ROLE service_role; {CERT_SQL}")
+    assert pg.psql(f"SET ROLE authenticated; SET request.jwt.claim.sub='{USER}'; UPDATE marketplace_assets SET status='published' WHERE id='{ASSET}';", check=False).returncode != 0

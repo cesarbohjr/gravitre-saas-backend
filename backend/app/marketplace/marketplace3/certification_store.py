@@ -37,6 +37,30 @@ def outcome_pack_config_digest(config: dict[str, Any] | OutcomePackAssetConfig) 
     return hashlib.sha256(canonical).hexdigest()
 
 
+def collect_reviewed_skill_ids(client: Any, *, org_id: str, config: OutcomePackAssetConfig) -> set[str]:
+    """Resolve published packages against current approved source snapshots."""
+    from app.marketplace.publish import MarketplacePublishError, _assert_capability_provenance_current
+
+    reviewed: set[str] = set()
+    for slug in sorted(set(config.skill_bindings.values())):
+        rows = (client.table("marketplace_assets").select("*").eq("slug", slug)
+                .eq("asset_type", "capability_package").eq("status", "published")
+                .limit(1).execute().data or [])
+        if len(rows) != 1:
+            continue
+        asset = rows[0]
+        if (asset.get("asset_type") != "capability_package" or asset.get("status") != "published"
+                or asset.get("slug") != slug
+                or (asset.get("org_id") != org_id and asset.get("visibility") != "public")):
+            continue
+        try:
+            _assert_capability_provenance_current(client, asset)
+        except MarketplacePublishError:
+            continue
+        reviewed.add(slug)
+    return reviewed
+
+
 def certify_and_record_outcome_pack(
     client: Any,
     *,
@@ -56,10 +80,10 @@ def certify_and_record_outcome_pack(
     if not isinstance(snapshot, dict) or outcome_pack_config_digest(snapshot) != outcome_pack_config_digest(parsed):
         raise OutcomePackCertificationError("Outcome Pack configuration changed before certification")
     trusted = collect_production_evidence(client, org_id=org_id, asset_id=asset_id,
-                                          config_digest=outcome_pack_config_digest(parsed))
+                                          config_digest=outcome_pack_config_digest(parsed), config=parsed)
     report = certify_outcome_pack(
         parsed,
-        resolved_skill_ids=resolved_skill_ids,
+        resolved_skill_ids=collect_reviewed_skill_ids(client, org_id=org_id, config=parsed),
         production_evidence=trusted,
     )
     digest = outcome_pack_config_digest(parsed)

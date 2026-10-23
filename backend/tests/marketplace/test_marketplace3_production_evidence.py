@@ -53,3 +53,34 @@ def test_old_digest_and_accepted_response_do_not_count():
     row = _row()
     row["parameters"]["marketplace_certification"]["config_digest"] = "old"
     assert not _collect([row, _row(status="verifying")]).actions
+
+
+def test_independent_checks_and_measured_kpi_are_required_and_bound():
+    from types import SimpleNamespace
+    from app.marketplace.marketplace3.production_evidence import REQUIRED_CHECKS
+    stamp = datetime.now(timezone.utc).isoformat()
+    check_rows = [{"org_id": "org", "asset_id": "pack", "config_digest": "digest", "check_kind": kind,
+                   "environment": "production", "passed": True, "evidence_ref": "artifact-"+kind, "checked_at": stamp}
+                  for kind in REQUIRED_CHECKS]
+    measured = {"org_id": "org", "workflow_run_id": "run", "measurement_status": "recorded", "before_value": 1,
+        "after_value": 2, "measured_at": stamp, "metadata": {"contract": "play_business_result/v1", "verified": True,
+        "verification_state": "VERIFIED SUCCESS", "verification_method": "entity_get", "source_records": [{"id": "record"}],
+        "evidence_ids": ["receipt"], "metric_key": "recovered", "play_key": "recover"}}
+    datasets = {"workflow_runs": [_row()], "marketplace_outcome_pack_checks": check_rows, "intelligence_outcome_events": [measured]}
+    client = MagicMock()
+    def table(name):
+        query = MagicMock()
+        for method in ("select", "eq", "gte", "order", "limit", "in_"):
+            getattr(query, method).return_value = query
+        query.execute.return_value.data = datasets[name]
+        return query
+    client.table.side_effect = table
+    config = SimpleNamespace(plays=[SimpleNamespace(key="recover", kpi_keys=["recovered"], outcome_events=["recovery_confirmed"])])
+    proof = collect_production_evidence(client, org_id="org", asset_id="pack", config_digest="digest", config=config)
+    assert proof.covers({"hubspot.contacts.update"})
+    assert proof.measured_outcome_events == {"recovery_confirmed"}
+    measured["workflow_run_id"] = "unrelated"
+    check_rows.insert(0, {**check_rows[0], "passed": False})
+    proof = collect_production_evidence(client, org_id="org", asset_id="pack", config_digest="digest", config=config)
+    assert not proof.covers({"hubspot.contacts.update"})
+    assert not proof.measured_outcome_events

@@ -247,6 +247,11 @@ async def _validate_mcp_runtime_endpoint(
             raise ValueError("MCP endpoint URL must not embed credentials; use the server auth settings")
         if allow_private_network:
             return
+    # The reserved localhost namespace is private without a DNS lookup. Reject
+    # it before resolution, preserving the explicit single-tenant opt-in above.
+    if host.rstrip(".") == "localhost" or host.rstrip(".").endswith(".localhost"):
+        prefix = "Portable MCP endpoint" if package_managed else "MCP endpoint"
+        raise ValueError(f"{prefix} resolved to private or reserved network space")
     default_port = 443 if parsed.scheme == "https" else 80
     try:
         addresses = await _resolve_host_addresses(host, parsed.port or default_port)

@@ -12,6 +12,7 @@ from app.marketplace.marketplace3.certification_store import (
     get_outcome_pack_certification,
     outcome_pack_config_digest,
 )
+from app.marketplace.schemas import OutcomePackAssetConfig
 from app.marketplace.marketplace3.msp_service_desk import (
     build_msp_service_desk_outcome_pack_config,
 )
@@ -153,3 +154,26 @@ def test_publish_ready_gate_accepts_current_production_verified_record(_mock_get
         config=build_msp_service_desk_outcome_pack_config(),
     )
     assert result["level"] == "production_verified"
+
+
+@pytest.mark.parametrize("visibility,owner,current,expected", [
+    ("public", "publisher", True, True),
+    ("private", ORG_ID, True, True),
+    ("private", "foreign", True, False),
+    ("public", "publisher", False, False),
+])
+def test_skill_provenance_requires_visible_current_approved_source(visibility, owner, current, expected):
+    from app.marketplace.marketplace3.certification_store import collect_reviewed_skill_ids
+    from app.marketplace.publish import MarketplacePublishError
+    config = OutcomePackAssetConfig.model_validate(build_msp_service_desk_outcome_pack_config())
+    slug = next(iter(config.skill_bindings.values()))
+    config.skill_bindings = {"ticket-triage": slug}
+    client = MagicMock()
+    client.table.return_value = _table(data=[{
+        "slug": slug, "org_id": owner, "visibility": visibility,
+        "asset_type": "capability_package", "status": "published",
+    }])
+    with patch("app.marketplace.publish._assert_capability_provenance_current") as verify:
+        if not current:
+            verify.side_effect = MarketplacePublishError("snapshot changed", code="VALIDATION_ERROR")
+        assert collect_reviewed_skill_ids(client, org_id=ORG_ID, config=config) == ({slug} if expected else set())
