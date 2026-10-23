@@ -48,9 +48,11 @@ def _now() -> datetime:
     return datetime.now(timezone.utc)
 
 
-def wholesale_price_ids(settings: Settings) -> dict[str, str]:
+def wholesale_price_ids(settings: Settings, interval: str = "month") -> dict[str, str]:
+    if interval not in {"month", "year"}:
+        raise ValueError("Unsupported wholesale billing interval")
     return {
-        tier: str(getattr(settings, f"stripe_price_id_msp_{tier}_wholesale", "") or "").strip()
+        tier: str(getattr(settings, f"stripe_price_id_msp_{tier}_wholesale" + ("_annual" if interval == "year" else ""), "") or "").strip()
         for tier in MSP_TIERS
     }
 
@@ -338,8 +340,7 @@ def sync_wholesale_quantities(client: Any, settings: Settings, msp_org_id: str) 
         needed = any(quantities.values())
         return {"status": "checkout_required" if needed else "no_change", "quantities": quantities}
 
-    prices = wholesale_price_ids(settings)
-    missing = [tier for tier, qty in quantities.items() if qty and not prices.get(tier)]
+    # Existing subscriptions determine their own interval, not the default monthly catalog.\n    prices = wholesale_price_ids(settings)\n    missing = []
     if missing:
         return {
             "status": "error",
@@ -355,8 +356,7 @@ def sync_wholesale_quantities(client: Any, settings: Settings, msp_org_id: str) 
             pid = price.get("id") if isinstance(price, dict) else str(price or "")
             if pid:
                 items_by_price[str(pid)] = item
-        updates: list[dict[str, Any]] = []
-        for tier, qty in quantities.items():
+        # Preserve the subscription\'s existing billing cadence. Changing a\n        # configured default must never reprice active MSP client seats.\n        subscription_interval = str((((subscription.get("items") or {}).get("data") or [{}])[0].get("price") or {}).get("recurring", {}).get("interval") or "month")\n        if subscription_interval not in {"month", "year"}:\n            return {"status": "error", "quantities": quantities, "message": "Unsupported MSP billing interval. Contact support."}\n        prices = wholesale_price_ids(settings, subscription_interval)\n        updates: list[dict[str, Any]] = []\n        for tier, qty in quantities.items():
             pid = prices.get(tier)
             if not pid:
                 continue
@@ -389,9 +389,11 @@ def sync_wholesale_quantities(client: Any, settings: Settings, msp_org_id: str) 
 
 
 def create_wholesale_checkout(
-    client: Any, settings: Settings, *, msp_org_id: str, user_id: str
+    client: Any, settings: Settings, *, msp_org_id: str, user_id: str, interval: str = "month"
 ) -> str:
     """Stripe Checkout URL that starts the MSP's wholesale subscription."""
+    if interval not in {"month", "year"}:
+        raise WholesaleBillingError("invalid_interval", "Choose monthly or annual wholesale billing.")
     setup = wholesale_setup(settings)
     if setup["status"] == "not_configured":
         raise WholesaleBillingError("not_configured", setup["message"])
@@ -399,18 +401,19 @@ def create_wholesale_checkout(
     if account and account.get("stripe_subscription_id") and account.get("status") not in {"canceled", "none"}:
         raise WholesaleBillingError("already_active", "Wholesale billing is already running for this account.")
     quantities = desired_quantities(client, msp_org_id)
-    prices = wholesale_price_ids(settings)
+    prices = wholesale_price_ids(settings, interval)
     line_items = [
         {"price": prices[tier], "quantity": qty}
         for tier, qty in quantities.items()
         if qty > 0 and prices.get(tier)
     ]
-    if not line_items:
+    if not any(quantities.values()):
         raise WholesaleBillingError("no_clients", "Add a client first. Billing starts with your first active client.")
     missing = [tier for tier, qty in quantities.items() if qty and not prices.get(tier)]
     if missing:
         raise WholesaleBillingError("not_configured", f"Wholesale price for {', '.join(missing)} isn't set up yet.")
 
+    # Never silently substitute monthly prices for an annual checkout.
     stripe.api_key = settings.stripe_secret_key
     customer_id = str((account or {}).get("stripe_customer_id") or "").strip()
     if not customer_id:
@@ -420,7 +423,7 @@ def create_wholesale_checkout(
         customer_id = str(customer["id"])
         _upsert_billing_account(client, msp_org_id, {"stripe_customer_id": customer_id, "status": "none"})
     app_url = (settings.public_app_url or "http://localhost:3000").rstrip("/")
-    metadata = {"gravitre_kind": WHOLESALE_KIND, "msp_org_id": msp_org_id, "user_id": user_id}
+    metadata = {"gravitre_kind": WHOLESALE_KIND, "msp_org_id": msp_org_id, "user_id": user_id, "wholesale_interval": interval}
     session = stripe.checkout.Session.create(
         mode="subscription",
         customer=customer_id,
