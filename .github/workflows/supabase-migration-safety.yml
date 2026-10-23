@@ -340,7 +340,7 @@ jobs:
       - name: Install billing acceptance dependencies
         if: steps.gate.outputs.billing == 'true'
         run: |
-          npm ci --ignore-scripts
+          pnpm install --frozen-lockfile --ignore-scripts
           pnpm --dir apps/web install --frozen-lockfile
           pip install --no-cache-dir -r backend/requirements-dev.txt
           npx playwright install --with-deps chromium
