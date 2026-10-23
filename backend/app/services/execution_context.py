@@ -65,7 +65,7 @@ def build_execution_context(
         "prior_verified_actions": [
             row for row in prior_actions
             if isinstance(row, dict)
-            and str(row.get("verification_status") or row.get("status") or "").lower()
+            and str(row.get("verification_status") or "").strip().lower()
             in {"verified"}
         ],
         "recent_connector_invocations": prior_actions,
