@@ -1,6 +1,13 @@
 name: Prepare acceptance database initialization
 
 on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/acceptance-db-preflight.yml'
+      - 'scripts/prepare_acceptance_baseline.py'
+      - 'scripts/check_acceptance_remote_readonly.py'
+      - 'tests/test_acceptance_initialization_preflight.py'
   workflow_dispatch:
     inputs:
       verified_migration_run_id:
@@ -15,6 +22,7 @@ permissions:
 
 jobs:
   schema-preflight:
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     name: Verify baseline and dedicated acceptance database (read only)
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -23,7 +31,7 @@ jobs:
       - name: Fetch the verified baseline artifact
         env:
           GH_TOKEN: ${{ github.token }}
-          SOURCE_RUN_ID: ${{ inputs.verified_migration_run_id }}
+          SOURCE_RUN_ID: ${{ inputs.verified_migration_run_id || '39929148399' }}
         run: |
           case "$SOURCE_RUN_ID" in
             ''|*[!0-9]*) echo 'Invalid run ID'; exit 2 ;;
