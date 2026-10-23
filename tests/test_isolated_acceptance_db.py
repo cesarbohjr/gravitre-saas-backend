@@ -6,7 +6,7 @@ from urllib.error import HTTPError
 import pytest
 
 
-MODULE = Path(__file__).resolve().parents[2] / "scripts" / "check-isolated-acceptance-db.py"
+MODULE = Path(__file__).resolve().parents[1] / "scripts" / "check-isolated-acceptance-db.py"
 spec = importlib.util.spec_from_file_location("isolated_acceptance_db", MODULE)
 checker = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(checker)
