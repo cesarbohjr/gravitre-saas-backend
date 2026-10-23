@@ -41,3 +41,21 @@ def test_legacy_command_monthly_amount_unchanged():
     # Existing customers stay on $299 — catalog must not rewrite that Price.
     assert unit_amount_cents_for_plan_price("price_1TbcniGkcGZTLqrPGRwaFxgZ") == 29900
     assert unit_amount_cents_for_plan_price("price_1U2SQtGkcGZTLqrPRHfZZSEm") == 34900
+
+
+def test_october_prices_resolve_without_replacing_prior_price_ids():
+    from app.billing.stripe import STRIPE_PLAN_PRICE_AMOUNTS, billing_interval_for_plan_price
+
+    expected = {
+        "price_1UTbJWGkcGZTLqrPoxQXC4pn": ("node", 7900, "month"),
+        "price_1UTbJXGkcGZTLqrPo6rlGopl": ("node", 78000, "year"),
+        "price_1UTbJZGkcGZTLqrPLQKClauC": ("control", 24900, "month"),
+        "price_1UTbJaGkcGZTLqrPdBLVUXsD": ("control", 248400, "year"),
+        "price_1UTbJcGkcGZTLqrPdIH2iTND": ("command", 59900, "month"),
+        "price_1UTbSUGkcGZTLqrPsKN0HHy6": ("command", 598800, "year"),
+    }
+    for price_id, (plan, cents, interval) in expected.items():
+        assert plan_code_for_price(_settings(), price_id) == plan
+        assert unit_amount_cents_for_plan_price(price_id) == cents
+        assert billing_interval_for_plan_price(price_id) == interval
+        assert STRIPE_PLAN_PRICE_AMOUNTS[price_id]["plan"] == plan
