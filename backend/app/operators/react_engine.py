@@ -1069,7 +1069,17 @@ class ReActEngine:
         from dataclasses import replace as dc_replace
 
         if plan_runtime is not None:
-            step_id = plan_runtime.next_step_id(tool_name, iteration)
+            try:
+                step_id = plan_runtime.next_step_id(tool_name, iteration)
+            except RuntimeError as exc:
+                if not str(exc).startswith("react_dispatch_blocked:"):
+                    raise
+                return {
+                    "success": False,
+                    "tool": tool_name,
+                    "error": str(exc),
+                    "error_code": "execution_loop_blocked",
+                }
             ctx = dc_replace(
                 ctx,
                 plan_id=plan_runtime.plan.plan_id,
