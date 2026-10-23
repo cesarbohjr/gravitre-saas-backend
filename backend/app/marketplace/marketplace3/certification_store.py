@@ -187,4 +187,13 @@ def assert_outcome_pack_publish_ready(
                 "report": certification["report"],
             },
         )
+    parsed = config if isinstance(config, OutcomePackAssetConfig) else OutcomePackAssetConfig.model_validate(config)
+    reviewed = collect_reviewed_skill_ids(client, org_id=org_id, config=parsed)
+    unresolved = [requirement for requirement in parsed.skill_requirements
+                  if parsed.skill_bindings.get(requirement) not in reviewed]
+    if unresolved:
+        raise OutcomePackCertificationError(
+            "Required skill package approval or source snapshot changed after certification",
+            details={"assetId": asset_id, "reason": "skill_provenance_changed", "requirements": unresolved},
+        )
     return certification

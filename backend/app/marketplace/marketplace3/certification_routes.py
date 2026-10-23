@@ -12,6 +12,7 @@ from app.marketplace.crud import _fetch_asset, MarketplaceCrudError
 from app.marketplace.marketplace3.certification import certify_outcome_pack
 from app.marketplace.marketplace3.certification_store import (
     OutcomePackCertificationError, certify_and_record_outcome_pack, get_outcome_pack_certification,
+    assert_outcome_pack_publish_ready,
 )
 from app.marketplace.schemas import OutcomePackAssetConfig
 
@@ -40,6 +41,16 @@ def certification_status(asset_ref: str, admin: Annotated[tuple, Depends(require
     client = shared_service_client(settings, create_client)
     asset = _owned_pack(client, org_id, asset_ref)
     certificate = get_outcome_pack_certification(client, org_id=org_id, asset_id=str(asset["id"]), config=asset["config"])
+    if certificate and certificate["publishReady"]:
+        try:
+            certificate = assert_outcome_pack_publish_ready(client, org_id=org_id, asset_id=str(asset["id"]), config=asset["config"])
+        except OutcomePackCertificationError as exc:
+            certificate = {**certificate, "publishReady": False, "report": {
+                **certificate.get("report", {}), "findings": [
+                    *certificate.get("report", {}).get("findings", []),
+                    {"code": exc.code, "message": str(exc)},
+                ],
+            }}
     return {"assetId": str(asset["id"]), "certification": certificate, "publishReady": bool(certificate and certificate["publishReady"])}
 
 

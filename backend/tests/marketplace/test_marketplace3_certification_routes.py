@@ -53,3 +53,13 @@ def test_non_admin_is_denied(client):
     client.app.dependency_overrides[require_admin] = denied
     assert client.get('/assets/pack/certification').status_code == 403
     assert client.post('/assets/pack/certification/run', json={}).status_code == 403
+
+
+def test_status_withholds_ready_after_skill_revocation(client):
+    from app.marketplace.marketplace3.certification_store import OutcomePackCertificationError
+    with patch('app.marketplace.marketplace3.certification_routes.shared_service_client'), patch('app.marketplace.marketplace3.certification_routes._fetch_asset', return_value=_asset()), patch('app.marketplace.marketplace3.certification_routes.get_outcome_pack_certification', return_value={"publishReady": True, "level": "production_verified", "report": {}}), patch('app.marketplace.marketplace3.certification_routes.assert_outcome_pack_publish_ready', side_effect=OutcomePackCertificationError("Skill approval revoked")):
+        result = client.get('/assets/pack/certification')
+    assert result.status_code == 200
+    assert result.json()['publishReady'] is False
+    assert result.json()['certification']['publishReady'] is False
+    assert result.json()['certification']['report']['findings'][0]['message'] == 'Skill approval revoked'

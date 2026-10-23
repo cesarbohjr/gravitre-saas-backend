@@ -12,6 +12,7 @@ import {
   GravitrePageHeader,
   GravitreSurface,
 } from "@/components/gravitre/nodus-product"
+import { OutcomePackCertification } from "@/components/marketplace/outcome-pack-certification"
 import { AssetOutcomeEditor } from "@/components/marketplace/asset-outcome-editor"
 import {
   AssetPricingEditor,
@@ -94,6 +95,7 @@ function OrgAssetRow({
 
   return (
     <GravitreSurface className="space-y-3 rounded-none border-x-0 border-t-0 border-b border-[color:var(--g-border-subtle)] bg-transparent p-4 shadow-none sm:p-4">
+      {asset.assetType === "outcome_pack" ? <OutcomePackCertification key={asset.id} assetRef={asset.slug} /> : null}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">

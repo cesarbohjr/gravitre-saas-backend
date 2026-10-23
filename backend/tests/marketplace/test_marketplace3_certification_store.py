@@ -146,7 +146,9 @@ def test_publish_ready_gate_rejects_non_production_certification(_mock_get) -> N
         "report": {"findings": []},
     },
 )
-def test_publish_ready_gate_accepts_current_production_verified_record(_mock_get) -> None:
+@patch("app.marketplace.marketplace3.certification_store.collect_reviewed_skill_ids")
+def test_publish_ready_gate_accepts_current_production_verified_record(mock_skills, _mock_get) -> None:
+    mock_skills.return_value = set(build_msp_service_desk_outcome_pack_config()["skill_bindings"].values())
     result = assert_outcome_pack_publish_ready(
         MagicMock(),
         org_id=ORG_ID,
@@ -177,3 +179,10 @@ def test_skill_provenance_requires_visible_current_approved_source(visibility, o
         if not current:
             verify.side_effect = MarketplacePublishError("snapshot changed", code="VALIDATION_ERROR")
         assert collect_reviewed_skill_ids(client, org_id=ORG_ID, config=config) == ({slug} if expected else set())
+
+
+def test_publish_rechecks_skill_approval_after_certificate_issuance():
+    with patch("app.marketplace.marketplace3.certification_store.get_outcome_pack_certification", return_value={"level": "production_verified", "publishReady": True}), patch("app.marketplace.marketplace3.certification_store.collect_reviewed_skill_ids", return_value=set()):
+        with pytest.raises(OutcomePackCertificationError) as exc:
+            assert_outcome_pack_publish_ready(MagicMock(), org_id=ORG_ID, asset_id=ASSET_ID, config=build_msp_service_desk_outcome_pack_config())
+    assert exc.value.details["reason"] == "skill_provenance_changed"
