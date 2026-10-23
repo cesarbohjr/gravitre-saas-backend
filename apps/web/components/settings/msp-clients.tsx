@@ -156,6 +156,7 @@ function PartnerClients({ overview, onOverviewChange }: { overview: MspOverview;
   const [addOpen, setAddOpen] = useState(false)
   const [editing, setEditing] = useState<MspClientRow | null>(null)
   const [busy, setBusy] = useState(false)
+  const [wholesaleInterval, setWholesaleInterval] = useState<MspInterval>("month")
   const [period, setPeriod] = useState(() => new Date().toISOString().slice(0, 7))
   const billing = billingStateCopy(overview)
   const clients = data?.clients ?? []
@@ -168,7 +169,7 @@ function PartnerClients({ overview, onOverviewChange }: { overview: MspOverview;
   async function startBilling() {
     setBusy(true)
     try {
-      const { url } = await mspProgramApi.startBilling()
+      const { url } = await mspProgramApi.startBilling(wholesaleInterval)
       window.location.assign(url)
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Could not start billing")
@@ -243,6 +244,12 @@ function PartnerClients({ overview, onOverviewChange }: { overview: MspOverview;
         <b>{billing.title}.</b> {billing.body}
         {billing.action === "start" && clients.some((c) => c.status === "active") ? (
           <div style={{ marginTop: 8 }}>
+            <label className="gs-field" style={{ marginBottom: 8 }}>Wholesale billing frequency
+              <select aria-label="Wholesale billing frequency" value={wholesaleInterval} onChange={(event) => setWholesaleInterval(event.target.value as MspInterval)}>
+                <option value="month">Monthly</option>
+                <option value="year">Annual (billed upfront)</option>
+              </select>
+            </label>
             <button type="button" className="gs-btn dark sm" disabled={busy} onClick={() => void startBilling()}>
               Start wholesale billing
             </button>
