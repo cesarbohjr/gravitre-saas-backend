@@ -42,3 +42,11 @@ The single consolidation branch now includes `.github/workflows/isolated-accepta
 **Cost/safety boundary:** Live provider calls create a small, bounded volume of synthetic speech only, never business writes. Billing tests do create disposable test users and payment/billing activity; an isolated test project and Stripe test key are mandatory. All evidence is emitted as short-lived artifacts. Production credentials are never used, and provider response bodies/secret values are not written to evidence. Physical voice usability still requires a short human session.
 
 **Status:** Workflow committed, not proof of execution. Until the two credentialed jobs run successfully on the exact final SHA, billing and live provider acceptance remain NOT RUN. Production migration, merge, and deployment remain blocked by separate release governance.
+
+## Acceptance database preparation via CI (October 23)
+
+The existing `gravitre-acceptance` project (`aadnwmjzrmbvadszroqt`) is healthy but empty, with zero public tables and zero recorded migrations. The successful migration-history recovery run `39929148399` published a schema-only baseline artifact `migration-history-replay`, including `production-schema-baseline.sql` and its SHA256 manifest. That run certified a disposable local restore; it did not initialize any remote project.
+
+The manual-only workflow `.github/workflows/acceptance-db-preflight.yml` downloads that artifact, verifies checksum and rejects data imports, then checks only the exact acceptance target's table/migration counts through the Supabase Management API with `read_only: true`. It emits a short readiness report and **never applies remote SQL**. It uses the existing repository `SUPABASE_ACCESS_TOKEN` if configured. The guard functions have PR CI tests.
+
+Before remote installation, review target-specific roles, extensions, auth triggers and a transactional rollout/rollback. Historical production migration SQL must not be replayed blindly because the original history has known dependency failures. Keep `ACCEPTANCE_AUTOMATION_ENABLED` disabled until schema parity, E2E secrets and security checks are verified. The connected GitHub tool cannot dispatch workflows or edit environment secrets/repository variables.
