@@ -458,9 +458,9 @@ jobs:
     name: Billing E2E (Playwright)
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    # Manual/signal only — do not run on main push. A failed check (even with
-    # continue-on-error) still blocks Railway "Wait for CI" and pins the tip.
-    if: github.event_name == 'workflow_dispatch'
+    # Exercise billing checkout on this pricing PR as well as manual dispatch.
+    # Never run this expensive suite on normal main pushes or unrelated PRs.
+    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'pull_request' && github.head_ref == 'pricing-2026-10-node-control-command')
     needs: [web, backend]
     steps:
       - uses: actions/checkout@v4
