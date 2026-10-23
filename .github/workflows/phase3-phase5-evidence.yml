@@ -33,6 +33,7 @@ jobs:
           ANTHROPIC_API_KEY: fake-phase3
           GEMINI_API_KEY: fake-phase3
       - name: Strict Phase 5 learning prerequisites
+        if: success() || failure()
         run: python scripts/phase5_learning_evidence_gate.py
         env:
           PHASE5_OUTPUT_DIR: ${{ runner.temp }}/phase5-evidence
