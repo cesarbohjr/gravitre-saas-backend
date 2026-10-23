@@ -1,4 +1,4 @@
-# Gravitree — completed 37-source functional review and consolidation plan
+# Gravitre — completed 37-source functional review and consolidation plan
 
 Reviewed 2026-10-22 against frozen main `32f0d96792ee5b73622968fe0ca8953f42800705`.
 Destination: `consolidation/37-pr-functional-reconciliation-20261022`, then one reviewed integration into `main`.
@@ -444,3 +444,8 @@ Maintain a coverage ledger mapping every addition above to the final implementat
 Stage the combined release against a production-equivalent schema. Approve actual migration SQL/history changes separately with checksum, backup/recovery drill and immutable SHA. Merge the one consolidated PR only after the agreed gates. Then verify Vercel and Railway serve that merged SHA, inspect independent health response, and collect authenticated product acceptance including Plays/Workflows/Schedules and physical voice where applicable. Update this ledger with exact evidence.
 
 Close source PRs only after their unique requirements are mapped to preserved-main or deployed consolidation evidence. Keep branches until that mapping is complete; no blind bulk closure/deletion. This final plan replaces the old 37-PR merge queue.
+
+
+## Implementation follow-through
+
+See [CONSOLIDATION_IMPLEMENTATION_20261022.md](CONSOLIDATION_IMPLEMENTATION_20261022.md) for implemented fixes, validation evidence, current remaining requirements and corrections based on the canonical Outcome Pack registry. The original source snapshot above is an audit baseline, not a live implementation status.

@@ -8,6 +8,7 @@ from typing import Any
 
 from app.marketplace.marketplace3.certification import certify_outcome_pack
 from app.marketplace.schemas import OutcomePackAssetConfig
+from app.marketplace.marketplace3.production_evidence import collect_production_evidence
 
 
 class OutcomePackCertificationError(Exception):
@@ -25,7 +26,8 @@ def _now() -> str:
 
 
 def outcome_pack_config_digest(config: dict[str, Any] | OutcomePackAssetConfig) -> str:
-    payload = config.model_dump(mode="json") if isinstance(config, OutcomePackAssetConfig) else config
+    parsed = config if isinstance(config, OutcomePackAssetConfig) else OutcomePackAssetConfig.model_validate(config)
+    payload = parsed.model_dump(mode="json")
     canonical = json.dumps(
         payload,
         sort_keys=True,
@@ -46,20 +48,31 @@ def certify_and_record_outcome_pack(
     evidence: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     parsed = config if isinstance(config, OutcomePackAssetConfig) else OutcomePackAssetConfig.model_validate(config)
+    asset_rows = (client.table("marketplace_assets").select("id,org_id,asset_type,config")
+                  .eq("id", asset_id).eq("org_id", org_id).limit(1).execute().data or [])
+    if len(asset_rows) != 1 or asset_rows[0].get("org_id") != org_id or asset_rows[0].get("asset_type") != "outcome_pack":
+        raise OutcomePackCertificationError("Outcome Pack not found in organization")
+    snapshot = asset_rows[0].get("config")
+    if not isinstance(snapshot, dict) or outcome_pack_config_digest(snapshot) != outcome_pack_config_digest(parsed):
+        raise OutcomePackCertificationError("Outcome Pack configuration changed before certification")
+    trusted = collect_production_evidence(client, org_id=org_id, asset_id=asset_id,
+                                          config_digest=outcome_pack_config_digest(parsed))
     report = certify_outcome_pack(
         parsed,
         resolved_skill_ids=resolved_skill_ids,
-        outcome_evidence=evidence or {},
+        production_evidence=trusted,
     )
     digest = outcome_pack_config_digest(parsed)
     row = {
         "org_id": org_id,
         "asset_id": asset_id,
         "config_digest": digest,
+        "config_snapshot": parsed.model_dump(mode="json"),
+        "environment": "production",
         "certification_level": report.level,
         "publish_ready": report.publish_ready,
         "report": report.as_dict(),
-        "evidence": evidence or {},
+        "evidence": trusted.as_dict(),
         "certified_by": actor_id,
         "certified_at": _now(),
         "updated_at": _now(),
@@ -69,7 +82,9 @@ def certify_and_record_outcome_pack(
         .upsert(row, on_conflict="asset_id,config_digest")
         .execute()
     )
-    stored = dict((result.data or [row])[0])
+    if not result.data:
+        raise OutcomePackCertificationError("Certification evidence was not persisted")
+    stored = dict(result.data[0])
     return {
         "id": stored.get("id"),
         "assetId": asset_id,
@@ -77,7 +92,7 @@ def certify_and_record_outcome_pack(
         "level": report.level,
         "publishReady": report.publish_ready,
         "report": report.as_dict(),
-        "evidence": evidence or {},
+        "evidence": trusted.as_dict(),
         "certifiedAt": stored.get("certified_at") or row["certified_at"],
     }
 
@@ -96,6 +111,8 @@ def get_outcome_pack_certification(
         .eq("org_id", org_id)
         .eq("asset_id", asset_id)
         .eq("config_digest", digest)
+        .eq("environment", "production")
+        .gt("expires_at", _now())
         .limit(1)
         .execute()
     )
@@ -108,7 +125,7 @@ def get_outcome_pack_certification(
         "assetId": asset_id,
         "configDigest": digest,
         "level": row.get("certification_level"),
-        "publishReady": bool(row.get("publish_ready")),
+        "publishReady": row.get("publish_ready") is True,
         "report": row.get("report") if isinstance(row.get("report"), dict) else {},
         "evidence": row.get("evidence") if isinstance(row.get("evidence"), dict) else {},
         "certifiedAt": row.get("certified_at"),

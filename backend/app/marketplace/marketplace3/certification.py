@@ -87,6 +87,7 @@ def certify_outcome_pack(
     *,
     resolved_skill_ids: set[str] | None = None,
     outcome_evidence: dict[str, Any] | None = None,
+    production_evidence: Any = None,
 ) -> OutcomePackCertification:
     """Return the strongest certification level supported by current evidence.
 
@@ -228,6 +229,16 @@ def certify_outcome_pack(
         and all(profile.status == "production_verified" for profile in config.runtime_profiles)
         and not unresolved_skills
     )
+    from app.marketplace.marketplace3.production_evidence import ProductionEvidence
+
+    production_ok = (production_ok and isinstance(production_evidence, ProductionEvidence)
+                     and production_evidence.covers(declared_actions))
+    if not production_ok:
+        findings.append(CertificationFinding(
+            "PRODUCTION_EVIDENCE_MISSING",
+            "Production certification requires trusted configuration-bound action and scenario evidence.",
+            blocking=False,
+        ))
     if production_ok:
         level = "production_verified"
 
@@ -238,7 +249,7 @@ def certify_outcome_pack(
         if str(value).strip()
     }
     declared_events = set(config.outcome_contract.outcome_events)
-    if production_ok and declared_events.intersection(observed_events):
+    if production_ok and declared_events.intersection(production_evidence.measured_outcome_events):
         level = "outcome_verified"
 
     publish_ready = level in {"production_verified", "outcome_verified"}

@@ -43,3 +43,39 @@ def test_iteration_budget_blocks_tool_allocation():
     runtime = _runtime()
     with pytest.raises(RuntimeError, match="react_dispatch_blocked:"):
         runtime.next_step_id("gmail.search", 8)
+
+
+def test_cancelled_late_observation_is_recorded_without_regating_or_resuming():
+    from app.services.react_execution_strategy import react_observation_from_tool_call, finalize_react_execution_plan
+    runtime = _runtime()
+    step = runtime.next_step_id("gmail.search", 0)
+    runtime.plan.terminal_status = "cancelled"
+    observation = react_observation_from_tool_call(runtime, iteration=0, tool_name="gmail.search",
+        observation={"success": True, "action": "gmail.messages.list"})
+    assert observation.step_id == step
+    assert runtime.plan.terminal_status == "cancelled"
+    final, _ = finalize_react_execution_plan(runtime, react_status="completed", answer="old reply")
+    assert final.terminal_status == "cancelled"
+
+
+def test_denied_dispatch_observation_does_not_dispatch_again():
+    from app.services.react_execution_strategy import react_observation_from_tool_call
+    runtime = _runtime(terminal_status="cancelled")
+    observation = react_observation_from_tool_call(runtime, iteration=0, tool_name="gmail.search",
+        observation={"success": False, "error_code": "execution_loop_blocked", "error": "cancelled"})
+    assert not observation.success
+    assert runtime.plan.terminal_status == "cancelled"
+
+
+def test_verification_policy_cannot_authorize_a_new_write():
+    runtime = _runtime()
+    runtime.plan.steps = [ExecutionStep("write-1", "Uncertain send", "write", status="failed")]
+    with pytest.raises(RuntimeError, match="write_failed_or_uncertain"):
+        runtime.next_step_id("gmail.send", 0, is_write=True)
+
+
+@pytest.mark.parametrize("pending", ["awaiting_admin_approval", "awaiting_step_confirm", "awaiting_plan_confirm"])
+def test_all_pending_approval_states_block_dispatch(pending):
+    runtime = _runtime({"pending_action": {}, "pending_task": {"status": pending}})
+    with pytest.raises(RuntimeError, match="approval_required"):
+        runtime.next_step_id("gmail.send", 0, is_write=True)

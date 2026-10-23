@@ -15,11 +15,11 @@ def _msp_config() -> OutcomePackAssetConfig:
     )
 
 
-def test_msp_service_desk_v1_is_production_verified_for_freshservice() -> None:
+def test_msp_service_desk_blueprint_cannot_self_certify_for_freshservice() -> None:
     report = certify_outcome_pack(_msp_config())
 
-    assert report.publish_ready is True
-    assert report.level == "production_verified"
+    assert report.publish_ready is False
+    assert report.level == "governed"
     assert report.unresolved_skill_requirements == []
     assert "freshservice.tickets.update_status" in report.runtime_actions
     assert not any(finding.blocking for finding in report.findings)
@@ -43,5 +43,5 @@ def test_outcome_verified_requires_measured_verified_outcome_event() -> None:
         outcome_evidence={"verified_outcome_events": ["ticket_sla_saved"]},
     )
 
-    assert without_evidence.level == "production_verified"
-    assert with_evidence.level == "outcome_verified"
+    assert without_evidence.level == "governed"
+    assert with_evidence.level == "governed"

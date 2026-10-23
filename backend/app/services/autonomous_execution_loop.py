@@ -38,38 +38,43 @@ def _pending_step(plan: ExecutionPlan) -> ExecutionStep | None:
     return next((step for step in plan.steps if step.status == "pending"), None)
 
 
-def _provider_write_verified(task_state: dict[str, Any], observations: list[dict[str, Any]]) -> bool:
-    """Accepted or queued is not provider proof."""
-    evidence = task_state.get("provider_result_evidence")
-    if isinstance(evidence, dict):
-        status = str(evidence.get("verification_status") or evidence.get("status") or "").lower()
-        if status == "verified" and evidence.get("verified") is True and (
-            evidence.get("provider_record_id") or evidence.get("provider_id") or evidence.get("vendor_proof")
-        ):
-            return True
-    for row in reversed(observations):
-        if not isinstance(row, dict) or not row.get("success"):
+def _provider_write_verified(task_state: dict[str, Any], observations: list[dict[str, Any]], writes: list[ExecutionStep]) -> bool:
+    """Every write needs its own attributable proof; one success cannot certify siblings."""
+    from app.services.outcome_verification import evidence_is_verified
+
+    def proven(record: Any, step: ExecutionStep) -> bool:
+        if not isinstance(record, dict) or not evidence_is_verified(record):
+            return False
+        nested = record.get("verification")
+        proof = nested if isinstance(nested, dict) else record
+        if not (proof.get("resource_id") or proof.get("entity_id") or record.get("provider_record_id")
+                or record.get("provider_id") or record.get("vendor_proof")):
+            return False
+        action = proof.get("action") or record.get("action") or record.get("invoke_action")
+        return not step.action_key or action == step.action_key
+
+    for step in writes:
+        matching = [row for row in observations if isinstance(row, dict)
+                    and row.get("step_id") == step.step_id and row.get("success") is True]
+        if any(proven(row.get("structured"), step) for row in matching):
             continue
-        structured = row.get("structured") if isinstance(row.get("structured"), dict) else {}
-        status = str(structured.get("verification_status") or structured.get("provider_status") or "").lower()
-        if status == "verified" and structured.get("verified") is True and (
-            structured.get("provider_record_id") or structured.get("provider_id") or structured.get("vendor_proof")
-        ):
-            return True
-    return False
+        if len(writes) == 1 and proven(task_state.get("provider_result_evidence"), step):
+            continue
+        return False
+    return True
 
 
 def _waiting_state(task_state: dict[str, Any]) -> tuple[LoopAction | None, str | None]:
-    pending = task_state.get("pending_action")
-    if not isinstance(pending, dict):
-        pending = task_state.get("pending_task")
-    if not isinstance(pending, dict):
-        return None, None
-    status = str(pending.get("status") or "").strip().lower()
-    if status in {"awaiting_confirm", "awaiting_user_confirmation", "awaiting_approval"}:
-        return "wait_approval", "approval_required"
-    if status in {"awaiting_user", "needs_input", "clarification_required"}:
-        return "wait_user", "user_input_required"
+    for key in ("pending_action", "pending_task"):
+        pending = task_state.get(key)
+        if not isinstance(pending, dict):
+            continue
+        status = str(pending.get("status") or "").strip().lower()
+        if status in {"awaiting_confirm", "awaiting_plan_confirm", "awaiting_step_confirm",
+                      "awaiting_admin_approval", "awaiting_user_confirmation", "awaiting_approval"}:
+            return "wait_approval", "approval_required"
+        if status in {"awaiting_user", "needs_input", "clarification_required"}:
+            return "wait_user", "user_input_required"
     return None, None
 
 
@@ -154,7 +159,7 @@ def decide_execution_loop(
         return ExecutionLoopDecision("continue", "next_plan_step", plan, next_step_id=pending.step_id)
 
     writes = [step for step in plan.steps if step.kind == "write"]
-    write_verified = _provider_write_verified(state, obs) if writes else None
+    write_verified = _provider_write_verified(state, obs, writes) if writes else None
     ok, reason = verify_before_complete(
         plan=plan,
         observations=obs,

@@ -87,6 +87,7 @@ def test_write_completes_only_with_verified_provider_proof():
                 "verification_status": "verified",
                 "verified": True,
                 "provider_record_id": "msg-123",
+                "method": "entity_get",
             }
         },
         observations=[{"success": True}],
@@ -128,3 +129,13 @@ def test_running_step_cannot_complete_even_with_provider_proof():
     )
     assert d.action == "verify"
     assert d.reason == "steps_not_terminal"
+
+
+def test_one_verified_write_cannot_complete_two_different_write_steps():
+    p = plan(ExecutionStep("w1", "Send first", "write", status="completed"),
+             ExecutionStep("w2", "Send second", "write", status="completed"))
+    proof = {"verified": True, "method": "entity_get", "resource_id": "message-1"}
+    decision = decide_execution_loop(plan=p, task_state={"provider_result_evidence": proof},
+        observations=[{"step_id": "w1", "success": True, "structured": {"verification": proof}}])
+    assert decision.action == "verify"
+    assert decision.reason == "write_unverified"

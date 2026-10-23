@@ -29,6 +29,16 @@ def prohibit_outbound_network(monkeypatch):
     monkeypatch.setattr(httpx.HTTPTransport, "handle_request", blocked)
     monkeypatch.setattr(httpx.AsyncHTTPTransport, "handle_async_request", async_blocked)
     monkeypatch.setattr(requests.Session, "send", blocked)
+    # Recent Supabase clients can use httpx2; fence it too rather than relying
+    # on a particular dependency version to remain offline.
+    try:
+        import httpx2
+    except ImportError:
+        httpx2 = None
+    if httpx2 is not None:
+        monkeypatch.setattr(httpx2.HTTPTransport, "handle_request", blocked)
+        monkeypatch.setattr(httpx2.AsyncHTTPTransport, "handle_async_request", async_blocked)
+
     try:
         import grpc
     except ImportError:

@@ -31,8 +31,8 @@ export function parseLifecycleEnvelope(taskState: Record<string, unknown> | null
   return {
     customerStage: customer,
     semanticStage: String(env.semantic_stage || ""),
-    executionVerified: Boolean(env.execution_verified),
-    uncertain: Boolean(env.uncertain),
+    executionVerified: env.execution_verified === true,
+    uncertain: env.uncertain === true,
     logicalActionId: env.logical_action_id ? String(env.logical_action_id) : null,
     providerRecordId: env.provider_record_id ? String(env.provider_record_id) : null,
   }
@@ -58,7 +58,7 @@ export function actionStatusFromLifecycle(envelope: LifecycleEnvelopeView | null
     case "verifying":
       return envelope.semanticStage === "EXECUTING" ? "running" : "verifying"
     case "verified":
-      return "completed"
+      return envelope.executionVerified ? "completed" : "verifying"
     case "uncertain":
       return "verifying"
     case "failed":

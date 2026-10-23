@@ -27,8 +27,11 @@ class ReactPlanRuntime:
     step_index: int = 0
     repair_budget: RepairBudget = field(default_factory=RepairBudget.fresh)
     task_state: dict[str, Any] = field(default_factory=dict)
+    dispatched_steps: dict[tuple[int, str], list[str]] = field(default_factory=dict)
+    started_at: float = field(default_factory=time.monotonic)
+    iteration_budget: int = 8
 
-    def next_step_id(self, tool_name: str, iteration: int) -> str:
+    def next_step_id(self, tool_name: str, iteration: int, *, is_write: bool = False) -> str:
         # Gate new tool dispatch through the bounded observation policy. This
         # policy does not grant approval or execute tools; it can only stop or
         # pause a ReAct step when durable state prohibits continuation.
@@ -39,9 +42,12 @@ class ReactPlanRuntime:
             task_state=self.task_state,
             observations=[o.as_dict() for o in self.observations],
             iterations_used=iteration,
+            iteration_budget=self.iteration_budget,
+            tools_used=len(self.observations),
+            elapsed_ms=int((time.monotonic() - self.started_at) * 1000),
         )
         self.plan = decision.plan
-        if decision.action in {"stop", "wait_approval", "wait_user"}:
+        if decision.action in {"stop", "wait_approval", "wait_user"} or (decision.action == "verify" and is_write):
             raise RuntimeError(f"react_dispatch_blocked:{decision.reason}")
         pending = [
             s
@@ -60,9 +66,13 @@ class ReactPlanRuntime:
         ]
         executable = [s for s in pending if s.kind in {"evidence", "read", "write"}]
         if executable:
-            return executable[0].step_id
+            step_id = executable[0].step_id
+            self.dispatched_steps.setdefault((iteration, tool_name), []).append(step_id)
+            return step_id
         if pending:
-            return pending[0].step_id
+            step_id = pending[0].step_id
+            self.dispatched_steps.setdefault((iteration, tool_name), []).append(step_id)
+            return step_id
         step_id = f"react_{iteration}_{tool_name}"
         self.plan.steps.append(
             ExecutionStep(
@@ -74,6 +84,7 @@ class ReactPlanRuntime:
                 meta={"react_iteration": iteration, "dynamic": True},
             )
         )
+        self.dispatched_steps.setdefault((iteration, tool_name), []).append(step_id)
         return step_id
 
     def record_tool_observation(
@@ -164,7 +175,16 @@ def react_observation_from_tool_call(
     observation: dict[str, Any],
     elapsed_ms: int | None = None,
 ) -> ExecutionObservation:
-    step_id = runtime.next_step_id(tool_name, iteration)
+    allocated = runtime.dispatched_steps.get((iteration, tool_name), [])
+    if allocated:
+        step_id = allocated.pop(0)
+    elif observation.get("error_code") == "execution_loop_blocked":
+        # A denied dispatch has no allocated step. Record the denial without
+        # asking the dispatch gate to execute/allocate again.
+        step_id = f"react_denied_{iteration}_{tool_name}"
+    else:
+        step_id = runtime.next_step_id(tool_name, iteration)
+        runtime.dispatched_steps[(iteration, tool_name)].pop(0)
     return runtime.record_tool_observation(
         step_id=step_id,
         tool_name=tool_name,
@@ -183,6 +203,8 @@ def finalize_react_execution_plan(
 ) -> tuple[ExecutionPlan, list[ExecutionObservation]]:
     plan = runtime.plan
     status = str(react_status or "").lower()
+    if plan.terminal_status == "cancelled":
+        return plan, runtime.observations
     if force_replan and replan_reason:
         remaining = [s for s in plan.steps if s.status == "pending"]
         plan = replan_execution_plan(plan, new_steps=remaining or plan.steps, reason=replan_reason)
@@ -203,9 +225,11 @@ def finalize_react_execution_plan(
             step for step in plan.steps
             if step.kind in {"write", "workflow", "agent_delegation"}
         ]
+        from app.services.outcome_verification import evidence_is_verified
+
         verified_steps = {
             o.step_id for o in runtime.observations
-            if bool((o.structured or {}).get("verified"))
+            if evidence_is_verified(o.structured)
         }
         if consequential and not all(step.step_id in verified_steps for step in consequential):
             plan = mark_plan_terminal(plan, "verification_inconclusive")

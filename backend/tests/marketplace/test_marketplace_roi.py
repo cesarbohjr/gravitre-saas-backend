@@ -127,3 +127,34 @@ def test_marketplace_roi_summary_empty_installs():
     assert summary["totalEstimatedHoursSaved"] == 0.0
     assert summary["realizationRate"] == 0.0
     assert summary["byAsset"] == []
+
+
+def test_verified_outcomes_bind_to_current_install_and_do_not_measure_catalog_hours():
+    from copy import deepcopy
+    install = {"id": "install", "asset_id": "asset", "installed_at": "2026-10-20T00:00:00Z",
+               "metadata": {"plays": [{"workflowId": "workflow"}]},
+               "marketplace_assets": {"title": "Pack", "estimated_hours_saved": 5}}
+    proof = {"id": "result", "org_id": "org", "workflow_id": "workflow", "workflow_run_id": "run",
+             "created_at": "2026-10-21T00:00:00Z", "measurement_status": "recorded",
+             "before_value": 2, "after_value": 3,
+             "metadata": {"contract": "play_business_result/v1", "verified": True,
+                          "verification_state": "VERIFIED SUCCESS", "verification_method": "entity_get",
+                          "source_records": [{"record_id": "contact"}], "evidence_ids": ["evidence"],
+                          "metric_key": "contacts", "outcome_type": "created"}}
+    foreign = deepcopy(proof); foreign["org_id"] = "foreign"
+    old = deepcopy(proof); old["created_at"] = "2026-10-19T00:00:00Z"
+    unverified = deepcopy(proof); unverified["metadata"]["verified"] = False
+    client = MagicMock()
+    def table(name):
+        query = MagicMock()
+        for method in ("select", "eq", "limit"):
+            getattr(query, method).return_value = query
+        query.execute.return_value = MagicMock(data={
+            "marketplace_installs": [install], "intelligence_outcome_events": [proof, proof, foreign, old, unverified],
+        }.get(name, []), count=0)
+        return query
+    client.table.side_effect = table
+    summary = marketplace_roi_summary(client, "org")
+    assert summary["totalVerifiedOutcomeEvents"] == 1
+    assert summary["totalRealizedHoursSaved"] == 0
+    assert summary["valueBasis"] == "estimate"
