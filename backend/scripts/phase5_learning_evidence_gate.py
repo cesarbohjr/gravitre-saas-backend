@@ -83,6 +83,8 @@ def main() -> int:
             "selectors": selectors,
         })
         print(dimension, results[-1]["status"], flush=True)
+        if results[-1]["status"] != "PASS_OFFLINE_PREREQUISITE":
+            print(f"--- {dimension} pytest failure diagnostics ---\n{stdout[-12000:]}\n--- end {dimension} ---", flush=True)
     report = {
         "schema": "gravitre.phase5.evidence_gate.v1",
         "github_sha": os.environ.get("GITHUB_SHA", "unknown"),
