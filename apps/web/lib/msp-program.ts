@@ -33,6 +33,7 @@ export interface WholesaleSetup {
   configured_tiers: MspPlanCode[]
   message: string | null
   prices?: Partial<Record<MspPlanCode, WholesalePrice | null>>
+  annual_prices?: Partial<Record<MspPlanCode, { annual_cents: number; monthly_cents: number; currency: string } | null>>
 }
 
 export interface MspPerson {
