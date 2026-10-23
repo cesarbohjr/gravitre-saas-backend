@@ -250,6 +250,12 @@ function PartnerClients({ overview, onOverviewChange }: { overview: MspOverview;
                 <option value="year">Annual (billed upfront)</option>
               </select>
             </label>
+            {wholesaleInterval === "year" ? (
+              <p className="gs-sub">Annual wholesale per client: {MSP_PLAN_OPTIONS.map(({ code, name }) => {
+                const quote = overview.wholesale.annual_prices?.[code]
+                return `${name}: ${quote ? formatCents(quote.annual_cents, quote.currency) : "Not configured"}`
+              }).join(" · ")}. Billed upfront.</p>
+            ) : null}
             <button type="button" className="gs-btn dark sm" disabled={busy} onClick={() => void startBilling()}>
               Start wholesale billing
             </button>
