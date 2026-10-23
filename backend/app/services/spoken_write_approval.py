@@ -298,10 +298,13 @@ def classify_spoken_write_approval(
     if not text:
         return _result("none", invoke_allowed=False, reason="empty_message", matched=False)
 
-    if _YES_WAIT_RE.match(text):
+    # A control clause remains authoritative when STT appends another sentence:
+    # "Yes, wait. Hold on." must hold the pending write, never become approval.
+    control_clause = re.split(r"(?<=[.!?])\s+", text, maxsplit=1)[0]
+    if _YES_WAIT_RE.match(text) or _YES_WAIT_RE.match(control_clause):
         return _result("hold_commit", invoke_allowed=False, reason="yes_wait_hold_commit", matched=True)
 
-    if DECLINE_PATTERN.match(text):
+    if DECLINE_PATTERN.match(text) or DECLINE_PATTERN.match(control_clause):
         return _result("reject", invoke_allowed=False, reason="spoken_reject", matched=bool(pending_target))
 
     if _AMBIGUOUS_RE.search(text) and re.match(r"(?i)^\s*(?:yes|yeah|yep|ok|okay|sure)\b", text):

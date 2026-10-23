@@ -127,6 +127,16 @@ _OKTA = build_vendor(
     ),
     v2=(
         action(
+            "okta", "users.suspend", "Suspend compromised Okta user",
+            tier="v2", kind="write", scope_suffix="users:manage", requires_approval=True,
+            api_reference="POST /api/v1/users/{user_id}/lifecycle/suspend",
+            input_schema={"type": "object", "properties": {
+                "user_id": {"type": "string", "minLength": 1},
+                "status": {"type": "string", "const": "SUSPENDED"},
+                "connector_id": {"type": "string"}},
+                "required": ["user_id", "status"], "additionalProperties": False},
+        ),
+        action(
             "okta",
             "groups.list",
             "List Okta groups for identity and access investigation",

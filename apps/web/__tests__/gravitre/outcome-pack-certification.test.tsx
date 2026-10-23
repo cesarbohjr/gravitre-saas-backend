@@ -52,3 +52,14 @@ it("production collection sends only mode and refreshes server status", async ()
   expect(state.apiFetch).toHaveBeenCalledWith(expect.any(String), expect.objectContaining({ body: JSON.stringify({ mode: "production" }) }))
   expect(state.mutate).toHaveBeenCalledOnce()
 })
+
+it("prepares an internal draft without sending configuration or production proof", async () => {
+  state.data = { publishReady: false, certification: null }
+  state.apiFetch.mockResolvedValue({ ok: true, json: async () => ({ operatingMode: "OBSERVE", installation: { workflowIds: ["workflow"] } }) })
+  await render()
+  await act(async () => { (Array.from(host.querySelectorAll("button")).find(b => b.textContent === "Prepare internal draft") as HTMLButtonElement).click() })
+  expect(state.apiFetch).toHaveBeenCalledWith("/api/marketplace/assets/pack%2Fname/certification/install", expect.objectContaining({ method: "POST", body: undefined }))
+  expect(host.textContent).toContain("OBSERVE")
+  expect(host.querySelector('a[href="/plays"]')).not.toBeNull()
+  expect(host.textContent).not.toContain("Production evidence verified for this configuration")
+})

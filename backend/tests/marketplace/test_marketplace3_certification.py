@@ -57,3 +57,15 @@ def test_production_requires_complete_independent_evidence_not_runtime_labels():
     assert report.publish_ready
     assert report.level == "production_verified"
     assert not certify_outcome_pack(config, production_evidence={"actions": list(actions), "passed": True}).publish_ready
+
+
+def test_actual_production_evidence_promotes_without_editing_runtime_status_tags():
+    from app.marketplace.marketplace3.production_evidence import ProductionEvidence, REQUIRED_CHECKS
+    config = _msp_config()
+    for profile in config.runtime_profiles:
+        profile.status = "tested"
+    actions = {action for profile in config.runtime_profiles for action in profile.actions}
+    evidence = ProductionEvidence("org", "pack", "digest", frozenset(actions), {key: True for key in REQUIRED_CHECKS})
+    report = certify_outcome_pack(config, resolved_skill_ids=set(config.skill_bindings.values()), production_evidence=evidence)
+    assert report.publish_ready
+    assert all(profile.status == "tested" for profile in config.runtime_profiles)

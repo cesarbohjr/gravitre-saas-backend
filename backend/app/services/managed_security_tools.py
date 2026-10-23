@@ -30,12 +30,13 @@ def _request(
     vendor: str,
     endpoint: str,
     query: dict[str, Any] | None = None,
+    method: str = "GET",
 ) -> tuple[str, Any]:
     cid, connection_id, integration_id = _managed_connector(ctx, vendor, params)
     try:
         response = proxy_request(
             ctx.settings,
-            method="GET",
+            method=method,
             endpoint=endpoint,
             connection_id=connection_id,
             integration_id=integration_id,
@@ -156,9 +157,23 @@ def _okta_user_factors_list(ctx: ToolContext, params: dict[str, Any]) -> Normali
     )
 
 
+def _okta_users_suspend(ctx: ToolContext, params: dict[str, Any]) -> NormalizedResult:
+    user_id = str(params.get("user_id") or "").strip()
+    if not user_id or params.get("status") != "SUSPENDED":
+        raise ToolValidationError("Containment requires an explicit user_id and SUSPENDED target status")
+    cid, _ = _request(ctx, params, vendor="okta", method="POST",
+        endpoint=f"/api/v1/users/{quote(user_id, safe='')}/lifecycle/suspend")
+    # A successful POST is acceptance only; the canonical field verifier reads
+    # users.get and independently requires status=SUSPENDED before completion.
+    return NormalizedResult(success=True, action="okta.users.suspend", connector_id=cid,
+        data={"id": user_id, "user_id": user_id, "accepted": True,
+              "summary": "Suspension request accepted; awaiting independent account-status verification."})
+
+
 MANAGED_SECURITY_TOOL_EXECUTORS = {
     "okta.system_logs.list": _okta_system_logs_list,
     "okta.users.get": _okta_users_get,
+    "okta.users.suspend": _okta_users_suspend,
     "okta.groups.list": _okta_groups_list,
     "okta.apps.list": _okta_apps_list,
     "okta.users.factors.list": _okta_user_factors_list,

@@ -6713,6 +6713,14 @@
       "base_url": null,
       "vendor_validated": false,
       "note": "Fixed read adapter via Nango; owner-account acceptance has not run."
+    },
+    "okta.users.suspend": {
+      "api_reference": "POST /api/v1/users/{user_id}/lifecycle/suspend",
+      "provenance": "manual_verified",
+      "source": "backend/app/services/managed_security_tools.py",
+      "base_url": null,
+      "vendor_validated": false,
+      "note": "Okta documented suspend lifecycle endpoint. Independent user status readback required; live tenant acceptance not asserted."
     }
   }
 }

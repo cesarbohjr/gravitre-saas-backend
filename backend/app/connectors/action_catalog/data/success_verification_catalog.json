@@ -1623,6 +1623,13 @@
       "mode": "follow_up_entity_get",
       "read_action": "zendesk.tickets.get",
       "reason": "Sibling GET must return the written entity id/field"
+    },
+    "okta.users.suspend": {
+      "mode": "follow_up_field_assert",
+      "read_action": "okta.users.get",
+      "assert_field": "status",
+      "request_field": "status",
+      "reason": "Independent user readback must show SUSPENDED; POST acceptance does not prove containment"
     }
   },
   "generated_by": "write_success_verification.generate_success_verification_catalog",

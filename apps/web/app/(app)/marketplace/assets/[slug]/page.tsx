@@ -1,5 +1,7 @@
 "use client"
 
+import { OutcomePackComposition } from "@/components/marketplace/outcome-pack-composition"
+
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react"
 import Link from "next/link"
 import { useParams, useRouter, useSearchParams } from "next/navigation"
@@ -550,6 +552,7 @@ function MarketplaceAssetDetailContent() {
 
               <div className="td-body">
                 <div className="td-main">
+                  {asset.assetType === "outcome_pack" ? <OutcomePackComposition config={asset.config} /> : null}
                   {hasWorkflow ? <HowItWorks steps={steps} /> : null}
 
                   {asset.packItems?.length ? (

@@ -1,0 +1,32 @@
+{
+  "schema": "gravitre.capability.v1",
+  "format": "gravitre",
+  "name": "Security Operations Skills",
+  "version": "1.0.0",
+  "description": "First-party guidance skills for the Gravitre Marketplace 3.0 Security Operations pack.",
+  "license": "MIT",
+  "skills": [
+    {
+      "name": "security-alert-triage"
+    },
+    {
+      "name": "incident-assessment"
+    },
+    {
+      "name": "identity-risk-analysis"
+    },
+    {
+      "name": "vulnerability-prioritization"
+    },
+    {
+      "name": "containment-planning"
+    },
+    {
+      "name": "incident-communications"
+    },
+    {
+      "name": "post-incident-review"
+    }
+  ],
+  "permissions": []
+}

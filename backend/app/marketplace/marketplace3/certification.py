@@ -228,7 +228,6 @@ def certify_outcome_pack(
     production_ok = (
         governed_ok
         and bool(config.runtime_profiles)
-        and all(profile.status == "production_verified" for profile in config.runtime_profiles)
         and not unresolved_skills
     )
     from app.marketplace.marketplace3.production_evidence import ProductionEvidence

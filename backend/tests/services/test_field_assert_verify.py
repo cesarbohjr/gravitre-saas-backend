@@ -157,3 +157,17 @@ def test_scheduler_dispatches_field_assert_actions():
 
     assert captured.get("invoke_action") == ACTION
     assert captured.get("request_params") == {"deal_id": "42", "stage": "closedwon"}
+
+
+def test_matching_field_on_a_different_entity_is_not_verification():
+    invoke = MagicMock(return_value=_result(True, {"deal": {"id": "foreign", "properties": {"dealstage": "closedwon"}}}))
+    out = _run(invoke, result_data={"id": "42"}, request_params={"deal_id": "42", "stage": "closedwon"})
+    assert out.verified is False
+    assert out.detail.startswith("entity_id_mismatch:")
+
+
+def test_matching_field_without_entity_attribution_stays_unverified():
+    invoke = MagicMock(return_value=_result(True, {"properties": {"dealstage": "closedwon"}}))
+    out = _run(invoke, result_data={"id": "42"}, request_params={"deal_id": "42", "stage": "closedwon"})
+    assert out.verified is False
+    assert out.detail == "entity_id_absent_from_read_back"

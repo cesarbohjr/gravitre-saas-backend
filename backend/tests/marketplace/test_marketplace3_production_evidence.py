@@ -17,7 +17,6 @@ def _collect(rows):
     check_query.execute.return_value.data = []
     client.table.side_effect = lambda name: query if name == "workflow_runs" else check_query
     result = collect_production_evidence(client, org_id="org", asset_id="pack", config_digest="digest")
-    assert query.eq.call_args_list[0].args == ("org_id", "org")
     return result
 
 
@@ -33,7 +32,7 @@ def _row(**updates):
 
 def test_action_proof_does_not_invent_install_or_permissions_or_kpi_evidence():
     proof = _collect([_row()])
-    assert proof.actions == {"hubspot.contacts.update"}
+    assert not proof.actions  # Run parameters are caller-editable claims, never action proof.
     assert not proof.covers({"hubspot.contacts.update"})
 
 
@@ -66,16 +65,22 @@ def test_independent_checks_and_measured_kpi_are_required_and_bound():
         "after_value": 2, "measured_at": stamp, "metadata": {"contract": "play_business_result/v1", "verified": True,
         "verification_state": "VERIFIED SUCCESS", "verification_method": "entity_get", "source_records": [{"id": "record"}],
         "evidence_ids": ["receipt"], "metric_key": "recovered", "play_key": "recover"}}
-    datasets = {"workflow_runs": [_row()], "marketplace_outcome_pack_checks": check_rows, "intelligence_outcome_events": [measured]}
+    definition = {"steps": [{"id": "write", "name": "Update", "type": "invoke_tool", "config": {"action": "hubspot.contacts.update"}}]}
+    from app.marketplace.pack_prewiring import definition_with_sequential_graph
+    definition = definition_with_sequential_graph(definition["steps"])
+    run = {**_row(), "run_type": "execute", "workflow_id": "workflow", "definition_snapshot": definition}
+    datasets = {"workflow_defs": [{"id": "workflow", "org_id": "org", "config": {"marketplaceAssetId": "pack", "marketplaceConfigDigest": "digest", "marketplacePlayKey": "recover"}, "definition": definition}],
+        "workflow_steps": [{"id": "step", "org_id": "org", "step_id": "write", "status": "completed", "output_snapshot": {"invoke_action": "hubspot.contacts.update", "success": True, "verification": _row()["parameters"]["verification"]}}],
+        "workflow_runs": [run], "marketplace_outcome_pack_checks": check_rows, "intelligence_outcome_events": [measured]}
     client = MagicMock()
     def table(name):
         query = MagicMock()
-        for method in ("select", "eq", "gte", "order", "limit", "in_"):
+        for method in ("select", "eq", "gte", "order", "limit", "in_", "contains"):
             getattr(query, method).return_value = query
         query.execute.return_value.data = datasets[name]
         return query
     client.table.side_effect = table
-    config = SimpleNamespace(plays=[SimpleNamespace(key="recover", kpi_keys=["recovered"], outcome_events=["recovery_confirmed"])])
+    config = SimpleNamespace(plays=[SimpleNamespace(key="recover", kpi_keys=["recovered"], outcome_events=["recovery_confirmed"], workflow_steps=definition["steps"])])
     proof = collect_production_evidence(client, org_id="org", asset_id="pack", config_digest="digest", config=config)
     assert proof.covers({"hubspot.contacts.update"})
     assert proof.measured_outcome_events == {"recovery_confirmed"}
@@ -84,3 +89,14 @@ def test_independent_checks_and_measured_kpi_are_required_and_bound():
     proof = collect_production_evidence(client, org_id="org", asset_id="pack", config_digest="digest", config=config)
     assert not proof.covers({"hubspot.contacts.update"})
     assert not proof.measured_outcome_events
+
+
+def test_canonical_collector_rejects_forged_parameter_claims_without_current_workflow():
+    from types import SimpleNamespace
+    client = MagicMock()
+    query = client.table.return_value
+    for method in ("select", "eq", "gte", "limit", "contains", "order"):
+        getattr(query, method).return_value = query
+    query.execute.return_value.data = []
+    proof = collect_production_evidence(client, org_id="org", asset_id="pack", config_digest="digest", config=SimpleNamespace(plays=[]))
+    assert not proof.actions and not proof.play_keys

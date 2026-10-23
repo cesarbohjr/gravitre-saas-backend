@@ -68,13 +68,15 @@ def test_certify_and_record_binds_report_to_exact_config_digest(mock_certify) ->
     client = MagicMock()
     config = build_msp_service_desk_outcome_pack_config()
     asset_table = _table(data=[{"id": ASSET_ID, "org_id": ORG_ID, "asset_type": "outcome_pack", "config": config}])
+    workflow_defs = _table()
+    workflow_defs.contains.return_value = workflow_defs
     workflow_table = _table()
     workflow_table.gte.return_value = workflow_table
     check_table = _table()
     check_table.gte.return_value = check_table
     check_table.order.return_value = check_table
     client.table.side_effect = lambda name: {"marketplace_assets": asset_table,
-        "workflow_runs": workflow_table, "marketplace_outcome_pack_checks": check_table, "marketplace_outcome_pack_certifications": table}[name]
+        "workflow_defs": workflow_defs, "workflow_runs": workflow_table, "marketplace_outcome_pack_checks": check_table, "marketplace_outcome_pack_certifications": table}[name]
 
     result = certify_and_record_outcome_pack(
         client,

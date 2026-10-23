@@ -14,7 +14,7 @@ def build() -> dict[str, Any]:
     # shared Play registry without inventing a second catalog or executor.
     for play in config["plays"]:
         actions = [step["config"]["action"] for step in play["workflow_steps"]
-                   if step.get("type") == "invoke_tool"]
+                   if step.get("type") == "invoke_tool" and step["config"]["action"] != "okta.users.suspend"]
         play["read_action_groups"] = [[action] for action in actions]
         play["required_connector_groups"] = [["okta"]]
     return {"marketplace": {"slug": "security-operations-3", "title": "Security Operations 3.0",

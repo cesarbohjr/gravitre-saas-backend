@@ -83,3 +83,8 @@ CI on implementation commit `2a3fba25` passed web tests/lint/types/build, depend
 
 - Full backend offline regression completed: **11,879 passed, 281 skipped**, 613.62 seconds; only the dedicated Redis integration file was excluded locally. Native PostgreSQL/Redis coverage is supplied by the CI gates above. This run includes the executor fix; later isolated UI/revocation/#514 changes have their separately recorded passing coverage.
 - Certification re-issuance explicitly refreshes `expires_at`; relying on the database INSERT default would leave an upserted expired certificate expired. The persistence regression verifies the renewed 30-day window.
+
+
+## Subsequent remaining-integration implementation
+
+[REMAINING_INTEGRATIONS_20261022.md](REMAINING_INTEGRATIONS_20261022.md) supersedes the earlier remaining-coding rows with the blueprint-to-draft/preparation flow, canonical scenario receipts, unique department/skill definitions, governed containment, catalog composition and shared background intelligence consumer. Live provider and physical voice checks remain explicitly NOT RUN until their named credentials/device requirements are available. Exact final-head regression evidence is recorded in PR #557.

@@ -12,6 +12,7 @@ import {
   GravitrePageHeader,
   GravitreSurface,
 } from "@/components/gravitre/nodus-product"
+import { OutcomePackBlueprints } from "@/components/marketplace/outcome-pack-blueprints"
 import { OutcomePackCertification } from "@/components/marketplace/outcome-pack-certification"
 import { AssetOutcomeEditor } from "@/components/marketplace/asset-outcome-editor"
 import {
@@ -486,6 +487,8 @@ export default function MarketplaceOrgAdminPage() {
         />
 
         <div className="mx-auto max-w-3xl space-y-8 px-[var(--np-page-pad-sm)] py-4 sm:px-[var(--np-page-pad)] sm:py-5">
+          <OutcomePackBlueprints onCreated={() => mutateDrafts()} />
+
           <section className="grid grid-cols-2 gap-[var(--np-kpi-gap)] sm:grid-cols-4">
             <GravitreMetric
               label="Drafts"

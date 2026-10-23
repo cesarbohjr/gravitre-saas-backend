@@ -28,6 +28,7 @@ _DATA_PATH = Path(__file__).resolve().parent / "data" / "action_retrieval_enrich
 # Historical 18-action pilot (G.5 Phase 4.2) — fallback / seed only.
 ACTION_RETRIEVAL_ENRICHMENT: dict[str, dict[str, Any]] = {
     'okta.system_logs.list': {'examples': ['List recent Okta system log events', 'Show Okta sign-in audit events', 'Retrieve Okta audit logs for identity investigation'], 'tags': ['okta', 'security', 'identity', 'audit', 'logs']},
+    'okta.users.suspend': {'examples': ['Suspend the approved compromised Okta account', 'Contain this identity by suspending the exact approved user', 'After explicit approval suspend this compromised identity and verify its stored status'], 'tags': ['okta', 'security', 'identity', 'containment', 'suspend', 'approval']},
     'okta.users.get': {'examples': ['Get the Okta user by ID', 'Show identity details for this Okta account', 'Look up an Okta account by user ID'], 'tags': ['okta', 'security', 'identity', 'users', 'get']},
     'okta.groups.list': {'examples': ['List Okta groups', 'Show identity groups for access review', 'Retrieve groups from the Okta directory'], 'tags': ['okta', 'security', 'identity', 'groups', 'list']},
     'okta.apps.list': {'examples': ['List Okta applications', 'Show apps in the identity directory', 'Retrieve applications configured in Okta'], 'tags': ['okta', 'security', 'identity', 'applications', 'list']},

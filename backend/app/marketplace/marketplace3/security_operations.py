@@ -52,7 +52,7 @@ def _agent_step(step_id: str, name: str, agent_seed: str, task: str) -> dict[str
         "id": step_id,
         "name": name,
         "type": "agent",
-        "metadata": {"agent_seed": agent_seed, "task": task},
+        "metadata": {"agent_seed": agent_seed, "task": task, "briefing_from_steps": True},
     }
 
 
@@ -207,6 +207,16 @@ def build_security_operations_outcome_pack_config() -> dict[str, Any]:
         ),
     ]
 
+    containment = next(play for play in plays if play["key"] == "containment-coordinator")
+    containment["runtime_inputs"] = ["target_user_id"]
+    containment["workflow_steps"].extend([
+        {"id": "containment-approval", "name": "Approve exact target account suspension", "type": "approval",
+         "config": {"required_approvals": 1, "reason": "Suspend the explicitly selected compromised account"}},
+        _okta_step("containment-suspend", "Suspend approved compromised account", "okta.users.suspend",
+            param_sources={"user_id": "$target_user_id", "status": "SUSPENDED"}),
+    ])
+    containment["write_actions"] = [{"action": "okta.users.suspend", "approval": "always"}]
+
     return {
         "marketplace_version": "3.0",
         "outcome_contract": {
@@ -306,7 +316,7 @@ def build_security_operations_outcome_pack_config() -> dict[str, Any]:
             {
                 "provider": "okta",
                 "status": "tested",
-                "actions": ["okta.system_logs.list", "okta.users.get"],
+                "actions": ["okta.system_logs.list", "okta.users.get", "okta.users.suspend"],
             }
         ],
         "connector_alternatives": [
