@@ -30,7 +30,7 @@ DEFAULT_PLANS: dict[str, dict[str, Any]] = {
     "node": {
         "code": "node",
         "name": "Node",
-        "price_usd": 59,
+        "price_usd": 79,
         "agents_limit": 1,
         "workflows_limit": 10,
         "environments_limit": 1,
@@ -56,7 +56,7 @@ DEFAULT_PLANS: dict[str, dict[str, Any]] = {
     "control": {
         "code": "control",
         "name": "Control",
-        "price_usd": 149,
+        "price_usd": 249,
         "agents_limit": 3,
         "workflows_limit": 40,
         "environments_limit": 2,
@@ -84,7 +84,7 @@ DEFAULT_PLANS: dict[str, dict[str, Any]] = {
     "command": {
         "code": "command",
         "name": "Command",
-        "price_usd": 349,
+        "price_usd": 599,
         "agents_limit": 8,
         "workflows_limit": 120,
         "environments_limit": 5,
