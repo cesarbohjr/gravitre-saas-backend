@@ -95,8 +95,9 @@ def report_voice_minutes_overage_to_stripe(
             or []
         )
     except Exception as exc:  # noqa: BLE001
-        logger.warning("voice minutes usage query failed org_id=%s error=%s", org_id, str(exc))
-        rows = []
+        logger.error("voice minutes usage query failed org_id=%s error=%s", org_id, type(exc).__name__)
+        result["error"] = "usage_query_failed"
+        return result
     row_ids = [r["id"] for r in rows if r.get("id")]
     total_minutes = sum(int(r.get("quantity") or 0) for r in rows)
     result["unreported_rows"] = len(row_ids)
