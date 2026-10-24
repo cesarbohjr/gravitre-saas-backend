@@ -55,10 +55,8 @@ def is_webhook_event_processed(client: Client, stripe_event_id: str) -> bool:
         return bool(result.data)
     except Exception as exc:
         if _is_missing_table_error(exc):
-            logger.error(
-                "stripe_webhook_events table missing; idempotency disabled until migration is applied"
-            )
-            return False
+            logger.error("stripe_webhook_events table missing; refusing unprotected webhook processing")
+            raise RuntimeError("Stripe webhook idempotency storage unavailable") from exc
         raise
 
 
@@ -82,10 +80,8 @@ def claim_webhook_event(
         if "duplicate key" in str(exc).lower() or "23505" in str(exc):
             return False
         if _is_missing_table_error(exc):
-            logger.error(
-                "stripe_webhook_events table missing; processing webhook without idempotency claim"
-            )
-            return True
+            logger.error("stripe_webhook_events table missing; refusing unprotected webhook processing")
+            raise RuntimeError("Stripe webhook idempotency storage unavailable") from exc
         raise
 
 
