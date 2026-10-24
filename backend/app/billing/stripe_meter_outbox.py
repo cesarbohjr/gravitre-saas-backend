@@ -53,6 +53,8 @@ def _verified_active_meter_customer(client: Any, org_id: str, settings: Settings
         return None, "stripe_subscription_verification_failed"
     # The local ledger must agree with Stripe before billing usage. A remote
     # trial/cancellation is not evidence that the local active entitlement is current.
+    if remote.get("status") not in {"active", "trialing"}:
+        return None, "stripe_subscription_not_active"
     if remote.get("status") != local["status"]:
         return None, "stripe_subscription_status_mismatch"
     remote_customer = remote.get("customer")
