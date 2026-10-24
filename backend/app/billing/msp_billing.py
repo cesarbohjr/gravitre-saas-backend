@@ -60,9 +60,10 @@ def wholesale_price_ids(settings: Settings, interval: str = "month") -> dict[str
 def tier_for_wholesale_price(settings: Settings, price_id: str | None) -> str | None:
     if not price_id:
         return None
-    for tier, configured in wholesale_price_ids(settings).items():
-        if configured and configured == price_id:
-            return tier
+    for interval in ("month", "year"):
+        for tier, configured in wholesale_price_ids(settings, interval).items():
+            if configured and configured == price_id:
+                return tier
     return None
 
 
