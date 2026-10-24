@@ -48,3 +48,20 @@ def test_annual_checkout_only_uses_annual_price_objects():
     line_items = checkout.call_args.kwargs["line_items"]
     assert line_items == [{"price": "price_year_node", "quantity": 2}, {"price": "price_year_control", "quantity": 1}]
     assert checkout.call_args.kwargs["metadata"]["wholesale_interval"] == "year"
+
+
+@pytest.mark.parametrize(
+    ("price_id", "expected"),
+    [
+        ("price_month_node", "node"),
+        ("price_month_control", "control"),
+        ("price_month_command", "command"),
+        ("price_year_node", "node"),
+        ("price_year_control", "control"),
+        ("price_year_command", "command"),
+        ("price_unknown", None),
+        ("", None),
+    ],
+)
+def test_wholesale_price_tier_recognizes_both_billing_intervals(price_id, expected):
+    assert msp_billing.tier_for_wholesale_price(_settings(), price_id) == expected
