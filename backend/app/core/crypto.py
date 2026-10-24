@@ -12,7 +12,7 @@ def _load_key(key: str) -> bytes:
     if not raw:
         raise ValueError("ENCRYPTION_KEY is required")
     try:
-        decoded = base64.b64decode(raw)
+        decoded = base64.b64decode(raw, validate=True)
         if len(decoded) == 32:
             return decoded
     except Exception:
@@ -30,7 +30,9 @@ def encrypt_value(plaintext: str, key: str) -> str:
 
 
 def decrypt_value(ciphertext: str, key: str) -> str:
-    raw = base64.b64decode(ciphertext)
+    raw = base64.b64decode(ciphertext, validate=True)
+    if len(raw) < 28:  # 12-byte GCM nonce + 16-byte authentication tag
+        raise ValueError("Invalid AES-256-GCM ciphertext length")
     nonce = raw[:12]
     data = raw[12:]
     aes = AESGCM(_load_key(key))
