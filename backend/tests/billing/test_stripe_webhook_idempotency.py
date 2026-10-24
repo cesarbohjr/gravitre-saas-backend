@@ -154,3 +154,107 @@ async def test_billing_webhook_route_delegates_to_canonical_handler(monkeypatch)
     result = await billing_router.handle_webhook(request, settings)
     assert called["value"] is True
     assert result == {"received": True}
+
+
+class _MissingIdempotencyTableClient:
+    def table(self, _name: str):
+        raise Exception(
+            'Could not find the table "public.stripe_webhook_events" in the schema cache'
+        )
+
+
+def test_missing_idempotency_table_fails_closed_before_lookup():
+    client = _MissingIdempotencyTableClient()
+    with pytest.raises(RuntimeError, match="idempotency storage unavailable"):
+        is_webhook_event_processed(client, "evt_missing")
+
+
+def test_missing_idempotency_table_fails_closed_before_claim():
+    client = _MissingIdempotencyTableClient()
+    with pytest.raises(RuntimeError, match="idempotency storage unavailable"):
+        claim_webhook_event(client, "evt_missing", "invoice.payment_succeeded", "org-1")
+
+
+@pytest.mark.asyncio
+async def test_missing_idempotency_storage_returns_retryable_503(monkeypatch):
+    from fastapi import HTTPException
+    from app.routers.webhooks import stripe as stripe_webhook_router
+
+    settings = MagicMock()
+    settings.stripe_webhook_secret = "whsec_test"
+    event = {
+        "id": "evt_missing_route",
+        "type": "invoice.payment_succeeded",
+        "data": {"object": {"metadata": {"org_id": "org-1"}}},
+    }
+    request = MagicMock()
+    async def _body():
+        return b"{}"
+    request.body = _body
+    request.headers = {"stripe-signature": "sig"}
+    monkeypatch.setattr(stripe_webhook_router, "verify_webhook", lambda *_args, **_kwargs: event)
+    monkeypatch.setattr(stripe_webhook_router, "shared_service_client", lambda *_args, **_kwargs: _MissingIdempotencyTableClient())
+    with pytest.raises(HTTPException) as caught:
+        await stripe_webhook_router.stripe_webhook(request, settings)
+    assert caught.value.status_code == 503
+
+
+@pytest.mark.asyncio
+async def test_duplicate_delivery_acknowledged_after_success(monkeypatch):
+    from app.routers.webhooks import stripe as stripe_webhook_router
+
+    client = FakeClient()
+    event = {
+        "id": "evt_duplicate_route",
+        "type": "invoice.payment_succeeded",
+        "data": {"object": {"metadata": {"org_id": "org-1"}}},
+    }
+    settings = MagicMock()
+    settings.stripe_webhook_secret = "whsec_test"
+    request = MagicMock()
+    async def _body():
+        return b"{}"
+    request.body = _body
+    request.headers = {"stripe-signature": "sig"}
+    called = {"count": 0}
+    def process(*_args, **_kwargs):
+        called["count"] += 1
+    monkeypatch.setattr(stripe_webhook_router, "verify_webhook", lambda *_args, **_kwargs: event)
+    monkeypatch.setattr(stripe_webhook_router, "shared_service_client", lambda *_args, **_kwargs: client)
+    monkeypatch.setattr(stripe_webhook_router, "_process_stripe_event", process)
+    assert await stripe_webhook_router.stripe_webhook(request, settings) == {"received": True}
+    assert await stripe_webhook_router.stripe_webhook(request, settings) == {"status": "already_processed", "received": True}
+    assert called["count"] == 1
+
+
+@pytest.mark.asyncio
+async def test_webhook_retries_after_storage_recovers(monkeypatch):
+    from fastapi import HTTPException
+    from app.routers.webhooks import stripe as router
+
+    healthy_client = FakeClient()
+    clients = [_MissingIdempotencyTableClient(), healthy_client]
+    event = {
+        "id": "evt_recovered_route",
+        "type": "invoice.payment_succeeded",
+        "data": {"object": {"metadata": {"org_id": "org-1"}}},
+    }
+    settings = MagicMock()
+    settings.stripe_webhook_secret = "whsec_test"
+    request = MagicMock()
+    async def _body():
+        return b"{}"
+    request.body = _body
+    request.headers = {"stripe-signature": "sig"}
+    calls = {"count": 0}
+    def process(*_args, **_kwargs):
+        calls["count"] += 1
+    monkeypatch.setattr(router, "verify_webhook", lambda *_args, **_kwargs: event)
+    monkeypatch.setattr(router, "shared_service_client", lambda *_args, **_kwargs: clients.pop(0) if clients else healthy_client)
+    monkeypatch.setattr(router, "_process_stripe_event", process)
+    with pytest.raises(HTTPException) as caught:
+        await router.stripe_webhook(request, settings)
+    assert caught.value.status_code == 503
+    assert await router.stripe_webhook(request, settings) == {"received": True}
+    assert await router.stripe_webhook(request, settings) == {"status": "already_processed", "received": True}
+    assert calls["count"] == 1

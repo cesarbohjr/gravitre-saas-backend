@@ -617,16 +617,23 @@ async def stripe_webhook(
 
     client = shared_service_client(settings, create_client)
 
-    if is_webhook_event_processed(client, stripe_event_id):
-        logger.info("Skipping duplicate Stripe webhook event %s", stripe_event_id)
-        return {"status": "already_processed", "received": True}
+    try:
+        if is_webhook_event_processed(client, stripe_event_id):
+            logger.info("Skipping duplicate Stripe webhook event %s", stripe_event_id)
+            return {"status": "already_processed", "received": True}
 
-    if not claim_webhook_event(client, stripe_event_id, event_type, org_id):
-        logger.info(
-            "Skipping duplicate Stripe webhook event %s (concurrent claim)",
-            stripe_event_id,
-        )
-        return {"status": "already_processed", "received": True}
+        if not claim_webhook_event(client, stripe_event_id, event_type, org_id):
+            logger.info(
+                "Skipping duplicate Stripe webhook event %s (concurrent claim)",
+                stripe_event_id,
+            )
+            return {"status": "already_processed", "received": True}
+    except Exception as exc:
+        logger.exception("Stripe webhook idempotency storage unavailable for %s", stripe_event_id)
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Stripe webhook processing temporarily unavailable",
+        ) from exc
 
     try:
         _process_stripe_event(
