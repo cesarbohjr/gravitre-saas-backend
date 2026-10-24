@@ -293,7 +293,7 @@ PR boundaries may be adjusted to minimize conflicts. Never merge a broad consoli
 
 ---
 
-## Additional mandatory workstream — Stripe Billing, MSP Wholesale, Metered Voice Usage and Compliance E2E
+## Additional mandatory workstream — Stripe Billing, MSP Wholesale, Metered Voice Usage, AES-256 and Compliance E2E
 
 **Release gate:** This workstream is required for Phase 4 remediation, Phase 5 governed execution and Phase 6 production acceptance. It is a specification, **not evidence that billing or compliance controls already exist**. Do not enable live charges, customer-facing pricing changes, or production migrations without separate review and approval.
 
@@ -349,7 +349,7 @@ PR boundaries may be adjusted to minimize conflicts. Never merge a broad consoli
 - [ ] **SOC 2:** map Security and any applicable Availability, Confidentiality, Processing Integrity and Privacy Trust Services Criteria to control owners and evidence: access reviews, change management, incident response, vendor risk, logging, backups, disaster recovery, vulnerability management, secure SDLC, encryption and periodic testing. A SOC 2 report requires an independent CPA examination; CI alone cannot certify it.
 - [ ] **HIPAA (US):** first determine whether Gravitree handles electronic protected health information as a covered entity or business associate; if in scope, document BAAs (including applicable subprocessors), minimum necessary access, administrative/physical/technical safeguards, audit controls, breach procedures, retention and secure deletion. Test PHI exclusion from Stripe metadata, logs, analytics, voice traces and third-party providers unless explicitly authorized and contracted.
 - [ ] **PCI DSS:** prefer Stripe-hosted Checkout/payment components and tokenization to minimize cardholder-data scope. Verify no PAN/CVV in Gravitree services, logs, databases, voice transcripts or analytics. Document applicable SAQ/scope, access controls, network/security testing, key management and Stripe shared-responsibility boundaries; using Stripe does not automatically establish PCI compliance.
-- [ ] **“AE2” clarification required:** the requested term is not sufficiently specific to map responsibly to a standard. Confirm whether this means **SOC 2 Type II**, **AICPA AT-C Section 205 / SSAE 18**, or another framework before creating controls or claiming compliance. Track as an open requirements decision, not as a passed gate.
+- [ ] **AES-256 encryption:** require AES-256 (prefer authenticated encryption such as AES-256-GCM) for applicable sensitive data at rest in databases, object storage, backups and encrypted exports, with documented exceptions for managed services. Require TLS 1.2+ (prefer TLS 1.3) for data in transit; TLS cipher negotiation is separate from at-rest AES-256. Inventory encryption coverage for tenant data, conversations, audio/transcripts, Stripe-related records, credentials and audit artifacts. Use managed KMS/HSM or equivalent, envelope encryption, key separation, least-privilege access, rotation, revocation, backup/recovery and documented key ownership. Never store plaintext secrets or card verification values. Verify actual provider/storage settings rather than assuming encryption is enabled.
 - [ ] Maintain a control-to-test-to-evidence matrix with owner, scope, applicability, last-tested date, exceptions, remediation and external auditor artifacts; redact sensitive customer and financial data.
 
 ### Required billing/security E2E scenario matrix
@@ -376,6 +376,10 @@ PR boundaries may be adjusted to minimize conflicts. Never merge a broad consoli
 | BILL-18 | PHI/PAN/CVV injection into conversation, logs and metadata | Sensitive data excluded/redacted; no unauthorized provider propagation |
 | BILL-19 | Incident, backup/restore and audit evidence retrieval | Documented recovery, tamper-evident logs and control evidence |
 | BILL-20 | Full MSP client journey | Provision → subscribe → use minutes → run governed Play/Workflow → invoice → reconcile → offboard |
+| SEC-01 | AES-256 at-rest coverage | Verify encrypted database/storage/backup/export settings and authenticated encryption where applicable |
+| SEC-02 | Key management and rotation | Verify KMS permissions, key rotation/revocation, envelope encryption and recovery without cross-tenant key access |
+| SEC-03 | Encryption in transit | Verify TLS configuration, certificate validation, rejection of plaintext and insecure downgrade attempts |
+| SEC-04 | Secrets and sensitive data exposure | Verify no plaintext keys, PHI, PAN or voice content leaks through logs, traces, CI artifacts or billing metadata |
 
 ### Test environments, implementation and release gates
 
@@ -394,7 +398,7 @@ PR boundaries may be adjusted to minimize conflicts. Never merge a broad consoli
 - [ ] Metered minutes reconcile across raw sessions, ledger, Stripe and invoices with zero unexplained duplicate charges.
 - [ ] MSP wholesale and client boundaries are verified across UI, APIs, background jobs, data access and billing.
 - [ ] Unauthorized billing mutations and cross-tenant access are blocked; voice and text share approval/write gates.
-- [ ] SOC 2, HIPAA and PCI DSS applicability and controls are mapped with evidence; “AE2” is resolved as a requirement.
+- [ ] SOC 2, HIPAA and PCI DSS applicability and controls are mapped with evidence; AES-256 at-rest encryption, TLS in transit, key management and related security tests have verified evidence.
 - [ ] No unresolved critical/high security or financial-integrity defects remain; audit evidence is redacted.
 - [ ] Release owner signs off on test results, legal/compliance scope and any live-billing enablement.
 
