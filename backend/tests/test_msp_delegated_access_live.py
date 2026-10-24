@@ -88,3 +88,44 @@ def test_expired_and_storage_failure_deny():
     class Failed:
         def table(self, *_): raise RuntimeError("database unavailable")
     assert not _check(Failed())
+
+
+class UnfilteredClient:
+    """Simulates a broken PostgREST/query adapter returning unrelated rows."""
+    def __init__(self, rows):
+        self.rows = rows
+    def table(self, name):
+        assert name == "msp_delegations"
+        return self
+    def select(self, *_): return self
+    def eq(self, *_): return self
+    def is_(self, *_): return self
+    def gt(self, *_): return self
+    def execute(self): return SimpleNamespace(data=self.rows)
+
+
+def test_unfiltered_database_response_never_grants_cross_tenant_access():
+    rows = [_grant(customer="customer-b"), _grant()]
+    with patch("app.services.msp_delegated_access.delegation_preflight", return_value=True) as check:
+        assert not _check(UnfilteredClient(rows[:1]))
+        assert _check(UnfilteredClient(rows))
+        assert check.call_count == 1
+
+
+def test_unfiltered_database_response_rejects_expired_revoked_and_wrong_user():
+    expired = _grant(hours=-1)
+    revoked = _grant()
+    revoked["revoked_at"] = datetime.now(timezone.utc).isoformat()
+    wrong_user = _grant()
+    wrong_user["grantee_user_id"] = "other-provider-user"
+    with patch("app.services.msp_delegated_access.delegation_preflight", return_value=True) as check:
+        assert not _check(UnfilteredClient([expired, revoked, wrong_user]))
+        check.assert_not_called()
+
+
+def test_unfiltered_database_response_rejects_naive_expiry():
+    row = _grant()
+    row["expires_at"] = (datetime.now() + timedelta(hours=1)).isoformat()
+    with patch("app.services.msp_delegated_access.delegation_preflight", return_value=True) as check:
+        assert not _check(UnfilteredClient([row]))
+        check.assert_not_called()
