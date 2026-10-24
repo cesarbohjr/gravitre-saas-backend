@@ -28,7 +28,7 @@ class _Client:
     [
         ("active", "cus_one", None),
         ("trialing", "cus_one", "stripe_subscription_status_mismatch"),
-        ("canceled", "cus_one", "stripe_subscription_status_mismatch"),
+        ("canceled", "cus_one", "stripe_subscription_not_active"),
         ("active", "cus_other", "stripe_subscription_customer_mismatch"),
         ("active", {"id": "cus_one"}, None),
     ],
