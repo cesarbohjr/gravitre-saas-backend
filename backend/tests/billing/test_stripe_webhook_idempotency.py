@@ -154,3 +154,22 @@ async def test_billing_webhook_route_delegates_to_canonical_handler(monkeypatch)
     result = await billing_router.handle_webhook(request, settings)
     assert called["value"] is True
     assert result == {"received": True}
+
+
+class _MissingIdempotencyTableClient:
+    def table(self, _name: str):
+        raise Exception(
+            'Could not find the table "public.stripe_webhook_events" in the schema cache'
+        )
+
+
+def test_missing_idempotency_table_fails_closed_before_lookup():
+    client = _MissingIdempotencyTableClient()
+    with pytest.raises(RuntimeError, match="idempotency storage unavailable"):
+        is_webhook_event_processed(client, "evt_missing")
+
+
+def test_missing_idempotency_table_fails_closed_before_claim():
+    client = _MissingIdempotencyTableClient()
+    with pytest.raises(RuntimeError, match="idempotency storage unavailable"):
+        claim_webhook_event(client, "evt_missing", "invoice.payment_succeeded", "org-1")
