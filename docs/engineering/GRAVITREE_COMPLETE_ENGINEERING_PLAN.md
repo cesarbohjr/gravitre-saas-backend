@@ -290,3 +290,112 @@ PR boundaries may be adjusted to minimize conflicts. Never merge a broad consoli
 - [ ] Final redacted evidence report records passes, failures, blockers, remaining gaps and an explicit release decision.
 
 **A passing test suite is necessary but insufficient. The release is complete only when the end-to-end product behaviour is demonstrated with appropriate live evidence and no release-blocking safety or reliability defects.**
+
+---
+
+## Additional mandatory workstream — Stripe Billing, MSP Wholesale, Metered Voice Usage and Compliance E2E
+
+**Release gate:** This workstream is required for Phase 4 remediation, Phase 5 governed execution and Phase 6 production acceptance. It is a specification, **not evidence that billing or compliance controls already exist**. Do not enable live charges, customer-facing pricing changes, or production migrations without separate review and approval.
+
+### Billing architecture and source-of-truth audit
+
+- [ ] Inventory Stripe Products, Prices, subscription schedules, Checkout, Billing Portal, invoices, credits, coupons, promotion codes, taxes, trials, proration, dunning and payment methods; map each to backend handlers, frontend screens, database tables and tenant entitlements.
+- [ ] Determine which entity is merchant of record for direct SMB subscriptions and for MSP-resold clients. Explicitly document whether the MSP is billed wholesale while independently billing its own clients, or whether Stripe Connect is required. **Do not assume Stripe Connect or a particular tax/merchant arrangement is already configured.**
+- [ ] Use Stripe's subscription/invoice/payment records as the authoritative billing ledger and a reconciled internal entitlement projection for access. Define event ordering, retries, idempotency, backfills and failure reconciliation.
+- [ ] Validate Stripe signature verification against raw webhook bodies; rotate secrets, constrain event types, prevent replay, deduplicate event IDs and recover from out-of-order delivery.
+- [ ] Audit production/test mode separation, key custody, least-privilege API keys, price ID mappings, and feature flags.
+
+### Subscription plans and entitlements
+
+- [ ] Test new subscription via Checkout, paid activation, pending/failed payment, SCA/3DS, trial start/end, renewal, plan upgrade/downgrade, proration, cancellation at period end, immediate cancellation, reactivation and subscription pause (where supported).
+- [ ] Test monthly and annual pricing, add-ons, promotional discounts, coupons, credit notes, refunds, taxes, invoice adjustments and failed-payment recovery. Assert the invoice and entitlement state after each transition.
+- [ ] Enforce plan-level entitlements for seats, agents, workflows, Plays, connectors, usage allowances, concurrency and voice minutes without trusting frontend claims.
+- [ ] Test grace periods and read-only/fail-closed behaviour during delinquency; never silently continue billable execution beyond approved caps.
+- [ ] Verify changes made in the Stripe Billing Portal synchronize correctly and cannot cross tenant boundaries.
+
+### Minute metering and usage reconciliation
+
+- [ ] Define the billable unit precisely (for example, voice session connected seconds rounded according to the approved plan). Distinguish STT, TTS, real-time voice-to-voice, silence, paused sessions, retries and provider-reported usage; do **not** charge for text interactions as minutes unless the plan explicitly defines it.
+- [ ] Specify whether minute allowances are pooled per organization, per client tenant or per seat, and how MSP wholesale allotments differ from retail client allotments.
+- [ ] Instrument authoritative server-side session start/end, duration, model/provider, customer/tenant/MSP, correlation ID, unit, UTC event time, billing period and price version. Avoid PHI/PCI data in meter payloads.
+- [ ] Emit each billable event once with a stable idempotency key; validate delayed events, partial sessions, disconnects, concurrent calls, time-zone boundaries, billing-period cutovers and usage corrections.
+- [ ] Reconcile raw sessions → internal usage ledger → Stripe meter events/usage records → invoice line items → customer-facing dashboards. Test credits and disputes without modifying historical raw usage.
+- [ ] Test included-minute depletion, thresholds, overage rates, hard caps, prepaid credits if applicable, notifications and administrative overrides with audit trails.
+- [ ] Prove no double billing after webhook replay, worker retries, failed network requests or session reconnects; verify exact expected totals and currency precision.
+
+### MSP wholesale and client billing
+
+- [ ] Model MSP parent organization, reseller agreement, client sub-tenants, delegated administrators, direct customers and billing accounts as distinct identities.
+- [ ] Define wholesale rate cards, markup/margin, minimum commitments, client-specific plan overrides, pooled versus dedicated minutes, invoice aggregation and wholesale discounts with effective dates and immutable price snapshots.
+- [ ] Verify that MSPs can provision client tenants, assign plans, view permitted client consumption, manage delegated billing permissions and receive accurate consolidated wholesale invoices.
+- [ ] Verify whether MSP client retail billing is external to Gravitree or explicitly implemented via approved Stripe accounts/Connect flows; never imply the platform collects funds on behalf of MSPs without verified implementation.
+- [ ] Exercise client transfer between MSPs, suspension, cancellation, MSP termination and offboarding. Historical invoices and usage must remain correctly attributed; access must be revoked without deleting required financial records.
+- [ ] Validate no cross-client visibility of prices, payment methods, invoices, discounts, usage, API keys, conversations, agents, Plays, Workflows, model context or connector credentials.
+
+### Tenant isolation, governance and authorization
+
+- [ ] Construct a permission matrix for platform owner, MSP owner/admin/billing admin/technician, client owner/admin/billing viewer, end user and service identity; apply least privilege at API, service, job and database levels.
+- [ ] Test object-level authorization (BOLA/IDOR), organization and client scope, RLS, signed session claims, impersonation/delegation, cross-tenant search, exports, caches, background jobs and webhook processing.
+- [ ] Assert that a client cannot alter its Stripe customer/subscription IDs, wholesale pricing, plan entitlements or usage ledger through request parameters.
+- [ ] Require explicit approval for high-impact billing changes, rate-card modifications, refunds, credits and tenant reassignment; record actor, reason, before/after, timestamp and immutable audit reference.
+- [ ] Enforce separation of duties for sensitive pricing and payout operations where required; test denied, expired and revoked permissions.
+- [ ] Test secure webhook handling, SSRF/input validation, secrets redaction, encryption in transit/at rest, backup/restore and incident alerting.
+- [ ] Integrate billing authorization with the existing canonical governance/write gate; voice commands must not bypass billing approvals.
+
+### Compliance control mapping — SOC 2, HIPAA, PCI DSS and “AE2”
+
+**These are compliance-readiness validation requirements, not a certification claim.** Applicable legal obligations and audit scope require review by qualified security/compliance counsel and independent assessors.
+
+- [ ] **SOC 2:** map Security and any applicable Availability, Confidentiality, Processing Integrity and Privacy Trust Services Criteria to control owners and evidence: access reviews, change management, incident response, vendor risk, logging, backups, disaster recovery, vulnerability management, secure SDLC, encryption and periodic testing. A SOC 2 report requires an independent CPA examination; CI alone cannot certify it.
+- [ ] **HIPAA (US):** first determine whether Gravitree handles electronic protected health information as a covered entity or business associate; if in scope, document BAAs (including applicable subprocessors), minimum necessary access, administrative/physical/technical safeguards, audit controls, breach procedures, retention and secure deletion. Test PHI exclusion from Stripe metadata, logs, analytics, voice traces and third-party providers unless explicitly authorized and contracted.
+- [ ] **PCI DSS:** prefer Stripe-hosted Checkout/payment components and tokenization to minimize cardholder-data scope. Verify no PAN/CVV in Gravitree services, logs, databases, voice transcripts or analytics. Document applicable SAQ/scope, access controls, network/security testing, key management and Stripe shared-responsibility boundaries; using Stripe does not automatically establish PCI compliance.
+- [ ] **“AE2” clarification required:** the requested term is not sufficiently specific to map responsibly to a standard. Confirm whether this means **SOC 2 Type II**, **AICPA AT-C Section 205 / SSAE 18**, or another framework before creating controls or claiming compliance. Track as an open requirements decision, not as a passed gate.
+- [ ] Maintain a control-to-test-to-evidence matrix with owner, scope, applicability, last-tested date, exceptions, remediation and external auditor artifacts; redact sensitive customer and financial data.
+
+### Required billing/security E2E scenario matrix
+
+| ID | Scenario | Required observable result |
+|---|---|---|
+| BILL-01 | New direct SMB subscription and successful payment | Correct Stripe subscription, tenant entitlements, invoice and audit trail |
+| BILL-02 | Failed payment / 3DS / retry / recovery | Correct state transitions; no premature paid entitlement |
+| BILL-03 | Upgrade, downgrade, renewal and proration | Exact expected amounts, period and feature transitions |
+| BILL-04 | Trial, coupon, promotional discount and expiration | Correct eligibility, price, invoice and expiry |
+| BILL-05 | Cancel, refund, credit note and reactivation | Correct Stripe/internal reconciliation and permissions |
+| BILL-06 | Voice minutes under allowance | Accurate server-side duration and remaining balance |
+| BILL-07 | Overage, threshold, cap and billing-period boundary | Accurate rate and approved block/notification policy |
+| BILL-08 | Concurrent calls, disconnect, replay and retry | No duplicate metering or double billing |
+| BILL-09 | Usage ledger → Stripe → invoice → UI | Line-item totals reconcile with source events |
+| BILL-10 | MSP wholesale provisioning and client retail mapping | Correct wholesale pricing, client attribution and approved reseller model |
+| BILL-11 | MSP pooled versus dedicated minutes | Correct client usage isolation and parent allocation |
+| BILL-12 | MSP invoice aggregation and discounts | Exact wholesale totals; no client leakage |
+| BILL-13 | Client reassignment, offboarding and MSP suspension | Revoked access, correct financial attribution and preserved records |
+| BILL-14 | Cross-tenant invoice/usage/price/API access attempts | Denied at API and database layers with audit evidence |
+| BILL-15 | Billing role privilege escalation and delegated access | Least privilege and separation of duties enforced |
+| BILL-16 | Webhook signature failure, replay and out-of-order delivery | Rejected/deduplicated/reconciled without corrupting state |
+| BILL-17 | Voice-requested plan change or refund | Same approval and write gates as text; interruption prevents write |
+| BILL-18 | PHI/PAN/CVV injection into conversation, logs and metadata | Sensitive data excluded/redacted; no unauthorized provider propagation |
+| BILL-19 | Incident, backup/restore and audit evidence retrieval | Documented recovery, tamper-evident logs and control evidence |
+| BILL-20 | Full MSP client journey | Provision → subscribe → use minutes → run governed Play/Workflow → invoice → reconcile → offboard |
+
+### Test environments, implementation and release gates
+
+1. Audit existing billing schemas, Stripe integration, metering workers, MSP models, permissions and compliance documentation **before** changing code. Identify duplicate systems and missing coverage.
+2. Build deterministic contract/unit tests using Stripe fixtures and a fake clock; add isolated integration tests with Stripe test mode/test clocks and webhook fixtures.
+3. Use disposable test tenants and separate MSP/client identities; verify both allowed and denied cross-tenant operations, including direct SQL/RLS checks where feasible.
+4. Test real voice sessions for billable duration only after approved provider-cost limits and safe test accounts are configured. Separate simulated usage from actual provider minutes.
+5. Run controlled E2E Play/Workflow and billing interactions through the canonical intelligence and authorization paths; record complete traces and independent readbacks.
+6. Add CI gates for deterministic billing, security and tenant isolation; reserve live Stripe/provider tests for appropriately credentialed, isolated workflows. Never expose keys or customer data in CI artifacts.
+7. Publish a reconciled billing evidence report, control coverage matrix, unresolved compliance scope decisions and a release decision. **No production charging changes without explicit approval.**
+
+### Billing/security definition of done
+
+- [ ] All BILL-01–BILL-20 scenarios have reproducible pass/fail evidence and exact financial assertions.
+- [ ] Subscription and entitlement state reconciles with Stripe across all lifecycle transitions.
+- [ ] Metered minutes reconcile across raw sessions, ledger, Stripe and invoices with zero unexplained duplicate charges.
+- [ ] MSP wholesale and client boundaries are verified across UI, APIs, background jobs, data access and billing.
+- [ ] Unauthorized billing mutations and cross-tenant access are blocked; voice and text share approval/write gates.
+- [ ] SOC 2, HIPAA and PCI DSS applicability and controls are mapped with evidence; “AE2” is resolved as a requirement.
+- [ ] No unresolved critical/high security or financial-integrity defects remain; audit evidence is redacted.
+- [ ] Release owner signs off on test results, legal/compliance scope and any live-billing enablement.
+
+**No compliance certification, audit opinion, HIPAA compliance, PCI validation or SOC 2 attestation may be claimed solely because these engineering tests pass.**
