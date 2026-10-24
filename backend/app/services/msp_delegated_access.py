@@ -47,6 +47,21 @@ def authorize_live_action(
                         if row.get("revoked_at") else None
                     ),
                 )
+                # Verify scope and expiry independently of PostgREST filters.
+                # A malformed or unexpectedly unfiltered response must fail closed.
+                now = datetime.now(timezone.utc)
+                if (
+                    grant.provider_org_id != provider_org_id
+                    or grant.customer_org_id != customer_org_id
+                    or grant.grantee_user_id != grantee_user_id
+                    or not provider_org_id
+                    or not customer_org_id
+                    or not grantee_user_id
+                    or grant.revoked_at is not None
+                    or grant.expires_at.tzinfo is None
+                    or grant.expires_at <= now
+                ):
+                    continue
                 if delegation_preflight(
                     client, grant, provider_org_id=provider_org_id,
                     customer_org_id=customer_org_id,
