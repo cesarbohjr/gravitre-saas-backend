@@ -1,5 +1,4 @@
-# Optional data connectors excluded from default pip-audit (Windows build deps for pyarrow).
-snowflake-connector-python>=4.4.0,<5.0
+# Optional browser connector dependencies; Snowflake is isolated in requirements-extras-snowflake.txt.
 # Browser agent UI automation (optional). Chromium is installed in the backend Dockerfile
 # for READ-only public-page sessions (not a paid CDP vendor).
 playwright>=1.49.0,<2.0

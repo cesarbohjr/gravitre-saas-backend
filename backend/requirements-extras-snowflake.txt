@@ -1,0 +1,4 @@
+# Isolated Snowflake connector, upgraded to the supported 5.x Universal Core.
+# Must pass independent pip-audit; never bypass vulnerability findings.
+snowflake-connector-python>=5.1.0,<6.0
+filelock>=4.2.1,<5.0
