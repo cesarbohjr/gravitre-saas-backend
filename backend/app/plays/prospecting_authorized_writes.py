@@ -55,10 +55,10 @@ def approved_smartlead_enroll(ctx:ToolContext,*,run_id:str,connector_id:str,
         raise PermissionError("Tenant Smartlead connector unavailable")
     config=row.get("config") or {}
     if (not config.get("outreach_enabled") or config.get("auth_provider")!="managed"
-        or config.get("managed_integration_id")!="smartlead" or not config.get("managed_connection_id")):
+        or config.get("managed_integration_id")!="smartlead-ai" or not config.get("managed_connection_id")):
         raise PermissionError("Nango-managed Smartlead connection unavailable")
     connection_id=str(config["managed_connection_id"])
-    scoped_connection(ctx.settings,connection_id=connection_id,integration_id="smartlead",
+    scoped_connection(ctx.settings,connection_id=connection_id,integration_id="smartlead-ai",
        org_id=ctx.org_id,connector_id=connector_id)
     # Never retry a failed/uncertain POST automatically: the durable claim must be reconciled.
     response=proxy_request(ctx.settings,method="POST",
