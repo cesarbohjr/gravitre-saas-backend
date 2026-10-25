@@ -518,6 +518,8 @@ async def lifespan(app: FastAPI):
         await stop_usage_sync_scheduler(getattr(app.state, "usage_sync_task", None))
         await stop_knowledge_sync_scheduler(getattr(app.state, "knowledge_sync_task", None))
         await stop_source_sync_scheduler(getattr(app.state, "source_sync_task", None))
+        from app.services.intelligence_overview_sweep_worker import stop_overview_sweep_worker
+        await stop_overview_sweep_worker(getattr(app.state, "intelligence_overview_sweep_task", None))
         await stop_workflow_schedule_scheduler(getattr(app.state, "workflow_schedule_task", None))
         await stop_connector_health_scheduler(getattr(app.state, "connector_health_task", None))
         await stop_workflow_failure_prediction_scheduler(
