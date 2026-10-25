@@ -115,6 +115,9 @@ class IntelligenceRouter:
         conversation_history: list[dict] | None = None,
         conversation_id: str | None = None,
     ) -> dict[str, Any]:
+        from app.services.intelligence_overview_policy import load_overview_policy
+        from app.core.io_pool import run_io
+        overview_policy = await run_io(lambda: load_overview_policy(org_id, self.settings))
         dialogue_settings = await load_chat_dialogue_settings(org_id, self.settings)
         sentiment = (
             self._sentiment.analyze(request, conversation_history or [])
@@ -228,6 +231,7 @@ class IntelligenceRouter:
 
         model_selection = await self._model_selector.select(org_id, classification)
         enrichments = await self._run_enrichments(org_id, request, classification, context)
+        enrichments["policy_modes"] = overview_policy
         if (context.get("external_context") or {}).get("findings"):
             enrichments = {**enrichments, "web": context["external_context"]}
         strategy_key = build_route_strategy_key(model_selection, classification, enrichments)
@@ -317,7 +321,9 @@ class IntelligenceRouter:
             str(result.get("answer") or ""),
             connected_integrations=context.get("connected_integrations") or [],
         )
-        result["proactive_suggestions"] = suggestions
+        # Conservative mode narrows unsolicited guidance; no mode changes execution grants.
+        result["proactive_suggestions"] = [] if overview_policy["adaptive"] == "conservative" else suggestions
+        result["intelligence_overview_policy"] = overview_policy
         from app.services.intelligence_visibility_service import get_intelligence_visibility_service
 
         visibility = get_intelligence_visibility_service(self.settings)
