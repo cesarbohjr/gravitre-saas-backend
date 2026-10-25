@@ -5,7 +5,7 @@ until a separately certified orchestration worker writes verified results.
 """
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 import os
 from typing import Annotated, Literal
 
@@ -151,6 +151,14 @@ def request_sweep(
     vendors = sorted({c["vendor"] for c in connections if c.get("executable")})
     if not vendors:
         raise HTTPException(status_code=409, detail="Connect at least one usable data source first.")
+    # Hard bounded self-service budget. Count completed and failed requests alike;
+    # prevent repeated scans and unmetered worker churn.
+    cutoff = (datetime.now(timezone.utc) - timedelta(hours=24)).isoformat()
+    recent = (client.table("intelligence_overview_sweeps").select("id")
+              .eq("org_id", org_id).gte("created_at", cutoff)
+              .limit(6).execute())
+    if len(recent.data or []) >= 5:
+        raise HTTPException(status_code=429, detail="Daily intelligence sweep limit reached.")
     existing = (client.table("intelligence_overview_sweeps").select("id,status")
                 .eq("org_id", org_id).in_("status", ["queued", "running"]).limit(1).execute())
     if existing.data:
