@@ -67,7 +67,7 @@ def _settings(raw: dict) -> dict:
             if isinstance(raw.get(name), dict) and (raw.get(name) or {}).get("mode") in ("balanced", "conservative", "proactive")
             else "balanced",
             "description": DESCRIPTIONS[name],
-            "behavior_wired": False,  # Do not imply router policy wiring is live.
+            "behavior_wired": name == "adaptive",  # Other capabilities are not yet policy wired.
         }
         for name in CAPABILITY_NAMES
     }
@@ -131,9 +131,9 @@ def update_profile(
         on_conflict="org_id",
     ).execute()
     write_audit_event(client, org_id, actor, "intelligence.overview.profile_updated", "intelligence_overview_profile",
-                      org_id, metadata={"previous": previous, "current": merged, "router_policy_applied": False})
+                      org_id, metadata={"previous": previous, "current": merged, "router_policy_applied": "adaptive" in body.capabilities})
     return {"capabilities": _settings(merged), "saved": bool(result.data),
-            "router_policy_applied": False, "advisory_only": True}
+            "router_policy_applied": "adaptive" in body.capabilities, "advisory_only": True}
 
 
 @router.post("/sweeps", status_code=202)
