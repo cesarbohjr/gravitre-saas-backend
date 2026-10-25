@@ -95,8 +95,30 @@ def process_queued_sweep(client: Any, row: dict[str, Any]) -> dict[str, Any]:
         return {"id": sweep_id, "status": "failed"}
 
 
+def recover_stale_sweeps(client: Any, *, max_age_minutes: int = 30) -> int:
+    """Fail interrupted claims so a crashed worker never leaves an endless spinner.
+
+    A retry is a new, explicitly-requested run; no hidden repeated provider reads.
+    """
+    cutoff = (datetime.now(timezone.utc) - timedelta(minutes=max_age_minutes)).isoformat()
+    rows = (client.table("intelligence_overview_sweeps")
+            .select("id,org_id,status,started_at")
+            .eq("status", "running").lt("started_at", cutoff)
+            .limit(MAX_SWEEPS_PER_TICK).execute())
+    recovered = 0
+    for row in list(rows.data or []):
+        result = (client.table("intelligence_overview_sweeps")
+                  .update({"status": "failed", "error_code": "worker_interrupted",
+                           "completed_at": _timestamp()})
+                  .eq("org_id", str(row["org_id"])).eq("id", str(row["id"]))
+                  .eq("status", "running").execute())
+        recovered += bool(result.data)
+    return recovered
+
+
 def process_sweep_batch(settings: Settings | None = None) -> list[dict[str, Any]]:
     client = get_supabase_client(settings or get_settings())
+    recover_stale_sweeps(client)
     rows = (client.table("intelligence_overview_sweeps")
             .select("id,org_id,status,created_at")
             .eq("status", "queued").order("created_at").limit(MAX_SWEEPS_PER_TICK).execute())
