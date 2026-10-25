@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from pydantic import BaseModel, Field
 
 from app.auth.dependencies import get_environment_context, require_admin, require_org_member
@@ -852,3 +852,46 @@ def list_prospect_reviews(
     client = get_supabase_client(settings)
     return {"items": list_reviews(client, org_id, limit=limit),
             "crmWriteEnabled": False, "outreachEnabled": False}
+
+
+@router.post("/qualified-prospecting/webhooks/smartlead")
+async def smartlead_delivery_webhook(request: Request,
+    settings: Annotated[Settings, Depends(get_settings)]) -> dict[str, Any]:
+    """Signed Smartlead delivery webhook with database-derived tenant identity.
+
+    Signature verification occurs on original body. Event ID is the provider's
+    X-Request-Id. Only existing tenant-owned lead mappings can be updated.
+    """
+    import json
+    import os
+    from app.plays.prospecting_webhook_auth import ingest_verified_event
+    secret = (os.environ.get("SMARTLEAD_WEBHOOK_SIGNING_SECRET") or "").strip()
+    if not secret:
+        raise HTTPException(status_code=503,detail="Smartlead webhook signing secret not configured")
+    body=await request.body()
+    if len(body)>1_000_000:
+        raise HTTPException(status_code=413,detail="Webhook body too large")
+    signature=request.headers.get("x-smartlead-signature","")
+    event_id=request.headers.get("x-request-id","")
+    if not event_id or len(event_id)>256:
+        raise HTTPException(status_code=400,detail="Missing valid event identifier")
+    try:
+        payload=json.loads(body)
+        if not isinstance(payload,dict): raise ValueError("Invalid payload")
+        event_type=str(payload.get("event_type") or payload.get("event") or "").lower()
+        mappings={"email_sent":"sent","first_email_sent":"sent",
+          "email_replied":"replied","email_reply":"replied",
+          "email_bounced":"bounced","email_bounce":"bounced",
+          "lead_unsubscribed":"unsubscribed","unsubscribed":"unsubscribed"}
+        event_type=mappings.get(event_type,event_type)
+        lead_id=str(payload.get("lead_id") or "").strip()
+        if not lead_id or not event_type:
+            raise ValueError("Missing provider lead or event")
+        result=ingest_verified_event(get_supabase_client(settings),body=body,
+            signature=signature,secret=secret,provider="smartlead",
+            event_id=event_id,lead_id=lead_id,event_type=event_type)
+        return {"ok":True,"duplicate":result["duplicate"]}
+    except PermissionError:
+        raise HTTPException(status_code=403,detail="Unverified webhook or unmapped lead")
+    except (ValueError,TypeError):
+        raise HTTPException(status_code=400,detail="Invalid Smartlead webhook")
