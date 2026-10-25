@@ -40,8 +40,8 @@ def execute_prospecting_action(ctx: ToolContext, action: str, params: dict[str, 
     config = connector.get("config") or {}
     if not isinstance(config, dict) or not config.get("prospecting_enabled", False):
         return fail("permission_denied", "Prospecting connector not enabled")
-    if action in CREDIT_ACTIONS and not (config.get("credits_confirmed") and config.get("credit_budget_approved")):
-        return fail("permission_denied", "Credit-consuming action requires confirmed allowance and approval")
+    if action in CREDIT_ACTIONS and not (config.get("credits_confirmed") and config.get("credit_budget_approved") and config.get("remaining_free_credits", 0) > 0):
+        return fail("permission_denied", "Credit-consuming action requires confirmed unused allowance and approval")
     allowed_params = {
         "hunter.email.verify": ("email",),
         "emailable.email.verify": ("email",),
