@@ -128,8 +128,26 @@ AUTONOMOUS_EXCEPTION_MANAGER = PlayDefinition(
 )
 
 
+PROSPECTING = PlayDefinition(
+    key="qualified-prospecting",
+    name="Find Qualified Prospects",
+    version="1",
+    objective=(
+        "Discover permitted business sources, research companies, qualify named "
+        "decision-makers, verify corporate emails and prepare governed CRM staging "
+        "without sending or importing contacts automatically."
+    ),
+    optional_connectors=(
+        "hunter", "emailable", "apollo", "snov", "millionverifier",
+        "hubspot", "salesforce",
+    ),
+    outcome_metrics=("qualified_prospects",),
+)
+
+
 # Cross-department platform Plays that are not part of an Outcome Pack.
 STATIC_PLAY_TEMPLATES: tuple[PlayDefinition, ...] = (
+    PROSPECTING,
     CUSTOMER_RESCUE,
     REVENUE_RECOVERY,
     MARKETING_PERFORMANCE,
