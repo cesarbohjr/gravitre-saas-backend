@@ -7,7 +7,8 @@ so a canonical PendingAction + immutable consent review is required first.
 from __future__ import annotations
 from typing import Any
 import httpx
-from app.connectors.repository import get_connector, get_decrypted_secret
+from app.connectors.repository import get_connector
+from app.connectors.nango_client import scoped_connection, proxy_request
 from app.services.tool_types import NormalizedResult, ToolContext
 
 BASE = "https://server.smartlead.ai/api/v1"
