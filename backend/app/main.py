@@ -396,6 +396,8 @@ async def lifespan(app: FastAPI):
     app.state.usage_sync_task = start_usage_sync_scheduler()
     app.state.knowledge_sync_task = start_knowledge_sync_scheduler()
     app.state.source_sync_task = start_source_sync_scheduler()
+    from app.services.intelligence_overview_sweep_worker import start_overview_sweep_worker
+    app.state.intelligence_overview_sweep_task = start_overview_sweep_worker()
     app.state.workflow_schedule_task = start_workflow_schedule_scheduler()
     app.state.connector_health_task = start_connector_health_scheduler()
     app.state.workflow_failure_prediction_task = start_workflow_failure_prediction_scheduler()
