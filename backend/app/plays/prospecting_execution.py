@@ -12,7 +12,7 @@ APPROVAL_STAGES=frozenset({"consent_review","stage","crm_export","outreach_enrol
 
 def run_stage(client:Any,*,org_id:str,run_id:str,stage:str,actor_id:str,
               execute:Callable[[],dict[str,Any]],
-              approval_verified:bool=False)->dict[str,Any]:
+              approval_resolver:Callable[[str,str,str,str],bool]|None=None)->dict[str,Any]:
     if not all((org_id,run_id,actor_id)) or stage not in (*STAGES,"crm_export","outreach_enroll","delivery_sync"):
         raise ValueError("Tenant, run, actor and supported stage required")
     runs=(client.table("prospect_play_runs").select("id,state,current_stage").eq("org_id",org_id)
@@ -28,7 +28,7 @@ def run_stage(client:Any,*,org_id:str,run_id:str,stage:str,actor_id:str,
         return {"status":"succeeded","replayed":True,"evidence":existing[0]["evidence"]}
     if existing and existing[0]["status"] in {"running","outcome_unknown"}:
         return {"status":"outcome_unknown","replayed":True}
-    if stage in APPROVAL_STAGES and not approval_verified:
+    # No caller-controlled approval flag: resolve authorization against trusted\n    # server-side PendingAction state for this tenant, actor, run and stage.\n    approved = False\n    if stage in APPROVAL_STAGES and approval_resolver is not None:\n        approved = approval_resolver(org_id, actor_id, run_id, stage) is True\n    if stage in APPROVAL_STAGES and not approved:
         client.table("prospect_play_steps").upsert({"org_id":org_id,"run_id":run_id,
            "stage":stage,"status":"awaiting_approval"},on_conflict="org_id,run_id,stage").execute()
         client.table("prospect_play_runs").update({"state":"awaiting_approval"}).eq("org_id",org_id).eq("id",run_id).execute()
