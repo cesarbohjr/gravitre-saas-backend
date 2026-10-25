@@ -1,0 +1,47 @@
+{
+  "manifestVersion": "1.0",
+  "id": "prospecting-millionverifier",
+  "name": "millionverifier Prospecting",
+  "version": "0.1.0",
+  "vendor": "millionverifier",
+  "description": "Prospecting Play connector contract. Inactive until vetted handler registration and vault-based credentials.",
+  "auth": {
+    "type": "apiKey",
+    "headerName": "Authorization"
+  },
+  "capabilities": [
+    "actions"
+  ],
+  "actions": [
+    {
+      "id": "email.verify",
+      "name": "email.verify",
+      "description": "Read-only provider research or verification. Credit authorization required.",
+      "scopes": [
+        "millionverifier:email.verify"
+      ],
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {}
+      },
+      "idempotent": true,
+      "destructive": false
+    },
+    {
+      "id": "usage.read",
+      "name": "usage.read",
+      "description": "Read-only provider research or verification. Credit authorization required.",
+      "scopes": [
+        "millionverifier:usage.read"
+      ],
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {}
+      },
+      "idempotent": true,
+      "destructive": false
+    }
+  ]
+}
