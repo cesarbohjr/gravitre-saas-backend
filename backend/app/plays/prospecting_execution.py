@@ -51,9 +51,12 @@ def run_stage(client:Any,*,org_id:str,run_id:str,stage:str,actor_id:str,
         client.table("prospect_play_steps").update({"status":"outcome_unknown",
            "last_error":"Execution failed; reconcile outcome before retry"}).eq("org_id",org_id).eq("run_id",run_id).eq("stage",stage).execute()
         raise
-    client.table("prospect_play_steps").update({"status":"succeeded","evidence":evidence}).eq("org_id",org_id).eq("run_id",run_id).eq("stage",stage).execute()
     idx=STAGES.index(stage) if stage in STAGES else -1
     next_stage=STAGES[idx+1] if idx>=0 and idx+1<len(STAGES) else ("crm_export" if stage=="stage" else "outreach_enroll" if stage=="crm_export" else "delivery_sync" if stage=="outreach_enroll" else "completed")
-    client.table("prospect_play_runs").update({"current_stage":next_stage,
-        "state":"completed" if next_stage=="completed" else "running"}).eq("org_id",org_id).eq("id",run_id).execute()
+    finalized=client.rpc("prospect_finish_step",{
+        "p_org":org_id,"p_run":run_id,"p_stage":stage,"p_actor":actor_id,
+        "p_next":next_stage,"p_evidence":evidence
+    }).execute()
+    if finalized.data is not True:
+        raise RuntimeError("Atomic stage finalization failed; reconcile before retry")
     return {"status":"succeeded","stage":stage,"next_stage":next_stage,"evidence":evidence}
