@@ -42,7 +42,7 @@ def execute_prospecting_action(ctx: ToolContext, action: str, params: dict[str, 
         return fail("permission_denied", "Prospecting connector not enabled")
     if action in CREDIT_ACTIONS and not (config.get("credits_confirmed") and config.get("credit_budget_approved") and config.get("remaining_free_credits", 0) > 0):
         return fail("permission_denied", "Credit-consuming action requires confirmed unused allowance and approval")
-    allowed_params = {
+    # A boolean configuration is not an atomic charge reservation. Until the\n    # persistent credit-ledger RPC is integrated, block paid/credit-consuming\n    # provider calls, including accidental direct invoke_tool execution.\n    if action in CREDIT_ACTIONS:\n        return fail("permission_denied", "Provider credit reservation is not yet operational")\n    allowed_params = {
         "hunter.email.verify": ("email",),
         "emailable.email.verify": ("email",),
         "millionverifier.email.verify": ("email",),
@@ -55,7 +55,10 @@ def execute_prospecting_action(ctx: ToolContext, action: str, params: dict[str, 
         if len(email)>254 or "@" not in email:
             return fail("validation_error", "Business email required")
     if action == "apollo.people.search":
-        payload["per_page"] = max(1, min(25, int(payload.get("per_page") or 10)))
+        try:
+            payload["per_page"] = max(1, min(25, int(payload.get("per_page") or 10)))
+        except (TypeError, ValueError):
+            return fail("validation_error", "Invalid requested page size")
     key = get_decrypted_secret(ctx.client, connector_id, "api_key", ctx.settings, org_id=ctx.org_id)
     if not key:
         return fail("connector_not_connected", "Provider API key not configured")
