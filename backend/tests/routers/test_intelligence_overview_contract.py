@@ -12,7 +12,8 @@ def test_default_settings_do_not_claim_runtime_wiring():
     assert set(profile) == CAPABILITIES
     assert all(x["mode"] == "balanced" for x in profile.values())
     assert profile["adaptive"]["behavior_wired"] is True
-    assert profile["predictive"]["behavior_wired"] is False
+    assert profile["predictive"]["behavior_wired"] is True
+    assert profile["predictive"]["runtime_effect"] == "optional_evidence_presentation"
 
 def test_profile_validates_mode():
     with pytest.raises(ValidationError):
