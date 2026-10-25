@@ -83,17 +83,16 @@ end $$;
 alter table public.prospect_contacts add constraint prospect_contact_company_same_org foreign key(org_id,company_id) references public.prospect_companies(org_id,id);
 alter table public.prospect_evidence add constraint prospect_evidence_company_same_org foreign key(org_id,company_id) references public.prospect_companies(org_id,id);
 alter table public.prospect_evidence add constraint prospect_evidence_contact_same_org foreign key(org_id,contact_id) references public.prospect_contacts(org_id,id);
--- Explicit tenant RLS, including UPDATE/INSERT WITH CHECK.
+-- Tenant members can read only; all mutation is server-side through scoped APIs.
 do $$ declare t text; begin
  foreach t in array array['prospect_companies','prospect_contacts','prospect_evidence','prospect_provider_usage','prospect_suppressions'] loop
-  execute format('alter table public.%I enable row level security',t);
-  execute format('drop policy if exists %I on public.%I',t||'_org_member',t);
+  execute format('alter table public.%I enable row level security', t);
+  execute format('drop policy if exists %I on public.%I', t||'_org_member', t);
   execute format(
-    'create policy %I on public.%I for all using (org_id in (select org_id from public.organization_members where user_id=auth.uid())) with check (org_id in (select org_id from public.organization_members where user_id=auth.uid()))',
-    t||'_org_member',t
+    'create policy %I on public.%I for select using (org_id in (select org_id from public.organization_members where user_id=auth.uid()))',
+    t||'_org_member', t
   );
+  execute format('revoke insert, update, delete on public.%I from anon, authenticated',t);
  end loop;
 end $$;
--- No client should mutate sensitive approval/credit data through these tables
--- until grants and secure role-specific RPCs are defined. Service layer must enforce
--- member roles and canonical PendingAction, not merely the membership RLS.
+-- Service-role writes must enforce org_id authorization and PendingAction separately.
