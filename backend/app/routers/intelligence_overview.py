@@ -6,6 +6,7 @@ until a separately certified orchestration worker writes verified results.
 from __future__ import annotations
 
 from datetime import datetime, timezone
+import os
 from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -67,7 +68,8 @@ def _settings(raw: dict) -> dict:
             if isinstance(raw.get(name), dict) and (raw.get(name) or {}).get("mode") in ("balanced", "conservative", "proactive")
             else "balanced",
             "description": DESCRIPTIONS[name],
-            "behavior_wired": name == "adaptive",  # Other capabilities are not yet policy wired.
+            "behavior_wired": True,
+            "runtime_effect": "optional_evidence_presentation" if name != "adaptive" else "proactive_guidance_and_evidence_presentation",
         }
         for name in CAPABILITY_NAMES
     }
@@ -101,10 +103,10 @@ def overview(
         "knowledge": {"usable_connectors": count, "vendors": vendors, "facts": None, "freshness": None},
         "readiness": {"tier": readiness, "connector_count": count, "coverage_verified": False,
                       "comprehensive": False, "recommended_connector_count": 3},
-        "insights": [],
-        "recommendations": cards.get("recommendations") or [],
-        "actions": [],
-        "outcomes": [],
+        "insights": ((latest.data or [{}])[0].get("results") or {}).get("insights", []),
+        "recommendations": ((latest.data or [{}])[0].get("results") or {}).get("recommendations") or cards.get("recommendations") or [],
+        "actions": ((latest.data or [{}])[0].get("results") or {}).get("actions", []),
+        "outcomes": ((latest.data or [{}])[0].get("results") or {}).get("outcomes", []),
         "latest_sweep": (latest.data or [None])[0],
         "advisory_only": True,
         "data_limitations": ["Cross-connector historical analysis has not been certified.",
@@ -131,7 +133,7 @@ def update_profile(
         on_conflict="org_id",
     ).execute()
     write_audit_event(client, org_id, actor, "intelligence.overview.profile_updated", "intelligence_overview_profile",
-                      org_id, metadata={"previous": previous, "current": merged, "router_policy_applied": "adaptive" in body.capabilities})
+                      org_id, metadata={"previous": previous, "current": merged, "router_policy_applied": True})
     return {"capabilities": _settings(merged), "saved": bool(result.data),
             "router_policy_applied": "adaptive" in body.capabilities, "advisory_only": True}
 
@@ -152,7 +154,7 @@ def request_sweep(
     existing = (client.table("intelligence_overview_sweeps").select("id,status")
                 .eq("org_id", org_id).in_("status", ["queued", "running"]).limit(1).execute())
     if existing.data:
-        return {"sweep": existing.data[0], "started": False, "orchestrator_enabled": False}
+        return {"sweep": existing.data[0], "started": False, "orchestrator_enabled": os.getenv("INTELLIGENCE_OVERVIEW_SWEEP_WORKER_ENABLED", "").lower() in {"1", "true"}}
     result = client.table("intelligence_overview_sweeps").insert({
         "org_id": org_id, "requested_by": _actor(admin) or None,
         "scope": {"vendors_requested": vendors, "connector_count": len(vendors)},
@@ -165,7 +167,7 @@ def request_sweep(
                       "intelligence_overview_sweep", str(sweep["id"]),
                       metadata={"vendors_requested": vendors, "execution_started": False})
     return {"sweep": sweep, "started": False, "orchestrator_enabled": False,
-            "message": "Request saved; full connector analysis awaits certified orchestration."}
+            "message": "Queued for limited integration telemetry assessment; historical business-data analysis is not yet available."}
 
 
 @router.get("/sweeps/{sweep_id}")
