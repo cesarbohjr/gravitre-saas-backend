@@ -10,7 +10,9 @@ def test_seven_capabilities_are_all_present():
 def test_default_settings_do_not_claim_runtime_wiring():
     profile = _settings({})
     assert set(profile) == CAPABILITIES
-    assert all(x["mode"] == "balanced" and x["behavior_wired"] is False for x in profile.values())
+    assert all(x["mode"] == "balanced" for x in profile.values())
+    assert profile["adaptive"]["behavior_wired"] is True
+    assert profile["predictive"]["behavior_wired"] is False
 
 def test_profile_validates_mode():
     with pytest.raises(ValidationError):
