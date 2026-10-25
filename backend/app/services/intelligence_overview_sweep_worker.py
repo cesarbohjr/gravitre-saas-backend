@@ -25,6 +25,43 @@ def _timestamp() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
+def sync_supported_knowledge_sources(client: Any, settings: Settings, org_id: str) -> list[dict[str, Any]]:
+    """Reuse governed ingestion for specifically supported, authorized provider types.
+
+    Off unless explicitly enabled, bounded to three connectors per sweep.
+    This synchronizes provider knowledge, *not* universal business data.
+    """
+    if os.getenv("INTELLIGENCE_OVERVIEW_KNOWLEDGE_SYNC_ENABLED", "").lower() not in {"1", "true"}:
+        return []
+    from app.services.knowledge_sync_service import (
+        SOURCE_REGISTRY, trigger_connector_knowledge_sync, connector_is_due,
+    )
+
+    rows = (client.table("connectors")
+            .select("id,org_id,type,vendor,status,config,environment,sync_frequency,last_sync_at")
+            .eq("org_id", org_id).eq("status", "active")
+            .in_("type", list(SOURCE_REGISTRY))
+            .is_("deleted_at", "null").limit(3).execute())
+    output = []
+    for connector in list(rows.data or []):
+        vendor = str(connector.get("type") or "")
+        if not connector_is_due(connector):
+            output.append({"vendor": vendor, "status": "not_due"})
+            continue
+        try:
+            receipt = trigger_connector_knowledge_sync(
+                client, settings, org_id, str(connector["id"]),
+                actor_id="system", trigger_type="manual", full_sync=True,
+            )
+            output.append({"vendor": vendor,
+                           "status": str(receipt.get("status") or "submitted"),
+                           "connector_id": str(connector["id"])})
+        except Exception:
+            # Do not leak tokens/provider payloads/errors into assessment results.
+            output.append({"vendor": vendor, "status": "sync_unavailable"})
+    return output
+
+
 def assessment_for_org(client: Any, org_id: str) -> dict[str, Any]:
     """Never infer account value or causality from a connector's presence."""
     connected = load_connected_connectors(client, org_id)
@@ -72,7 +109,7 @@ def assessment_for_org(client: Any, org_id: str) -> dict[str, Any]:
     }
 
 
-def process_queued_sweep(client: Any, row: dict[str, Any]) -> dict[str, Any]:
+def process_queued_sweep(client: Any, row: dict[str, Any], settings: Settings | None = None) -> dict[str, Any]:
     """Claim with status CAS and enforce explicit tenant constraints on all writes."""
     org_id, sweep_id = str(row["org_id"]), str(row["id"])
     claim = (client.table("intelligence_overview_sweeps")
@@ -82,7 +119,9 @@ def process_queued_sweep(client: Any, row: dict[str, Any]) -> dict[str, Any]:
     if not claim.data:
         return {"id": sweep_id, "status": "already_claimed"}
     try:
+        syncs = sync_supported_knowledge_sources(client, settings or get_settings(), org_id) if settings is not None else []
         results = assessment_for_org(client, org_id)
+        results["knowledge_syncs"] = syncs
         update = {"status": "partial", "results": results, "completed_at": _timestamp()}
         (client.table("intelligence_overview_sweeps").update(update)
          .eq("org_id", org_id).eq("id", sweep_id).eq("status", "running").execute())
@@ -122,7 +161,7 @@ def process_sweep_batch(settings: Settings | None = None) -> list[dict[str, Any]
     rows = (client.table("intelligence_overview_sweeps")
             .select("id,org_id,status,created_at")
             .eq("status", "queued").order("created_at").limit(MAX_SWEEPS_PER_TICK).execute())
-    return [process_queued_sweep(client, row) for row in list(rows.data or [])]
+    return [process_queued_sweep(client, row, settings or get_settings()) for row in list(rows.data or [])]
 
 
 async def _loop(settings: Settings) -> None:
