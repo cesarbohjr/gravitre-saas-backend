@@ -122,7 +122,7 @@ def register_prospecting_handlers() -> None:
     """Explicit opt-in at application startup, no implicit registration in imports."""
     from pathlib import Path
     from app.connectors.sdk import get_partner_executor, load_manifest_file, register_from_manifest
-    base=Path(__file__).resolve().parents[2] / "plays" / "provider_manifests"
+    base=Path(__file__).resolve().parents[1] / "plays" / "provider_manifests"
     for vendor in ALLOWED_TYPES:
         if get_partner_executor(vendor+".email.verify") or get_partner_executor(vendor+".people.search"):
             continue
