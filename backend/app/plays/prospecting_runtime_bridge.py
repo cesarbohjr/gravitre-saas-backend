@@ -44,7 +44,9 @@ def invoke_approved_external_stage(ctx:ToolContext,*,stage:str,
         raise ValueError("Authenticated durable run and supported external stage required")
     action="hubspot.contacts.create" if stage=="crm_export" else "smartlead.leads.enroll"
     exact_payload=(dict(params["payload"]) if stage=="crm_export" else {
-        k:params[k] for k in ("connector_id","campaign_id","contact_id","email","first_name","last_name")})
+        **{k:params[k] for k in ("connector_id","campaign_id","contact_id","email")},
+        "first_name":str(params.get("first_name") or ""),
+        "last_name":str(params.get("last_name") or "")})
     approved_id=resolve_prospecting_approval(ctx.client,org_id=ctx.org_id,
         actor_id=ctx.actor_id,run_id=ctx.run_id,stage=stage,
         action=action,payload=exact_payload)
