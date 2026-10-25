@@ -12,7 +12,7 @@ from typing import Annotated, Literal
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, ConfigDict, Field
 
-from app.auth.dependencies import get_org_context, require_admin, require_org_member
+from app.auth.dependencies import get_org_context, get_environment_context, require_admin, require_org_member
 from app.config import Settings, get_settings
 from app.services.intelligence_router import CAPABILITY_NAMES
 from app.services.recommendation_heuristics_service import (
@@ -191,3 +191,35 @@ def sweep_status(
     if not result.data:
         raise HTTPException(status_code=404, detail="Sweep not found")
     return {"sweep": result.data[0], "orchestrator_enabled": False}
+
+
+@router.get("/action-candidates")
+def action_candidates(
+    member: Annotated[tuple, Depends(require_org_member)],
+    environment_name: Annotated[str, Depends(get_environment_context)],
+    settings: Settings = Depends(get_settings),
+) -> dict:
+    """Canonical Play readiness/read-only workflow bindings.
+
+    This discovers possible handoffs, never treats recommendations as consent
+    or calls the Play run endpoint.
+    """
+    from app.routers.plays import list_plays
+
+    result = list_plays(member, environment_name, settings)
+    candidates = []
+    for item in result.get("plays") or []:
+        play = item.get("play") or {}
+        readiness = item.get("readiness") or {}
+        candidates.append({
+            "play": play,
+            "readiness": readiness,
+            "installation": item.get("installation"),
+            "workflowBindings": item.get("workflowBindings") or [],
+            "href": "/plays",
+            "executionAuthority": "canonical_workflow_runtime",
+            "advisoryOnly": True,
+        })
+    return {"candidates": candidates, "count": len(candidates),
+            "advisoryOnly": True, "executes": False,
+            "requiresExistingPlayApprovalAndPermissions": True}
