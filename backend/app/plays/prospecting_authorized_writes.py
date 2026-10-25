@@ -23,6 +23,8 @@ def approved_hubspot_create(ctx:ToolContext,*,run_id:str,connector_id:str,
     with write_authority("human",approval):
         result=invoke_tool(ctx,"hubspot.contacts.create",{"connector_id":connector_id,**payload})
     if not result.success: raise result.to_exception()
+    if not str(result.data.get("contact_id") or "").strip():
+        raise RuntimeError("HubSpot did not confirm a contact ID; reconcile before retry")
     return {"success":True,"provider":"hubspot","data":result.data,"approval_id":approval}
 
 def approved_smartlead_enroll(ctx:ToolContext,*,run_id:str,connector_id:str,
@@ -66,5 +68,7 @@ def approved_smartlead_enroll(ctx:ToolContext,*,run_id:str,connector_id:str,
                                   "last_name":last_name}]})
     response.raise_for_status()
     result=response.json()
+    if not isinstance(result,dict) or result.get("success") is False or result.get("error") or result.get("status") in ("error","failed"):
+        raise RuntimeError("Smartlead enrollment not confirmed; reconcile before retry")
     return {"success":True,"provider":"smartlead","campaign_id":campaign_id,
             "provider_response":result,"approval_id":approval}
