@@ -10,11 +10,11 @@ import { managedProviderAvailable, openManagedConnector } from "@/lib/managed-co
 import { ProviderLogo } from "@/components/gravitre/provider-logo"
 
 const SOURCES = [
-  { key:"smartlead", name:"Smartlead",  description:"Campaigns, mailboxes and reply tracking", kind:"Cold email", phase:"Read-only integration", href:"https://www.smartlead.ai/" },
-  { key:"instantly", name:"Instantly",  description:"Cold outreach sequences and inbox workflows", kind:"Cold email", phase:"Nango setup pending", href:"https://instantly.ai/" },
-  { key:"quickmail", name:"QuickMail",  description:"Multichannel email sequencing for teams", kind:"Cold email", phase:"Nango setup pending", href:"https://quickmail.io/" },
-  { key:"hunter", name:"Hunter",  description:"Find and verify emails; email sequences", kind:"Prospecting", phase:"Nango setup pending", href:"https://hunter.io/" },
-  { key:"snov", name:"Snov.io",  description:"Lead discovery and email campaigns", kind:"Prospecting", phase:"Nango setup pending", href:"https://snov.io/" },
+  { key:"smartlead", name:"Smartlead",  description:"Campaigns, mailboxes and reply tracking", kind:"Cold email", phase:"Read-only integration", href:"https://www.smartlead.ai/", icon:"https://www.google.com/s2/favicons?domain=smartlead.ai&sz=128" },
+  { key:"instantly", name:"Instantly",  description:"Cold outreach sequences and inbox workflows", kind:"Cold email", phase:"Nango setup pending", href:"https://instantly.ai/", icon:null },
+  { key:"quickmail", name:"QuickMail",  description:"Multichannel email sequencing for teams", kind:"Cold email", phase:"Nango setup pending", href:"https://quickmail.io/", icon:"https://www.google.com/s2/favicons?domain=quickmail.io&sz=128" },
+  { key:"hunter", name:"Hunter",  description:"Find and verify emails; email sequences", kind:"Prospecting", phase:"Nango setup pending", href:"https://hunter.io/", icon:"https://www.google.com/s2/favicons?domain=hunter.io&sz=128" },
+  { key:"snov", name:"Snov.io",  description:"Lead discovery and email campaigns", kind:"Prospecting", phase:"Nango setup pending", href:"https://snov.io/", icon:"https://www.google.com/s2/favicons?domain=snov.io&sz=128" },
 ] as const
 
 export function OutboundProviderCards() {
@@ -51,7 +51,7 @@ export function OutboundProviderCards() {
           <article key={provider.key} className="flex min-w-0 flex-col gap-3 rounded-[12px] border border-divide bg-[color:var(--g-surface-1)] p-3" data-provider={provider.key}>
             <div className="flex items-start gap-3">
               <span className="flex size-10 shrink-0 items-center justify-center rounded-lg border border-divide bg-[color:var(--g-surface-2)] text-sm font-semibold" aria-label={provider.name + " icon"}>
-                <ProviderLogo provider={provider.key} label={provider.name} size="lg" />
+                {provider.icon ? <Image src={provider.icon} alt={provider.name + " logo"} width={32} height={32} unoptimized className="size-8 object-contain" /> : <ProviderLogo provider={provider.key} label={provider.name} size="lg" />}
               </span>
               <div className="min-w-0 flex-1">
                 <h3 className="text-[13px] font-semibold">{provider.name}</h3>
