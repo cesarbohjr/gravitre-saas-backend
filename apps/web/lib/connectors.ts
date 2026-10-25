@@ -356,7 +356,9 @@ export const CONNECTOR_CATALOG: CatalogConnectorEntry[] = [
   ...managedConnectors.map((entry): CatalogConnectorEntry => ({
     type: entry.type, vendorKey: entry.vendorKey, category: entry.category,
     description: `${entry.description}. ${!entry.providerSupported ? "Managed authorization is not available yet." : entry.hasReadActions ? "Read actions available after connection." : "Account authorization only; workflow actions pending."}`,
-    authType: "oauth", credentialModel: "oauth2", oauthReady: entry.providerSupported,
+    authType: entry.authMode === "API_KEY" ? "apiKey" : "oauth",
+    credentialModel: entry.authMode === "API_KEY" ? "api_key" : "oauth2",
+    oauthReady: entry.providerSupported && entry.authMode !== "API_KEY",
     shipped: entry.hasReadActions, authMode: "customer_owned",
   })),
 ]
