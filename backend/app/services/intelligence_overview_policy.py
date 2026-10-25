@@ -45,3 +45,38 @@ def load_overview_policy(org_id: str, settings: Any) -> dict[str, str]:
         return normalize_policy((res.data or [{}])[0].get("capabilities"))
     except Exception:
         return normalize_policy({})
+
+
+def apply_response_sensitivity(result: dict[str, Any], policy: dict[str, str]) -> dict[str, Any]:
+    """Control optional capability evidence verbosity without touching execution.
+
+    All seven modes are represented in the response. Conservative suppresses
+    unverified/optional capability evidence, balanced leaves the router result
+    unchanged, proactive preserves extra available evidence. This does not
+    modify the underlying model's inference thresholds or permissions.
+    """
+    output = dict(result)
+    enrichments = output.get("enrichments")
+    if not isinstance(enrichments, dict):
+        return output
+    new_enrichments = dict(enrichments)
+    capabilities = new_enrichments.get("capabilities")
+    if not isinstance(capabilities, dict):
+        return output
+    adjusted = {}
+    for name in CAPABILITIES:
+        slot = capabilities.get(name)
+        if not isinstance(slot, dict):
+            continue
+        mode = policy.get(name, "balanced")
+        item = dict(slot)
+        item["sensitivity_mode"] = mode
+        item["runtime_effect"] = "optional_evidence_presentation"
+        if mode == "conservative" and item.get("status") not in {"available", "ok"}:
+            # Do not expose weak speculative detail as established intelligence.
+            item.pop("data", None)
+            item["evidence_suppressed"] = True
+        adjusted[name] = item
+    new_enrichments["capabilities"] = {**capabilities, **adjusted}
+    output["enrichments"] = new_enrichments
+    return output
