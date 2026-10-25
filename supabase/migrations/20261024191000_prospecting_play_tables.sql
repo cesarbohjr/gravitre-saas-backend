@@ -36,8 +36,7 @@ create table if not exists public.prospect_contacts (
  created_at timestamptz not null default now(),
  updated_at timestamptz not null default now(),
  unique(org_id,company_id,email),
- foreign key (company_id) references public.prospect_companies(id) on delete cascade,
- foreign key (org_id,company_id) references public.prospect_companies(org_id,id)
+ foreign key (company_id) references public.prospect_companies(id) on delete cascade
 );
 create unique index if not exists prospect_companies_org_id_id_unique on public.prospect_companies(org_id,id);
 create table if not exists public.prospect_evidence (
@@ -50,8 +49,8 @@ create table if not exists public.prospect_evidence (
  source_license text,
  payload_hash text not null,
  observed_at timestamptz not null default now(),
- foreign key (org_id,company_id) references public.prospect_companies(org_id,id) on delete cascade,
- foreign key (org_id,contact_id) references public.prospect_contacts(org_id,id) on delete cascade
+ foreign key (company_id) references public.prospect_companies(id) on delete cascade,
+ foreign key (contact_id) references public.prospect_contacts(id) on delete cascade
 );
 create unique index if not exists prospect_contacts_org_id_id_unique on public.prospect_contacts(org_id,id);
 create table if not exists public.prospect_provider_usage (
@@ -81,6 +80,9 @@ do $$ begin
     alter table public.prospect_contacts add constraint prospect_contacts_org_id_id_unique_constraint unique(org_id,id);
   end if;
 end $$;
+alter table public.prospect_contacts add constraint prospect_contact_company_same_org foreign key(org_id,company_id) references public.prospect_companies(org_id,id);
+alter table public.prospect_evidence add constraint prospect_evidence_company_same_org foreign key(org_id,company_id) references public.prospect_companies(org_id,id);
+alter table public.prospect_evidence add constraint prospect_evidence_contact_same_org foreign key(org_id,contact_id) references public.prospect_contacts(org_id,id);
 -- Explicit tenant RLS, including UPDATE/INSERT WITH CHECK.
 do $$ declare t text; begin
  foreach t in array array['prospect_companies','prospect_contacts','prospect_evidence','prospect_provider_usage','prospect_suppressions'] loop
