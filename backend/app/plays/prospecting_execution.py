@@ -33,8 +33,11 @@ def run_stage(client:Any,*,org_id:str,run_id:str,stage:str,actor_id:str,
            "stage":stage,"status":"awaiting_approval"},on_conflict="org_id,run_id,stage").execute()
         client.table("prospect_play_runs").update({"state":"awaiting_approval"}).eq("org_id",org_id).eq("id",run_id).execute()
         return {"status":"awaiting_approval"}
-    client.table("prospect_play_steps").upsert({"org_id":org_id,"run_id":run_id,
-        "stage":stage,"status":"running"},on_conflict="org_id,run_id,stage").execute()
+    claimed=client.rpc("prospect_claim_step",{
+        "p_org":org_id,"p_run":run_id,"p_stage":stage,"p_actor":actor_id
+    }).execute()
+    if claimed.data is not True:
+        return {"status":"concurrent_or_invalid_claim","stage":stage}
     try:
         evidence=execute()
         if not isinstance(evidence,dict) or evidence.get("success") is not True:
