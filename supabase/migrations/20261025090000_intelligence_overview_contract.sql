@@ -24,3 +24,7 @@ alter table public.intelligence_overview_sweeps enable row level security;
 -- Backend service-role access only; application-layer membership/role checks mandatory.
 revoke all on public.intelligence_overview_profiles from anon, authenticated;
 revoke all on public.intelligence_overview_sweeps from anon, authenticated;
+
+-- One active sweep per tenant, enforced atomically even across API workers.
+create unique index if not exists intelligence_overview_sweeps_one_active_org_idx
+on public.intelligence_overview_sweeps(org_id) where status in ('queued', 'running');
