@@ -768,5 +768,65 @@
     "authMode": "OAUTH2",
     "providerSupported": true,
     "hasReadActions": true
+  },
+  {
+    "vendorKey": "smartlead",
+    "type": "Smartlead.ai",
+    "integrationId": "smartlead-ai",
+    "category": "Sales / Prospecting",
+    "description": "Cold email campaigns and reply tracking",
+    "authMode": "API_KEY",
+    "providerSupported": true,
+    "hasReadActions": false
+  },
+  {
+    "vendorKey": "quickmail",
+    "type": "QuickMail",
+    "integrationId": "quickmail",
+    "category": "Sales / Prospecting",
+    "description": "Cold email sequencing and outreach",
+    "authMode": "API_KEY",
+    "providerSupported": false,
+    "hasReadActions": false
+  },
+  {
+    "vendorKey": "hunter",
+    "type": "Hunter",
+    "integrationId": "hunter",
+    "category": "Sales / Prospecting",
+    "description": "Business email discovery and verification",
+    "authMode": "API_KEY",
+    "providerSupported": false,
+    "hasReadActions": false
+  },
+  {
+    "vendorKey": "snov",
+    "type": "Snov.io",
+    "integrationId": "snov",
+    "category": "Sales / Prospecting",
+    "description": "Contact enrichment, verification and outreach",
+    "authMode": "API_KEY",
+    "providerSupported": false,
+    "hasReadActions": false
+  },
+  {
+    "vendorKey": "emailable",
+    "type": "Emailable",
+    "integrationId": "emailable",
+    "category": "Sales / Prospecting",
+    "description": "Email address verification",
+    "authMode": "API_KEY",
+    "providerSupported": false,
+    "hasReadActions": false
+  },
+  {
+    "vendorKey": "millionverifier",
+    "type": "MillionVerifier",
+    "integrationId": "millionverifier",
+    "category": "Sales / Prospecting",
+    "description": "Email address verification",
+    "authMode": "API_KEY",
+    "providerSupported": false,
+    "hasReadActions": false
   }
 ]
