@@ -87,6 +87,7 @@ from app.routers import (
     intelligence_engine,
     intelligence_packs_plumbing,
     intelligence_visibility,
+    intelligence_overview,
     rag,
     rag_enhanced,
     rag_admin,
@@ -852,6 +853,7 @@ app.include_router(ai_architecture_admin.router)
 app.include_router(intelligence_engine.router)
 app.include_router(intelligence_packs_plumbing.router)
 app.include_router(intelligence_visibility.router)
+app.include_router(intelligence_overview.router)
 app.include_router(ai_system.router)
 app.include_router(assistant.router)
 app.include_router(voice.router)
