@@ -41,7 +41,7 @@ def execute_smartlead(ctx: ToolContext, action_id: str, params: dict[str,Any]) -
     # Headless Nango connection; no provider API keys are read or stored in Gravitre.
     connection_id = str(config.get("managed_connection_id") or "")
     integration_id = str(config.get("managed_integration_id") or "")
-    if config.get("auth_provider") != "managed" or not connection_id or integration_id != "smartlead":
+    if config.get("auth_provider") != "managed" or not connection_id or integration_id != "smartlead-ai":
         return deny("connector_not_connected", "Smartlead requires a Nango managed connection")
     try:
         scoped_connection(ctx.settings, connection_id=connection_id,
