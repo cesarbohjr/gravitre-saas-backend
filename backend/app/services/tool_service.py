@@ -4996,6 +4996,13 @@ def _resolve_tool_executor(action: str, ctx: ToolContext | None = None) -> ToolE
                 if handler_source:
                     ensure_private_scopes_registered(parse_manifest(bundle.get("manifest") or {}))
                     return make_private_executor(handler_source, action, ctx.settings)
+    if action.startswith(("hunter.", "emailable.", "apollo.", "snov.", "millionverifier.")):
+        from app.connectors.partners.prospecting_providers import register_prospecting_handlers
+        from app.connectors.sdk.registry import get_partner_executor
+        # Existing built-ins were already checked above. Prospecting partner
+        # handlers only fill actions that have no canonical implementation.
+        register_prospecting_handlers()
+        return get_partner_executor(action)
     from app.connectors.sdk.registry import get_partner_executor
 
     return get_partner_executor(action)
