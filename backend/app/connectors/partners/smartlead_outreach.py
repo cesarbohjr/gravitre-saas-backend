@@ -37,23 +37,29 @@ def execute_smartlead(ctx: ToolContext, action_id: str, params: dict[str,Any]) -
         # Adding a lead to an active campaign may itself transmit mail.
         # Do not accept a boolean or approval-id string from an untrusted tool call.
         return deny("permission_denied","Requires canonical approved PendingAction, verified consent and pre-enrollment suppression sync")
-    key=get_decrypted_secret(ctx.client,cid,"api_key",ctx.settings,org_id=ctx.org_id)
-    if not key:
-        return deny("connector_not_connected","Smartlead API key missing")
-    # Fixed allowlisted URL prevents arbitrary URL requests.
+    # Headless Nango connection; no provider API keys are read or stored in Gravitre.
+    connection_id = str(config.get("managed_connection_id") or "")
+    integration_id = str(config.get("managed_integration_id") or "")
+    if config.get("auth_provider") != "managed" or not connection_id or integration_id != "smartlead":
+        return deny("connector_not_connected", "Smartlead requires a Nango managed connection")
     try:
-        with httpx.Client(timeout=15.0,follow_redirects=False) as transport:
-            response=transport.get(BASE+READ_ACTIONS[action_id],params={"api_key":key},
-                                   headers={"Accept":"application/json"})
+        scoped_connection(ctx.settings, connection_id=connection_id,
+                          integration_id=integration_id, org_id=ctx.org_id,
+                          connector_id=cid)
+        response=proxy_request(
+            ctx.settings,method="GET",endpoint=READ_ACTIONS[action_id],
+            connection_id=connection_id,integration_id=integration_id,
+            extra_headers={"Accept":"application/json"},
+        )
         if response.status_code in (401,403):
-            return deny("auth_expired","Smartlead rejected API entitlement")
+            return deny("auth_expired","Smartlead authorization rejected")
         if response.status_code==429:
             return deny("rate_limited","Smartlead rate limit")
         response.raise_for_status()
         return NormalizedResult(success=True,action=action,connector_id=cid,
                 data={"provider":"smartlead","result":response.json()})
     except (httpx.HTTPError,ValueError) as exc:
-        return deny("tool_error","Smartlead read request failed: "+type(exc).__name__)
+        return deny("tool_error","Smartlead Nango proxy request failed: "+type(exc).__name__)
 
 def ensure_smartlead_registered() -> None:
     from app.connectors.sdk import get_partner_executor,register_from_manifest
