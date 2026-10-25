@@ -17,24 +17,14 @@ def record_delivery_event(client:Any,*,org_id:str,provider:str,event_id:str,
         raise PermissionError("Verified webhook signature or trusted provider poll required")
     if not all((org_id,provider,event_id,provider_lead_id)) or event_type not in EVENT_TYPES:
         raise ValueError("Validated tenant, event and lead mapping required")
-    row=(client.table("prospect_outreach_events").select("id").eq("org_id",org_id)
-         .eq("provider",provider).eq("provider_event_id",event_id).limit(1).execute().data or [])
-    if row:
-        return {"recorded":False,"duplicate":True,"event_type":event_type}
-    result=(client.table("prospect_outreach_events").insert({"org_id":org_id,
-       "provider":provider,"provider_event_id":event_id,
-       "provider_lead_id":provider_lead_id,"event_type":event_type}).execute().data or [])
-    if not result:
-        raise RuntimeError("Event persistence failed")
-    if event_type in SUPPRESS_TYPES:
-        if not recipient_email:
-            # Do not mark synchronized: suppression MUST succeed before campaign continuation.
-            raise RuntimeError("Recipient mapping unavailable; outbound campaign must pause")
-        email=recipient_email.strip().lower()
-        if "@" not in email:
-            raise RuntimeError("Invalid recipient mapping; campaign must pause")
-        client.table("prospect_suppressions").upsert({
-          "org_id":org_id,"normalized_email":email,"reason":event_type
-        },on_conflict="org_id,normalized_email").execute()
-    return {"recorded":True,"duplicate":False,"event_type":event_type,
-      "suppression_applied":event_type in SUPPRESS_TYPES}
+    if event_type in SUPPRESS_TYPES and (not recipient_email or "@" not in recipient_email):
+        raise ValueError("Recipient required to apply suppression atomically")
+    result=client.rpc("prospect_record_delivery_atomic",{
+        "p_org":org_id,"p_provider":provider,"p_event_id":event_id,
+        "p_lead":provider_lead_id,"p_event_type":event_type,
+        "p_email":(recipient_email or "").strip().lower()
+    }).execute()
+    if result.data is not True and result.data is not False:
+        raise RuntimeError("Atomic delivery persistence not confirmed")
+    return {"recorded":result.data is True,"duplicate":result.data is False,
+       "event_type":event_type,"suppression_applied":result.data is True and event_type in SUPPRESS_TYPES}
