@@ -6,6 +6,8 @@ credentials and a pre-authorized credit budget; never performs CRM writes.
 from __future__ import annotations
 
 from typing import Any
+from datetime import date
+from uuid import uuid4
 import httpx
 
 from app.connectors.repository import get_connector, get_decrypted_secret
@@ -42,7 +44,7 @@ def execute_prospecting_action(ctx: ToolContext, action: str, params: dict[str, 
         return fail("permission_denied", "Prospecting connector not enabled")
     if action in CREDIT_ACTIONS and not (config.get("credits_confirmed") and config.get("credit_budget_approved") and config.get("remaining_free_credits", 0) > 0):
         return fail("permission_denied", "Credit-consuming action requires confirmed unused allowance and approval")
-    # A boolean configuration is not an atomic charge reservation. Until the\n    # persistent credit-ledger RPC is integrated, block paid/credit-consuming\n    # provider calls, including accidental direct invoke_tool execution.\n    if action in CREDIT_ACTIONS:\n        return fail("permission_denied", "Provider credit reservation is not yet operational")\n    allowed_params = {
+    allowed_params = {
         "hunter.email.verify": ("email",),
         "emailable.email.verify": ("email",),
         "millionverifier.email.verify": ("email",),
@@ -62,6 +64,25 @@ def execute_prospecting_action(ctx: ToolContext, action: str, params: dict[str, 
     key = get_decrypted_secret(ctx.client, connector_id, "api_key", ctx.settings, org_id=ctx.org_id)
     if not key:
         return fail("connector_not_connected", "Provider API key not configured")
+
+    reservation_id = str(params.get("request_id") or uuid4())
+    if action in CREDIT_ACTIONS:
+        try:
+            result = ctx.client.rpc("prospect_reserve_credits", {
+                "p_org":ctx.org_id,"p_provider":vendor,
+                "p_period":str(config.get("credit_period") or date.today().replace(day=1).isoformat()),
+                "p_request":reservation_id,"p_cost":1
+            }).execute()
+            if result.data is not True:
+                return fail("permission_denied","Credit budget exhausted or unavailable")
+        except Exception:
+            return fail("permission_denied","Credit reservation unavailable")
+    def settle(consumed: int, state: str) -> None:
+        if action in CREDIT_ACTIONS:
+            ctx.client.rpc("prospect_settle_credits", {
+                "p_org":ctx.org_id,"p_provider":vendor,"p_request":reservation_id,
+                "p_consumed":consumed,"p_status":state
+            }).execute()
     method,url = ENDPOINTS[action]
     headers={"Accept":"application/json"}
     if vendor == "hunter":
@@ -78,15 +99,19 @@ def execute_prospecting_action(ctx: ToolContext, action: str, params: dict[str, 
                                       params=payload if method=="GET" else None,
                                       json=payload if method=="POST" else None)
         if response.status_code in (401,403):
+            settle(0,"released")
             return fail("auth_expired", "Provider rejected credentials or entitlement")
         if response.status_code == 429:
+            settle(0,"released")
             return fail("rate_limited", "Provider rate limit reached")
         response.raise_for_status()
         data=response.json()
+        settle(1,"charged")
         # Never report raw provider payload including PII or credentials through logs.
         return NormalizedResult(success=True,action=action,connector_id=connector_id,
                                 data={"provider":vendor,"result":data})
     except (httpx.HTTPError,ValueError) as exc:
+        # Ambiguous transport failures retain reservation pending reconciliation.
         return fail("tool_error", "Provider request failed: "+type(exc).__name__)
 
 
