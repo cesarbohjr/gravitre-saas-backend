@@ -835,3 +835,20 @@ def get_play_outcomes(
         "count": len(rows),
         "truthRule": "Execution success is not business success; verified business results require source-of-record evidence.",
     }
+
+
+@router.get("/qualified-prospecting/reviews")
+def list_prospect_reviews(
+    member: Annotated[tuple[dict, str, str], Depends(require_org_member)],
+    settings: Annotated[Settings, Depends(get_settings)],
+    limit: int = Query(default=50, ge=1, le=100),
+) -> dict[str, Any]:
+    """Tenant-filtered persisted contacts awaiting qualification review.
+
+    Read-only: changing CRM status requires a separate server-side gate.
+    """
+    from app.plays.prospecting_reviews import list_reviews
+    org_id = _member_org(member)
+    client = get_supabase_client(settings)
+    return {"items": list_reviews(client, org_id, limit=limit),
+            "crmWriteEnabled": False, "outreachEnabled": False}
