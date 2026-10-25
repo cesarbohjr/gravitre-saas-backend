@@ -137,10 +137,18 @@ PROSPECTING = PlayDefinition(
         "decision-makers, verify corporate emails and prepare governed CRM staging "
         "without sending or importing contacts automatically."
     ),
-    optional_connectors=(
-        "hunter", "emailable", "apollo", "snov", "millionverifier",
-        "hubspot", "salesforce",
+    required_connector_groups=(
+        ("apollo", "hunter", "snov"),
+        ("hunter", "emailable", "snov", "millionverifier"),
+        ("hubspot", "salesforce"),
+        ("smartlead", "instantly", "quickmail", "snov"),
     ),
+    optional_connectors=(
+        "apollo", "hunter", "snov", "emailable", "millionverifier",
+        "hubspot", "salesforce", "smartlead", "instantly", "quickmail",
+    ),
+    required_read_action_groups=(("apollo.people.search", "prospecting.companies.discover"),),
+    write_action_groups=(("hubspot.contacts.create",), ("smartlead.leads.enroll",)),
     outcome_metrics=("qualified_prospects",),
 )
 
