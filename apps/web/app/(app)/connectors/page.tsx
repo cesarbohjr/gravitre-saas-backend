@@ -20,6 +20,7 @@ import { ConnectorIcon, ConnectorIconGrid } from "@/components/gravitre/connecto
 import { DataFreshness } from "@/components/gravitre/data-freshness"
 import { ConnectorRecommendations } from "@/components/connectors/connector-recommendations"
 import { AvailableConnectorsStrip } from "@/components/connectors/available-connectors-strip"
+import { OutboundProviderCards } from "@/components/connectors/outbound-provider-cards"
 import { DATA_REMOVAL_KEY, DataRemovalReceipts, DisconnectImpact, useDataRemoval } from "@/components/connectors/data-removal"
 import { EnterpriseKnowledgeSync } from "@/components/settings/enterprise-knowledge-sync"
 import "@/components/settings/settings-kit.css"
@@ -3530,6 +3531,8 @@ function ConnectorsPageContent() {
           ) : null}
           </div>
         </div>
+
+        {!chromeCollapsed ? <OutboundProviderCards /> : null}
 
         {/* Modals */}
         {configureModal && (
