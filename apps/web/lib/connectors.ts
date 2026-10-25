@@ -359,7 +359,7 @@ export const CONNECTOR_CATALOG: CatalogConnectorEntry[] = [
     authType: entry.authMode === "API_KEY" ? "apiKey" : "oauth",
     credentialModel: entry.authMode === "API_KEY" ? "api_key" : "oauth2",
     oauthReady: entry.providerSupported && entry.authMode !== "API_KEY",
-    shipped: entry.hasReadActions, authMode: "customer_owned",
+    // Connect-only managed providers are still customer-installable even before action packs ship.\n    shipped: entry.hasReadActions || ["smartlead", "quickmail", "hunter", "snov", "emailable", "millionverifier"].includes(entry.vendorKey), authMode: "customer_owned",
   })),
 ]
 
