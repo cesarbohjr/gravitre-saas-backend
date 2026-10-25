@@ -13,6 +13,7 @@ import { fetcher } from "@/lib/fetcher"
 import { cn } from "@/lib/utils"
 import { ArrowLeft, ArrowRight, CircleAlert, PlayCircle, Workflow } from "lucide-react"
 import { PlaySetup } from "@/components/plays/play-setup"
+import { ProspectingReadiness } from "@/components/plays/prospecting-readiness"
 import { PlayRunControl } from "@/components/plays/play-run-control"
 import { PlayResults, type PlayOutcomesResponse } from "@/components/plays/play-results"
 import { AuthorityLadder, earnedRungs } from "@/components/plays/authority-ladder"
@@ -211,6 +212,7 @@ export default function PlayDetailPage() {
 
               <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_340px] lg:items-start">
                 <div className="min-w-0 space-y-5">
+                  {data.play.key === "qualified-prospecting" ? <ProspectingReadiness workflowCount={data.workflowBindingCount} /> : null}
                   <PlayRunControl playKey={data.play.key} installation={installationData?.installation ?? null} readiness={data.readiness} />
                   <PlayResults playKey={data.play.key} />
                 </div>
