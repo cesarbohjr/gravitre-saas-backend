@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import Image from "next/image"
 import useSWR from "swr"
 import { toast } from "sonner"
 import { Mail, ShieldCheck, PlugZap } from "lucide-react"
