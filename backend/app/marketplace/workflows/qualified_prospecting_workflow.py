@@ -30,3 +30,42 @@ def workflow_config() -> dict[str,Any]:
         "crm_writes_enabled":False,
         "outbound_email_enabled":False,
     }
+
+
+# Canonical six-stage workflow contract. Stages are deliberately separated
+# into pure planning, provider invocation, and human-approval boundaries.
+# The installer must bind them to registered, tenant-scoped tools before a run.
+STAGE_ORDER = ("discover", "research", "enrich", "verify", "consent_review", "stage")
+STAGE_ACTIONS = {
+    "discover": "prospecting.companies.discover",
+    "research": "prospecting.companies.research",
+    "enrich": "apollo.people.search",
+    "verify": "prospecting.contacts.verify",
+    "consent_review": "prospecting.contacts.review",
+    "stage": "prospecting.contacts.stage",
+}
+
+def build_six_stage_workflow_steps() -> list[dict[str,Any]]:
+    """Build canonical step metadata; no direct CRM writes or email sends.
+
+    Local prospecting actions must be registered before installation. The review
+    and stage actions must stop on missing consent, missing source evidence, or
+    missing canonical approval.
+    """
+    steps=[]
+    for stage in STAGE_ORDER:
+        action=STAGE_ACTIONS[stage]
+        vendor=action.split(".",1)[0]
+        step=invoke_step(
+            f"prospecting_{stage}",
+            f"Prospecting: {stage.replace('_',' ').title()}",
+            action, connector=vendor,
+        )
+        step["config"]["requires_previous_stage"] = stage != "discover"
+        step["config"]["requires_approval"] = stage in {"consent_review","stage"}
+        steps.append(step)
+    return steps
+
+def six_stage_complete(registered_actions: set[str]) -> bool:
+    """Advertise ready only when every stage has a callable registered action."""
+    return all(action in registered_actions for action in STAGE_ACTIONS.values())
