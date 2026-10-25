@@ -31,7 +31,8 @@ def run_stage(client:Any,*,org_id:str,run_id:str,stage:str,actor_id:str,
     # No caller-controlled approval flag: resolve authorization against trusted
     # server-side PendingAction state for this tenant, actor, run and stage.
     approved = False
-    if stage in APPROVAL_STAGES and approval_resolver is not None:\n        approved = approval_resolver(org_id, actor_id, run_id, stage) is True
+    if stage in APPROVAL_STAGES and approval_resolver is not None:
+        approved = approval_resolver(org_id, actor_id, run_id, stage) is True
     if stage in APPROVAL_STAGES and not approved:
         client.table("prospect_play_steps").upsert({"org_id":org_id,"run_id":run_id,
            "stage":stage,"status":"awaiting_approval"},on_conflict="org_id,run_id,stage").execute()
