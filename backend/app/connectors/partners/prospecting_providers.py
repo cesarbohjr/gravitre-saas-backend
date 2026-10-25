@@ -7,7 +7,6 @@ from __future__ import annotations
 
 from typing import Any
 from datetime import date
-from uuid import uuid4
 import httpx
 
 from app.connectors.repository import get_connector, get_decrypted_secret
@@ -65,7 +64,9 @@ def execute_prospecting_action(ctx: ToolContext, action: str, params: dict[str, 
     if not key:
         return fail("connector_not_connected", "Provider API key not configured")
 
-    reservation_id = str(params.get("request_id") or uuid4())
+    reservation_id = str(params.get("request_id") or "").strip()
+    if action in CREDIT_ACTIONS and not reservation_id:
+        return fail("validation_error", "Stable request_id is required for metered calls")
     if action in CREDIT_ACTIONS:
         try:
             result = ctx.client.rpc("prospect_reserve_credits", {
@@ -106,6 +107,8 @@ def execute_prospecting_action(ctx: ToolContext, action: str, params: dict[str, 
             return fail("rate_limited", "Provider rate limit reached")
         response.raise_for_status()
         data=response.json()
+        if response.status_code == 202:
+            return fail("outcome_uncertain", "Provider verification pending; credit reservation held")
         settle(1,"charged")
         # Never report raw provider payload including PII or credentials through logs.
         return NormalizedResult(success=True,action=action,connector_id=connector_id,
