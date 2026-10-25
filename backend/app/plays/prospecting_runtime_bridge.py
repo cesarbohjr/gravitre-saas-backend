@@ -28,3 +28,35 @@ def invoke_prospecting_stage(ctx:ToolContext, *,stage:str,
     return run_stage(ctx.client,org_id=ctx.org_id,run_id=ctx.run_id,
       stage=stage,actor_id=ctx.actor_id,execute=execute,
       approval_resolver=approval_resolver)
+
+def invoke_approved_external_stage(ctx:ToolContext,*,stage:str,
+    params:dict[str,Any])->dict[str,Any]:
+    """Run a CRM or campaign write inside the atomic checkpoint claim.
+
+    The private executors resolve an exact action/payload approval from DB.
+    Tool-supplied authority flags are never forwarded. Unknown outcomes are
+    durable and require reconciliation, not blind re-enrollment.
+    """
+    from app.plays.prospecting_authorized_writes import (
+        approved_hubspot_create,approved_smartlead_enroll)
+    from app.plays.prospecting_approval import resolve_prospecting_approval
+    if not ctx.run_id or stage not in {"crm_export","outreach_enroll"}:
+        raise ValueError("Authenticated durable run and supported external stage required")
+    action="hubspot.contacts.create" if stage=="crm_export" else "smartlead.leads.enroll"
+    exact_payload=(dict(params["payload"]) if stage=="crm_export" else {
+        k:params[k] for k in ("connector_id","campaign_id","contact_id","email","first_name","last_name")})
+    approved_id=resolve_prospecting_approval(ctx.client,org_id=ctx.org_id,
+        actor_id=ctx.actor_id,run_id=ctx.run_id,stage=stage,
+        action=action,payload=exact_payload)
+    def approved(org:str,actor:str,run:str,requested_stage:str)->bool:
+        return (org==ctx.org_id and actor==ctx.actor_id and run==ctx.run_id
+                and requested_stage==stage and bool(approved_id))
+    def execute()->dict[str,Any]:
+        if stage=="crm_export":
+            return approved_hubspot_create(ctx,run_id=ctx.run_id,
+                connector_id=str(params["connector_id"]),payload=exact_payload)
+        return approved_smartlead_enroll(ctx,run_id=ctx.run_id,
+            **exact_payload)
+    return run_stage(ctx.client,org_id=ctx.org_id,run_id=ctx.run_id,
+        stage=stage,actor_id=ctx.actor_id,execute=execute,
+        approval_resolver=approved)
