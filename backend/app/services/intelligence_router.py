@@ -324,6 +324,10 @@ class IntelligenceRouter:
         # Conservative mode narrows unsolicited guidance; no mode changes execution grants.
         result["proactive_suggestions"] = [] if overview_policy["adaptive"] == "conservative" else suggestions
         result["intelligence_overview_policy"] = overview_policy
+        # Presentation sensitivity is applied to evidence surfaced to the customer,
+        # not to the underlying safety, consent, context or execution decisions.
+        from app.services.intelligence_overview_policy import apply_response_sensitivity
+        result = apply_response_sensitivity(result, overview_policy)
         from app.services.intelligence_visibility_service import get_intelligence_visibility_service
 
         visibility = get_intelligence_visibility_service(self.settings)
