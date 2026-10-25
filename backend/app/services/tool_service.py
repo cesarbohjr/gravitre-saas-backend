@@ -4996,6 +4996,11 @@ def _resolve_tool_executor(action: str, ctx: ToolContext | None = None) -> ToolE
                 if handler_source:
                     ensure_private_scopes_registered(parse_manifest(bundle.get("manifest") or {}))
                     return make_private_executor(handler_source, action, ctx.settings)
+    if action.startswith("smartlead."):
+        from app.connectors.partners.smartlead_outreach import ensure_smartlead_registered
+        ensure_smartlead_registered()
+        from app.connectors.sdk.registry import get_partner_executor
+        return get_partner_executor(action)
     if action.startswith("prospecting."):
         from app.plays.prospecting_stage_handlers import register_prospecting_stage_handlers
         register_prospecting_stage_handlers()
