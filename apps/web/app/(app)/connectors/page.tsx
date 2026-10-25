@@ -1363,7 +1363,7 @@ function AddConnectorModal({
   const handleSelectConnector = (connector: CatalogConnector) => {
     if (isManagedConnectorVendor(connector.vendorKey || connector.type) && !managedProviderAvailable(managedCatalog, connector.vendorKey || connector.type)) {
       const mode = managedCatalog?.connectors.find((entry) => entry.vendor === (connector.vendorKey || connector.type))?.authMode
-      const unsupported = mode && !["OAUTH1", "OAUTH2"].includes(mode)
+      const unsupported = mode && !["OAUTH1", "OAUTH2", "API_KEY"].includes(mode)
       toast.message(unsupported ? "Provider sign-in unavailable" : "Provider setup required", { description: unsupported
         ? "This provider does not yet support the sign-in connection offered by Gravitre."
         : "Gravitre must finish this provider’s authorization setup before accounts can connect." })
@@ -1393,7 +1393,7 @@ function AddConnectorModal({
     setName(`${vendorSlug}-${environment}`)
 
     // Route to appropriate auth flow
-    if (connector.authType === "oauth") {
+    if (isManagedConnectorVendor(connector.vendorKey || connector.type) || connector.authType === "oauth") {
       setStep("oauth")
     } else if (connector.authType === "webhook") {
       setStep("webhook")
