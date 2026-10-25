@@ -20,7 +20,7 @@ ENDPOINTS = {
     "apollo.people.match": ("POST", "https://api.apollo.io/api/v1/people/match"),
     "millionverifier.email.verify": ("GET", "https://api.millionverifier.com/api/v3/"),
 }
-CREDIT_ACTIONS = set(ENDPOINTS) - {"apollo.people.search"}
+CREDIT_ACTIONS = set(ENDPOINTS)  # Treat all provider calls as metered until plan terms are verified.
 ALLOWED_TYPES = {"hunter", "emailable", "apollo", "snov", "millionverifier"}
 
 
