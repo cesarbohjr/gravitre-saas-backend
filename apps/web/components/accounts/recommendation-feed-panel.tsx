@@ -109,12 +109,20 @@ const FEED_SHOWS =
  * One ranked list of what needs attention. While the feature is switched off
  * (404) it says so plainly instead of hiding.
  */
-export function RecommendationFeedPanel({ kinds }: { kinds?: readonly string[] } = {}) {
+export function RecommendationFeedPanel({
+  kinds,
+  hideWhenEmpty = false,
+}: {
+  kinds?: readonly string[]
+  /** Render nothing while the feature is off, loading, or has nothing to show. */
+  hideWhenEmpty?: boolean
+} = {}) {
   const { data, error, isLoading, mutate } = useSWR("recommendation-feed", () => accountIntelligenceApi.feed(), {
     revalidateOnFocus: false,
     shouldRetryOnError: false,
   })
   const items = data?.items?.filter((item) => !kinds || kinds.includes(item.kind))
+  if (hideWhenEmpty && (isFeatureOff(error) || !items || items.length === 0)) return null
   if (isFeatureOff(error)) {
     return (
       <section aria-labelledby="recommendation-feed-heading" className="space-y-2">

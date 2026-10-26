@@ -2285,8 +2285,9 @@ export const SHOT_FIXTURES: Record<string, unknown> = {
         workflowId: "wf_lead_intake",
         stepId: "step_hubspot_upsert",
         connectorId: "con_hubspot",
-        alertType: "connector_token_expiring",
+        alertType: "auth_expiry",
         severity: "critical",
+        evidence: { connectorType: "hubspot", stepName: "Lead intake", hoursUntilExpiry: 26 },
         title: "HubSpot token expires in 26 hours",
         message:
           "The HubSpot connector's refresh token expires before the next scheduled run of Lead intake → HubSpot. Re-authorize to avoid a failed write.",
@@ -2299,7 +2300,7 @@ export const SHOT_FIXTURES: Record<string, unknown> = {
         workflowId: "wf_lead_intake",
         stepId: "step_apollo_enrich",
         connectorId: "con_apollo",
-        alertType: "rate_limit_projection",
+        alertType: "rate_limit_trend",
         severity: "high",
         title: "Apollo enrichment projected to hit rate limit",
         message:
@@ -2313,7 +2314,8 @@ export const SHOT_FIXTURES: Record<string, unknown> = {
         workflowId: "wf_weekly_digest",
         stepId: "step_send_summary",
         connectorId: "con_slack",
-        alertType: "recent_failure_pattern",
+        alertType: "step_failure_risk",
+        evidence: { recentFailures: 2, recentAttempts: 5 },
         severity: "high",
         title: "Slack delivery failed twice this week",
         message:
@@ -2583,6 +2585,32 @@ export const SHOT_FIXTURES: Record<string, unknown> = {
   // Intelligence field (/e2e/shots/intelligence-field). Same fictional entities and
   // relationships as the fixtures above — no additional graph content.
   "/api/intelligence/page-context": {
+    // FIXTURE: one outcome attribution path (signal → prediction, nothing acted on yet).
+    outcomePaths: [
+      {
+        id: "path_hubspot_signin",
+        scopeId: DEMO_ORG_ID,
+        scopeLabel: "Whole organization",
+        presentStepCount: 3,
+        complete: false,
+        steps: [
+          { kind: "objective", title: "Objective", label: "Whole organization", present: true, evidence: [] },
+          {
+            kind: "signal",
+            title: "Signal",
+            label: "HubSpot sign-in needed",
+            present: true,
+            evidence: ["Connector auth status is pending_auth. Workflow step Account signals is likely to fail on the next run."],
+            sourceRecordId: "2f2ae692-8082-4a7b-8db8-2c68cff5afa2",
+          },
+          { kind: "prediction", title: "Prediction", label: "Next run will likely fail", present: true, evidence: ["Failure forecast raised for Account signals."] },
+          { kind: "agent_workflow", title: "Agent", label: "Not yet", present: false, evidence: [] },
+          { kind: "action", title: "Action", label: "Not yet", present: false, evidence: [] },
+          { kind: "outcome", title: "Outcome", label: "Not yet", present: false, evidence: [] },
+          { kind: "business_impact", title: "Business impact", label: "Not yet", present: false, evidence: [] },
+        ],
+      },
+    ],
     snapshot: {
       generatedAt: T(5),
       tenantId: DEMO_ORG_ID,

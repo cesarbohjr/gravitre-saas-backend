@@ -64,7 +64,7 @@ export function GravitrePageHeader({
               </div>
             ) : null}
             <div className="min-w-0">
-              {eyebrow ? <p className={cn(TYPE.eyebrow, "leading-none")}>{eyebrow}</p> : null}
+              {eyebrow ? <p data-page-eyebrow className={cn(TYPE.eyebrow, "leading-none")}>{eyebrow}</p> : null}
               <div className="flex min-w-0 flex-wrap items-baseline gap-x-3 gap-y-0.5">
                 <h1 className="font-sans text-[17px] font-semibold tracking-[-0.01em] text-[color:var(--g-text-primary)]">
                   {title}
@@ -102,7 +102,7 @@ export function GravitrePageHeader({
       <div className="flex min-w-0 flex-col justify-between gap-3 lg:flex-row lg:items-end">
         <div className="flex min-w-0 flex-1 items-start gap-3">
           <div className="min-w-0 space-y-1.5">
-            {eyebrow ? <p className={TYPE.eyebrow}>{eyebrow}</p> : null}
+            {eyebrow ? <p data-page-eyebrow className={TYPE.eyebrow}>{eyebrow}</p> : null}
             <h1
               className={cn(
                 TYPE.pageTitle,

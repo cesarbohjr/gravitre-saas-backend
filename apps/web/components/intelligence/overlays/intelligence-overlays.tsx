@@ -14,7 +14,10 @@ import "./overlays.css"
 export function IntelligenceOverlaysProvider({ children }: { children: ReactNode }) {
   return (
     <>
-      {children}
+      {/* Hook for the Intelligence designs' type (mono uppercase eyebrows), scoped to these pages. */}
+      <div data-intelligence-surface className="contents">
+        {children}
+      </div>
       <IntelligenceToaster />
       <IntelligenceConfirmHost />
     </>

@@ -6,6 +6,7 @@ import AssignmentsPage from "@/app/(app)/assignments/page"
 import ConnectorsPage from "@/app/(app)/connectors/page"
 import HomePage from "@/app/(app)/home/page"
 import IntelligencePage from "@/app/(app)/intelligence/page"
+import { IntelligenceOverlaysProvider } from "@/components/intelligence/overlays/intelligence-overlays"
 import IntelligencePerformancePage from "@/app/(app)/intelligence/performance/page"
 import IntelligencePredictivePage from "@/app/(app)/intelligence/predictive/page"
 import IntelligenceReportsPage from "@/app/(app)/intelligence/reports/page"
@@ -93,9 +94,17 @@ export const SHOT_SURFACES = {
 
 export function ShotSurface({ name }: { name: keyof typeof SHOT_SURFACES }) {
   const Surface = SHOT_SURFACES[name]
+  // Intelligence and Models pages render inside their layout's overlays provider in the app.
+  const intelligence = name.startsWith("intelligence") || name === "models"
   return (
     <ShotAuthProvider>
-      <Surface />
+      {intelligence ? (
+        <IntelligenceOverlaysProvider>
+          <Surface />
+        </IntelligenceOverlaysProvider>
+      ) : (
+        <Surface />
+      )}
       {name !== "ai" && name !== "welcome" ? <GravitreAIWorkspaceHost fixtureBoundary /> : null}
     </ShotAuthProvider>
   )

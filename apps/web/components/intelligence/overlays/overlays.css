@@ -146,3 +146,11 @@
   .ig-toast, .ig-dialog, .ig-scrim { animation: none; }
   .ig-spin { animation: none; }
 }
+
+/* Intelligence designs: page eyebrows are mono uppercase ("UNDERSTAND / FORECASTS"). */
+[data-intelligence-surface] [data-page-eyebrow] {
+  font-family: var(--font-mono), "Geist Mono", ui-monospace, monospace;
+  font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase;
+}
+/* Mono caps labels the Intelligence designs use ("PATH TO PRODUCTION", "SOURCE RECORD"). */
+[data-intelligence-surface] .ig-caps { text-transform: uppercase; }

@@ -39,7 +39,7 @@ import type { Connector } from "@/types/api"
 import { cn } from "@/lib/utils"
 
 const CARD = "rounded-[18px] border border-[color:var(--g-border-default)] bg-[color:var(--g-surface-1)]"
-const EYEBROW = "font-mono text-[11px] uppercase tracking-[0.12em] text-[color:var(--g-text-muted)]"
+const EYEBROW = "font-mono text-[11px] ig-caps tracking-[0.12em] text-[color:var(--g-text-muted)]"
 const GREEN_LINK =
   "inline-flex items-center gap-1 text-[13px] font-medium text-[color:var(--g-brand-active)] hover:text-[color:var(--g-brand-hover)] hover:underline underline-offset-2 dark:text-[color:var(--g-brand)]"
 
@@ -489,7 +489,7 @@ export function HowGravitreThinks({
             <span className="grid h-8 w-8 place-items-center rounded-[9px] bg-white/10 text-[color:var(--g-brand)]">
               <Sparkle className="h-4 w-4" weight="fill" aria-hidden />
             </span>
-            <p className="mt-4 font-mono text-[11px] uppercase tracking-[0.12em] text-[color:var(--g-brand)]">Intelligence</p>
+            <p className="mt-4 font-mono text-[11px] ig-caps tracking-[0.12em] text-[color:var(--g-brand)]">Intelligence</p>
             <h3 className="mt-1 text-[15px] font-semibold">Understands, predicts and explains</h3>
             <p className="mt-1 text-[13px] leading-relaxed text-white/70">
               Seven abilities work together on every question, using only what is relevant.

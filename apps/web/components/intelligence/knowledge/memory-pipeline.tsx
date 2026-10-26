@@ -39,7 +39,7 @@ function Stage({
   const t = STAGE_TONE[tone]
   return (
     <div className={cn("flex min-w-0 flex-col gap-1.5 border p-4", KNOWLEDGE_TILE, t.box)} title={title}>
-      <span className={cn("font-mono text-[11px] tracking-[0.06em]", t.label)}>
+      <span className={cn("font-mono text-[11px] ig-caps tracking-[0.08em]", t.label)}>
         {index} · {label}
       </span>
       <span className="text-[28px] font-semibold leading-none tabular-nums text-[color:var(--g-text-primary)]">
