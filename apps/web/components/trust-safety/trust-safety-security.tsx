@@ -3,7 +3,7 @@
 import { useState } from "react"
 import Link from "next/link"
 import useSWR from "swr"
-import { toast } from "@/components/agents/overlays/toast"
+import { toast } from "./overlays/toast"
 import { ssoApi } from "@/lib/api"
 import { useOrgAdmin } from "@/lib/use-org-admin"
 import {
@@ -52,7 +52,7 @@ export function useSecurityState() {
 export type SecurityState = ReturnType<typeof useSecurityState>
 
 export function TrustSafetySecurity({ state }: { state: SecurityState }) {
-  const { isAdmin } = useOrgAdmin()
+  const { isAdmin, loading: adminLoading } = useOrgAdmin()
   const { sso, sec, sp, residency, siem, stage, controls, score, advice } = state
   const [busy, setBusy] = useState<string | null>(null)
   const [dialogOpen, setDialogOpen] = useState(false)
@@ -181,7 +181,7 @@ export function TrustSafetySecurity({ state }: { state: SecurityState }) {
   return (
     <>
       <Hero
-        art="security"
+        art={isAdmin || adminLoading ? "security" : "access"}
         eyebrow="Security · posture"
         big={controls ? score : "–"}
         unit="of 4 controls on"
@@ -197,7 +197,7 @@ export function TrustSafetySecurity({ state }: { state: SecurityState }) {
       />
       <div className="ts-sechead">
         <span className="ts-eyebrow">Sign in and access</span>
-        <span style={{ fontSize: 13, color: "#6A6B64" }}>How people prove who they are and where they can sign in from</span>
+        <span style={{ fontSize: 13, color: "#55564F" }}>How people prove who they are and where they can sign in from</span>
       </div>
       <section className="ts-card" style={{ overflow: "hidden" }}>
         <div className="ts-sec">
@@ -207,7 +207,7 @@ export function TrustSafetySecurity({ state }: { state: SecurityState }) {
               <span style={{ fontWeight: 600 }}>Single sign on</span>
               <Pill bg={ssoPill.bg} fg={ssoPill.fg} dot={ssoPill.dot}>{ssoPill.label}</Pill>
             </div>
-            <div style={{ fontSize: 13, color: "#6A6B64", marginTop: 2 }}>SAML or OIDC through your identity provider</div>
+            <div style={{ fontSize: 13, color: "#55564F", marginTop: 2 }}>SAML or OIDC through your identity provider</div>
           </div>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
             <button type="button" className="ts-btn line sm" disabled={!metadataUrl} onClick={() => void copyMeta()}>
@@ -222,7 +222,7 @@ export function TrustSafetySecurity({ state }: { state: SecurityState }) {
               const done = i < ssoStep
               const cur = i === ssoStep && stage !== "enabled"
               return (
-                <div key={label} style={{ display: "flex", gap: 10, alignItems: "center", border: `1px solid ${cur ? "#CFCFC8" : "#EFEFEA"}`, background: cur ? "#FFFFFF" : "#FAFAF8", borderRadius: 10, padding: "10px 12px", fontSize: 13 }}>
+                <div key={label} style={{ display: "flex", gap: 10, alignItems: "center", border: `1px solid ${cur ? "#CFCFC8" : "#EFEFEA"}`, background: cur ? "#FFFFFF" : "#F7F7F4", borderRadius: 10, padding: "10px 12px", fontSize: 13 }}>
                   <span style={{ width: 22, height: 22, borderRadius: "50%", background: done ? "#0B8A5C" : cur ? "#141513" : "#8A8B85", color: "#FFFFFF", display: "grid", placeItems: "center", fontSize: 11, fontWeight: 700, flex: "0 0 auto" }}>
                     {done ? "✓" : i + 1}
                   </span>
@@ -231,7 +231,7 @@ export function TrustSafetySecurity({ state }: { state: SecurityState }) {
               )
             })}
           </div>
-          <div className="ts-sub ts-mono" style={{ fontSize: 12, color: "#6A6B64", overflowWrap: "anywhere" }}>
+          <div className="ts-sub ts-mono" style={{ fontSize: 12, color: "#55564F", overflowWrap: "anywhere" }}>
             SP metadata: {metadataUrl ?? "https://gravitre.app/api/auth/sso/metadata"}
           </div>
         </div>
@@ -239,7 +239,7 @@ export function TrustSafetySecurity({ state }: { state: SecurityState }) {
           <span className="ts-ico"><Icon name="shieldCheck" /></span>
           <div style={{ flex: "1 1 260px", minWidth: 0 }}>
             <div style={{ fontWeight: 600 }}>Require two factor authentication</div>
-            <div style={{ fontSize: 13, color: "#6A6B64", marginTop: 2 }}>Everyone confirms sign in with an authenticator app</div>
+            <div style={{ fontSize: 13, color: "#55564F", marginTop: 2 }}>Everyone confirms sign in with an authenticator app</div>
           </div>
           <Switch on={tfa} label="Require two factor authentication" disabled={locked || busy != null} onToggle={toggleTfa} />
         </div>
@@ -247,7 +247,7 @@ export function TrustSafetySecurity({ state }: { state: SecurityState }) {
           <span className="ts-ico"><Icon name="globe" /></span>
           <div style={{ flex: "1 1 260px", minWidth: 0 }}>
             <div style={{ fontWeight: 600 }}>IP allowlist</div>
-            <div style={{ fontSize: 13, color: "#6A6B64", marginTop: 2 }}>Only allow sign in from these networks</div>
+            <div style={{ fontSize: 13, color: "#55564F", marginTop: 2 }}>Only allow sign in from these networks</div>
           </div>
           <Switch on={ip} label="IP allowlist" disabled={locked || busy != null} onToggle={toggleIp} />
           {ip ? (
@@ -283,7 +283,7 @@ export function TrustSafetySecurity({ state }: { state: SecurityState }) {
           <span className="ts-ico"><Icon name="clock" /></span>
           <div style={{ flex: "1 1 260px", minWidth: 0 }}>
             <div style={{ fontWeight: 600 }}>Session timeout</div>
-            <div style={{ fontSize: 13, color: "#6A6B64", marginTop: 2 }}>Sign people out after a period of inactivity</div>
+            <div style={{ fontSize: 13, color: "#55564F", marginTop: 2 }}>Sign people out after a period of inactivity</div>
           </div>
           <select className="ts-select sm" aria-label="Session timeout" value={timeout} disabled={locked || busy != null} onChange={(e) => setTimeoutValue(e.target.value as SessionTimeout)}>
             {SESSION_TIMEOUT_OPTIONS.map((o) => <option key={o.id} value={o.id}>{o.label}</option>)}

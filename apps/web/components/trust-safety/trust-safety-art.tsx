@@ -1,36 +1,201 @@
 "use client"
 
 import { createContext, useContext, type ReactNode } from "react"
+import { AccessArt, ApprovalsArt, ArtFrame } from "@/components/agents/art/agents-art"
+import { AuditArt, SecurityArt } from "@/components/dashboard/art/dashboard-art"
 
 /**
- * Hero illustrations for the Trust & Safety tabs, exported from the design
- * reference. Static markup we own, animated by the .ts-art rules in gv-trust.css.
+ * Hero scenes for the Trust & Safety tabs (TrustSafety-Art design). Every scene
+ * sits in the shared art frame (colour wash, dot field, ground line and grain)
+ * and is drawn from live state where the tab has one, so the picture never
+ * claims something the page does not: the decision monitor shows a waiting card
+ * only when a request waits, each policy switch is on only when its rule is on,
+ * and a stage's server lights up only once it is set up.
  */
 
-export type TrustSafetyArtKind = "approvals" | "audit" | "policies" | "security" | "roles" | "envs"
+export type TrustSafetyArtKind = "approvals" | "audit" | "policies" | "security" | "roles" | "envs" | "access"
 
-const ART: Record<TrustSafetyArtKind, string> = {
-  approvals: "<svg role=\"img\" aria-label=\"Decision queue is clear; request cards beside a monitor with approve and reject\" viewBox=\"0 0 320 260\" preserveAspectRatio=\"xMidYMid slice\" style=\"display: block; width: 100%; height: 100%;\"><defs><filter id=\"art-grain\" x=\"0\" y=\"0\" width=\"100%\" height=\"100%\"><feTurbulence type=\"fractalNoise\" baseFrequency=\"1.1\" numOctaves=\"2\" stitchTiles=\"stitch\"></feTurbulence><feColorMatrix values=\"0 0 0 0 0.15 0 0 0 0 0.13 0 0 0 0 0.1 0.9 0 0 0 -0.38\"></feColorMatrix></filter></defs><rect width=\"320\" height=\"260\" fill=\"#DEDAD0\"></rect><ellipse cx=\"166\" cy=\"126\" rx=\"136\" ry=\"98\" fill=\"#DCE5DC\"></ellipse><path d=\"M112 84 C136 84 140 92 160 92\" fill=\"none\" stroke=\"#8A8985\" stroke-width=\"1.6\" stroke-dasharray=\"3 5\" class=\"g-flow\"></path><g transform=\"rotate(-6 70 150)\"><rect x=\"34\" y=\"138\" width=\"78\" height=\"30\" rx=\"6\" fill=\"#F5F2EA\"></rect><rect x=\"34\" y=\"138\" width=\"5\" height=\"30\" rx=\"2\" fill=\"#B8875A\"></rect><rect x=\"46\" y=\"146\" width=\"40\" height=\"4\" rx=\"2\" fill=\"#C9C4B8\"></rect><rect x=\"46\" y=\"155\" width=\"54\" height=\"4\" rx=\"2\" fill=\"#E2DED4\"></rect></g><g transform=\"rotate(-3 70 114)\"><rect x=\"34\" y=\"102\" width=\"78\" height=\"30\" rx=\"6\" fill=\"#F5F2EA\"></rect><rect x=\"34\" y=\"102\" width=\"5\" height=\"30\" rx=\"2\" fill=\"#3D6FD1\"></rect><rect x=\"46\" y=\"110\" width=\"40\" height=\"4\" rx=\"2\" fill=\"#C9C4B8\"></rect><rect x=\"46\" y=\"119\" width=\"54\" height=\"4\" rx=\"2\" fill=\"#E2DED4\"></rect></g><g class=\"g-float\"><rect x=\"34\" y=\"66\" width=\"78\" height=\"30\" rx=\"6\" fill=\"#FFFFFF\" stroke=\"#2E9E5B\" stroke-width=\"1.5\"></rect><rect x=\"34\" y=\"66\" width=\"5\" height=\"30\" rx=\"2\" fill=\"#5B5BD6\"></rect><rect x=\"46\" y=\"74\" width=\"40\" height=\"4\" rx=\"2\" fill=\"#2B2D31\"></rect><rect x=\"46\" y=\"83\" width=\"54\" height=\"4\" rx=\"2\" fill=\"#C9C4B8\"></rect></g><rect x=\"160\" y=\"40\" width=\"118\" height=\"92\" rx=\"10\" fill=\"#22272D\"></rect><rect x=\"166\" y=\"46\" width=\"106\" height=\"80\" rx=\"6\" fill=\"#F5F2EA\"></rect><rect x=\"174\" y=\"54\" width=\"48\" height=\"6\" rx=\"3\" fill=\"#2B2D31\"></rect><rect x=\"174\" y=\"66\" width=\"86\" height=\"4\" rx=\"2\" fill=\"#C9C4B8\"></rect><rect x=\"174\" y=\"75\" width=\"70\" height=\"4\" rx=\"2\" fill=\"#C9C4B8\"></rect><rect x=\"174\" y=\"100\" width=\"42\" height=\"18\" rx=\"6\" fill=\"#2E9E5B\"></rect><path d=\"M188 109 l4 4 l8 -8\" fill=\"none\" stroke=\"#FFFFFF\" stroke-width=\"2.2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path><rect x=\"222\" y=\"100\" width=\"40\" height=\"18\" rx=\"6\" fill=\"none\" stroke=\"#A3333D\" stroke-width=\"1.8\"></rect><path d=\"M238 105 l8 8 M246 105 l-8 8\" stroke=\"#A3333D\" stroke-width=\"2\" stroke-linecap=\"round\"></path><g class=\"g-float\"><circle cx=\"262\" cy=\"52\" r=\"13\" fill=\"#2E9E5B\" stroke=\"#F5F2EA\" stroke-width=\"3\"></circle><path d=\"M256 52 l4 4 l8 -8\" fill=\"none\" stroke=\"#FFFFFF\" stroke-width=\"2.4\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path></g><rect x=\"213\" y=\"132\" width=\"12\" height=\"28\" fill=\"#4A4F58\"></rect><rect x=\"150\" y=\"160\" width=\"140\" height=\"8\" rx=\"2\" fill=\"#6E5A44\"></rect><rect x=\"158\" y=\"168\" width=\"5\" height=\"46\" fill=\"#6E5A44\"></rect><rect x=\"277\" y=\"168\" width=\"5\" height=\"46\" fill=\"#6E5A44\"></rect><rect x=\"244\" y=\"150\" width=\"28\" height=\"10\" rx=\"2\" fill=\"#3B4250\"></rect><g transform=\"translate(140 0)\"><rect x=\"-8\" y=\"164\" width=\"7\" height=\"50\" rx=\"3\" fill=\"#26282C\"></rect><rect x=\"1\" y=\"164\" width=\"7\" height=\"50\" rx=\"3\" fill=\"#26282C\"></rect><path d=\"M-14 124 Q0 116 14 124 L16 170 L-16 170 Z\" fill=\"#2F3A48\"></path><path d=\"M-4 120 L0 132 L4 120 Z\" fill=\"#F5F2EA\"></path><path d=\"M-1 124 L0 140 L1 124 Z\" fill=\"#2E9E5B\"></path><path d=\"M-10 128 L-13 160\" stroke=\"#2F3A48\" stroke-width=\"6\" stroke-linecap=\"round\"></path><circle cx=\"-13\" cy=\"162\" r=\"3.2\" fill=\"#C99572\"></circle><g class=\"g-reach\"><path d=\"M10 127 L24 118 L40 112\" fill=\"none\" stroke=\"#2F3A48\" stroke-width=\"6\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path><circle cx=\"42\" cy=\"111\" r=\"3.4\" fill=\"#C99572\"></circle></g><circle cx=\"0\" cy=\"106\" r=\"10\" fill=\"#C99572\"></circle><path d=\"M-10.5 106 A10.5 10.5 0 0 1 10.5 106 L10 102 Q0 96 -10.5 106 Z\" fill=\"#1F1A17\"></path></g><path d=\"M300 34 l2.5 6 l6 2.5 l-6 2.5 l-2.5 6 l-2.5 -6 l-6 -2.5 l6 -2.5 Z\" fill=\"#C9A24B\" class=\"g-twinkle\"></path><line x1=\"20\" y1=\"214\" x2=\"300\" y2=\"214\" stroke=\"#9C8C74\" stroke-width=\"2\"></line><rect width=\"320\" height=\"260\" filter=\"url(#art-grain)\" opacity=\"0.55\"></rect></svg>",
-  audit: "<svg role=\"img\" aria-label=\"A clipboard ledger with a timeline of green events and one red event under a magnifying glass\" viewBox=\"0 0 320 260\" preserveAspectRatio=\"xMidYMid slice\" style=\"display: block; width: 100%; height: 100%;\"><defs><filter id=\"art-grain\" x=\"0\" y=\"0\" width=\"100%\" height=\"100%\"><feTurbulence type=\"fractalNoise\" baseFrequency=\"1.1\" numOctaves=\"2\" stitchTiles=\"stitch\"></feTurbulence><feColorMatrix values=\"0 0 0 0 0.15 0 0 0 0 0.13 0 0 0 0 0.1 0.9 0 0 0 -0.38\"></feColorMatrix></filter></defs><rect width=\"320\" height=\"260\" fill=\"#DEDAD0\"></rect><ellipse cx=\"160\" cy=\"128\" rx=\"130\" ry=\"96\" fill=\"#E2E6D2\"></ellipse><rect x=\"98\" y=\"44\" width=\"124\" height=\"160\" rx=\"8\" fill=\"#F7F4EC\" stroke=\"#6B5B47\" stroke-width=\"3\"></rect><rect x=\"134\" y=\"36\" width=\"52\" height=\"16\" rx=\"5\" fill=\"#6B5B47\"></rect><line x1=\"120\" y1=\"72\" x2=\"120\" y2=\"186\" stroke=\"#CFC6B6\" stroke-width=\"2\"></line><circle cx=\"120\" cy=\"74\" r=\"6\" fill=\"#2E9E5B\"></circle><rect x=\"134\" y=\"68\" width=\"54\" height=\"5\" rx=\"2.5\" fill=\"#B5A58C\"></rect><rect x=\"134\" y=\"77\" width=\"72\" height=\"4\" rx=\"2\" fill=\"#E2DACB\"></rect><circle cx=\"120\" cy=\"101\" r=\"6\" fill=\"#2E9E5B\"></circle><rect x=\"134\" y=\"95\" width=\"50\" height=\"5\" rx=\"2.5\" fill=\"#B5A58C\"></rect><rect x=\"134\" y=\"104\" width=\"66\" height=\"4\" rx=\"2\" fill=\"#E2DACB\"></rect><circle cx=\"120\" cy=\"128\" r=\"6\" fill=\"#A3333D\" class=\"g-pulse\"></circle><rect x=\"134\" y=\"122\" width=\"46\" height=\"5\" rx=\"2.5\" fill=\"#B5A58C\"></rect><rect x=\"134\" y=\"131\" width=\"60\" height=\"4\" rx=\"2\" fill=\"#E2DACB\"></rect><circle cx=\"120\" cy=\"155\" r=\"6\" fill=\"#2E9E5B\"></circle><rect x=\"134\" y=\"149\" width=\"42\" height=\"5\" rx=\"2.5\" fill=\"#B5A58C\"></rect><rect x=\"134\" y=\"158\" width=\"54\" height=\"4\" rx=\"2\" fill=\"#E2DACB\"></rect><circle cx=\"120\" cy=\"182\" r=\"6\" fill=\"#2E9E5B\"></circle><rect x=\"134\" y=\"176\" width=\"38\" height=\"5\" rx=\"2.5\" fill=\"#B5A58C\"></rect><rect x=\"134\" y=\"185\" width=\"48\" height=\"4\" rx=\"2\" fill=\"#E2DACB\"></rect><g class=\"g-nudge\"><circle cx=\"214\" cy=\"146\" r=\"24\" fill=\"#FBF8F1\" fill-opacity=\".55\" stroke=\"#26282C\" stroke-width=\"5\"></circle><line x1=\"231\" y1=\"163\" x2=\"252\" y2=\"184\" stroke=\"#26282C\" stroke-width=\"8\" stroke-linecap=\"round\"></line></g><g class=\"g-float\"><rect x=\"236\" y=\"62\" width=\"44\" height=\"54\" rx=\"4\" fill=\"#FBF8F1\" stroke=\"#CFC6B6\"></rect><path d=\"M246 76 h24 M246 86 h18 M246 96 h22\" stroke=\"#CFC6B6\" stroke-width=\"3\" stroke-linecap=\"round\"></path><rect x=\"244\" y=\"104\" width=\"14\" height=\"6\" rx=\"2\" fill=\"#4A6A8E\"></rect></g><g class=\"g-float\" style=\"animation-delay: -1.3s;\"><rect x=\"40\" y=\"86\" width=\"40\" height=\"50\" rx=\"4\" fill=\"#FBF8F1\" stroke=\"#CFC6B6\"></rect><path d=\"M48 98 h22 M48 108 h16 M48 118 h20\" stroke=\"#CFC6B6\" stroke-width=\"3\" stroke-linecap=\"round\"></path></g><rect x=\"47\" y=\"196\" width=\"18\" height=\"18\" rx=\"2\" fill=\"#B5654A\"></rect><path d=\"M56 196 C 54 180 48 172 44 166\" stroke=\"#5E7A5C\" stroke-width=\"2\" fill=\"none\"></path><path d=\"M44 166 C 34 160 42 176 52 180 Z\" fill=\"#7C8F6B\" class=\"g-bob\"></path><path d=\"M56 196 C 60 182 70 174 72 170 Z\" fill=\"#5E7A5C\"></path><line x1=\"28\" y1=\"214\" x2=\"292\" y2=\"214\" stroke=\"#9C8C74\" stroke-width=\"2\"></line><rect width=\"320\" height=\"260\" filter=\"url(#art-grain)\" opacity=\"0.55\"></rect></svg>",
-  policies: "<svg role=\"img\" aria-label=\"A control panel of policy switches beside a striped checkpoint gate holding a small agent bot until it is cleared\" viewBox=\"0 0 320 260\" preserveAspectRatio=\"xMidYMid slice\" style=\"display: block; width: 100%; height: 100%;\"><defs><filter id=\"art-grain\" x=\"0\" y=\"0\" width=\"100%\" height=\"100%\"><feTurbulence type=\"fractalNoise\" baseFrequency=\"1.1\" numOctaves=\"2\" stitchTiles=\"stitch\"></feTurbulence><feColorMatrix values=\"0 0 0 0 0.15 0 0 0 0 0.13 0 0 0 0 0.1 0.9 0 0 0 -0.38\"></feColorMatrix></filter></defs><rect width=\"320\" height=\"260\" fill=\"#DEDAD0\"></rect><ellipse cx=\"160\" cy=\"128\" rx=\"130\" ry=\"96\" fill=\"#DCE6DC\"></ellipse><rect x=\"52\" y=\"48\" width=\"118\" height=\"150\" rx=\"12\" fill=\"#F7F4EC\" stroke=\"#6B5B47\" stroke-width=\"3\"></rect><rect x=\"54\" y=\"50\" width=\"114\" height=\"24\" rx=\"10\" fill=\"#E9E2D3\"></rect><circle cx=\"68\" cy=\"61\" r=\"4\" fill=\"#B5654A\"></circle><circle cx=\"80\" cy=\"61\" r=\"4\" fill=\"#C9A24B\"></circle><circle cx=\"92\" cy=\"61\" r=\"4\" fill=\"#2E9E5B\"></circle><rect x=\"66\" y=\"89\" width=\"52\" height=\"6\" rx=\"3\" fill=\"#CFC6B6\"></rect><rect x=\"126\" y=\"84\" width=\"30\" height=\"16\" rx=\"8\" fill=\"#2E9E5B\"></rect><circle cx=\"148\" cy=\"92\" r=\"6\" fill=\"#F7F4EC\"></circle><rect x=\"66\" y=\"117\" width=\"44\" height=\"6\" rx=\"3\" fill=\"#CFC6B6\"></rect><rect x=\"126\" y=\"112\" width=\"30\" height=\"16\" rx=\"8\" fill=\"#2E9E5B\"></rect><circle cx=\"148\" cy=\"120\" r=\"6\" fill=\"#F7F4EC\"></circle><rect x=\"66\" y=\"145\" width=\"48\" height=\"6\" rx=\"3\" fill=\"#CFC6B6\"></rect><rect x=\"126\" y=\"140\" width=\"30\" height=\"16\" rx=\"8\" fill=\"#C9C2B2\" class=\"g-pulse\"></rect><circle cx=\"134\" cy=\"148\" r=\"6\" fill=\"#F7F4EC\"></circle><rect x=\"66\" y=\"173\" width=\"40\" height=\"6\" rx=\"3\" fill=\"#CFC6B6\"></rect><rect x=\"126\" y=\"168\" width=\"30\" height=\"16\" rx=\"8\" fill=\"#2E9E5B\"></rect><circle cx=\"148\" cy=\"176\" r=\"6\" fill=\"#F7F4EC\"></circle><path d=\"M176 204 H292\" stroke=\"#9C8C74\" stroke-width=\"2\" stroke-dasharray=\"4 7\" class=\"g-flow\"></path><rect x=\"226\" y=\"112\" width=\"10\" height=\"102\" rx=\"3\" fill=\"#6B5B47\"></rect><circle cx=\"231\" cy=\"108\" r=\"7\" fill=\"#B5654A\" class=\"g-pulse\"></circle><rect x=\"231\" y=\"128\" width=\"64\" height=\"10\" rx=\"3\" fill=\"#F7F4EC\" stroke=\"#6B5B47\" stroke-width=\"2\"></rect><rect x=\"243\" y=\"129\" width=\"9\" height=\"8\" fill=\"#B5654A\"></rect><rect x=\"263\" y=\"129\" width=\"9\" height=\"8\" fill=\"#B5654A\"></rect><rect x=\"283\" y=\"129\" width=\"9\" height=\"8\" fill=\"#B5654A\"></rect><g class=\"g-nudge\"><rect x=\"184\" y=\"166\" width=\"34\" height=\"30\" rx=\"7\" fill=\"#3B4250\"></rect><rect x=\"198\" y=\"158\" width=\"6\" height=\"8\" rx=\"2\" fill=\"#3B4250\"></rect><circle cx=\"194\" cy=\"179\" r=\"3\" fill=\"#4CC27F\" class=\"g-twinkle\"></circle><circle cx=\"208\" cy=\"179\" r=\"3\" fill=\"#4CC27F\" class=\"g-twinkle\" style=\"animation-delay: -0.6s;\"></circle><rect x=\"187\" y=\"196\" width=\"8\" height=\"10\" rx=\"2\" fill=\"#26282C\"></rect><rect x=\"207\" y=\"196\" width=\"8\" height=\"10\" rx=\"2\" fill=\"#26282C\"></rect></g><g class=\"g-float\" style=\"animation-delay: -1.2s;\"><circle cx=\"262\" cy=\"72\" r=\"18\" fill=\"#FBF8F1\" stroke=\"#CFC6B6\"></circle><rect x=\"255\" y=\"64\" width=\"5\" height=\"16\" rx=\"1.5\" fill=\"#C9A24B\"></rect><rect x=\"264\" y=\"64\" width=\"5\" height=\"16\" rx=\"1.5\" fill=\"#C9A24B\"></rect></g><g class=\"g-beat\" style=\"transform-origin: 196px 120px;\"><circle cx=\"196\" cy=\"120\" r=\"13\" fill=\"#2E9E5B\"></circle><path d=\"M190 120 l4 4 l8 -9\" stroke=\"#FFFFFF\" stroke-width=\"2.6\" fill=\"none\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path></g><line x1=\"28\" y1=\"214\" x2=\"292\" y2=\"214\" stroke=\"#9C8C74\" stroke-width=\"2\"></line><rect width=\"320\" height=\"260\" filter=\"url(#art-grain)\" opacity=\"0.55\"></rect></svg>",
-  security: "<svg role=\"img\" aria-label=\"A shield with a green padlock inside a dashed ring, surrounded by a sign in code, a globe and a clock\" viewBox=\"0 0 320 260\" preserveAspectRatio=\"xMidYMid slice\" style=\"display: block; width: 100%; height: 100%;\"><defs><filter id=\"art-grain\" x=\"0\" y=\"0\" width=\"100%\" height=\"100%\"><feTurbulence type=\"fractalNoise\" baseFrequency=\"1.1\" numOctaves=\"2\" stitchTiles=\"stitch\"></feTurbulence><feColorMatrix values=\"0 0 0 0 0.15 0 0 0 0 0.13 0 0 0 0 0.1 0.9 0 0 0 -0.38\"></feColorMatrix></filter></defs><rect width=\"320\" height=\"260\" fill=\"#DEDAD0\"></rect><ellipse cx=\"160\" cy=\"128\" rx=\"130\" ry=\"96\" fill=\"#D6E2E8\"></ellipse><circle cx=\"160\" cy=\"124\" r=\"78\" fill=\"none\" stroke=\"#9C8C74\" stroke-width=\"1.6\" stroke-dasharray=\"4 7\" class=\"g-flow\"></circle><path d=\"M160 52 L214 72 V118 C214 156 190 180 160 194 C130 180 106 156 106 118 V72 Z\" fill=\"#F7F4EC\" stroke=\"#6B5B47\" stroke-width=\"3\" stroke-linejoin=\"round\"></path><path d=\"M160 64 L204 80 V118 C204 150 184 170 160 182 Z\" fill=\"#E9E2D3\"></path><path d=\"M146 118 V106 a14 14 0 0 1 28 0 V118\" stroke=\"#26282C\" stroke-width=\"5\" fill=\"none\" stroke-linecap=\"round\"></path><rect x=\"138\" y=\"116\" width=\"44\" height=\"36\" rx=\"6\" fill=\"#2E9E5B\"></rect><circle cx=\"160\" cy=\"131\" r=\"5\" fill=\"#F7F4EC\"></circle><rect x=\"158\" y=\"133\" width=\"4\" height=\"10\" rx=\"2\" fill=\"#F7F4EC\"></rect><g class=\"g-float\"><rect x=\"40\" y=\"68\" width=\"50\" height=\"30\" rx=\"7\" fill=\"#FBF8F1\" stroke=\"#CFC6B6\"></rect><circle cx=\"52\" cy=\"83\" r=\"3.4\" fill=\"#26282C\" class=\"g-twinkle\" style=\"animation-delay: 0s;\"></circle><circle cx=\"61\" cy=\"83\" r=\"3.4\" fill=\"#26282C\" class=\"g-twinkle\" style=\"animation-delay: -0.4s;\"></circle><circle cx=\"70\" cy=\"83\" r=\"3.4\" fill=\"#26282C\" class=\"g-twinkle\" style=\"animation-delay: -0.8s;\"></circle><circle cx=\"79\" cy=\"83\" r=\"3.4\" fill=\"#26282C\" class=\"g-twinkle\" style=\"animation-delay: -1.2s;\"></circle></g><g class=\"g-float\" style=\"animation-delay: -1.6s;\"><circle cx=\"252\" cy=\"78\" r=\"18\" fill=\"#FBF8F1\" stroke=\"#CFC6B6\"></circle><circle cx=\"252\" cy=\"78\" r=\"11\" fill=\"none\" stroke=\"#4A6A8E\" stroke-width=\"2\"></circle><path d=\"M241 78 h22 M252 67 c5 5 5 17 0 22 c-5 -5 -5 -17 0 -22\" stroke=\"#4A6A8E\" stroke-width=\"1.8\" fill=\"none\"></path></g><g class=\"g-float\" style=\"animation-delay: -0.8s;\"><circle cx=\"258\" cy=\"168\" r=\"17\" fill=\"#FBF8F1\" stroke=\"#CFC6B6\"></circle><circle cx=\"258\" cy=\"168\" r=\"10\" fill=\"none\" stroke=\"#B5654A\" stroke-width=\"2\"></circle><g class=\"g-spin\" style=\"transform-origin: 258px 168px;\"><line x1=\"258\" y1=\"168\" x2=\"258\" y2=\"161\" stroke=\"#B5654A\" stroke-width=\"2\" stroke-linecap=\"round\"></line></g></g><g class=\"g-beat\" style=\"transform-origin: 66px 166px;\"><circle cx=\"66\" cy=\"166\" r=\"13\" fill=\"#2E9E5B\"></circle><path d=\"M60 166 l4 4 l8 -9\" stroke=\"#FFFFFF\" stroke-width=\"2.6\" fill=\"none\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path></g><line x1=\"28\" y1=\"214\" x2=\"292\" y2=\"214\" stroke=\"#9C8C74\" stroke-width=\"2\"></line><rect width=\"320\" height=\"260\" filter=\"url(#art-grain)\" opacity=\"0.55\"></rect></svg>",
-  roles: "<svg role=\"img\" aria-label=\"Three access badges on lanyards, each with a different symbol and a different number of permission bars\" viewBox=\"0 0 320 260\" preserveAspectRatio=\"xMidYMid slice\" style=\"display: block; width: 100%; height: 100%;\"><defs><filter id=\"art-grain\" x=\"0\" y=\"0\" width=\"100%\" height=\"100%\"><feTurbulence type=\"fractalNoise\" baseFrequency=\"1.1\" numOctaves=\"2\" stitchTiles=\"stitch\"></feTurbulence><feColorMatrix values=\"0 0 0 0 0.15 0 0 0 0 0.13 0 0 0 0 0.1 0.9 0 0 0 -0.38\"></feColorMatrix></filter></defs><rect width=\"320\" height=\"260\" fill=\"#DEDAD0\"></rect><ellipse cx=\"160\" cy=\"128\" rx=\"130\" ry=\"96\" fill=\"#E3E6DA\"></ellipse><path d=\"M70 14 L82 70 M98 14 L86 70\" stroke=\"#2E9E5B\" stroke-width=\"4\" stroke-linecap=\"round\"></path><path d=\"M148 6 L156 58 M172 6 L164 58\" stroke=\"#4A6A8E\" stroke-width=\"4\" stroke-linecap=\"round\"></path><path d=\"M224 14 L234 74 M252 14 L240 74\" stroke=\"#C9A24B\" stroke-width=\"4\" stroke-linecap=\"round\"></path><g class=\"g-bob\" style=\"animation-delay: -0.6s;\"><g transform=\"rotate(-8 84 122)\"><rect x=\"50\" y=\"70\" width=\"68\" height=\"100\" rx=\"10\" fill=\"#F7F4EC\" stroke=\"#6B5B47\" stroke-width=\"3\"></rect><rect x=\"74\" y=\"64\" width=\"20\" height=\"12\" rx=\"3\" fill=\"#6B5B47\"></rect><circle cx=\"84\" cy=\"106\" r=\"17\" fill=\"#2E9E5B\"></circle><path d=\"M74 112 l3 -11 7 6 7 -6 3 11 z\" fill=\"#F7F4EC\"></path><rect x=\"62\" y=\"134\" width=\"44\" height=\"6\" rx=\"3\" fill=\"#2E9E5B\"></rect><rect x=\"62\" y=\"144\" width=\"44\" height=\"6\" rx=\"3\" fill=\"#2E9E5B\"></rect><rect x=\"62\" y=\"154\" width=\"44\" height=\"6\" rx=\"3\" fill=\"#2E9E5B\"></rect></g></g><g class=\"g-bob\"><rect x=\"124\" y=\"58\" width=\"72\" height=\"108\" rx=\"10\" fill=\"#F7F4EC\" stroke=\"#6B5B47\" stroke-width=\"3\"></rect><rect x=\"150\" y=\"52\" width=\"20\" height=\"12\" rx=\"3\" fill=\"#6B5B47\"></rect><circle cx=\"160\" cy=\"96\" r=\"18\" fill=\"#4A6A8E\"></circle><path d=\"M152 96 h16 M160 88 v16\" stroke=\"#F7F4EC\" stroke-width=\"3.5\" stroke-linecap=\"round\"></path><rect x=\"136\" y=\"126\" width=\"48\" height=\"6\" rx=\"3\" fill=\"#2E9E5B\"></rect><rect x=\"136\" y=\"136\" width=\"48\" height=\"6\" rx=\"3\" fill=\"#2E9E5B\"></rect><rect x=\"136\" y=\"146\" width=\"48\" height=\"6\" rx=\"3\" fill=\"#CFC6B6\"></rect></g><g class=\"g-bob\" style=\"animation-delay: -1.2s;\"><g transform=\"rotate(8 238 126)\"><rect x=\"204\" y=\"74\" width=\"68\" height=\"100\" rx=\"10\" fill=\"#F7F4EC\" stroke=\"#6B5B47\" stroke-width=\"3\"></rect><rect x=\"228\" y=\"68\" width=\"20\" height=\"12\" rx=\"3\" fill=\"#6B5B47\"></rect><circle cx=\"238\" cy=\"110\" r=\"17\" fill=\"#C9A24B\"></circle><ellipse cx=\"238\" cy=\"110\" rx=\"10\" ry=\"6\" fill=\"#F7F4EC\"></ellipse><circle cx=\"238\" cy=\"110\" r=\"3.4\" fill=\"#26282C\"></circle><rect x=\"216\" y=\"138\" width=\"44\" height=\"6\" rx=\"3\" fill=\"#2E9E5B\"></rect><rect x=\"216\" y=\"148\" width=\"44\" height=\"6\" rx=\"3\" fill=\"#CFC6B6\"></rect><rect x=\"216\" y=\"158\" width=\"44\" height=\"6\" rx=\"3\" fill=\"#CFC6B6\"></rect></g></g><line x1=\"28\" y1=\"214\" x2=\"292\" y2=\"214\" stroke=\"#9C8C74\" stroke-width=\"2\"></line><rect width=\"320\" height=\"260\" filter=\"url(#art-grain)\" opacity=\"0.55\"></rect></svg>",
-  envs: "<svg role=\"img\" aria-label=\"Three servers in a row linked by a dashed path, a package travelling toward the live server marked with a green flag\" viewBox=\"0 0 320 260\" preserveAspectRatio=\"xMidYMid slice\" style=\"display: block; width: 100%; height: 100%;\"><defs><filter id=\"art-grain\" x=\"0\" y=\"0\" width=\"100%\" height=\"100%\"><feTurbulence type=\"fractalNoise\" baseFrequency=\"1.1\" numOctaves=\"2\" stitchTiles=\"stitch\"></feTurbulence><feColorMatrix values=\"0 0 0 0 0.15 0 0 0 0 0.13 0 0 0 0 0.1 0.9 0 0 0 -0.38\"></feColorMatrix></filter></defs><rect width=\"320\" height=\"260\" fill=\"#DEDAD0\"></rect><ellipse cx=\"160\" cy=\"128\" rx=\"130\" ry=\"96\" fill=\"#DCE4E6\"></ellipse><path d=\"M104 160 H124 M194 160 H214\" stroke=\"#9C8C74\" stroke-width=\"2.5\" stroke-dasharray=\"4 6\" class=\"g-flow\"></path><path d=\"M118 155 l6 5 -6 5 M208 155 l6 5 -6 5\" stroke=\"#9C8C74\" stroke-width=\"2.5\" fill=\"none\" stroke-linecap=\"round\"></path><g opacity=\"0.85\"><rect x=\"36\" y=\"118\" width=\"68\" height=\"84\" rx=\"8\" fill=\"#F7F4EC\" stroke=\"#6B5B47\" stroke-width=\"3\" stroke-dasharray=\"6 4\"></rect><rect x=\"46\" y=\"130\" width=\"48\" height=\"14\" rx=\"3\" fill=\"#E9E2D3\"></rect><rect x=\"46\" y=\"150\" width=\"48\" height=\"14\" rx=\"3\" fill=\"#E9E2D3\"></rect><rect x=\"46\" y=\"170\" width=\"48\" height=\"14\" rx=\"3\" fill=\"#E9E2D3\"></rect><circle cx=\"86\" cy=\"137\" r=\"3\" fill=\"#C9C2B2\"></circle><circle cx=\"86\" cy=\"157\" r=\"3\" fill=\"#C9C2B2\"></circle><circle cx=\"86\" cy=\"177\" r=\"3\" fill=\"#C9C2B2\"></circle></g><g opacity=\"0.85\"><rect x=\"126\" y=\"118\" width=\"68\" height=\"84\" rx=\"8\" fill=\"#F7F4EC\" stroke=\"#6B5B47\" stroke-width=\"3\" stroke-dasharray=\"6 4\"></rect><rect x=\"136\" y=\"130\" width=\"48\" height=\"14\" rx=\"3\" fill=\"#E9E2D3\"></rect><rect x=\"136\" y=\"150\" width=\"48\" height=\"14\" rx=\"3\" fill=\"#E9E2D3\"></rect><rect x=\"136\" y=\"170\" width=\"48\" height=\"14\" rx=\"3\" fill=\"#E9E2D3\"></rect><circle cx=\"176\" cy=\"137\" r=\"3\" fill=\"#C9C2B2\"></circle><circle cx=\"176\" cy=\"157\" r=\"3\" fill=\"#C9C2B2\"></circle><circle cx=\"176\" cy=\"177\" r=\"3\" fill=\"#C9C2B2\"></circle></g><rect x=\"216\" y=\"118\" width=\"68\" height=\"84\" rx=\"8\" fill=\"#F7F4EC\" stroke=\"#6B5B47\" stroke-width=\"3\"></rect><rect x=\"226\" y=\"130\" width=\"48\" height=\"14\" rx=\"3\" fill=\"#3B4250\"></rect><rect x=\"226\" y=\"150\" width=\"48\" height=\"14\" rx=\"3\" fill=\"#3B4250\"></rect><rect x=\"226\" y=\"170\" width=\"48\" height=\"14\" rx=\"3\" fill=\"#3B4250\"></rect><circle cx=\"266\" cy=\"137\" r=\"3\" fill=\"#4CC27F\" class=\"g-twinkle\"></circle><circle cx=\"266\" cy=\"157\" r=\"3\" fill=\"#4CC27F\" class=\"g-twinkle\" style=\"animation-delay: -0.8s;\"></circle><circle cx=\"266\" cy=\"177\" r=\"3\" fill=\"#4CC27F\" class=\"g-twinkle\" style=\"animation-delay: -1.6s;\"></circle><rect x=\"230\" y=\"202\" width=\"12\" height=\"12\" fill=\"#6B5B47\"></rect><rect x=\"258\" y=\"202\" width=\"12\" height=\"12\" fill=\"#6B5B47\"></rect><rect x=\"50\" y=\"202\" width=\"12\" height=\"12\" fill=\"#9C8C74\"></rect><rect x=\"78\" y=\"202\" width=\"12\" height=\"12\" fill=\"#9C8C74\"></rect><rect x=\"140\" y=\"202\" width=\"12\" height=\"12\" fill=\"#9C8C74\"></rect><rect x=\"168\" y=\"202\" width=\"12\" height=\"12\" fill=\"#9C8C74\"></rect><path d=\"M250 118 V66\" stroke=\"#6B5B47\" stroke-width=\"3\" stroke-linecap=\"round\"></path><path d=\"M250 66 h26 l-7 8 7 8 h-26 z\" fill=\"#2E9E5B\" class=\"g-pulse\"></path><path d=\"M44 92 H276\" stroke=\"#CFC6B6\" stroke-width=\"2\" stroke-dasharray=\"2 6\"></path><g class=\"g-run\"><rect x=\"20\" y=\"84\" width=\"18\" height=\"16\" rx=\"3\" fill=\"#C9A24B\" stroke=\"#6B5B47\" stroke-width=\"2\"></rect><path d=\"M20 90 h18 M29 84 v6\" stroke=\"#6B5B47\" stroke-width=\"1.6\"></path></g><line x1=\"20\" y1=\"214\" x2=\"300\" y2=\"214\" stroke=\"#9C8C74\" stroke-width=\"2\"></line><rect width=\"320\" height=\"260\" filter=\"url(#art-grain)\" opacity=\"0.55\"></rect></svg>",
+export type TrustSafetyArtState = {
+  /** Approvals: requests waiting for a decision. */
+  waiting?: number
+  /** Policies: one flag per org approval rule, in the order the tab lists them. */
+  rules?: boolean[]
+  /** Environments: whether Development, Staging and Production are set up. */
+  stages?: [boolean, boolean, boolean]
+}
+
+const SWITCH_ROWS = [84, 112, 140, 168]
+
+/** Policies: a control panel of rule switches beside a checkpoint gate holding an agent until it is cleared. */
+export function PoliciesArt({ rules }: { rules?: boolean[] }) {
+  const flags = SWITCH_ROWS.map((_, i) => (rules ? Boolean(rules[i]) : i !== 2))
+  const on = flags.filter(Boolean).length
+  return (
+    <ArtFrame
+      label={`A control panel with ${on} of ${flags.length} policy switches on beside a checkpoint gate holding an agent until it is cleared`}
+      wash={{ cx: 160, cy: 128, rx: 140, ry: 108, fill: "#DCE6DC" }}
+      ground={[28, 292]}
+    >
+      <rect x="52" y="48" width="118" height="150" rx="12" fill="#F7F4EC" stroke="#6B5B47" strokeWidth="3" />
+      <rect x="54" y="50" width="114" height="24" rx="10" fill="#E9E2D3" />
+      <circle cx="68" cy="61" r="4" fill="#B5654A" />
+      <circle cx="80" cy="61" r="4" fill="#C9A24B" />
+      <circle cx="92" cy="61" r="4" fill="#2E9E5B" />
+      {SWITCH_ROWS.map((y, i) => (
+        <g key={y}>
+          <rect x="66" y={y + 5} width={[52, 44, 48, 40][i]} height="6" rx="3" fill="#CFC6B6" />
+          <rect x="126" y={y} width="30" height="16" rx="8" fill={flags[i] ? "#2E9E5B" : "#C9C2B2"} className={flags[i] ? undefined : "g-pulse"} />
+          <circle cx={flags[i] ? 148 : 134} cy={y + 8} r="6" fill="#F7F4EC" />
+        </g>
+      ))}
+      <path d="M176 204 H292" stroke="#9C8C74" strokeWidth="2" strokeDasharray="4 7" className="g-flow" />
+      <rect x="226" y="112" width="10" height="102" rx="3" fill="#6B5B47" />
+      <circle cx="231" cy="108" r="7" fill="#B5654A" className="g-pulse" />
+      <rect x="231" y="128" width="64" height="10" rx="3" fill="#F7F4EC" stroke="#6B5B47" strokeWidth="2" />
+      <rect x="243" y="129" width="9" height="8" fill="#B5654A" />
+      <rect x="263" y="129" width="9" height="8" fill="#B5654A" />
+      <rect x="283" y="129" width="9" height="8" fill="#B5654A" />
+      <g className="g-nudge">
+        <rect x="184" y="166" width="34" height="30" rx="7" fill="#3B4250" />
+        <rect x="198" y="158" width="6" height="8" rx="2" fill="#3B4250" />
+        <circle cx="194" cy="179" r="3" fill="#4CC27F" className="g-twinkle" />
+        <circle cx="208" cy="179" r="3" fill="#4CC27F" className="g-twinkle" style={{ animationDelay: "-0.6s" }} />
+        <rect x="187" y="196" width="8" height="10" rx="2" fill="#26282C" />
+        <rect x="207" y="196" width="8" height="10" rx="2" fill="#26282C" />
+      </g>
+      <g className="g-float" style={{ animationDelay: "-1.2s" }}>
+        <circle cx="262" cy="72" r="18" fill="#FBF8F1" stroke="#CFC6B6" />
+        <rect x="255" y="64" width="5" height="16" rx="1.5" fill="#C9A24B" />
+        <rect x="264" y="64" width="5" height="16" rx="1.5" fill="#C9A24B" />
+      </g>
+      <g className="g-beat" style={{ transformOrigin: "196px 120px" }}>
+        <circle cx="196" cy="120" r="13" fill="#2E9E5B" />
+        <path d="M190 120 l4 4 l8 -9" stroke="#FFFFFF" strokeWidth="2.6" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+      </g>
+    </ArtFrame>
+  )
+}
+
+/** Role permissions: three access badges on lanyards, each with a different number of permission bars. */
+export function RolesArt() {
+  return (
+    <ArtFrame
+      label="Three access badges on lanyards, each with a different symbol and a different number of permission bars"
+      wash={{ cx: 160, cy: 128, rx: 140, ry: 108, fill: "#E3E6DA" }}
+      ground={[28, 292]}
+    >
+      <path d="M70 14 L82 70 M98 14 L86 70" stroke="#2E9E5B" strokeWidth="4" strokeLinecap="round" />
+      <path d="M148 6 L156 58 M172 6 L164 58" stroke="#4A6A8E" strokeWidth="4" strokeLinecap="round" />
+      <path d="M224 14 L234 74 M252 14 L240 74" stroke="#C9A24B" strokeWidth="4" strokeLinecap="round" />
+      <g className="g-bob" style={{ animationDelay: "-0.6s" }}>
+        <g transform="rotate(-8 84 122)">
+          <rect x="50" y="70" width="68" height="100" rx="10" fill="#F7F4EC" stroke="#6B5B47" strokeWidth="3" />
+          <rect x="74" y="64" width="20" height="12" rx="3" fill="#6B5B47" />
+          <circle cx="84" cy="106" r="17" fill="#2E9E5B" />
+          <path d="M74 112 l3 -11 7 6 7 -6 3 11 z" fill="#F7F4EC" />
+          <rect x="62" y="134" width="44" height="6" rx="3" fill="#2E9E5B" />
+          <rect x="62" y="144" width="44" height="6" rx="3" fill="#2E9E5B" />
+          <rect x="62" y="154" width="44" height="6" rx="3" fill="#2E9E5B" />
+        </g>
+      </g>
+      <g className="g-bob">
+        <rect x="124" y="58" width="72" height="108" rx="10" fill="#F7F4EC" stroke="#6B5B47" strokeWidth="3" />
+        <rect x="150" y="52" width="20" height="12" rx="3" fill="#6B5B47" />
+        <circle cx="160" cy="96" r="18" fill="#4A6A8E" />
+        <path d="M152 96 h16 M160 88 v16" stroke="#F7F4EC" strokeWidth="3.5" strokeLinecap="round" />
+        <rect x="136" y="126" width="48" height="6" rx="3" fill="#2E9E5B" />
+        <rect x="136" y="136" width="48" height="6" rx="3" fill="#2E9E5B" />
+        <rect x="136" y="146" width="48" height="6" rx="3" fill="#CFC6B6" />
+      </g>
+      <g className="g-bob" style={{ animationDelay: "-1.2s" }}>
+        <g transform="rotate(8 238 126)">
+          <rect x="204" y="74" width="68" height="100" rx="10" fill="#F7F4EC" stroke="#6B5B47" strokeWidth="3" />
+          <rect x="228" y="68" width="20" height="12" rx="3" fill="#6B5B47" />
+          <circle cx="238" cy="110" r="17" fill="#C9A24B" />
+          <ellipse cx="238" cy="110" rx="10" ry="6" fill="#F7F4EC" />
+          <circle cx="238" cy="110" r="3.4" fill="#26282C" />
+          <rect x="216" y="138" width="44" height="6" rx="3" fill="#2E9E5B" />
+          <rect x="216" y="148" width="44" height="6" rx="3" fill="#CFC6B6" />
+          <rect x="216" y="158" width="44" height="6" rx="3" fill="#CFC6B6" />
+        </g>
+      </g>
+    </ArtFrame>
+  )
+}
+
+function Server({ x, live }: { x: number; live: boolean }) {
+  return (
+    <>
+      <g opacity={live ? undefined : 0.85}>
+        <rect x={x} y="118" width="68" height="84" rx="8" fill="#F7F4EC" stroke="#6B5B47" strokeWidth="3" strokeDasharray={live ? undefined : "6 4"} />
+        {[130, 150, 170].map((y, i) => (
+          <g key={y}>
+            <rect x={x + 10} y={y} width="48" height="14" rx="3" fill={live ? "#3B4250" : "#E9E2D3"} />
+            <circle
+              cx={x + 50}
+              cy={y + 7}
+              r="3"
+              fill={live ? "#4CC27F" : "#C9C2B2"}
+              className={live ? "g-twinkle" : undefined}
+              style={live ? { animationDelay: `${-0.8 * i}s` } : undefined}
+            />
+          </g>
+        ))}
+      </g>
+      <rect x={x + 14} y="202" width="12" height="12" fill={live ? "#6B5B47" : "#9C8C74"} />
+      <rect x={x + 42} y="202" width="12" height="12" fill={live ? "#6B5B47" : "#9C8C74"} />
+    </>
+  )
+}
+
+/** Environments: Development, Staging and Production in a row; a package travels toward the live server. */
+export function EnvironmentsArt({ stages }: { stages?: [boolean, boolean, boolean] }) {
+  const live = stages ?? [false, false, true]
+  const ready = live.filter(Boolean).length
+  return (
+    <ArtFrame
+      label={`Three servers in a row linked by a dashed path, ${ready} of 3 set up, a package travelling toward the live server marked with a green flag`}
+      wash={{ cx: 160, cy: 128, rx: 140, ry: 108, fill: "#DCE4E6" }}
+    >
+      <path d="M104 160 H124 M194 160 H214" stroke="#9C8C74" strokeWidth="2.5" strokeDasharray="4 6" className="g-flow" />
+      <path d="M118 155 l6 5 -6 5 M208 155 l6 5 -6 5" stroke="#9C8C74" strokeWidth="2.5" fill="none" strokeLinecap="round" />
+      <Server x={36} live={live[0]} />
+      <Server x={126} live={live[1]} />
+      <Server x={216} live={live[2]} />
+      <path d="M250 118 V66" stroke="#6B5B47" strokeWidth="3" strokeLinecap="round" />
+      <path d="M250 66 h26 l-7 8 7 8 h-26 z" fill="#2E9E5B" className="g-pulse" />
+      <path d="M44 92 H276" stroke="#CFC6B6" strokeWidth="2" strokeDasharray="2 6" />
+      <g className="g-run">
+        <rect x="20" y="84" width="18" height="16" rx="3" fill="#C9A24B" stroke="#6B5B47" strokeWidth="2" />
+        <path d="M20 90 h18 M29 84 v6" stroke="#6B5B47" strokeWidth="1.6" />
+      </g>
+    </ArtFrame>
+  )
 }
 
 /** Lets a host (the Settings pages) swap a tab's scene for its own art. */
 export const TrustSafetyArtOverrides = createContext<Partial<Record<TrustSafetyArtKind, ReactNode>>>({})
 
-export function TrustSafetyArt({ kind }: { kind: TrustSafetyArtKind }) {
+function scene(kind: TrustSafetyArtKind, state: TrustSafetyArtState): ReactNode {
+  switch (kind) {
+    case "approvals":
+      return <ApprovalsArt waiting={state.waiting ?? 0} />
+    case "audit":
+      return <AuditArt label="A clipboard ledger with a timeline of green events and one red event under a magnifying glass" />
+    case "policies":
+      return <PoliciesArt rules={state.rules} />
+    case "security":
+      return <SecurityArt label="A shield with a green padlock inside a dashed ring, surrounded by a sign in code, a globe and a clock" />
+    case "roles":
+      return <RolesArt />
+    case "envs":
+      return <EnvironmentsArt stages={state.stages} />
+    case "access":
+      return <AccessArt />
+  }
+}
+
+export function TrustSafetyArt({ kind, state = {} }: { kind: TrustSafetyArtKind; state?: TrustSafetyArtState }) {
   const override = useContext(TrustSafetyArtOverrides)[kind]
-  if (override) return <div className="ts-art ts-artbox">{override}</div>
-  return (
-    <div className="ts-art ts-artbox">
-      <div
-        className="art-root"
-        style={{ position: "absolute", inset: 0, overflow: "hidden", background: "#DEDAD0" }}
-        dangerouslySetInnerHTML={{ __html: ART[kind] }}
-      />
-    </div>
-  )
+  return <div className="ts-art ts-artbox">{override ?? scene(kind, state)}</div>
 }

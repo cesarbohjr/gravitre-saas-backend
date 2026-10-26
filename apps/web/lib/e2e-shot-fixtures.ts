@@ -1275,11 +1275,11 @@ export const SHOT_FIXTURES: Record<string, unknown> = {
     locked_roles: ["admin"],
     member_counts: { owner: 1, admin: 1, member: 2, viewer: 0 },
     capabilities: [
-      { key: "view", capability: "View dashboards and intelligence", area: "Insights", access: { admin: true, member: true, viewer: true } },
-      { key: "chat", capability: "Run Gravitre AI and chat", area: "Insights", access: { admin: true, member: true, viewer: true } },
-      { key: "build", capability: "Create agents and workflows", area: "Build", access: { admin: true, member: true, viewer: false } },
-      { key: "approve", capability: "Approve write actions", area: "Govern", access: { admin: true, member: true, viewer: false } },
-      { key: "billing", capability: "Org settings and billing", area: "Govern", access: { admin: true, member: false, viewer: false } },
+      { key: "view_intelligence", capability: "View dashboards and intelligence", area: "Insights", access: { admin: true, member: true, viewer: true } },
+      { key: "run_ai_chat", capability: "Run Gravitre AI and chat", area: "Insights", access: { admin: true, member: true, viewer: true } },
+      { key: "create_agents_workflows", capability: "Create agents and workflows", area: "Build", access: { admin: true, member: true, viewer: false } },
+      { key: "approve_writes", capability: "Approve write actions", area: "Govern", access: { admin: true, member: true, viewer: false } },
+      { key: "org_settings_billing", capability: "Org settings and billing", area: "Govern", access: { admin: true, member: false, viewer: false } },
     ],
   },
   "/api/enterprise/insights/residency": {

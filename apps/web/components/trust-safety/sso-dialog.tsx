@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react"
 import { Copy, Download, Loader2 } from "lucide-react"
-import { toast } from "@/components/agents/overlays/toast"
+import { toast } from "./overlays/toast"
+import { confirmTrustSafety } from "./overlays/confirm"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import {
@@ -74,7 +75,6 @@ export function SsoDialog({
   const [oidcClientId, setOidcClientId] = useState("")
   const [oidcClientSecret, setOidcClientSecret] = useState("")
   const [busy, setBusy] = useState<"save" | "toggle" | "delete" | "download" | null>(null)
-  const [confirmDelete, setConfirmDelete] = useState(false)
 
   useEffect(() => {
     if (!open) return
@@ -85,7 +85,6 @@ export function SsoDialog({
     setOidcClientId(config?.oidc_client_id || "")
     setCertificate("")
     setOidcClientSecret("")
-    setConfirmDelete(false)
   }, [open, config])
 
   const handleSave = async () => {
@@ -130,10 +129,12 @@ export function SsoDialog({
   }
 
   const handleDelete = async () => {
-    if (!confirmDelete) {
-      setConfirmDelete(true)
-      return
-    }
+    const ok = await confirmTrustSafety({
+      title: "Delete the single sign on configuration?",
+      description: "Single sign on stops working for this workspace until it is set up again.",
+      confirmLabel: "Delete configuration",
+    })
+    if (!ok) return
     setBusy("delete")
     try {
       await ssoApi.deleteConfig()
@@ -144,7 +145,6 @@ export function SsoDialog({
       toast.error(err instanceof Error ? err.message : "Could not delete the single sign on configuration")
     } finally {
       setBusy(null)
-      setConfirmDelete(false)
     }
   }
 
@@ -298,7 +298,7 @@ export function SsoDialog({
           </Button>
           {config ? (
             <Button variant="outline" className="min-h-11 text-destructive" onClick={() => void handleDelete()} disabled={busy === "delete"}>
-              {busy === "delete" ? spin : confirmDelete ? "Confirm delete" : "Delete configuration"}
+              {busy === "delete" ? spin : "Delete configuration"}
             </Button>
           ) : null}
         </DialogFooter>

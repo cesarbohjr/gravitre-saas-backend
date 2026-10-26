@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
 import Link from "next/link"
 import useSWR from "swr"
-import { toast } from "@/components/agents/overlays/toast"
+import { toast } from "./overlays/toast"
 import { useAuth } from "@/lib/auth-context"
 import {
   AUDIT_CATEGORIES,
@@ -146,7 +146,7 @@ export function TrustSafetyAudit() {
         art="audit"
         eyebrow={`Audit trail · ${rangeLabel}`}
         big={errors == null ? "–" : errors.toLocaleString()}
-        bigColor={errors ? "#8A2530" : undefined}
+        bigColor={errors ? "#A3333D" : undefined}
         unit={errors === 0 ? "errors" : "errors need a look"}
         advice={advice}
         actions={
@@ -219,7 +219,7 @@ export function TrustSafetyAudit() {
                     <span className={tone.ico} style={{ width: 32, height: 32, borderRadius: 9 }}><Icon name="events" size={15} /></span>
                     <div style={{ minWidth: 0 }}>
                       <div style={{ fontWeight: 600, fontSize: 14 }}>{eventTitle(log)}</div>
-                      <div className="ts-mono" style={{ fontSize: 12, color: "#6A6B64", marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      <div className="ts-mono" style={{ fontSize: 12, color: "#55564F", marginTop: 2, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                         {[log.entity_type, entity].filter(Boolean).join(" · ")}
                       </div>
                     </div>
@@ -230,20 +230,20 @@ export function TrustSafetyAudit() {
                       {err ? errorText(log) : cfg ? "Config change" : "Success"}
                     </Pill>
                   </div>
-                  <div className="ts-td ts-mono" style={{ fontSize: 12, color: "#6A6B64" }}>{timeOf(log.created_at)}</div>
+                  <div className="ts-td ts-mono" style={{ fontSize: 12, color: "#55564F" }}>{timeOf(log.created_at)}</div>
                 </div>
               )
             })}
             {list.data && logs.length === 0 ? (
-              <div style={{ padding: "28px 20px", fontSize: 14, color: "#6A6B64", borderTop: "1px solid #EFEFEA" }}>No events match these filters.</div>
+              <div style={{ padding: "28px 20px", fontSize: 14, color: "#55564F", borderTop: "1px solid #EFEFEA" }}>No events match these filters.</div>
             ) : null}
             {list.error && !list.data ? (
-              <div style={{ padding: "28px 20px", fontSize: 14, color: "#8A2530", borderTop: "1px solid #EFEFEA" }}>The audit trail could not be loaded. It retries on its own.</div>
+              <div style={{ padding: "28px 20px", fontSize: 14, color: "#A3333D", borderTop: "1px solid #EFEFEA" }}>The audit trail could not be loaded. It retries on its own.</div>
             ) : null}
           </div>
         </div>
         <div style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "center", justifyContent: "space-between", padding: "12px 20px", borderTop: "1px solid #EFEFEA" }}>
-          <span style={{ fontSize: 13, color: "#6A6B64" }}>Showing {logs.length} of {total.toLocaleString()} events</span>
+          <span style={{ fontSize: 13, color: "#55564F" }}>Showing {logs.length} of {total.toLocaleString()} events</span>
           <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
             <button type="button" className="ts-pg" disabled={page <= 1} aria-label="Previous page" onClick={() => setPage((p) => p - 1)}>‹</button>
             {pagesFor(page, pageCount).map((p, i) =>

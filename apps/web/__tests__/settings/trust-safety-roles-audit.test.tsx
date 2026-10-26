@@ -104,7 +104,7 @@ describe("Role permissions editor", () => {
     expect(sent[2].capabilities).toEqual(["run_ai_chat", "approve_writes"])
     expect(sent[4].key).toBeUndefined()
     expect(mocks.mutate).toHaveBeenCalled()
-    expect(mocks.toastSuccess).toHaveBeenCalledWith("Role permissions saved")
+    expect(mocks.toastSuccess).toHaveBeenCalledWith("Role permissions saved", expect.anything())
     expect(button("Edit roles")).toBeTruthy()
   })
 

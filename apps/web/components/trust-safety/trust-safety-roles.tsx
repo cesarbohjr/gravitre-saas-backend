@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react"
 import Link from "next/link"
 import useSWR from "swr"
-import { toast } from "@/components/agents/overlays/toast"
+import { toast } from "./overlays/toast"
 import { fetcher } from "@/lib/fetcher"
 import { useOrgAdmin } from "@/lib/use-org-admin"
 import {
@@ -31,7 +31,7 @@ const ICO = ["ts-ico sm", "ts-ico sm blue", "ts-ico sm warn"]
 
 function Mark({ on }: { on: boolean }) {
   return on ? (
-    <span role="img" aria-label="Allowed" style={{ width: 26, height: 26, borderRadius: "50%", background: "#E8F5EE", color: "#0B8A5C", display: "grid", placeItems: "center" }}>
+    <span role="img" aria-label="Allowed" style={{ width: 26, height: 26, borderRadius: "50%", background: "#DDF3E8", color: "#0B8A5C", display: "grid", placeItems: "center" }}>
       <Icon name="tick" size={15} width={2.4} />
     </span>
   ) : (
@@ -121,9 +121,14 @@ export function TrustSafetyRoles() {
       const next = await saveRolePermissions(drafts)
       await mutate(next, { revalidate: false })
       setDrafts(null)
-      toast.success("Role permissions saved")
+      toast.success("Role permissions saved", { description: "The server enforces the new permissions from the next request." })
     } catch (err) {
-      setSaveError(err instanceof Error ? err.message : "Could not save role permissions.")
+      const message = err instanceof Error ? err.message : "Could not save role permissions."
+      setSaveError(message)
+      toast.error("Couldn’t apply the role change", {
+        description: `${message.replace(/\.?$/, ".")} Nothing was changed.`,
+        action: { label: "Try again", onClick: () => void save() },
+      })
     } finally {
       setSaving(false)
     }
@@ -167,7 +172,7 @@ export function TrustSafetyRoles() {
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
             <div>
               <div style={{ fontWeight: 600, fontSize: 16 }}>Roles</div>
-              <div style={{ fontSize: 13, color: "#6A6B64", marginTop: 2 }}>Rename roles, describe them, add your own or delete ones nobody is on. Admin always keeps full access.</div>
+              <div style={{ fontSize: 13, color: "#55564F", marginTop: 2 }}>Rename roles, describe them, add your own or delete ones nobody is on. Admin always keeps full access.</div>
             </div>
             <button type="button" className="ts-btn line sm" onClick={addRole} disabled={drafts.length >= MAX_ROLES}>
               <Icon name="plus" size={14} />New role
@@ -196,7 +201,7 @@ export function TrustSafetyRoles() {
                     onChange={(e) => patch(d.id, { description: e.target.value })}
                   />
                 </label>
-                <span style={{ fontSize: 12, color: "#6A6B64", minWidth: 90 }}>
+                <span style={{ fontSize: 12, color: "#55564F", minWidth: 90 }}>
                   {d.custom ? (d.key ? (d.people ? `${d.people} ${d.people === 1 ? "person" : "people"}` : "No one yet") : "New") : "Built in"}
                 </span>
                 {d.custom ? (
@@ -235,13 +240,13 @@ export function TrustSafetyRoles() {
                   <span className={ICO[i % ICO.length]}><Icon name="shield" size={15} /></span>
                   <span style={{ fontWeight: 600, fontSize: 16 }}>{c.name}</span>
                 </span>
-                <span className="ts-mono" style={{ fontSize: 11, color: "#6A6B64" }}>{c.allowed} of {c.total}</span>
+                <span className="ts-mono" style={{ fontSize: 11, color: "#55564F" }}>{c.allowed} of {c.total}</span>
               </span>
               <span style={{ fontSize: 13, color: "#55564F", lineHeight: 1.45 }}>{c.description ?? DESCRIPTIONS[c.role] ?? ""}</span>
               <span style={{ display: "flex", gap: 3 }} aria-hidden="true">
                 {c.bar.map((on, k) => <span key={k} style={{ flex: 1, height: 6, borderRadius: 3, background: on ? "#19C37D" : "#E4E4DF" }} />)}
               </span>
-              <span style={{ fontSize: 12, color: "#6A6B64" }}>{c.peopleLabel}</span>
+              <span style={{ fontSize: 12, color: "#55564F" }}>{c.peopleLabel}</span>
             </button>
           ))}
         </div>
@@ -249,15 +254,15 @@ export function TrustSafetyRoles() {
 
       <section className="ts-card" style={{ overflow: "hidden" }}>
         {loading ? (
-          <div style={{ padding: "28px 20px", fontSize: 14, color: "#6A6B64" }}>Loading role permissions.</div>
+          <div style={{ padding: "28px 20px", fontSize: 14, color: "#55564F" }}>Loading role permissions.</div>
         ) : !data ? (
-          <div style={{ padding: "28px 20px", fontSize: 14, color: "#8A2530" }}>Role permissions could not be loaded.</div>
+          <div style={{ padding: "28px 20px", fontSize: 14, color: "#A3333D" }}>Role permissions could not be loaded.</div>
         ) : caps.length === 0 ? (
-          <div style={{ padding: "28px 20px", fontSize: 14, color: "#6A6B64" }}>Your organization has no role capabilities on record.</div>
+          <div style={{ padding: "28px 20px", fontSize: 14, color: "#55564F" }}>Your organization has no role capabilities on record.</div>
         ) : view === "matrix" || editing || !cur ? (
           <div className="ts-tblwrap">
             <div style={{ minWidth: 560 }}>
-              <div className="ts-tr" style={{ ["--cols" as string]: cols, padding: "0 20px", background: "#FBFBF9", borderBottom: "1px solid #EFEFEA" }}>
+              <div className="ts-tr" style={{ ["--cols" as string]: cols, padding: "0 20px", background: "#F7F7F4", borderBottom: "1px solid #EFEFEA" }}>
                 <div className="ts-th" style={{ paddingLeft: 0 }}>Capability</div>
                 {columns
                   ? columns.map((d) => <div key={d.id} className="ts-th" style={{ textAlign: "center", overflow: "hidden", textOverflow: "ellipsis" }}>{d.name.trim() || "New role"}</div>)
@@ -302,13 +307,13 @@ export function TrustSafetyRoles() {
         ) : (
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))" }}>
             <div style={{ padding: 20, borderRight: "1px solid #EFEFEA" }}>
-              <div style={{ fontWeight: 600, marginBottom: 10, color: "#1F6B42" }}>{cur.name} can</div>
-              {cur.can.map((label) => <div key={label} style={{ fontSize: 14, padding: "8px 0", borderTop: "1px solid #F3F3EF" }}>{label}</div>)}
+              <div style={{ fontWeight: 600, marginBottom: 10, color: "#0A6B47" }}>{cur.name} can</div>
+              {cur.can.map((label) => <div key={label} style={{ fontSize: 14, padding: "8px 0", borderTop: "1px solid #F4F4F1" }}>{label}</div>)}
             </div>
             <div style={{ padding: 20 }}>
-              <div style={{ fontWeight: 600, marginBottom: 10, color: "#6A6B64" }}>{cur.name} cannot</div>
-              {cur.cannot.map((label) => <div key={label} style={{ fontSize: 14, padding: "8px 0", borderTop: "1px solid #F3F3EF", color: "#55564F" }}>{label}</div>)}
-              {cur.cannot.length === 0 ? <div style={{ fontSize: 14, color: "#6A6B64" }}>Nothing. This role has full access.</div> : null}
+              <div style={{ fontWeight: 600, marginBottom: 10, color: "#55564F" }}>{cur.name} cannot</div>
+              {cur.cannot.map((label) => <div key={label} style={{ fontSize: 14, padding: "8px 0", borderTop: "1px solid #F4F4F1", color: "#55564F" }}>{label}</div>)}
+              {cur.cannot.length === 0 ? <div style={{ fontSize: 14, color: "#55564F" }}>Nothing. This role has full access.</div> : null}
             </div>
           </div>
         )}
@@ -318,13 +323,13 @@ export function TrustSafetyRoles() {
         <div className="ts-savebar" role="region" aria-label="Save role changes">
           <div style={{ flex: 1, minWidth: 0, fontSize: 14 }}>
             {saveError ? (
-              <span role="alert" style={{ color: "#8A2530" }}>{saveError}</span>
+              <span role="alert" style={{ color: "#A3333D" }}>{saveError}</span>
             ) : problem ? (
-              <span style={{ color: "#8A2530" }}>{problem}</span>
+              <span style={{ color: "#A3333D" }}>{problem}</span>
             ) : dirty ? (
               "Unsaved changes. Saving applies them to everyone on these roles right away."
             ) : (
-              <span style={{ color: "#6A6B64" }}>No changes yet.</span>
+              <span style={{ color: "#55564F" }}>No changes yet.</span>
             )}
           </div>
           <button type="button" className="ts-btn line sm" onClick={discard} disabled={saving}>Discard</button>
