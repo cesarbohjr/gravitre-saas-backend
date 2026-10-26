@@ -87,6 +87,7 @@ from app.routers import (
     intelligence_engine,
     intelligence_packs_plumbing,
     intelligence_visibility,
+    intelligence_overview,
     rag,
     rag_enhanced,
     rag_admin,
@@ -395,6 +396,8 @@ async def lifespan(app: FastAPI):
     app.state.usage_sync_task = start_usage_sync_scheduler()
     app.state.knowledge_sync_task = start_knowledge_sync_scheduler()
     app.state.source_sync_task = start_source_sync_scheduler()
+    from app.services.intelligence_overview_sweep_worker import start_overview_sweep_worker
+    app.state.intelligence_overview_sweep_task = start_overview_sweep_worker()
     app.state.workflow_schedule_task = start_workflow_schedule_scheduler()
     app.state.connector_health_task = start_connector_health_scheduler()
     app.state.workflow_failure_prediction_task = start_workflow_failure_prediction_scheduler()
@@ -515,6 +518,8 @@ async def lifespan(app: FastAPI):
         await stop_usage_sync_scheduler(getattr(app.state, "usage_sync_task", None))
         await stop_knowledge_sync_scheduler(getattr(app.state, "knowledge_sync_task", None))
         await stop_source_sync_scheduler(getattr(app.state, "source_sync_task", None))
+        from app.services.intelligence_overview_sweep_worker import stop_overview_sweep_worker
+        await stop_overview_sweep_worker(getattr(app.state, "intelligence_overview_sweep_task", None))
         await stop_workflow_schedule_scheduler(getattr(app.state, "workflow_schedule_task", None))
         await stop_connector_health_scheduler(getattr(app.state, "connector_health_task", None))
         await stop_workflow_failure_prediction_scheduler(
@@ -852,6 +857,7 @@ app.include_router(ai_architecture_admin.router)
 app.include_router(intelligence_engine.router)
 app.include_router(intelligence_packs_plumbing.router)
 app.include_router(intelligence_visibility.router)
+app.include_router(intelligence_overview.router)
 app.include_router(ai_system.router)
 app.include_router(assistant.router)
 app.include_router(voice.router)

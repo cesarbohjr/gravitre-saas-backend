@@ -115,6 +115,9 @@ class IntelligenceRouter:
         conversation_history: list[dict] | None = None,
         conversation_id: str | None = None,
     ) -> dict[str, Any]:
+        from app.services.intelligence_overview_policy import load_overview_policy
+        from app.core.io_pool import run_io
+        overview_policy = await run_io(lambda: load_overview_policy(org_id, self.settings))
         dialogue_settings = await load_chat_dialogue_settings(org_id, self.settings)
         sentiment = (
             self._sentiment.analyze(request, conversation_history or [])
@@ -227,7 +230,8 @@ class IntelligenceRouter:
             return wrapped
 
         model_selection = await self._model_selector.select(org_id, classification)
-        enrichments = await self._run_enrichments(org_id, request, classification, context)
+        enrichments = await self._run_enrichments(org_id, request, classification, {**context, "overview_policy": overview_policy})
+        enrichments["policy_modes"] = overview_policy
         if (context.get("external_context") or {}).get("findings"):
             enrichments = {**enrichments, "web": context["external_context"]}
         strategy_key = build_route_strategy_key(model_selection, classification, enrichments)
@@ -317,7 +321,13 @@ class IntelligenceRouter:
             str(result.get("answer") or ""),
             connected_integrations=context.get("connected_integrations") or [],
         )
-        result["proactive_suggestions"] = suggestions
+        # Conservative mode narrows unsolicited guidance; no mode changes execution grants.
+        result["proactive_suggestions"] = [] if overview_policy["adaptive"] == "conservative" else suggestions
+        result["intelligence_overview_policy"] = overview_policy
+        # Presentation sensitivity is applied to evidence surfaced to the customer,
+        # not to the underlying safety, consent, context or execution decisions.
+        from app.services.intelligence_overview_policy import apply_response_sensitivity
+        result = apply_response_sensitivity(result, overview_policy)
         from app.services.intelligence_visibility_service import get_intelligence_visibility_service
 
         visibility = get_intelligence_visibility_service(self.settings)
@@ -338,6 +348,8 @@ class IntelligenceRouter:
         classification: dict[str, Any],
         context: dict[str, Any],
     ) -> dict[str, Any]:
+        from app.services.intelligence_overview_policy import select_enrichment_work
+        eligible = select_enrichment_work(classification, context, context.get("overview_policy") or {})
         tasks: dict[str, Any] = {}
         deferred = context.get("defer_optional") is True
         # Same extension point is used by live text and voice through the chat
@@ -346,11 +358,11 @@ class IntelligenceRouter:
         model_inputs = context.get("catalog_model_inputs")
         if isinstance(model_inputs, dict) and not deferred:
             tasks["models"] = self._run_catalog_capabilities(org_id, model_inputs)
-        if classification.get("requires_prediction") and not deferred:
+        if eligible["predictive"]:
             tasks["prediction"] = self._get_predictions(org_id, classification)
-        if classification.get("requires_causal") and not deferred:
+        if eligible["causal"]:
             tasks["causal"] = self._get_causal_analysis(org_id, request)
-        if classification.get("requires_graph") and not context.get("graph_context") and not deferred:
+        if eligible["relational"] and not context.get("graph_context"):
             entity_type = classification.get("entity_type") or "unknown"
             entity_id = classification.get("entity_id") or "unknown"
             if entity_type != "unknown" and entity_id != "unknown":
@@ -365,7 +377,7 @@ class IntelligenceRouter:
                 # entity ID from a name or abandoning normal relationship turns.
                 tasks["graph"] = self._get_relational_context(org_id, request)
         adaptive_relevant = bool(context.get("retrieval_plan") or tasks or classification.get("department"))
-        if adaptive_relevant and not deferred:
+        if eligible["adaptive"] and adaptive_relevant:
             tasks["adaptive"] = self._get_adaptive_context(org_id, classification)
 
         async def bounded(awaitable: Any) -> dict[str, Any]:
