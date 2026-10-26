@@ -23,7 +23,7 @@ export function CertaintyMarker({ certainty, className }: { certainty: Certainty
 }
 
 /** Small mono label used above Impact groups (sentence case, per the micro-label rule). */
-export const IMPACT_MICRO_LABEL = "font-mono text-[10.5px] font-medium tracking-[0.08em] text-[color:var(--g-text-muted)]"
+export const IMPACT_MICRO_LABEL = "font-mono text-[10.5px] font-medium ig-caps tracking-[0.12em] text-[color:var(--g-text-muted)]"
 
 export function CertaintyLegend() {
   return (

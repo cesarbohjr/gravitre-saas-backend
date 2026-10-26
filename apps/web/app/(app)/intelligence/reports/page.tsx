@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { toast } from "@/components/agents/overlays/toast"
+import { toast } from "@/components/intelligence/overlays/toast"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { EmptyState, ErrorState } from "@/components/gravitre/empty-state"
 import { GravitrePageHeader } from "@/components/gravitre/nodus-product"

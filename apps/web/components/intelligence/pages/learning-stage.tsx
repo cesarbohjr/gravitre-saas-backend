@@ -290,7 +290,6 @@ export function LearningStage({
 
   return (
     <div className="space-y-6 pt-6">
-      <LearningCapabilitiesPanel enabled={enabled} />
       <div className="flex flex-wrap items-center justify-between gap-3">
         <KnowledgeViewSwitch view={view} onViewChange={onViewChange} entityCount={entityCount} />
         {view === "memory" ? (
@@ -362,6 +361,8 @@ export function LearningStage({
         ) : null}
       </div>
 
+      {/* What the org's learning can and can't do yet: reference, so it sits under the working views. */}
+      <LearningCapabilitiesPanel enabled={enabled} />
     </div>
   )
 }

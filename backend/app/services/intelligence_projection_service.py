@@ -33,6 +33,7 @@ from app.workflows.repository import get_supabase_client
 logger = get_logger(__name__)
 
 _CACHE_TTL_SECONDS = 45
+_ACTION_EVENTS = frozenset({"workflow_executed", "connector_action_executed"})
 
 
 def learning_rows_from_promotion_payload(promo: dict[str, Any] | None) -> list[dict[str, Any]]:
@@ -174,8 +175,11 @@ class IntelligenceProjectionService:
         except Exception as exc:  # noqa: BLE001
             logger.debug("projection_running_workflows_skipped org_id=%s error=%s", org_id, exc)
 
+        # Execution evidence the outcome ledger records (OUTCOME_EVENTS): a workflow
+        # run or a connector write that finished. Business results are counted
+        # separately as measured outcomes.
         actions_completed = sum(
-            1 for row in recent_events if str(row.get("outcome_event") or "") in {"action_completed", "workflow_completed"}
+            1 for row in recent_events if str(row.get("outcome_event") or "") in _ACTION_EVENTS
         )
 
         pending_memory_approvals = 0
@@ -399,9 +403,10 @@ class IntelligenceProjectionService:
         environment_name: str = "production",
         window_hours: int = 24,
         active_lens: str = "knows",
+        use_cache: bool = True,
     ) -> IntelligencePageContext:
         snapshot = await self.build_snapshot(
-            org_id, environment_name=environment_name, window_hours=window_hours
+            org_id, environment_name=environment_name, window_hours=window_hours, use_cache=use_cache
         )
         cache_key = f"{org_id}:{environment_name}:{window_hours}"
         entry = self._cache.get(cache_key)

@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 
 /** Only real backend detections can open a prompt. No training begins on close. */
-export function TrainingPermissionDialog() {
+export function TrainingPermissionDialog({ showList = true }: { showList?: boolean } = {}) {
   const { isAdmin } = useOrgAdmin()
   const orgId = typeof window === "undefined" ? null : getQuickOrgId()
   const { data, error, mutate } = useSWR(
@@ -48,21 +48,7 @@ export function TrainingPermissionDialog() {
   }
 
   if (!isAdmin) return null
-  return (
-    <section aria-label="Training permissions" className="mb-5 rounded-xl border p-4">
-      <details>
-        <summary className="cursor-pointer text-sm font-medium">Training permissions</summary>
-        <p className="mt-2 text-sm text-muted-foreground">Review detected data, approve automatic training, or pause and revoke permission. Provider processing and federation require their own explicit purpose-specific permissions.</p>
-        {error ? <p role="alert">Unable to verify training permissions. No new permission has been granted.</p> : null}
-        <div className="mt-3 space-y-2">
-          {models.map((model) => (
-            <div key={model.model_name} className="flex items-center justify-between gap-3 text-sm">
-              <span className="capitalize">{model.what} · {model.consent_state}</span>
-              <Button variant="outline" size="sm" onClick={() => { setSaveError(null); setSelected(model.model_name) }}>Review</Button>
-            </div>
-          ))}
-        </div>
-      </details>
+  const dialog = (
       <Dialog open={Boolean(current)} onOpenChange={(open) => { if (!open && !pending) close() }}>
         <DialogContent className="sm:max-w-xl max-h-[85dvh] overflow-y-auto" showCloseButton={!pending}>
           {current ? <>
@@ -95,6 +81,26 @@ export function TrainingPermissionDialog() {
           </> : null}
         </DialogContent>
       </Dialog>
+  )
+  // The prompt opens on any Intelligence page when data is detected; the list
+  // of permissions lives on the Build pages (Data, Models), where training is set up.
+  if (!showList) return dialog
+  return (
+    <section aria-label="Training permissions" className="mb-5 rounded-xl border p-4">
+      <details>
+        <summary className="cursor-pointer text-sm font-medium">Training permissions</summary>
+        <p className="mt-2 text-sm text-muted-foreground">Review detected data, approve automatic training, or pause and revoke permission. Provider processing and federation require their own explicit purpose-specific permissions.</p>
+        {error ? <p role="alert">Unable to verify training permissions. No new permission has been granted.</p> : null}
+        <div className="mt-3 space-y-2">
+          {models.map((model) => (
+            <div key={model.model_name} className="flex items-center justify-between gap-3 text-sm">
+              <span className="capitalize">{model.what} · {model.consent_state}</span>
+              <Button variant="outline" size="sm" onClick={() => { setSaveError(null); setSelected(model.model_name) }}>Review</Button>
+            </div>
+          ))}
+        </div>
+      </details>
+      {dialog}
     </section>
   )
 }

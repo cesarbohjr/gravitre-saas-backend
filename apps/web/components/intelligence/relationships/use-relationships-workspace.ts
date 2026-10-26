@@ -2,7 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react"
 import useSWR from "swr"
-import { toast } from "@/components/agents/overlays/toast"
+import { confirmIntelligence } from "@/components/intelligence/overlays/confirm"
+import { toast } from "@/components/intelligence/overlays/toast"
 import { intelligenceApi, type IntelligenceSnapshot } from "@/lib/api"
 import {
   buildEntityLabelMap,
@@ -229,6 +230,14 @@ export function useRelationshipsWorkspace({
   }
 
   async function removeNode(id: string) {
+    const name = String(nodes.find((n) => String(n.id) === id)?.name ?? "").trim()
+    const forget = await confirmIntelligence({
+      title: "Forget this fact?",
+      description: `Gravitre stops using ${name ? `\u201c${name}\u201d` : "it"} in answers and forecasts. You can add it again later.`,
+      confirmLabel: "Forget",
+      cancelLabel: "Keep fact",
+    })
+    if (!forget) return false
     try {
       await intelligenceApi.deleteKnowledgeNode(id)
       toast.success("Knowledge node removed")

@@ -436,13 +436,19 @@ async def intelligence_page_context(
     window_hours: int = 24,
     active_lens: str = "knows",
     environment_name: str = "production",
+    refresh: bool = False,
 ) -> dict[str, Any]:
-    """G1 — scoped VIEW over canonical Intelligence State (not a separate source of truth)."""
+    """G1 — scoped VIEW over canonical Intelligence State (not a separate source of truth).
+
+    ``refresh=true`` skips the short projection cache, so "Analyze my business"
+    re-reads every producer instead of the last 45 seconds' snapshot.
+    """
     ctx = await get_intelligence_projection_service(settings).build_page_context(
         org_id,
         environment_name=environment_name,
         window_hours=window_hours,
         active_lens=active_lens,
+        use_cache=not refresh,
     )
     return ctx.model_dump(by_alias=False)
 

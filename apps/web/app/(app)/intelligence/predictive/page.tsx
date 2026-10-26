@@ -1,10 +1,9 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import Link from "next/link"
 import { useRouter } from "next/navigation"
 import useSWR from "swr"
-import { toast } from "@/components/agents/overlays/toast"
+import { toast } from "@/components/intelligence/overlays/toast"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { DataFreshness } from "@/components/gravitre/data-freshness"
 import { EmptyState, ErrorState } from "@/components/gravitre/empty-state"
@@ -146,17 +145,10 @@ export default function PredictiveOpsPage() {
             onScanWorkflows={() => void scanWorkflows()}
             scanning={scanning}
           />
-          {/* Gravitre 3.0 Plus: says plainly when its backend flag is off. Account
-              health moved to its own Accounts tab. */}
-          <div className="mt-8 space-y-8">
-            <RecommendationFeedPanel />
-            <p className="text-sm text-muted-foreground">
-              Account health now has its own tab:{" "}
-              <Link href={APP_ROUTES.intelligenceAccounts} className="text-foreground underline underline-offset-2">
-                Accounts
-              </Link>
-              .
-            </p>
+          {/* Gravitre 3.0 Plus: the ranked feed shows here only when it is on and has
+              something to say; the Forecasts design has no empty block for it. */}
+          <div className="mt-8">
+            <RecommendationFeedPanel hideWhenEmpty />
           </div>
         </IntelligenceShell>
       </div>

@@ -2285,8 +2285,9 @@ export const SHOT_FIXTURES: Record<string, unknown> = {
         workflowId: "wf_lead_intake",
         stepId: "step_hubspot_upsert",
         connectorId: "con_hubspot",
-        alertType: "connector_token_expiring",
+        alertType: "auth_expiry",
         severity: "critical",
+        evidence: { connectorType: "hubspot", stepName: "Lead intake", hoursUntilExpiry: 26 },
         title: "HubSpot token expires in 26 hours",
         message:
           "The HubSpot connector's refresh token expires before the next scheduled run of Lead intake → HubSpot. Re-authorize to avoid a failed write.",
@@ -2299,7 +2300,7 @@ export const SHOT_FIXTURES: Record<string, unknown> = {
         workflowId: "wf_lead_intake",
         stepId: "step_apollo_enrich",
         connectorId: "con_apollo",
-        alertType: "rate_limit_projection",
+        alertType: "rate_limit_trend",
         severity: "high",
         title: "Apollo enrichment projected to hit rate limit",
         message:
@@ -2313,7 +2314,8 @@ export const SHOT_FIXTURES: Record<string, unknown> = {
         workflowId: "wf_weekly_digest",
         stepId: "step_send_summary",
         connectorId: "con_slack",
-        alertType: "recent_failure_pattern",
+        alertType: "step_failure_risk",
+        evidence: { recentFailures: 2, recentAttempts: 5 },
         severity: "high",
         title: "Slack delivery failed twice this week",
         message:
@@ -2583,6 +2585,32 @@ export const SHOT_FIXTURES: Record<string, unknown> = {
   // Intelligence field (/e2e/shots/intelligence-field). Same fictional entities and
   // relationships as the fixtures above — no additional graph content.
   "/api/intelligence/page-context": {
+    // FIXTURE: one outcome attribution path (signal → prediction, nothing acted on yet).
+    outcomePaths: [
+      {
+        id: "path_hubspot_signin",
+        scopeId: DEMO_ORG_ID,
+        scopeLabel: "Whole organization",
+        presentStepCount: 3,
+        complete: false,
+        steps: [
+          { kind: "objective", title: "Objective", label: "Whole organization", present: true, evidence: [] },
+          {
+            kind: "signal",
+            title: "Signal",
+            label: "HubSpot sign-in needed",
+            present: true,
+            evidence: ["Connector auth status is pending_auth. Workflow step Account signals is likely to fail on the next run."],
+            sourceRecordId: "2f2ae692-8082-4a7b-8db8-2c68cff5afa2",
+          },
+          { kind: "prediction", title: "Prediction", label: "Next run will likely fail", present: true, evidence: ["Failure forecast raised for Account signals."] },
+          { kind: "agent_workflow", title: "Agent", label: "Not yet", present: false, evidence: [] },
+          { kind: "action", title: "Action", label: "Not yet", present: false, evidence: [] },
+          { kind: "outcome", title: "Outcome", label: "Not yet", present: false, evidence: [] },
+          { kind: "business_impact", title: "Business impact", label: "Not yet", present: false, evidence: [] },
+        ],
+      },
+    ],
     snapshot: {
       generatedAt: T(5),
       tenantId: DEMO_ORG_ID,
@@ -2600,15 +2628,66 @@ export const SHOT_FIXTURES: Record<string, unknown> = {
           isCurrentlyRunning: false,
         },
       ],
-      predictions: [],
-      learnings: [],
+      // Shape of CanonicalPrediction (backend intelligence_projection.py).
+      predictions: [
+        {
+          id: "pred_renewal",
+          type: "risk",
+          businessStatement: "Support tickets tripled this week and the main contact changed. A check-in with the new contact before renewal is the usual save.",
+          subject: "Northwind Logistics may not renew",
+          department: "customer_success",
+          horizon: "60d",
+          confidence: 0.72,
+          evidence: ["Ticket volume 3.1x the prior 8 weeks", "Primary contact updated in HubSpot"],
+          createdAt: T(48),
+          status: "active",
+          recommendedActions: ["Renewal save"],
+          qualityFlags: [],
+          source: { system: "business_signals", recordId: "sig_renewal" },
+          semanticKey: "renewal-northwind",
+        },
+        {
+          id: "pred_seats",
+          type: "opportunity",
+          businessStatement: "96% of seats are in use. Accounts at this point often welcome an expansion conversation.",
+          subject: "Northwind is close to its seat limit",
+          department: "sales",
+          horizon: "30d",
+          confidence: 0.61,
+          evidence: ["Seat usage 96% for 14 days"],
+          createdAt: T(300),
+          status: "active",
+          recommendedActions: [],
+          qualityFlags: [],
+          source: { system: "business_signals", recordId: "sig_seats" },
+          semanticKey: "seats-northwind",
+        },
+      ],
+      // Shape of LearningInsight: auto-promoted org memory.
+      learnings: [
+        {
+          id: "learn_depots",
+          businessStatement: "Cold-chain loads are routed through the Reno depot first.",
+          learnedFrom: ["agent_memories"],
+          evidence: ["operations"],
+          learnedAt: T(1500),
+          source: { system: "memory_promotion", recordId: "learn_depots" },
+        },
+      ],
+      // Outcome ledger events (snapshot.outcomes).
+      outcomes: [
+        { id: "evt_1", event: "connector_action_executed", department: "sales", entityType: "deal", entityId: "Globex expansion", createdAt: T(130) },
+        { id: "evt_2", event: "crm_booked", department: "sales", entityType: "deal", entityId: "Globex expansion", createdAt: T(95) },
+        { id: "evt_3", event: "workflow_executed", department: "operations", entityType: "workflow", entityId: "Lead intake", createdAt: T(20) },
+        { id: "evt_4", event: "prediction_generated", department: "sales", createdAt: T(15) },
+      ],
       knowledgeEntityTypes: ["agent", "department", "glossary_term"],
       metrics: {
         knowledge: { knownEntities: 4, knownRelationships: 3 },
-        learning: {},
-        predictions: {},
-        execution: {},
-        outcomes: {},
+        learning: { recentLearnings: 1 },
+        predictions: { activePredictions: 2 },
+        execution: { recommendationsCreated: 3, actionsCompleted: 2, awaitingApproval: 3 },
+        outcomes: { measuredOutcomes: 1 },
       },
       qualityFlags: [],
       departments: [],
@@ -2631,10 +2710,10 @@ export const SHOT_FIXTURES: Record<string, unknown> = {
     availableLenses: ["knows", "learns", "predicts", "acts", "improves"],
     metrics: {
       knowledge: { knownEntities: 4, knownRelationships: 3 },
-      learning: {},
-      predictions: {},
-      execution: {},
-      outcomes: {},
+      learning: { recentLearnings: 1 },
+      predictions: { activePredictions: 2 },
+      execution: { recommendationsCreated: 3, actionsCompleted: 2, awaitingApproval: 3 },
+      outcomes: { measuredOutcomes: 1 },
     },
     qualityFlags: [],
     suggestedQuestions: [],
@@ -2686,6 +2765,59 @@ export const SHOT_FIXTURES: Record<string, unknown> = {
       },
     }
   })(),
+  // FIXTURE: tenant Overview contract (shape of GET /api/intelligence/overview).
+  "/api/intelligence/overview": {
+    schema_version: "intelligence_overview_v1",
+    org_id: "org_shot",
+    capabilities: Object.fromEntries(
+      [
+        ["contextual", "Understands the business context behind a question."],
+        ["sentiment", "Looks for changes in customer tone and friction."],
+        ["causal", "Investigates potential causes without confusing correlation with proof."],
+        ["temporal", "Recognizes changes over time and timing patterns."],
+        ["relational", "Connects relevant people, accounts and business entities."],
+        ["adaptive", "Suggests improvements based on observed outcomes."],
+        ["predictive", "Estimates future risks and opportunities when enough evidence exists."],
+      ].map(([name, description]) => [name, { mode: name === "predictive" ? "proactive" : "balanced", description, behavior_wired: true }]),
+    ),
+    knowledge: { usable_connectors: 3, vendors: ["hubspot", "slack", "zendesk"], facts: null, freshness: null },
+    readiness: {
+      tier: "cross_system_candidate",
+      connector_count: 3,
+      vendors: ["hubspot", "slack", "zendesk"],
+      fresh_connectors: ["hubspot", "zendesk"],
+      fresh_count: 2,
+      coverage_verified: false,
+      comprehensive: false,
+      recommended_connector_count: 3,
+      missing_evidence: ["authorized_read_scope", "business_function_coverage", "source_record_count", "cross_source_entity_match_quality"],
+    },
+    insights: [],
+    recommendations: [],
+    actions: [],
+    outcomes: [],
+    latest_sweep: null,
+    advisory_only: true,
+    data_limitations: ["Cross-connector historical analysis has not been certified."],
+  },
+  // FIXTURE: heuristic suggestion cards (shape of GET /api/intelligence/recommendations/heuristics).
+  "/api/intelligence/recommendations/heuristics": {
+    advisoryOnly: true,
+    actionsTaken: [],
+    recommendations: [
+      {
+        id: "heur_invoices",
+        kind: "finance_follow_up",
+        title: "3 invoices are more than 30 days overdue",
+        reason: "None has had a reminder in the last two weeks.",
+        confidence: 0.64,
+        priority: 2,
+        advisoryOnly: true,
+        href: "/plays",
+      },
+    ],
+    count: 1,
+  },
   // FIXTURE: memory promotion candidates (shape of GET /api/admin/memory-promotion/candidates).
   // The harness matches on path only, so every status filter gets this list.
   "/api/admin/memory-promotion/candidates": {
