@@ -8,7 +8,7 @@ import { IdentityIcon, ListingBadge } from "@/components/marketplace/identity/li
 import { LISTING_KINDS, identityDepartmentFor, listingKindFor } from "@/lib/listing-identity"
 import { listingMeta } from "@/lib/listing-meta"
 import { resolveMarketArt } from "@/lib/marketplace-category-art"
-import type { ListingReadiness } from "@/lib/listing-readiness"
+import { installedChipLabel, type ListingReadiness } from "@/lib/listing-readiness"
 import { cn } from "@/lib/utils"
 
 export type ListingActionHandlers = {
@@ -100,8 +100,11 @@ function DepartmentChip({ department }: { department: string | null | undefined 
 }
 
 /** Card art status: the three states the marketplace illustration set labels. */
-function coverStatus(readiness: ListingReadiness): { label: string; tone: "green" | "amber" | "grey" } {
-  if (readiness.state === "installed") return { label: readiness.label, tone: "green" }
+function coverStatus(
+  asset: MarketplaceAssetSummary,
+  readiness: ListingReadiness,
+): { label: string; tone: "green" | "amber" | "grey" } {
+  if (readiness.state === "installed") return { label: installedChipLabel(asset, readiness), tone: "green" }
   if (readiness.state === "connect" || readiness.state === "review") return { label: "Needs setup", tone: "amber" }
   return { label: "Not installed", tone: "grey" }
 }
@@ -151,7 +154,7 @@ export function ListingCard({
   const by = publisherLine(asset)
   return (
     <article className="mp-card mp-lift" data-testid="marketplace-pack-row" data-kind={kind}>
-      <MarketCover asset={asset} className="mp-cover" status={coverStatus(readiness)}>
+      <MarketCover asset={asset} className="mp-cover" status={coverStatus(asset, readiness)}>
         <span className="mp-price">{priceLabel(asset)}</span>
       </MarketCover>
       <div className="mp-card-id">

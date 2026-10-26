@@ -122,3 +122,8 @@ export function matchesReadiness(readiness: ListingReadiness, filter: ReadinessF
   if (filter === "ready") return readiness.state === "ready" || readiness.state === "purchase"
   return readiness.state === filter
 }
+
+/** Art chip label for an installed listing: "Installed · running" while its agents or workflows are working. */
+export function installedChipLabel(asset: MarketplaceAssetSummary, readiness: ListingReadiness): string {
+  return asset.runState === "running" ? `${readiness.label} · running` : readiness.label
+}

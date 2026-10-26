@@ -26,7 +26,7 @@ import { useAuth } from "@/lib/auth-context"
 import { useOrgAdmin } from "@/lib/use-org-admin"
 import { pipelineDepartmentKey } from "@/lib/marketplace-department-pipeline"
 import { resolveMarketArt } from "@/lib/marketplace-category-art"
-import { listingReadiness } from "@/lib/listing-readiness"
+import { installedChipLabel, listingReadiness } from "@/lib/listing-readiness"
 import { ESTIMATED_HOURS_SAVED_MONTHLY } from "@/lib/outcome-labels"
 import {
   approvalGateCount,
@@ -301,7 +301,7 @@ function PairsWellWith({ asset }: { asset: MarketplaceAssetDetail }) {
 /** Install status chip on a paired listing's art, from the same readiness the catalog uses. */
 function pairStatus(row: MarketplaceAssetSummary): { status: string; tone: "green" | "amber" | "grey" } {
   const readiness = listingReadiness(row, { canInstall: false })
-  if (readiness.state === "installed") return { status: readiness.label, tone: "green" }
+  if (readiness.state === "installed") return { status: installedChipLabel(row, readiness), tone: "green" }
   if (readiness.state === "connect" || readiness.state === "review") return { status: "Needs setup", tone: "amber" }
   return { status: "Not installed", tone: "grey" }
 }
