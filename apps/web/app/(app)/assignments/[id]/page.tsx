@@ -18,11 +18,14 @@ import {
   MoreHorizontal,
   Pencil,
   Send,
+  Target,
   X,
 } from "lucide-react"
 import { usePublishGravitreAISelection, useOptionalGravitreAIWorkspace } from "@/components/gravitre/ai-workspace-provider"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { WsPage } from "@/components/workspace/ws-page"
+import { WsArt } from "@/components/workspace/ws-art"
+import { GOALS_REFRESH_KEY, fetchGoalList } from "@/lib/goals-list"
 import { ExecutionModeBadge } from "@/components/intelligence/execution-mode-badge"
 import {
   DropdownMenu,
@@ -49,6 +52,8 @@ type OutcomeTone = "amber" | "red" | "brand" | "neutral"
 interface Outcome {
   tone: OutcomeTone
   illustration: string
+  /** Short state for the chip on the illustration. */
+  status?: string
   eyebrow: string
   title: string
   body: ReactNode
@@ -57,6 +62,10 @@ interface Outcome {
 }
 
 const ACTIVE = ["queued", "running", "paused"]
+
+function capitalizeWord(value: string | null | undefined): string | null {
+  return value ? value.charAt(0).toUpperCase() + value.slice(1) : null
+}
 
 function DetailShell({ children }: { children: ReactNode }) {
   return (
@@ -110,6 +119,10 @@ export default function AssignmentDetailPage({ params }: { params: Promise<{ id:
       revalidateOnFocus: true,
     },
   )
+
+  const goalId = job?.goalId ?? null
+  const { data: goalList } = useSWR(goalId ? GOALS_REFRESH_KEY : null, fetchGoalList, { revalidateOnFocus: false })
+  const linkedGoal = goalId ? goalList?.find((g) => g.id === goalId) ?? null : null
 
   const handoff = useMemo(() => parseHandoffResult(job ?? null), [job])
   const executionSteps = useMemo(
@@ -441,7 +454,8 @@ export default function AssignmentDetailPage({ params }: { params: Promise<{ id:
     if (job.status === "failed") {
       return {
         tone: "amber",
-        illustration: "moment-unplugged",
+        illustration: upgrade ? "ws-assignment-plan-limit" : "moment-unplugged",
+        status: actions.length > 0 && failedActions > 0 ? `${failedActions} of ${actions.length} actions failed` : "Stopped",
         eyebrow: "Outcome",
         title: "The agent could not finish this assignment",
         body: issueBody ?? "The job stopped without reporting a reason.",
@@ -494,7 +508,8 @@ export default function AssignmentDetailPage({ params }: { params: Promise<{ id:
           : "Delivered with a problem"
       return {
         tone: "amber",
-        illustration: "moment-unplugged",
+        illustration: upgrade ? "ws-assignment-plan-limit" : "moment-unplugged",
+        status: actions.length > 0 && failedActions > 0 ? `${failedActions} of ${actions.length} actions failed` : "Needs a look",
         eyebrow: "Outcome",
         title,
         body: issueBody ?? "Some of the agent's actions did not complete.",
@@ -675,10 +690,12 @@ export default function AssignmentDetailPage({ params }: { params: Promise<{ id:
 
       {outcome ? (
         <section className={`gv-card gv-rise asgd-outcome ${outcome.tone}`} role={outcome.role} data-banner={outcome.tone}>
-          <div className="asgd-outcome-art">
-            {/* eslint-disable-next-line @next/next/no-img-element -- static library illustration */}
-            <img src={`/illustrations/${outcome.illustration}.svg`} alt="" data-illustration={outcome.illustration} />
-          </div>
+          <WsArt
+            className="asgd-outcome-art"
+            src={`/illustrations/${outcome.illustration}.svg`}
+            status={outcome.status}
+            tone={outcome.tone === "brand" ? "green" : outcome.tone === "neutral" ? "grey" : outcome.tone}
+          />
           <div className="asgd-outcome-body">
             <div className="gv-eyebrow">{outcome.eyebrow}</div>
             <h2>{outcome.title}</h2>
@@ -912,6 +929,26 @@ export default function AssignmentDetailPage({ params }: { params: Promise<{ id:
               </div>
             ) : null}
           </div>
+
+          {linkedGoal ? (
+            <div className="gv-card asgd-side">
+              <div className="gv-eyebrow">Goal</div>
+              <div className="asgd-goal">
+                <span className="asgd-goal-ic" aria-hidden>
+                  <Target size={16} />
+                </span>
+                <span>
+                  <b>{linkedGoal.objective || "Untitled goal"}</b>
+                  <span>
+                    {[capitalizeWord(linkedGoal.status), linkedGoal.department].filter(Boolean).join(" · ")}
+                  </span>
+                </span>
+              </div>
+              <Link href={`/goals/${encodeURIComponent(linkedGoal.id)}`} className="gv-btn ghost asgd-goal-open">
+                Open the goal
+              </Link>
+            </div>
+          ) : null}
 
           {agentId ? (
             <div id="ask" className="gv-card asgd-side">

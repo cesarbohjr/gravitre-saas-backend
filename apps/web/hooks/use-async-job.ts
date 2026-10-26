@@ -54,6 +54,8 @@ export interface AgentJob {
   attempts: number
   createdAt: string
   finishedAt: string | null
+  /** Goal this assignment counts toward, when it was created with one. */
+  goalId?: string | null
 }
 
 interface UseAsyncJobOptions {

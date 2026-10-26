@@ -2230,6 +2230,7 @@ export const SHOT_FIXTURES: Record<string, unknown> = {
     kind: "agent_task",
     status: "completed",
     sessionId: null,
+    goalId: "goal_pipeline",
     attempts: 1,
     error: null,
     createdAt: AGO(300),
