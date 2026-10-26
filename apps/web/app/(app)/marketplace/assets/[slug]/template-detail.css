@@ -99,3 +99,5 @@
 .gv-ws .td-details { display: grid; grid-template-columns: 1fr auto; gap: 10px 12px; margin: 14px 0 0; font-size: 14px; }
 .gv-ws .td-details dt { color: var(--gv-muted); }
 .gv-ws .td-details dd { margin: 0; font-weight: 500; text-align: right; overflow-wrap: anywhere; }
+.gv-ws .td-spot .td-spot-art { border: 0; border-radius: 0; aspect-ratio: 300 / 190; border-bottom: 1px solid var(--gv-paper-border); }
+.gv-ws .td-pair-art.gv-art { border: 0; border-radius: 0; border-bottom: 1px solid var(--gv-paper-border); }
