@@ -153,26 +153,23 @@ def request_sweep(
     vendors = sorted({c["vendor"] for c in connections if c.get("executable")})
     if not vendors:
         raise HTTPException(status_code=409, detail="Connect at least one usable data source first.")
-    # Hard bounded self-service budget. Count completed and failed requests alike;
-    # prevent repeated scans and unmetered worker churn.
-    cutoff = (datetime.now(timezone.utc) - timedelta(hours=24)).isoformat()
-    recent = (client.table("intelligence_overview_sweeps").select("id")
-              .eq("org_id", org_id).gte("created_at", cutoff)
-              .limit(6).execute())
-    if len(recent.data or []) >= 5:
-        raise HTTPException(status_code=429, detail="Daily intelligence sweep limit reached.")
-    existing = (client.table("intelligence_overview_sweeps").select("id,status")
-                .eq("org_id", org_id).in_("status", ["queued", "running"]).limit(1).execute())
-    if existing.data:
-        return {"sweep": existing.data[0], "started": False, "orchestrator_enabled": os.getenv("INTELLIGENCE_OVERVIEW_SWEEP_WORKER_ENABLED", "").lower() in {"1", "true"}}
-    result = client.table("intelligence_overview_sweeps").insert({
-        "org_id": org_id, "requested_by": _actor(admin) or None,
-        "scope": {"vendors_requested": vendors, "connector_count": len(vendors)},
-        "status": "queued",
-    }).execute()
-    sweep = (result.data or [None])[0]
-    if not sweep:
-        raise HTTPException(status_code=503, detail="Could not persist sweep request")
+    # Atomic, service-role-only quota + active-run admission in one transaction.
+    # Never fall back to read-then-write when the migration is missing.
+    try:
+        admitted = client.rpc("admit_intelligence_overview_sweep", {
+            "p_org_id": org_id,
+            "p_requested_by": _actor(admin) or None,
+            "p_scope": {"vendors_requested": vendors, "connector_count": len(vendors)},
+            "p_daily_limit": 5,
+        }).execute()
+    except Exception as exc:
+        if "daily sweep quota exceeded" in str(exc):
+            raise HTTPException(status_code=429, detail="Daily intelligence sweep limit reached.") from exc
+        raise HTTPException(status_code=503, detail="Sweep admission unavailable.") from exc
+    item = admitted.data
+    sweep = item[0] if isinstance(item, list) and item else item if isinstance(item, dict) else None
+    if not sweep or not sweep.get("id"):
+        raise HTTPException(status_code=503, detail="Sweep admission unavailable.")
     write_audit_event(client, org_id, _actor(admin), "intelligence.overview.sweep_requested",
                       "intelligence_overview_sweep", str(sweep["id"]),
                       metadata={"vendors_requested": vendors, "execution_started": False})
