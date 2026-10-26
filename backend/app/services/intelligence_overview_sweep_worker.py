@@ -21,7 +21,7 @@ MAX_SWEEPS_PER_TICK = 5
 MAX_RECOMMENDATIONS = 20
 
 
-def _timestamp() -> str:
+def _sweep_utc_timestamp() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
@@ -104,7 +104,7 @@ def assessment_for_org(client: Any, org_id: str) -> dict[str, Any]:
             "Cross-department business facts, causation, and monetary impact not inferred.",
             "Usage telemetry does not prove that every provider data scope is authorized.",
         ],
-        "generated_at": _timestamp(),
+        "generated_at": _sweep_utc_timestamp(),
         "advisory_only": True,
     }
 
@@ -113,7 +113,7 @@ def process_queued_sweep(client: Any, row: dict[str, Any], settings: Settings | 
     """Claim with status CAS and enforce explicit tenant constraints on all writes."""
     org_id, sweep_id = str(row["org_id"]), str(row["id"])
     claim = (client.table("intelligence_overview_sweeps")
-             .update({"status": "running", "started_at": _timestamp()})
+             .update({"status": "running", "started_at": _sweep_utc_timestamp()})
              .eq("org_id", org_id).eq("id", sweep_id)
              .eq("status", "queued").execute())
     if not claim.data:
@@ -122,14 +122,14 @@ def process_queued_sweep(client: Any, row: dict[str, Any], settings: Settings | 
         syncs = sync_supported_knowledge_sources(client, settings or get_settings(), org_id) if settings is not None else []
         results = assessment_for_org(client, org_id)
         results["knowledge_syncs"] = syncs
-        update = {"status": "partial", "results": results, "completed_at": _timestamp()}
+        update = {"status": "partial", "results": results, "completed_at": _sweep_utc_timestamp()}
         (client.table("intelligence_overview_sweeps").update(update)
          .eq("org_id", org_id).eq("id", sweep_id).eq("status", "running").execute())
         return {"id": sweep_id, "status": "partial", "analysis_type": "integration_telemetry_only"}
     except Exception:
         # Never log raw provider records or internal exception details.
         (client.table("intelligence_overview_sweeps")
-         .update({"status": "failed", "error_code": "assessment_failed", "completed_at": _timestamp()})
+         .update({"status": "failed", "error_code": "assessment_failed", "completed_at": _sweep_utc_timestamp()})
          .eq("org_id", org_id).eq("id", sweep_id).eq("status", "running").execute())
         return {"id": sweep_id, "status": "failed"}
 
@@ -148,7 +148,7 @@ def recover_stale_sweeps(client: Any, *, max_age_minutes: int = 30) -> int:
     for row in list(rows.data or []):
         result = (client.table("intelligence_overview_sweeps")
                   .update({"status": "failed", "error_code": "worker_interrupted",
-                           "completed_at": _timestamp()})
+                           "completed_at": _sweep_utc_timestamp()})
                   .eq("org_id", str(row["org_id"])).eq("id", str(row["id"]))
                   .eq("status", "running").execute())
         recovered += bool(result.data)
