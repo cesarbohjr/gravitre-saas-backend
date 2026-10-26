@@ -146,7 +146,7 @@ function RoutingCard({ policy, onViewPolicies }: { policy: PolicyState; onViewPo
           disabled={!canEdit || !roles.data || savingRoles}
           onChange={(e) => void setApprovers(e.target.value as ApproverChoice)}
         >
-          {choice == null ? <option value="">{roles.error ? "Not available" : "Loading"}</option> : null}
+          {choice == null ? <option value="">{roles.data || roles.error ? "Not available" : "Loading"}</option> : null}
           <option value="admins">Admins</option>
           <option value="members">Admins and members</option>
           {choice === "custom" ? <option value="custom" disabled>Custom, set in Role permissions</option> : null}
