@@ -14,8 +14,10 @@ import {
   useBuiltInModelItems,
 } from "@/components/intelligence/built-in-models-panel"
 import { useModelsData } from "@/components/intelligence/models/use-models-data"
-import { PAGE_FRAME, TYPE } from "@/lib/design-system"
+import { INTELLIGENCE_PAGE_FRAME, TYPE } from "@/lib/design-system"
 import { TrainingWorkbench } from "@/components/training/training-workbench"
+import { TrainingPermissionDialog } from "@/components/intelligence/training-permission-dialog"
+import { LearningCapabilitiesPanel } from "@/components/intelligence/learning-capabilities-panel"
 import { ModelsStage } from "@/components/intelligence/pages/models-stage"
 import { studioIntentById } from "@/lib/intelligence/model-catalog-display"
 import { APP_ROUTES } from "@/lib/app-routes"
@@ -93,10 +95,15 @@ export default function ModelsPage() {
   const linkedToBuiltIn = searchParams.get("tab") === "built-in"
   const moreRef = useRef<HTMLDetailsElement>(null)
   const [moreOpen, setMoreOpen] = useState(false)
+  // The v3 design shows only your models. Built-in models, training runs,
+  // fine-tunes, training permissions and learning capabilities sit behind
+  // "Show technical details", which a link into them turns on.
+  const [showTechnical, setShowTechnical] = useState(false)
   // Links into the bottom disclosure (?tab=built-in, #built-in, #training, #fine-tunes) open it and scroll there.
   useEffect(() => {
     function openFor(target: string | null) {
       if (!target) return
+      setShowTechnical(true)
       setMoreOpen(true)
       window.requestAnimationFrame(() => document.getElementById(target)?.scrollIntoView({ block: "start" }))
     }
@@ -255,7 +262,7 @@ export default function ModelsPage() {
 
   return (
     <AppShell title={SURFACE_COPY.models.title}>
-      <div className={PAGE_FRAME} data-composition="understand">
+      <div className={INTELLIGENCE_PAGE_FRAME} data-composition="understand">
         <GravitrePageHeader
           eyebrow="Build / Models"
           titleScale="display"
@@ -297,15 +304,20 @@ export default function ModelsPage() {
                   data={modelsData}
                   builtInSuggestions={builtInSuggestions}
                   onRegister={() => router.push(APP_ROUTES.intelligenceModelStudio)}
+                  showTechnical={showTechnical}
+                  onShowTechnicalChange={setShowTechnical}
                 />
               )}
             </section>
 
             {/*
-              Not in the v2 design's main flow, but other pages link here
+              Not in the v3 design's main flow, but other pages link here
               (?tab=built-in, #built-in, #training, #fine-tunes), so they live in
-              one disclosure at the bottom that opens when a link targets it.
+              one disclosure shown with technical details; a link that targets it
+              turns technical details on and opens it.
             */}
+            <TrainingPermissionDialog showList={showTechnical} />
+            {showTechnical ? (
             <details
               ref={moreRef}
               open={moreOpen}
@@ -366,6 +378,8 @@ export default function ModelsPage() {
                 </div>
               ) : null}
             </details>
+            ) : null}
+            {showTechnical ? <LearningCapabilitiesPanel enabled={Boolean(user)} /> : null}
           </div>
         </IntelligenceShell>
       </div>

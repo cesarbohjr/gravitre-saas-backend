@@ -4148,6 +4148,55 @@ export const ssoApi = {
 
 // Convenience export for all APIs
 // ============ Enterprise Admin ============
+/** A saved Reports view, shared with everyone in the organization. */
+export type IntelligenceReportView = {
+  id: string
+  label: string
+  templateId: "business" | "agent" | "prediction" | "governance"
+  periodDays: 7 | 30 | 90
+  savedAt: string
+  savedByName: string | null
+  mine: boolean
+  canRemove: boolean
+}
+
+export type IntelligenceReportCadence = "monday" | "friday" | "month_start"
+export type IntelligenceReportTime = "08:00" | "12:00" | "17:00"
+
+/** One person's scheduled report email. */
+export type IntelligenceReportSchedule = {
+  templateId: IntelligenceReportView["templateId"]
+  periodDays: 7 | 30 | 90
+  cadence: IntelligenceReportCadence
+  time: IntelligenceReportTime
+  enabled: boolean
+  timezone: string
+  lastSentAt: string | null
+  lastError: string | null
+}
+
+export type IntelligenceReportScheduleResponse = {
+  schedule: IntelligenceReportSchedule | null
+  emailEnabled: boolean
+}
+
+/** Intelligence › Reports: saved views (org-wide) and scheduled report email (per person). */
+export const intelligenceReportsApi = {
+  listViews: () => fetcher<{ views: IntelligenceReportView[] }>(apiUrl("/api/intelligence/reports/views")),
+  saveView: (body: { templateId: IntelligenceReportView["templateId"]; periodDays: number; label?: string }) =>
+    postJson<{ view: IntelligenceReportView }>(apiUrl("/api/intelligence/reports/views"), body),
+  deleteView: (id: string) =>
+    deleteJson<{ removed: boolean }>(apiUrl(`/api/intelligence/reports/views/${encodeURIComponent(id)}`)),
+  getSchedule: () => fetcher<IntelligenceReportScheduleResponse>(apiUrl("/api/intelligence/reports/schedule")),
+  putSchedule: (body: {
+    templateId: IntelligenceReportView["templateId"]
+    periodDays: number
+    cadence: IntelligenceReportCadence
+    time: IntelligenceReportTime
+    enabled: boolean
+  }) => putJson<IntelligenceReportScheduleResponse>(apiUrl("/api/intelligence/reports/schedule"), body),
+}
+
 export const enterpriseApi = {
   // Data residency
   getDataRegion: () => fetcher<EnterpriseDataRegion>(apiUrl("/api/enterprise/data-region")),

@@ -26,8 +26,6 @@ export const APP_ROUTES = {
   /** @deprecated use builtInModels */
   intelligenceModels: "/models/built-in",
   intelligencePredictive: "/intelligence/predictive",
-  /** Account health (customer context) — its own tab; was a section of Forecasts. */
-  intelligenceAccounts: "/intelligence/accounts",
   /** In-app explainer: what context Gravitre reads, and how to turn it off. */
   contextHelp: "/ai/help/context",
   /** Memory is a section of Knowledge; /intelligence/memory redirects here. */

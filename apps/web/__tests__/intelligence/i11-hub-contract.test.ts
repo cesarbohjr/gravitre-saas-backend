@@ -7,8 +7,8 @@ import {
 import { buildLensMetrics } from "@/components/intelligence/map/build-lens-metrics"
 
 describe("I11 hub contract", () => {
-  it("keeps one level of eight tabs in two groups and never lists Training or Model Studio", () => {
-    expect(INTELLIGENCE_HUB_TABS).toHaveLength(8)
+  it("keeps one level of seven tabs in two groups and never lists Training or Model Studio", () => {
+    expect(INTELLIGENCE_HUB_TABS).toHaveLength(7)
     expect(INTELLIGENCE_HUB_GROUPS.map((group) => group.label)).toEqual(["Understand", "Build"])
     expect(INTELLIGENCE_HUB_TABS.map((tab) => tab.label)).not.toContain("Model Studio")
     expect(INTELLIGENCE_HUB_TABS.map((tab) => tab.label)).not.toContain("Training")
@@ -22,7 +22,6 @@ describe("I11 hub contract", () => {
     expect(resolveIntelligenceHubTab("/models/built-in")).toBe("models")
     expect(resolveIntelligenceHubTab("/intelligence/memory")).toBe("learning")
     expect(resolveIntelligenceHubTab("/intelligence/reports")).toBe("reports")
-    expect(resolveIntelligenceHubTab("/intelligence/accounts")).toBe("accounts")
     expect(resolveIntelligenceHubTab("/intelligence/predictive")).toBe("predictions")
   })
 })
@@ -31,7 +30,7 @@ describe("Intelligence vocabulary", () => {
   it("gives every tab a distinct plain-language name and purpose", () => {
     const understand = INTELLIGENCE_HUB_TABS.filter((tab) => tab.group === "understand").map((tab) => tab.label)
     const build = INTELLIGENCE_HUB_TABS.filter((tab) => tab.group === "build").map((tab) => tab.label)
-    expect(understand).toEqual(["Overview", "Knowledge", "Forecasts", "Accounts", "Impact", "Reports"])
+    expect(understand).toEqual(["Overview", "Knowledge", "Forecasts", "Impact", "Reports"])
     expect(build).toEqual(["Data", "Models"])
     for (const tab of INTELLIGENCE_HUB_TABS) expect(tab.description.length).toBeGreaterThan(10)
   })

@@ -33,6 +33,23 @@ export type SavedIntelligenceView = {
   templateId: ReportTemplateId
   periodDays: 7 | 30 | 90
   savedAt: string
+  /** Set for views stored on the server (shared with the whole organization). */
+  savedByName?: string | null
+  mine?: boolean
+  canRemove?: boolean
+}
+
+/**
+ * Saved views now live on the server so the whole team sees them. Views an
+ * older version kept in this browser are read once, uploaded, then cleared.
+ */
+export function clearLocalSavedIntelligenceViews(orgId: string): void {
+  if (typeof window === "undefined") return
+  try {
+    window.localStorage.removeItem(storageKey(orgId))
+  } catch {
+    // Storage may be blocked; the upload is idempotent per template and period.
+  }
 }
 
 const STORAGE_PREFIX = "gravitre.intelligence.saved-views.v1."

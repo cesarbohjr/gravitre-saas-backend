@@ -27,7 +27,6 @@ const ACTION_CLASS: Partial<Record<IntelligenceToastTone, string>> = { error: "d
 const PAGE_LABELS: Array<[RegExp, string]> = [
   [/^\/intelligence\/learning/, "Knowledge"],
   [/^\/intelligence\/predictive/, "Forecasts"],
-  [/^\/intelligence\/accounts/, "Accounts"],
   [/^\/intelligence\/performance/, "Impact"],
   [/^\/intelligence\/reports/, "Reports"],
   [/^\/intelligence\/data/, "Data"],

@@ -85,16 +85,23 @@ export function ModelsStage({
   data,
   builtInSuggestions,
   onRegister,
+  showTechnical: showTechnicalProp,
+  onShowTechnicalChange,
 }: {
   data: ReturnType<typeof useModelsData>
   builtInSuggestions: BuiltInModelListItem[]
   onRegister?: () => void
+  /** Controlled by the page when it also reveals the built-in and training sections. */
+  showTechnical?: boolean
+  onShowTechnicalChange?: (next: boolean) => void
 }) {
   const router = useRouter()
   const { models, details, jobs, datasetNames, isLoading } = data
   const [query, setQuery] = useState("")
   const [filter, setFilter] = useState<ModelFilter>("all")
-  const [showTechnical, setShowTechnical] = useState(false)
+  const [showTechnicalLocal, setShowTechnicalLocal] = useState(false)
+  const showTechnical = showTechnicalProp ?? showTechnicalLocal
+  const setShowTechnical = onShowTechnicalChange ?? setShowTechnicalLocal
   const [retrainingId, setRetrainingId] = useState<string | null>(null)
   const [deployingId, setDeployingId] = useState<string | null>(null)
   const [dismissed, setDismissed] = useState<string[]>([])

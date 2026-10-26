@@ -45,13 +45,14 @@ export function IntelligenceShell({
   showFreshness?: boolean
 }) {
   const reduceMotion = useReducedMotion()
-  // Training permissions are listed on the Build pages, under their content; every
-  // other page still opens the prompt when the backend detects data to learn from.
-  const buildPage = activeTab === "data" || activeTab === "models"
+  // Every page opens the training prompt when the backend detects data to learn
+  // from. The list of permissions sits on Models, under "Show technical details",
+  // and that page renders its own copy (list plus prompt).
+  const ownsTrainingPermissions = activeTab === "models"
 
   return (
     <div className={cn("space-y-4", className)}>
-      {buildPage ? null : <TrainingPermissionDialog showList={false} />}
+      {ownsTrainingPermissions ? null : <TrainingPermissionDialog showList={false} />}
       {chrome === "full" ? (
         <div className="flex flex-col gap-2 border-b border-[color:var(--g-border-subtle)] sm:flex-row sm:items-end sm:justify-between">
           <IntelligenceHubTabs active={activeTab} />
@@ -81,11 +82,6 @@ export function IntelligenceShell({
       >
         {children}
       </motion.div>
-      {buildPage ? (
-        <div className="pt-4">
-          <TrainingPermissionDialog />
-        </div>
-      ) : null}
     </div>
   )
 }

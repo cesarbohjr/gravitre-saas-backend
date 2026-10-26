@@ -43,7 +43,6 @@ const SURFACES = [
   { id: "settings_org", path: "/settings?section=organization", tier: "organization", mustHave: [/organization|brand|workspace/i] },
   { id: "settings_ai_models", path: "/settings?section=ai-models", tier: "organization", mustHave: [/model|ai|memory/i], heading: "Customer data", readOnly: true },
   { id: "context_help", path: "/ai/help/context", mustHave: [/context/i], heading: "How Gravitre uses your context", readOnly: true },
-  { id: "customer_accounts", path: "/intelligence/accounts", mustHave: [/account/i], heading: "Accounts", readOnly: true },
   { id: "msp_clients", path: "/settings/clients", tier: "admin", mustHave: [/client|partner/i], heading: "Resell Gravitre to your clients", readOnly: true },
   { id: "settings_admin_audit", path: "/settings?section=audit", tier: "admin", mustHave: [/audit|event|log|admin|permission|empty/i] },
   { id: "settings_admin_enterprise", path: "/settings/enterprise", tier: "admin", mustHave: [/enterprise|sso|federation|admin|empty/i] },

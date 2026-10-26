@@ -63,7 +63,7 @@ import { ApiError } from "@/lib/fetcher"
 import { ensureSelectedOrg, getQuickOrgId } from "@/lib/org-context"
 import { readCachedOrgMembership, writeCachedOrgMembership } from "@/lib/org-gate-cache"
 import { useIntelligenceSnapshot } from "@/lib/intelligence/use-intelligence-snapshot"
-import { PAGE_FRAME } from "@/lib/design-system"
+import { INTELLIGENCE_PAGE_FRAME } from "@/lib/design-system"
 import { SURFACE_COPY } from "@/lib/surface-copy"
 
 /** Same SWR key as Forecasts and Activity › Failures so all three share one cache entry. */
@@ -97,10 +97,6 @@ function IntelligenceSectionRedirect() {
     }
     if (section === "predictive") {
       router.replace(APP_ROUTES.intelligencePredictive)
-      return
-    }
-    if (section === "accounts" || section === "account-health") {
-      router.replace(APP_ROUTES.intelligenceAccounts)
     }
   }, [router, searchParams])
   return null
@@ -423,7 +419,7 @@ function IntelligenceCenterInner() {
 
   return (
     <AppShell title={copy.title}>
-      <div className={PAGE_FRAME} data-composition="understand">
+      <div className={INTELLIGENCE_PAGE_FRAME} data-composition="understand">
         <IntelligenceSectionRedirect />
         <GravitrePageHeader
           titleScale="display"

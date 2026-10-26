@@ -17,10 +17,9 @@ import {
 import { Button } from "@/components/ui/button"
 import { useAuth } from "@/lib/auth-context"
 import { ApiError } from "@/lib/fetcher"
-import { PAGE_FRAME } from "@/lib/design-system"
+import { INTELLIGENCE_PAGE_FRAME } from "@/lib/design-system"
 import { useIntelligenceSnapshot } from "@/lib/intelligence/use-intelligence-snapshot"
 import { SURFACE_COPY } from "@/lib/surface-copy"
-import { cn } from "@/lib/utils"
 import { NucleoIntelligence } from "@/components/icons/nucleo/semantic"
 
 /** `?view=` drives the view; `#memory` (and /intelligence/memory) selects Memory. */
@@ -90,7 +89,7 @@ function IntelligenceLearningInner() {
   return (
     <AppShell title={copy.title}>
       <div
-        className={cn(PAGE_FRAME, "bg-[color:var(--g-canvas)] px-[var(--np-page-pad-sm)] sm:px-[var(--np-page-pad)]")}
+        className={INTELLIGENCE_PAGE_FRAME}
         data-composition="understand"
       >
         <GravitrePageHeader

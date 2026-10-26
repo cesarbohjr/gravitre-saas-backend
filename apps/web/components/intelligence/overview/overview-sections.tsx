@@ -163,7 +163,7 @@ export function AtAGlance({ cards, loading, phrase }: { cards: GlanceCard[]; loa
           At a glance
         </h2>
         <p className="mt-0.5 text-[13px] text-[color:var(--g-text-secondary)]">
-          Results {phrase}, and what is worth knowing right now.
+          {phrase.charAt(0).toUpperCase() + phrase.slice(1)}&apos;s results, and the three things worth knowing right now.
         </p>
       </div>
       <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">

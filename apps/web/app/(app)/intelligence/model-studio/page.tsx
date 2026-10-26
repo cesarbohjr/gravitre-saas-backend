@@ -1,6 +1,6 @@
 "use client"
 
-import { PAGE_FRAME } from "@/lib/design-system"
+import { INTELLIGENCE_PAGE_FRAME } from "@/lib/design-system"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { NucleoIntelligence } from "@/components/icons/nucleo/semantic"
 import { EmptyState } from "@/components/gravitre/empty-state"
@@ -23,7 +23,7 @@ export default function ModelStudioPage() {
 
   return (
     <AppShell title="Model Studio">
-      <div className={PAGE_FRAME} data-composition="create">
+      <div className={INTELLIGENCE_PAGE_FRAME} data-composition="create">
         <GravitrePageHeader
           eyebrow="Models"
           title="Model Studio"

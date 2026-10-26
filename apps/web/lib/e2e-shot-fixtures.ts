@@ -2765,6 +2765,9 @@ export const SHOT_FIXTURES: Record<string, unknown> = {
       },
     }
   })(),
+  // FIXTURE: Reports saved views (shared) and the viewer's report schedule.
+  "/api/intelligence/reports/views": { views: [] },
+  "/api/intelligence/reports/schedule": { schedule: null, emailEnabled: true },
   // FIXTURE: tenant Overview contract (shape of GET /api/intelligence/overview).
   "/api/intelligence/overview": {
     schema_version: "intelligence_overview_v1",

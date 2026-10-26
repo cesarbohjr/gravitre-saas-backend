@@ -100,9 +100,9 @@ export default function HowGravitreUsesYourContextPage() {
               With customer context switched on, email from your customers in the systems you choose is judged
               for tone, urgency, churn-risk language, interest in buying more, and support problems. Every
               reading quotes the customer&apos;s own words as evidence, and a trend needs several messages before
-              Gravitre calls it one. Results appear in{" "}
-              <Link href={APP_ROUTES.intelligenceAccounts} className={LINK}>
-                Intelligence › Accounts
+              Gravitre calls it one. Findings appear in the Needs attention list on{" "}
+              <Link href={APP_ROUTES.intelligencePredictive} className={LINK}>
+                Intelligence › Forecasts
               </Link>
               . This is off by default and nothing is read until an admin turns it on.
             </p>
@@ -110,7 +110,7 @@ export default function HowGravitreUsesYourContextPage() {
           <li className="space-y-1.5">
             <h2 className="text-sm font-semibold text-foreground">From a finding to useful work</h2>
             <p className="text-sm leading-relaxed text-muted-foreground">
-              Accounts and Forecasts show evidence-backed next steps. Review a relevant Play, such as Customer
+              Forecasts shows evidence-backed next steps. Review a relevant Play, such as Customer
               Rescue, or prepare a review assignment with the finding and evidence already in its brief. Review
               prerequisites and approve the work before starting. Accepting a proposal only adds planned work;
               customer-facing changes still require their normal approval.
