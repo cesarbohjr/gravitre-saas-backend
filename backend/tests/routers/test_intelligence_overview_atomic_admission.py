@@ -26,20 +26,21 @@ def test_atomic_admission_used(monkeypatch):
         {"vendor": "hubspot", "executable": True},
     ])
     monkeypatch.setattr(overview, "write_audit_event", lambda *a, **kw: None)
-    result = overview.request_sweep("org-a", ({"sub": "admin"}, None, "admin"), object())
+    with patch("app.billing.intelligence_sweep_meter.entitled_sweep_limit", return_value=("2026-10", 5)):
+        result = overview.request_sweep("org-a", ({"sub": "admin"}, None, "admin"), object())
     assert result["sweep"]["id"] == "s-1"
     assert len(client.calls) == 1
     name, payload = client.calls[0]
-    assert name == "admit_intelligence_overview_sweep"
+    assert name == "admit_metered_intelligence_sweep"
     assert payload["p_org_id"] == "org-a"
 
 
 def test_quota_errors_are_explicit(monkeypatch):
     monkeypatch.setenv("INTELLIGENCE_OVERVIEW_SWEEP_WORKER_ENABLED", "true")
-    monkeypatch.setattr(overview, "_db", lambda _settings: RpcClient(error="daily sweep quota exceeded"))
+    monkeypatch.setattr(overview, "_db", lambda _settings: RpcClient(error="intelligence sweep entitlement exceeded"))
     monkeypatch.setattr(overview, "load_connected_connectors", lambda *_: [
         {"vendor": "hubspot", "executable": True},
     ])
-    with pytest.raises(HTTPException) as exc:
+    with patch("app.billing.intelligence_sweep_meter.entitled_sweep_limit", return_value=("2026-10", 5)), pytest.raises(HTTPException) as exc:
         overview.request_sweep("org-a", ({"sub": "admin"}, None, "admin"), object())
-    assert exc.value.status_code == 429
+    assert exc.value.status_code == 402

@@ -50,7 +50,7 @@ class FakeDb:
 def test_atomic_claim_prevents_duplicate_processing():
     row = {"id": "s-1", "org_id": "tenant-a", "status": "queued"}
     db = FakeDb(dict(row))
-    with patch("app.services.intelligence_overview_sweep_worker.assessment_for_org", return_value={"advisory_only": True}):
+    with patch("app.services.intelligence_overview_sweep_worker._has_reserved_sweep_unit", return_value=True), patch("app.services.intelligence_overview_sweep_worker._settle_completed_sweep"), patch("app.services.intelligence_overview_sweep_worker.assessment_for_org", return_value={"advisory_only": True}):
         assert process_queued_sweep(db, row)["status"] == "partial"
         assert process_queued_sweep(db, row)["status"] == "already_claimed"
     assert db.item["status"] == "partial"

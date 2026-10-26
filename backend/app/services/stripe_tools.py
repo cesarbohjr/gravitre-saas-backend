@@ -5,15 +5,7 @@ from typing import Any
 
 from app.config import Settings
 from app.connectors.repository import get_connector_by_type
-from app.connectors.stripe_api import (
-    StripeAPIError,
-    get_subscription,
-    list_invoices,
-    resolve_stripe_credentials,
-    subscription_state,
-)
-
-__all__ = ["StripeAPIError", "fetch_open_invoices", "fetch_subscription_state"]
+from app.connectors.stripe_api import StripeAPIError, get_subscription, resolve_stripe_credentials, subscription_state
 
 
 def fetch_subscription_state(
@@ -47,16 +39,15 @@ def fetch_open_invoices(
     org_id: str,
     settings: Settings,
     *,
-    environment_name: str | None = "default",
+    environment_name: str = "default",
     limit: int = 100,
 ) -> list[dict[str, Any]] | None:
-    """Open invoices for the org's Stripe connector; None when Stripe isn't connected.
+    """Fetch only tenant-authorized Stripe open invoices via execution helper."""
+    from app.connectors.stripe_api import list_invoices
 
-    Raises StripeAPIError when Stripe rejects the call.
-    """
     conn = get_connector_by_type(client, org_id, "stripe", environment_name=environment_name)
     if not conn:
         return None
-    api_key, stripe_account = resolve_stripe_credentials(client, org_id, str(conn["id"]), settings)
-    payload = list_invoices(api_key, stripe_account=stripe_account, status="open", limit=limit)
-    return [dict(i) for i in (payload.get("data") or []) if isinstance(i, dict)]
+    key, account = resolve_stripe_credentials(client, org_id, str(conn["id"]), settings)
+    payload = list_invoices(key, stripe_account=account, status="open", limit=min(max(1, limit), 100))
+    return [dict(row) for row in (payload.get("data") or []) if isinstance(row, dict)]

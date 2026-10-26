@@ -1,0 +1,84 @@
+name: Deletion lifecycle readiness evidence
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "scripts/check_deletion_lifecycle_readiness.py"
+      - ".github/workflows/deletion-lifecycle-readiness.yml"
+  pull_request:
+    paths:
+      - "scripts/check_deletion_lifecycle_readiness.py"
+      - "backend/tests/services/test_deletion_readiness_collector.py"
+      - ".github/workflows/deletion-lifecycle-readiness.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  readiness:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - name: Probe Railway ingestion interlock (read-only)
+        env:
+          INTERNAL_API_SECRET: ${{ secrets.INTERNAL_API_SECRET }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json, os, pathlib, time, urllib.request
+          url = "https://gravitre-saas-backend-production.up.railway.app/api/internal/ops/ingestion-interlock"
+          report = {"replica_count": 1, "calls": 8, "lifecycle_ready_true": 0,
+                    "lifecycle_ready_false": 0, "other_failures": 0, "failing_responses": []}
+          secret = os.environ.get("INTERNAL_API_SECRET", "")
+          if not secret:
+              report["other_failures"] += 1
+              report["failing_responses"].append({"error": "GitHub INTERNAL_API_SECRET not configured"})
+          else:
+              for index in range(8):
+                  try:
+                      req = urllib.request.Request(url, headers={"X-Internal-Secret": secret}, method="GET")
+                      with urllib.request.urlopen(req, timeout=15) as response:
+                          payload = json.load(response)
+                      if not isinstance(payload, dict):
+                          raise ValueError("non-object JSON")
+                      runtime = payload.get("runtime")
+                      runtime = runtime if isinstance(runtime, dict) else {}
+                      heartbeat = runtime.get("heartbeat_age_s")
+                      window = runtime.get("heartbeat_window_s")
+                      valid = (
+                          payload.get("lifecycle_ready") is True and payload.get("missing") == []
+                          and runtime.get("ready") is True and runtime.get("blockers") == []
+                          and runtime.get("relay_task") == "running"
+                          and isinstance(heartbeat, (int, float)) and not isinstance(heartbeat, bool)
+                          and isinstance(window, (int, float)) and not isinstance(window, bool)
+                          and 0 <= heartbeat < window
+                      )
+                      if payload.get("lifecycle_ready") is True:
+                          report["lifecycle_ready_true"] += 1
+                      elif payload.get("lifecycle_ready") is False:
+                          report["lifecycle_ready_false"] += 1
+                      else:
+                          report["other_failures"] += 1
+                      if not valid:
+                          report["failing_responses"].append({"call": index+1, "response": payload})
+                  except Exception as exc:
+                      report["other_failures"] += 1
+                      # No error string: HTTP exception messages might expose URLs; never include credentials.
+                      report["failing_responses"].append({"call": index+1, "error_type": type(exc).__name__})
+                  if index != 7: time.sleep(2)
+          report["result"] = "PASS" if (report["lifecycle_ready_true"] == 8 and not report["failing_responses"]) else "FAIL"
+          report["coverage_note"] = "Railway reported one running production replica at workflow authoring time. Revalidate count before treating PASS as complete."
+          target = pathlib.Path("deletion-lifecycle-readiness.json")
+          target.write_text(json.dumps(report, indent=2, sort_keys=True) + "\n")
+          print(json.dumps(report, indent=2, sort_keys=True))
+          if report["result"] != "PASS": raise SystemExit(1)
+          PY
+      - name: Upload readiness evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: deletion-lifecycle-readiness
+          path: deletion-lifecycle-readiness.json
+          if-no-files-found: warn
