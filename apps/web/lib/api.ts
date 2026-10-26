@@ -1942,6 +1942,19 @@ export const approvalsApi = {
     postJson<Run>(apiUrl(`/api/approvals/${runId}/approve`), data || {}),
   reject: (runId: string, data?: ApproveRejectRequest) =>
     postJson<Run>(apiUrl(`/api/approvals/${runId}/reject`), data || {}),
+  /** Rewrites a pending request's arguments; approving afterwards runs the edited version. */
+  edit: (id: string, parameters: Record<string, unknown>) =>
+    postJson<{ approval_id: string; edited_at: string }>(apiUrl(`/api/approvals/${id}/edit`), { parameters }),
+  /** Hides a pending request until `until` (ISO time); null brings it back now. */
+  snooze: (id: string, until: string | null) =>
+    postJson<{ approval_id: string; snoozed_until: string | null }>(apiUrl(`/api/approvals/${id}/snooze`), { until }),
+  delegate: (id: string, userId: string, note?: string) =>
+    postJson<{ approval_id: string; delegated_to: string }>(apiUrl(`/api/approvals/${id}/delegate`), {
+      userId,
+      note: note || null,
+    }),
+  delegates: () =>
+    fetcher<{ delegates: { id: string; name: string; role: string | null }[] }>(apiUrl("/api/approvals/delegates")),
 }
 
 // ============ Connectors ============

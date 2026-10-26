@@ -5,7 +5,7 @@ import Link from "next/link"
 import useSWR, { useSWRConfig } from "swr"
 import { useRouter, useSearchParams } from "next/navigation"
 import { toast } from "@/components/agents/overlays/toast"
-import { AlertTriangle, Check, Lock, MoreHorizontal, RefreshCw, Search, ShieldCheck } from "lucide-react"
+import { AlertTriangle, Check, Clock, Lock, MoreHorizontal, PenLine, RefreshCw, Search, ShieldCheck, UserRoundPlus } from "lucide-react"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { WsPage } from "@/components/workspace/ws-page"
 import { WsArt } from "@/components/workspace/ws-art"
@@ -33,14 +33,18 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import { DelegateDialog, EditApproveDialog } from "@/components/approvals/decision-queue/queue-actions"
 import {
   decidedByLine,
   environmentLabel,
   formatDate,
   isExtensionGate,
   isPastSla,
+  isSnoozed,
   lockNote,
   activity,
   matchesQuery,
@@ -50,6 +54,7 @@ import {
   policyLine,
   riskLabel,
   slaLine,
+  snoozeOptions,
   summarySentence,
   titleCase,
   typeLabel,
@@ -116,6 +121,9 @@ function DecisionQueue() {
   const [busyId, setBusyId] = useState<string | null>(null)
   const [rejectTarget, setRejectTarget] = useState<Approval | null>(null)
   const [rejectReason, setRejectReason] = useState("")
+  const [editTarget, setEditTarget] = useState<Approval | null>(null)
+  const [delegateTarget, setDelegateTarget] = useState<Approval | null>(null)
+  const [showSnoozed, setShowSnoozed] = useState(false)
   const [now, setNow] = useState(() => Date.now())
   const [lastUpdated, setLastUpdated] = useState<number | null>(null)
   const listRef = useRef<HTMLDivElement | null>(null)
@@ -162,10 +170,13 @@ function DecisionQueue() {
     return () => window.clearInterval(timer)
   }, [])
 
-  const pending = useMemo(
+  const allPending = useMemo(
     () => normalizeApprovals(pendingData).filter((a) => a.status === "pending"),
     [pendingData],
   )
+  // Snoozed requests leave "Waiting on you" until their time comes, then return on their own.
+  const pending = useMemo(() => allPending.filter((a) => !isSnoozed(a, now)), [allPending, now])
+  const snoozed = useMemo(() => allPending.filter((a) => isSnoozed(a, now)), [allPending, now])
   const history = useMemo(
     () =>
       historyData
@@ -185,8 +196,16 @@ function DecisionQueue() {
   }
   const base = useMemo(
     () =>
-      tab === "pending" ? pending : tab === "breached" ? breached : tab === "approved" ? approved ?? [] : rejected ?? [],
-    [tab, pending, breached, approved, rejected],
+      tab === "pending"
+        ? showSnoozed
+          ? [...pending, ...snoozed]
+          : pending
+        : tab === "breached"
+          ? breached
+          : tab === "approved"
+            ? approved ?? []
+            : rejected ?? [],
+    [tab, pending, snoozed, showSnoozed, breached, approved, rejected],
   )
   const filtersOn = query.trim().length > 0 || risk !== "all"
   const visible = useMemo(() => {
@@ -208,14 +227,17 @@ function DecisionQueue() {
   const deepLinked = useRef<string | null>(null)
   useEffect(() => {
     if (!deepLinkId || deepLinked.current === deepLinkId) return
-    const inPending = pending.find((a) => a.id === deepLinkId)
+    const inPending = allPending.find((a) => a.id === deepLinkId)
     const inHistory = history?.find((a) => a.id === deepLinkId)
     if (!inPending && !inHistory) return
     deepLinked.current = deepLinkId
-    if (inPending) setTab("pending")
+    if (inPending) {
+      setTab("pending")
+      if (isSnoozed(inPending, Date.now())) setShowSnoozed(true)
+    }
     else if (inHistory) setTab(inHistory.status === "rejected" ? "rejected" : "approved")
     setSelectedId(deepLinkId)
-  }, [deepLinkId, pending, history])
+  }, [deepLinkId, allPending, history])
 
   const select = useCallback((id: string, focus = false) => {
     setSelectedId(id)
@@ -279,6 +301,58 @@ function DecisionQueue() {
     }
   }
 
+  const editThenApprove = async (a: Approval, parameters: Record<string, unknown>) => {
+    if (busyId || a.status !== "pending") return
+    setBusyId(a.id)
+    try {
+      await approvalsApi.edit(a.id, parameters)
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not save the edit")
+      setBusyId(null)
+      return
+    }
+    setBusyId(null)
+    setEditTarget(null)
+    await approve(a)
+  }
+
+  const snooze = async (a: Approval, until: string | null) => {
+    if (busyId || a.status !== "pending") return
+    setBusyId(a.id)
+    try {
+      await approvalsApi.snooze(a.id, until)
+      await refresh()
+      if (until) {
+        if (!showSnoozed) setSelectedId(nextAfter(a.id))
+        toast.success("Snoozed", {
+          description: `It comes back ${formatDate(until, Date.now())}.`,
+          action: { label: "Undo", onClick: () => void approvalsApi.snooze(a.id, null).then(() => refresh()) },
+        })
+      } else {
+        toast.success("Back in the queue")
+      }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not snooze")
+    } finally {
+      setBusyId(null)
+    }
+  }
+
+  const delegate = async (a: Approval, userId: string, note: string) => {
+    if (busyId || a.status !== "pending") return
+    setBusyId(a.id)
+    try {
+      await approvalsApi.delegate(a.id, userId, note)
+      await refresh()
+      setDelegateTarget(null)
+      toast.success("Handed off", { description: "They got a notification with a link to this request." })
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not hand it off")
+    } finally {
+      setBusyId(null)
+    }
+  }
+
   const openReject = (a: Approval) => {
     if (busyId || a.status !== "pending") return
     setRejectReason("")
@@ -320,7 +394,7 @@ function DecisionQueue() {
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       if (event.defaultPrevented || event.metaKey || event.ctrlKey || event.altKey) return
-      if (rejectTarget || isTypingTarget(event.target)) return
+      if (rejectTarget || editTarget || delegateTarget || isTypingTarget(event.target)) return
       if (document.querySelector('[role="dialog"][data-state="open"],[role="alertdialog"],[role="menu"]')) return
       const key = event.key.toLowerCase()
       if (key === "j" || key === "k") {
@@ -443,6 +517,16 @@ function DecisionQueue() {
             >
               {oldestFirst ? "Oldest first" : "Newest first"}
             </button>
+            {tab === "pending" && snoozed.length > 0 ? (
+              <button
+                type="button"
+                className="ov-plain"
+                aria-pressed={showSnoozed}
+                onClick={() => setShowSnoozed((v) => !v)}
+              >
+                {snoozed.length} snoozed · {showSnoozed ? "Hide" : "Show"}
+              </button>
+            ) : null}
             {tab === "breached" ? (
               <button type="button" className="ov-plain" onClick={() => pickTab("pending")}>
                 Past SLA only · Show all
@@ -546,6 +630,10 @@ function DecisionQueue() {
               canDecide={canDecide(selected)}
               onApprove={() => void approve(selected)}
               onReject={() => openReject(selected)}
+              onEditApprove={() => setEditTarget(selected)}
+              onSnooze={(until) => void snooze(selected, until)}
+              onDelegate={() => setDelegateTarget(selected)}
+              meId={user?.id ?? null}
               onBack={() => listRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })}
               approvedCount={counts.approved}
               onHistory={() => pickTab("approved")}
@@ -583,6 +671,25 @@ function DecisionQueue() {
             Reject
           </button>
         </div>
+      ) : null}
+
+      {editTarget ? (
+        <EditApproveDialog
+          approval={editTarget}
+          open
+          busy={busyId === editTarget.id}
+          onOpenChange={(open) => !open && setEditTarget(null)}
+          onSubmit={(parameters) => void editThenApprove(editTarget, parameters)}
+        />
+      ) : null}
+      {delegateTarget ? (
+        <DelegateDialog
+          approval={delegateTarget}
+          open
+          busy={busyId === delegateTarget.id}
+          onOpenChange={(open) => !open && setDelegateTarget(null)}
+          onSubmit={(userId, note) => void delegate(delegateTarget, userId, note)}
+        />
       ) : null}
 
       <AlertDialog open={Boolean(rejectTarget)} onOpenChange={(open) => !open && !busyId && setRejectTarget(null)}>
@@ -640,7 +747,9 @@ function RequestItem({
   const tool = a.context.tool || a.context.action
   const meta = decided
     ? [a.status === "approved" ? "Approved" : "Rejected", formatDate(a.reviewedAt ?? a.requestedAt, now)]
-    : [sla ? sla.text : "Waiting", sla ? null : formatDate(a.requestedAt, now)]
+    : isSnoozed(a, now)
+      ? [`Snoozed until ${formatDate(a.snoozedUntil, now)}`]
+      : [sla ? sla.text : "Waiting", sla ? null : formatDate(a.requestedAt, now)]
   return (
     <button
       type="button"
@@ -661,6 +770,8 @@ function RequestItem({
         {env ? <span className={cn("gv-pill", a.environment === "production" ? "brand" : "neutral")}>{env}</span> : null}
         {level ? <span className={cn("gv-pill", RISK_TONE[level])}>{riskLabel(level)}</span> : null}
         <span className="gv-pill neutral">{typeLabel(a)}</span>
+        {a.delegatedTo ? <span className="gv-pill outline">Handed to {a.delegatedTo}</span> : null}
+        {a.editedAt ? <span className="gv-pill outline">Edited</span> : null}
       </span>
       <span className="dq-item-by">
         <span className="dq-ava" aria-hidden>
@@ -685,6 +796,10 @@ function DetailPane({
   canDecide,
   onApprove,
   onReject,
+  onEditApprove,
+  onSnooze,
+  onDelegate,
+  meId,
   onBack,
   approvedCount,
   onHistory,
@@ -695,10 +810,16 @@ function DetailPane({
   canDecide: boolean
   onApprove: () => void
   onReject: () => void
+  onEditApprove: () => void
+  onSnooze: (until: string | null) => void
+  onDelegate: () => void
+  meId: string | null
   onBack: () => void
   approvedCount: number | null
   onHistory: () => void
 }) {
+  const snoozedNow = isSnoozed(a, now)
+  const handedToMe = Boolean(meId && a.delegatedToId === meId)
   const pending = a.status === "pending"
   const pastSla = isPastSla(a, now)
   const runId = a.context.runId
@@ -747,6 +868,24 @@ function DetailPane({
               <span className="gv-pill red">Rejected</span>
             )}
             {pending && pastSla ? <span className="gv-pill red">SLA breached</span> : null}
+            {snoozedNow ? (
+              <span className="gv-pill neutral">
+                <Clock size={13} aria-hidden />
+                Snoozed until {formatDate(a.snoozedUntil, now)}
+              </span>
+            ) : null}
+            {a.delegatedTo ? (
+              <span className={cn("gv-pill", handedToMe ? "brand" : "outline")}>
+                {handedToMe ? "Handed to you" : `Handed to ${a.delegatedTo}`}
+                {a.delegatedBy ? ` by ${a.delegatedBy}` : ""}
+              </span>
+            ) : null}
+            {a.editedAt ? (
+              <span className="gv-pill outline">
+                <PenLine size={13} aria-hidden />
+                Edited{a.editedBy ? ` by ${a.editedBy}` : ""}
+              </span>
+            ) : null}
           </div>
           <h2>{a.title}</h2>
           {a.description ? <p>{a.description}</p> : null}
@@ -772,6 +911,12 @@ function DetailPane({
             >
               {busy ? "Working..." : "Approve"} <span className="gv-kbd">A</span>
             </button>
+            {a.editableParameters ? (
+              <button type="button" className="gv-btn outline" disabled={busy || !canDecide} onClick={onEditApprove}>
+                <PenLine size={16} aria-hidden />
+                Edit, then approve
+              </button>
+            ) : null}
             <button type="button" className="gv-btn danger" disabled={busy || !canDecide} onClick={onReject}>
               Reject <span className="gv-kbd">R</span>
             </button>
@@ -800,12 +945,39 @@ function DetailPane({
               </DropdownMenuItem>
             ) : null}
             <DropdownMenuItem onSelect={() => void copyLink()}>Copy link to this request</DropdownMenuItem>
+            {pending && canDecide ? (
+              <>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onSelect={onDelegate}>
+                  <UserRoundPlus size={15} aria-hidden />
+                  {a.delegatedTo ? "Hand to someone else" : "Hand to a teammate"}
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuLabel>Snooze</DropdownMenuLabel>
+                {snoozedNow ? (
+                  <DropdownMenuItem onSelect={() => onSnooze(null)}>Bring back now</DropdownMenuItem>
+                ) : null}
+                {snoozeOptions(now).map((o) => (
+                  <DropdownMenuItem key={o.label} onSelect={() => onSnooze(o.until)}>
+                    <Clock size={15} aria-hidden />
+                    {o.label}
+                  </DropdownMenuItem>
+                ))}
+              </>
+            ) : null}
           </DropdownMenuContent>
         </DropdownMenu>
         {pending ? (
           <p className="dq-lock">
             <Lock size={14} aria-hidden />
             {canDecide ? lockNote(a) : "Only workspace admins can decide this request."}
+            {a.editableParameters == null && a.editBlockedReason && canDecide ? ` ${a.editBlockedReason}` : ""}
+          </p>
+        ) : null}
+        {pending && a.delegateNote ? (
+          <p className="dq-lock">
+            <UserRoundPlus size={14} aria-hidden />
+            {a.delegatedBy ? `${a.delegatedBy}: ` : ""}&ldquo;{a.delegateNote}&rdquo;
           </p>
         ) : a.reviewComment ? (
           <p className="dq-lock">Reason given: &ldquo;{a.reviewComment}&rdquo;</p>
