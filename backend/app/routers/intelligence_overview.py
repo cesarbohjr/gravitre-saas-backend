@@ -153,23 +153,11 @@ def request_sweep(
     vendors = sorted({c["vendor"] for c in connections if c.get("executable")})
     if not vendors:
         raise HTTPException(status_code=409, detail="Connect at least one usable data source first.")
-    # Atomic, service-role-only quota + active-run admission in one transaction.
-    # Never fall back to read-then-write when the migration is missing.
-    try:
-        admitted = client.rpc("admit_intelligence_overview_sweep", {
-            "p_org_id": org_id,
-            "p_requested_by": _actor(admin) or None,
-            "p_scope": {"vendors_requested": vendors, "connector_count": len(vendors)},
-            "p_daily_limit": 5,
-        }).execute()
-    except Exception as exc:
-        if "daily sweep quota exceeded" in str(exc):
-            raise HTTPException(status_code=429, detail="Daily intelligence sweep limit reached.") from exc
-        raise HTTPException(status_code=503, detail="Sweep admission unavailable.") from exc
-    item = admitted.data
-    sweep = item[0] if isinstance(item, list) and item else item if isinstance(item, dict) else None
-    if not sweep or not sweep.get("id"):
-        raise HTTPException(status_code=503, detail="Sweep admission unavailable.")
+    from app.billing.intelligence_sweep_meter import reserve_sweep
+    sweep = reserve_sweep(
+        client, org_id, _actor(admin) or None,
+        {"vendors_requested": vendors, "connector_count": len(vendors)},
+    )
     write_audit_event(client, org_id, _actor(admin), "intelligence.overview.sweep_requested",
                       "intelligence_overview_sweep", str(sweep["id"]),
                       metadata={"vendors_requested": vendors, "execution_started": False})
@@ -222,3 +210,167 @@ def action_candidates(
     return {"candidates": candidates, "count": len(candidates),
             "advisoryOnly": True, "executes": False,
             "requiresExistingPlayApprovalAndPermissions": True}
+
+
+def _verified_evidence_recommendations(client, org_id: str) -> list[dict]:
+    """Re-derive IDs from persisted tenant evidence, never trust client claims."""
+    from app.services.intelligence_evidence_recommendations import build_evidence_recommendations
+    records = (client.table("intelligence_history_records")
+               .select("org_id,connector_id,object_type,external_id")
+               .eq("org_id", org_id).limit(2000).execute()).data or []
+    matches = (client.table("intelligence_entity_matches")
+               .select("org_id,identity_kind,identity_hash,match_status,record_references")
+               .eq("org_id", org_id).limit(1000).execute()).data or []
+    # No partial recommendation if a bounded read cannot prove full evidence.
+    if len(records) >= 2000 or len(matches) >= 1000:
+        raise HTTPException(status_code=409, detail="Evidence index too large for bounded assessment.")
+    return build_evidence_recommendations(records, matches, org_id=org_id)
+
+
+@router.get("/evidence-recommendations")
+def evidence_recommendations(
+    org_id: Annotated[str, Depends(get_org_context)],
+    _member: Annotated[tuple, Depends(require_org_member)],
+    settings: Settings = Depends(get_settings),
+) -> dict:
+    items = _verified_evidence_recommendations(_db(settings), org_id)
+    return {"recommendations": items, "count": len(items), "advisoryOnly": True,
+            "executionAuthority": "canonical_play_runtime",
+            "requiresApproval": True}
+
+
+class RecommendationPlayRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    installation_id: str = Field(min_length=1)
+
+
+@router.post("/evidence-recommendations/{recommendation_id}/play-runs")
+async def execute_evidence_recommendation(
+    recommendation_id: str,
+    body: RecommendationPlayRequest,
+    org_id: Annotated[str, Depends(get_org_context)],
+    admin: Annotated[tuple, Depends(require_admin)],
+    environment_name: Annotated[str, Depends(get_environment_context)],
+    settings: Settings = Depends(get_settings),
+) -> dict:
+    """Only initiate canonical Play execution; workflows own approval/write gates."""
+    from app.routers.plays import RunPlayRequest, run_play
+    client = _db(settings)
+    recommendation = next(
+        (r for r in _verified_evidence_recommendations(client, org_id)
+         if r["id"] == recommendation_id), None,
+    )
+    if not recommendation:
+        raise HTTPException(status_code=404, detail="Evidence recommendation not found")
+    play_key = recommendation["recommended_play_key"]
+    # Durable claim BEFORE invoking canonical execution: concurrent submissions
+    # cannot initiate duplicate Plays. Failed/ambiguous handoffs need manual
+    # reconciliation; never automatically retry an external write.
+    try:
+        claimed = client.table("intelligence_recommendation_play_links").insert({
+            "org_id": org_id, "recommendation_id": recommendation_id,
+            "installation_id": body.installation_id, "play_key": play_key,
+            "created_by": _actor(admin) or None, "status": "submitting",
+        }).execute()
+    except Exception as exc:
+        raise HTTPException(status_code=409, detail="Recommendation handoff already claimed or unavailable") from exc
+    link = (claimed.data or [None])[0]
+    if not link or not link.get("id"):
+        raise HTTPException(status_code=503, detail="Could not persist recommendation handoff")
+    try:
+        # Canonical Play runtime verifies installation ownership, readiness,
+        # every bound workflow's approval policy, and membership.
+        result = await run_play(
+            play_key, RunPlayRequest(installationId=body.installation_id),
+            admin, environment_name, settings,
+        )
+        runs = [str(item.get("runId")) for item in (result.get("workflowRuns") or [])
+                if item.get("runId")]
+        receipt = (client.table("intelligence_recommendation_play_links").update({
+            "status": "submitted",
+            "play_run_id": result.get("playRunId"),
+            "workflow_run_ids": runs,
+            "updated_at": datetime.now(timezone.utc).isoformat(),
+        }).eq("org_id", org_id).eq("id", str(link["id"])).execute())
+        if not receipt.data:
+            raise RuntimeError("Attribution write unavailable")
+    except Exception:
+        # Fail closed: a partial Play start might already exist; do not retry.
+        try:
+            client.table("intelligence_recommendation_play_links").update({
+                "status": "handoff_error",
+                "updated_at": datetime.now(timezone.utc).isoformat(),
+            }).eq("org_id", org_id).eq("id", str(link["id"])).execute()
+        except Exception:
+            pass
+        raise HTTPException(status_code=503, detail="Play handoff requires reconciliation; do not retry automatically")
+
+    return {"recommendationId": recommendation_id, "playKey": play_key,
+            "playRun": result, "handoffId": str(link["id"]), "approvalBypass": False,
+            "outcomesHref": f"/api/plays/{play_key}/outcomes",
+            "evidenceHrefTemplate": f"/api/plays/{play_key}/outcomes/{{outcome_id}}/evidence",
+            "verifiedBusinessOutcome": False}
+
+
+@router.get("/evidence-recommendations/{recommendation_id}/handoffs")
+def evidence_recommendation_handoffs(
+    recommendation_id: str,
+    org_id: Annotated[str, Depends(get_org_context)],
+    _member: Annotated[tuple, Depends(require_org_member)],
+    settings: Settings = Depends(get_settings),
+) -> dict:
+    """Read back persisted Play attribution and source-verified business results."""
+    from app.plays.outcomes import list_play_business_results
+    from app.plays.evidence import build_play_evidence_chain
+    from app.services.intelligence_outcome_verification import verified_business_evidence
+    client = _db(settings)
+    links = (client.table("intelligence_recommendation_play_links")
+             .select("id,org_id,recommendation_id,play_key,play_run_id,workflow_run_ids,status,created_at")
+             .eq("org_id", org_id).eq("recommendation_id", recommendation_id)
+             .limit(50).execute()).data or []
+    if not links:
+        return {"recommendationId": recommendation_id, "handoffs": [], "count": 0}
+    completed = []
+    for link in links:
+        workflow_ids = set(str(x) for x in (link.get("workflow_run_ids") or []) if x)
+        outcomes = []
+        if workflow_ids:
+            candidates = list_play_business_results(
+                client, org_id, play_key=str(link["play_key"]), limit=200,
+            )
+            for outcome in candidates:
+                if str(outcome.get("workflow_run_id") or "") not in workflow_ids:
+                    continue
+                metadata = outcome.get("metadata") or {}
+                status_value = str(metadata.get("verification_state") or "")
+                verified = status_value in {"VERIFIED SUCCESS", "VERIFIED FAILURE"}
+                source_evidence = (build_play_evidence_chain(
+                    client, org_id, str(outcome["id"]), play_key=str(link["play_key"]),
+                ) if verified else None)
+                outcomes.append({
+                    "outcomeId": str(outcome["id"]),
+                    "verificationState": status_value or "UNKNOWN",
+                    "verified": verified_business_evidence(status_value, source_evidence),
+                    "evidence": source_evidence,
+                })
+        completed.append({
+            "handoffId": str(link["id"]),
+            "playKey": str(link["play_key"]),
+            "playRunId": link.get("play_run_id"),
+            "status": link.get("status"),
+            "outcomes": outcomes,
+            "verifiedBusinessOutcome": any(item["verified"] for item in outcomes),
+        })
+    return {"recommendationId": recommendation_id, "handoffs": completed,
+            "count": len(completed)}
+
+
+@router.get("/sweep-usage")
+def intelligence_sweep_usage(
+    org_id: Annotated[str, Depends(get_org_context)],
+    _member: Annotated[tuple, Depends(require_org_member)],
+    settings: Settings = Depends(get_settings),
+) -> dict:
+    """Read-only quota, scoped to authenticated member's organization."""
+    from app.billing.intelligence_sweep_meter import sweep_usage_snapshot
+    return sweep_usage_snapshot(_db(settings), org_id)
