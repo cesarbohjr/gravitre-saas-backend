@@ -17,14 +17,19 @@ def _member_role(client: Any, *, org_id: str, user_id: str) -> str | None:
     try:
         rows = (
             client.table("organization_members")
-            .select("role")
+            .select("org_id,user_id,role")
             .eq("org_id", org_id)
             .eq("user_id", user_id)
             .limit(1)
             .execute()
             .data or []
         )
-        return str(rows[0].get("role") or "").strip().lower() if rows else None
+        if len(rows) != 1:
+            return None
+        row = rows[0]
+        if str(row.get("org_id") or "") != org_id or str(row.get("user_id") or "") != user_id:
+            return None
+        return str(row.get("role") or "").strip().lower() or None
     except Exception:  # Fail closed on errors or schema drift.
         return None
 

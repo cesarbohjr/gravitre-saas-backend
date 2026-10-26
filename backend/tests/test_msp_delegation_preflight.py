@@ -117,3 +117,25 @@ def test_removed_customer_owner_cannot_keep_existing_delegation_active():
         if row["user_id"] != "owner"
     ]
     assert not allowed(db)
+
+
+
+def test_mismatched_membership_rows_never_authorize_even_if_filters_fail():
+    class UnfilteredDB(DB):
+        def table(self, name):
+            query = super().table(name)
+            if name == "organization_members":
+                def unfiltered_execute():
+                    return SimpleNamespace(data=[{"org_id": "wrong-org", "user_id": "tech", "role": "owner"}])
+                query.execute = unfiltered_execute
+            return query
+
+    assert not allowed(UnfilteredDB())
+
+
+def test_duplicate_membership_rows_fail_closed():
+    db = DB()
+    db.records["organization_members"].append(
+        {"org_id": "provider", "user_id": "tech", "role": "owner"}
+    )
+    assert not allowed(db)
