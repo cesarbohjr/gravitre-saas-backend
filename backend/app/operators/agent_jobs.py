@@ -26,6 +26,7 @@ from app.billing.service import (
 )
 from app.config import Settings, get_settings
 from app.core.logging import get_logger
+from app.core.safe_dict import safe_normalize_stored_dict
 from app.workflows.repository import get_supabase_client
 
 logger = get_logger(__name__)
@@ -323,8 +324,8 @@ def retry_failed_steps(client: Any, org_id: str, job_id: str, *, created_by: str
     ok, failed = split_tool_calls(job)
     if not failed:
         return None
-    payload = job.get("payload") if isinstance(job.get("payload"), dict) else {}
-    context = dict(payload.get("context") or {}) if isinstance(payload.get("context"), dict) else {}
+    payload = safe_normalize_stored_dict(job.get("payload"))
+    context = safe_normalize_stored_dict(payload.get("context"))
     context["retry_of"] = job_id
     briefing = {
         "retry_of_job": job_id,
