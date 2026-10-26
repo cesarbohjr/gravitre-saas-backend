@@ -4197,6 +4197,71 @@ export const intelligenceReportsApi = {
   }) => putJson<IntelligenceReportScheduleResponse>(apiUrl("/api/intelligence/reports/schedule"), body),
 }
 
+export type RevenueOpportunityRow = {
+  id: string
+  label: string
+  kind: string
+  source: string
+  amount: number
+  currency: string
+  closeDate: string
+  pastCloseDate: boolean
+  href: string | null
+}
+
+export type RevenueOpportunities = {
+  status: "ready" | "not_connected" | "needs_reconnect" | "error"
+  error: string | null
+  lookaheadDays: number
+  method: string
+  /** Null when no amount is recorded in a connected CRM — never a made-up 0. */
+  total: number | null
+  currency: string
+  count: number
+  rows: RevenueOpportunityRow[]
+  moreCount: number
+  otherCurrencies: Record<string, number>
+  unpricedCount: number
+  toCollect: { total: number; currency: string; count: number; overdueCount: number } | null
+  generatedAt: string
+}
+
+export type ShareFindingPerson = { id: string; name: string; email: string }
+export type ShareFindingChannel = { id: string; name: string; private: boolean; members: number | null }
+export type ShareFindingApp = {
+  id: "slack" | "email"
+  name: string
+  channels: ShareFindingChannel[]
+  people: ShareFindingPerson[]
+}
+export type ShareFindingOptions = { apps: ShareFindingApp[]; unavailable: string[] }
+export type ShareFindingRequest = {
+  app: ShareFindingApp["id"]
+  channelId?: string | null
+  personId?: string | null
+  title: string
+  summary?: string
+  note?: string
+  path?: string
+  findingId?: string
+}
+export type ShareFindingResult = {
+  shared: boolean
+  app: ShareFindingApp["id"]
+  destination: string
+  url: string | null
+  sharedAt: string
+}
+
+export const intelligenceFindingsApi = {
+  revenueOpportunities: (refresh = false) =>
+    fetcher<RevenueOpportunities>(
+      apiUrl(`/api/intelligence/revenue-opportunities${refresh ? "?refresh=true" : ""}`),
+    ),
+  shareOptions: () => fetcher<ShareFindingOptions>(apiUrl("/api/intelligence/share/options")),
+  share: (body: ShareFindingRequest) => postJson<ShareFindingResult>(apiUrl("/api/intelligence/share"), body),
+}
+
 export const enterpriseApi = {
   // Data residency
   getDataRegion: () => fetcher<EnterpriseDataRegion>(apiUrl("/api/enterprise/data-region")),

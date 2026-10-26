@@ -12,6 +12,7 @@
  */
 import { useEffect, useMemo, useState } from "react"
 import { toast } from "@/components/intelligence/overlays/toast"
+import { ShareFindingDialog, type ShareableFinding } from "@/components/intelligence/overlays/share-finding-dialog"
 import { GravitreMetric } from "@/components/gravitre/nodus-product"
 import { Button } from "@/components/ui/button"
 import { PredictionRiskOpportunityTopology } from "@/components/intelligence/prediction-risk-opportunity-topology"
@@ -29,6 +30,7 @@ import {
   type Forecast,
 } from "@/components/intelligence/forecasts/forecast-model"
 import { assistantApi, workflowsApi, type IntelligencePageContextResponse } from "@/lib/api"
+import { APP_ROUTES } from "@/lib/app-routes"
 import { isSnapshotMetricsReady, type SnapshotLoadState } from "@/lib/intelligence/snapshot-state"
 import { TYPE } from "@/lib/design-system"
 import { cn } from "@/lib/utils"
@@ -79,6 +81,7 @@ export function PredictionsStage({
   const [rejected, setRejected] = useState<Set<string>>(() => new Set())
   const [outcomes, setOutcomes] = useState<Record<string, ForecastOutcome>>({})
   const [savingOutcome, setSavingOutcome] = useState(false)
+  const [sharing, setSharing] = useState<ShareableFinding | null>(null)
 
   const visible = useMemo(
     () => (area ? forecasts.filter((row) => row.area === area) : forecasts),
@@ -218,6 +221,14 @@ export function PredictionsStage({
               rejecting={rejectingKey === selected.key}
               rejected={rejected.has(selected.key)}
               onReject={() => void reject(selected)}
+              onShare={() =>
+                setSharing({
+                  id: selected.key,
+                  title: selected.title,
+                  summary: selected.summary,
+                  path: APP_ROUTES.intelligencePredictive,
+                })
+              }
             />
           ) : (
             <div />
@@ -235,6 +246,12 @@ export function PredictionsStage({
           </div>
         </div>
       )}
+      <ShareFindingDialog
+        finding={sharing}
+        onOpenChange={(open) => {
+          if (!open) setSharing(null)
+        }}
+      />
     </div>
   )
 }
