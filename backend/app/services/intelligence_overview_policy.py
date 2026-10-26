@@ -71,7 +71,14 @@ def apply_response_sensitivity(result: dict[str, Any], policy: dict[str, str]) -
         mode = policy.get(name, "balanced")
         item = dict(slot)
         item["sensitivity_mode"] = mode
-        item["runtime_effect"] = "optional_evidence_presentation"
+        item["runtime_effect"] = "optional_enrichment_eligibility_and_evidence_threshold"
+        minimum = evidence_threshold(name, mode)
+        item["surfacing_threshold"] = minimum
+        evidence_confidence = item.get("confidence")
+        if isinstance(evidence_confidence, (int, float)) and not isinstance(evidence_confidence, bool) and evidence_confidence < minimum:
+            item.pop("data", None)
+            item["evidence_suppressed"] = True
+            item["suppression_reason"] = "below_surfacing_threshold"
         if mode == "conservative" and item.get("status") not in {"available", "ok"}:
             # Do not expose weak speculative detail as established intelligence.
             item.pop("data", None)
