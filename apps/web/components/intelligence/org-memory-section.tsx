@@ -9,7 +9,7 @@
  */
 import { useEffect, useState } from "react"
 import Link from "next/link"
-import { toast } from "@/components/agents/overlays/toast"
+import { toast } from "@/components/intelligence/overlays/toast"
 import { ArrowCounterClockwise, Brain, Sparkle } from "@phosphor-icons/react"
 import { ErrorState } from "@/components/gravitre/empty-state"
 import { Button } from "@/components/ui/button"

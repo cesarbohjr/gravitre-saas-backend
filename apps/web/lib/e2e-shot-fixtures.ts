@@ -2600,15 +2600,66 @@ export const SHOT_FIXTURES: Record<string, unknown> = {
           isCurrentlyRunning: false,
         },
       ],
-      predictions: [],
-      learnings: [],
+      // Shape of CanonicalPrediction (backend intelligence_projection.py).
+      predictions: [
+        {
+          id: "pred_renewal",
+          type: "risk",
+          businessStatement: "Support tickets tripled this week and the main contact changed. A check-in with the new contact before renewal is the usual save.",
+          subject: "Northwind Logistics may not renew",
+          department: "customer_success",
+          horizon: "60d",
+          confidence: 0.72,
+          evidence: ["Ticket volume 3.1x the prior 8 weeks", "Primary contact updated in HubSpot"],
+          createdAt: T(48),
+          status: "active",
+          recommendedActions: ["Renewal save"],
+          qualityFlags: [],
+          source: { system: "business_signals", recordId: "sig_renewal" },
+          semanticKey: "renewal-northwind",
+        },
+        {
+          id: "pred_seats",
+          type: "opportunity",
+          businessStatement: "96% of seats are in use. Accounts at this point often welcome an expansion conversation.",
+          subject: "Northwind is close to its seat limit",
+          department: "sales",
+          horizon: "30d",
+          confidence: 0.61,
+          evidence: ["Seat usage 96% for 14 days"],
+          createdAt: T(300),
+          status: "active",
+          recommendedActions: [],
+          qualityFlags: [],
+          source: { system: "business_signals", recordId: "sig_seats" },
+          semanticKey: "seats-northwind",
+        },
+      ],
+      // Shape of LearningInsight: auto-promoted org memory.
+      learnings: [
+        {
+          id: "learn_depots",
+          businessStatement: "Cold-chain loads are routed through the Reno depot first.",
+          learnedFrom: ["agent_memories"],
+          evidence: ["operations"],
+          learnedAt: T(1500),
+          source: { system: "memory_promotion", recordId: "learn_depots" },
+        },
+      ],
+      // Outcome ledger events (snapshot.outcomes).
+      outcomes: [
+        { id: "evt_1", event: "connector_action_executed", department: "sales", entityType: "deal", entityId: "Globex expansion", createdAt: T(130) },
+        { id: "evt_2", event: "crm_booked", department: "sales", entityType: "deal", entityId: "Globex expansion", createdAt: T(95) },
+        { id: "evt_3", event: "workflow_executed", department: "operations", entityType: "workflow", entityId: "Lead intake", createdAt: T(20) },
+        { id: "evt_4", event: "prediction_generated", department: "sales", createdAt: T(15) },
+      ],
       knowledgeEntityTypes: ["agent", "department", "glossary_term"],
       metrics: {
         knowledge: { knownEntities: 4, knownRelationships: 3 },
-        learning: {},
-        predictions: {},
-        execution: {},
-        outcomes: {},
+        learning: { recentLearnings: 1 },
+        predictions: { activePredictions: 2 },
+        execution: { recommendationsCreated: 3, actionsCompleted: 2, awaitingApproval: 3 },
+        outcomes: { measuredOutcomes: 1 },
       },
       qualityFlags: [],
       departments: [],
@@ -2631,10 +2682,10 @@ export const SHOT_FIXTURES: Record<string, unknown> = {
     availableLenses: ["knows", "learns", "predicts", "acts", "improves"],
     metrics: {
       knowledge: { knownEntities: 4, knownRelationships: 3 },
-      learning: {},
-      predictions: {},
-      execution: {},
-      outcomes: {},
+      learning: { recentLearnings: 1 },
+      predictions: { activePredictions: 2 },
+      execution: { recommendationsCreated: 3, actionsCompleted: 2, awaitingApproval: 3 },
+      outcomes: { measuredOutcomes: 1 },
     },
     qualityFlags: [],
     suggestedQuestions: [],
@@ -2686,6 +2737,24 @@ export const SHOT_FIXTURES: Record<string, unknown> = {
       },
     }
   })(),
+  // FIXTURE: heuristic suggestion cards (shape of GET /api/intelligence/recommendations/heuristics).
+  "/api/intelligence/recommendations/heuristics": {
+    advisoryOnly: true,
+    actionsTaken: [],
+    recommendations: [
+      {
+        id: "heur_invoices",
+        kind: "finance_follow_up",
+        title: "3 invoices are more than 30 days overdue",
+        reason: "None has had a reminder in the last two weeks.",
+        confidence: 0.64,
+        priority: 2,
+        advisoryOnly: true,
+        href: "/plays",
+      },
+    ],
+    count: 1,
+  },
   // FIXTURE: memory promotion candidates (shape of GET /api/admin/memory-promotion/candidates).
   // The harness matches on path only, so every status filter gets this list.
   "/api/admin/memory-promotion/candidates": {

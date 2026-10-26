@@ -3,7 +3,7 @@
 import { useState } from "react"
 import Link from "next/link"
 import useSWR from "swr"
-import { toast } from "@/components/agents/overlays/toast"
+import { toast } from "@/components/intelligence/overlays/toast"
 import { intelligenceApi, mlAdminApi, type ModelCapabilityInventory } from "@/lib/api"
 import { useOrgAdmin } from "@/lib/use-org-admin"
 import { Button } from "@/components/ui/button"

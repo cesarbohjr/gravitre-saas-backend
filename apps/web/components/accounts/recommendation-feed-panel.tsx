@@ -114,7 +114,7 @@ export function RecommendationFeedPanel({ kinds }: { kinds?: readonly string[] }
     revalidateOnFocus: false,
     shouldRetryOnError: false,
   })
-  const items = data?.items.filter((item) => !kinds || kinds.includes(item.kind))
+  const items = data?.items?.filter((item) => !kinds || kinds.includes(item.kind))
   if (isFeatureOff(error)) {
     return (
       <section aria-labelledby="recommendation-feed-heading" className="space-y-2">
@@ -131,7 +131,7 @@ export function RecommendationFeedPanel({ kinds }: { kinds?: readonly string[] }
       </section>
     )
   }
-  const unavailable = data ? Object.entries(data.sources).filter(([, state]) => state === "error").length : 0
+  const unavailable = data ? Object.entries(data.sources ?? {}).filter(([, state]) => state === "error").length : 0
   return (
     <section aria-labelledby="recommendation-feed-heading" className="space-y-2">
       <div>

@@ -1,0 +1,148 @@
+/*
+ * Intelligence overlays (Intelligence-ToastsPopups design): white card, 14px
+ * radius, hairline border and a soft tone tile. Toasts stack bottom left, three
+ * at most, full width on phones. Confirms sit centered on a 48% ink scrim and
+ * become bottom sheets on phones. Scoped to `ig-` so the Agents shell is untouched.
+ */
+
+.ig-toasts {
+  --ig-card: #ffffff;
+  --ig-border: #e4e4df;
+  --ig-ink: #141513;
+  --ig-muted: #55564f;
+  --ig-track: #efefea;
+  --ig-x: #8a8b85;
+  position: fixed; left: 24px; bottom: 24px; z-index: 61;
+  width: 400px; max-width: calc(100% - 48px);
+  display: flex; flex-direction: column; gap: 10px;
+  pointer-events: none;
+  font-family: var(--font-geist), "Geist", system-ui, sans-serif;
+}
+.dark .ig-toasts {
+  --ig-card: #171917;
+  --ig-border: #2a2c29;
+  --ig-ink: #ededE8;
+  --ig-muted: #a3a49c;
+  --ig-track: #262825;
+  --ig-x: #a3a49c;
+}
+.ig-toast {
+  pointer-events: auto;
+  background: var(--ig-card); border: 1px solid var(--ig-border); border-radius: 14px; overflow: hidden; width: 100%;
+  box-shadow: 0 12px 32px rgba(20, 21, 19, 0.08), 0 1px 2px rgba(20, 21, 19, 0.04);
+  color: var(--ig-ink);
+  animation: ig-up 0.25s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.ig-toast-body { display: flex; gap: 14px; padding: 16px; }
+.ig-tile { width: 38px; height: 38px; border-radius: 10px; flex: none; display: grid; place-items: center; }
+.ig-toast-copy { flex: 1 1 0%; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.ig-eyebrow { font-family: var(--font-mono), "Geist Mono", ui-monospace, monospace; font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; }
+.ig-toast-title { font-size: 15px; font-weight: 600; line-height: 1.35; overflow-wrap: anywhere; }
+.ig-toast-desc { font-size: 14px; line-height: 1.5; color: var(--ig-muted); overflow-wrap: anywhere; }
+.ig-toast-actions { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
+.ig-x {
+  width: 32px; height: 32px; border-radius: 8px; border: 0; background: transparent; color: var(--ig-x);
+  display: grid; place-items: center; cursor: pointer; flex: none; margin: -6px -6px 0 0;
+}
+.ig-x:hover { background: var(--ig-track); color: var(--ig-ink); }
+.ig-toast-track { height: 3px; background: var(--ig-track); }
+.ig-toast-bar { height: 3px; width: 100%; transform-origin: left center; animation-name: ig-drain; animation-timing-function: linear; animation-fill-mode: forwards; }
+.ig-toast-fill { height: 3px; transition: width 0.3s ease; }
+@keyframes ig-drain { from { transform: scaleX(1); } to { transform: scaleX(0); } }
+
+.ig-toast[data-tone="success"] .ig-tile { background: #ddf3e8; color: #0a6b47; }
+.ig-toast[data-tone="success"] .ig-eyebrow { color: #0a6b47; }
+.ig-toast[data-tone="success"] .ig-toast-bar { background: #19c37d; }
+.ig-toast[data-tone="error"] .ig-tile { background: #f8e4e6; color: #a3333d; }
+.ig-toast[data-tone="error"] .ig-eyebrow { color: #a3333d; }
+.ig-toast[data-tone="error"] .ig-toast-bar { background: #a3333d; }
+.ig-toast[data-tone="warning"] .ig-tile, .ig-toast[data-tone="approval"] .ig-tile { background: #fbf1dc; color: #8a5a06; }
+.ig-toast[data-tone="warning"] .ig-eyebrow, .ig-toast[data-tone="approval"] .ig-eyebrow { color: #8a5a06; }
+.ig-toast[data-tone="warning"] .ig-toast-bar, .ig-toast[data-tone="approval"] .ig-toast-bar { background: #e2a33a; }
+.ig-toast[data-tone="info"] .ig-tile, .ig-toast[data-tone="loading"] .ig-tile, .ig-toast[data-tone="progress"] .ig-tile { background: #eef2ff; color: #2b59e0; }
+.ig-toast[data-tone="info"] .ig-eyebrow, .ig-toast[data-tone="loading"] .ig-eyebrow, .ig-toast[data-tone="progress"] .ig-eyebrow { color: #2b59e0; }
+.ig-toast[data-tone="info"] .ig-toast-bar, .ig-toast[data-tone="progress"] .ig-toast-fill { background: #2b59e0; }
+.ig-toast[data-tone="message"] .ig-tile { background: #efefea; color: #33342f; }
+.ig-toast[data-tone="message"] .ig-eyebrow { color: #55564f; }
+.ig-toast[data-tone="message"] .ig-toast-bar { background: #8a8b85; }
+.dark .ig-toast[data-tone="success"] .ig-tile { background: #143022; color: #6fd59a; }
+.dark .ig-toast[data-tone="success"] .ig-eyebrow { color: #6fd59a; }
+.dark .ig-toast[data-tone="error"] .ig-tile { background: #3a1a1d; color: #f2a7ae; }
+.dark .ig-toast[data-tone="error"] .ig-eyebrow { color: #f2a7ae; }
+.dark .ig-toast[data-tone="warning"] .ig-tile, .dark .ig-toast[data-tone="approval"] .ig-tile { background: #2c2312; color: #f0c070; }
+.dark .ig-toast[data-tone="warning"] .ig-eyebrow, .dark .ig-toast[data-tone="approval"] .ig-eyebrow { color: #f0c070; }
+.dark .ig-toast[data-tone="info"] .ig-tile, .dark .ig-toast[data-tone="loading"] .ig-tile, .dark .ig-toast[data-tone="progress"] .ig-tile { background: #1b2340; color: #9db4ff; }
+.dark .ig-toast[data-tone="info"] .ig-eyebrow, .dark .ig-toast[data-tone="loading"] .ig-eyebrow, .dark .ig-toast[data-tone="progress"] .ig-eyebrow { color: #9db4ff; }
+.dark .ig-toast[data-tone="message"] .ig-tile { background: #262825; color: #d6d6d0; }
+.dark .ig-toast[data-tone="message"] .ig-eyebrow { color: #a3a49c; }
+
+/* Buttons shared by toasts and confirms */
+.ig-btn {
+  border: 0; font: inherit; font-weight: 600; font-size: 14px; border-radius: 10px; padding: 0 16px; min-height: 44px;
+  cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+}
+.ig-btn.sm { min-height: 36px; padding: 0 12px; font-size: 13.5px; }
+.ig-btn.primary { background: #0b8a5c; color: #ffffff; }
+.ig-btn.primary:hover { background: #0a6b47; }
+.ig-btn.dark { background: #141513; color: #ffffff; }
+.ig-btn.dark:hover { background: #33342f; }
+.ig-btn.danger { background: #a3333d; color: #ffffff; }
+.ig-btn.danger:hover { background: #8a2a33; }
+.ig-btn.ghost { background: #efefea; color: #141513; }
+.ig-btn.ghost:hover { background: #e4e4df; }
+.dark .ig-btn.dark { background: #ededE8; color: #111211; }
+.dark .ig-btn.ghost { background: #262825; color: #ededE8; }
+.ig-btn:focus-visible, .ig-x:focus-visible { outline: 2px solid #19c37d; outline-offset: 2px; }
+
+/* Confirm: centered card on an ink scrim */
+.ig-scrim { position: fixed; inset: 0; z-index: 70; background: rgba(11, 12, 12, 0.48); animation: ig-fade 0.2s ease; }
+.ig-dialog {
+  position: fixed; z-index: 71; top: 50%; left: 50%; transform: translate(-50%, -50%);
+  width: calc(100% - 48px); max-width: 440px;
+  background: #ffffff; color: #141513; border-radius: 14px; overflow: hidden;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.25);
+  font-family: var(--font-geist), "Geist", system-ui, sans-serif;
+  animation: ig-pop 0.2s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.dark .ig-dialog { background: #171917; color: #ededE8; }
+.ig-confirm-body { display: flex; gap: 14px; padding: 20px 22px 0; }
+.ig-confirm-copy { flex: 1 1 0%; min-width: 0; }
+.ig-dialog-title { margin: 0; font-size: 17px; font-weight: 600; line-height: 1.35; }
+.ig-dialog-desc { margin: 6px 0 0; font-size: 14px; line-height: 1.55; color: #55564f; }
+.dark .ig-dialog-desc { color: #a3a49c; }
+.ig-confirm[data-tone="danger"] .ig-tile { background: #f8e4e6; color: #a3333d; }
+.ig-confirm[data-tone="default"] .ig-tile { background: #efefea; color: #33342f; }
+.ig-dialog-foot { display: flex; justify-content: flex-end; gap: 10px; flex-wrap: wrap; padding: 20px 22px; }
+.ig-dialog-foot:not(.plain) { border-top: 1px solid #efefea; padding: 14px 22px; }
+
+.ig-spin { animation: ig-spin 0.9s linear infinite; }
+@keyframes ig-spin { to { transform: rotate(360deg); } }
+@keyframes ig-up { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+@keyframes ig-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes ig-pop { from { opacity: 0; transform: translate(-50%, -48%); } to { opacity: 1; transform: translate(-50%, -50%); } }
+@keyframes ig-sheet-in { from { transform: translateY(100%); } to { transform: none; } }
+
+@media (max-width: 640px) {
+  .ig-toasts { left: 12px; right: 12px; bottom: 12px; width: auto; max-width: none; }
+  .ig-dialog {
+    top: auto; left: 0; right: 0; bottom: 0; transform: none;
+    width: 100%; max-width: none; border-radius: 20px 20px 0 0;
+    box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.18);
+    padding-top: 6px; padding-bottom: env(safe-area-inset-bottom);
+    animation: ig-sheet-in 0.25s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  .ig-dialog::before {
+    content: ""; display: block; width: 36px; height: 4px; margin: 2px auto 0;
+    border-radius: 2px; background: #cbcbc3;
+  }
+  .ig-dialog-foot .ig-btn { flex: 1 1 0; }
+}
+/* Clear the phone tab bar (56px plus the safe area) where it shows. */
+@media (max-width: 767px) {
+  body:has(nav[data-mobile-bottom-nav]) .ig-toasts { bottom: calc(68px + env(safe-area-inset-bottom)); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ig-toast, .ig-dialog, .ig-scrim { animation: none; }
+  .ig-spin { animation: none; }
+}

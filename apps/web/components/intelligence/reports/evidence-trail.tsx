@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { useState } from "react"
-import { toast } from "@/components/agents/overlays/toast"
+import { toast } from "@/components/intelligence/overlays/toast"
 import type { OutcomeAttributionPath } from "@/lib/api"
 import { APP_ROUTES } from "@/lib/app-routes"
 import { RADIUS, TYPE } from "@/lib/design-system"

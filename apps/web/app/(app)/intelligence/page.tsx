@@ -1,30 +1,63 @@
 "use client"
 
-import { Suspense, useEffect, useRef, useState } from "react"
-import Link from "next/link"
+import { Suspense, useEffect, useMemo, useRef, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import useSWR from "swr"
+import { CalendarBlank, Sparkle } from "@phosphor-icons/react"
 import { AppShell } from "@/components/gravitre/app-shell"
+import { usePublishGravitreAISelection, type GravitreAISelectedEntity } from "@/components/gravitre/ai-workspace-provider"
 import { EmptyState, ErrorState } from "@/components/gravitre/empty-state"
 import { GravitrePageHeader } from "@/components/gravitre/nodus-product"
 import { CenteredLoader } from "@/components/gravitre/gravitre-loader"
-import {
-  usePublishGravitreAISelection,
-  type GravitreAISelectedEntity,
-} from "@/components/gravitre/ai-workspace-provider"
 import { AskGravitreSummonButton } from "@/components/intelligence/ask-gravitre-summon-button"
+import type { FailureAlertWithEvidence } from "@/components/intelligence/forecasts/forecast-model"
+import { toast } from "@/components/intelligence/overlays/toast"
+import {
+  OVERVIEW_PERIODS,
+  attentionItems,
+  buildFeed,
+  candidateEvidence,
+  candidatesInWindow,
+  connectedApps,
+  dataReadiness,
+  glanceCards,
+  overviewForecasts,
+  pageMetrics,
+  pendingCandidates,
+  thinkingSummary,
+  type FeedItem,
+  type OverviewPeriod,
+} from "@/components/intelligence/overview/overview-model"
+import {
+  AtAGlance,
+  AttentionCard,
+  DataReadinessCard,
+  HowGravitreThinks,
+  KnowsCard,
+  LearningCard,
+  RecentActivity,
+} from "@/components/intelligence/overview/overview-sections"
 import { IntelligenceShell } from "@/components/intelligence/shell"
-import { IntelligenceBrain } from "@/components/intelligence/brain/intelligence-brain"
-import type { OutcomeAttribution } from "@/components/intelligence/overview/flow-model"
+import { Button } from "@/components/ui/button"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import { useAuth } from "@/lib/auth-context"
 import { APP_ROUTES } from "@/lib/app-routes"
-import { connectorsApi, intelligenceApi, memoryPromotionApi } from "@/lib/api"
+import { connectorsApi, enterpriseApi, intelligenceApi, memoryPromotionApi, workflowsApi } from "@/lib/api"
 import { ApiError } from "@/lib/fetcher"
 import { ensureSelectedOrg, getQuickOrgId } from "@/lib/org-context"
 import { readCachedOrgMembership, writeCachedOrgMembership } from "@/lib/org-gate-cache"
 import { useIntelligenceSnapshot } from "@/lib/intelligence/use-intelligence-snapshot"
 import { PAGE_FRAME } from "@/lib/design-system"
 import { SURFACE_COPY } from "@/lib/surface-copy"
+
+/** Same SWR key as Forecasts and Activity › Failures so all three share one cache entry. */
+const FAILURE_ALERTS_KEY = ["workflow-failure-predictions", "open"] as const
+const MEMORY_HREF = `${APP_ROUTES.learning}?view=memory`
 
 function IntelligenceSectionRedirect() {
   const router = useRouter()
@@ -62,6 +95,9 @@ function IntelligenceSectionRedirect() {
   return null
 }
 
+const ANALYZE_TOAST_ID = "overview-analyze"
+const FEED_ANCHOR = "overview-recent-activity"
+
 function IntelligenceCenterInner() {
   const { user } = useAuth()
   const userId = user?.id ?? null
@@ -75,8 +111,12 @@ function IntelligenceCenterInner() {
     const quick = getQuickOrgId()
     return quick && userId && readCachedOrgMembership(userId) === quick ? quick : undefined
   })
+  const [period, setPeriod] = useState<OverviewPeriod>("week")
+  const [analyzing, setAnalyzing] = useState(false)
+  // The activity item under the pointer or focus becomes Ask Gravitre's context.
   const [selected, setSelected] = useState<GravitreAISelectedEntity | null>(null)
   usePublishGravitreAISelection(selected)
+  const periodInfo = OVERVIEW_PERIODS[period]
 
   useEffect(() => {
     if (!userId) {
@@ -101,35 +141,39 @@ function IntelligenceCenterInner() {
     data: pageContext,
     loadState,
     generatedAt,
-    isValidating,
     mutate: mutateSnapshot,
     error,
-  } = useIntelligenceSnapshot({ enabled, windowHours: 24, swrKeySuffix: orgId ?? undefined })
-
-  // Outcome attribution: measured outcomes per agent and how many scoring needs.
-  const { data: outcomes, mutate: mutateOutcomes } = useSWR(
-    enabled ? ["intelligence/outcomes", orgId, 7] : null,
-    () => intelligenceApi.outcomes({ periodDays: 7 }),
-    { revalidateOnFocus: false },
+  } = useIntelligenceSnapshot({
+    enabled,
+    windowHours: periodInfo.windowHours,
+    swrKeySuffix: orgId ?? undefined,
+  })
+  const { data: roi, isLoading: roiLoading, mutate: mutateRoi } = useSWR(
+    enabled ? ["intelligence/overview/agent-roi", orgId, periodInfo.roiDays] : null,
+    () => enterpriseApi.getAgentRoi({ periodDays: periodInfo.roiDays }),
+    { revalidateOnFocus: false, keepPreviousData: true },
   )
-  const { data: delivery, error: deliveryError } = useSWR(
-    enabled ? ["intelligence/outcomes/delivery", orgId] : null,
-    () => intelligenceApi.outcomeDelivery(),
-    { refreshInterval: 20_000, revalidateOnFocus: true },
-  )
-  const { data: trust, mutate: mutateTrust } = useSWR(enabled ? ["intelligence/trust-summary", orgId] : null, () =>
-    intelligenceApi.trustSummary({ periodDays: 7 }),
-  )
-  const { data: connectorsData, mutate: mutateConnectors } = useSWR(
+  const { data: connectorsData, isLoading: connectorsLoading, mutate: mutateConnectors } = useSWR(
     enabled ? ["/api/connectors", orgId] : null,
     () => connectorsApi.list(),
     { revalidateOnFocus: false },
   )
-  // Patterns still being reinforced (any status; open ones are picked out downstream).
+  // Patterns still being reinforced (any status; pending ones are picked out downstream). Admin only.
   const { data: candidatesData, mutate: mutateCandidates } = useSWR(
     enabled ? ["intelligence/overview/memory-candidates", orgId] : null,
     () => memoryPromotionApi.candidates({ limit: 50 }),
-    { revalidateOnFocus: false },
+    { revalidateOnFocus: false, shouldRetryOnError: false },
+  )
+  const { data: heuristics, mutate: mutateHeuristics } = useSWR(
+    enabled ? ["intelligence/overview/heuristics", orgId] : null,
+    () => intelligenceApi.heuristicRecommendations(),
+    { revalidateOnFocus: false, shouldRetryOnError: false },
+  )
+  // Same key as Forecasts and Activity › Failures, so the three share one cache entry.
+  const { data: alerts, mutate: mutateAlerts } = useSWR(
+    enabled ? FAILURE_ALERTS_KEY : null,
+    () => workflowsApi.listFailurePredictions({ status: "open" }),
+    { revalidateOnFocus: false, shouldRetryOnError: false },
   )
 
   // The requests above went out under the optimistic org. If background
@@ -140,11 +184,143 @@ function IntelligenceCenterInner() {
     lastOrgRef.current = orgId
     if (!previous || !orgId || previous === orgId) return
     mutateSnapshot()
-    void mutateOutcomes()
-    void mutateTrust()
+    void mutateRoi()
     void mutateConnectors()
     void mutateCandidates()
-  }, [orgId, mutateSnapshot, mutateOutcomes, mutateTrust, mutateConnectors, mutateCandidates])
+    void mutateHeuristics()
+    void mutateAlerts()
+  }, [orgId, mutateSnapshot, mutateRoi, mutateConnectors, mutateCandidates, mutateHeuristics, mutateAlerts])
+
+  const metrics = pageMetrics(pageContext)
+  const snapshotLoading = loadState === "LOADING" || loadState === "UNINITIALIZED"
+  const connectors = connectorsData?.connectors ?? null
+  const apps = useMemo(() => connectedApps(connectors), [connectors])
+  const forecasts = useMemo(
+    () => overviewForecasts(pageContext, alerts?.alerts as FailureAlertWithEvidence[] | undefined),
+    [pageContext, alerts],
+  )
+  const candidates = candidatesData?.items ?? null
+  const pending = useMemo(() => pendingCandidates(candidates), [candidates])
+  const fresh = useMemo(
+    () => candidatesInWindow(candidates, periodInfo.windowHours),
+    [candidates, periodInfo.windowHours],
+  )
+  const topPattern = pending[0] ?? null
+  const readiness = useMemo(() => dataReadiness({ connectors, metrics }), [connectors, metrics])
+  const glance = useMemo(
+    () =>
+      glanceCards({
+        roi,
+        metrics,
+        routes: {
+          impact: APP_ROUTES.intelligencePerformance,
+          reports: APP_ROUTES.intelligenceReports,
+          approvals: APP_ROUTES.approvals,
+          plays: APP_ROUTES.plays,
+        },
+      }),
+    [roi, metrics],
+  )
+  const attention = useMemo(
+    () =>
+      attentionItems({
+        connectors,
+        metrics,
+        pending,
+        forecasts,
+        routes: {
+          connectors: APP_ROUTES.connectors,
+          approvals: APP_ROUTES.approvals,
+          memory: MEMORY_HREF,
+          forecasts: APP_ROUTES.intelligencePredictive,
+        },
+      }),
+    [connectors, metrics, pending, forecasts],
+  )
+  const feed = useMemo(
+    () =>
+      buildFeed({
+        ctx: pageContext,
+        forecasts,
+        cards: heuristics?.recommendations ?? null,
+        routes: {
+          forecasts: APP_ROUTES.intelligencePredictive,
+          activity: APP_ROUTES.activity,
+          reports: APP_ROUTES.intelligenceReports,
+          memory: MEMORY_HREF,
+        },
+      }),
+    [pageContext, forecasts, heuristics],
+  )
+  const hours = glance.find((card) => card.id === "hours")?.value ?? null
+  const revenue = glance.find((card) => card.id === "revenue")?.value ?? null
+  const summary = thinkingSummary({ phrase: periodInfo.phrase, forecasts, hours, revenue })
+
+  const findingKeys = (items: FeedItem[]) => new Set(items.filter((i) => i.kind !== "action" && i.kind !== "outcome").map((i) => i.id))
+
+  async function analyzeBusiness() {
+    if (analyzing) return
+    setAnalyzing(true)
+    const before = findingKeys(feed)
+    toast.loading("Analyzing your business", {
+      id: ANALYZE_TOAST_ID,
+      eyebrow: "Sweep running",
+      description: "Re-reading every connected app, forecast and suggestion.",
+    })
+    try {
+      // Re-read every producer behind the snapshot (skipping its short cache) and
+      // check every workflow for likely failures, then refresh what the page shows.
+      const [fresh, , nextCards, nextAlerts] = await Promise.all([
+        intelligenceApi.pageContext({ windowHours: periodInfo.windowHours, refresh: true }),
+        workflowsApi.scanAllFailurePredictions().catch(() => null),
+        intelligenceApi.heuristicRecommendations().catch(() => null),
+        workflowsApi.listFailurePredictions({ status: "open" }).catch(() => null),
+      ])
+      mutateSnapshot()
+      void mutateHeuristics(nextCards ?? undefined, { revalidate: !nextCards })
+      void mutateAlerts(nextAlerts ?? undefined, { revalidate: !nextAlerts })
+      void mutateCandidates()
+      void mutateRoi()
+      const after = buildFeed({
+        ctx: fresh,
+        forecasts: overviewForecasts(fresh, (nextAlerts?.alerts ?? alerts?.alerts) as FailureAlertWithEvidence[] | undefined),
+        cards: nextCards?.recommendations ?? heuristics?.recommendations ?? null,
+        routes: { forecasts: "", activity: "", reports: "", memory: "" },
+      })
+      const added = [...findingKeys(after)].filter((key) => !before.has(key)).length
+      toast.success("Analyze my business finished", {
+        id: ANALYZE_TOAST_ID,
+        eyebrow: "Sweep complete",
+        description:
+          added > 0
+            ? `${added} new ${added === 1 ? "finding was" : "findings were"} added to Recent insights.`
+            : "Nothing new turned up. Recent insights are up to date.",
+        action: {
+          label: "View findings",
+          onClick: () => document.getElementById(FEED_ANCHOR)?.scrollIntoView({ behavior: "smooth", block: "start" }),
+        },
+        cancel: { label: "Dismiss", onClick: () => {} },
+      })
+    } catch (err) {
+      toast.error("Couldn't finish the analysis", {
+        id: ANALYZE_TOAST_ID,
+        eyebrow: "Sweep stopped",
+        description: err instanceof ApiError ? err.message : "Try again in a moment. Nothing was changed.",
+      })
+    } finally {
+      setAnalyzing(false)
+    }
+  }
+
+  async function dismissCard(cardId: string) {
+    try {
+      await intelligenceApi.dismissHeuristicRecommendation(cardId)
+      await mutateHeuristics()
+      toast.success("Suggestion dismissed", { description: "Gravitre won't show it again." })
+    } catch {
+      toast.error("Couldn't dismiss that suggestion")
+    }
+  }
 
   if (!user) {
     return (
@@ -182,74 +358,104 @@ function IntelligenceCenterInner() {
     )
   }
 
-  const attribution = (outcomes?.v8_outcome_attribution as OutcomeAttribution | undefined) ?? null
-  const avgConfidence = typeof trust?.avg_confidence === "number" ? trust.avg_confidence : null
+  const knowledge = metrics?.knowledge ?? {}
+  const execution = metrics?.execution ?? {}
+  const readyNumber = (value: unknown) => (snapshotLoading ? null : typeof value === "number" ? value : null)
 
   return (
     <AppShell title={copy.title}>
       <div className={PAGE_FRAME} data-composition="understand">
         <IntelligenceSectionRedirect />
         <GravitrePageHeader
-          eyebrow="Understand / Evidence before answers"
           titleScale="display"
           title={copy.title}
-          description={copy.description}
+          description={`What Gravitre knows about your business, what it is learning, and what it did with it ${periodInfo.phrase}.`}
           actions={
-            <div className="flex flex-wrap items-center gap-3">
-              <Link
-                href={APP_ROUTES.contextHelp}
-                className="text-[13px] text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
-              >
-                How Gravitre uses your context
-              </Link>
+            <div className="flex flex-wrap items-center gap-2">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" className="h-10 rounded-[12px] px-3.5">
+                    <CalendarBlank className="mr-1.5 h-4 w-4" weight="bold" aria-hidden />
+                    {periodInfo.label}
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  {(Object.keys(OVERVIEW_PERIODS) as OverviewPeriod[]).map((id) => (
+                    <DropdownMenuItem key={id} onSelect={() => setPeriod(id)}>
+                      {OVERVIEW_PERIODS[id].label}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
               <AskGravitreSummonButton
-                label="Ask about this page"
-                selected={selected}
-                prompt="Walk me through what changed today: which signals came in from my connected tools, and what they mean."
-                className="inline-flex items-center rounded-[10px] bg-foreground px-3.5 text-[13px] text-background hover:no-underline hover:opacity-90 dark:text-background"
+                label="Ask Gravitre"
+                prompt={`Walk me through what changed ${periodInfo.phrase}: which signals came in from my connected tools, and what they mean.`}
+                className="inline-flex h-10 min-h-10 items-center rounded-[12px] border border-[color:var(--g-border-default)] bg-[color:var(--g-surface-1)] px-3.5 text-[13px] font-medium text-[color:var(--g-text-primary)] hover:no-underline hover:bg-[color:var(--g-surface-2)] dark:text-[color:var(--g-text-primary)]"
               />
+              <Button
+                className="h-10 rounded-[12px] bg-[color:var(--g-brand-active)] px-4 text-white hover:bg-[color:var(--g-brand-hover)]"
+                onClick={() => void analyzeBusiness()}
+                disabled={analyzing || !enabled}
+              >
+                <Sparkle className={`mr-1.5 h-4 w-4 ${analyzing ? "animate-pulse" : ""}`} weight="fill" aria-hidden />
+                {analyzing ? "Analyzing…" : "Analyze my business"}
+              </Button>
             </div>
           }
         />
-        <IntelligenceShell
-          activeTab="overview"
-          loadState={loadState}
-          generatedAt={generatedAt}
-          isValidating={isValidating}
-          onRefresh={() => mutateSnapshot()}
-        >
+        <IntelligenceShell activeTab="overview" loadState={loadState} generatedAt={generatedAt}>
           {orgId === null ? (
             <EmptyState
               title="No workspace selected"
               description="Pick an organization in Settings to see what Gravitre is learning."
             />
           ) : (
-          <>
-          <p role="status" className="mb-3 text-sm text-[color:var(--g-text-secondary)]">
-            {deliveryError
-              ? "Outcome feedback delivery could not be verified. Outcome counts alone do not confirm learning."
-              : delivery?.status === "blocked"
-                ? "Outcome feedback is paused. An administrator needs to enable or restore learning delivery."
-                : delivery?.status === "queued"
-                  ? `${delivery.undelivered_count ?? "Some"} outcome events are waiting for delivery. Learning requires verified results.`
-                  : delivery?.status === "idle"
-                    ? "No outcome events are waiting for delivery. Learning still requires verified business results."
-                    : "Checking outcome feedback delivery…"}
-          </p>
-          <IntelligenceBrain
-            pageContext={pageContext}
-            connectors={connectorsData?.connectors ?? null}
-            candidates={candidatesData?.items ?? null}
-            attribution={attribution}
-            avgConfidence={avgConfidence}
-            loading={loadState === "LOADING" || loadState === "UNINITIALIZED"}
-            onSelectionChange={setSelected}
-            onResynced={() => {
-              void mutateConnectors()
-              mutateSnapshot()
-            }}
-          />
-          </>
+            <div className="space-y-8 pt-2">
+              <DataReadinessCard
+                readiness={readiness}
+                loading={(connectorsLoading && !connectors) || snapshotLoading}
+                href={APP_ROUTES.connectors}
+              />
+              <div className="space-y-3">
+                <AtAGlance cards={glance} loading={(roiLoading && !roi) || snapshotLoading} phrase={periodInfo.phrase} />
+                <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
+                  <KnowsCard
+                    entities={readyNumber(knowledge.knownEntities)}
+                    relationships={readyNumber(knowledge.knownRelationships)}
+                    apps={apps}
+                    updatedAt={generatedAt}
+                    loading={snapshotLoading}
+                    href={APP_ROUTES.learning}
+                  />
+                  <LearningCard
+                    newCount={candidates ? fresh.length : null}
+                    phrase={periodInfo.phrase}
+                    top={topPattern}
+                    topEvidence={topPattern ? candidateEvidence(topPattern) : ""}
+                    pendingCount={pending.length}
+                    loading={!candidatesData && snapshotLoading}
+                    href={MEMORY_HREF}
+                  />
+                  <AttentionCard items={attention} loading={snapshotLoading && !connectors} />
+                </div>
+              </div>
+              <HowGravitreThinks
+                apps={apps}
+                entities={readyNumber(knowledge.knownEntities)}
+                recommendations={readyNumber(execution.recommendationsCreated)}
+                actions={readyNumber(execution.actionsCompleted)}
+                awaiting={readyNumber(execution.awaitingApproval)}
+                summary={snapshotLoading ? null : summary}
+                routes={{ knowledge: APP_ROUTES.learning, activity: APP_ROUTES.activity }}
+              />
+              <RecentActivity
+                id={FEED_ANCHOR}
+                items={feed}
+                loading={snapshotLoading}
+                onDismiss={(cardId) => void dismissCard(cardId)}
+                onSelect={(item) => setSelected({ kind: `intelligence-${item.kind}`, id: item.id, label: item.title })}
+              />
+            </div>
           )}
         </IntelligenceShell>
       </div>

@@ -64,8 +64,10 @@ describe("UX Reset Phase 3 — product IA flatten", () => {
 
   it("relationships map is not wrapped in a permanent evidence dashboard", () => {
     const src = readFileSync(resolve(webRoot, "app/(app)/intelligence/page.tsx"), "utf8")
-    // The overview is the v2 design: one core view (stats, flow map, activity, learnings), no evidence dashboard below it.
-    expect(src).toMatch(/<IntelligenceBrain/)
+    // The overview is the Intelligence-Main design: readiness, at a glance, three cards, how Gravitre
+    // thinks, and recent activity, with no evidence dashboard below it.
+    expect(src).toMatch(/<AtAGlance/)
+    expect(src).toMatch(/<RecentActivity/)
     expect(src).not.toMatch(/Attention, learnings, and impact/)
     expect(src).not.toMatch(/<details/)
     // Hub tabs carry navigation; the overview no longer repeats them as link groups.

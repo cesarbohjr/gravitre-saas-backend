@@ -1,6 +1,7 @@
 import type { Metadata } from "next"
 import { authenticatedMetadata } from "@/lib/authenticated-metadata"
 import { SURFACE_COPY } from "@/lib/surface-copy"
+import { IntelligenceOverlaysProvider } from "@/components/intelligence/overlays/intelligence-overlays"
 
 export const metadata: Metadata = authenticatedMetadata(
   `${SURFACE_COPY.models.title} | Gravitre`,
@@ -9,5 +10,5 @@ export const metadata: Metadata = authenticatedMetadata(
 )
 
 export default function Layout({ children }: { children: React.ReactNode }) {
-  return children
+  return <IntelligenceOverlaysProvider>{children}</IntelligenceOverlaysProvider>
 }

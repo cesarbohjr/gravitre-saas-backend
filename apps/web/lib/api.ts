@@ -3174,10 +3174,12 @@ export const intelligenceApi = {
     return fetcher<IntelligenceCoreStateResponse>(apiUrl(`/api/intelligence/core/state${suffix}`))
   },
   /** G1 — scoped VIEW over canonical Intelligence State (not a separate source of truth). */
-  pageContext: (params?: { windowHours?: number; activeLens?: string }) => {
+  /** `refresh` skips the backend's short projection cache (used by "Analyze my business"). */
+  pageContext: (params?: { windowHours?: number; activeLens?: string; refresh?: boolean }) => {
     const query = new URLSearchParams()
     if (params?.windowHours != null) query.set("window_hours", String(params.windowHours))
     if (params?.activeLens) query.set("active_lens", params.activeLens)
+    if (params?.refresh) query.set("refresh", "true")
     const suffix = query.toString() ? `?${query.toString()}` : ""
     return fetcher<IntelligencePageContextResponse>(apiUrl(`/api/intelligence/page-context${suffix}`))
   },

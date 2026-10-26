@@ -553,3 +553,56 @@ def test_learning_rows_from_promotion_payload_prefers_items():
     assert rows[0]["id"] == "promo-1"
     assert learning_rows_from_promotion_payload({"candidates": [{"id": "legacy"}]})[0]["id"] == "legacy"
     assert learning_rows_from_promotion_payload({"total": 0}) == []
+
+
+@pytest.mark.asyncio
+async def test_projection_counts_ledger_actions_and_refresh_skips_cache():
+    """actionsCompleted reads the ledger's real execution events; use_cache=False rebuilds."""
+    service = IntelligenceProjectionService()
+    service.invalidate("org-actions")
+    now = datetime.now(timezone.utc).isoformat()
+    events = [
+        {"id": "e1", "outcome_event": "workflow_executed", "department": "sales", "created_at": now},
+        {"id": "e2", "outcome_event": "connector_action_executed", "department": "sales", "created_at": now},
+        {"id": "e3", "outcome_event": "crm_won", "department": "sales", "created_at": now},
+        {"id": "e4", "outcome_event": "recommendation_created", "department": "sales", "created_at": now},
+    ]
+
+    with patch(
+        "app.services.intelligence_projection_service.load_canonical_agents",
+        return_value=([], set()),
+    ), patch(
+        "app.services.intelligence_projection_service.get_outcome_learning_service"
+    ) as mock_outcomes, patch(
+        "app.services.intelligence_projection_service.get_knowledge_graph_service"
+    ) as mock_kg, patch(
+        "app.services.intelligence_projection_service.get_business_signals_engine"
+    ) as mock_signals, patch(
+        "app.services.intelligence_projection_service.get_training_signal_service"
+    ) as mock_training, patch(
+        "app.services.intelligence_projection_service.get_memory_promotion_service"
+    ) as mock_memory, patch(
+        "app.services.intelligence_projection_service.get_supabase_client",
+        return_value=MagicMock(),
+    ), patch(
+        "app.services.intelligence_projection_service.list_swarm_runs",
+        return_value=[],
+    ):
+        mock_outcomes.return_value.fetch_recent_events = AsyncMock(return_value=events)
+        mock_kg.return_value.get_admin_summary = AsyncMock(
+            return_value={"entity_count": 0, "relationship_count": 0}
+        )
+        mock_signals.return_value.collect_signals = AsyncMock(return_value={"signals": []})
+        mock_training.return_value.get_training_readiness = AsyncMock(return_value={"by_model": {}})
+        mock_memory.return_value.list_candidates = MagicMock(return_value={"total": 0, "items": []})
+
+        first = await service.build_page_context("org-actions")
+        assert first.metrics.execution["actionsCompleted"] == 2
+        assert first.metrics.execution["recommendationsCreated"] == 1
+        assert first.metrics.outcomes["measuredOutcomes"] == 1
+
+        cached = await service.build_page_context("org-actions")
+        refreshed = await service.build_page_context("org-actions", use_cache=False)
+        assert mock_outcomes.return_value.fetch_recent_events.await_count == 2
+        assert cached.snapshot.generatedAt == first.snapshot.generatedAt
+        assert refreshed.snapshot.generatedAt >= first.snapshot.generatedAt
