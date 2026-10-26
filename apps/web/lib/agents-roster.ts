@@ -44,6 +44,8 @@ export interface RosterGoal {
   priority?: string | null
   connectedSystems: string[]
   agentIds: string[]
+  /** The goal's stored success metrics (metric, start, target, due date). */
+  successMetrics?: Record<string, unknown>
 }
 
 export interface RosterStatsPayload {

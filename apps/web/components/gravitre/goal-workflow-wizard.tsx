@@ -24,6 +24,7 @@ import {
 } from "@/lib/goal-insights"
 import { cn } from "@/lib/utils"
 import { DepartmentGlyph, DepartmentIcon } from "@/components/agents/department-icon"
+import { WsArt } from "@/components/workspace/ws-art"
 import {
   Dialog,
   DialogContent,
@@ -90,6 +91,17 @@ export type GoalPrefill = Pick<GoalTemplate, "objective"> & {
   department?: GoalDepartmentId | null
   metric?: string
   systems?: string[]
+  frequency?: string
+}
+
+// Department scenes shared with the agents roster (Workspace design).
+const PREVIEW_ART: Partial<Record<GoalDepartmentId, string>> = {
+  sales: "roster-sales",
+  marketing: "roster-marketing",
+  operations: "roster-operations",
+  finance: "roster-finance",
+  support: "roster-customer-success",
+  engineering: "roster-general",
 }
 
 export function GoalWorkflowWizard({
@@ -163,7 +175,7 @@ export function GoalWorkflowWizard({
       setObjective(g?.objective ?? template?.objective ?? "")
       setDepartment(departmentId(g?.department) ?? template?.department ?? "")
       setPriority(g?.priority?.toLowerCase() || "medium")
-      setFrequency(g?.frequency?.toLowerCase() || "once")
+      setFrequency(g?.frequency?.toLowerCase() || template?.frequency || "once")
       setMetric(m?.metric ?? template?.metric ?? "")
       setStart(m?.start !== null && m?.start !== undefined ? String(m.start) : "")
       setTarget(m?.target !== null && m?.target !== undefined ? String(m.target) : "")
@@ -1022,11 +1034,10 @@ export function GoalWorkflowWizard({
             <div className="gv-eyebrow">Live preview</div>
             <div className="gv-ng-preview">
               {department ? (
-                // eslint-disable-next-line @next/next/no-img-element -- static SVG scene
-                <img
-                  src={`/illustrations/dept-${department}.svg`}
+                <WsArt
+                  src={`/illustrations/${PREVIEW_ART[department] ?? `dept-${department}`}.svg`}
                   alt=""
-                  data-illustration={`dept-${department}`}
+                  status={`${deptLabel} · ${done ? "In motion" : "Draft preview"}`}
                 />
               ) : (
                 <div className="gv-ng-preview-blank">Pick a department to see its scene here</div>

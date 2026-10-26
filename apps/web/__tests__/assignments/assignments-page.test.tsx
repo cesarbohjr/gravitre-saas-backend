@@ -64,7 +64,7 @@ it("renders four lanes with live counts and per-lane empty states", () => {
   expect(lanes).toEqual(["queued", "running", "waiting", "delivered"])
   expect(container.textContent).toContain("0 executing")
   expect(container.textContent).toContain("No agent working")
-  expect(container.querySelector('img[data-illustration="moment-paused-agents"]')).not.toBeNull()
+  expect(container.querySelector('img[src="/illustrations/ws-assignments-paused-stack.svg"]')).not.toBeNull()
   expect(container.querySelector('a[href="/approvals"]')?.textContent).toBe("Decision queue")
   expect(container.querySelector('a[href="/marketplace/assets?type=workflow"]')?.textContent).toBe("Browse workflow templates")
 })

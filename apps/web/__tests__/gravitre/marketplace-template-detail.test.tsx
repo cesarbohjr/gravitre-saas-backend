@@ -127,7 +127,8 @@ it("leaves out What you get when the asset defines no outputs and never shows sa
   expect(host.textContent).toContain("What you get")
   expect(host.textContent).toContain("Sample layout")
   expect(host.querySelector(".td-metric b")?.textContent).toBe("[#]")
-  expect(host.querySelector('.td-spot img')?.getAttribute("src")).toBe("/illustrations/spot-report-easel.svg")
+  expect(host.querySelector('.td-spot img')?.getAttribute("src")).toBe("/illustrations/ws-template-report-easel.svg")
+  expect(host.querySelector(".td-spot [role=status]")?.textContent).toContain("Delivers to")
 })
 
 it("asks non-admins to involve an admin instead of offering install", () => {

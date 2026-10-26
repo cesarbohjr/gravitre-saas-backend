@@ -209,7 +209,7 @@ describe("Goals page", () => {
     await act(async () => card.click())
     expect((host.querySelector("#goal-objective") as HTMLTextAreaElement).value).toBe("Reduce overdue invoices")
     expect((host.querySelector("#goal-metric") as HTMLInputElement).value).toBe("Overdue invoices")
-    expect(host.querySelector('img[src="/illustrations/dept-finance.svg"]')).not.toBeNull()
+    expect(host.querySelector('img[src="/illustrations/roster-finance.svg"]')).not.toBeNull()
   })
   it("pauses an active goal through the goal API", async () => {
     state.entries["goals-list"] = { data: [active] }
@@ -247,7 +247,7 @@ describe("New goal flow", () => {
     type("#goal-target", "100")
     expect(host.textContent).toContain("Has a deadline.")
     await click("Sales")
-    expect(host.querySelector('img[src="/illustrations/dept-sales.svg"]')).not.toBeNull()
+    expect(host.querySelector('img[src="/illustrations/roster-sales.svg"]')).not.toBeNull()
     await click("Continue")
     await click("Generate plan")
     const body = JSON.parse(state.fetch.mock.calls[0][1].body)

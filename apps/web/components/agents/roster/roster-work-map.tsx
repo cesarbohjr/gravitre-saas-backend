@@ -4,7 +4,8 @@ import Link from "next/link"
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react"
 import { useReducedMotion } from "framer-motion"
 import { GoalWorkflowWizard } from "@/components/gravitre/goal-workflow-wizard"
-import { departmentId } from "@/lib/goal-insights"
+import { departmentId, goalMeasure } from "@/lib/goal-insights"
+import type { GoalRecord } from "@/lib/goals-list"
 import { CONNECTOR_CATALOG } from "@/lib/connectors"
 import { ConnectorIcon } from "@/components/gravitre/connector-icon"
 import {
@@ -12,7 +13,6 @@ import {
   blockedReason,
   buildWorkMap,
   litAgents,
-  missingPieces,
   traceStory,
   wiredAgentIds,
   type MapOutput,
@@ -36,12 +36,8 @@ const OUT = { x: 610, w: 222, h: 34 }
 const GATE_X = 884
 const GOAL = { x: 938, w: 246, h: 140 }
 const SUG_H = 112
-/** Dormant agents listed under the connected ones before "see all" takes over. */
-export const DORMANT_CAP = 6
-const DROW = 34
-/** Apps only dormant agents use, listed under the live ones. */
-const IDLE_APP_CAP = 6
-const IDLE_ROW = 40
+/** Height of the "No app connected" note under the apps lane. */
+const NOAPP_H = 92
 
 const GOAL_CATEGORY: Record<string, string> = {
   sales: "sales",
@@ -140,12 +136,10 @@ export function RosterWorkMap({
   onChanged?: () => Promise<unknown> | void
 }) {
   const reduced = useReducedMotion()
-  // Every agent, for insights and details; the lanes only draw fully wired agents.
+  // Every agent sits in the lanes; tracing dims what is off the path.
   const fullModel = useMemo(() => buildWorkMap(agents, goals), [agents, goals])
+  const model = fullModel
   const wired = useMemo(() => wiredAgentIds(fullModel), [fullModel])
-  const model = useMemo(() => buildWorkMap(agents.filter((a) => wired.has(a.id)), goals), [agents, goals, wired])
-  const dormant = useMemo(() => fullModel.agents.filter((a) => !wired.has(a.id)), [fullModel, wired])
-  const idleApps = useMemo(() => fullModel.apps.filter((p) => !model.apps.some((m) => m.name === p.name)), [fullModel, model])
   const [node, setNode] = useState<MapNode | null>(null)
   const defaultTrace = useMemo(() => {
     const fed = model.goals.find((g) => (model.goalAgents.get(g.id) ?? []).length > 0)
@@ -177,20 +171,16 @@ export function RosterWorkMap({
     const agentY = new Map<string, number>()
     model.agents.forEach((a, i) => agentY.set(a.id, TOP + 22 + i * PITCH))
     const emptyH = model.agents.length ? 0 : 96
-    const dormantY0 = TOP + 22 - AG.h / 2 + model.agents.length * PITCH + (model.agents.length ? 14 : 0) + emptyH
-    const dormantShown = Math.min(dormant.length, DORMANT_CAP)
-    const dormantH = dormant.length ? 72 + dormantShown * DROW + (dormant.length > DORMANT_CAP ? 34 : 8) : 0
-    const bottomAgents = dormantY0 + dormantH + 24
+    const bottomAgents = TOP + 22 - AG.h / 2 + model.agents.length * PITCH + emptyH + 24
 
     const apps = model.apps.map((p) => ({ ...p, y: snap(mean(p.agentIds.map((id) => agentY.get(id) ?? 0), TOP + 50)) }))
     // Many apps would overrun the agents lane at the roomy pitch, so tighten it.
     const appPitch = apps.length > 6 ? APP.h + 12 : PITCH * 2
     place(apps, appPitch, TOP + 50)
     const liveAppsBottom = apps.length ? apps[apps.length - 1].y + APP.h / 2 + 24 : TOP + 22
-    const idleShown = Math.min(idleApps.length, IDLE_APP_CAP)
-    const idleH = idleApps.length ? 58 + idleShown * IDLE_ROW + (idleApps.length > IDLE_APP_CAP ? 22 : 4) : 0
-    const idleY0 = liveAppsBottom
-    const appsBottom = idleY0 + idleH + 24
+    const noAppY0 = liveAppsBottom
+    const noAppH = model.noAppAgentIds.length ? NOAPP_H : 0
+    const appsBottom = noAppY0 + noAppH + 24
 
     const outs = model.outputs.map((o) => ({ ...o, y: snap(mean(o.agentIds.map((id) => agentY.get(id) ?? 0), TOP + 40)) }))
     place(outs, PITCH, TOP + 22)
@@ -210,8 +200,8 @@ export function RosterWorkMap({
     const noneY0 = unmeasured.length ? Math.max(goalsBottom + 24, noneIdeal) : goalsBottom
     const sugY0 = (unmeasured.length ? noneY0 + noneH : goalsBottom) + 18
     const H = Math.max(bottomAgents, appsBottom, sugY0 + SUG_H + 24, TOP + 260)
-    return { agentY, apps, outs, outY, goalCards, goalY, noneH, noneY0, sugY0, H, emptyH, dormantY0, dormantH, dormantShown, idleY0, idleH, idleShown }
-  }, [model, fullModel, dormant.length, idleApps.length])
+    return { agentY, apps, outs, outY, goalCards, goalY, noneH, noneY0, sugY0, H, emptyH, noAppY0, noAppH }
+  }, [model, fullModel])
 
   // ---- suggested goal: the busiest output nobody measures ----
   const suggestion = useMemo(() => {
@@ -264,10 +254,10 @@ export function RosterWorkMap({
   if (!options.some((o) => o.v === sel)) options.push({ v: sel, label: "Selection" })
 
   const counts = {
-    wired: wired.size,
     working: fullModel.agents.filter((a) => a.state === "working" || a.state === "active_today").length,
+    ready: fullModel.agents.filter((a) => a.state === "ready").length,
     blocked: fullModel.agents.filter((a) => a.state === "blocked").length,
-    dormant: dormant.length,
+    notSetUp: fullModel.agents.filter((a) => a.state === "not_set_up").length,
   }
 
   // ---- preview a run: walk the traced path one lane at a time (no data is written) ----
@@ -345,8 +335,8 @@ export function RosterWorkMap({
   const { H } = layout
   const showDots = live && !reduced
   const lanes = [
-    { x: 16, w: 188, hx: 30, hw: 160, label: "Data from", count: plural(fullModel.apps.length, "app"), sub: "Connectors your agents read from and write to" },
-    { x: 224, w: 350, hx: 240, hw: 318, label: "Agents", count: `${model.agents.length} of ${fullModel.agents.length} live`, sub: "Fully connected agents, then the dormant ones" },
+    { x: 16, w: 188, hx: 30, hw: 160, label: "Data from", count: plural(fullModel.apps.length, "app"), sub: "Apps your agents read from and write to" },
+    { x: 224, w: 350, hx: 240, hw: 318, label: "Agents", count: String(model.agents.length), sub: "Who does the work, grouped by department" },
     { x: 598, w: 246, hx: 614, hw: 214, label: "What they produce", count: String(model.outputs.length), sub: "The output each agent delivers" },
     { x: 856, w: 56, hx: 858, hw: 52, label: "Gate", count: "", sub: "Your OK", gate: true },
     { x: 926, w: 270, hx: 942, hw: 238, label: "Goals", count: String(model.goals.length), sub: "The result the work counts toward" },
@@ -363,11 +353,11 @@ export function RosterWorkMap({
           <div className="wm-counts" aria-label="Agent status">
             <span className="gv-pill brand">
               <span className="gv-ping" style={{ width: 7, height: 7, background: "var(--gv-accent)" }} />
-              {counts.wired} fully connected
+              {counts.working} working
             </span>
-            <span className="gv-pill neutral">{counts.working} working today</span>
+            <span className="gv-pill neutral">{counts.ready} ready</span>
             <span className="gv-pill amber">{counts.blocked} blocked</span>
-            <span className="gv-pill rs-pill-off">{counts.dormant} dormant</span>
+            <span className="gv-pill rs-pill-off">{counts.notSetUp} not set up</span>
           </div>
           <div className="wm-controls">
             <label>
@@ -492,27 +482,11 @@ export function RosterWorkMap({
                 </button>
               )
             })}
-            {idleApps.length ? (
-              <div className="wm-group" style={{ left: APP.x - 6, top: layout.idleY0, width: APP.w + 12, height: layout.idleH }}>
-                <b>Also connected</b>
-                <span className="wm-group-sub">Only dormant agents use these</span>
-                {idleApps.slice(0, IDLE_APP_CAP).map((p) => (
-                  <button
-                    key={p.name}
-                    type="button"
-                    className="wm-grow"
-                    onClick={() => setNode({ kind: "app", key: p.name })}
-                    aria-label={`${p.name}, used by ${plural(p.agentIds.length, "dormant agent")}`}
-                  >
-                    <ConnectorIcon vendor={p.name} size="sm" showStatusIndicator={false} />
-                    <span className="t1">{p.name}</span>
-                  </button>
-                ))}
-                {idleApps.length > IDLE_APP_CAP ? (
-                  <Link className="wm-group-more" href="/connectors">
-                    +{idleApps.length - IDLE_APP_CAP} more in Connectors
-                  </Link>
-                ) : null}
+            {model.noAppAgentIds.length ? (
+              <div className="wm-noapp wm-nodata" style={{ left: APP.x, top: layout.noAppY0, width: APP.w, height: layout.noAppH - 8 }}>
+                <b>No app connected</b>
+                <span>{plural(model.noAppAgentIds.length, "agent")} {model.noAppAgentIds.length === 1 ? "has" : "have"} no data source</span>
+                <Link href="/connectors">+ Connect an app</Link>
               </div>
             ) : null}
 
@@ -520,39 +494,6 @@ export function RosterWorkMap({
               <div className="wm-noapp" style={{ left: AG.x, top: TOP + 8, width: AG.w, height: layout.emptyH - 16 }}>
                 <b>No agent is fully connected yet</b>
                 <span>An agent goes live here once it reads from a connector, produces an output and feeds a goal.</span>
-              </div>
-            ) : null}
-
-            {dormant.length ? (
-              <div className="wm-group wm-dormant" style={{ left: AG.x - 6, top: layout.dormantY0, width: AG.w + 12, height: layout.dormantH }}>
-                <b>Dormant · {dormant.length}</b>
-                <span className="wm-group-sub">Missing a connector, an output or a goal, so no work flows yet</span>
-                {dormant.slice(0, DORMANT_CAP).map((a) => {
-                  const missing = missingPieces(a, fullModel)
-                  return (
-                    <button
-                      key={a.id}
-                      type="button"
-                      className="wm-grow"
-                      onClick={() => setNode({ kind: "agent", key: a.id })}
-                      aria-label={`${a.name}, dormant, needs ${missing.join(", ")}`}
-                    >
-                      <span className={cn("wm-agico rs-ava", `rs-d-${a.department}`)} aria-hidden>
-                        <DeptGlyph department={a.department} />
-                        <span className="d grey" />
-                      </span>
-                      <span style={{ flex: "1 1 auto", minWidth: 0 }}>
-                        <span className="t1">{a.name}</span>
-                      </span>
-                      <span className="wm-need">Needs {missing[0]}</span>
-                    </button>
-                  )
-                })}
-                {dormant.length > DORMANT_CAP ? (
-                  <Link className="wm-group-more" href="/agents?view=list">
-                    See all {dormant.length} dormant agents in the list →
-                  </Link>
-                ) : null}
               </div>
             ) : null}
 
@@ -673,7 +614,7 @@ export function RosterWorkMap({
                   <span className="in">
                     <span className="ttl">{goal.objective || "Untitled goal"}</span>
                     <span className="meta">{meta}</span>
-                    <span className="meta">Progress not reported yet</span>
+                    <GoalProgress goal={goal} />
                     <span className={cn("note", blocked > 0 && "amber")}>
                       {feeders.length === 0
                         ? "No agent feeds it yet"
@@ -831,6 +772,22 @@ export function RosterWorkMap({
         }
         onGoalSaved={onGoalsChanged}
       />
+    </>
+  )
+}
+
+function GoalProgress({ goal }: { goal: RosterGoal }) {
+  const m = goalMeasure({ ...goal, status: goal.status as GoalRecord["status"] })
+  if (m.current === null || m.target === null) return <span className="meta">Progress not reported yet</span>
+  return (
+    <>
+      <span className="wm-goal-num">
+        <b>{m.current.toLocaleString()}</b> of {m.target.toLocaleString()}
+        {m.metric ? ` ${m.metric}` : ""}
+      </span>
+      <span className="wm-goal-bar" role="progressbar" aria-label="Progress toward target" aria-valuemin={0} aria-valuemax={100} aria-valuenow={m.percent ?? 0}>
+        <span style={{ width: `${Math.max(m.percent ?? 0, 2)}%` }} />
+      </span>
     </>
   )
 }

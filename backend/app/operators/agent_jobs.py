@@ -26,6 +26,7 @@ from app.billing.service import (
 )
 from app.config import Settings, get_settings
 from app.core.logging import get_logger
+from app.core.safe_dict import safe_normalize_stored_dict
 from app.workflows.repository import get_supabase_client
 
 logger = get_logger(__name__)
@@ -275,6 +276,87 @@ def retry_job(client: Any, org_id: str, job_id: str) -> dict[str, Any] | None:
     upd = (
         client.table("agent_jobs")
         .update({"status": "queued", "attempts": 0, "error": None, "finished_at": None, "updated_at": _now()})
+        .eq("id", job_id)
+        .eq("org_id", org_id)
+        .execute()
+    )
+    return upd.data[0] if upd.data else None
+
+
+def _tool_call_ok(call: dict[str, Any]) -> bool:
+    result = call.get("result") if isinstance(call.get("result"), dict) else {}
+    if "success" in result:
+        return bool(result.get("success"))
+    return not (call.get("error") or result.get("error"))
+
+
+def split_tool_calls(job: dict[str, Any]) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    """(succeeded, failed) tool calls from a finished agent job, in call order."""
+    calls = _job_result(job).get("tool_calls")
+    rows = [c for c in calls if isinstance(c, dict)] if isinstance(calls, list) else []
+    ok = [c for c in rows if _tool_call_ok(c)]
+    failed = [c for c in rows if not _tool_call_ok(c)]
+    return ok, failed
+
+
+def _call_line(call: dict[str, Any]) -> dict[str, Any]:
+    result = call.get("result") if isinstance(call.get("result"), dict) else {}
+    line: dict[str, Any] = {"tool": str(call.get("tool") or call.get("name") or "tool")}
+    args = call.get("args") or call.get("arguments") or call.get("input")
+    if isinstance(args, dict) and args:
+        line["args"] = args
+    error = call.get("error") or result.get("error")
+    if error:
+        line["error"] = str(error)[:300]
+    return line
+
+
+def retry_failed_steps(client: Any, org_id: str, job_id: str, *, created_by: str | None) -> dict[str, Any] | None:
+    """Queue a follow-up agent job that redoes only the failed tool calls of ``job_id``.
+
+    The new job carries the original task, agent, goal and context, plus a briefing that
+    lists what already succeeded (not to repeat) and what failed (to redo). Returns the
+    new job, or None when ``job_id`` has nothing to retry.
+    """
+    job = get_job(client, org_id, job_id)
+    if not job or job.get("kind") != "agent_task" or job.get("status") not in ("completed", "failed", "cancelled"):
+        return None
+    ok, failed = split_tool_calls(job)
+    if not failed:
+        return None
+    payload = safe_normalize_stored_dict(job.get("payload"))
+    context = safe_normalize_stored_dict(payload.get("context"))
+    context["retry_of"] = job_id
+    briefing = {
+        "retry_of_job": job_id,
+        "instruction": (
+            "An earlier attempt at this task partly succeeded. Do not repeat the steps under "
+            "already_done; their writes already happened. Redo only the steps under redo, "
+            "then finish the task."
+        ),
+        "already_done": [_call_line(c) for c in ok][:20],
+        "redo": [_call_line(c) for c in failed][:20],
+    }
+    return create_job(
+        client,
+        org_id,
+        kind="agent_task",
+        session_id=job.get("session_id"),
+        environment=job.get("environment") or "production",
+        payload={**payload, "context": context, "briefing": briefing},
+        created_by=created_by,
+        goal_id=job.get("goal_id"),
+        work_object_id=job.get("work_object_id"),
+    )
+
+
+def link_job_goal(client: Any, org_id: str, job_id: str, goal_id: str | None) -> dict[str, Any] | None:
+    """Set or clear the goal an agent job counts toward. None when the job is not in this org."""
+    if not get_job(client, org_id, job_id):
+        return None
+    upd = (
+        client.table("agent_jobs")
+        .update({"goal_id": goal_id, "updated_at": _now()})
         .eq("id", job_id)
         .eq("org_id", org_id)
         .execute()

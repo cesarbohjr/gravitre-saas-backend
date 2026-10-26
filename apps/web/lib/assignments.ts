@@ -109,6 +109,24 @@ export async function retryAssignmentJob(id: string): Promise<AgentJob> {
   return (await response.json()) as AgentJob
 }
 
+/** Queue a new job that redoes only this job's failed steps (POST /api/agent-jobs/{id}/retry-failed). */
+export async function retryFailedSteps(id: string): Promise<AgentJob & { retryOf?: string }> {
+  const response = await apiFetch(`/api/agent-jobs/${id}/retry-failed`, { method: "POST" })
+  if (!response.ok) throw new Error(await jobActionError(response, "Retry failed"))
+  return (await response.json()) as AgentJob & { retryOf?: string }
+}
+
+/** Link the job to a goal, or unlink with null (PATCH /api/agent-jobs/{id}/goal). */
+export async function linkJobGoal(id: string, goalId: string | null): Promise<AgentJob> {
+  const response = await apiFetch(`/api/agent-jobs/${id}/goal`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ goalId }),
+  })
+  if (!response.ok) throw new Error(await jobActionError(response, "Could not link the goal"))
+  return (await response.json()) as AgentJob
+}
+
 /** Cancel a queued, running or paused assignment (POST /api/agent-jobs/{id}/cancel). */
 export async function cancelAssignmentJob(id: string): Promise<AgentJob> {
   const response = await apiFetch(`/api/agent-jobs/${id}/cancel`, { method: "POST" })

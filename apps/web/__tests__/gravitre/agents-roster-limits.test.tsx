@@ -7,7 +7,7 @@ vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn() }) }))
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
 vi.mock("@/lib/api", () => ({ agentsApi: { update: vi.fn(), stop: vi.fn() } }))
 
-import { RosterTeamView, TEAM_BAND_LIMIT } from "@/components/agents/roster/roster-team-view"
+import { RosterTeamView, TEAM_BAND_COUNT, TEAM_BAND_LIMIT } from "@/components/agents/roster/roster-team-view"
 import { LIST_PAGE_SIZE, RosterListView, pageItems } from "@/components/agents/roster/roster-list-view"
 import { ROSTER_DEPARTMENTS, toRosterAgent, yesterdayBestAgent, type RosterStatsPayload } from "@/lib/agents-roster"
 
@@ -56,14 +56,33 @@ describe("agents team view limits", () => {
   const raw = [...fleet("Sales", 6, "s"), ...fleet("Security", 1, "sec"), ...fleet("General", 1, "g")]
   const agents = raw.map((r) => toRosterAgent(r, undefined))
 
-  it("shows four agents per department and links the rest to the filtered list", () => {
-    const el = render(<RosterTeamView agents={agents} statsAvailable={false} days={0} />)
+  it("shows six agents per department and links the rest to the filtered list", () => {
+    const many = [...fleet("Sales", 8, "s"), ...fleet("Security", 1, "sec")].map((r) => toRosterAgent(r, undefined))
+    const el = render(<RosterTeamView agents={many} statsAvailable={false} days={0} />)
     const sales = band(el, "sales")
     expect(sales.querySelectorAll("article")).toHaveLength(TEAM_BAND_LIMIT)
-    expect(sales.textContent).toContain("Showing 4 of 6 Sales agents")
-    const links = linksNamed(sales, /View all 6 in list view/)
+    expect(sales.textContent).toContain("Showing 6 of 8 Sales agents")
+    const links = linksNamed(sales, /View all 8 in list view/)
     expect(links).toHaveLength(1)
     expect(links[0].getAttribute("href")).toBe("/agents?view=list&dept=sales")
+    expect(sales.textContent).toContain("8 agents live")
+  })
+
+  it("gives the top three departments bands and lists the rest under More of your team", () => {
+    const wide = [
+      ...fleet("Sales", 3, "s"), ...fleet("Marketing", 2, "m"), ...fleet("Finance", 2, "f"),
+      ...fleet("Security", 1, "sec"), ...fleet("General", 5, "g"),
+    ].map((r) => toRosterAgent(r, undefined))
+    const el = render(<RosterTeamView agents={wide} statsAvailable={false} days={0} />)
+    expect(el.querySelectorAll(".rs-band")).toHaveLength(TEAM_BAND_COUNT)
+    const rest = el.querySelector<HTMLElement>('section[aria-labelledby="rs-more-heading"]')!
+    expect(rest.textContent).toContain("More of your team")
+    const restText = rest.textContent ?? ""
+    const bandNames = [...el.querySelectorAll(".rs-band h2")].map((h) => h.textContent)
+    expect(bandNames.some((n) => n?.includes("Security")) || restText.includes("Security")).toBe(true)
+    const viewAll = linksNamed(rest, /View all/)
+    for (const a of viewAll) expect(a.getAttribute("href")).toMatch(/^\/agents\?view=list&dept=/)
+    expect(linksNamed(rest, /Hire an? /).length).toBeGreaterThan(0)
   })
 
   it("gives Security and General their own bands with the v2 department art", () => {
@@ -114,14 +133,14 @@ describe("agents list view pagination", () => {
     const el = render(<RosterListView agents={agents} statsAvailable={false} onChanged={noop} />)
     expect(rowChecks(el, "S")).toHaveLength(LIST_PAGE_SIZE)
     expect(el.textContent).toContain("Showing 1 to 10 of 23 agents")
-    expect(el.textContent).toContain("Page 1 of 3, 10 per page")
+    expect(el.textContent).toContain("Showing 1 to 10 of 23 agents, page 1 of 3")
     click(buttonNamed(el, "Next"))
     expect(el.textContent).toContain("Showing 11 to 20 of 23 agents")
     click(buttonNamed(el, "Page 3"))
     expect(rowChecks(el, "S")).toHaveLength(3)
     click(buttonNamed(el, "View all 23"))
     expect(rowChecks(el, "S")).toHaveLength(23)
-    expect(el.textContent).toContain("Showing every agent on one page")
+    expect(el.textContent).toContain("Showing all 23 agents")
     click(buttonNamed(el, "Show 10 per page"))
     expect(rowChecks(el, "S")).toHaveLength(LIST_PAGE_SIZE)
   })
@@ -131,8 +150,8 @@ describe("agents list view pagination", () => {
     const el = render(<RosterListView agents={mixed} statsAvailable={false} initialDept="security" onChanged={noop} />)
     expect(rowChecks(el, "SEC")).toHaveLength(2)
     expect(rowChecks(el, "S")).toHaveLength(0)
-    expect(el.querySelector("#rs-list-heading")?.textContent).toBe("Security agents")
-    expect(linksNamed(el, /Back to team view/)[0].getAttribute("href")).toBe("/agents?view=team")
+    expect(el.querySelector('section[aria-label="Security agents"]')).toBeTruthy()
+    expect(el.querySelector(".gv-fchip.rs-d-security")?.getAttribute("aria-pressed")).toBe("true")
   })
 
   it("windows long page lists", () => {

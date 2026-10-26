@@ -9,6 +9,7 @@ import {
   emptyDepartments,
   formatRate,
   groupByDepartment,
+  initials,
   needsYou,
   standoutAgent,
   yesterdayBestAgent,
@@ -16,7 +17,7 @@ import {
   type RosterAgent,
 } from "@/lib/agents-roster"
 import { cn } from "@/lib/utils"
-import { DepartmentGlyph, DepartmentIcon } from "@/components/agents/department-icon"
+import { DepartmentGlyph } from "@/components/agents/department-icon"
 import {
   AgentAvatar,
   AppChips,
@@ -28,11 +29,24 @@ import {
 } from "./agent-bits"
 
 /** Agents shown per department band; the rest are one click away in the list view. */
-export const TEAM_BAND_LIMIT = 4
+export const TEAM_BAND_LIMIT = 6
+/** Busiest departments drawn as full bands; the rest sit in "More of your team". */
+export const TEAM_BAND_COUNT = 3
+/** Agents listed on a "More of your team" card before it links to the list view. */
+const MINI_LIMIT = 4
 const SPARK_DAYS = 9
 
 export function departmentListHref(dept: AgentDepartmentId): string {
   return `/agents?view=list&dept=${encodeURIComponent(dept)}`
+}
+
+/** Work map traced to one agent: its apps, outputs and goals. */
+export function agentTraceHref(agentId: string): string {
+  return `/agents?view=graph&trace=${encodeURIComponent(`agent:${agentId}`)}`
+}
+
+function isLive(agent: RosterAgent): boolean {
+  return agent.state !== "not_set_up"
 }
 
 function plural(n: number, one: string, many = `${one}s`) {
@@ -98,6 +112,7 @@ function DepartmentBand({ group, starId }: { group: DepartmentGroup; starId: str
   const lead = agents.find((a) => a.state !== "blocked" && a.state !== "not_set_up") ?? agents[0]
   const shown = agents.slice(0, TEAM_BAND_LIMIT)
   const hidden = agents.length - shown.length
+  const live = agents.filter(isLive).length
   return (
     <section className={cn("gv-card gv-rise rs-band", `rs-d-${meta.id}`)} aria-labelledby={`dept-${meta.id}`}>
       <div className="rs-band-side">
@@ -105,11 +120,17 @@ function DepartmentBand({ group, starId }: { group: DepartmentGroup; starId: str
           <div className="rs-band-art">
             {/* eslint-disable-next-line @next/next/no-img-element -- static library scene */}
             <img src={`/illustrations/${meta.illustration}.svg`} alt={meta.alt} width={320} height={260} decoding="async" />
+            {live > 0 ? (
+              <span className="rs-live">
+                <span className="gv-ping" aria-hidden />
+                {live} {live === 1 ? "agent" : "agents"} live
+              </span>
+            ) : null}
           </div>
         ) : null}
         <div className="rs-band-copy">
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <DepartmentIcon department={meta.id} size="sm" />
+            <span className="rs-dsq" aria-hidden />
             <h2 id={`dept-${meta.id}`}>{meta.name}</h2>
             <span className="rs-cnt">{agents.length}</span>
           </div>
@@ -238,7 +259,10 @@ function Standout({
         {streak ? <span className="gv-pill">On a streak</span> : null}
       </div>
       <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-        <AgentAvatar agent={agent} />
+        <span className="gv-ava lg rs-ava rs-initials" aria-hidden>
+          {initials(agent.name)}
+          <span className={cn("dot", agent.state === "working" && "live")} />
+        </span>
         <div style={{ minWidth: 0 }}>
           <div className="nm">{agent.name}</div>
           <div className="sub">{[agent.role || agent.departmentLabel, agent.model !== "default" ? agent.model : null].filter(Boolean).join(" · ")}</div>
@@ -267,7 +291,7 @@ function Standout({
           <div className="lbl">success</div>
         </div>
       </div>
-      <Link href={agentHref(agent.id)}>See its work →</Link>
+      <Link href={agentTraceHref(agent.id)}>See who it works with →</Link>
     </aside>
   )
 }
@@ -292,7 +316,8 @@ export function RosterTeamView({
   const anyGated = agents.some((a) => a.gated)
   const covered = groups.length
 
-  const bands = dept === "all" ? groups : groups.filter((g) => g.meta.id === dept)
+  const bands = dept === "all" ? groups.slice(0, TEAM_BAND_COUNT) : groups.filter((g) => g.meta.id === dept)
+  const rest = dept === "all" ? groups.slice(TEAM_BAND_COUNT) : []
   const starter = agents.find((a) => a.state === "ready") ?? agents.find((a) => a.state !== "not_set_up") ?? null
   const showEmpty = dept === "all" ? empty : empty.filter((d) => d.id === dept)
 
@@ -369,7 +394,7 @@ export function RosterTeamView({
             aria-pressed={dept === g.meta.id}
             onClick={() => setDept(g.meta.id)}
           >
-            <DepartmentGlyph department={g.meta.id} size={13} />
+            <span className="rs-ddot" />
             {g.meta.name} <b>{g.agents.length}</b>
           </button>
         ))}
@@ -379,14 +404,45 @@ export function RosterTeamView({
         <DepartmentBand key={group.meta.id} group={group} starId={star?.id ?? null} />
       ))}
 
-      {showEmpty.length > 0 ? (
-        <section className="rs-rest" aria-label="Departments without agents">
-          <h2>Open seats</h2>
+      {rest.length > 0 || showEmpty.length > 0 ? (
+        <section className="rs-rest" aria-labelledby="rs-more-heading">
+          <h2 id="rs-more-heading">More of your team</h2>
           <div className="rs-rest-grid">
+            {rest.map(({ meta, agents: members }) => (
+              <div key={meta.id} className={cn("gv-card rs-mini", `rs-d-${meta.id}`)}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <span className="rs-dsq" aria-hidden />
+                  <strong style={{ fontWeight: 600 }}>{meta.name}</strong>
+                  <span className="cnt">{members.length}</span>
+                </div>
+                <ul>
+                  {members.slice(0, MINI_LIMIT).map((agent) => (
+                    <li key={agent.id}>
+                      <Link href={agentHref(agent.id)}>
+                        <span className={cn("rs-mini-ic", `rs-d-${agent.department}`)} aria-hidden>
+                          <DepartmentGlyph department={agent.department} size={13} />
+                        </span>
+                        <span className="nm">{agent.name}</span>
+                        <span
+                          className={cn("rs-mini-dot", agent.state === "blocked" ? "amber" : agent.state === "not_set_up" ? "grey" : null)}
+                          aria-label={agent.state === "blocked" ? "Needs you" : agent.state === "not_set_up" ? "Not set up yet" : "Live"}
+                          role="img"
+                        />
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+                {members.length > MINI_LIMIT ? (
+                  <Link className="gv-link rs-mini-more" href={departmentListHref(meta.id)}>
+                    View all {members.length}
+                  </Link>
+                ) : null}
+              </div>
+            ))}
             {showEmpty.map((meta) => (
               <div key={meta.id} className={cn("rs-emptydept", `rs-d-${meta.id}`)}>
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <DepartmentIcon department={meta.id} size="xs" />
+                  <span className="rs-dsq" aria-hidden />
                   <strong style={{ fontWeight: 600 }}>{meta.name}</strong>
                   <span className="rs-cnt" style={{ marginLeft: "auto" }}>
                     0

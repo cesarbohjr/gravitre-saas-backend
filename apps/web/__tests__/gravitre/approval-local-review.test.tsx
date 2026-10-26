@@ -39,7 +39,7 @@ beforeEach(() => {
 })
 
 function inspectTitle(host: HTMLElement) {
-  return host.querySelector('[data-review-surface="approvals-inspect"] h3')?.textContent
+  return host.querySelector('[data-review-surface="approvals-inspect"] h2')?.textContent
 }
 
 function press(key: string) {

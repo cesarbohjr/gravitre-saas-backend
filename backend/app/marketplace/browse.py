@@ -6,6 +6,7 @@ import uuid
 from typing import Any
 
 from app.marketplace.entitlements import asset_requires_payment
+from app.marketplace.run_state import run_states_for_installs
 from app.marketplace.service import MarketplaceError, org_connector_types, validate_connectors_for_asset
 
 BROWSE_LIST_COLUMNS = (
@@ -98,8 +99,10 @@ def _serialize_asset_summary(
     *,
     install: dict[str, Any] | None = None,
     connector_summary: dict[str, Any] | None = None,
+    run_state: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     summary = connector_summary or {}
+    run = run_state or {}
     return {
         "id": row["id"],
         "slug": row["slug"],
@@ -135,6 +138,10 @@ def _serialize_asset_summary(
         "installed": install is not None,
         "installedAt": install.get("installed_at") if install else None,
         "installId": install.get("id") if install else None,
+        # "running" while an installed agent or workflow has work in flight; null when not installed.
+        "runState": run.get("runState", "idle") if install else None,
+        "activeRunCount": run.get("activeRunCount", 0) if install else 0,
+        "lastRunAt": run.get("lastRunAt") if install else None,
         **summary,
     }
 
@@ -165,11 +172,13 @@ def _serialize_asset_detail(
     install: dict[str, Any] | None,
     connector_summary: dict[str, Any],
     pack_items: list[dict[str, Any]] | None = None,
+    run_state: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     payload = _serialize_asset_summary(
         row,
         install=install,
         connector_summary=connector_summary,
+        run_state=run_state,
     )
     payload.update(
         {
@@ -236,7 +245,7 @@ def _active_installs_by_asset(client: Any, org_id: str, asset_ids: list[str]) ->
         return {}
     result = (
         client.table("marketplace_installs")
-        .select("id, asset_id, status, installed_at, installed_entity_type, installed_entity_id")
+        .select("id, asset_id, status, installed_at, installed_entity_type, installed_entity_id, metadata")
         .eq("org_id", org_id)
         .eq("status", "active")
         .in_("asset_id", asset_ids)
@@ -353,6 +362,7 @@ def list_marketplace_assets(
     rows = [dict(row) for row in (result.data or [])]
     asset_ids = [str(row["id"]) for row in rows]
     installs = _active_installs_by_asset(client, org_id, asset_ids)
+    run_states = run_states_for_installs(client, org_id, installs)
     entitlements = _active_entitlements_by_asset(client, org_id, asset_ids)
     pack_asset_ids = [
         str(row["id"])
@@ -386,6 +396,7 @@ def list_marketplace_assets(
             row,
             install=installs.get(asset_id),
             connector_summary=connector_summary,
+            run_state=run_states.get(asset_id),
         )
         summary["requiresPayment"] = asset_requires_payment(row, org_id=org_id)
         summary["hasEntitlement"] = asset_id in entitlements
@@ -468,6 +479,7 @@ def get_marketplace_asset(
         install=installs.get(asset_id),
         connector_summary=connector_summary,
         pack_items=pack_items,
+        run_state=run_states_for_installs(client, org_id, installs).get(asset_id),
     )
     detail["requiresPayment"] = asset_requires_payment(row, org_id=org_id)
     detail["hasEntitlement"] = asset_id in _active_entitlements_by_asset(client, org_id, [asset_id])

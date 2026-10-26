@@ -10,6 +10,7 @@ import { MarketplaceDecisionDialog } from "@/components/marketplace/marketplace-
 import { WorkSectionErrorCard } from "@/components/gravitre/work-section-error-card"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { WsPage } from "@/components/workspace/ws-page"
+import { WsArt } from "@/components/workspace/ws-art"
 import { ProviderLogo } from "@/components/gravitre/provider-logo"
 import { AssetReviewsSection } from "@/components/marketplace/asset-reviews-section"
 import { InstallStepperSheet } from "@/components/marketplace/install-experience"
@@ -25,6 +26,7 @@ import { useAuth } from "@/lib/auth-context"
 import { useOrgAdmin } from "@/lib/use-org-admin"
 import { pipelineDepartmentKey } from "@/lib/marketplace-department-pipeline"
 import { resolveMarketArt } from "@/lib/marketplace-category-art"
+import { installedChipLabel, listingReadiness } from "@/lib/listing-readiness"
 import { ESTIMATED_HOURS_SAVED_MONTHLY } from "@/lib/outcome-labels"
 import {
   approvalGateCount,
@@ -173,8 +175,12 @@ function WhatYouGet({ output }: { output: TemplateOutput }) {
         </div>
         {report ? (
           <div className="td-spot">
-            {/* eslint-disable-next-line @next/next/no-img-element -- static decorative SVG */}
-            <img src="/illustrations/spot-report-easel.svg" alt="" aria-hidden width={300} height={190} />
+            <WsArt
+              className="td-spot-art"
+              src="/illustrations/ws-template-report-easel.svg"
+              alt="A report on an easel"
+              status={`Delivers to ${output.destination || "Reports"}`}
+            />
             <p>
               {output.destination
                 ? `Lands in ${output.destination}, ready to read, edit and share.`
@@ -279,10 +285,7 @@ function PairsWellWith({ asset }: { asset: MarketplaceAssetDetail }) {
                   className="gv-card gv-tpl"
                   href={`/marketplace/assets/${encodeURIComponent(row.slug)}`}
                 >
-                  <div className="td-pair-art">
-                    {/* eslint-disable-next-line @next/next/no-img-element -- static decorative SVG */}
-                    <img src={art.src} alt="" aria-hidden width={300} height={190} loading="lazy" data-illustration={art.name} />
-                  </div>
+                  <WsArt className="td-pair-art" src={art.src} {...pairStatus(row)} />
                   <div className="td-pair-copy">
                     <small>{art.label}</small>
                     <strong>{row.title}</strong>
@@ -293,6 +296,14 @@ function PairsWellWith({ asset }: { asset: MarketplaceAssetDetail }) {
       </div>
     </section>
   )
+}
+
+/** Install status chip on a paired listing's art, from the same readiness the catalog uses. */
+function pairStatus(row: MarketplaceAssetSummary): { status: string; tone: "green" | "amber" | "grey" } {
+  const readiness = listingReadiness(row, { canInstall: false })
+  if (readiness.state === "installed") return { status: installedChipLabel(row, readiness), tone: "green" }
+  if (readiness.state === "connect" || readiness.state === "review") return { status: "Needs setup", tone: "amber" }
+  return { status: "Not installed", tone: "grey" }
 }
 
 function AppRow({ item }: { item: MarketplaceConnectorChecklistItem }) {

@@ -114,8 +114,11 @@ def test_goals_use_the_latest_plan_and_skip_closed_goals():
     body = _aggregate(
         [],
         goals=[
-            {"id": "g1", "objective": "Get 100 MSP leads", "status": "draft", "department": "Sales"},
-            {"id": "g2", "objective": "Done", "status": "completed"},
+            {
+                "id": "g1", "objective": "Get 100 MSP leads", "status": "draft", "department": "Sales",
+                "success_metrics": {"metric": "MSP leads", "start": 0, "target": 100},
+            },
+            {"id": "g2", "objective": "Done", "status": "completed", "success_metrics": "bad"},
         ],
         plans=[
             {"goal_id": "g1", "required_agents": ["a1"], "created_at": "2026-10-01T00:00:00+00:00"},
@@ -124,6 +127,7 @@ def test_goals_use_the_latest_plan_and_skip_closed_goals():
     )
     assert [g["id"] for g in body["goals"]] == ["g1"]
     assert body["goals"][0]["agentIds"] == ["a1", "a2"]
+    assert body["goals"][0]["successMetrics"] == {"metric": "MSP leads", "start": 0, "target": 100}
 
 
 def test_empty_org_reports_nothing_invented():

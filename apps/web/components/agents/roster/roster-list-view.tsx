@@ -20,7 +20,6 @@ import {
   type RosterAgent,
 } from "@/lib/agents-roster"
 import { cn } from "@/lib/utils"
-import { DepartmentGlyph } from "@/components/agents/department-icon"
 import { AgentAvatar, AppChips, GiveTaskLink, agentHref, newAgentHref } from "./agent-bits"
 
 type SortKey = "tasks" | "name"
@@ -284,19 +283,7 @@ export function RosterListView({
   return (
     <>
       <Insights agents={agents} statsAvailable={statsAvailable} />
-      <section className="gv-card rs-listcard" aria-labelledby="rs-list-heading">
-        <div className="rs-listhead">
-          <div>
-            <h2 id="rs-list-heading">{dept === "all" ? "All agents" : `${DEPARTMENT_BY_ID.get(dept)?.name ?? "Department"} agents`}</h2>
-            <span>{rangeLabel}</span>
-          </div>
-          <Link className="gv-btn outline rs-backteam" href="/agents?view=team" replace scroll={false}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-              <path d="M19 12H5M11 6l-6 6 6 6" />
-            </svg>
-            Back to team view
-          </Link>
-        </div>
+      <section className="gv-card rs-listcard" aria-label={dept === "all" ? "All agents" : `${DEPARTMENT_BY_ID.get(dept)?.name ?? "Department"} agents`}>
         <div className="rs-listbar">
           <label className="gv-field">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden>
@@ -332,7 +319,7 @@ export function RosterListView({
                 aria-pressed={dept === d.id}
                 onClick={() => setDept(d.id)}
               >
-                <DepartmentGlyph department={d.id} size={13} />
+                <span className="rs-ddot" />
                 {d.name} <b>{counts.get(d.id) ?? 0}</b>
               </button>
             ))}
@@ -474,7 +461,7 @@ export function RosterListView({
                     </td>
                     <td>
                       <span className={cn("rs-dept", `rs-d-${a.department}`)}>
-                        <DepartmentGlyph department={a.department} size={13} />
+                        <span className="rs-ddot" aria-hidden />
                         <select
                           aria-label={`Change department for ${a.name}`}
                           value={a.department}
@@ -552,7 +539,7 @@ export function RosterListView({
         </div>
         {rows.length > LIST_PAGE_SIZE ? (
           <nav className="rs-listfoot" aria-label="Pagination">
-            <span>{showAll ? "Showing every agent on one page" : `Page ${current} of ${pages}, ${LIST_PAGE_SIZE} per page`}</span>
+            <span>{rangeLabel}{showAll ? "" : `, page ${current} of ${pages}`}</span>
             <div className="rs-pager">
               {showAll ? (
                 <button
@@ -601,6 +588,7 @@ export function RosterListView({
           </nav>
         ) : (
           <div className="rs-listfoot">
+            <span>{rangeLabel}</span>
             <span>Tip: select several agents to move or brief them together</span>
           </div>
         )}
