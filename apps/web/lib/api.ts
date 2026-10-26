@@ -1176,6 +1176,7 @@ export const marketplaceApi = {
     visibility?: string
     featured?: boolean
     search?: string
+    sort?: "recommended" | "newest" | "installs"
     limit?: number
     offset?: number
   }) => {
@@ -1187,6 +1188,7 @@ export const marketplaceApi = {
     if (params?.visibility) query.set("visibility", params.visibility)
     if (params?.featured) query.set("featured", "true")
     if (params?.search) query.set("search", params.search)
+    if (params?.sort) query.set("sort", params.sort)
     if (params?.limit != null) query.set("limit", String(params.limit))
     if (params?.offset != null) query.set("offset", String(params.offset))
     const suffix = query.toString() ? `?${query.toString()}` : ""

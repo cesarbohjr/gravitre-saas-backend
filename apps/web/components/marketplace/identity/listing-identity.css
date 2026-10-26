@@ -1,0 +1,61 @@
+/*
+ * Listing identity system (UIRefresh-System, UIRefresh-Banners): badge,
+ * listing cover and agent detail cover. Covers are drawn on the brand's light
+ * paper in both themes, like photographs; the chrome around them follows the theme.
+ */
+
+.li-badge {
+  position: relative; flex: 0 0 auto; border-radius: 50%;
+  display: inline-grid; place-items: center;
+  background: #ffffff;
+  box-shadow: 0 2px 8px rgba(20, 21, 19, 0.1), 0 0 0 1px #e4e4df;
+}
+.dark .li-badge { box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35), 0 0 0 1px #2a2c29; }
+
+.li-cover, .li-banner { position: relative; overflow: hidden; background: #efefea; }
+.li-cover > svg, .li-banner > svg { position: absolute; inset: 0; display: block; width: 100%; height: 100%; }
+.li-cover *, .li-banner * { transform-box: fill-box; transform-origin: center; }
+
+.li-banner-tags { position: absolute; left: 28px; top: 22px; display: flex; align-items: center; gap: 8px; }
+.li-tag {
+  font-family: var(--font-mono), "Geist Mono", ui-monospace, monospace;
+  font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; line-height: 1;
+  padding: 6px 10px; border-radius: 999px;
+}
+.li-tag.light { background: #ffffff; color: #141513; border: 1px solid #e4e4df; }
+.li-tag.dark { background: #141513; color: #ffffff; }
+.li-tag.plain { padding-left: 2px; color: #55564f; }
+
+/* Cover motion: color fields drift, product cards float, lines draw themselves. */
+.li-drift { animation: li-drift 14s ease-in-out infinite; }
+.li-float { animation: li-float 5s ease-in-out infinite; }
+.li-chip { animation: li-float 4s ease-in-out -1.5s infinite; }
+.li-draw { stroke-dasharray: 240; animation: li-draw 6s ease-in-out infinite; }
+.li-pulse { animation: li-pulse 2.4s ease-in-out infinite; }
+.li-ring { animation: li-ring 2.6s ease-out infinite; }
+.li-flow { animation: li-flow 1.6s linear infinite; }
+.li-fill { transform-origin: left !important; animation: li-fill 5s ease-in-out infinite; }
+.li-pop { animation: li-pop 5s ease-in-out infinite; }
+.li-drift-wide { animation: li-drift-wide 18s ease-in-out infinite; }
+.li-drift-far { animation: li-drift-far 20s ease-in-out infinite; }
+.li-parallax { animation: li-parallax 24s ease-in-out infinite; }
+
+@keyframes li-drift { 0%, 100% { transform: translateX(0); } 50% { transform: translateX(-8px); } }
+@keyframes li-float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-2.5px); } }
+@keyframes li-draw { 0% { stroke-dashoffset: 240; } 45%, 100% { stroke-dashoffset: 0; } }
+@keyframes li-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+@keyframes li-ring { 0% { opacity: 0.6; transform: scale(1); } 100% { opacity: 0; transform: scale(2.2); } }
+@keyframes li-flow { to { stroke-dashoffset: -14; } }
+@keyframes li-fill { 0%, 100% { transform: scaleX(0.55); } 50% { transform: scaleX(1); } }
+@keyframes li-pop { 0%, 20% { opacity: 0; transform: scale(0.6); } 30%, 85% { opacity: 1; transform: scale(1); } 100% { opacity: 0; transform: scale(1); } }
+@keyframes li-drift-wide { 0%, 100% { transform: translateX(0); } 50% { transform: translateX(-36px); } }
+@keyframes li-drift-far { 0%, 100% { transform: translate(0, 0); } 50% { transform: translate(60px, -14px); } }
+@keyframes li-parallax { 0%, 100% { transform: translateX(0); } 50% { transform: translateX(-14px); } }
+
+/* Covers only move while their card is on screen and hovered or featured; idle grids stay still. */
+.li-still .li-cover * { animation-play-state: paused; }
+.li-still .li-cover:hover * , .li-still article:hover .li-cover * { animation-play-state: running; }
+
+@media (prefers-reduced-motion: reduce) {
+  .li-cover *, .li-banner * { animation: none !important; }
+}

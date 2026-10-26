@@ -167,7 +167,7 @@ test.describe("Authenticated product surface matrix", () => {
     })
     const scanList = page.getByTestId("marketplace-scan-list")
     if (await scanList.isVisible().catch(() => false)) {
-      await expect(page.getByText("More about this pack").first()).toBeVisible()
+      await expect(page.getByTestId("marketplace-pack-row").first()).toBeVisible()
     }
   })
 

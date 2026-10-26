@@ -20,14 +20,14 @@ describe("UX Reset Phase 6 — remaining hub IA flatten", () => {
     expect(src).toMatch(/AskGravitreSummonButton/)
   })
 
-  it("marketplace type filters are text, not chips, and metrics are closed", () => {
+  it("marketplace catalog is one tab strip, one filter row and one readiness footer per card", () => {
     const src = readFileSync(resolve(webRoot, "app/(app)/marketplace/assets/page.tsx"), "utf8")
     expect(src).toMatch(/Catalog/)
     expect(src).not.toMatch(/FilterChip/)
     expect(src).toMatch(/TYPE_FILTERS\.map/)
+    expect(src).toMatch(/aria-label="Listing type"/)
     expect(src).toMatch(/data-review-surface="marketplace-discovery"/)
-    expect(src).toMatch(/data-review-surface="marketplace-ops"/)
-    expect(src).toMatch(/More about this pack/)
+    expect(src).toMatch(/listingReadiness/)
     expect(src).not.toMatch(/2xl:grid-cols-4/)
   })
 
@@ -41,7 +41,7 @@ describe("UX Reset Phase 6 — remaining hub IA flatten", () => {
     expect(workflow).toMatch(/Edit in builder/)
   })
 
-  it("agent profile uses text sections, not a pill tab strip", () => {
+  it("agent profile keeps one tab strip and no invented metrics", () => {
     const src = readFileSync(resolve(webRoot, "app/(app)/agents/[id]/page.tsx"), "utf8")
     expect(src).toMatch(/aria-label="Agent profile"/)
     expect(src).toMatch(/role="tablist"/)

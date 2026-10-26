@@ -18,7 +18,15 @@ function permissionStatus(permission: AgentToolPermission) {
 }
 
 /** Existing agent Governance tab: live, per-agent, admin-only connector permission management. */
-export function AgentToolPermissionsPanel({ agentId, canEdit }: { agentId: string; canEdit: boolean }) {
+export function AgentToolPermissionsPanel({
+  agentId,
+  agentName,
+  canEdit,
+}: {
+  agentId: string
+  agentName?: string
+  canEdit: boolean
+}) {
   const { data: permissions, error, isLoading, mutate } = useSWR(
     canEdit && agentId ? ["agent-tool-permissions", agentId] : null,
     () => agentToolPermissionsApi.list(agentId),
@@ -74,14 +82,28 @@ export function AgentToolPermissionsPanel({ agentId, canEdit }: { agentId: strin
 
   async function revoke(permission: AgentToolPermission) {
     if (!canEdit) return
-    if (!(await confirmDialog({ title: "Revoke this connector permission?", description: "Future tool requests from this agent will be denied.", confirmLabel: "Revoke" }))) return
+    const app = permission.connectorType || connected.find((c) => c.id === permission.connectorId)?.name || "connector"
+    const count = permission.scopes.length
+    const who = agentName || "This agent"
+    if (
+      !(await confirmDialog({
+        title: `Revoke ${app} access?`,
+        description: `${who} loses ${count === 1 ? "its" : `all ${count}`} ${app} scope${count === 1 ? "" : "s"} now. Runs in progress that read ${app} will fail.`,
+        confirmLabel: "Revoke",
+        cancelLabel: "Keep access",
+      }))
+    )
+      return
     setBusy(true)
     try {
       await agentToolPermissionsApi.revoke(agentId, permission.id)
       await mutate()
-      toast.success("Agent connector permission revoked")
+      toast.success(`${app} access revoked`, { eyebrow: `${app} · Access` })
     } catch (reason) {
-      toast.error(reason instanceof Error ? reason.message : "Could not revoke permission")
+      toast.error(`Couldn’t revoke ${app} access`, {
+        eyebrow: `${app} · Access`,
+        description: reason instanceof Error ? reason.message : "The grant is unchanged. Try again.",
+      })
     } finally {
       setBusy(false)
     }

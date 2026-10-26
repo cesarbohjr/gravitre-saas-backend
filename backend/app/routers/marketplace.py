@@ -1492,6 +1492,7 @@ def list_marketplace_assets_route(
     visibility: Annotated[str | None, Query()] = None,
     featured: Annotated[bool | None, Query()] = None,
     search: Annotated[str | None, Query()] = None,
+    sort: Annotated[str | None, Query()] = None,
     limit: Annotated[int, Query(ge=1, le=100)] = 50,
     offset: Annotated[int, Query(ge=0)] = 0,
 ) -> dict:
@@ -1511,6 +1512,7 @@ def list_marketplace_assets_route(
             visibility=visibility,
             featured=featured,
             search=search,
+            sort=sort,
             limit=limit,
             offset=offset,
         )

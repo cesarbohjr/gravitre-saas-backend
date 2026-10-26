@@ -161,3 +161,41 @@ def test_list_invalid_asset_type():
     with pytest.raises(MarketplaceBrowseError) as exc:
         list_marketplace_assets(client, "org-1", asset_type="invalid")
     assert exc.value.code == "VALIDATION_ERROR"
+
+
+def _sort_client(assets: MagicMock) -> MagicMock:
+    client = MagicMock()
+
+    def table(name):
+        if name == "marketplace_assets":
+            return assets
+        return _table([])
+
+    client.table.side_effect = table
+    return client
+
+
+def test_list_marketplace_assets_sort_newest_orders_by_published_at():
+    assets = _table([ASSET_ROW], count=1)
+    list_marketplace_assets(_sort_client(assets), "org-1", sort="newest")
+    first_order = assets.order.call_args_list[0]
+    assert first_order.args == ("published_at",)
+    assert first_order.kwargs == {"desc": True}
+
+
+def test_list_marketplace_assets_sort_recommended_puts_featured_first():
+    assets = _table([ASSET_ROW], count=1)
+    list_marketplace_assets(_sort_client(assets), "org-1", sort="recommended")
+    columns = [call.args[0] for call in assets.order.call_args_list]
+    assert columns[:3] == ["featured", "install_count", "published_at"]
+
+
+def test_list_marketplace_assets_default_sort_is_most_installed():
+    assets = _table([ASSET_ROW], count=1)
+    list_marketplace_assets(_sort_client(assets), "org-1")
+    assert assets.order.call_args_list[0].args == ("install_count",)
+
+
+def test_list_marketplace_assets_rejects_unknown_sort():
+    with pytest.raises(MarketplaceBrowseError):
+        list_marketplace_assets(_sort_client(_table([])), "org-1", sort="cheapest")

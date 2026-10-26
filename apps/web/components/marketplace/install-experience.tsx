@@ -2,6 +2,7 @@
 
 import { useRef, useState } from "react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import useSWR from "swr"
 import { motion, useReducedMotion } from "framer-motion"
 import { AssetPurchaseButton } from "@/components/marketplace/asset-purchase-button"
@@ -11,6 +12,7 @@ import {
   PackContentsPreview,
   assetRequiresPurchase,
   formatAssetPrice,
+  isFreeAsset,
 } from "@/components/marketplace/marketplace-asset-commerce"
 import { Button } from "@/components/ui/button"
 import {
@@ -25,6 +27,8 @@ import { marketplaceApi } from "@/lib/api"
 import { DepartmentPipelineByDepartment } from "@/components/marketplace/department-pipeline-panel"
 import { toastMarketplaceInstallFailure } from "@/lib/marketplace-install-error"
 import { cn } from "@/lib/utils"
+import { installedDescription } from "@/lib/listing-meta"
+import { LISTING_KINDS, listingKindFor } from "@/lib/listing-identity"
 import type {
   MarketplaceAssetInstallResult,
   MarketplaceAssetSummary,
@@ -46,6 +50,10 @@ import { toast } from "@/components/agents/overlays/toast"
 import { Illustration } from "@/components/gravitre/illustration"
 
 type InstallStep = "check" | "confirm" | "installing" | "done"
+
+function listingKindLabel(assetType: string): string {
+  return LISTING_KINDS[listingKindFor(assetType)].label.toLowerCase()
+}
 
 function BlockerList({ blockers }: { blockers: MarketplaceInstallBlocker[] }) {
   if (!blockers.length) return null
@@ -260,6 +268,7 @@ function InstallStepperSession({
   onComplete: () => void
   isAdmin: boolean
 }) {
+  const router = useRouter()
   const lock = useRef(false)
   const [step, setStep] = useState<InstallStep>("check")
   const [installResult, setInstallResult] =
@@ -325,11 +334,33 @@ function InstallStepperSession({
         toast.info("Installed; refresh workspace resources to view the update.")
       }
       const requiresReview = Boolean(result.entities?.requiresReview)
-      toast.success(
-        requiresReview
-          ? `${asset.title} is installed and requires review`
-          : `${asset.title} is installed in your workspace`,
-      )
+      const openLink = result.deepLinks?.find((link) => link.label === "Primary") ?? result.deepLinks?.[0]
+      toast.success(requiresReview ? `${asset.title} installed, needs review` : `${asset.title} installed`, {
+        eyebrow: "Marketplace",
+        description: installedDescription(asset),
+        action: openLink
+          ? { label: `Open ${listingKindLabel(asset.assetType)}`, onClick: () => router.push(openLink.path) }
+          : undefined,
+        // Undo is a soft uninstall. Paid listings keep their purchase, so they are left to the Installed page.
+        cancel: isFreeAsset(asset)
+          ? {
+              label: "Undo",
+              onClick: () => {
+                void marketplaceApi.uninstallAsset(asset.slug).then(
+                  () => {
+                    toast.message(`${asset.title} uninstalled`, { eyebrow: "Marketplace" })
+                    onComplete()
+                  },
+                  (error: unknown) =>
+                    toast.error("Couldn’t undo the install", {
+                      eyebrow: "Marketplace",
+                      description: error instanceof Error ? error.message : "Uninstall it from the Installed page.",
+                    }),
+                )
+              },
+            }
+          : undefined,
+      })
     } catch (err) {
       setInstallError(
         err instanceof Error
