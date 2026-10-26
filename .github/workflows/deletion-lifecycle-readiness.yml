@@ -1,6 +1,11 @@
 name: Deletion lifecycle readiness evidence
 
 on:
+  push:
+    branches: [main]
+    paths:
+      - "scripts/check_deletion_lifecycle_readiness.py"
+      - ".github/workflows/deletion-lifecycle-readiness.yml"
   pull_request:
     paths:
       - "scripts/check_deletion_lifecycle_readiness.py"
