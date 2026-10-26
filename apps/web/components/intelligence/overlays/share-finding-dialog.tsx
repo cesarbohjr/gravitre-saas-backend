@@ -151,7 +151,7 @@ export function ShareFindingDialog({
               Connect Slack, or turn on email delivery, to share findings with your team.
             </p>
             <Button asChild size="sm" variant="outline">
-              <Link href={APP_ROUTES.connectors}>Open Connectors</Link>
+              <Link href={APP_ROUTES.connectors}>Open connectors</Link>
             </Button>
           </div>
         ) : (
