@@ -1,7 +1,7 @@
 "use client"
 
 import type { CSSProperties, ReactNode } from "react"
-import { TrustSafetyArt, type TrustSafetyArtKind } from "./trust-safety-art"
+import { TrustSafetyArt, type TrustSafetyArtKind, type TrustSafetyArtState } from "./trust-safety-art"
 
 /** Shared pieces of the Trust & Safety design (classes live in gv-trust.css). */
 
@@ -109,6 +109,7 @@ export type HeroTile = { value: ReactNode; label: string; tone?: "good" | "bad";
 
 export function Hero({
   art,
+  artState,
   eyebrow,
   big,
   bigColor,
@@ -119,6 +120,8 @@ export function Hero({
   tiles,
 }: {
   art: TrustSafetyArtKind
+  /** Live state the scene draws from (waiting requests, rules on, stages set up). */
+  artState?: TrustSafetyArtState
   eyebrow: string
   big: ReactNode
   bigColor?: string
@@ -131,7 +134,7 @@ export function Hero({
 }) {
   return (
     <section className="ts-card ts-hero ts-rise">
-      <TrustSafetyArt kind={art} />
+      <TrustSafetyArt kind={art} state={artState} />
       <div className="ts-hsum">
         <div className="ts-eyebrow">{eyebrow}</div>
         <div className="ts-metric">
@@ -155,7 +158,7 @@ export function Hero({
       <div className="ts-htiles">
         {tiles.map((t) => (
           <div key={t.label} className={`ts-tile${t.tone ? ` ${t.tone}` : ""}`}>
-            <span className="v" style={t.muted ? { color: "#6A6B64" } : undefined}>{t.value}</span>
+            <span className="v" style={t.muted ? { color: "#55564F" } : undefined}>{t.value}</span>
             <span className="l">{t.label}</span>
           </div>
         ))}
@@ -174,9 +177,9 @@ export function Pill({ bg, fg, dot, live, children, style }: { bg: string; fg: s
 }
 
 export const TONE = {
-  bad: { bg: "#F8E3E4", fg: "#8A2530", dot: "#C4434F", ico: "ts-ico bad" },
+  bad: { bg: "#F8E4E6", fg: "#A3333D", dot: "#A3333D", ico: "ts-ico bad" },
   warn: { bg: "#FBF1DC", fg: "#8A5A06", dot: "#E2A33A", ico: "ts-ico warn" },
-  ok: { bg: "#E8F5EE", fg: "#1F6B42", dot: "#2E9E5B", ico: "ts-ico" },
+  ok: { bg: "#DDF3E8", fg: "#0A6B47", dot: "#2E9E5B", ico: "ts-ico" },
   mute: { bg: "#EFEFEA", fg: "#55564F", dot: "#8A8B85", ico: "ts-ico mute" },
 } as const
 
@@ -189,4 +192,4 @@ export function Note({ children }: { children: ReactNode }) {
   )
 }
 
-export const muted: CSSProperties = { fontSize: 13, color: "#6A6B64", marginTop: 2 }
+export const muted: CSSProperties = { fontSize: 13, color: "#55564F", marginTop: 2 }

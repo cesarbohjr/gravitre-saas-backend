@@ -1,13 +1,20 @@
 "use client"
 
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import useSWR, { useSWRConfig } from "swr"
-import { toast } from "@/components/agents/overlays/toast"
+import { toast } from "./overlays/toast"
 import { fetcher as apiFetcher } from "@/lib/fetcher"
 import { useAuth } from "@/lib/auth-context"
 import { useOrgAdmin } from "@/lib/use-org-admin"
 import { useMyCapability } from "@/lib/use-my-capability"
+import {
+  ROLE_PERMISSIONS_KEY,
+  draftsFromMatrix,
+  saveRolePermissions,
+  type RolePermissionsResponse,
+} from "@/lib/settings-api/roles"
 import { approvalsApi } from "@/lib/api"
 import { resolveProvider } from "@/lib/provider-registry"
 import {
@@ -20,16 +27,8 @@ import {
   type Approval,
   type RiskLevel,
 } from "@/components/approvals/decision-queue/model"
-import {
-  AlertDialog,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog"
-import { Textarea } from "@/components/ui/textarea"
+import { TrustSafetyDialog, TrustSafetyField } from "./overlays/dialog"
+import { useApprovalRuleSaver, type PolicyState } from "./trust-safety-policies"
 import { Hero, Icon, Pill, Segmented, Switch, TONE } from "./ts-ui"
 
 const ALREADY_DONE = /already started|already resolved|not pending approval|already approved|no longer pending/i
@@ -72,7 +71,114 @@ function appName(slug: string | null): string | null {
   return resolveProvider(slug)?.name ?? titleCase(slug)
 }
 
-export function TrustSafetyApprovals({ onViewPast }: { onViewPast: () => void }) {
+type ApproverChoice = "admins" | "members" | "custom"
+
+const NON_ADMIN_ROLES = ["member", "viewer"] as const
+
+/** Who holds "Approve write actions" among the built in roles, as the Routing select reads it. */
+export function approverChoice(matrix: RolePermissionsResponse | undefined): ApproverChoice | null {
+  const cap = matrix?.capabilities.find((c) => c.key === "approve_writes")
+  if (!cap) return null
+  if (cap.access.viewer) return "custom"
+  return cap.access.member ? "members" : "admins"
+}
+
+/** Custom roles that can also approve, named for the Routing card. */
+function customApprovers(matrix: RolePermissionsResponse | undefined): string[] {
+  const cap = matrix?.capabilities.find((c) => c.key === "approve_writes")
+  if (!cap || !matrix) return []
+  return (matrix.custom_roles ?? []).filter((role) => cap.access[role]).map((role) => matrix.role_names?.[role] || role)
+}
+
+/**
+ * Approval routing, wired to the backend: who can approve is the "Approve write
+ * actions" permission on the Member role (PUT /api/org/role-permissions, which
+ * the approve and reject endpoints enforce), and skipping read only actions is
+ * the org rule autoApproveReadOnly (PATCH /api/settings/approval-rules).
+ */
+function RoutingCard({ policy, onViewPolicies }: { policy: PolicyState; onViewPolicies: () => void }) {
+  const { isAdmin, loading: adminLoading } = useOrgAdmin()
+  const roles = useSWR<RolePermissionsResponse>(ROLE_PERMISSIONS_KEY, apiFetcher, { revalidateOnFocus: false })
+  const saver = useApprovalRuleSaver(policy, isAdmin && Boolean(policy.rules.data), onViewPolicies)
+  const [savingRoles, setSavingRoles] = useState(false)
+  const choice = approverChoice(roles.data)
+  const extra = customApprovers(roles.data)
+  const canEdit = isAdmin && !adminLoading
+
+  const setApprovers = async (next: ApproverChoice) => {
+    if (!roles.data || !canEdit || next === "custom" || next === choice) return
+    const drafts = draftsFromMatrix(roles.data).map((d) =>
+      (NON_ADMIN_ROLES as readonly string[]).includes(d.key)
+        ? {
+            ...d,
+            capabilities:
+              next === "members" && d.key === "member"
+                ? Array.from(new Set([...d.capabilities, "approve_writes"]))
+                : d.capabilities.filter((c) => c !== "approve_writes"),
+          }
+        : d,
+    )
+    setSavingRoles(true)
+    try {
+      await roles.mutate(await saveRolePermissions(drafts), { revalidate: false })
+      toast.success("Approvers updated", {
+        description: next === "members" ? "Admins and members can approve or reject requests." : "Only admins and owners can approve or reject requests.",
+      })
+    } catch (err) {
+      toast.error("Couldn’t change who can approve", {
+        description: err instanceof Error ? err.message : "Nothing was changed.",
+        action: { label: "Try again", onClick: () => void setApprovers(next) },
+      })
+    } finally {
+      setSavingRoles(false)
+    }
+  }
+
+  const skipReadOnly = Boolean(policy.values.autoApproveReadOnly)
+  return (
+    <section className="ts-card ts-side">
+      <div className="ts-sidetitle"><span className="ts-ico sm blue"><Icon name="route" size={15} /></span>Routing</div>
+      <label style={{ display: "flex", flexDirection: "column", gap: 6, fontSize: 13, color: "#55564F" }}>
+        Who can approve
+        <select
+          className="ts-select sm"
+          value={choice ?? ""}
+          disabled={!canEdit || !roles.data || savingRoles}
+          onChange={(e) => void setApprovers(e.target.value as ApproverChoice)}
+        >
+          {choice == null ? <option value="">{roles.error ? "Not available" : "Loading"}</option> : null}
+          <option value="admins">Admins</option>
+          <option value="members">Admins and members</option>
+          {choice === "custom" ? <option value="custom" disabled>Custom, set in Role permissions</option> : null}
+        </select>
+        {extra.length ? <span style={{ fontSize: 12 }}>Also {extra.join(", ")}, from Role permissions.</span> : null}
+      </label>
+      <div className="ts-mini">
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 14, fontWeight: 500 }}>Skip read only actions</div>
+          <div style={{ fontSize: 12, color: "#55564F" }}>Lookups run without pausing</div>
+        </div>
+        <Switch
+          on={skipReadOnly}
+          label="Skip approval for read only actions"
+          disabled={!canEdit || !policy.rules.data || saver.busy != null}
+          onToggle={() => void saver.save({ autoApproveReadOnly: !skipReadOnly }, "autoApproveReadOnly")}
+        />
+      </div>
+      {!canEdit && !adminLoading ? <div style={{ fontSize: 12, color: "#55564F" }}>Only owners and admins can change routing.</div> : null}
+    </section>
+  )
+}
+
+export function TrustSafetyApprovals({
+  policy,
+  onViewPast,
+  onViewPolicies,
+}: {
+  policy: PolicyState
+  onViewPast: () => void
+  onViewPolicies: () => void
+}) {
   const { user } = useAuth()
   const { isAdmin, loading: adminLoading } = useOrgAdmin()
   const canApproveWrites = useMyCapability("approve_writes")
@@ -83,9 +189,6 @@ export function TrustSafetyApprovals({ onViewPast }: { onViewPast: () => void })
   const [busyId, setBusyId] = useState<string | null>(null)
   const [rejectTarget, setRejectTarget] = useState<Approval | null>(null)
   const [rejectReason, setRejectReason] = useState("")
-  const [approver, setApprover] = useState("admins")
-  const [autoRead, setAutoRead] = useState(true)
-  const [chatDecide, setChatDecide] = useState(true)
   const [now, setNow] = useState(() => Date.now())
   useEffect(() => {
     const timer = window.setInterval(() => setNow(Date.now()), 30_000)
@@ -126,6 +229,7 @@ export function TrustSafetyApprovals({ onViewPast }: { onViewPast: () => void })
         toast.error(String(result.message ?? "The approved action did not run."))
         return
       }
+      toast.dismiss(`approval-${a.id}`)
       toast.success("Approved", {
         description: String(result?.status ?? "") === "pending_approval" ? "Recorded. Another approver is still needed." : "The paused work is continuing.",
       })
@@ -166,6 +270,35 @@ export function TrustSafetyApprovals({ onViewPast }: { onViewPast: () => void })
     }
   }
 
+  // A request that arrives while the page is open gets an approval toast; the first load doesn't.
+  const router = useRouter()
+  const seen = useRef<Set<string> | null>(null)
+  useEffect(() => {
+    if (waiting == null) return
+    const ids = new Set(pending.map((a) => a.id))
+    const previous = seen.current
+    seen.current = ids
+    if (!previous) return
+    const fresh = pending.filter((a) => !previous.has(a.id) && canDecide(a))
+    if (fresh.length === 1) {
+      const a = fresh[0]
+      const level = a.context.riskLevel
+      toast.approval(`${a.title} needs your approval`, {
+        id: `approval-${a.id}`,
+        description: [appName(a.context.integration), level ? RISK[level].label : null, `Requested by ${a.requestedBy}`].filter(Boolean).join(" · "),
+        action: { label: "Approve", onClick: () => void approve(a) },
+        cancel: { label: "Review", onClick: () => router.push(`/approvals?id=${encodeURIComponent(a.id)}`) },
+      })
+    } else if (fresh.length > 1) {
+      toast.approval(`${fresh.length} new requests need your approval`, {
+        description: "They are in the decision queue, high risk first.",
+        cancel: { label: "Review", onClick: () => setRisk("all") },
+      })
+    }
+    // canDecide and approve read the latest render; only a change in the queue should raise a toast.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pending, waiting])
+
   const count = waiting ?? 0
   const advice =
     waiting == null
@@ -180,6 +313,7 @@ export function TrustSafetyApprovals({ onViewPast }: { onViewPast: () => void })
     <>
       <Hero
         art="approvals"
+        artState={{ waiting: waiting ?? 0 }}
         eyebrow="Approvals · decision queue"
         big={waiting ?? "–"}
         unit="waiting on you"
@@ -203,7 +337,7 @@ export function TrustSafetyApprovals({ onViewPast }: { onViewPast: () => void })
             <div className="ts-cardhead">
               <div style={{ flex: "1 1 200px", minWidth: 0 }}>
                 <div style={{ fontWeight: 600 }}>Decision queue</div>
-                <div style={{ fontSize: 13, color: "#6A6B64", marginTop: 2 }}>Oldest first, across every agent and workflow</div>
+                <div style={{ fontSize: 13, color: "#55564F", marginTop: 2 }}>Oldest first, across every agent and workflow</div>
               </div>
               <Segmented
                 label="Risk level"
@@ -244,7 +378,7 @@ export function TrustSafetyApprovals({ onViewPast }: { onViewPast: () => void })
                         <span style={{ fontWeight: 600 }}>{a.title}</span>
                         <Pill bg={tone.bg} fg={tone.fg} dot={tone.dot}>{level ? RISK[level].label : "Not scored"}</Pill>
                       </div>
-                      <div style={{ fontSize: 13, color: "#6A6B64", marginTop: 2 }}>
+                      <div style={{ fontSize: 13, color: "#55564F", marginTop: 2 }}>
                         <span className="ts-mono" style={{ fontSize: 12 }}>{a.requestedBy}</span>
                         {meta.length ? ` · ${meta.join(" · ")}` : ""}
                       </div>
@@ -268,31 +402,7 @@ export function TrustSafetyApprovals({ onViewPast }: { onViewPast: () => void })
           </section>
         </div>
         <aside className="ts-colside" aria-label="Approval routing">
-          <section className="ts-card ts-side">
-            <div className="ts-sidetitle"><span className="ts-ico sm blue"><Icon name="route" size={15} /></span>Routing</div>
-            <label style={{ display: "flex", flexDirection: "column", gap: 6, fontSize: 13, color: "#55564F" }}>
-              Who can approve
-              <select className="ts-select sm" value={approver} onChange={(e) => setApprover(e.target.value)}>
-                <option value="admins">Admins</option>
-                <option value="owners">Owners only</option>
-                <option value="any">Any full seat</option>
-              </select>
-            </label>
-            <div className="ts-mini">
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 14, fontWeight: 500 }}>Skip read only actions</div>
-                <div style={{ fontSize: 12, color: "#6A6B64" }}>Lookups run without pausing</div>
-              </div>
-              <Switch on={autoRead} label="Skip approval for read only actions" onToggle={() => setAutoRead((v) => !v)} />
-            </div>
-            <div className="ts-mini">
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 14, fontWeight: 500 }}>Decide from chat</div>
-                <div style={{ fontSize: 12, color: "#6A6B64" }}>Approve inline in Ask Gravitre</div>
-              </div>
-              <Switch on={chatDecide} label="Decide from chat" onToggle={() => setChatDecide((v) => !v)} />
-            </div>
-          </section>
+          <RoutingCard policy={policy} onViewPolicies={onViewPolicies} />
           <section className="ts-card ts-side">
             <div className="ts-sidetitle"><span className="ts-ico sm"><Icon name="info" size={15} /></span>How a request flows</div>
             <div className="ts-step"><span className="ts-stepn">1</span>An agent reaches a step a policy guards and pauses.</div>
@@ -302,19 +412,22 @@ export function TrustSafetyApprovals({ onViewPast }: { onViewPast: () => void })
         </aside>
       </div>
 
-      <AlertDialog open={rejectTarget != null} onOpenChange={(openState) => { if (!openState) setRejectTarget(null) }}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Reject this request?</AlertDialogTitle>
-            <AlertDialogDescription>Nothing will run. Tell the requester what to change.</AlertDialogDescription>
-          </AlertDialogHeader>
-          <Textarea value={rejectReason} onChange={(e) => setRejectReason(e.target.value)} placeholder="Reason" rows={3} />
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <button type="button" className="ts-btn danger sm" disabled={busyId != null} onClick={() => void reject()}>Reject</button>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      <TrustSafetyDialog
+        open={rejectTarget != null}
+        onOpenChange={(openState) => { if (!openState) setRejectTarget(null) }}
+        title="Reject this request?"
+        description="Nothing will run. Tell the requester what to change."
+        footer={
+          <>
+            <button type="button" className="tso-btn ghost" onClick={() => setRejectTarget(null)}>Cancel</button>
+            <button type="button" className="tso-btn danger" disabled={busyId != null} onClick={() => void reject()}>Reject</button>
+          </>
+        }
+      >
+        <TrustSafetyField label="Reason" htmlFor="ts-reject-reason">
+          <textarea id="ts-reject-reason" className="tso-in" value={rejectReason} onChange={(e) => setRejectReason(e.target.value)} rows={3} placeholder="What should change before this runs" />
+        </TrustSafetyField>
+      </TrustSafetyDialog>
     </>
   )
 }

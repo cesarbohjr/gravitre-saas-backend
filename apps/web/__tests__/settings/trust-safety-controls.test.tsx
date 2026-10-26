@@ -54,6 +54,9 @@ let container: HTMLDivElement
 const render = (node: React.ReactNode) => act(() => root.render(node))
 const byLabel = (label: string) => container.querySelector<HTMLElement>(`[aria-label="${label}"]`)
 const button = (text: string) => [...container.querySelectorAll("button")].find((el) => el.textContent?.trim() === text)
+// Dialogs portal into the body, outside the render container.
+const dialogButton = (text: string) =>
+  [...document.querySelectorAll<HTMLElement>('[role="dialog"] button')].find((el) => el.textContent?.trim() === text)
 const click = async (el: Element | null | undefined) => {
   await act(async () => {
     ;(el as HTMLElement).click()
@@ -236,11 +239,46 @@ describe("Trust & Safety policies tab", () => {
     expect(container.textContent).toContain("Finance deletes")
     expect(container.textContent).toContain("Whole organization · Delete · Approved by Owner")
     await click(button("New policy"))
-    await click(button("Read"))
-    await click(button("Create policy"))
+    expect(document.querySelector('[role="dialog"]')?.textContent).toContain("Decide which actions pause for a person")
+    await click(dialogButton("Read"))
+    await click(dialogButton("Create policy"))
     expect(mocks.createHitlPolicy).toHaveBeenCalledWith(
       expect.objectContaining({ scope_type: "org", action_kinds: ["write", "delete", "read"], approver_roles: ["admin", "owner"], enabled: true }),
     )
+  })
+
+  it("edits a team policy in the dialog and asks before deleting one", async () => {
+    const policy = { id: "p1", name: "Finance deletes", enabled: true, scope_type: "org", department_id: null, subject_user_id: null, action_kinds: ["delete"], approver_roles: ["owner"] }
+    mocks.swr = {
+      "/api/settings/approval-rules": { data: { rules } },
+      "/api/settings/hitl-policies": { data: { policies: [policy] } },
+    }
+    mocks.updateHitlPolicy.mockResolvedValue({ policy })
+    render(<PoliciesTab />)
+    await click(button("Edit"))
+    await click(dialogButton("Write"))
+    await click(dialogButton("Save policy"))
+    expect(mocks.updateHitlPolicy).toHaveBeenCalledWith(
+      "p1",
+      expect.objectContaining({ name: "Finance deletes", scope_type: "org", action_kinds: ["delete", "write"], approver_roles: ["owner"] }),
+    )
+
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(false)
+    await click(byLabel("Delete Finance deletes"))
+    expect(confirm).toHaveBeenCalledWith(expect.stringContaining("Delete Finance deletes?"))
+    expect(mocks.deleteHitlPolicy).not.toHaveBeenCalled()
+    confirm.mockRestore()
+  })
+
+  it("offers Undo after a rule changes, which sends the previous value back", async () => {
+    mocks.swr = { "/api/settings/approval-rules": { data: { rules } }, "/api/settings/hitl-policies": { data: { policies: [] } } }
+    mocks.updateApprovalRules.mockResolvedValue({ rules: { ...rules, twoApprovalsHighRisk: true } })
+    render(<PoliciesTab />)
+    await click(byLabel("Two approvals for high risk actions"))
+    expect(mocks.toastSuccess).toHaveBeenCalledWith("Policy updated", expect.objectContaining({ cancel: expect.objectContaining({ label: "Undo" }) }))
+    const undo = mocks.toastSuccess.mock.calls.at(-1)?.[1]?.cancel as { onClick: () => void }
+    await act(async () => undo.onClick())
+    expect(mocks.updateApprovalRules).toHaveBeenLastCalledWith({ twoApprovalsHighRisk: false })
   })
 
   it("shows rules read only to members and hides team policies", () => {

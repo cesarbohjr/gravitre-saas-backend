@@ -2,7 +2,7 @@
 
 import { Suspense, useEffect, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
-import { toast } from "@/components/agents/overlays/toast"
+import { toast } from "@/components/trust-safety/overlays/toast"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { exportAudit, rangeStart } from "@/lib/settings-api/audit"
 import { Icon, type IconName } from "@/components/trust-safety/ts-ui"
@@ -12,11 +12,22 @@ import { TrustSafetyPolicies, usePolicyState } from "@/components/trust-safety/t
 import { TrustSafetySecurity, useSecurityState } from "@/components/trust-safety/trust-safety-security"
 import { TrustSafetyRoles } from "@/components/trust-safety/trust-safety-roles"
 import { TrustSafetyEnvironments } from "@/components/trust-safety/trust-safety-environments"
+import { TrustSafetyOverlaysProvider } from "@/components/trust-safety/overlays/trust-safety-overlays"
 import "./gv-trust.css"
 
 type Tab = "approvals" | "audit" | "policies" | "security" | "roles" | "envs"
 
 const ALL_TABS: Tab[] = ["approvals", "audit", "policies", "security", "roles", "envs"]
+
+/** The mono eyebrow on toasts raised from each tab (shown uppercase by the toast shell). */
+const TAB_EYEBROW: Record<Tab, string> = {
+  approvals: "Approvals",
+  audit: "Audit trail",
+  policies: "Policies",
+  security: "Security",
+  roles: "Roles",
+  envs: "Environments",
+}
 
 function updatedLabel(at: number | null, now: number): string {
   if (at == null) return "Live"
@@ -53,9 +64,10 @@ function TrustSafetyContent() {
   const exportReport = async () => {
     if (exporting) return
     setExporting(true)
+    const id = toast.loading("Exporting the report", { eyebrow: "Audit trail", description: "The last 7 days of the audit trail, as CSV." })
     try {
       const response = await exportAudit("csv", { range: "7d" }, rangeStart("7d"))
-      if (!response.ok) throw new Error(`Export failed (${response.status})`)
+      if (!response.ok) throw new Error(response.status === 403 ? "forbidden" : `Export failed (${response.status})`)
       const url = URL.createObjectURL(await response.blob())
       const anchor = document.createElement("a")
       anchor.href = url
@@ -64,9 +76,15 @@ function TrustSafetyContent() {
       anchor.click()
       anchor.remove()
       URL.revokeObjectURL(url)
-      toast.success("Report exported")
-    } catch {
-      toast.error("Could not export the report")
+      toast.success("Report exported", { id, eyebrow: "Audit trail", description: "Saved as trust-safety-report-7d.csv." })
+    } catch (err) {
+      const forbidden = err instanceof Error && err.message === "forbidden"
+      toast.error("Could not export the report", {
+        id,
+        eyebrow: "Audit trail",
+        description: forbidden ? "Your role can't export the audit trail. An admin can change that in Role permissions." : "Nothing was downloaded.",
+        action: forbidden ? undefined : { label: "Try again", onClick: () => window.setTimeout(() => void exportReport(), 0) },
+      })
     } finally {
       setExporting(false)
     }
@@ -81,6 +99,7 @@ function TrustSafetyContent() {
   )
 
   return (
+    <TrustSafetyOverlaysProvider eyebrow={TAB_EYEBROW[tab]}>
     <div className="ts-root">
       <div style={{ maxWidth: 1240, margin: "0 auto", padding: "28px 24px 104px", display: "flex", flexDirection: "column", gap: 22 }}>
         <div style={{ display: "flex", flexWrap: "wrap", alignItems: "flex-end", justifyContent: "space-between", gap: 16 }}>
@@ -122,7 +141,7 @@ function TrustSafetyContent() {
           </div>
         </nav>
 
-        {tab === "approvals" && <TrustSafetyApprovals onViewPast={() => go("audit")} />}
+        {tab === "approvals" && <TrustSafetyApprovals policy={policy} onViewPast={() => go("audit")} onViewPolicies={() => go("policies")} />}
         {tab === "audit" && <TrustSafetyAudit />}
         {tab === "policies" && <TrustSafetyPolicies state={policy} onOpenAudit={() => go("audit")} />}
         {tab === "security" && <TrustSafetySecurity state={security} />}
@@ -130,6 +149,7 @@ function TrustSafetyContent() {
         {tab === "envs" && <TrustSafetyEnvironments />}
       </div>
     </div>
+    </TrustSafetyOverlaysProvider>
   )
 }
 

@@ -2,7 +2,7 @@
 
 import { Fragment, useMemo, useState } from "react"
 import useSWR from "swr"
-import { toast } from "@/components/agents/overlays/toast"
+import { toast } from "./overlays/toast"
 import { useAuth } from "@/lib/auth-context"
 import { useOrgAdmin } from "@/lib/use-org-admin"
 import {
@@ -17,6 +17,7 @@ import {
   type StageId,
   type StageView,
 } from "@/lib/settings-api/environments"
+import { confirmTrustSafety } from "./overlays/confirm"
 import { Hero, Icon, Note, Pill, Switch, TONE } from "./ts-ui"
 
 const METRICS: Array<[keyof EnvResources, string]> = [["workflows", "Workflows"], ["agents", "Agents"], ["connectors", "Connectors"], ["sources", "Sources"]]
@@ -32,8 +33,6 @@ export function TrustSafetyEnvironments() {
   const stages = useMemo(() => buildStages(envs), [envs])
   const [picked, setPicked] = useState<StageId | null>(null)
   const [busy, setBusy] = useState<string | null>(null)
-  const [confirmDelete, setConfirmDelete] = useState(false)
-  const [promo, setPromo] = useState(true)
 
   const env = stages.find((s) => s.id === picked) ?? stages.find((s) => s.env?.isDefault) ?? stages[2]
   const liveCount = stages.filter((s) => s.live).length
@@ -83,6 +82,12 @@ export function TrustSafetyEnvironments() {
 
   async function remove(stage: StageView) {
     if (!stage.env || !isAdmin) return
+    const ok = await confirmTrustSafety({
+      title: `Delete ${stage.name}?`,
+      description: "Workflows, agents, connectors and sources in this environment stop running here. This can't be undone.",
+      confirmLabel: `Delete ${stage.name}`,
+    })
+    if (!ok) return
     setBusy(`delete:${stage.id}`)
     try {
       await environmentsSettingsApi.remove(stage.env.id)
@@ -93,7 +98,6 @@ export function TrustSafetyEnvironments() {
       toast.error(err instanceof Error && err.message ? err.message : "Could not delete environment")
     } finally {
       setBusy(null)
-      setConfirmDelete(false)
     }
   }
 
@@ -103,6 +107,7 @@ export function TrustSafetyEnvironments() {
     <>
       <Hero
         art="envs"
+        artState={{ stages: [Boolean(stages[0]?.live), Boolean(stages[1]?.live), Boolean(stages[2]?.live)] }}
         eyebrow="Environments · deployment"
         big={data ? liveCount : "–"}
         unit={`of ${stages.length} stages live`}
@@ -154,7 +159,7 @@ export function TrustSafetyEnvironments() {
                   type="button"
                   className={`ts-wcard${env.id === s.id ? " sel" : ""}${s.live ? "" : " ts-ghost"}`}
                   aria-pressed={env.id === s.id}
-                  onClick={() => { setPicked(s.id); setConfirmDelete(false) }}
+                  onClick={() => setPicked(s.id)}
                   style={{ flex: "1 0 180px", textAlign: "left", font: "inherit", color: "inherit" }}
                 >
                   <span style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -162,7 +167,7 @@ export function TrustSafetyEnvironments() {
                     <Pill bg={tone.bg} fg={tone.fg} dot={s.live ? "#19C37D" : "#8A8B85"} live={s.live}>{label}</Pill>
                   </span>
                   <span style={{ fontWeight: 600 }}>{s.name}</span>
-                  <span style={{ fontSize: 12, color: "#6A6B64" }}>{s.hint}</span>
+                  <span style={{ fontSize: 12, color: "#55564F" }}>{s.hint}</span>
                 </button>
               </Fragment>
             )
@@ -190,14 +195,7 @@ export function TrustSafetyEnvironments() {
               {env.env && isAdmin && !env.env.isDefault ? (
                 <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
                   <Switch on={env.env.isActive} label={`Turn ${env.name} on`} disabled={busy != null} onToggle={() => void toggleActive(env)} />
-                  {confirmDelete ? (
-                    <>
-                      <button type="button" className="ts-btn danger sm" disabled={busy != null} onClick={() => void remove(env)}>Delete {env.name}</button>
-                      <button type="button" className="ts-btn line sm" onClick={() => setConfirmDelete(false)}>Keep</button>
-                    </>
-                  ) : (
-                    <button type="button" className="ts-btn line sm" disabled={busy != null} onClick={() => setConfirmDelete(true)}>Delete</button>
-                  )}
+                  <button type="button" className="ts-btn line sm" disabled={busy != null} onClick={() => void remove(env)}>Delete</button>
                 </div>
               ) : null}
             </div>
@@ -209,14 +207,14 @@ export function TrustSafetyEnvironments() {
                     return (
                       <div key={key} className="ts-tile">
                         <span className="l">{label}</span>
-                        <span style={{ fontSize: value == null ? 15 : 22, fontWeight: value == null ? 500 : 600, color: value == null ? "#6A6B64" : "#141513" }}>{value ?? "None yet"}</span>
+                        <span style={{ fontSize: value == null ? 15 : 22, fontWeight: value == null ? 500 : 600, color: value == null ? "#55564F" : "#141513" }}>{value ?? "None yet"}</span>
                       </div>
                     )
                   })}
                 </div>
                 <div style={{ padding: "0 22px 20px" }}>
                   <div style={{ fontSize: 13, color: "#55564F", marginBottom: 6 }}>API endpoint</div>
-                  <div className="ts-mono" style={{ background: "#F7F7F4", border: "1px solid #EFEFEA", borderRadius: 10, padding: "11px 12px", fontSize: 13, color: "#6A6B64", overflowWrap: "anywhere" }}>
+                  <div className="ts-mono" style={{ background: "#F7F7F4", border: "1px solid #EFEFEA", borderRadius: 10, padding: "11px 12px", fontSize: 13, color: "#55564F", overflowWrap: "anywhere" }}>
                     {env.env.apiUrl ?? "No endpoint yet. It appears after the first deploy."}
                   </div>
                 </div>
@@ -231,9 +229,9 @@ export function TrustSafetyEnvironments() {
                     Create {env.name}
                   </button>
                 ) : (
-                  <span style={{ fontSize: 13, color: "#6A6B64" }}>An owner or admin can create it.</span>
+                  <span style={{ fontSize: 13, color: "#55564F" }}>An owner or admin can create it.</span>
                 )}
-                {atLimit ? <span style={{ fontSize: 13, color: "#6A6B64" }}>Your plan includes {limit} environment{limit === 1 ? "" : "s"}.</span> : null}
+                {atLimit ? <span style={{ fontSize: 13, color: "#55564F" }}>Your plan includes {limit} environment{limit === 1 ? "" : "s"}.</span> : null}
               </div>
             )}
           </section>
@@ -243,10 +241,10 @@ export function TrustSafetyEnvironments() {
             <div className="ts-sidetitle"><span className="ts-ico sm"><Icon name="up" size={15} /></span>Promotion rules</div>
             <div className="ts-mini">
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 14, fontWeight: 500 }}>Approve before Production</div>
-                <div style={{ fontSize: 12, color: "#6A6B64" }}>Uses the approval routing</div>
+                <div style={{ fontSize: 14, fontWeight: 500 }}>Only admins promote</div>
+                <div style={{ fontSize: 12, color: "#55564F" }}>Promoting a workflow version to Staging or Production needs the Admin role, and each promotion is written to the audit trail.</div>
               </div>
-              <Switch on={promo} label="Require approval to promote to Production" onToggle={() => setPromo((v) => !v)} />
+              <Pill bg={TONE.ok.bg} fg={TONE.ok.fg} dot={TONE.ok.dot}>Enforced</Pill>
             </div>
           </section>
           <Note><strong>Organization wide.</strong> Environment changes apply to everyone in this workspace.</Note>

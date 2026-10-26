@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react"
 import Link from "next/link"
-import { toast } from "@/components/agents/overlays/toast"
+import { toast } from "./overlays/toast"
 import type { AuditEvent } from "@/lib/settings-api/audit"
 import { eventActor, eventDescription, eventEntity, eventLinks, eventMeta, eventTitle, isErrorEvent } from "@/components/settings/audit-model"
 import { Icon, Pill, TONE } from "./ts-ui"
@@ -62,7 +62,7 @@ export function AuditEventPanel({ log, onClose }: { log: AuditEvent; onClose: ()
           <span className={tone.ico} style={{ width: 36, height: 36, borderRadius: 10, flex: "0 0 auto" }}><Icon name="events" size={16} /></span>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div id="ts-event-title" style={{ fontWeight: 600, fontSize: 16 }}>{eventTitle(log)}</div>
-            <div className="ts-mono" style={{ fontSize: 12, color: "#6A6B64", marginTop: 2, overflowWrap: "anywhere" }}>{log.action}</div>
+            <div className="ts-mono" style={{ fontSize: 12, color: "#55564F", marginTop: 2, overflowWrap: "anywhere" }}>{log.action}</div>
           </div>
           <button ref={closeRef} type="button" className="ts-btn line sm" onClick={onClose} aria-label="Hide event details">
             <Icon name="x" size={14} />Hide
@@ -78,7 +78,7 @@ export function AuditEventPanel({ log, onClose }: { log: AuditEvent; onClose: ()
               <div style={{ overflowWrap: "anywhere", whiteSpace: "pre-wrap" }}>{auditErrorText(log)}</div>
             </div>
           ) : null}
-          {description ? <p style={{ margin: 0, fontSize: 14, lineHeight: 1.5, color: "#3E3F3A" }}>{description}</p> : null}
+          {description ? <p style={{ margin: 0, fontSize: 14, lineHeight: 1.5, color: "#33342F" }}>{description}</p> : null}
           <dl className="ts-kv">
             <dt>When</dt><dd>{fullTime(log.created_at)}</dd>
             <dt>Actor</dt><dd>{eventActor(log)}</dd>

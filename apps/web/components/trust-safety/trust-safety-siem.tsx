@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { toast } from "@/components/agents/overlays/toast"
+import { toast } from "./overlays/toast"
 import { enterpriseApi } from "@/lib/api"
 import type { EnterpriseSiemConfig, EnterpriseSiemEventType } from "@/types/api"
 import { Icon, Pill, Switch, TONE } from "./ts-ui"
@@ -61,7 +61,7 @@ export function TrustSafetySiem({ siem }: { siem: SiemData }) {
     return (
       <>
         <SiemHead pill={{ ...TONE.mute, label: "Unavailable" }} />
-        <section className="ts-card" style={{ padding: 20, display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap", fontSize: 13, color: "#8A2530" }}>
+        <section className="ts-card" style={{ padding: 20, display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap", fontSize: 13, color: "#A3333D" }}>
           SIEM export did not load.
           <button type="button" className="ts-btn line sm" onClick={() => void mutate()}>Try again</button>
         </section>
@@ -72,7 +72,7 @@ export function TrustSafetySiem({ siem }: { siem: SiemData }) {
     return (
       <>
         <SiemHead pill={{ ...TONE.mute, label: "Loading" }} />
-        <section className="ts-card" style={{ padding: 20, fontSize: 13, color: "#6A6B64" }} role="status">Loading SIEM export</section>
+        <section className="ts-card" style={{ padding: 20, fontSize: 13, color: "#55564F" }} role="status">Loading SIEM export</section>
       </>
     )
   }
@@ -152,7 +152,7 @@ export function TrustSafetySiem({ siem }: { siem: SiemData }) {
           <span className="ts-ico"><Icon name="forward" /></span>
           <div style={{ flex: "1 1 260px", minWidth: 0 }}>
             <div style={{ fontWeight: 600 }}>Forward events</div>
-            <div style={{ fontSize: 13, color: "#6A6B64", marginTop: 2 }}>When on, security and audit events are delivered to the endpoint below</div>
+            <div style={{ fontSize: 13, color: "#55564F", marginTop: 2 }}>When on, security and audit events are delivered to the endpoint below</div>
           </div>
           <Switch on={enabled} label="Forward events" onToggle={() => setEnabled((v) => !v)} />
         </div>
@@ -172,7 +172,7 @@ export function TrustSafetySiem({ siem }: { siem: SiemData }) {
                 }}
               />
             </div>
-            {urlBad ? <span style={{ fontSize: 12, color: "#8A2530" }}>Use an https endpoint</span> : null}
+            {urlBad ? <span style={{ fontSize: 12, color: "#A3333D" }}>Use an https endpoint</span> : null}
           </div>
           <div style={{ flex: "1 1 320px", minWidth: 0, display: "flex", flexDirection: "column", gap: 6 }}>
             <label htmlFor="siem-secret" style={{ fontSize: 13, color: "#55564F" }}>Signing secret</label>
@@ -198,7 +198,7 @@ export function TrustSafetySiem({ siem }: { siem: SiemData }) {
                 {reveal && draftSecret ? "Hide" : "Reveal"}
               </button>
             </div>
-            <span style={{ fontSize: 12, color: "#6A6B64" }}>
+            <span style={{ fontSize: 12, color: "#55564F" }}>
               Verify the X-Gravitre-Signature header with this secret.
               {draftSecret && data.hasSecret ? " The new secret takes effect when you save." : null}
               <button
@@ -230,8 +230,8 @@ export function TrustSafetySiem({ siem }: { siem: SiemData }) {
             </div>
           </div>
         </div>
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "center", justifyContent: "space-between", padding: "14px 20px", borderTop: "1px solid #EFEFEA", background: "#FBFBF9" }}>
-          <span style={{ fontSize: 13, color: "#6A6B64" }} role="status">{testNote}</span>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 10, alignItems: "center", justifyContent: "space-between", padding: "14px 20px", borderTop: "1px solid #EFEFEA", background: "#F7F7F4" }}>
+          <span style={{ fontSize: 13, color: "#55564F" }} role="status">{testNote}</span>
           <div style={{ display: "flex", gap: 8 }}>
             <button type="button" className="ts-btn line sm" disabled={testing || dirty || !savedEndpointOk} onClick={() => void sendTest()}>
               {testing ? "Sending…" : "Send test event"}
@@ -251,7 +251,7 @@ function SiemHead({ pill }: { pill: { bg: string; fg: string; dot: string; live?
     <div className="ts-sechead" style={{ marginTop: 8, justifyContent: "space-between" }}>
       <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
         <span className="ts-eyebrow">SIEM export</span>
-        <span style={{ fontSize: 13, color: "#6A6B64" }}>Stream audit and security events to your SIEM by signed webhook</span>
+        <span style={{ fontSize: 13, color: "#55564F" }}>Stream audit and security events to your SIEM by signed webhook</span>
       </div>
       <Pill bg={pill.bg} fg={pill.fg} dot={pill.dot} live={pill.live}>{pill.label}</Pill>
     </div>
