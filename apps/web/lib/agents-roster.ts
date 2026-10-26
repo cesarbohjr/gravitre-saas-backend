@@ -29,6 +29,8 @@ export interface RosterAgentStats {
   tasksToday: number
   failedToday: number
   runningNow: number
+  /** What the newest running job was asked to do; absent on older backends. */
+  currentTask?: string | null
   successRateToday: number | null
   successRate7d: number | null
   lastActiveAt: string | null
@@ -52,7 +54,18 @@ export interface RosterStatsPayload {
   agents: Record<string, RosterAgentStats>
   /** Agent id -> writes wait for approval. Missing ids fail closed (true). */
   approvalGate: Record<string, boolean>
+  /** Agent id -> autonomy from its identity record. Missing ids fail closed (write_with_approval). */
+  autonomy?: Record<string, RosterAutonomy>
   goals: RosterGoal[]
+}
+
+export type RosterAutonomy = "read_only" | "write_with_approval" | "autonomous"
+
+/** Team card autonomy meter: 1 suggests only, 2 asks before acting, 3 acts within policy. */
+export const AUTONOMY_STEPS: Record<RosterAutonomy, { level: 1 | 2 | 3; label: string }> = {
+  read_only: { level: 1, label: "Suggests only" },
+  write_with_approval: { level: 2, label: "Asks before acting" },
+  autonomous: { level: 3, label: "Acts within policy" },
 }
 
 export function rosterStatsKey(): string {
@@ -158,6 +171,9 @@ export interface RosterAgent {
   status: string
   state: RosterState
   gated: boolean
+  /** Null when the roster stats (or an older backend) did not report autonomy. */
+  autonomy: RosterAutonomy | null
+  currentTask: string | null
   output: string | null
   stats: RosterAgentStats | null
   tasksToday: number
@@ -279,6 +295,8 @@ export function toRosterAgent(raw: RawAgent, stats: RosterStatsPayload | undefin
     state,
     // Writes need an app to land in; with an app, the policy decides (fails closed).
     gated: apps.length > 0 && gate !== false,
+    autonomy: stats?.autonomy ? (stats.autonomy[id] ?? "write_with_approval") : null,
+    currentTask: s?.currentTask?.trim() || null,
     output: notSetUp ? null : deriveOutput(name, role, description, capabilities),
     stats: s,
     tasksToday: s?.tasksToday ?? 0,
@@ -376,6 +394,80 @@ export function yesterdayBestAgent(agents: RosterAgent[]): { agent: RosterAgent;
     if (!best || tasks > best.tasks) best = { agent: a, tasks }
   }
   return best
+}
+
+/** "Try" starters on the team hand-off bar, one per department that has an agent. */
+export const TEAM_JOB_IDEAS: Record<AgentDepartmentId, string> = {
+  sales: "Score this week’s inbound leads",
+  finance: "Chase invoices over 30 days",
+  marketing: "Draft a LinkedIn post from our latest blog",
+  customer_success: "Flag accounts renewing this month",
+  operations: "Summarize what changed in our vendor contracts",
+  engineering: "Review open pull requests for risky changes",
+  security: "List accounts with admin access to review",
+  general: "Summarize this week’s activity for the team",
+}
+
+const IDEA_ORDER: AgentDepartmentId[] = ["sales", "finance", "marketing", "customer_success", "operations", "engineering", "security", "general"]
+
+export function teamJobIdeas(agents: RosterAgent[], max = 4): Array<{ department: AgentDepartmentId; text: string }> {
+  const covered = new Set(agents.map((a) => a.department))
+  return IDEA_ORDER.filter((d) => covered.has(d))
+    .slice(0, max)
+    .map((department) => ({ department, text: TEAM_JOB_IDEAS[department] }))
+}
+
+const JOB_STOPWORDS = new Set(
+  "the and for with from this that our your into over about week weeks month today all any are can each get has its new out per via who why how what when".split(" "),
+)
+
+function jobTerms(text: string): string[] {
+  return [...new Set(text.toLowerCase().split(/[^a-z0-9]+/).filter((w) => w.length >= 3 && !JOB_STOPWORDS.has(w)))]
+}
+
+/**
+ * Best agent for a plain-words job: the most of the job's words found in an agent's
+ * name, role, instructions, skills, apps and department (word prefixes count, so
+ * "invoices" finds "invoice"). Ties go to an agent that is free right now. Agents that
+ * are blocked or not set up are never picked. Null when nothing matches, so the
+ * assignment flow falls back to its own default.
+ */
+export function pickAgentForJob(
+  text: string,
+  agents: RosterAgent[],
+  preferDepartment?: AgentDepartmentId | null,
+): RosterAgent | null {
+  const terms = jobTerms(text)
+  const pool = agents.filter((a) => a.state !== "blocked" && a.state !== "not_set_up")
+  let best: { agent: RosterAgent; score: number } | null = null
+  for (const agent of pool) {
+    const words = jobTerms(
+      [agent.name, agent.role, agent.description, agent.departmentLabel, ...agent.capabilities, ...agent.apps].join(" "),
+    )
+    let score = 0
+    for (const term of terms) {
+      const stem = term.length > 5 ? term.slice(0, 5) : term
+      if (words.some((w) => w === term || w.startsWith(stem) || term.startsWith(w.length > 5 ? w.slice(0, 5) : w))) score += 1
+    }
+    if (preferDepartment && agent.department === preferDepartment) score += 0.5
+    if (score <= 0) continue
+    const free = agent.state !== "working"
+    if (
+      !best ||
+      score > best.score ||
+      (score === best.score && free && best.agent.state === "working")
+    ) {
+      best = { agent, score }
+    }
+  }
+  return best?.agent ?? null
+}
+
+/** Team grid search: name, role, instructions, department and apps. */
+export function matchesAgentSearch(agent: RosterAgent, query: string): boolean {
+  const q = query.trim().toLowerCase()
+  if (!q) return true
+  return [agent.name, agent.role, agent.description, agent.departmentLabel, ...agent.apps].some((v) => v.toLowerCase().includes(q))
 }
 
 export function needsYou(agents: RosterAgent[]): RosterAgent[] {

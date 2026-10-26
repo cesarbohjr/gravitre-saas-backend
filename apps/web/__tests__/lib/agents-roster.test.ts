@@ -2,12 +2,16 @@ import { readFileSync } from "node:fs"
 import { resolve } from "node:path"
 import { describe, expect, it } from "vitest"
 import {
+  AUTONOMY_STEPS,
   buildWorkMap,
   deriveOutput,
   formatLastActive,
   groupByDepartment,
   litAgents,
+  matchesAgentSearch,
+  pickAgentForJob,
   standoutAgent,
+  teamJobIdeas,
   toRosterAgent,
   traceStory,
   type RosterStatsPayload,
@@ -101,5 +105,38 @@ describe("agents roster view model", () => {
     const list = readFileSync(resolve(__dirname, "../../components/agents/roster/roster-list-view.tsx"), "utf8")
     expect(list).toMatch(/agentsApi\.update/)
     expect(list).toMatch(/agentsApi\.stop/)
+  })
+})
+
+describe("agents team view helpers", () => {
+  it("reads autonomy from the roster and fails closed when an id is missing", () => {
+    const withAutonomy = { ...stats, autonomy: { mkt: "autonomous" as const, scout: "read_only" as const } }
+    expect(toRosterAgent(raw[2], withAutonomy).autonomy).toBe("autonomous")
+    expect(toRosterAgent(raw[0], withAutonomy).autonomy).toBe("read_only")
+    expect(toRosterAgent(raw[1], withAutonomy).autonomy).toBe("write_with_approval")
+    // Older backend or no stats: nothing to show rather than a guess.
+    expect(toRosterAgent(raw[2], stats).autonomy).toBeNull()
+    expect(toRosterAgent(raw[2], undefined).autonomy).toBeNull()
+    expect(AUTONOMY_STEPS.read_only).toEqual({ level: 1, label: "Suggests only" })
+  })
+
+  it("picks the agent whose profile matches the job and skips blocked or empty ones", () => {
+    expect(pickAgentForJob("Run a campaign sequence for the webinar", agents)?.id).toBe("mkt")
+    expect(pickAgentForJob("Find accounts that match our ideal customer", agents)?.id).toBe("scout")
+    // Enrichment matches best but is blocked, so it is never handed new work.
+    expect(pickAgentForJob("Fill in contact details for enrichment", agents)?.id).not.toBe("enrich")
+    expect(pickAgentForJob("zzz qqq", agents)).toBeNull()
+  })
+
+  it("offers job ideas only for departments that have agents", () => {
+    expect(teamJobIdeas(agents).map((i) => i.department)).toEqual(["sales", "marketing", "general"])
+  })
+
+  it("searches name, role, instructions and apps", () => {
+    const [scout, , mkt] = agents
+    expect(matchesAgentSearch(mkt, "slack")).toBe(true)
+    expect(matchesAgentSearch(scout, "ideal customer")).toBe(true)
+    expect(matchesAgentSearch(scout, "slack")).toBe(false)
+    expect(matchesAgentSearch(scout, "  ")).toBe(true)
   })
 })

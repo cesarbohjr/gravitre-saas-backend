@@ -1244,7 +1244,7 @@ export const SHOT_FIXTURES: Record<string, unknown> = {
         lastActiveAt: AGO(4), daily: [12, 18, 0, 22, 25, 19, 28, 30, 24, 0, 26, 31, 29, 34], blocked: null,
       },
       agt_deal_desk: {
-        tasksToday: 6, failedToday: 0, runningNow: 1, successRateToday: 100, successRate7d: 94,
+        tasksToday: 6, failedToday: 0, runningNow: 1, currentTask: "Drafting a renewal quote for Northwind", successRateToday: 100, successRate7d: 94,
         lastActiveAt: AGO(2), daily: [3, 4, 2, 5, 6, 4, 3, 5, 7, 2, 4, 6, 5, 6], blocked: null,
       },
       agt_support_escalation: {
@@ -1258,6 +1258,7 @@ export const SHOT_FIXTURES: Record<string, unknown> = {
       },
     },
     approvalGate: { agt_market_research: false },
+    autonomy: { agt_lead_triage: "write_with_approval", agt_deal_desk: "write_with_approval", agt_market_research: "read_only" },
     goals: [
       {
         id: "goal_pipeline", objective: "Recover $1.2M of stalled Q3 pipeline", status: "active",

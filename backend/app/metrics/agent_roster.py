@@ -6,7 +6,8 @@ Sources of record (no sample data):
 - ``agent_identity_records``: trust level + approval overrides. An agent's writes
   pass an approval gate unless it is read only or explicitly allowed to auto-run
   writes (the same rule as ``deriveAutonomyLabel`` in the web app). A missing
-  record fails closed to "needs approval".
+  record fails closed to "needs approval". The same rule names the agent's
+  autonomy level (read only / write with approval / autonomous).
 - ``goals`` + ``goal_plans.required_agents``: which agents a goal depends on.
 
 Aggregation is pure (``aggregate_agent_roster``) so it is testable without a database.
@@ -26,6 +27,7 @@ DAYS = 14
 SUCCESS_WINDOW_DAYS = 7
 BLOCKED_WINDOW_DAYS = 7
 REASON_MAX = 110
+TASK_MAX = 90
 
 agent_roster_cache = TTLCache(ttl_from_env("AGENT_ROSTER_CACHE_TTL_SECONDS", 30.0), max_entries=2048)
 
@@ -54,14 +56,36 @@ def needs_approval_gate(identity: dict[str, Any] | None) -> bool:
     if not identity:
         return True
     trust = str(identity.get("trust_level") or "write_with_approval")
-    if trust == "read_only":
-        return False
-    kinds = identity.get("allowed_action_kinds")
-    if isinstance(kinds, list) and kinds and not any(k in ("write", "delete") for k in kinds):
+    if _read_only(identity):
         return False
     overrides = identity.get("approval_rule_overrides") or {}
     auto_writes = isinstance(overrides, dict) and overrides.get("write") == "auto_run"
     return not (trust == "autonomous" and auto_writes)
+
+
+def _read_only(identity: dict[str, Any]) -> bool:
+    if str(identity.get("trust_level") or "") == "read_only":
+        return True
+    kinds = identity.get("allowed_action_kinds")
+    return isinstance(kinds, list) and bool(kinds) and not any(k in ("write", "delete") for k in kinds)
+
+
+def autonomy_level(identity: dict[str, Any] | None) -> str:
+    """``read_only``, ``write_with_approval`` or ``autonomous``; fails closed like the gate."""
+    if identity and _read_only(identity):
+        return "read_only"
+    return "write_with_approval" if needs_approval_gate(identity) else "autonomous"
+
+
+def current_task(job: dict[str, Any]) -> str | None:
+    """The running job's task in one short line, from what the person asked for."""
+    text = str(job.get("task") or job.get("title") or "").strip()
+    if not text:
+        return None
+    text = " ".join(text.split())
+    if len(text) > TASK_MAX:
+        text = text[: TASK_MAX - 1].rstrip() + "…"
+    return text
 
 
 def _agent_key(job: dict[str, Any]) -> str:
@@ -96,6 +120,7 @@ def aggregate_agent_roster(
                 "lastActiveAt": None,
                 "daily": [0] * DAYS,
                 "_latest": None,
+                "_running": None,
             }
         return per[key]
 
@@ -110,6 +135,8 @@ def aggregate_agent_roster(
         stamp = finished or created
         if status == "running":
             s["runningNow"] += 1
+            if s["_running"] is None or created > s["_running"][0]:
+                s["_running"] = (created, current_task(job))
         if status in ("completed", "failed"):
             local_day = stamp.astimezone(tz).replace(hour=0, minute=0, second=0, microsecond=0)
             idx = (local_day - first).days
@@ -130,6 +157,7 @@ def aggregate_agent_roster(
     agents: dict[str, Any] = {}
     for key, s in per.items():
         created, status, error, job_id = s.pop("_latest")
+        running = s.pop("_running")
         blocked = None
         if status in ("failed", "paused") and created >= blocked_from:
             blocked = {
@@ -142,6 +170,7 @@ def aggregate_agent_roster(
             "tasksToday": s["tasksToday"],
             "failedToday": s["failedToday"],
             "runningNow": s["runningNow"],
+            "currentTask": running[1] if running else None,
             "successRateToday": _rate(s["tasksToday"], s["failedToday"]),
             "successRate7d": _rate(s["completed7d"], s["failed7d"]),
             "lastActiveAt": s["lastActiveAt"].isoformat() if s["lastActiveAt"] else None,
@@ -182,6 +211,7 @@ def aggregate_agent_roster(
         "days": [(first + timedelta(days=i)).isoformat() for i in range(DAYS)],
         "agents": agents,
         "approvalGate": {key: needs_approval_gate(row) for key, row in identities.items()},
+        "autonomy": {key: autonomy_level(row) for key, row in identities.items()},
         "goals": goal_rows,
     }
 
@@ -207,7 +237,8 @@ def build_agent_roster(client: Any, org_id: str, tz_offset_min: int = 0) -> dict
         lambda: client.table("agent_jobs")
         .select(
             "id,status,error,created_at,started_at,finished_at,"
-            "agent_id:payload->>agent_id,operator_id:payload->>operator_id"
+            "agent_id:payload->>agent_id,operator_id:payload->>operator_id,"
+            "task:payload->>task,title:payload->>title"
         )
         .eq("org_id", org_id).gte("created_at", lo).order("id")
     )

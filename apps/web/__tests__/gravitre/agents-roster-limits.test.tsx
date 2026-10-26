@@ -3,13 +3,14 @@ import React, { act } from "react"
 import { createRoot, type Root } from "react-dom/client"
 import { afterEach, describe, expect, it, vi } from "vitest"
 
-vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn() }) }))
+const push = vi.hoisted(() => vi.fn())
+vi.mock("next/navigation", () => ({ useRouter: () => ({ push }) }))
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
 vi.mock("@/lib/api", () => ({ agentsApi: { update: vi.fn(), stop: vi.fn() } }))
 
-import { RosterTeamView, TEAM_BAND_LIMIT } from "@/components/agents/roster/roster-team-view"
+import { RosterTeamView } from "@/components/agents/roster/roster-team-view"
 import { LIST_PAGE_SIZE, RosterListView, pageItems } from "@/components/agents/roster/roster-list-view"
-import { ROSTER_DEPARTMENTS, toRosterAgent, yesterdayBestAgent, type RosterStatsPayload } from "@/lib/agents-roster"
+import { toRosterAgent, yesterdayBestAgent, type RosterStatsPayload } from "@/lib/agents-roster"
 
 ;(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
 
@@ -28,7 +29,6 @@ afterEach(() => {
   root = null
   host = null
 })
-const band = (el: HTMLElement, id: string) => el.querySelector<HTMLElement>(`section[aria-labelledby="dept-${id}"]`)!
 const linksNamed = (el: HTMLElement, re: RegExp) => [...el.querySelectorAll("a")].filter((a) => re.test(a.textContent ?? ""))
 const buttonNamed = (el: HTMLElement, label: string) =>
   [...el.querySelectorAll("button")].find((b) => b.getAttribute("aria-label") === label || b.textContent?.trim() === label)!
@@ -52,43 +52,98 @@ const empty = (daily: number[] = []) => ({
   lastActiveAt: null, daily, blocked: null,
 })
 
-describe("agents team view limits", () => {
+describe("agents team view", () => {
   const raw = [...fleet("Sales", 6, "s"), ...fleet("Security", 1, "sec"), ...fleet("General", 1, "g")]
   const agents = raw.map((r) => toRosterAgent(r, undefined))
+  const cards = (el: HTMLElement) => [...el.querySelectorAll("article.tm-card")]
+  const setInput = (input: HTMLInputElement, value: string) =>
+    act(() => {
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.call(input, value)
+      input.dispatchEvent(new Event("input", { bubbles: true }))
+    })
 
-  it("shows four agents per department and links the rest to the filtered list", () => {
-    const el = render(<RosterTeamView agents={agents} statsAvailable={false} days={0} />)
-    const sales = band(el, "sales")
-    expect(sales.querySelectorAll("article")).toHaveLength(TEAM_BAND_LIMIT)
-    expect(sales.textContent).toContain("Showing 4 of 6 Sales agents")
-    const links = linksNamed(sales, /View all 6 in list view/)
-    expect(links).toHaveLength(1)
-    expect(links[0].getAttribute("href")).toBe("/agents?view=list&dept=sales")
+  it("shows every agent and filters by department chip and search", () => {
+    const el = render(<RosterTeamView agents={agents} statsAvailable={false} />)
+    expect(el.querySelector("h1")?.textContent).toBe("8 agents, ready when you are.")
+    expect(cards(el)).toHaveLength(8)
+    click(buttonNamed(el, "Security 1"))
+    expect(cards(el)).toHaveLength(1)
+    expect(buttonNamed(el, "Security 1").getAttribute("aria-pressed")).toBe("true")
+    click(buttonNamed(el, "All 8"))
+    setInput(el.querySelector<HTMLInputElement>('input[aria-label="Find an agent"]')!, "agent 03")
+    expect(cards(el).map((c) => c.querySelector(".nm")?.textContent)).toEqual(["S Agent 03"])
   })
 
-  it("gives Security and General their own bands with the v2 department art", () => {
-    const container = render(<RosterTeamView agents={agents} statsAvailable={false} days={0} />)
-    for (const id of ["security", "general"]) {
-      expect(band(container, id)).toBeTruthy()
-      expect(linksNamed(band(container, id), /View all/)).toHaveLength(0)
-    }
-    const srcs = [...container.querySelectorAll(".rs-band-art img")].map((img) => img.getAttribute("src"))
-    expect(srcs).toEqual(
-      expect.arrayContaining(["/illustrations/roster-sales.svg", "/illustrations/roster-security.svg", "/illustrations/roster-general.svg"]),
-    )
-    expect(ROSTER_DEPARTMENTS.every((d) => d.illustration)).toBe(true)
+  it("links each card to a task, a chat and the agent", () => {
+    const el = render(<RosterTeamView agents={agents} statsAvailable={false} />)
+    const card = cards(el)[0]
+    const href = (label: string) => card.querySelector(`a[aria-label="${label}"]`)?.getAttribute("href")
+    expect(href("Give S Agent 00 a task")).toBe("/assignments/new?agent=s0")
+    expect(href("Chat with S Agent 00")).toBe("/agents/s0/chat")
+    expect(card.querySelector("a.nm")?.getAttribute("href")).toBe("/agents/s0")
   })
 
-  it("replaces the old empty standout with the warming up card", () => {
-    const el = render(<RosterTeamView agents={agents} statsAvailable={false} days={0} />)
-    expect(el.textContent).not.toContain("No finished tasks yet today")
+  it("offers the Marketplace for departments with no agent", () => {
+    const el = render(<RosterTeamView agents={agents} statsAvailable={false} />)
+    const hire = el.querySelector<HTMLElement>("article.tm-hire")!
+    expect(hire.textContent).toContain("5 departments have no agent yet")
+    click(buttonNamed(el, "Finance 0"))
+    const one = el.querySelector<HTMLElement>("article.tm-hire")!
+    expect(one.textContent).toContain("Finance has no agent yet")
+    expect(linksNamed(one, /Browse agents/)[0].getAttribute("href")).toBe("/marketplace/assets?type=ai_agent&department=finance")
+  })
+
+  it("shows the warming up standout until someone finishes a task", () => {
+    const el = render(<RosterTeamView agents={agents} statsAvailable={false} />)
     expect(el.textContent).toContain("Your team is warming up")
-    expect(linksNamed(el, /^Give a task$/)[0].getAttribute("href")).toContain("s0")
-    // No stats means no yesterday to show, so the button stays hidden.
-    expect(buttonNamed(el, "See yesterday's best")).toBeUndefined()
+    const standout = el.querySelector<HTMLElement>(".tm-standout")!
+    expect(linksNamed(standout, /^Give a task$/)[0].getAttribute("href")).toContain("s0")
+    const stats: RosterStatsPayload = {
+      generatedAt: "", days: [], approvalGate: {}, goals: [],
+      agents: { s1: { ...empty([0, 4]), tasksToday: 4, successRateToday: 100 } },
+    }
+    const busy = render(<RosterTeamView agents={raw.map((r) => toRosterAgent(r, stats))} statsAvailable />)
+    expect(busy.querySelector(".tm-standout")?.textContent).toContain("S Agent 01")
+    expect(busy.querySelector(".tm-standout")?.textContent).toContain("4 tasks done today")
   })
 
-  it("shows yesterday's busiest agent on request", () => {
+  it("counts pending approvals and stuck agents under Needs you", () => {
+    const el = render(<RosterTeamView agents={agents} statsAvailable={false} pendingApprovals={2} />)
+    const needs = [...el.querySelectorAll<HTMLElement>(".tm-stat")].find((s) => s.textContent?.includes("Needs you"))!
+    expect(needs.tagName).toBe("A")
+    expect(needs.getAttribute("href")).toBe("/approvals")
+    expect(needs.textContent).toContain("2 approvals")
+  })
+
+  it("shows the running task and the autonomy level from the roster", () => {
+    const stats: RosterStatsPayload = {
+      generatedAt: "", days: [], approvalGate: {}, goals: [], autonomy: { s0: "read_only" },
+      agents: { s0: { ...empty(), runningNow: 1, currentTask: "Drafting a quote for Acme" } },
+    }
+    const el = render(<RosterTeamView agents={raw.map((r) => toRosterAgent(r, stats))} statsAvailable />)
+    const first = cards(el)[0]
+    expect(first.textContent).toContain("Now: Drafting a quote for Acme")
+    expect(first.textContent).toContain("Working")
+    expect(first.querySelector('[role="img"]')?.getAttribute("aria-label")).toBe("Autonomy 1 of 3: Suggests only")
+    // Agents without an identity record fail closed to asking first.
+    expect(cards(el)[1].textContent).toContain("Asks before acting")
+  })
+
+  it("hands a job to the best matching agent through the assignment flow", () => {
+    push.mockClear()
+    const mixed = [
+      ...agents,
+      toRosterAgent({ id: "fin", name: "Invoice Chaser", department: "Finance", description: "Follows up on overdue invoices.", permissions: ["quickbooks"] }, undefined),
+    ]
+    const el = render(<RosterTeamView agents={mixed} statsAvailable={false} />)
+    click(buttonNamed(el, "Chase invoices over 30 days"))
+    const input = el.querySelector<HTMLInputElement>(".tm-job input")!
+    expect(input.value).toBe("Chase invoices over 30 days")
+    act(() => el.querySelector("form")!.dispatchEvent(new Event("submit", { bubbles: true, cancelable: true })))
+    expect(push).toHaveBeenCalledWith("/assignments/new?agent=fin&task=Chase+invoices+over+30+days")
+  })
+
+  it("keeps the yesterday helper for the roster model", () => {
     const stats: RosterStatsPayload = {
       generatedAt: "", days: [], approvalGate: {}, goals: [],
       agents: { s0: empty([0, 3, 2, 0]), s1: empty([0, 1, 4, 0]) },
@@ -96,13 +151,6 @@ describe("agents team view limits", () => {
     const withStats = raw.map((r) => toRosterAgent(r, stats))
     expect(yesterdayBestAgent(withStats)?.agent.id).toBe("s1")
     expect(yesterdayBestAgent(withStats)?.tasks).toBe(4)
-    const el = render(<RosterTeamView agents={withStats} statsAvailable days={4} />)
-    click(buttonNamed(el, "See yesterday's best"))
-    expect(el.textContent).toContain("Yesterday's best")
-    expect(el.textContent).toContain("S Agent 01")
-    expect(el.textContent).toContain("tasks finished yesterday")
-    click(buttonNamed(el, "Back to today"))
-    expect(el.textContent).toContain("Your team is warming up")
   })
 })
 

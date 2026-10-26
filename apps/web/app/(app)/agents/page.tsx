@@ -15,6 +15,7 @@ import { RosterTeamView } from "@/components/agents/roster/roster-team-view"
 import { RosterListView } from "@/components/agents/roster/roster-list-view"
 import { RosterWorkMap } from "@/components/agents/roster/roster-work-map"
 import "@/components/agents/roster/roster.css"
+import "@/components/agents/roster/roster-team.css"
 import { SURFACE_COPY } from "@/lib/surface-copy"
 import { fetcher as apiFetcher } from "@/lib/fetcher"
 import { useAuth } from "@/lib/auth-context"
@@ -128,6 +129,14 @@ function AgentsRoster() {
     dedupingInterval: 2000,
   })
   const statsAvailable = Boolean(stats && !statsError)
+  const { data: approvalsData } = useSWR<{ approvals?: Array<{ status?: string }> }>(
+    user && view === "team" ? "/api/approvals" : null,
+    apiFetcher,
+    { revalidateOnFocus: true, refreshInterval: AGENTS_REFRESH_MS, dedupingInterval: 30_000 },
+  )
+  const pendingApprovals = Array.isArray(approvalsData?.approvals)
+    ? approvalsData.approvals.filter((entry) => entry.status === "pending").length
+    : null
 
   const rawAgents = useMemo(() => normalizeAgentsPayload(data), [data])
   const rawById = useMemo(() => new Map(rawAgents.map((raw) => [String(raw.id), raw as Record<string, unknown>])), [rawAgents])
@@ -149,53 +158,58 @@ function AgentsRoster() {
     return `${pathname || "/agents"}?${next.toString()}`
   }
 
+  // The team view carries its own compact switcher beside the heading (AI Team design).
+  const teamLayout = view === "team" && !error && agents.length > 0
+
   return (
     <WsPage>
       <div className="rs-tabs">
         <AgentsHubTabs active="roster" />
       </div>
-      <div className="rs-toolbar">
-        <nav aria-label="Roster view" className="gv-card rs-views">
-          {VIEWS.map((v) => (
-            <Link
-              key={v.id}
-              href={viewHref(v.id)}
-              replace
-              scroll={false}
-              className={cn("rs-view", view === v.id && "on")}
-              aria-current={view === v.id ? "page" : undefined}
-              onClick={() => setView(v.id)}
+      {teamLayout ? null : (
+        <div className="rs-toolbar">
+          <nav aria-label="Roster view" className="gv-card rs-views">
+            {VIEWS.map((v) => (
+              <Link
+                key={v.id}
+                href={viewHref(v.id)}
+                replace
+                scroll={false}
+                className={cn("rs-view", view === v.id && "on")}
+                aria-current={view === v.id ? "page" : undefined}
+                onClick={() => setView(v.id)}
+              >
+                <span className="ic">{v.icon}</span>
+                <span>
+                  <b>{v.label}</b>
+                  <small>{v.hint}</small>
+                </span>
+              </Link>
+            ))}
+          </nav>
+          <div className="rs-actions">
+            <AskGravitreSummonButton className="rs-ask" />
+            <button
+              type="button"
+              className="gv-btn outline"
+              onClick={() => setMesonWizardOpen(true)}
+              aria-haspopup="dialog"
+              aria-expanded={mesonWizardOpen}
             >
-              <span className="ic">{v.icon}</span>
-              <span>
-                <b>{v.label}</b>
-                <small>{v.hint}</small>
-              </span>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--gv-blue)" strokeWidth="2" strokeLinecap="round" aria-hidden>
+                <path d="M4 8h12l-3-3M4 16h12l-3 3" />
+              </svg>
+              Build with Meson
+            </button>
+            <Link className="gv-btn dark" href="/agents/new">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden>
+                <path d="M12 5v14M5 12h14" />
+              </svg>
+              New agent
             </Link>
-          ))}
-        </nav>
-        <div className="rs-actions">
-          <AskGravitreSummonButton className="rs-ask" />
-          <button
-            type="button"
-            className="gv-btn outline"
-            onClick={() => setMesonWizardOpen(true)}
-            aria-haspopup="dialog"
-            aria-expanded={mesonWizardOpen}
-          >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--gv-blue)" strokeWidth="2" strokeLinecap="round" aria-hidden>
-              <path d="M4 8h12l-3-3M4 16h12l-3 3" />
-            </svg>
-            Build with Meson
-          </button>
-          <Link className="gv-btn dark" href="/agents/new">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden>
-              <path d="M12 5v14M5 12h14" />
-            </svg>
-            New agent
-          </Link>
+          </div>
         </div>
-      </div>
+      )}
 
       {error ? (
         <div className="gv-card rs-empty">
@@ -240,7 +254,27 @@ function AgentsRoster() {
           onChanged={refresh}
         />
       ) : (
-        <RosterTeamView agents={agents} statsAvailable={statsAvailable} days={stats?.days?.length ?? 0} />
+        <RosterTeamView
+          agents={agents}
+          statsAvailable={statsAvailable}
+          pendingApprovals={pendingApprovals}
+          viewNav={
+            <nav aria-label="Team views" className="tm-views">
+              {VIEWS.map((v) => (
+                <Link
+                  key={v.id}
+                  href={viewHref(v.id)}
+                  replace
+                  scroll={false}
+                  aria-current={view === v.id ? "page" : undefined}
+                  onClick={() => setView(v.id)}
+                >
+                  {v.hint}
+                </Link>
+              ))}
+            </nav>
+          }
+        />
       )}
 
       <MesonWizard

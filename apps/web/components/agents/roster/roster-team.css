@@ -1,0 +1,148 @@
+/* Agents roster > Team ("Meet your crew"), AI Team design 2026-10-26. Scoped under .gv-ws; department hues from .rs-d-* in roster.css. */
+
+.gv-ws .tm { display: flex; flex-direction: column; gap: 20px; padding: 20px 0 32px; }
+.gv-ws .tm .eb { font-family: var(--font-mono), "Geist Mono", monospace; font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--gv-muted); }
+
+/* Heading + view switcher */
+.gv-ws .tm-head { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 20px; }
+.gv-ws .tm-title { display: flex; flex-direction: column; gap: 8px; flex: 1 1 520px; min-width: 0; }
+.gv-ws .tm-title h1 { margin: 0; font-size: 40px; line-height: 1.1; font-weight: 600; letter-spacing: -0.025em; color: var(--gv-text); }
+.gv-ws .tm-title p { margin: 0; font-size: 16px; line-height: 1.5; color: var(--gv-muted); max-width: 720px; }
+@media (max-width: 760px) { .gv-ws .tm-title h1 { font-size: 30px; } }
+.gv-ws .tm-views { display: flex; background: var(--gv-card); border: 1px solid var(--gv-border); border-radius: 12px; padding: 4px; gap: 2px; font-size: 14px; flex-wrap: wrap; }
+.gv-ws .tm-views a { text-decoration: none; color: var(--gv-muted); border-radius: 9px; padding: 9px 16px; font-weight: 500; min-height: 40px; display: inline-flex; align-items: center; }
+.gv-ws .tm-views a:hover { color: var(--gv-text); background: var(--gv-soft); }
+.gv-ws .tm-views a[aria-current="page"], .gv-ws .tm-views a[aria-current="page"]:hover { background: var(--gv-dark); color: var(--gv-on-dark); font-weight: 600; }
+.gv-ws .tm-views a:focus-visible { outline: 3px solid rgba(25, 195, 125, 0.4); outline-offset: 2px; }
+
+/* Stats + standout */
+.gv-ws .tm-top { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 560px), 1fr)); gap: 16px; }
+.gv-ws .tm-stats { background: var(--gv-card); border: 1px solid var(--gv-border); border-radius: 16px; display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); overflow: hidden; }
+.gv-ws .tm-stat { padding: 20px 22px; display: flex; flex-direction: column; gap: 6px; border-left: 1px solid var(--gv-subtle); color: var(--gv-text); text-decoration: none; }
+.gv-ws .tm-stat:first-child { border-left: 0; }
+.gv-ws .tm-stat .k { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; color: var(--gv-muted); }
+.gv-ws .tm-stat .v { font-size: 34px; font-weight: 600; letter-spacing: -0.02em; line-height: 1; }
+.gv-ws .tm-stat .v small { font-size: 15px; font-weight: 500; color: var(--gv-muted); letter-spacing: 0; }
+.gv-ws .tm-stat .s { font-size: 12px; color: var(--gv-muted); }
+.gv-ws .tm-stat.ok { background: var(--gv-brand-surface); }
+.gv-ws .tm-stat.ok .k { color: var(--gv-brand-strong); }
+.gv-ws .tm-stat.warn { background: var(--gv-amber-bg); }
+.gv-ws .tm-stat.warn .k, .gv-ws .tm-stat.warn .v small, .gv-ws .tm-stat.warn .s { color: var(--gv-amber-text); }
+.gv-ws a.tm-stat:hover { color: var(--gv-text); box-shadow: inset 0 0 0 1px var(--gv-amber-border); }
+.gv-ws .tm-live { position: relative; width: 8px; height: 8px; border-radius: 50%; background: var(--gv-accent); flex: none; }
+.gv-ws .tm-live::after { content: ""; position: absolute; inset: -3px; border-radius: 50%; box-shadow: 0 0 0 2px var(--gv-accent); animation: tmRing 2.6s ease-out infinite; }
+.gv-ws .tm-cover { display: flex; gap: 3px; padding-top: 4px; }
+.gv-ws .tm-cover span { width: 14px; height: 6px; border-radius: 2px; background: transparent; box-shadow: inset 0 0 0 1px var(--gv-border-strong); }
+.gv-ws .tm-cover span.on { background: var(--dept); box-shadow: none; }
+
+/* Standout is a dark card in both themes */
+.gv-ws .tm-standout { background: #121212; color: #f4f4f1; border-radius: 16px; padding: 18px 20px; display: flex; align-items: center; gap: 18px; flex-wrap: wrap; }
+.dark .gv-ws .tm-standout { background: #050605; border: 1px solid var(--gv-border); }
+.gv-ws .tm-standout .body { display: flex; flex-direction: column; gap: 4px; flex: 1 1 200px; min-width: 0; }
+.gv-ws .tm-standout .eb { font-size: 11px; letter-spacing: 0.16em; color: #a9a8a2; }
+.gv-ws .tm-standout .nm { font-size: 18px; font-weight: 600; letter-spacing: -0.01em; color: #ffffff; }
+.gv-ws .tm-standout .sub { font-size: 13px; line-height: 1.45; color: #bdbcb6; }
+.gv-ws .tm-standout-ic { position: relative; width: 64px; height: 64px; flex: none; }
+.gv-ws .tm-standout-ic .ring { position: absolute; inset: 0; border-radius: 50%; box-shadow: 0 0 0 2px var(--dept, #19c37d); animation: tmRing 2.6s ease-out infinite; }
+.gv-ws .tm-standout-ic .face { position: absolute; inset: 0; border-radius: 50%; background: #ffffff; color: var(--dept-ink, #0b8a5c); display: flex; align-items: center; justify-content: center; animation: tmFloat 3.2s ease-in-out infinite; }
+.gv-ws .tm-standout-btn { flex: none; min-height: 44px; padding: 0 18px; border-radius: 10px; background: #ffffff; color: #141513; font-size: 14px; font-weight: 600; display: inline-flex; align-items: center; text-decoration: none; }
+.gv-ws .tm-standout-btn:hover { background: #ecece8; color: #141513; }
+.gv-ws .tm-blink { animation: tmBlink 1.6s ease-in-out infinite; }
+
+/* Hand off a job */
+.gv-ws .tm-handoff { background: var(--gv-card); border: 1px solid var(--gv-border); border-radius: 16px; padding: 14px; display: flex; flex-direction: column; gap: 12px; }
+.gv-ws .tm-handoff form { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+.gv-ws .tm-job { flex: 1 1 420px; min-width: 0; display: flex; align-items: center; gap: 12px; height: 52px; padding: 0 16px; background: var(--gv-soft); border: 1px solid var(--gv-subtle); border-radius: 12px; }
+.gv-ws .tm-job:focus-within { border-color: var(--gv-brand); box-shadow: 0 0 0 4px var(--gv-ring); }
+.gv-ws .tm-job input { flex: 1; min-width: 0; border: 0; outline: none; background: transparent; font: inherit; font-size: 15px; color: var(--gv-text); }
+.gv-ws .tm-job input::placeholder { color: var(--gv-faint); }
+@supports (-webkit-touch-callout: none) {
+  /* iOS zooms the page on focus below 16px; see the note in app/globals.css. */
+  .gv-ws .tm-job input { font-size: 16px; }
+}
+.gv-ws .tm-lock { display: flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--gv-muted); }
+.gv-ws .tm-go { height: 52px; padding: 0 22px; border: 0; border-radius: 12px; background: var(--gv-dark); color: var(--gv-on-dark); font: inherit; font-size: 15px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 8px; }
+.gv-ws .tm-go:focus-visible, .gv-ws .tm-idea:focus-visible, .gv-ws .tm-chip:focus-visible { outline: 3px solid rgba(25, 195, 125, 0.4); outline-offset: 2px; }
+.gv-ws .tm-ideas { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.gv-ws .tm-ideas .eb { font-size: 11px; letter-spacing: 0.12em; padding-right: 4px; }
+.gv-ws .tm-idea { min-height: 36px; padding: 0 12px 0 6px; border: 1px solid var(--gv-border); border-radius: 999px; background: var(--gv-card); font: inherit; font-size: 13px; color: var(--gv-text); cursor: pointer; display: flex; align-items: center; gap: 8px; transition: background 0.15s ease, border-color 0.15s ease; }
+.gv-ws .tm-idea:hover { background: var(--gv-soft); border-color: var(--gv-border-strong); }
+.gv-ws .tm-idea .dot { width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: var(--gv-card); color: var(--dept-ink); box-shadow: 0 0 0 1px var(--gv-border); }
+
+/* Crew: filters + grid */
+.gv-ws .tm-crew { display: flex; flex-direction: column; gap: 16px; padding-top: 4px; scroll-margin-top: 80px; }
+.gv-ws .tm-crew-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; }
+.gv-ws .tm-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.gv-ws .tm-chip { min-height: 40px; padding: 0 14px; border-radius: 999px; font: inherit; font-size: 14px; font-weight: 500; cursor: pointer; display: flex; align-items: center; gap: 8px; background: var(--gv-card); color: var(--gv-text); border: 1px solid var(--gv-border); }
+.gv-ws .tm-chip:hover { border-color: var(--gv-border-strong); }
+.gv-ws .tm-chip .ic { display: inline-flex; color: var(--dept-ink, var(--gv-text)); }
+.gv-ws .tm-chip .n { font-size: 12px; color: var(--gv-muted); }
+.gv-ws .tm-chip.on, .gv-ws .tm-chip.on:hover { background: var(--gv-dark); color: var(--gv-on-dark); border-color: var(--gv-dark); }
+.gv-ws .tm-chip.on .ic, .gv-ws .tm-chip.on .n { color: inherit; opacity: 0.85; }
+.gv-ws .tm-all { width: 8px; height: 8px; border-radius: 50%; background: var(--gv-accent); }
+.gv-ws .tm-find { display: flex; align-items: center; gap: 8px; height: 40px; padding: 0 12px; background: var(--gv-card); border: 1px solid var(--gv-border); border-radius: 10px; font-size: 14px; color: var(--gv-muted); flex: 0 1 260px; }
+.gv-ws .tm-find:focus-within { border-color: var(--gv-brand); box-shadow: 0 0 0 4px var(--gv-ring); }
+.gv-ws .tm-find input { flex: 1; min-width: 0; border: 0; outline: none; background: transparent; font: inherit; color: var(--gv-text); }
+@supports (-webkit-touch-callout: none) {
+  /* iOS zooms the page on focus below 16px; see the note in app/globals.css. */
+  .gv-ws .tm-find input { font-size: 16px; }
+}
+.gv-ws .tm-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr)); gap: 14px; }
+.gv-ws .tm-none { margin: 0; font-size: 14px; color: var(--gv-muted); }
+
+/* Agent card */
+.gv-ws .tm-card { background: var(--gv-card); border: 1px solid var(--gv-border); border-radius: 14px; padding: 18px; display: flex; flex-direction: column; gap: 14px; transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease; }
+.gv-ws .tm-card:hover { transform: translateY(-2px); box-shadow: 0 12px 28px rgba(20, 21, 19, 0.08); border-color: var(--gv-border-strong); }
+.gv-ws .tm-card-head { display: flex; align-items: center; gap: 12px; }
+.gv-ws .tm-ava { position: relative; width: 44px; height: 44px; flex: none; }
+.gv-ws .tm-ava .ring { position: absolute; inset: 0; border-radius: 50%; box-shadow: 0 0 0 2px var(--dept); animation: tmRing 2.6s ease-out infinite; }
+.gv-ws .tm-ava .face { position: absolute; inset: 0; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: var(--gv-card); color: var(--dept-ink, var(--gv-text)); box-shadow: 0 2px 8px rgba(20, 21, 19, 0.1), 0 0 0 1px var(--gv-border); }
+.gv-ws .tm-card .who { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; }
+.gv-ws .tm-card .nm { font-size: 15px; font-weight: 600; color: var(--gv-text); text-decoration: none; overflow-wrap: anywhere; }
+.gv-ws .tm-card .nm:hover { text-decoration: underline; color: var(--gv-text); }
+.gv-ws .tm-card .dept { font-size: 12px; color: var(--gv-muted); }
+.gv-ws .tm-pill { flex: none; display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 500; padding: 4px 9px; border-radius: 999px; }
+.gv-ws .tm-pill .d { width: 7px; height: 7px; border-radius: 50%; }
+.gv-ws .tm-pill.ok { background: var(--gv-brand-surface); color: var(--gv-brand-strong); }
+.gv-ws .tm-pill.ok .d { background: var(--gv-accent); }
+.gv-ws .tm-pill.busy, .gv-ws .tm-pill.warn { background: var(--gv-amber-bg); color: var(--gv-amber-text); }
+.gv-ws .tm-pill.busy .d, .gv-ws .tm-pill.warn .d { background: var(--gv-amber); }
+.gv-ws .tm-pill.off { background: var(--gv-soft); color: var(--gv-muted); }
+.gv-ws .tm-pill.off .d { background: var(--gv-border-strong); }
+.gv-ws .tm-blurb { margin: 0; font-size: 13.5px; line-height: 1.5; color: var(--gv-text-2); }
+.gv-ws .tm-blurb.none { color: var(--gv-faint); }
+.gv-ws .tm-now { background: var(--gv-soft); border: 1px solid var(--gv-subtle); border-radius: 10px; padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; font-size: 12.5px; color: var(--gv-text); text-decoration: none; }
+.gv-ws .tm-now b { font-weight: 600; }
+.gv-ws .tm-now .bar { position: relative; display: block; height: 4px; border-radius: 999px; background: var(--gv-border); overflow: hidden; }
+.gv-ws .tm-slide { position: absolute; top: 0; bottom: 0; left: 0; width: 38%; border-radius: 999px; background: var(--gv-amber); animation: tmSlide 1.8s ease-in-out infinite; }
+.gv-ws .tm-now.warn { background: var(--gv-amber-bg); border-color: var(--gv-amber-border); color: var(--gv-amber-text); }
+.gv-ws a.tm-now.warn:hover { color: var(--gv-amber-text); text-decoration: underline; }
+.gv-ws .tm-meta { display: flex; flex-direction: column; gap: 10px; margin-top: auto; }
+.gv-ws .tm-works { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.gv-ws .tm-meta .lbl { font-size: 11.5px; color: var(--gv-muted); padding-right: 2px; display: flex; align-items: center; gap: 6px; }
+.gv-ws .tm-level { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.gv-ws .tm-level .lbl { font-size: 12px; color: var(--gv-text-2); }
+.gv-ws .tm-level .segs { display: flex; gap: 3px; }
+.gv-ws .tm-level .segs span { width: 14px; height: 6px; border-radius: 2px; background: var(--gv-border); }
+.gv-ws .tm-level .segs span.on { background: var(--gv-text); }
+.gv-ws .tm-card-foot { display: flex; align-items: center; gap: 8px; padding-top: 12px; border-top: 1px solid var(--gv-subtle); }
+.gv-ws .tm-task { flex: 1; min-height: 36px; padding: 0 12px; border-radius: 9px; background: var(--gv-dark); font-size: 13px; font-weight: 600; color: var(--gv-on-dark); display: inline-flex; align-items: center; justify-content: center; text-decoration: none; }
+.gv-ws .tm-task:hover { color: var(--gv-on-dark); opacity: 0.9; }
+.gv-ws .tm-chat { width: 36px; height: 36px; border: 1px solid var(--gv-border); border-radius: 9px; background: var(--gv-card); color: var(--gv-text); display: inline-flex; align-items: center; justify-content: center; }
+.gv-ws .tm-chat:hover { border-color: var(--gv-border-strong); color: var(--gv-text); }
+
+/* Open seat */
+.gv-ws .tm-hire { border: 1.5px dashed var(--gv-border-strong); border-radius: 14px; padding: 18px; display: flex; flex-direction: column; align-items: flex-start; justify-content: center; gap: 12px; min-height: 280px; }
+.gv-ws .tm-hire .nm { font-size: 15px; font-weight: 600; color: var(--gv-text); }
+.gv-ws .tm-hire .sub { font-size: 13.5px; line-height: 1.5; color: var(--gv-muted); }
+.gv-ws .tm-browse { min-height: 36px; padding: 0 14px; border-radius: 9px; border: 1px solid var(--gv-border); background: var(--gv-card); color: var(--gv-text); font-size: 13px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; text-decoration: none; }
+.gv-ws .tm-browse:hover { border-color: var(--gv-border-strong); color: var(--gv-text); }
+
+@keyframes tmRing { 0% { opacity: 0.55; transform: scale(1); } 100% { opacity: 0; transform: scale(1.32); } }
+@keyframes tmSlide { 0% { transform: translateX(-110%); } 100% { transform: translateX(260%); } }
+@keyframes tmBlink { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
+@keyframes tmFloat { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
+@media (prefers-reduced-motion: reduce) {
+  .gv-ws .tm-live::after, .gv-ws .tm-ava .ring, .gv-ws .tm-standout-ic .ring, .gv-ws .tm-standout-ic .face, .gv-ws .tm-slide, .gv-ws .tm-blink { animation: none; }
+  .gv-ws .tm-card:hover { transform: none; }
+}

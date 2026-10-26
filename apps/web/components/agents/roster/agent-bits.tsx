@@ -13,6 +13,10 @@ export function agentHref(agentId: string): string {
   return `/agents/${encodeURIComponent(agentId)}`
 }
 
+export function agentChatHref(agentId: string): string {
+  return `/agents/${encodeURIComponent(agentId)}/chat`
+}
+
 export function newAgentHref(departmentLabel?: string): string {
   return departmentLabel ? `/agents/new?department=${encodeURIComponent(departmentLabel)}` : "/agents/new"
 }

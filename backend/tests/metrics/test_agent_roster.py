@@ -10,6 +10,7 @@ from app.metrics.agent_roster import (
     DAYS,
     agent_roster_cache,
     aggregate_agent_roster,
+    autonomy_level,
     blocked_reason,
     needs_approval_gate,
 )
@@ -110,6 +111,33 @@ def test_approval_gate_fails_closed_and_follows_policy():
     assert needs_approval_gate({"trust_level": "write_with_approval", "allowed_action_kinds": ["read"]}) is False
 
 
+def test_autonomy_level_follows_the_gate_and_fails_closed():
+    assert autonomy_level(None) == "write_with_approval"
+    assert autonomy_level({"trust_level": "read_only"}) == "read_only"
+    assert autonomy_level({"trust_level": "write_with_approval", "allowed_action_kinds": ["read"]}) == "read_only"
+    assert autonomy_level({"trust_level": "write_with_approval"}) == "write_with_approval"
+    assert autonomy_level({"trust_level": "autonomous"}) == "write_with_approval"
+    assert autonomy_level({"trust_level": "autonomous", "approval_rule_overrides": {"write": "auto_run"}}) == "autonomous"
+    body = _aggregate([], identities={"a1": {"trust_level": "read_only"}})
+    assert body["autonomy"] == {"a1": "read_only"}
+
+
+def test_current_task_is_the_newest_running_job_in_one_line():
+    body = _aggregate(
+        [
+            _job("running", NOW - timedelta(minutes=20), task="Older task"),
+            _job("running", NOW - timedelta(minutes=5), task="Draft a quote\nfor  Acme " + "x" * 120),
+            _job("completed", NOW - timedelta(minutes=1), task="Finished"),
+            _job("running", NOW - timedelta(minutes=5), agent="a2"),
+        ]
+    )
+    task = body["agents"]["a1"]["currentTask"]
+    assert task.startswith("Draft a quote for Acme x") and task.endswith("…") and len(task) == 90
+    assert body["agents"]["a2"]["currentTask"] is None
+    idle = _aggregate([_job("completed", NOW - timedelta(hours=1))])
+    assert idle["agents"]["a1"]["currentTask"] is None
+
+
 def test_goals_use_the_latest_plan_and_skip_closed_goals():
     body = _aggregate(
         [],
@@ -128,7 +156,7 @@ def test_goals_use_the_latest_plan_and_skip_closed_goals():
 
 def test_empty_org_reports_nothing_invented():
     body = _aggregate([])
-    assert body["agents"] == {} and body["goals"] == [] and body["approvalGate"] == {}
+    assert body["agents"] == {} and body["goals"] == [] and body["approvalGate"] == {} and body["autonomy"] == {}
 
 
 def _db(tables: dict[str, list[dict]]):
@@ -160,6 +188,7 @@ def test_route_returns_roster_and_caches_per_org(mock_create):
     body = res.json()
     assert body["agents"]["a1"]["tasksToday"] == 1
     assert body["approvalGate"] == {"a1": False}
+    assert body["autonomy"] == {"a1": "read_only"}
     assert body["goals"][0]["objective"] == "Grow signups"
     calls = db.table.call_count
     assert client.get("/api/metrics/agent-roster?tz=0").status_code == 200
