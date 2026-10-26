@@ -70,7 +70,7 @@ def _settings(raw: dict) -> dict:
             else "balanced",
             "description": DESCRIPTIONS[name],
             "behavior_wired": True,
-            "runtime_effect": "optional_evidence_presentation" if name != "adaptive" else "proactive_guidance_and_evidence_presentation",
+            "runtime_effect": "optional_enrichment_eligibility_and_evidence_threshold" if name != "adaptive" else "optional_enrichment_eligibility_guidance_and_evidence_threshold",
         }
         for name in CAPABILITY_NAMES
     }
