@@ -67,3 +67,19 @@ def test_optional_inference_routing_respects_explicit_vs_proactive():
     assert proactive["predictive"] is True
     assert select_enrichment_work({"requires_prediction": True}, {}, {"predictive": "conservative"})["predictive"]
     assert not select_enrichment_work(proposed, {"defer_optional": True}, {"predictive": "proactive"})["predictive"]
+
+
+def test_baseline_adaptive_evidence_remains_enabled_for_optional_requested_work():
+    from app.services.intelligence_overview_policy import select_enrichment_work
+    eligibility = select_enrichment_work(
+        {"requires_prediction": True, "requires_causal": True},
+        {"understanding": {"goal": "review"}},
+        {},
+    )
+    assert eligibility["adaptive"] is True
+    assert eligibility["predictive"] is True
+    assert eligibility["causal"] is True
+    deferred = select_enrichment_work(
+        {"requires_prediction": True}, {"defer_optional": True}, {},
+    )
+    assert not any(deferred.values())
