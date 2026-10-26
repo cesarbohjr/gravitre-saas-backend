@@ -47,7 +47,9 @@ def main() -> int:
             failing.append({"call": attempt, "error": "probe failed or returned invalid JSON",
                             "exit_code": proc.returncode})
         else:
-            runtime = response.get("runtime")\n            if not isinstance(runtime, dict):\n                runtime = {}
+            runtime = response.get("runtime")
+            if not isinstance(runtime, dict):
+                runtime = {}
             ok = (response.get("lifecycle_ready") is True
                   and response.get("missing") == []
                   and runtime.get("ready") is True
