@@ -31,6 +31,7 @@ import {
 } from "@/lib/settings-api/api-keys"
 import { SetArt, SetError, SetHeader, SetNote, SetSkeleton, formatDay } from "./settings-kit"
 import "./apikeys-settings.css"
+import { ApiKeysArt } from "@/components/dashboard/art/dashboard-art"
 
 type Pending = { kind: "revoke" | "rotate"; key: WorkspaceApiKey } | null
 
@@ -204,7 +205,7 @@ export function ApiKeysSettings({ isAdmin }: { isAdmin: boolean }) {
           <SetError message="Could not load API keys." onRetry={() => void mutate()} />
         ) : keys.length === 0 ? (
           <div className="apikeys-empty">
-            <SetArt name="settings-api-keys" ratio="320 / 200" />
+            <SetArt ratio="320 / 200"><ApiKeysArt /></SetArt>
             <div>
               <h4>No API keys yet</h4>
               <p>

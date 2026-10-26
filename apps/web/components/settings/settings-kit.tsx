@@ -188,22 +188,29 @@ export function SetNote({
   )
 }
 
-/** Illustration in the design's frame. `ratio` is width / height, e.g. "320 / 170". */
+/**
+ * Illustration in the design's frame. `ratio` is width / height, e.g. "320 / 170".
+ * Pass a static scene by `name`, or an animated art component as children.
+ */
 export function SetArt({
   name,
   ratio = "320 / 170",
   className,
   style,
+  children,
 }: {
-  name: string
+  name?: string
   ratio?: string
   className?: string
   style?: React.CSSProperties
+  children?: React.ReactNode
 }) {
   return (
-    <div className={cn("gs-art", className)} style={{ aspectRatio: ratio, ...style }}>
-      {/* eslint-disable-next-line @next/next/no-img-element -- static animated SVG scene */}
-      <img src={`/illustrations/${name}.svg`} alt="" aria-hidden loading="lazy" decoding="async" data-illustration={name} />
+    <div className={cn("gs-art", className)} style={{ aspectRatio: ratio, ...(children ? { position: "relative" } : null), ...style }}>
+      {children ?? (
+        // eslint-disable-next-line @next/next/no-img-element -- static animated SVG scene
+        <img src={`/illustrations/${name}.svg`} alt="" aria-hidden loading="lazy" decoding="async" data-illustration={name} />
+      )}
     </div>
   )
 }

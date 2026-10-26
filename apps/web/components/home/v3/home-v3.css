@@ -95,6 +95,9 @@
 .gv-home .gv-row { text-decoration: none; color: inherit; }
 .gv-home .gv-row:hover { background: var(--gv-hover); color: inherit; }
 .gv-home .gv-lift { transform: translateY(-6px); transition: transform .32s cubic-bezier(.22,1,.36,1); }
+/* Design eyebrows: the greeting and the report table head in spaced mono capitals. */
+.gv-home .gv-greet { letter-spacing: .12em; text-transform: uppercase; }
+.gv-home .gv-thead { letter-spacing: .08em; text-transform: uppercase; }
 .gv-home .gv-hero-art { position: relative; aspect-ratio: 520 / 340; min-height: 260px; }
 .gv-home .gv-hero-chips { position: absolute; left: 12px; right: 12px; bottom: 12px; display: flex; flex-wrap: wrap; gap: 6px; }
 .gv-home .gv-hero-chip { display: inline-flex; align-items: center; gap: 6px; min-width: 0; max-width: 100%; padding: 4px 10px; border-radius: 999px; background: rgba(255,255,255,.94); box-shadow: 0 1px 2px rgba(20,21,19,.08); font-size: 12px; color: #141513; white-space: nowrap; }

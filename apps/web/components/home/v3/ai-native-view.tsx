@@ -357,7 +357,7 @@ export function AiNativeView({
     <div data-dashboard-view="ai">
       <section style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 440px), 1fr))", gap: 40, alignItems: "center", padding: "48px 0 32px" }}>
         <div className="gv-rise">
-          <div className="gv-mono" style={{ fontSize: 11, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--gv-muted)", marginBottom: 18 }}>
+          <div className="gv-mono gv-greet" style={{ fontSize: 11, color: "var(--gv-muted)", marginBottom: 18 }}>
             {greeting()}
             {name ? `, ${name}` : ""}
           </div>

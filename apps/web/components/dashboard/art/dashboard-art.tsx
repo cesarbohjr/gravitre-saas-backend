@@ -361,7 +361,7 @@ export function ApiKeysArt({ label }: { label?: string }) {
       <path d="M60 70 l2.6 6.4 6.4 2.6 -6.4 2.6 -2.6 6.4 -2.6 -6.4 -6.4 -2.6 6.4 -2.6z" fill="#C9A24B" className="g-twinkle" />
       <g className="g-float">
         <rect x="56" y="104" width="62" height="24" rx="12" fill="#FBF8F1" stroke="#CFC6B6" />
-        <text x="87" y="120" textAnchor="middle" fontSize="11" fontFamily="Geist Mono, monospace" fill="#55564F">{ }</text>
+        <text x="87" y="120" textAnchor="middle" fontSize="11" fontFamily="Geist Mono, monospace" fill="#55564F">{"{ }"}</text>
       </g>
     </ArtFrame>
   )

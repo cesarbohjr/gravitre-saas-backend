@@ -131,3 +131,9 @@
 .gv-ws .ov-page.dash .au-more { font-size: 11.5px; padding-left: 12px; }
 .gv-ws .ov-page.dash .dash-card-art { position: relative; height: 228px; overflow: hidden; border-bottom: 1px solid var(--ov-art-border); background: #e7ece3; }
 .gv-ws .ov-page.dash .dash-card-art svg { display: block; width: 100%; height: 100%; }
+
+/* iOS zooms into fields under 16px; keep the toolbar fields at 16px there. */
+@supports (-webkit-touch-callout: none) {
+  .gv-ws .ov-page.dash .pl-bar .ov-search input,
+  .gv-ws .ov-page.dash .pl-flt select { font-size: 16px; }
+}

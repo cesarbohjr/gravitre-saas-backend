@@ -15,6 +15,7 @@ import {
 import { pageSlice } from "@/lib/settings-api/lite"
 import { SetArt, SetError, SetIco, SetPager, SetPill, SetSkeleton, SetSwitch } from "./settings-kit"
 import "./billing.css"
+import { BillingArt } from "@/components/dashboard/art/dashboard-art"
 
 export function BillingPlanCard({
   loading,
@@ -292,7 +293,7 @@ export function BillingPaymentCard({
   const expiry = card ? cardExpiry(card) : null
   return (
     <section className="gs-card clip bl-pay" aria-label="Payment method">
-      <SetArt name="settings-billing" ratio="320 / 170" />
+      <SetArt ratio="320 / 170"><BillingArt /></SetArt>
       <div className="bl-pay-body">
         <h3>Payment method</h3>
         {loading && !card ? (
