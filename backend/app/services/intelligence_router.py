@@ -230,7 +230,7 @@ class IntelligenceRouter:
             return wrapped
 
         model_selection = await self._model_selector.select(org_id, classification)
-        enrichments = await self._run_enrichments(org_id, request, classification, context)
+        enrichments = await self._run_enrichments(org_id, request, classification, {**context, "overview_policy": overview_policy})
         enrichments["policy_modes"] = overview_policy
         if (context.get("external_context") or {}).get("findings"):
             enrichments = {**enrichments, "web": context["external_context"]}
@@ -348,6 +348,8 @@ class IntelligenceRouter:
         classification: dict[str, Any],
         context: dict[str, Any],
     ) -> dict[str, Any]:
+        from app.services.intelligence_overview_policy import select_enrichment_work
+        eligible = select_enrichment_work(classification, context, context.get("overview_policy") or {})
         tasks: dict[str, Any] = {}
         deferred = context.get("defer_optional") is True
         # Same extension point is used by live text and voice through the chat
@@ -356,11 +358,11 @@ class IntelligenceRouter:
         model_inputs = context.get("catalog_model_inputs")
         if isinstance(model_inputs, dict) and not deferred:
             tasks["models"] = self._run_catalog_capabilities(org_id, model_inputs)
-        if classification.get("requires_prediction") and not deferred:
+        if eligible["predictive"]:
             tasks["prediction"] = self._get_predictions(org_id, classification)
-        if classification.get("requires_causal") and not deferred:
+        if eligible["causal"]:
             tasks["causal"] = self._get_causal_analysis(org_id, request)
-        if classification.get("requires_graph") and not context.get("graph_context") and not deferred:
+        if eligible["relational"] and not context.get("graph_context"):
             entity_type = classification.get("entity_type") or "unknown"
             entity_id = classification.get("entity_id") or "unknown"
             if entity_type != "unknown" and entity_id != "unknown":
@@ -375,7 +377,7 @@ class IntelligenceRouter:
                 # entity ID from a name or abandoning normal relationship turns.
                 tasks["graph"] = self._get_relational_context(org_id, request)
         adaptive_relevant = bool(context.get("retrieval_plan") or tasks or classification.get("department"))
-        if adaptive_relevant and not deferred:
+        if eligible["adaptive"] and adaptive_relevant:
             tasks["adaptive"] = self._get_adaptive_context(org_id, classification)
 
         async def bounded(awaitable: Any) -> dict[str, Any]:
