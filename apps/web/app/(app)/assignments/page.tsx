@@ -6,6 +6,7 @@ import useSWR from "swr"
 import { List, Plus } from "lucide-react"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { WsPage } from "@/components/workspace/ws-page"
+import { WsArt } from "@/components/workspace/ws-art"
 import { type DemoAssignment } from "@/lib/demo-assignments"
 import { ASSIGNMENTS_REFRESH_KEY, fetchAssignmentList } from "@/lib/assignments-list"
 import { useWorkPageShortcut } from "@/hooks/use-work-page-shortcut"
@@ -187,8 +188,13 @@ export default function AssignmentsPage() {
         )}
 
         <section className="gv-card asg-feature" aria-labelledby="asg-feature-title">
-          {/* eslint-disable-next-line @next/next/no-img-element -- static library illustration */}
-          <img src="/illustrations/feature-assignment-workflow.svg" alt="" data-illustration="feature-assignment-workflow" />
+          <WsArt
+            className="asg-feature-art"
+            src="/illustrations/ws-assignments-to-workflow.svg"
+            alt="A person at a monitor with gears turning above"
+            status="Runs once"
+            tone="grey"
+          />
           <div className="asg-feature-body">
             <div className="gv-eyebrow">Doing this again?</div>
             <h2 id="asg-feature-title">Turn an assignment into a workflow</h2>

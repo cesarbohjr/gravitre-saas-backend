@@ -234,18 +234,12 @@ export const SURFACE_COPY = {
       title: "Reports",
       eyebrow: "Understand / Reports",
       description:
-        "Saved views of your intelligence, built from live data. Save them, and trace any number back to its source.",
+        "Saved views of your intelligence, built from live data. Share them, schedule them, and trace any number back to its source.",
     },
     predictive: {
       title: "Forecasts",
       description:
         "Risks and opportunities Gravitre expects next, how sure it is, and why. Nothing changes until you act on one.",
-    },
-    accounts: {
-      title: "Accounts",
-      eyebrow: "Understand / Accounts",
-      description:
-        "How each customer account is doing, judged from what customers say and do, with the evidence quoted. Nothing changes until you act on it.",
     },
     assignments: {
       title: "Assignments",

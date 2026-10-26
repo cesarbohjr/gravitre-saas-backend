@@ -17,11 +17,12 @@ import {
   CurrencyDollar,
   Lightbulb,
   Play,
+  ShareNetwork,
   Sparkle,
 } from "@phosphor-icons/react"
 import { Button } from "@/components/ui/button"
 import { CertaintyMarker } from "@/components/intelligence/impact/certainty"
-import { formatHours, formatUsd } from "@/components/intelligence/impact/impact-model"
+import { formatHours } from "@/components/intelligence/impact/impact-model"
 import {
   FEED_FILTERS,
   READINESS_TIERS,
@@ -33,6 +34,7 @@ import {
   type FeedItem,
   type FeedKind,
   type GlanceCard,
+  formatMoneyCompact,
 } from "@/components/intelligence/overview/overview-model"
 import type { PromotionCandidate } from "@/lib/api"
 import type { Connector } from "@/types/api"
@@ -150,12 +152,23 @@ const GLANCE_ICON: Record<GlanceCard["id"], { icon: ReactNode; tile: string }> =
 
 function glanceValue(card: GlanceCard): string | null {
   if (card.value == null) return null
-  if (card.id === "revenue") return formatUsd(card.value)
+  if (card.id === "revenue") return formatMoneyCompact(card.value, card.currency)
   if (card.id === "hours") return card.value === 0 ? "0 hrs" : `≈ ${formatHours(card.value).replace(" h", " hrs")}`
   return card.value.toLocaleString("en-US")
 }
 
-export function AtAGlance({ cards, loading, phrase }: { cards: GlanceCard[]; loading: boolean; phrase: string }) {
+export function AtAGlance({
+  cards,
+  loading,
+  phrase,
+  onOpenEvidence,
+}: {
+  cards: GlanceCard[]
+  loading: boolean
+  phrase: string
+  /** Opens the records behind a card that has evidence (Revenue opportunities). */
+  onOpenEvidence?: (id: GlanceCard["id"]) => void
+}) {
   return (
     <section aria-labelledby="overview-glance-heading" className="space-y-3">
       <div>
@@ -163,7 +176,7 @@ export function AtAGlance({ cards, loading, phrase }: { cards: GlanceCard[]; loa
           At a glance
         </h2>
         <p className="mt-0.5 text-[13px] text-[color:var(--g-text-secondary)]">
-          Results {phrase}, and what is worth knowing right now.
+          {phrase.charAt(0).toUpperCase() + phrase.slice(1)}&apos;s results, and the three things worth knowing right now.
         </p>
       </div>
       <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
@@ -183,10 +196,21 @@ export function AtAGlance({ cards, loading, phrase }: { cards: GlanceCard[]; loa
                 {value && !loading ? value : <Dash loading={loading} />}
               </span>
               <span className="text-[12.5px] leading-snug text-[color:var(--g-text-secondary)]">{card.hint}</span>
-              <Link href={card.link.href} className={cn(GREEN_LINK, "mt-auto text-[12.5px]")}>
-                {card.link.label}
-                <ArrowRight className="h-3 w-3" weight="bold" aria-hidden />
-              </Link>
+              {card.evidence && onOpenEvidence ? (
+                <button
+                  type="button"
+                  onClick={() => onOpenEvidence(card.id)}
+                  className={cn(GREEN_LINK, "mt-auto self-start text-left text-[12.5px]")}
+                >
+                  {card.link.label}
+                  <ArrowRight className="h-3 w-3" weight="bold" aria-hidden />
+                </button>
+              ) : (
+                <Link href={card.link.href} className={cn(GREEN_LINK, "mt-auto text-[12.5px]")}>
+                  {card.link.label}
+                  <ArrowRight className="h-3 w-3" weight="bold" aria-hidden />
+                </Link>
+              )}
             </li>
           )
         })}
@@ -591,12 +615,15 @@ export function RecentActivity({
   loading,
   onDismiss,
   onSelect,
+  onShare,
   id,
 }: {
   items: FeedItem[]
   loading: boolean
   onDismiss?: (cardId: string) => void
   onSelect?: (item: FeedItem) => void
+  /** Opens "Share this finding" for an insight or suggestion. */
+  onShare?: (item: FeedItem) => void
   id?: string
 }) {
   const [filter, setFilter] = useState<FeedKind | "all">("all")
@@ -688,6 +715,17 @@ export function RecentActivity({
                     <Button asChild variant="outline" size="sm" className="h-8 rounded-[9px] px-3 text-[12.5px]">
                       <Link href={item.href}>{item.actionLabel}</Link>
                     </Button>
+                    {onShare && (item.kind === "insight" || item.kind === "recommendation") ? (
+                      <button
+                        type="button"
+                        onClick={() => onShare(item)}
+                        aria-label={`Share ${item.title}`}
+                        className="inline-flex items-center gap-1 text-[12px] text-[color:var(--g-text-muted)] underline-offset-2 hover:text-[color:var(--g-text-primary)] hover:underline"
+                      >
+                        <ShareNetwork className="h-3.5 w-3.5" aria-hidden />
+                        Share
+                      </button>
+                    ) : null}
                     {item.cardId && onDismiss ? (
                       <button
                         type="button"

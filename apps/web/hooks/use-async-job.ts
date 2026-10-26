@@ -54,6 +54,12 @@ export interface AgentJob {
   attempts: number
   createdAt: string
   finishedAt: string | null
+  /** Goal this assignment counts toward, when it was created with one. */
+  goalId?: string | null
+  /** Failed tool calls on a finished job (GET /api/agent-jobs/{id}). */
+  failedStepCount?: number
+  /** Whether this deployment can link jobs to goals. */
+  goalLinksEnabled?: boolean
 }
 
 interface UseAsyncJobOptions {

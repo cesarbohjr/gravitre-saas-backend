@@ -148,7 +148,12 @@ async def get_job_status(
     job = jobs.get_job(_client(settings), org_id, job_id)
     if not job:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Job not found")
-    return _public(job)
+    _ok, failed = jobs.split_tool_calls(job)
+    return {
+        **_public(job),
+        "failedStepCount": len(failed),
+        "goalLinksEnabled": getattr(settings, "goal_links_enabled", False) is True,
+    }
 
 
 @router.post("/{job_id}/pause")
@@ -226,6 +231,71 @@ def retry(
             status_code=status.HTTP_409_CONFLICT,
             detail="Job not found or not retryable (must be failed/cancelled)",
         )
+    return _public(job)
+
+
+class LinkGoalRequest(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
+    goal_id: str | None = Field(default=None, alias="goalId")
+
+
+@router.post("/{job_id}/retry-failed", status_code=status.HTTP_202_ACCEPTED)
+async def retry_failed(
+    job_id: str,
+    current_user: Annotated[dict, Depends(get_current_user)],
+    org_id: Annotated[str | None, Depends(get_org_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict[str, Any]:
+    """Queue a new job that redoes only this job's failed steps; returns the new job."""
+    if org_id is None:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
+    job = jobs.retry_failed_steps(_client(settings), org_id, job_id, created_by=current_user.get("user_id"))
+    if not job:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Nothing to retry: the job is still running or no step failed",
+        )
+    from app.workers.queue import enqueue_agent_execution_job
+
+    try:
+        await enqueue_agent_execution_job(job["id"])
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("agent job enqueue failed job_id=%s error=%s", job.get("id"), str(exc))
+    return {**_public(job), "retryOf": job_id}
+
+
+@router.patch("/{job_id}/goal")
+def link_goal(
+    job_id: str,
+    body: LinkGoalRequest,
+    current_user: Annotated[dict, Depends(get_current_user)],
+    org_id: Annotated[str | None, Depends(get_org_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict[str, Any]:
+    """Link this job to a goal (its work then counts toward the goal), or unlink with null."""
+    if org_id is None:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
+    if getattr(settings, "goal_links_enabled", False) is not True:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Goal links are not enabled")
+    client = _client(settings)
+    goal_id = (body.goal_id or "").strip() or None
+    if goal_id and not client.table("goals").select("id").eq("org_id", org_id).eq("id", goal_id).limit(1).execute().data:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="goal not found")
+    job = jobs.link_job_goal(client, org_id, job_id, goal_id)
+    if not job:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Job not found")
+    from app.workflows.audit import write_audit_event
+
+    write_audit_event(
+        client,
+        org_id=org_id,
+        actor_id=str(current_user.get("user_id") or ""),
+        action="agent_job.goal_linked" if goal_id else "agent_job.goal_unlinked",
+        resource_type="agent_job",
+        resource_id=job_id,
+        metadata={"goal_id": goal_id},
+    )
     return _public(job)
 
 

@@ -5,7 +5,7 @@
  * the evidence trail behind the latest outcome, saved views and scheduled reports.
  * Every number comes from the canonical snapshot, agent ROI, connectors or audit APIs.
  */
-import { useMemo } from "react"
+import { useMemo, type Ref } from "react"
 import useSWR from "swr"
 import { EvidenceTrail } from "@/components/intelligence/reports/evidence-trail"
 import {
@@ -56,10 +56,13 @@ export function ReportsStage({
   periodDays,
   onPeriodChange,
   savedViews,
+  savedViewsLoading = false,
+  savedViewsError = null,
   canSave,
   onSaveView,
   onLoadView,
   onRemoveView,
+  scheduleRef,
 }: {
   pageContext?: IntelligencePageContextResponse | null
   loadState: SnapshotLoadState
@@ -72,10 +75,13 @@ export function ReportsStage({
   periodDays: ReportPeriodDays
   onPeriodChange: (days: ReportPeriodDays) => void
   savedViews: SavedIntelligenceView[]
+  savedViewsLoading?: boolean
+  savedViewsError?: string | null
   canSave: boolean
   onSaveView: () => void
   onLoadView: (view: SavedIntelligenceView) => void
   onRemoveView: (id: string) => void
+  scheduleRef?: Ref<HTMLElement>
 }) {
   const metricsReady = isSnapshotMetricsReady(loadState)
   const snapshotLoading = loadState === "LOADING" || loadState === "UNINITIALIZED"
@@ -230,13 +236,21 @@ export function ReportsStage({
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <SavedViewsPanel
           views={savedViews}
+          loading={savedViewsLoading}
+          error={savedViewsError}
           currentLabel={`${templateLabel} · ${periodDays} days`}
           canSave={canSave}
           onSave={onSaveView}
           onLoad={onLoadView}
           onRemove={onRemoveView}
         />
-        <ScheduledReportsPanel templateLabel={templateLabel} />
+        <ScheduledReportsPanel
+          ref={scheduleRef}
+          enabled={enabled}
+          templateId={template}
+          templateLabel={templateLabel}
+          periodDays={periodDays}
+        />
       </div>
     </div>
   )

@@ -2113,6 +2113,10 @@ export interface MarketplaceAssetSummary {
   installCount?: number
   publishedAt?: string | null
   installId?: string | null
+  /** Installed listings: "running" while one of its agents or workflows has work in flight. */
+  runState?: "running" | "idle" | null
+  activeRunCount?: number
+  lastRunAt?: string | null
   /** Workflow bindings that block install until someone reviews them. */
   installReadyErrors?: Array<{ message?: string; code?: string } & Record<string, unknown>>
   manualSetupRequired?: Array<{ connector: string; reason: string }>

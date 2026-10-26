@@ -85,6 +85,8 @@ from app.routers import (
     ml_admin,
     ai_architecture_admin,
     intelligence_engine,
+    intelligence_reports,
+    intelligence_findings,
     intelligence_packs_plumbing,
     intelligence_visibility,
     intelligence_overview,
@@ -855,6 +857,8 @@ app.include_router(llm_models.router)
 app.include_router(ml_admin.router)
 app.include_router(ai_architecture_admin.router)
 app.include_router(intelligence_engine.router)
+app.include_router(intelligence_reports.router)
+app.include_router(intelligence_findings.router)
 app.include_router(intelligence_packs_plumbing.router)
 app.include_router(intelligence_visibility.router)
 app.include_router(intelligence_overview.router)

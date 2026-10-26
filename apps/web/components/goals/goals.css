@@ -96,3 +96,5 @@
 .gv-ws .gv-goals-alert { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; padding: 14px 16px; border-color: var(--gv-red-border); background: var(--gv-red-soft); color: var(--gv-red-text); font-size: 14px; margin-top: 16px; }
 .gv-ws .gv-goals-empty { padding: 28px; display: flex; gap: 24px; align-items: center; flex-wrap: wrap; }
 .gv-ws .gv-goals-empty img { width: 220px; max-width: 100%; height: auto; border-radius: 12px; }
+.gv-ws .gv-goals-art.gv-art { border-radius: 16px; aspect-ratio: 640 / 220; }
+.gv-ws .gv-tpl .gv-art { border: 0; border-radius: 0; aspect-ratio: 420 / 260; }

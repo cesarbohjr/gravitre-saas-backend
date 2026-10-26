@@ -18,7 +18,7 @@ export const GOAL_DEPARTMENTS = [
 export type GoalDepartmentId = (typeof GOAL_DEPARTMENTS)[number]["id"]
 
 export const GOAL_PRIORITIES = ["low", "medium", "high", "urgent"] as const
-export const GOAL_CADENCES = ["once", "weekly", "monthly", "ongoing"] as const
+export const GOAL_CADENCES = ["once", "daily", "weekly", "monthly", "ongoing"] as const
 
 export const GOAL_STATUS_TABS: Array<{
   id: GoalStatus
@@ -319,6 +319,8 @@ export interface GoalTemplate {
   department: GoalDepartmentId
   objective: string
   metric: string
+  /** How often the goal runs; a goal created from the template starts with it. */
+  frequency: (typeof GOAL_CADENCES)[number]
   illustration: "goal-template-marketing" | "goal-template-finance" | "goal-template-support"
 }
 
@@ -329,6 +331,7 @@ export const GOAL_TEMPLATES: GoalTemplate[] = [
     department: "marketing",
     objective: "Grow qualified signups from content",
     metric: "Qualified signups from content",
+    frequency: "weekly",
     illustration: "goal-template-marketing",
   },
   {
@@ -336,6 +339,7 @@ export const GOAL_TEMPLATES: GoalTemplate[] = [
     department: "finance",
     objective: "Reduce overdue invoices",
     metric: "Overdue invoices",
+    frequency: "daily",
     illustration: "goal-template-finance",
   },
   {
@@ -343,6 +347,7 @@ export const GOAL_TEMPLATES: GoalTemplate[] = [
     department: "support",
     objective: "Answer every ticket within one business day",
     metric: "Tickets answered within one business day",
+    frequency: "ongoing",
     illustration: "goal-template-support",
   },
 ]

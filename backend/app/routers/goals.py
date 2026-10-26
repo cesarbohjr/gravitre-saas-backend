@@ -404,6 +404,16 @@ def create_goal_route(
     return {"goal": goal}
 
 
+@router.get("/templates")
+def list_goal_templates_route(
+    _user: Annotated[dict, Depends(get_current_user)],
+) -> dict[str, Any]:
+    """Goal templates with their cadence (once, daily, weekly, monthly, ongoing)."""
+    from app.services.goal_templates import list_goal_templates
+
+    return {"templates": list_goal_templates()}
+
+
 @router.get("/{goal_id}/linked-progress")
 def goal_linked_progress_route(
     goal_id: str,

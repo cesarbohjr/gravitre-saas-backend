@@ -174,6 +174,7 @@ def aggregate_agent_roster(
                 "priority": goal.get("priority"),
                 "connectedSystems": [str(s) for s in (goal.get("connected_systems") or [])],
                 "agentIds": [str(a) for a in (required or [])],
+                "successMetrics": goal.get("success_metrics") if isinstance(goal.get("success_metrics"), dict) else {},
             }
         )
 
@@ -219,7 +220,7 @@ def build_agent_roster(client: Any, org_id: str, tz_offset_min: int = 0) -> dict
     identities = {str(r["agent_id"]): r for r in identity_rows if r.get("agent_id")}
     goals = _rows(
         lambda: client.table("goals")
-        .select("id,objective,status,department,priority,connected_systems,created_at")
+        .select("id,objective,status,department,priority,connected_systems,success_metrics,created_at")
         .eq("org_id", org_id).order("id")
     )
     plans = _rows(

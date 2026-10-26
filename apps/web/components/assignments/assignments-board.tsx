@@ -12,6 +12,7 @@ import { avatarGradient, createAssignment } from "@/lib/assignments"
 import type { DemoAssignment } from "@/lib/demo-assignments"
 import { collectInstalledAgentIds, resolveDefaultAgentId } from "@/lib/resolve-default-agent"
 import { shortDate } from "@/lib/assignment-signals"
+import { WsArt } from "@/components/workspace/ws-art"
 
 export type LaneId = "queued" | "running" | "waiting" | "delivered"
 
@@ -282,8 +283,12 @@ export function BoardLanes({ byLane }: { byLane: Map<LaneId, DemoAssignment[]> }
               </ul>
             ) : lane.id === "running" ? (
               <div className="asg-lane-illus">
-                {/* eslint-disable-next-line @next/next/no-img-element -- static library illustration */}
-                <img src="/illustrations/moment-paused-agents.svg" alt="" data-illustration="moment-paused-agents" />
+                <WsArt
+                  src="/illustrations/ws-assignments-paused-stack.svg"
+                  alt="Three paused agent cards resting in a stack"
+                  status="0 executing"
+                  tone="grey"
+                />
                 <div className="asg-lane-illus-title">No agent working</div>
                 <div className="asg-lane-illus-body">Describe a job above and it starts here, live.</div>
               </div>

@@ -218,3 +218,29 @@
 @keyframes gvWsRise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
 @media (prefers-reduced-motion: reduce) { .gv-ws *, .gv-ws *::before, .gv-ws *::after { animation: none !important; transition: none !important; } }
 .dark .gv-ws img[data-illustration] { opacity: 0.9; }
+
+/* Illustration tile with a live status chip (Workspace 2026 designs). */
+.gv-ws .gv-art { position: relative; display: block; overflow: hidden; isolation: isolate; border-radius: 12px; border: 1px solid var(--gv-border); background: var(--gv-paper-soft); }
+.gv-ws .gv-art > img { display: block; width: 100%; height: 100%; object-fit: cover; animation: gvWsKb 18s ease-in-out infinite alternate; transform-origin: 50% 55%; }
+.gv-ws .gv-live { position: absolute; left: 10px; bottom: 10px; z-index: 2; display: inline-flex; align-items: center; gap: 7px; min-height: 28px; max-width: calc(100% - 20px); padding: 0 10px; border-radius: 999px; border: 1px solid rgba(20, 21, 19, 0.08); background: rgba(255, 255, 255, 0.92); backdrop-filter: blur(6px); font-size: 12px; font-weight: 500; line-height: 1; color: #141513; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; box-shadow: 0 6px 16px -10px rgba(20, 22, 21, 0.35); }
+.gv-ws .gv-live .gv-ldot { width: 7px; height: 7px; border-radius: 50%; flex: 0 0 auto; background: var(--st, var(--gv-accent)); }
+.gv-ws .gv-live.amber { --st: var(--gv-amber); }
+.gv-ws .gv-live.red { --st: var(--gv-red); }
+.gv-ws .gv-live.grey { --st: var(--gv-border-strong); }
+@keyframes gvWsKb { from { transform: scale(1); } to { transform: scale(1.045); } }
+
+/* Stat tabs: a row of counts that switch the list below. */
+.gv-ws .gv-tabs { display: flex; flex-wrap: wrap; overflow: hidden; }
+.gv-ws .gv-tab { display: flex; align-items: baseline; gap: 10px; padding: 16px 20px; font: inherit; font-size: 15px; color: var(--gv-muted); text-decoration: none; border: 0; border-top: 3px solid transparent; flex: 1 1 0; min-width: 160px; background: var(--gv-paper-soft); cursor: pointer; text-align: left; }
+.gv-ws .gv-tab .n { font-size: 28px; font-weight: 600; color: var(--gv-text); }
+.gv-ws .gv-tab:hover { background: var(--gv-card); color: var(--gv-text); }
+.gv-ws .gv-tab[aria-pressed="true"] { color: var(--gv-text); background: var(--gv-card); border-top-color: var(--gv-amber); }
+.gv-ws .gv-tab.sla { border-top-color: var(--gv-red); }
+.gv-ws .gv-tab.sla .n { color: var(--gv-red-text); }
+.gv-ws .gv-tab:focus-visible { outline: 3px solid rgba(25, 195, 125, 0.4); outline-offset: -3px; }
+
+/* Selectable list card. */
+.gv-ws .gv-item { display: block; width: 100%; text-align: left; font: inherit; text-decoration: none; color: var(--gv-text); border: 1px solid var(--gv-border); border-radius: 12px; padding: 14px 16px; background: var(--gv-card); cursor: pointer; }
+.gv-ws .gv-item:hover { color: var(--gv-text); border-color: var(--gv-border-strong); }
+.gv-ws .gv-item[aria-current="true"] { border-color: var(--gv-amber); box-shadow: inset 3px 0 0 var(--gv-amber); background: var(--gv-amber-bg); }
+.gv-ws .gv-item:focus-visible { outline: 3px solid rgba(25, 195, 125, 0.4); outline-offset: 2px; }

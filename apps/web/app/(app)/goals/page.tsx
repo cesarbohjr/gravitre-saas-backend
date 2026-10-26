@@ -7,6 +7,8 @@ import { toast } from "@/components/agents/overlays/toast"
 import { LayoutList, Plus, RefreshCw, Search, SquareKanban } from "lucide-react"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { WsPage } from "@/components/workspace/ws-page"
+import { WsArt } from "@/components/workspace/ws-art"
+import { useWorkforce } from "@/hooks/use-workforce"
 import { GoalWorkflowWizard } from "@/components/gravitre/goal-workflow-wizard"
 import { GoalBoardCard, GoalCard } from "@/components/goals/goal-card"
 import { apiFetch } from "@/lib/fetcher"
@@ -29,6 +31,17 @@ import {
 } from "@/lib/goal-insights"
 import { cn } from "@/lib/utils"
 import "@/components/goals/goals.css"
+import type { AgentDepartmentId } from "@/components/agents/fleet-v4/types"
+
+/** Goal departments mapped to the roster's departments, for template agent counts. */
+const TEMPLATE_ROSTER_DEPT: Partial<Record<GoalTemplate["department"], AgentDepartmentId>> = {
+  sales: "sales",
+  marketing: "marketing",
+  support: "customer_success",
+  operations: "operations",
+  finance: "finance",
+  engineering: "engineering",
+}
 
 type Tab = GoalStatus | "unreported"
 type Sort = "recent" | "due" | "priority"
@@ -46,6 +59,25 @@ function dueTime(goal: GoalRecord): number {
   return Number.isFinite(t) ? t : Number.POSITIVE_INFINITY
 }
 
+const CADENCE_LABEL: Record<string, string> = {
+  once: "one time",
+  daily: "daily",
+  weekly: "weekly",
+  monthly: "monthly",
+  ongoing: "always on",
+}
+
+const TEMPLATE_ART = new Set(GOAL_TEMPLATES.map((t) => t.illustration))
+
+async function fetchGoalTemplates(): Promise<GoalTemplate[]> {
+  const response = await apiFetch("/api/goals/templates")
+  if (!response.ok) return []
+  const body = (await response.json()) as { templates?: Partial<GoalTemplate>[] }
+  return (body.templates ?? [])
+    .filter((t): t is GoalTemplate => Boolean(t.id && t.objective && t.department))
+    .map((t) => ({ ...t, illustration: TEMPLATE_ART.has(t.illustration) ? t.illustration : "goal-template-marketing" }))
+}
+
 export default function GoalsPage() {
   const [search, setSearch] = useState("")
   const [department, setDepartment] = useState("")
@@ -53,6 +85,23 @@ export default function GoalsPage() {
   const [view, setView] = useState<"list" | "board">("list")
   const [picked, setPicked] = useState<Tab | null>(null)
   const [wizardOpen, setWizardOpen] = useState(false)
+  const workforce = useWorkforce()
+  // Templates and their cadence come from GET /api/goals/templates; the built-in list is the fallback.
+  const { data: templateData } = useSWR("goal-templates", fetchGoalTemplates, { revalidateOnFocus: false })
+  const templates = templateData?.length ? templateData : GOAL_TEMPLATES
+  /** Real agent count for a template's department and its cadence, e.g. "3 Marketing agents · weekly". */
+  const templateChip = (t: GoalTemplate) => {
+    const roster = TEMPLATE_ROSTER_DEPT[t.department]
+    const n = roster ? workforce.byDepartment(roster) : null
+    const cadence = t.frequency ? CADENCE_LABEL[t.frequency] ?? t.frequency : null
+    const agents =
+      n == null
+        ? null
+        : n === 0
+          ? `No ${departmentLabel(t.department)} agents yet`
+          : `${n} ${departmentLabel(t.department)} ${n === 1 ? "agent" : "agents"}`
+    return [agents, cadence].filter(Boolean).join(" · ") || null
+  }
   const [editing, setEditing] = useState<GoalRecord | null>(null)
   const [template, setTemplate] = useState<GoalTemplate | null>(null)
   const { data, error, isLoading, isValidating, mutate } = useSWR(
@@ -181,10 +230,19 @@ export default function GoalsPage() {
             </div>
           </div>
           <div className="gv-rise gv-hide-sm" style={{ animationDelay: "120ms" }}>
-            <div className="gv-card gv-goals-art">
-              {/* eslint-disable-next-line @next/next/no-img-element -- static SVG scene */}
-              <img src="/illustrations/header-goals-office.svg" alt="" data-illustration="header-goals-office" />
-            </div>
+            <WsArt
+              className="gv-card gv-goals-art"
+              src="/illustrations/header-goals-office.svg"
+              alt="Three colleagues working in a bright office"
+              status={
+                workforce.working == null
+                  ? null
+                  : workforce.working === 0
+                    ? "No agent working right now"
+                    : `${workforce.working} ${workforce.working === 1 ? "agent" : "agents"} working`
+              }
+              tone={workforce.working ? "green" : "grey"}
+            />
           </div>
         </section>
 
@@ -400,15 +458,14 @@ export default function GoalsPage() {
                 </Link>
               </div>
               <div className="gv-tpl-grid">
-                {GOAL_TEMPLATES.map((t) => (
+                {templates.map((t) => (
                   <button
                     key={t.id}
                     type="button"
                     className="gv-card gv-tpl"
                     onClick={() => openNew(t)}
                   >
-                    {/* eslint-disable-next-line @next/next/no-img-element -- static SVG scene */}
-                    <img src={`/illustrations/${t.illustration}.svg`} alt="" data-illustration={t.illustration} />
+                    <WsArt src={`/illustrations/${t.illustration}.svg`} status={templateChip(t)} tone="green" />
                     <div className="cap">
                       <div className="k">{departmentLabel(t.department)}</div>
                       <div className="t">{t.objective}</div>

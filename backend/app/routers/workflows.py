@@ -3776,10 +3776,148 @@ def list_approvals_alias(
 
     approvals.sort(key=lambda item: item["requested_at"] or "", reverse=True)
     approvals.sort(key=lambda item: 0 if item["priority"] == "high" else 1)
+    from app.services.decision_queue_actions import apply_states, load_states, state_user_ids
     from app.services.decision_queue_enrichment import enrich_decision_queue
 
+    queue_states = load_states(client, org_id, [str(item.get("id") or "") for item in approvals])
+    for uid in state_user_ids(queue_states) - set(user_labels):
+        label = _member_label(client, uid)
+        if label:
+            user_labels[uid] = label
+    apply_states(approvals, queue_states, user_labels)
     enrich_decision_queue(client, org_id, approvals, run_meta=run_meta, user_labels=user_labels)
     return {"approvals": approvals}
+
+
+def _member_label(client, user_id: str) -> str | None:
+    """Display name for a member: full name, else a name from the email."""
+    try:
+        rows = client.table("users").select("id, email, full_name").eq("id", user_id).limit(1).execute().data or []
+    except Exception:  # noqa: BLE001
+        return None
+    if not rows:
+        return None
+    full_name = str(rows[0].get("full_name") or "").strip()
+    email = str(rows[0].get("email") or "").strip()
+    if full_name:
+        return full_name
+    if email:
+        return email.split("@")[0].replace(".", " ").replace("_", " ").title()
+    return None
+
+
+class EditApprovalRequest(BaseModel):
+    parameters: dict
+
+
+class SnoozeApprovalRequest(BaseModel):
+    until: datetime | None = Field(default=None, description="When it returns to the queue; null brings it back now")
+
+
+class DelegateApprovalRequest(BaseModel):
+    user_id: str = Field(..., alias="userId")
+    note: str | None = Field(default=None, max_length=500)
+
+    model_config = {"populate_by_name": True}
+
+
+def _queue_action_context(org_id: str | None, settings: Settings):
+    if org_id is None:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
+    client = get_supabase_client(settings)
+    require_feature(get_plan_for_org(client, org_id), "approvals")
+    return client
+
+
+@approvals_router.get("/delegates")
+def list_approval_delegates(
+    current_user: Annotated[dict, Depends(get_current_user)],
+    org_id: Annotated[str | None, Depends(get_org_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict:
+    """Teammates a request can be handed to: members whose role can approve writes."""
+    client = _queue_action_context(org_id, settings)
+    members = (
+        client.table("organization_members").select("user_id, role").eq("org_id", org_id).execute().data or []
+    )
+    me = str(current_user.get("user_id") or "")
+    people = []
+    for member in members:
+        uid = str(member.get("user_id") or "")
+        if not uid or uid == me or not has_capability(client, org_id, member.get("role"), "approve_writes"):
+            continue
+        people.append({"id": uid, "name": _member_label(client, uid) or "Member", "role": member.get("role")})
+    people.sort(key=lambda p: p["name"].lower())
+    return {"delegates": people}
+
+
+@approvals_router.post("/{approval_id}/edit")
+def edit_approval_request(
+    approval_id: UUID,
+    body: EditApprovalRequest,
+    current_user: Annotated[dict, Depends(get_current_user)],
+    org_id: Annotated[str | None, Depends(get_org_context)],
+    environment_name: Annotated[str, Depends(get_environment_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict:
+    """Edit a pending request's arguments; approving it afterwards runs the edited version."""
+    from app.services.decision_queue_actions import edit_request
+
+    client = _queue_action_context(org_id, settings)
+    return edit_request(
+        client,
+        settings,
+        org_id=org_id,
+        environment_name=environment_name,
+        approval_id=str(approval_id),
+        user_id=str(current_user.get("user_id") or ""),
+        parameters=body.parameters,
+    )
+
+
+@approvals_router.post("/{approval_id}/snooze")
+def snooze_approval_request(
+    approval_id: UUID,
+    body: SnoozeApprovalRequest,
+    current_user: Annotated[dict, Depends(get_current_user)],
+    org_id: Annotated[str | None, Depends(get_org_context)],
+    environment_name: Annotated[str, Depends(get_environment_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict:
+    from app.services.decision_queue_actions import snooze_request
+
+    client = _queue_action_context(org_id, settings)
+    return snooze_request(
+        client,
+        org_id=org_id,
+        environment_name=environment_name,
+        approval_id=str(approval_id),
+        user_id=str(current_user.get("user_id") or ""),
+        until=body.until,
+    )
+
+
+@approvals_router.post("/{approval_id}/delegate")
+def delegate_approval_request(
+    approval_id: UUID,
+    body: DelegateApprovalRequest,
+    current_user: Annotated[dict, Depends(get_current_user)],
+    org_id: Annotated[str | None, Depends(get_org_context)],
+    environment_name: Annotated[str, Depends(get_environment_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict:
+    from app.services.decision_queue_actions import delegate_request
+
+    client = _queue_action_context(org_id, settings)
+    return delegate_request(
+        client,
+        org_id=org_id,
+        environment_name=environment_name,
+        approval_id=str(approval_id),
+        user_id=str(current_user.get("user_id") or ""),
+        delegate_to=body.user_id,
+        note=body.note,
+    )
 
 
 def _decide_extension_approval_or_none(

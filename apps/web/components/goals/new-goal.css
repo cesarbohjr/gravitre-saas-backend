@@ -96,3 +96,4 @@
 .gv-ws .gv-ng-dept-dot[data-dept="support"] { background: #19c37d; }
 .gv-ws .gv-ng-dept-dot[data-dept="engineering"] { background: #2a2b28; }
 .dark .gv-ws .gv-ng-dept-dot[data-dept="engineering"] { background: #c4c4be; }
+.gv-ws .gv-ng-preview .gv-art { border: 0; border-radius: 0; background: var(--gv-paper); }

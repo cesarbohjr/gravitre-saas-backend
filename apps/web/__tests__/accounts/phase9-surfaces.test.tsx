@@ -31,7 +31,6 @@ vi.mock("@/lib/api", () => ({
   isFeatureOff: (e: unknown) => typeof e === "object" && e !== null && (e as { status?: number }).status === 404,
 }))
 
-import { AccountHealthPanel } from "@/components/accounts/account-health-panel"
 import { RecommendationFeedPanel } from "@/components/accounts/recommendation-feed-panel"
 import { GoalLinkedProgress } from "@/components/goals/goal-linked-progress"
 
@@ -70,85 +69,11 @@ describe("switched off", () => {
     expect(host.textContent).toBe("")
   })
 
-  it("account health says it is off, what it would show, and how to turn customer context on", async () => {
-    state.entries = { "account-health-list": { error: off }, [GOVERNANCE]: governance(false) }
-    await render(<AccountHealthPanel />)
-    const text = host.textContent ?? ""
-    expect(text).toContain("Account health isn't switched on for your workspace yet")
-    expect(text).toContain("churn-risk language")
-    expect(text).toContain("Turn on customer context in Settings › Customer data")
-    expect(text).not.toContain("couldn't load")
-    expect(settingsLink()).toBeTruthy()
-    expect(host.querySelector('a[href="/ai/help/context"]')).toBeTruthy()
-  })
-
-  it("does not ask to turn customer context on when it already is", async () => {
-    state.entries = { "account-health-list": { error: off }, [GOVERNANCE]: governance(true) }
-    await render(<AccountHealthPanel />)
-    expect(host.textContent).toContain("Customer context is already on")
-    expect(host.textContent).not.toContain("Turn on customer context")
-  })
-
   it("the recommendation feed says it is off instead of hiding", async () => {
     state.entries = { "recommendation-feed": { error: off }, [GOVERNANCE]: governance(false) }
     await render(<RecommendationFeedPanel />)
     expect(host.textContent).toContain("Needs attention isn't switched on for your workspace yet")
     expect(settingsLink()).toBeTruthy()
-  })
-})
-
-describe("switched on, nothing yet", () => {
-  it("points to Settings › Customer data while customer context is off", async () => {
-    state.entries = { "account-health-list": { data: { accounts: [] } }, [GOVERNANCE]: governance(false) }
-    await render(<AccountHealthPanel />)
-    expect(host.textContent).toContain("Nothing is read until you allow it")
-    expect(settingsLink()).toBeTruthy()
-  })
-
-  it("says it is on but has no data yet", async () => {
-    state.entries = { "account-health-list": { data: { accounts: [] } }, [GOVERNANCE]: governance(true) }
-    await render(<AccountHealthPanel />)
-    expect(host.textContent).toContain("Customer context is on. No account has enough recent customer messages yet.")
-    expect(settingsLink()).toBeFalsy()
-  })
-})
-
-describe("account health", () => {
-  it("lists flagged signals and opens the per-signal rules with evidence", async () => {
-    state.entries = {
-      "account-health-list": {
-        data: { accounts: [{ entity: { id: "e1", name: "Acme", systems: [] }, statusCounts: {}, atRisk: ["Customer sentiment"], watch: [] }] },
-      },
-      "account-health": {
-        data: {
-          entity: { id: "e1", name: "Acme", systems: [] },
-          compositeScore: null,
-          statusCounts: {},
-          generatedAt: "",
-          dimensions: [
-            {
-              key: "sentiment",
-              label: "Customer sentiment",
-              kind: "leading",
-              definition: "Tone of inbound customer messages over 30 days.",
-              status: "at_risk",
-              value: { direction: "falling" },
-              note: null,
-              evidence: ['"we are very unhappy" (zendesk, 2026-10-10)'],
-              coverage: {},
-            },
-          ],
-        },
-      },
-    }
-    await render(<AccountHealthPanel />)
-    expect(host.textContent).toContain("Acme")
-    expect(host.textContent).toContain("Customer sentiment")
-    await act(async () => host.querySelector<HTMLButtonElement>("button[aria-expanded]")!.click())
-    expect(host.textContent).toContain("There is no single health score")
-    expect(host.textContent).toContain("we are very unhappy")
-    expect(host.textContent).toContain("At risk")
-    expect(host.textContent).toContain("Tone of inbound customer messages")
   })
 })
 

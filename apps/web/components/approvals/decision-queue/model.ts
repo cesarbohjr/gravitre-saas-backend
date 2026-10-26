@@ -64,6 +64,19 @@ export type Approval = {
   steps: ApprovalStep[]
   /** Raw request as stored: run parameters for workflow runs, the staged context for writes. */
   rawRequest: Record<string, unknown>
+  /** Arguments an approver may edit before approving; null when the request can't be edited. */
+  editableParameters: Record<string, unknown> | null
+  editBlockedReason: string | null
+  editedAt: string | null
+  editedBy: string | null
+  /** Set while the request is snoozed out of "Waiting on you". */
+  snoozedUntil: string | null
+  snoozedBy: string | null
+  delegatedToId: string | null
+  delegatedTo: string | null
+  delegatedBy: string | null
+  delegatedAt: string | null
+  delegateNote: string | null
   context: {
     entity: string
     action: string
@@ -214,6 +227,17 @@ export function normalizeApproval(input: Raw): Approval {
           }))
       : [],
     rawRequest: requestRaw ?? ctx,
+    editableParameters: obj(pick(input, "editable_parameters", "editableParameters")),
+    editBlockedReason: str(pick(input, "edit_blocked_reason", "editBlockedReason")),
+    editedAt: str(pick(input, "edited_at", "editedAt")),
+    editedBy: str(pick(input, "edited_by_name", "editedByName")),
+    snoozedUntil: str(pick(input, "snoozed_until", "snoozedUntil")),
+    snoozedBy: str(pick(input, "snoozed_by_name", "snoozedByName")),
+    delegatedToId: str(pick(input, "delegated_to", "delegatedToId")),
+    delegatedTo: str(pick(input, "delegated_to_name", "delegatedToName")),
+    delegatedBy: str(pick(input, "delegated_by_name", "delegatedByName")),
+    delegatedAt: str(pick(input, "delegated_at", "delegatedAt")),
+    delegateNote: str(pick(input, "delegate_note", "delegateNote")),
     context: {
       entity: str(pick(ctx, "workflow_name", "entity")) ?? "",
       action: str(ctx.action) ?? "",
@@ -615,4 +639,28 @@ export function policyLine(a: Approval): string {
 export function riskLabel(level: RiskLevel | null): string {
   if (!level) return "Not scored"
   return `${level.charAt(0).toUpperCase()}${level.slice(1)} risk`
+}
+
+/** True while a pending request is snoozed out of "Waiting on you". */
+export function isSnoozed(a: Approval, now: number): boolean {
+  if (a.status !== "pending" || !a.snoozedUntil) return false
+  const until = parseTime(a.snoozedUntil)
+  return until != null && until > now
+}
+
+/** Snooze choices offered in the "..." menu: label and the time it returns. */
+export function snoozeOptions(now: number): { label: string; until: string }[] {
+  const at = new Date(now)
+  const tomorrow = new Date(at)
+  tomorrow.setDate(at.getDate() + 1)
+  tomorrow.setHours(9, 0, 0, 0)
+  const monday = new Date(at)
+  monday.setDate(at.getDate() + ((8 - at.getDay()) % 7 || 7))
+  monday.setHours(9, 0, 0, 0)
+  return [
+    { label: "For 1 hour", until: new Date(now + 60 * 60_000).toISOString() },
+    { label: "For 4 hours", until: new Date(now + 4 * 60 * 60_000).toISOString() },
+    { label: "Until tomorrow, 9 AM", until: tomorrow.toISOString() },
+    { label: "Until Monday, 9 AM", until: monday.toISOString() },
+  ].filter((o) => Date.parse(o.until) - now <= 7 * 24 * 60 * 60_000)
 }

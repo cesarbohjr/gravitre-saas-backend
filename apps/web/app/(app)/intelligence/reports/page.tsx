@@ -1,6 +1,8 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { Suspense, useEffect, useRef, useState } from "react"
+import { useSearchParams } from "next/navigation"
+import useSWR from "swr"
 import { toast } from "@/components/intelligence/overlays/toast"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { EmptyState, ErrorState } from "@/components/gravitre/empty-state"
@@ -8,16 +10,15 @@ import { GravitrePageHeader } from "@/components/gravitre/nodus-product"
 import { Button } from "@/components/ui/button"
 import { IntelligenceShell } from "@/components/intelligence/shell"
 import { ReportsStage } from "@/components/intelligence/pages/reports-stage"
-import type { ReportPeriodDays } from "@/components/intelligence/reports/report-model"
-import { SCHEDULE_UNAVAILABLE_REASON } from "@/components/intelligence/reports/scheduled-reports-panel"
+import { REPORT_PERIODS, type ReportPeriodDays } from "@/components/intelligence/reports/report-model"
+import { intelligenceReportsApi } from "@/lib/api"
 import { useAuth } from "@/lib/auth-context"
-import { PAGE_FRAME } from "@/lib/design-system"
+import { INTELLIGENCE_PAGE_FRAME } from "@/lib/design-system"
 import { ApiError } from "@/lib/fetcher"
 import {
   REPORT_TEMPLATES,
-  deleteSavedIntelligenceView,
+  clearLocalSavedIntelligenceViews,
   readSavedIntelligenceViews,
-  saveIntelligenceView,
   type ReportTemplateId,
   type SavedIntelligenceView,
 } from "@/lib/intelligence/saved-intelligence-views"
@@ -28,19 +29,49 @@ import { NucleoIntelligence } from "@/components/icons/nucleo/semantic"
 
 const copy = SURFACE_COPY.pages.reports
 
-export default function IntelligenceReportsPage() {
-  const { user } = useAuth()
-  const [orgId, setOrgId] = useState<string | null>(null)
-  const [template, setTemplate] = useState<ReportTemplateId>("business")
-  const [periodDays, setPeriodDays] = useState<ReportPeriodDays>(30)
-  const [savedViews, setSavedViews] = useState<SavedIntelligenceView[]>([])
+const VIEWS_KEY = "intelligence/reports/views"
 
-  // Org and saved views live in browser storage; read them after mount to keep hydration stable.
+function templateFromParam(value: string | null): ReportTemplateId | null {
+  return REPORT_TEMPLATES.find((t) => t.id === value)?.id ?? null
+}
+
+function periodFromParam(value: string | null): ReportPeriodDays | null {
+  const days = Number(value)
+  return REPORT_PERIODS.find((p) => p.days === days)?.days ?? null
+}
+
+function IntelligenceReportsInner() {
+  const { user } = useAuth()
+  const searchParams = useSearchParams()
+  // A scheduled report email links to /intelligence/reports?template=…&period=…
+  const [template, setTemplate] = useState<ReportTemplateId>(() => templateFromParam(searchParams.get("template")) ?? "business")
+  const [periodDays, setPeriodDays] = useState<ReportPeriodDays>(() => periodFromParam(searchParams.get("period")) ?? 30)
+  const [saving, setSaving] = useState(false)
+  const scheduleRef = useRef<HTMLElement>(null)
+
+  // Saved views are shared with everyone in the organization.
+  const viewsQuery = useSWR(user ? VIEWS_KEY : null, () => intelligenceReportsApi.listViews(), {
+    revalidateOnFocus: false,
+  })
+  const savedViews: SavedIntelligenceView[] = viewsQuery.data?.views ?? []
+
+  // Views an older version kept in this browser move to the server once.
+  const migrated = useRef(false)
   useEffect(() => {
-    const id = getSelectedOrgFromStorage()?.id ?? null
-    setOrgId(id)
-    setSavedViews(readSavedIntelligenceViews(id))
-  }, [])
+    if (migrated.current || !viewsQuery.data) return
+    migrated.current = true
+    const orgId = getSelectedOrgFromStorage()?.id ?? null
+    const local = readSavedIntelligenceViews(orgId)
+    if (!orgId || local.length === 0) return
+    void Promise.allSettled(
+      local.map((view) =>
+        intelligenceReportsApi.saveView({ templateId: view.templateId, periodDays: view.periodDays, label: view.label }),
+      ),
+    ).then((results) => {
+      if (results.every((r) => r.status === "fulfilled")) clearLocalSavedIntelligenceViews(orgId)
+      void viewsQuery.mutate()
+    })
+  }, [viewsQuery])
 
   const {
     data: pageContext,
@@ -57,25 +88,18 @@ export default function IntelligenceReportsPage() {
     swrKeySuffix: "reports",
   })
 
-  /** The org can resolve after mount, so read it again when the user acts. */
-  function resolveOrgId(): string | null {
-    const id = orgId ?? getSelectedOrgFromStorage()?.id ?? null
-    if (id && id !== orgId) setOrgId(id)
-    return id
-  }
-
-  function saveView() {
-    const id = resolveOrgId()
-    if (!id) {
-      toast.error("Pick an organization first. Views are saved per organization.")
-      return
-    }
+  async function saveView() {
+    if (saving) return
     const label = `${REPORT_TEMPLATES.find((t) => t.id === template)?.label ?? "Report"} · ${periodDays} days`
+    setSaving(true)
     try {
-      setSavedViews(saveIntelligenceView(id, { label, templateId: template, periodDays }))
-      toast.success(`Saved ${label}`)
-    } catch {
-      toast.error("Could not save this view in this browser.")
+      await intelligenceReportsApi.saveView({ templateId: template, periodDays, label })
+      await viewsQuery.mutate()
+      toast.success(`Saved ${label}`, { description: "Everyone in your organization can open it from Saved views." })
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not save this view.")
+    } finally {
+      setSaving(false)
     }
   }
 
@@ -84,14 +108,20 @@ export default function IntelligenceReportsPage() {
     setPeriodDays(view.periodDays)
   }
 
-  function removeView(viewId: string) {
-    const id = resolveOrgId()
-    if (!id) return
+  async function removeView(viewId: string) {
     try {
-      setSavedViews(deleteSavedIntelligenceView(id, viewId))
-    } catch {
-      toast.error("Could not remove this view.")
+      await intelligenceReportsApi.deleteView(viewId)
+      await viewsQuery.mutate()
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not remove this view.")
     }
+  }
+
+  function openSchedule() {
+    const section = scheduleRef.current
+    if (!section) return
+    section.scrollIntoView({ behavior: "smooth", block: "center" })
+    section.querySelector<HTMLElement>("select, button")?.focus({ preventScroll: true })
   }
 
   if (!user) {
@@ -116,7 +146,7 @@ export default function IntelligenceReportsPage() {
 
   return (
     <AppShell title={copy.title}>
-      <div className={PAGE_FRAME}>
+      <div className={INTELLIGENCE_PAGE_FRAME}>
         <GravitrePageHeader
           eyebrow={copy.eyebrow}
           titleScale="display"
@@ -125,14 +155,11 @@ export default function IntelligenceReportsPage() {
           icon={<NucleoIntelligence className="h-5 w-5" />}
           actions={
             <>
-              <Button variant="outline" size="sm" disabled title={SCHEDULE_UNAVAILABLE_REASON}>
+              <Button variant="outline" size="sm" onClick={openSchedule}>
                 Schedule
               </Button>
-              <Button
-                size="sm"
-                onClick={saveView}
-              >
-                Save this view
+              <Button size="sm" onClick={() => void saveView()} disabled={saving}>
+                {saving ? "Saving…" : "Save this view"}
               </Button>
             </>
           }
@@ -156,13 +183,24 @@ export default function IntelligenceReportsPage() {
             periodDays={periodDays}
             onPeriodChange={setPeriodDays}
             savedViews={savedViews}
-            canSave={Boolean(user)}
-            onSaveView={saveView}
+            savedViewsLoading={viewsQuery.isLoading}
+            savedViewsError={viewsQuery.error ? "Saved views couldn't be loaded. Try again in a moment." : null}
+            canSave={Boolean(user) && !saving}
+            onSaveView={() => void saveView()}
             onLoadView={loadView}
-            onRemoveView={removeView}
+            onRemoveView={(id) => void removeView(id)}
+            scheduleRef={scheduleRef}
           />
         </IntelligenceShell>
       </div>
     </AppShell>
+  )
+}
+
+export default function IntelligenceReportsPage() {
+  return (
+    <Suspense fallback={null}>
+      <IntelligenceReportsInner />
+    </Suspense>
   )
 }

@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import Link from "next/link"
+import { WsArt } from "@/components/workspace/ws-art"
 import useSWR from "swr"
 import { Check, Info, Lock, Users } from "lucide-react"
 import { toast } from "@/components/agents/overlays/toast"
@@ -124,17 +125,12 @@ export function MesonAddonsSettings({ isAdmin }: { isAdmin: boolean }) {
               </span>
             </div>
           </div>
-          <div className="ma-header-art">
-            {/* eslint-disable-next-line @next/next/no-img-element -- static decorative SVG */}
-            <img
-              src="/illustrations/header-empty-desk.svg"
-              alt=""
-              aria-hidden
-              width={640}
-              height={220}
-              data-illustration="header-empty-desk"
-            />
-          </div>
+          <WsArt
+            className="ma-header-art"
+            src="/illustrations/ws-settings-empty-desk.svg"
+            alt="An empty desk with a monitor, lamp, books and a plant"
+            status={scope.label}
+          />
         </section>
 
         {error && !data ? (
@@ -263,14 +259,12 @@ export function MesonAddonsSettings({ isAdmin }: { isAdmin: boolean }) {
           </div>
         ) : data ? (
           <div className="gv-card ma-empty">
-            {/* eslint-disable-next-line @next/next/no-img-element -- static decorative SVG */}
-            <img
-              src="/illustrations/moment-no-addons.svg"
-              alt=""
-              aria-hidden
-              width={320}
-              height={190}
-              data-illustration="moment-no-addons"
+            <WsArt
+              className="ma-empty-art"
+              src="/illustrations/ws-settings-no-addons.svg"
+              alt="A payment card set aside next to an empty slot with a blank price tag and a green check"
+              status={voiceOn === null ? "Voice · included" : `Voice ${voiceOn ? "on" : "off"} · included`}
+              tone={voiceOn === false ? "grey" : "green"}
             />
             <div className="ma-empty-title">No paid addons to add right now</div>
             <div className="ma-empty-copy">

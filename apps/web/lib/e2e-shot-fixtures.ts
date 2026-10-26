@@ -782,6 +782,11 @@ export const SHOT_FIXTURES: Record<string, unknown> = {
         slaDeadline: T(-56),
         slaMinutesRemaining: 56,
         slaBreached: false,
+        editable_parameters: { email: "priya.raman@northwind.io", firstname: "Priya", lastname: "Raman", lifecyclestage: "lead" },
+        delegated_to: "u_sam",
+        delegated_to_name: "Sam Ortiz",
+        delegated_by_name: "Dana Whitfield",
+        delegate_note: "You own inbound for Northwind",
         context: {
           entity: "HubSpot contact",
           action: "hubspot.contacts.create",
@@ -2230,6 +2235,9 @@ export const SHOT_FIXTURES: Record<string, unknown> = {
     kind: "agent_task",
     status: "completed",
     sessionId: null,
+    goalId: "goal_pipeline",
+    failedStepCount: 3,
+    goalLinksEnabled: true,
     attempts: 1,
     error: null,
     createdAt: AGO(300),
@@ -2765,6 +2773,45 @@ export const SHOT_FIXTURES: Record<string, unknown> = {
       },
     }
   })(),
+  // FIXTURE: Reports saved views (shared) and the viewer's report schedule.
+  "/api/intelligence/reports/views": { views: [] },
+  "/api/intelligence/reports/schedule": { schedule: null, emailEnabled: true },
+  // FIXTURE: open HubSpot deals behind Overview › Revenue opportunities.
+  "/api/intelligence/revenue-opportunities": {
+    status: "ready",
+    error: null,
+    lookaheadDays: 90,
+    method:
+      "Sum of open HubSpot deal amounts closing in the next 90 days. Only amounts recorded in your CRM count, never estimates of what a deal might grow to. Open Stripe invoices are counted separately as money to collect, not as new revenue.",
+    total: 124800,
+    currency: "USD",
+    count: 2,
+    rows: [
+      { id: "d1", label: "Acme Freight renewal", kind: "Renewal or expansion", source: "HubSpot", amount: 96000, currency: "USD", closeDate: "2026-12-01", pastCloseDate: false, href: null },
+      { id: "d2", label: "Northwind seat expansion", kind: "Renewal or expansion", source: "HubSpot", amount: 28800, currency: "USD", closeDate: "2026-11-20", pastCloseDate: false, href: null },
+    ],
+    moreCount: 0,
+    otherCurrencies: {},
+    unpricedCount: 0,
+    toCollect: { total: 4200, currency: "USD", count: 2, overdueCount: 1 },
+    generatedAt: "2026-03-12T09:00:00Z",
+  },
+  // FIXTURE: where a finding can be shared (connected Slack + email).
+  "/api/intelligence/share/options": {
+    apps: [
+      {
+        id: "slack",
+        name: "Slack",
+        channels: [
+          { id: "C0CSLEADS", name: "#cs-leads", private: false, members: 6 },
+          { id: "C0FINANCE", name: "#finance", private: false, members: 4 },
+        ],
+        people: [{ id: "u2", name: "Jordan P.", email: "jordan@example.com" }],
+      },
+      { id: "email", name: "Email", channels: [], people: [{ id: "u2", name: "Jordan P.", email: "jordan@example.com" }] },
+    ],
+    unavailable: [],
+  },
   // FIXTURE: tenant Overview contract (shape of GET /api/intelligence/overview).
   "/api/intelligence/overview": {
     schema_version: "intelligence_overview_v1",

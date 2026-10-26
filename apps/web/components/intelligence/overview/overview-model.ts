@@ -23,6 +23,7 @@ import type {
   IntelligenceOverviewReadiness,
   IntelligencePageContextResponse,
   PromotionCandidate,
+  RevenueOpportunities,
 } from "@/lib/api"
 import type { AgentRoiReport, Connector } from "@/types/api"
 
@@ -149,36 +150,84 @@ export type GlanceCard = {
   certainty: Certainty
   hint: string
   link: { label: string; href: string }
+  /** Opens the evidence panel (the records behind the number) instead of following the link. */
+  evidence?: boolean
+  /** ISO currency for money values (defaults to USD). */
+  currency?: string
+}
+
+/** Compact money, e.g. $124.8K, in the currency the source recorded. */
+export function formatMoneyCompact(value: number, currency = "USD"): string {
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency,
+    notation: value >= 10_000 ? "compact" : "standard",
+    maximumFractionDigits: value >= 10_000 ? 1 : 0,
+  }).format(value)
+}
+
+/** "Revenue opportunities": open CRM deal amounts, never estimates. */
+export function revenueOpportunityCard(
+  opportunities: RevenueOpportunities | null | undefined,
+  routes: { connectors: string },
+): GlanceCard {
+  const base = { id: "revenue" as const, label: "Revenue opportunities" }
+  if (!opportunities) {
+    return { ...base, value: null, certainty: "none", hint: "Reading open deals from your CRM…", link: { label: "See the deals", href: routes.connectors } }
+  }
+  if (opportunities.status === "not_connected") {
+    return {
+      ...base,
+      value: null,
+      certainty: "none",
+      hint: "Connect HubSpot to see open deal value. Gravitre counts only amounts recorded there.",
+      link: { label: "Connect HubSpot", href: routes.connectors },
+    }
+  }
+  if (opportunities.status !== "ready") {
+    return {
+      ...base,
+      value: null,
+      certainty: "none",
+      hint: opportunities.error ?? "HubSpot couldn't be read just now.",
+      link: { label: opportunities.status === "needs_reconnect" ? "Reconnect HubSpot" : "Open Connectors", href: routes.connectors },
+    }
+  }
+  const n = opportunities.count
+  const window = `the next ${opportunities.lookaheadDays} days`
+  return {
+    ...base,
+    value: opportunities.total,
+    certainty: opportunities.total == null ? "none" : "measured",
+    hint:
+      n === 0
+        ? opportunities.unpricedCount > 0
+          ? `${opportunities.unpricedCount} open ${opportunities.unpricedCount === 1 ? "deal closes" : "deals close"} in ${window}, but none has an amount in HubSpot.`
+          : `No open deals in HubSpot close in ${window}.`
+        : `Open deal value in HubSpot closing in ${window}.`,
+    link: { label: n > 0 ? `Based on ${n} ${n === 1 ? "deal" : "deals"}` : "How this is counted", href: routes.connectors },
+    evidence: true,
+    currency: opportunities.currency,
+  }
 }
 
 export function glanceCards({
   roi,
   metrics,
+  opportunities,
   routes,
 }: {
   roi: AgentRoiReport | null | undefined
   metrics: Metrics | null
-  routes: { impact: string; reports: string; approvals: string; plays: string }
+  opportunities?: RevenueOpportunities | null
+  routes: { impact: string; reports: string; approvals: string; plays: string; connectors: string }
 }): GlanceCard[] {
   const totals = impactTotals(roi)
   const tasks = totals.tasks
   const resolved = num(metrics?.outcomes?.measuredOutcomes)
   const awaiting = num(metrics?.execution?.awaitingApproval)
   return [
-    {
-      id: "revenue",
-      label: "Revenue influenced",
-      value: totals.revenue,
-      certainty: totals.revenueCertainty,
-      hint:
-        totals.revenue == null
-          ? "No verified deal value yet. Revenue counts only once your CRM confirms it."
-          : "Won deal values your CRM confirmed after an agent acted.",
-      link:
-        totals.revenue == null
-          ? { label: "Turn on revenue tracking", href: routes.plays }
-          : { label: "See impact", href: routes.impact },
-    },
+    revenueOpportunityCard(opportunities, routes),
     {
       id: "hours",
       label: "Hours potentially saved",
@@ -507,17 +556,20 @@ export function thinkingSummary({
   forecasts,
   hours,
   revenue,
+  currency = "USD",
 }: {
   phrase: string
   forecasts: Forecast[]
   hours: number | null
+  /** Open deal value from the CRM (Revenue opportunities). */
   revenue: number | null
+  currency?: string
 }): string | null {
   const opportunities = forecasts.filter((f) => f.kind === "opportunity").length
   const risks = forecasts.filter((f) => f.kind === "risk").length
   const found: string[] = []
   if (revenue != null && revenue > 0) {
-    found.push(`influenced ${new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(revenue)} in revenue`)
+    found.push(`found ${formatMoneyCompact(revenue, currency)} in open revenue opportunities`)
   }
   if (risks + opportunities > 0) {
     const parts = [

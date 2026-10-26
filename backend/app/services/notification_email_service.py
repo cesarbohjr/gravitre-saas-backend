@@ -100,6 +100,20 @@ def resolve_user_email(client: Any, org_id: str, user_id: str) -> str | None:
             email = str(response.data[0].get("email") or "").strip()
             if email:
                 return email
+        # Most callers pass the auth UID (organization_members.user_id), which
+        # public.users stores as auth_user_id rather than id. auth_user_id is
+        # unique, and public.users.org_id is only the person's home org.
+        response = (
+            client.table("users")
+            .select("email")
+            .eq("auth_user_id", user_id)
+            .limit(1)
+            .execute()
+        )
+        if response.data:
+            email = str(response.data[0].get("email") or "").strip()
+            if email:
+                return email
     except Exception as exc:  # noqa: BLE001
         logger.warning("resolve_user_email failed user_id=%s: %s", user_id, exc)
     return None

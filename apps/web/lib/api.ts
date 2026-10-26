@@ -1942,6 +1942,19 @@ export const approvalsApi = {
     postJson<Run>(apiUrl(`/api/approvals/${runId}/approve`), data || {}),
   reject: (runId: string, data?: ApproveRejectRequest) =>
     postJson<Run>(apiUrl(`/api/approvals/${runId}/reject`), data || {}),
+  /** Rewrites a pending request's arguments; approving afterwards runs the edited version. */
+  edit: (id: string, parameters: Record<string, unknown>) =>
+    postJson<{ approval_id: string; edited_at: string }>(apiUrl(`/api/approvals/${id}/edit`), { parameters }),
+  /** Hides a pending request until `until` (ISO time); null brings it back now. */
+  snooze: (id: string, until: string | null) =>
+    postJson<{ approval_id: string; snoozed_until: string | null }>(apiUrl(`/api/approvals/${id}/snooze`), { until }),
+  delegate: (id: string, userId: string, note?: string) =>
+    postJson<{ approval_id: string; delegated_to: string }>(apiUrl(`/api/approvals/${id}/delegate`), {
+      userId,
+      note: note || null,
+    }),
+  delegates: () =>
+    fetcher<{ delegates: { id: string; name: string; role: string | null }[] }>(apiUrl("/api/approvals/delegates")),
 }
 
 // ============ Connectors ============
@@ -4148,6 +4161,120 @@ export const ssoApi = {
 
 // Convenience export for all APIs
 // ============ Enterprise Admin ============
+/** A saved Reports view, shared with everyone in the organization. */
+export type IntelligenceReportView = {
+  id: string
+  label: string
+  templateId: "business" | "agent" | "prediction" | "governance"
+  periodDays: 7 | 30 | 90
+  savedAt: string
+  savedByName: string | null
+  mine: boolean
+  canRemove: boolean
+}
+
+export type IntelligenceReportCadence = "monday" | "friday" | "month_start"
+export type IntelligenceReportTime = "08:00" | "12:00" | "17:00"
+
+/** One person's scheduled report email. */
+export type IntelligenceReportSchedule = {
+  templateId: IntelligenceReportView["templateId"]
+  periodDays: 7 | 30 | 90
+  cadence: IntelligenceReportCadence
+  time: IntelligenceReportTime
+  enabled: boolean
+  timezone: string
+  lastSentAt: string | null
+  lastError: string | null
+}
+
+export type IntelligenceReportScheduleResponse = {
+  schedule: IntelligenceReportSchedule | null
+  emailEnabled: boolean
+}
+
+/** Intelligence › Reports: saved views (org-wide) and scheduled report email (per person). */
+export const intelligenceReportsApi = {
+  listViews: () => fetcher<{ views: IntelligenceReportView[] }>(apiUrl("/api/intelligence/reports/views")),
+  saveView: (body: { templateId: IntelligenceReportView["templateId"]; periodDays: number; label?: string }) =>
+    postJson<{ view: IntelligenceReportView }>(apiUrl("/api/intelligence/reports/views"), body),
+  deleteView: (id: string) =>
+    deleteJson<{ removed: boolean }>(apiUrl(`/api/intelligence/reports/views/${encodeURIComponent(id)}`)),
+  getSchedule: () => fetcher<IntelligenceReportScheduleResponse>(apiUrl("/api/intelligence/reports/schedule")),
+  putSchedule: (body: {
+    templateId: IntelligenceReportView["templateId"]
+    periodDays: number
+    cadence: IntelligenceReportCadence
+    time: IntelligenceReportTime
+    enabled: boolean
+  }) => putJson<IntelligenceReportScheduleResponse>(apiUrl("/api/intelligence/reports/schedule"), body),
+}
+
+export type RevenueOpportunityRow = {
+  id: string
+  label: string
+  kind: string
+  source: string
+  amount: number
+  currency: string
+  closeDate: string
+  pastCloseDate: boolean
+  href: string | null
+}
+
+export type RevenueOpportunities = {
+  status: "ready" | "not_connected" | "needs_reconnect" | "error"
+  error: string | null
+  lookaheadDays: number
+  method: string
+  /** Null when no amount is recorded in a connected CRM — never a made-up 0. */
+  total: number | null
+  currency: string
+  count: number
+  rows: RevenueOpportunityRow[]
+  moreCount: number
+  otherCurrencies: Record<string, number>
+  unpricedCount: number
+  toCollect: { total: number; currency: string; count: number; overdueCount: number } | null
+  generatedAt: string
+}
+
+export type ShareFindingPerson = { id: string; name: string; email: string }
+export type ShareFindingChannel = { id: string; name: string; private: boolean; members: number | null }
+export type ShareFindingApp = {
+  id: "slack" | "email"
+  name: string
+  channels: ShareFindingChannel[]
+  people: ShareFindingPerson[]
+}
+export type ShareFindingOptions = { apps: ShareFindingApp[]; unavailable: string[] }
+export type ShareFindingRequest = {
+  app: ShareFindingApp["id"]
+  channelId?: string | null
+  personId?: string | null
+  title: string
+  summary?: string
+  note?: string
+  path?: string
+  findingId?: string
+}
+export type ShareFindingResult = {
+  shared: boolean
+  app: ShareFindingApp["id"]
+  destination: string
+  url: string | null
+  sharedAt: string
+}
+
+export const intelligenceFindingsApi = {
+  revenueOpportunities: (refresh = false) =>
+    fetcher<RevenueOpportunities>(
+      apiUrl(`/api/intelligence/revenue-opportunities${refresh ? "?refresh=true" : ""}`),
+    ),
+  shareOptions: () => fetcher<ShareFindingOptions>(apiUrl("/api/intelligence/share/options")),
+  share: (body: ShareFindingRequest) => postJson<ShareFindingResult>(apiUrl("/api/intelligence/share"), body),
+}
+
 export const enterpriseApi = {
   // Data residency
   getDataRegion: () => fetcher<EnterpriseDataRegion>(apiUrl("/api/enterprise/data-region")),

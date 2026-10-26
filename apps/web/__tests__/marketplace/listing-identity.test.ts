@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 import { identityDepartmentFor, listingKindFor } from "@/lib/listing-identity"
-import { listingReadiness, matchesReadiness } from "@/lib/listing-readiness"
+import { installedChipLabel, listingReadiness, matchesReadiness } from "@/lib/listing-readiness"
 import { listingMeta, installedDescription } from "@/lib/listing-meta"
 import type { MarketplaceAssetSummary } from "@/types/api"
 
@@ -96,5 +96,15 @@ describe("listing meta", () => {
     expect(listingMeta(pack)).toBe("1 agent · 2 workflows")
     expect(installedDescription(pack)).toBe("1 agent and 2 workflows are ready in Support.")
     expect(listingMeta({ ...base, connectorChecklist: [app("Apollo", false), app("HubSpot", true)] })).toBe("Uses Apollo, HubSpot")
+  })
+})
+
+describe("installed chip", () => {
+  it("says running only while the backend reports work in flight", () => {
+    const installed = { ...base, installed: true }
+    const readiness = listingReadiness(installed, { canInstall: true })
+    expect(installedChipLabel({ ...installed, runState: "running" }, readiness)).toBe("Installed · running")
+    expect(installedChipLabel({ ...installed, runState: "idle" }, readiness)).toBe("Installed")
+    expect(installedChipLabel(installed, readiness)).toBe("Installed")
   })
 })

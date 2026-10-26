@@ -18,11 +18,14 @@ import {
   MoreHorizontal,
   Pencil,
   Send,
+  Target,
   X,
 } from "lucide-react"
 import { usePublishGravitreAISelection, useOptionalGravitreAIWorkspace } from "@/components/gravitre/ai-workspace-provider"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { WsPage } from "@/components/workspace/ws-page"
+import { WsArt } from "@/components/workspace/ws-art"
+import { GOALS_REFRESH_KEY, fetchGoalList } from "@/lib/goals-list"
 import { ExecutionModeBadge } from "@/components/intelligence/execution-mode-badge"
 import {
   DropdownMenu,
@@ -32,7 +35,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { approveAssignment, fetchAssignmentJob, pushAssignmentDeliverable, rejectAssignment, updateAssignmentDeliverable } from "@/lib/demo-assignments"
-import { cancelAssignmentJob, createAssignment, retryAssignmentJob } from "@/lib/assignments"
+import { cancelAssignmentJob, createAssignment, linkJobGoal, retryAssignmentJob, retryFailedSteps } from "@/lib/assignments"
 import { readableAssignmentText } from "@/lib/assignments-list"
 import { deliverableExport, parseDeliverable } from "@/lib/assignment-deliverable"
 import { DeliverableEditorDialog } from "@/components/assignments/deliverable-editor"
@@ -49,6 +52,8 @@ type OutcomeTone = "amber" | "red" | "brand" | "neutral"
 interface Outcome {
   tone: OutcomeTone
   illustration: string
+  /** Short state for the chip on the illustration. */
+  status?: string
   eyebrow: string
   title: string
   body: ReactNode
@@ -57,6 +62,10 @@ interface Outcome {
 }
 
 const ACTIVE = ["queued", "running", "paused"]
+
+function capitalizeWord(value: string | null | undefined): string | null {
+  return value ? value.charAt(0).toUpperCase() + value.slice(1) : null
+}
 
 function DetailShell({ children }: { children: ReactNode }) {
   return (
@@ -92,7 +101,8 @@ export default function AssignmentDetailPage({ params }: { params: Promise<{ id:
   const [editOpen, setEditOpen] = useState(false)
   const [isSavingEdit, setIsSavingEdit] = useState(false)
   const [isPushing, setIsPushing] = useState(false)
-  const [jobAction, setJobAction] = useState<null | "retry" | "cancel" | "rerun">(null)
+  const [jobAction, setJobAction] = useState<null | "retry" | "cancel" | "rerun" | "retry-failed" | "goal">(null)
+  const [goalPick, setGoalPick] = useState("")
   const [activeTab, setActiveTab] = useState<"deliverable" | "actions" | "steps">("deliverable")
   const [traceOpen, setTraceOpen] = useState<boolean | null>(null)
   const [openErrors, setOpenErrors] = useState<Set<string>>(() => new Set())
@@ -110,6 +120,13 @@ export default function AssignmentDetailPage({ params }: { params: Promise<{ id:
       revalidateOnFocus: true,
     },
   )
+
+  const goalId = job?.goalId ?? null
+  const goalLinks = job?.goalLinksEnabled === true
+  const { data: goalList } = useSWR(goalId || goalLinks ? GOALS_REFRESH_KEY : null, fetchGoalList, {
+    revalidateOnFocus: false,
+  })
+  const linkedGoal = goalId ? goalList?.find((g) => g.id === goalId) ?? null : null
 
   const handoff = useMemo(() => parseHandoffResult(job ?? null), [job])
   const executionSteps = useMemo(
@@ -263,6 +280,38 @@ export default function AssignmentDetailPage({ params }: { params: Promise<{ id:
       toast.success(job?.status === "paused" ? "Assignment resumed" : "Assignment queued to run again")
     } catch (err) {
       toast.error("Could not retry", { description: err instanceof Error ? err.message : "Please try again." })
+    } finally {
+      setJobAction(null)
+    }
+  }
+
+  // Redo only the steps that failed: a new job gets the same brief plus what already succeeded.
+  const handleRetryFailed = async () => {
+    if (jobAction) return
+    setJobAction("retry-failed")
+    try {
+      const next = await retryFailedSteps(id)
+      toast.success("Retrying the failed steps", { description: "Steps that already worked are not repeated." })
+      if (next.jobId) router.push(`/assignments/${next.jobId}`)
+    } catch (err) {
+      toast.error("Could not retry", { description: err instanceof Error ? err.message : "Please try again." })
+    } finally {
+      setJobAction(null)
+    }
+  }
+
+  const handleLinkGoal = async (nextGoalId: string | null) => {
+    if (jobAction) return
+    setJobAction("goal")
+    try {
+      const updated = await linkJobGoal(id, nextGoalId)
+      await mutate({ ...job!, ...updated }, { revalidate: true })
+      setGoalPick("")
+      toast.success(nextGoalId ? "Linked to the goal" : "Unlinked from the goal", {
+        description: nextGoalId ? "This assignment now counts toward the goal's progress." : undefined,
+      })
+    } catch (err) {
+      toast.error("Could not change the goal", { description: err instanceof Error ? err.message : "Please try again." })
     } finally {
       setJobAction(null)
     }
@@ -441,7 +490,8 @@ export default function AssignmentDetailPage({ params }: { params: Promise<{ id:
     if (job.status === "failed") {
       return {
         tone: "amber",
-        illustration: "moment-unplugged",
+        illustration: upgrade ? "ws-assignment-plan-limit" : "moment-unplugged",
+        status: actions.length > 0 && failedActions > 0 ? `${failedActions} of ${actions.length} actions failed` : "Stopped",
         eyebrow: "Outcome",
         title: "The agent could not finish this assignment",
         body: issueBody ?? "The job stopped without reporting a reason.",
@@ -449,6 +499,16 @@ export default function AssignmentDetailPage({ params }: { params: Promise<{ id:
         actions: (
           <>
             {upgradeButton}
+            {(job.failedStepCount ?? 0) > 0 ? (
+              <button
+                type="button"
+                className={upgrade ? "gv-btn outline" : "gv-btn primary"}
+                onClick={() => void handleRetryFailed()}
+                disabled={Boolean(jobAction)}
+              >
+                {jobAction === "retry-failed" ? "Retrying" : "Retry from failed step"}
+              </button>
+            ) : null}
             <button type="button" className="gv-btn outline" onClick={() => void handleRetry()} disabled={Boolean(jobAction)}>
               {jobAction === "retry" ? "Retrying" : "Retry assignment"}
             </button>
@@ -494,7 +554,8 @@ export default function AssignmentDetailPage({ params }: { params: Promise<{ id:
           : "Delivered with a problem"
       return {
         tone: "amber",
-        illustration: "moment-unplugged",
+        illustration: upgrade ? "ws-assignment-plan-limit" : "moment-unplugged",
+        status: actions.length > 0 && failedActions > 0 ? `${failedActions} of ${actions.length} actions failed` : "Needs a look",
         eyebrow: "Outcome",
         title,
         body: issueBody ?? "Some of the agent's actions did not complete.",
@@ -502,6 +563,16 @@ export default function AssignmentDetailPage({ params }: { params: Promise<{ id:
         actions: (
           <>
             {upgradeButton}
+            {(job.failedStepCount ?? 0) > 0 ? (
+              <button
+                type="button"
+                className={upgrade ? "gv-btn outline" : "gv-btn primary"}
+                onClick={() => void handleRetryFailed()}
+                disabled={Boolean(jobAction)}
+              >
+                {jobAction === "retry-failed" ? "Retrying" : "Retry from failed step"}
+              </button>
+            ) : null}
             {canRerun ? (
               <button type="button" className="gv-btn outline" onClick={() => void handleRerun()} disabled={Boolean(jobAction)}>
                 {jobAction === "rerun" ? "Assigning" : "Run again"}
@@ -675,10 +746,12 @@ export default function AssignmentDetailPage({ params }: { params: Promise<{ id:
 
       {outcome ? (
         <section className={`gv-card gv-rise asgd-outcome ${outcome.tone}`} role={outcome.role} data-banner={outcome.tone}>
-          <div className="asgd-outcome-art">
-            {/* eslint-disable-next-line @next/next/no-img-element -- static library illustration */}
-            <img src={`/illustrations/${outcome.illustration}.svg`} alt="" data-illustration={outcome.illustration} />
-          </div>
+          <WsArt
+            className="asgd-outcome-art"
+            src={`/illustrations/${outcome.illustration}.svg`}
+            status={outcome.status}
+            tone={outcome.tone === "brand" ? "green" : outcome.tone === "neutral" ? "grey" : outcome.tone}
+          />
           <div className="asgd-outcome-body">
             <div className="gv-eyebrow">{outcome.eyebrow}</div>
             <h2>{outcome.title}</h2>
@@ -912,6 +985,63 @@ export default function AssignmentDetailPage({ params }: { params: Promise<{ id:
               </div>
             ) : null}
           </div>
+
+          {linkedGoal ? (
+            <div className="gv-card asgd-side">
+              <div className="gv-eyebrow">Goal</div>
+              <div className="asgd-goal">
+                <span className="asgd-goal-ic" aria-hidden>
+                  <Target size={16} />
+                </span>
+                <span>
+                  <b>{linkedGoal.objective || "Untitled goal"}</b>
+                  <span>
+                    {[capitalizeWord(linkedGoal.status), linkedGoal.department].filter(Boolean).join(" · ")}
+                  </span>
+                </span>
+              </div>
+              <Link href={`/goals/${encodeURIComponent(linkedGoal.id)}`} className="gv-btn ghost asgd-goal-open">
+                Open the goal
+              </Link>
+              {goalLinks ? (
+                <button
+                  type="button"
+                  className="ov-linkbtn asgd-goal-unlink"
+                  disabled={Boolean(jobAction)}
+                  onClick={() => void handleLinkGoal(null)}
+                >
+                  Unlink from this goal
+                </button>
+              ) : null}
+            </div>
+          ) : goalLinks && goalList && goalList.length > 0 ? (
+            <div className="gv-card asgd-side">
+              <div className="gv-eyebrow">Goal</div>
+              <p className="asgd-goal-hint">Link this assignment so its work counts toward a goal.</p>
+              <label className="asgd-goal-pick">
+                <span className="sr-only">Goal</span>
+                <select value={goalPick} onChange={(event) => setGoalPick(event.target.value)}>
+                  <option value="">Pick a goal</option>
+                  {goalList
+                    .filter((g) => g.status !== "cancelled" && g.status !== "completed")
+                    .map((g) => (
+                      <option key={g.id} value={g.id}>
+                        {g.objective || "Untitled goal"}
+                      </option>
+                    ))}
+                </select>
+              </label>
+              <button
+                type="button"
+                className="gv-btn outline asgd-goal-open"
+                disabled={!goalPick || Boolean(jobAction)}
+                onClick={() => void handleLinkGoal(goalPick)}
+              >
+                <Target size={16} aria-hidden />
+                {jobAction === "goal" ? "Linking" : "Link to this goal"}
+              </button>
+            </div>
+          ) : null}
 
           {agentId ? (
             <div id="ask" className="gv-card asgd-side">
