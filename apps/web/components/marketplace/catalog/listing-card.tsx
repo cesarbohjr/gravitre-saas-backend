@@ -1,11 +1,13 @@
 "use client"
 
+import type { ReactNode } from "react"
 import Link from "next/link"
 import type { MarketplaceAssetSummary } from "@/types/api"
 import { formatAssetPrice, isFreeAsset } from "@/components/marketplace/marketplace-asset-commerce"
-import { IdentityIcon, ListingBadge, ListingCover } from "@/components/marketplace/identity/listing-identity"
+import { IdentityIcon, ListingBadge } from "@/components/marketplace/identity/listing-identity"
 import { LISTING_KINDS, identityDepartmentFor, listingKindFor } from "@/lib/listing-identity"
 import { listingMeta } from "@/lib/listing-meta"
+import { resolveMarketArt } from "@/lib/marketplace-category-art"
 import type { ListingReadiness } from "@/lib/listing-readiness"
 import { cn } from "@/lib/utils"
 
@@ -97,6 +99,41 @@ function DepartmentChip({ department }: { department: string | null | undefined 
   )
 }
 
+/** Card art status: the three states the marketplace illustration set labels. */
+function coverStatus(readiness: ListingReadiness): { label: string; tone: "green" | "amber" | "grey" } {
+  if (readiness.state === "installed") return { label: readiness.label, tone: "green" }
+  if (readiness.state === "connect" || readiness.state === "review") return { label: "Needs setup", tone: "amber" }
+  return { label: "Not installed", tone: "grey" }
+}
+
+/** Objects-only category art (Marketplace illustration set) with overlays on top. */
+function MarketCover({
+  asset,
+  className,
+  status,
+  children,
+}: {
+  asset: MarketplaceAssetSummary
+  className?: string
+  status?: { label: string; tone: "green" | "amber" | "grey" }
+  children?: ReactNode
+}) {
+  const art = resolveMarketArt(asset)
+  return (
+    <div className={cn("mp-art", className)} data-market-art={art.name}>
+      {/* eslint-disable-next-line @next/next/no-img-element -- static decorative SVG */}
+      <img src={art.src} alt="" aria-hidden loading="lazy" decoding="async" width={300} height={190} data-illustration={art.name} />
+      {children}
+      {status ? (
+        <span className={cn("mp-art-live", status.tone)}>
+          <span className="mp-art-dot" aria-hidden />
+          {status.label}
+        </span>
+      ) : null}
+    </div>
+  )
+}
+
 /** Grid card: cover, badge, name and publisher, description, chips, readiness footer. */
 export function ListingCard({
   asset,
@@ -114,9 +151,9 @@ export function ListingCard({
   const by = publisherLine(asset)
   return (
     <article className="mp-card mp-lift" data-testid="marketplace-pack-row" data-kind={kind}>
-      <ListingCover kind={kind} department={asset.department} className="mp-cover">
+      <MarketCover asset={asset} className="mp-cover" status={coverStatus(readiness)}>
         <span className="mp-price">{priceLabel(asset)}</span>
-      </ListingCover>
+      </MarketCover>
       <div className="mp-card-id">
         <ListingBadge kind={kind} department={asset.department} />
         <span className="mp-card-name">
@@ -211,9 +248,9 @@ export function FeaturedListingCard({
     .join(" · ")
   return (
     <article className={cn("mp-card mp-lift")} data-testid="marketplace-featured">
-      <ListingCover kind={kind} department={asset.department} className="mp-cover tall">
+      <MarketCover asset={asset} className="mp-cover tall">
         <span className="mp-flag">{reason}</span>
-      </ListingCover>
+      </MarketCover>
       <div className="mp-featured-body">
         <span className="mp-card-name" style={{ flex: "1 1 0%" }}>
           <strong>
