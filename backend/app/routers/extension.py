@@ -73,6 +73,7 @@ class ExtensionChatBody(BaseModel):
     conversationId: str | None = None
     spokenMode: bool = False
     environment: str = "production"
+    agentId: str | None = Field(default=None, max_length=64)
 
 
 def _tool_context(
@@ -279,6 +280,7 @@ async def extension_chat(
             conversation_id=body.conversationId,
             spoken_mode=bool(body.spokenMode),
             environment_name=body.environment or "production",
+            agent_id=body.agentId,
         )
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc

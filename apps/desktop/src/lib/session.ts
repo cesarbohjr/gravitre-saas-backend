@@ -12,8 +12,8 @@ export type DesktopSession = {
 
 const KEY = "gravitre.desktop.session"
 const PENDING_KEY = "gravitre.desktop.signin"
-/** A sign-in started here is only accepted for this long. */
-const PENDING_TTL_MS = 15 * 60 * 1000
+/** A sign-in started here is only accepted for this long; the screen says it timed out after that. */
+export const PENDING_TTL_MS = 5 * 60 * 1000
 
 const API_HOSTS = [/^gravitre\.app$/, /\.gravitre\.app$/, /\.up\.railway\.app$/, /^localhost$/, /^127\.0\.0\.1$/]
 
@@ -57,13 +57,16 @@ export function savePendingSignIn(code: string) {
   localStorage.setItem(PENDING_KEY, JSON.stringify({ code, startedAt: Date.now() }))
 }
 
-export function loadPendingSignIn(): string | null {
+export type PendingSignIn = { code: string; startedAt: number; expired: boolean }
+
+/** The sign-in this computer started; `expired` once the browser hasn't answered in time. */
+export function loadPendingSignIn(): PendingSignIn | null {
   try {
     const raw = localStorage.getItem(PENDING_KEY)
     if (!raw) return null
     const parsed = JSON.parse(raw) as { code?: string; startedAt?: number }
-    if (!parsed.code || !parsed.startedAt || Date.now() - parsed.startedAt > PENDING_TTL_MS) return null
-    return parsed.code
+    if (!parsed.code || !parsed.startedAt) return null
+    return { code: parsed.code, startedAt: parsed.startedAt, expired: Date.now() - parsed.startedAt > PENDING_TTL_MS }
   } catch {
     return null
   }

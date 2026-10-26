@@ -251,3 +251,54 @@ export function activityActor(e: ActivityEvent): string {
     (e.source ? e.source.replace(/_/g, " ").replace(/^./, (c) => c.toUpperCase()) : "Gravitre")
   )
 }
+
+/** "Step 4 of 4 · waiting on approval", "6 of 14 done", "43%": only what the run reported. */
+export function progressLine(a: Assignment): string {
+  const total = a.steps.length
+  const done = a.steps.filter((s) => s.state === "done").length
+  const step = total > 1 ? `Step ${Math.min(done + 1, total)} of ${total}` : ""
+  if (a.status === "waiting") return [step, "waiting on approval"].filter(Boolean).join(" · ")
+  if (a.status === "running") return step || (a.progress != null ? `${a.progress}%` : "Running")
+  if (a.status === "queued") return "Queued"
+  if (a.status === "paused") return "Paused"
+  return STATUS[a.status].label
+}
+
+export function greeting(name: string | undefined, now = new Date()): string {
+  const h = now.getHours()
+  const part = h < 12 ? "Good morning" : h < 18 ? "Good afternoon" : "Good evening"
+  const first = (name || "").split(" ")[0]
+  return first ? `${part}, ${first}` : part
+}
+
+/** "2 min", "1 h", "Yesterday": the age column in lists. */
+export function age(iso: string | null | undefined, now = Date.now()): string {
+  if (!iso) return ""
+  const t = new Date(iso).getTime()
+  if (Number.isNaN(t)) return ""
+  const mins = Math.floor((now - t) / 60000)
+  if (mins < 1) return "now"
+  if (mins < 60) return `${mins} min`
+  const hours = Math.floor(mins / 60)
+  if (hours < 24) return `${hours} h`
+  if (hours < 48) return "Yesterday"
+  return new Date(t).toLocaleDateString(undefined, { month: "short", day: "numeric" })
+}
+
+/** Clock time today, otherwise the weekday or date: list timestamps. */
+export function stamp(iso: string | null | undefined, now = new Date()): string {
+  if (!iso) return ""
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return ""
+  if (d.toDateString() === now.toDateString()) return d.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit", hour12: false })
+  const days = (now.getTime() - d.getTime()) / 86400000
+  if (days < 7) return d.toLocaleDateString(undefined, { weekday: "short" })
+  return d.toLocaleDateString(undefined, { month: "short", day: "numeric" })
+}
+
+/** Bar width: finished steps out of the plan when there is one, else what the run reported. */
+export function percentDone(a: Assignment): number | null {
+  const total = a.steps.length
+  if (total > 1) return Math.round((a.steps.filter((s) => s.state === "done").length / total) * 100)
+  return a.progress
+}

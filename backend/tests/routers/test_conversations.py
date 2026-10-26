@@ -611,3 +611,52 @@ def test_create_conversation_returns_the_row_a_dropped_response_already_wrote(mo
     assert response.status_code == 201
     assert response.json()["id"] == "conv-3"
     assert supabase.table.call_count == 3
+
+
+def test_create_conversation_records_surface(monkeypatch):
+    _authenticate()
+    created = {
+        "id": "conv-s",
+        "title": "From the desktop",
+        "message_count": 0,
+        "created_at": "2026-10-26T12:00:00+00:00",
+        "updated_at": "2026-10-26T12:00:00+00:00",
+        "surface": "desktop",
+    }
+    insert_chain = _table_chain([created])
+    supabase = MagicMock()
+    supabase.table.side_effect = [_table_chain([]), insert_chain]
+    monkeypatch.setattr("app.routers.conversations.create_client", lambda *_a, **_k: supabase)
+
+    response = client.post("/api/conversations", json={"title": "From the desktop", "surface": "desktop"})
+
+    assert response.status_code == 201
+    assert response.json()["surface"] == "desktop"
+    assert insert_chain.insert.call_args.args[0]["surface"] == "desktop"
+
+
+def test_create_conversation_rejects_unknown_surface():
+    _authenticate()
+    response = client.post("/api/conversations", json={"title": "x", "surface": "fax"})
+    assert response.status_code == 422
+
+
+def test_create_conversation_without_surface_column_still_creates(monkeypatch):
+    """Before the migration runs, the surface is dropped instead of failing the create."""
+    _authenticate()
+    created = {"id": "conv-t", "title": "hello", "created_at": "2026-10-26T12:00:00+00:00"}
+    failing = MagicMock()
+    failing.insert.return_value = failing
+    failing.execute.side_effect = Exception(
+        "{'code': 'PGRST204', 'message': \"Could not find the 'surface' column of 'conversations' in the schema cache\"}"
+    )
+    insert_chain = _table_chain([created])
+    supabase = MagicMock()
+    supabase.table.side_effect = [_table_chain([]), failing, insert_chain]
+    monkeypatch.setattr("app.routers.conversations.create_client", lambda *_a, **_k: supabase)
+
+    response = client.post("/api/conversations", json={"title": "hello", "surface": "extension"})
+
+    assert response.status_code == 201
+    assert response.json()["surface"] is None
+    assert "surface" not in insert_chain.insert.call_args.args[0]

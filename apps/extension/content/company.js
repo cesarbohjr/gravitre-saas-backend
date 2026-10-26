@@ -1,30 +1,22 @@
-/** Company website / careers / about (activeTab inject) → firmographic overlay. */
+/** Any other site the person allowed: the company behind the page. */
 (function () {
-  function extractCompanySite() {
-    const title = document.title || ""
-    const h1 = document.querySelector("h1")?.textContent?.replace(/\s+/g, " ").trim() || ""
-    let domain = ""
-    try {
-      domain = location.hostname.replace(/^www\./, "")
-    } catch {
-      domain = ""
-    }
-    const path = (location.pathname || "").toLowerCase()
-    const careersMarkers = ["/careers", "/career", "/jobs", "/job", "/about", "/about-us", "/company", "/team"]
-    const isCareersAbout = careersMarkers.some((m) => path.includes(m))
-    const company = h1 || title.split(/[-|·]/)[0].trim() || domain
-    return {
-      company,
-      domain,
-      title: h1 || title,
-      source: isCareersAbout ? "careers_about" : "company_site",
-      pageKind: isCareersAbout ? "careers_about" : "company_site",
-    }
-  }
+  const domain = location.hostname.replace(/^www\./, "")
+  const path = location.pathname.toLowerCase()
+  const careers = ["/careers", "/career", "/jobs", "/about", "/company", "/team"].some((m) => path.includes(m))
 
-  if (!window.__gravitreOverlay) return
-  window.__gravitreOverlay.renderOverlay({
-    pageUrl: location.href,
-    pageContext: extractCompanySite(),
+  window.__gravitre?.register({
+    kind: "company",
+    auto: () => false,
+    extract() {
+      const site = document.querySelector("meta[property='og:site_name']")?.getAttribute("content")?.trim()
+      const h1 = document.querySelector("h1")?.textContent?.replace(/\s+/g, " ").trim() || ""
+      return {
+        company: site || document.title.split(/[-|·]/).pop().trim() || domain,
+        domain,
+        title: h1 || document.title,
+        source: careers ? "careers_about" : "company_site",
+        pageKind: careers ? "careers_about" : "company_site",
+      }
+    },
   })
 })()

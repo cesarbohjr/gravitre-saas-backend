@@ -1,846 +1,424 @@
-/** Shared overlay renderer for Gravitre content scripts. */
+/**
+ * Gravitre on the page: the floating button, the "In CRM" chip and the card next to a person or company.
+ * Site adapters register what they can read; the side panel asks for it with GV_PAGE_CONTEXT.
+ * Nothing is read or sent on a site the person turned off.
+ */
 (function () {
-  if (window.__gravitreOverlay) return
+  if (window.__gravitre) return
 
-  function el(tag, className, text) {
+  const SITE_IDS = [
+    [/(^|\.)linkedin\.com$/, "linkedin.com"],
+    [/^mail\.google\.com$/, "mail.google.com"],
+    [/^outlook\.(office|office365|live)\.com$/, "outlook"],
+    [/(force|salesforce)\.com$/, "salesforce"],
+    [/^app\.slack\.com$/, "app.slack.com"],
+  ]
+  const host = location.hostname.replace(/^www\./, "")
+  let adapter = null
+  let prefs = null
+  let lastUrl = ""
+  let found = null
+  let root = null
+  let chipEl = null
+  let cardEl = null
+  let menuEl = null
+  let fabEl = null
+
+  function siteId() {
+    for (const [re, id] of SITE_IDS) if (re.test(host)) return id
+    return prefs && (prefs.added || []).includes(host) ? host : null
+  }
+
+  function allowed() {
+    const id = siteId()
+    return Boolean(prefs && prefs.consentAt && id && (prefs.sites || {})[id] !== false)
+  }
+
+  function send(message) {
+    return new Promise((resolve) => {
+      try {
+        chrome.runtime.sendMessage(message, (res) => resolve(chrome.runtime.lastError ? { ok: false } : res || { ok: false }))
+      } catch {
+        resolve({ ok: false })
+      }
+    })
+  }
+
+  function el(tag, cls, ...children) {
     const node = document.createElement(tag)
-    if (className) node.className = className
-    if (text != null) node.textContent = text
+    if (cls) node.className = cls
+    for (const c of children) if (c != null) node.append(c)
     return node
   }
 
-  /** Labeled compress block — Context / Capture / Agent / Action / Approval / Status */
-  function makeSection(title) {
-    const wrap = el("section", "gvt-section")
-    wrap.appendChild(el("div", "gvt-section-title", title))
-    const content = el("div", "gvt-section-body")
-    wrap.appendChild(content)
-    return { wrap, content }
+  function initials(name) {
+    const w = String(name || "").trim().split(/\s+/).filter(Boolean)
+    return (w.length > 1 ? w[0][0] + w[w.length - 1][0] : (w[0] || "?").slice(0, 2)).toUpperCase()
   }
 
-  function contextHostLabel(pageContext, pageUrl) {
-    if (pageContext?.host) return String(pageContext.host)
-    if (pageUrl) {
-      try {
-        return new URL(pageUrl).hostname
-      } catch {
-        return String(pageUrl).slice(0, 64)
-      }
+  /** The Gravitre two-bar mark (same geometry as ui.js), so it needs nothing from the page. */
+  function mark(size) {
+    const ns = "http://www.w3.org/2000/svg"
+    const svg = document.createElementNS(ns, "svg")
+    svg.setAttribute("viewBox", "0 0 640 367")
+    svg.setAttribute("width", String(size))
+    svg.setAttribute("height", String(Math.round(size * 0.57)))
+    svg.setAttribute("aria-hidden", "true")
+    svg.setAttribute("fill", "currentColor")
+    for (const y of [0, 207]) {
+      const p = document.createElementNS(ns, "path")
+      p.setAttribute("d", "M6 160C1 160-2 156 1 152L59 72C91 27 138 0 186 0H628C636 0 640 6 635 13L576 94C543 137 498 160 450 160Z")
+      if (y) p.setAttribute("transform", `translate(0 ${y})`)
+      svg.appendChild(p)
     }
-    return "This page"
+    return svg
   }
 
-  /** Compact BusinessOutcome evidence — matched preview for connector writes. */
-  function renderBusinessOutcomeCard(parent, result) {
-    const bo = result?.businessOutcome
-    if (!bo || typeof bo !== "object") return false
-    const sections = bo.sections || {}
-    const card = el("div", "gvt-outcome")
-    card.appendChild(el("div", "gvt-outcome-title", bo.title || result.invokeAction || "Completed work"))
-    const summary = sections.summary || result.error || ""
-    if (summary) card.appendChild(el("p", "gvt-outcome-summary", String(summary).slice(0, 400)))
-    const ver = sections.verification
-    const status = String(bo.status || "").toLowerCase()
-    const reviewState = String(ver?.reviewState || "").toLowerCase()
-    const flagged = status === "flagged_for_review" || reviewState === "flagged_for_review"
-    if (ver && typeof ver === "object") {
-      const badgeClass = flagged
-        ? "gvt-outcome-flagged"
-        : ver.verified
-          ? "gvt-outcome-verified"
-          : "gvt-outcome-unverified"
-      const badgeLabel = flagged
-        ? "Flagged for review"
-        : ver.verified
-          ? "Verified evidence"
-          : "Not verified"
-      const badge = el("div", badgeClass, badgeLabel)
-      card.appendChild(badge)
-      if (ver.finding) {
-        card.appendChild(el("p", "gvt-outcome-finding", String(ver.finding).slice(0, 280)))
-      }
-      if (Array.isArray(ver.nextActions) && ver.nextActions.length) {
-        const list = el("ul", "gvt-outcome-next")
-        ver.nextActions.slice(0, 3).forEach((line) => {
-          list.appendChild(el("li", null, String(line)))
-        })
-        card.appendChild(list)
-      }
-    }
-    const links = (sections.evidence && sections.evidence.links) || []
-    if (links.length) {
-      const row = el("div", "gvt-outcome-links")
-      links.slice(0, 4).forEach((link) => {
-        if (!link?.href) return
-        const a = document.createElement("a")
-        a.className = "gvt-outcome-link"
-        a.href = String(link.href).startsWith("http")
-          ? link.href
-          : `https://gravitre.app${link.href.startsWith("/") ? "" : "/"}${link.href}`
-        a.target = "_blank"
-        a.rel = "noopener noreferrer"
-        a.textContent = link.label || "Open"
-        row.appendChild(a)
-      })
-      card.appendChild(row)
-    } else if (result.runId || result.businessOutcomeUrl || result.outcomeUrl) {
-      const row = el("div", "gvt-outcome-links")
-      const href =
-        result.outcomeUrl ||
-        result.businessOutcomeUrl ||
-        `/runs/${result.runId}`
-      const a = document.createElement("a")
-      a.className = "gvt-outcome-link"
-      a.href = String(href).startsWith("http") ? href : `https://gravitre.app${href}`
-      a.target = "_blank"
-      a.rel = "noopener noreferrer"
-      a.textContent = "Open in Activity / Runs"
-      row.appendChild(a)
-      card.appendChild(row)
-    }
-    parent.appendChild(card)
-    return true
-  }
-
-  function showExecuteResult(statusEl, cardEl, result) {
-    const r = result || {}
-    if (renderBusinessOutcomeCard(cardEl, r)) {
-      statusEl.textContent = r.success ? "Done — evidence below." : r.error || "Finished with evidence."
-      return
-    }
-    statusEl.textContent = r.success
-      ? `Done — ${r.invokeAction || "action"}. Open Activity in Gravitre.`
-      : r.error || "Action did not succeed"
+  function dark() {
+    if (prefs?.theme === "dark") return true
+    if (prefs?.theme === "light") return false
+    return Boolean(window.matchMedia?.("(prefers-color-scheme: dark)").matches)
   }
 
   function ensureRoot() {
-    let root = document.getElementById("gravitre-overlay-root")
-    if (root) return root
-    root = el("div")
-    root.id = "gravitre-overlay-root"
+    if (root && root.isConnected) return root
+    root = el("div", "gvx-root")
+    root.id = "gravitre-root"
     document.documentElement.appendChild(root)
     return root
   }
 
-  function renderOverlay({ pageContext, pageUrl }) {
-    const root = ensureRoot()
-    root.innerHTML = ""
-    const card = el("div", "gvt-card")
-    const header = el("div", "gvt-header")
-    header.appendChild(el("div", "gvt-brand", "Gravitre"))
-    const close = el("button", "gvt-close", "×")
-    close.type = "button"
-    close.addEventListener("click", () => root.remove())
-    header.appendChild(close)
-    card.appendChild(header)
+  function applyTheme() {
+    if (root) root.classList.toggle("gvx-dark", dark())
+  }
 
-    const contextSec = makeSection("Context")
-    contextSec.content.appendChild(
-      el("p", "gvt-muted", "Writes need your approval — same gate as chat."),
-    )
-    contextSec.content.appendChild(
-      el("div", "gvt-value", contextHostLabel(pageContext, pageUrl)),
-    )
-    if (pageContext?.pageType) {
-      const typeRow = el("div", "gvt-row")
-      typeRow.appendChild(el("div", "gvt-label", "Page"))
-      typeRow.appendChild(el("div", "gvt-value", String(pageContext.pageType)))
-      contextSec.content.appendChild(typeRow)
-    }
-    card.appendChild(contextSec.wrap)
-
-    const statusSec = makeSection("Status")
-    const status = el("p", "gvt-muted", "Loading…")
-    statusSec.content.appendChild(status)
-    card.appendChild(statusSec.wrap)
-
-    const captureSec = makeSection("Capture")
-    captureSec.wrap.hidden = true
-    card.appendChild(captureSec.wrap)
-
-    const actionSec = makeSection("Action")
-    actionSec.wrap.hidden = true
-    card.appendChild(actionSec.wrap)
-
-    const approvalSec = makeSection("Approval")
-    approvalSec.wrap.hidden = true
-    card.appendChild(approvalSec.wrap)
-
-    const agentSec = makeSection("Agent")
-    agentSec.wrap.hidden = true
-    card.appendChild(agentSec.wrap)
-
-    root.appendChild(card)
-
-    chrome.runtime.sendMessage(
-      { type: "ENRICH", pageUrl, pageContext },
-      (response) => {
-        if (!response?.ok) {
-          status.textContent = response?.error || "Could not enrich this page."
-          return
-        }
-        const result = response.result || {}
-        status.textContent = result.voiceNote || "Ready."
-        captureSec.content.innerHTML = ""
-        actionSec.content.innerHTML = ""
-        approvalSec.content.innerHTML = ""
-        agentSec.content.innerHTML = ""
-
-        const extracted = result.extracted || {}
-        let captureCount = 0
-        ;[
-          ["Name", extracted.fullName],
-          ["Title", extracted.title],
-          ["Company", extracted.company],
-          ["Email", extracted.email],
-        ].forEach(([label, value]) => {
-          if (!value) return
-          captureCount += 1
-          const row = el("div", "gvt-row")
-          row.appendChild(el("div", "gvt-label", label))
-          row.appendChild(el("div", "gvt-value", value))
-          captureSec.content.appendChild(row)
-        })
-        captureSec.wrap.hidden = captureCount === 0
-
-        ;(result.matches || []).forEach((match) => {
-          const row = el("div", "gvt-row")
-          row.appendChild(el("div", "gvt-label", match.action))
-          const badge = el(
-            "span",
-            `gvt-badge${match.success ? "" : " warn"}`,
-            match.confidenceLabel || (match.success ? "matched" : "unavailable"),
-          )
-          row.appendChild(badge)
-          if (match.error) row.appendChild(el("div", "gvt-muted", match.error))
-          statusSec.content.appendChild(row)
-        })
-
-        const actions = el("div", "gvt-actions")
-        const confirmBox = el("div", "gvt-confirm")
-        confirmBox.style.display = "none"
-
-        function showConfirm(suggestion, params) {
-          approvalSec.wrap.hidden = false
-          confirmBox.style.display = "block"
-          confirmBox.innerHTML = ""
-          confirmBox.appendChild(
-            el(
-              "p",
-              null,
-              `Approve ${suggestion.invokeAction}? This uses catalog_write_authority and will appear in Outcomes.`,
-            ),
-          )
-          if (suggestion.note) {
-            confirmBox.appendChild(el("p", "gvt-muted", suggestion.note))
-          }
-          let listInput = null
-          if (
-            suggestion.invokeAction === "hubspot.lists.add_contact" &&
-            !String(params.list_id || "").trim()
-          ) {
-            const label = el("div", "gvt-label", "HubSpot list id")
-            listInput = document.createElement("input")
-            listInput.className = "gvt-input"
-            listInput.placeholder = "e.g. 15"
-            listInput.value = ""
-            confirmBox.appendChild(label)
-            confirmBox.appendChild(listInput)
-          }
-          const row = el("div", "gvt-actions")
-          const yes = el("button", "gvt-btn", "Approve & run")
-          yes.type = "button"
-          const no = el("button", "gvt-btn secondary", "Cancel")
-          no.type = "button"
-          no.addEventListener("click", () => {
-            confirmBox.style.display = "none"
-            if (!approvalSec.content.querySelector(".gvt-confirm:not([style*='display: none'])")) {
-              /* keep section if workflow plans remain */
-            }
-          })
-          yes.addEventListener("click", () => {
-            function finishWithToken(token) {
-              yes.disabled = true
-              chrome.runtime.sendMessage(
-                {
-                  type: "EXECUTE_ACTION",
-                  confirmationToken: token,
-                  pageUrl,
-                },
-                (exec) => {
-                  yes.disabled = false
-                  confirmBox.style.display = "none"
-                  if (!exec?.ok) {
-                    status.textContent = exec?.error || "Action failed"
-                    return
-                  }
-                  showExecuteResult(status, statusSec.content, exec.result || {})
-                },
-              )
-            }
-
-            if (listInput) {
-              const listId = String(listInput.value || "").trim()
-              if (!listId) {
-                status.textContent = "Enter a HubSpot list id to continue."
-                return
-              }
-              // Re-stage with list_id — staged args are immutable after token issue.
-              yes.disabled = true
-              chrome.runtime.sendMessage(
-                {
-                  type: "EXECUTE_ACTION",
-                  invokeAction: suggestion.invokeAction,
-                  params: { ...params, list_id: listId },
-                  pageUrl,
-                },
-                (pre) => {
-                  if (!pre?.ok || pre.result?.status !== "needs_confirmation") {
-                    yes.disabled = false
-                    status.textContent = pre?.error || "Could not stage write with list id"
-                    return
-                  }
-                  finishWithToken(pre.result.confirmationToken)
-                },
-              )
-              return
-            }
-
-            const token = suggestion._confirmationToken
-            if (!token) {
-              status.textContent =
-                "Missing server confirmation token — propose the action again."
-              return
-            }
-            finishWithToken(token)
-          })
-          row.appendChild(yes)
-          row.appendChild(no)
-          confirmBox.appendChild(row)
-        }
-
-        ;(result.suggestions || []).forEach((suggestion) => {
-          const btn = el("button", "gvt-btn", suggestion.label)
-          btn.type = "button"
-          btn.addEventListener("click", () => {
-            const params =
-              suggestion.params && Object.keys(suggestion.params).length
-                ? { ...suggestion.params }
-                : buildParamsForAction(suggestion.invokeAction, extracted, result)
-            chrome.runtime.sendMessage(
-              {
-                type: "EXECUTE_ACTION",
-                invokeAction: suggestion.invokeAction,
-                params,
-                pageUrl,
-              },
-              (pre) => {
-                if (!pre?.ok) {
-                  status.textContent = pre?.error || "Could not propose action"
-                  return
-                }
-                if (pre.result?.status === "needs_confirmation") {
-                  if (!pre.result.confirmationToken) {
-                    status.textContent =
-                      "Server did not issue a confirmation token — write blocked."
-                    return
-                  }
-                  suggestion._confirmationToken = pre.result.confirmationToken
-                  showConfirm(suggestion, pre.result.params || params)
-                  return
-                }
-                showExecuteResult(status, statusSec.content, pre.result || {})
-              },
-            )
-          })
-          actions.appendChild(btn)
-        })
-
-        // v3 — lightweight workflow trigger (chat plan-bar / confirm pattern)
-        const wfBox = el("div", "gvt-row")
-        wfBox.appendChild(el("div", "gvt-label", "Workflows"))
-        const wfStatus = el("p", "gvt-muted", "Loading workflows…")
-        wfBox.appendChild(wfStatus)
-        const wfList = el("div", "gvt-actions")
-        wfBox.appendChild(wfList)
-        actionSec.content.appendChild(wfBox)
-        actionSec.wrap.hidden = false
-
-        chrome.runtime.sendMessage({ type: "LIST_WORKFLOWS" }, (wfRes) => {
-          if (!wfRes?.ok) {
-            wfStatus.textContent = wfRes?.error || "Could not load workflows"
-            return
-          }
-          const workflows = wfRes.result?.workflows || []
-          if (!workflows.length) {
-            wfStatus.textContent = "No active multi-step workflows."
-            return
-          }
-          wfStatus.textContent =
-            "Select a workflow — same typed-contract execute path as chat."
-          workflows.slice(0, 5).forEach((wf) => {
-            const btn = el(
-              "button",
-              "gvt-btn secondary",
-              `${wf.name} (${wf.stepCount} steps)`,
-            )
-            btn.type = "button"
-            btn.addEventListener("click", () => {
-              approvalSec.wrap.hidden = false
-              const plan = el("div", "gvt-confirm")
-              plan.appendChild(
-                el("p", null, `Plan: ${wf.name} — approve to run all steps.`),
-              )
-              const stepEls = []
-              ;(wf.progressSteps || []).forEach((step, i) => {
-                const label = step.label || step.name || `Step ${i + 1}`
-                const line = el(
-                  "div",
-                  "gvt-step gvt-step-pending",
-                  `${i + 1}. ${label}${step.action ? ` · ${step.action}` : ""}`,
-                )
-                line.dataset.stepIndex = String(i)
-                stepEls.push(line)
-                plan.appendChild(line)
-              })
-              const row = el("div", "gvt-actions")
-              const yes = el("button", "gvt-btn", "Approve & run workflow")
-              yes.type = "button"
-              const no = el("button", "gvt-btn secondary", "Cancel")
-              no.type = "button"
-              no.addEventListener("click", () => plan.remove())
-              yes.addEventListener("click", () => {
-                yes.disabled = true
-                stepEls.forEach((line) => {
-                  line.className = "gvt-step gvt-step-running"
-                })
-                status.textContent = "Running workflow — named steps below…"
-                chrome.runtime.sendMessage(
-                  {
-                    type: "EXECUTE_WORKFLOW",
-                    workflowId: wf.id,
-                    pageUrl,
-                    parameters: {},
-                  },
-                  (pre) => {
-                    if (!pre?.ok || pre.result?.status !== "needs_confirmation") {
-                      yes.disabled = false
-                      stepEls.forEach((line) => {
-                        line.className = "gvt-step gvt-step-pending"
-                      })
-                      status.textContent = pre?.error || "Could not stage workflow"
-                      return
-                    }
-                    const staged = pre.result.progressSteps || wf.progressSteps || []
-                    staged.forEach((step, i) => {
-                      if (!stepEls[i]) return
-                      const label = step.label || step.name || `Step ${i + 1}`
-                      stepEls[i].textContent = `${i + 1}. ${label}${
-                        step.action ? ` · ${step.action}` : ""
-                      }`
-                      stepEls[i].className = "gvt-step gvt-step-running"
-                    })
-                    const token = pre.result.confirmationToken
-                    chrome.runtime.sendMessage(
-                      {
-                        type: "EXECUTE_WORKFLOW",
-                        confirmationToken: token,
-                        pageUrl,
-                      },
-                      (exec) => {
-                        yes.disabled = true
-                        yes.textContent = "Ran"
-                        no.disabled = true
-                        if (!exec?.ok) {
-                          yes.disabled = false
-                          yes.textContent = "Approve & run workflow"
-                          status.textContent = exec?.error || "Workflow failed"
-                          stepEls.forEach((line) => {
-                            line.className = "gvt-step gvt-step-failed"
-                          })
-                          return
-                        }
-                        const r = exec.result || {}
-                        const done = r.progressSteps || staged
-                        done.forEach((step, i) => {
-                          if (!stepEls[i]) return
-                          const label = step.label || step.name || `Step ${i + 1}`
-                          const st = String(step.status || r.status || "completed")
-                          stepEls[i].textContent = `${i + 1}. ${label}${
-                            step.action ? ` · ${step.action}` : ""
-                          } — ${st}`
-                          stepEls[i].className =
-                            st === "completed" || st === "running"
-                              ? `gvt-step gvt-step-${st === "completed" ? "done" : "running"}`
-                              : "gvt-step gvt-step-failed"
-                        })
-                        if (r.runId && !renderBusinessOutcomeCard(statusSec.content, r)) {
-                          status.textContent = `Workflow ${r.status} — open Activity for evidence.`
-                        } else if (!r.runId) {
-                          status.textContent = r.error || "Workflow finished"
-                        } else {
-                          status.textContent = `Workflow ${r.status} — named steps + evidence below.`
-                        }
-                      },
-                    )
-                  },
-                )
-              })
-              row.appendChild(yes)
-              row.appendChild(no)
-              plan.appendChild(row)
-              approvalSec.content.appendChild(plan)
-            })
-            wfList.appendChild(btn)
-          })
-        })
-
-        // v4 — lightweight chat (same unified-turn path as main chat)
-        const chatBox = el("div", "gvt-row")
-        chatBox.appendChild(el("div", "gvt-label", "Ask about this page"))
-        const chatInput = el("textarea", "gvt-chat-input")
-        chatInput.rows = 2
-        chatInput.placeholder = "Quick question (page context included)…"
-        chatBox.appendChild(chatInput)
-        const modeRow = el("div", "gvt-chat-mode")
-        const textModeBtn = el("button", "gvt-mode-btn active", "Text")
-        textModeBtn.type = "button"
-        const voiceModeBtn = el("button", "gvt-mode-btn", "Voice")
-        voiceModeBtn.type = "button"
-        voiceModeBtn.disabled = true
-        const micBtn = el("button", "gvt-mode-btn", "Mic")
-        micBtn.type = "button"
-        micBtn.disabled = true
-        modeRow.appendChild(textModeBtn)
-        modeRow.appendChild(voiceModeBtn)
-        modeRow.appendChild(micBtn)
-        chatBox.appendChild(modeRow)
-        const chatReply = el("p", "gvt-muted", "")
-        chatBox.appendChild(chatReply)
-        const chatActions = el("div", "gvt-actions")
-        const askBtn = el("button", "gvt-btn", "Ask")
-        askBtn.type = "button"
-        const continueBtn = el("button", "gvt-btn secondary", "Continue in Gravitre")
-        continueBtn.type = "button"
-        continueBtn.style.display = "none"
-        let lastHandoffUrl = result.openInGravitreUrl || result.openInGravitreeUrl || "/ai"
-        let conversationId = null
-        let voiceMode = false
-        let voiceReady = false
-        let voiceReason = "Voice is unavailable in this workspace."
-        let isListening = false
-        let recognition = null
-        let playbackAudio = null
-
-        function setVoiceMode(nextVoice) {
-          voiceMode = Boolean(nextVoice && voiceReady)
-          textModeBtn.classList.toggle("active", !voiceMode)
-          voiceModeBtn.classList.toggle("active", voiceMode)
-          micBtn.disabled = !voiceMode || !voiceReady
-          if (!voiceMode) {
-            if (recognition && isListening) {
-              try {
-                recognition.stop()
-              } catch {}
-            }
-            isListening = false
-            micBtn.classList.remove("active")
-            micBtn.textContent = "Mic"
-          }
-        }
-
-        function stopPlayback() {
-          if (!playbackAudio) return
-          try {
-            playbackAudio.pause()
-          } catch {}
-          playbackAudio = null
-        }
-
-        function playVoiceReply(answerText) {
-          const text = String(answerText || "").trim()
-          if (!text || !voiceMode || !voiceReady) return
-          stopPlayback()
-          chrome.runtime.sendMessage(
-            {
-              type: "VOICE_TTS",
-              text,
-            },
-            (ttsRes) => {
-              if (!ttsRes?.ok || !ttsRes.audioBase64) {
-                if (ttsRes?.error) {
-                  status.textContent = `Voice output unavailable: ${ttsRes.error}`
-                }
-                return
-              }
-              const contentType = ttsRes.contentType || "audio/mpeg"
-              const src = `data:${contentType};base64,${ttsRes.audioBase64}`
-              const audio = new Audio(src)
-              playbackAudio = audio
-              audio.onended = () => {
-                if (playbackAudio === audio) playbackAudio = null
-              }
-              audio.onerror = () => {
-                if (playbackAudio === audio) playbackAudio = null
-                status.textContent = "Voice output failed to play."
-              }
-              void audio.play().catch(() => {
-                if (playbackAudio === audio) playbackAudio = null
-                status.textContent = "Voice output blocked by browser autoplay."
-              })
-            },
-          )
-        }
-
-        function setupRecognition() {
-          if (recognition) return recognition
-          const SpeechRecognitionCtor =
-            window.SpeechRecognition || window.webkitSpeechRecognition
-          if (!SpeechRecognitionCtor) return null
-          recognition = new SpeechRecognitionCtor()
-          recognition.continuous = false
-          recognition.interimResults = true
-          recognition.lang = "en-US"
-          recognition.onresult = (event) => {
-            const pieces = []
-            for (let i = event.resultIndex; i < event.results.length; i += 1) {
-              const part = event.results[i]
-              if (!part || !part[0]) continue
-              pieces.push(part[0].transcript || "")
-            }
-            const spoken = pieces.join(" ").trim()
-            if (!spoken) return
-            const current = String(chatInput.value || "").trim()
-            chatInput.value = current ? `${current} ${spoken}` : spoken
-          }
-          recognition.onerror = () => {
-            isListening = false
-            micBtn.classList.remove("active")
-            micBtn.textContent = "Mic"
-            chatReply.textContent = "Mic error. You can still type."
-          }
-          recognition.onend = () => {
-            isListening = false
-            micBtn.classList.remove("active")
-            micBtn.textContent = "Mic"
-          }
-          return recognition
-        }
-
-        textModeBtn.addEventListener("click", () => setVoiceMode(false))
-        voiceModeBtn.addEventListener("click", () => {
-          if (!voiceReady) {
-            chatReply.textContent = voiceReason
-            return
-          }
-          setVoiceMode(true)
-        })
-        micBtn.addEventListener("click", () => {
-          if (!voiceMode || !voiceReady) return
-          const rec = setupRecognition()
-          if (!rec) {
-            chatReply.textContent = "Voice input is not supported in this browser."
-            return
-          }
-          if (isListening) {
-            try {
-              rec.stop()
-            } catch {}
-            isListening = false
-            micBtn.classList.remove("active")
-            micBtn.textContent = "Mic"
-            return
-          }
-          try {
-            rec.start()
-            isListening = true
-            micBtn.classList.add("active")
-            micBtn.textContent = "Listening…"
-            chatReply.textContent = "Listening…"
-          } catch {
-            chatReply.textContent = "Could not start microphone."
-          }
-        })
-
-        chrome.runtime.sendMessage({ type: "VOICE_STATUS" }, (voiceRes) => {
-          if (!voiceRes?.ok) {
-            voiceReady = false
-            voiceReason = voiceRes?.error || "Voice status unavailable."
-            voiceModeBtn.disabled = true
-            setVoiceMode(false)
-            return
-          }
-          voiceReady = Boolean(voiceRes.enabled)
-          voiceReason = voiceRes.reason || "Voice output is unavailable."
-          voiceModeBtn.disabled = !voiceReady
-          if (!voiceReady && voiceMode) {
-            setVoiceMode(false)
-          }
-        })
-        askBtn.addEventListener("click", () => {
-          const message = (chatInput.value || "").trim()
-          if (!message) {
-            chatReply.textContent = "Type a short question first."
-            return
-          }
-          askBtn.disabled = true
-          chatReply.textContent = "Thinking…"
-          chrome.runtime.sendMessage(
-            {
-              type: "CHAT",
-              message,
-              pageUrl,
-              pageContext,
-              conversationId,
-              spokenMode: voiceMode && voiceReady,
-            },
-            (chatRes) => {
-              askBtn.disabled = false
-              if (!chatRes?.ok) {
-                chatReply.textContent = chatRes?.error || "Chat failed"
-                return
-              }
-              const r = chatRes.result || {}
-              conversationId = r.conversationId || conversationId
-              chatReply.textContent = r.answer || "(no answer)"
-              playVoiceReply(r.answer || "")
-              if (r.businessOutcome) {
-                renderBusinessOutcomeCard(statusSec.content, r)
-              }
-              if (r.openInGravitreUrl || r.openInGravitreeUrl) {
-                lastHandoffUrl = r.openInGravitreUrl || r.openInGravitreeUrl
-              }
-              continueBtn.style.display = ""
-              if (r.needsHandoff) {
-                const reason = String(r.handoffReason || "")
-                if (reason === "multi_step_progress") {
-                  status.textContent =
-                    "Multi-step work — continue in Gravitre for the progress panel (same thread)."
-                  continueBtn.textContent = "Open progress in Gravitre"
-                } else if (
-                  reason === "action_or_write_intent" ||
-                  reason === "tool_write_path" ||
-                  reason === "approval_required"
-                ) {
-                  status.textContent =
-                    "Writes/approvals need full Gravitre chat — same conversation thread."
-                  continueBtn.textContent = "Continue in Gravitre"
-                } else {
-                  status.textContent =
-                    "Continue in Gravitre — same conversation thread."
-                  continueBtn.textContent = "Continue in Gravitre"
-                }
-              } else {
-                continueBtn.textContent = "Open thread in Gravitre"
-                status.textContent =
-                  "Answered here — open the same thread in Gravitre anytime."
-              }
-            },
-          )
-        })
-        continueBtn.addEventListener("click", () => {
-          let path = lastHandoffUrl || "/ai"
-          // Prefer same conversation id even if URL omitted.
-          if (conversationId && !/[?&]c=/.test(path)) {
-            const base = path.split("?")[0] || "/ai"
-            const rest = path.includes("?") ? path.slice(path.indexOf("?") + 1) : ""
-            path = `${base}?c=${encodeURIComponent(conversationId)}${rest ? `&${rest}` : ""}`
-          }
-          window.open(
-            `https://gravitre.app${path.startsWith("/") ? path : `/${path}`}`,
-            "_blank",
-          )
-        })
-        chatActions.appendChild(askBtn)
-        chatActions.appendChild(continueBtn)
-        chatBox.appendChild(chatActions)
-        agentSec.content.appendChild(chatBox)
-        agentSec.wrap.hidden = false
-
-        const openApp = el("button", "gvt-btn secondary", "Open in Gravitre")
-        openApp.type = "button"
-        openApp.addEventListener("click", () => {
-          const path =
-            lastHandoffUrl || result.openInGravitreUrl || result.openInGravitreeUrl || "/ai"
-          window.open(`https://gravitre.app${path.startsWith("/") ? path : `/${path}`}`, "_blank")
-        })
-        actions.appendChild(openApp)
-        actionSec.content.insertBefore(actions, actionSec.content.firstChild)
-        actionSec.wrap.hidden = false
-        approvalSec.content.appendChild(confirmBox)
+  /** Text the person can see, leaving out anything typed into forms or editors. */
+  function visibleText(limit = 6000) {
+    const out = []
+    let size = 0
+    const walker = document.createTreeWalker(document.body || document.documentElement, NodeFilter.SHOW_TEXT, {
+      acceptNode(node) {
+        const p = node.parentElement
+        if (!p || p.closest("script,style,noscript,input,textarea,select,[contenteditable=''],[contenteditable='true'],[aria-hidden='true'],#gravitre-root,.gvx-chip")) return NodeFilter.FILTER_REJECT
+        if (!node.nodeValue.trim()) return NodeFilter.FILTER_SKIP
+        return NodeFilter.FILTER_ACCEPT
       },
+    })
+    while (walker.nextNode() && size < limit) {
+      const node = walker.currentNode
+      const p = node.parentElement
+      if (p.offsetParent === null && getComputedStyle(p).position !== "fixed") continue
+      const t = node.nodeValue.replace(/\s+/g, " ").trim()
+      out.push(t)
+      size += t.length + 1
+    }
+    return out.join(" ").slice(0, limit)
+  }
+
+  function context() {
+    let ctx = {}
+    try {
+      ctx = (adapter && adapter.extract()) || {}
+    } catch {
+      ctx = {}
+    }
+    return { ...ctx, pageTitle: document.title }
+  }
+
+  function kind() {
+    return (adapter && adapter.kind) || "page"
+  }
+
+  /* -------------------------------------------------------------- */
+  /* Card                                                            */
+  /* -------------------------------------------------------------- */
+
+  function closeCard() {
+    cardEl?.remove()
+    cardEl = null
+  }
+
+  function openPanel(draft) {
+    closeCard()
+    closeMenu()
+    void send({ type: "OPEN_SIDE_PANEL", draft: draft || null })
+  }
+
+  function showCard(anchor) {
+    closeMenu()
+    if (cardEl) return closeCard()
+    const c = context()
+    const name = c.fullName || c.company || ""
+    if (!name) return openPanel()
+    const line = [c.title, c.fullName ? c.company : null].filter(Boolean).join(" · ")
+    const rows = el("div", "gvx-rows")
+    const fill = () => {
+      rows.replaceChildren()
+      if (!found) return rows.append(el("div", "gvx-sub", "Checking your connected apps…"))
+      if (found.error) return rows.append(el("div", "gvx-sub", "Couldn't check your connected apps"))
+      if (!found.items.length) return rows.append(el("div", "gvx-sub", "Not in your connected apps yet"))
+      for (const it of found.items) rows.append(el("div", "gvx-row", el("span", "gvx-logo", it.short), el("span", "gvx-grow", it.label)))
+    }
+    fill()
+    const ask = el("button", "gvx-btn gvx-btn-p", "Ask about this")
+    ask.addEventListener("click", () => openPanel(c.fullName ? `What do we know about ${c.fullName}?` : `What do we know about ${name}?`))
+    const panel = el("button", "gvx-btn", "Open in side panel")
+    panel.addEventListener("click", () => openPanel())
+    cardEl = el(
+      "div",
+      "gvx-card",
+      el("div", "gvx-head", el("span", "gvx-av", initials(name)), el("div", "gvx-grow", el("div", "gvx-name", name), line ? el("div", "gvx-sub", line) : null)),
+      rows,
+      el("div", "gvx-actions", ask, panel),
+      el("div", "gvx-foot", "Only you see this. Gravitre reads this page when you ask."),
     )
+    cardEl.setAttribute("role", "dialog")
+    cardEl.setAttribute("aria-label", `Gravitre: ${name}`)
+    ensureRoot().appendChild(cardEl)
+    const r = (anchor || fabEl)?.getBoundingClientRect()
+    if (r) {
+      const w = 260
+      const left = Math.min(window.innerWidth - w - 12, Math.max(12, anchor ? r.right + 8 : r.right - w))
+      const top = anchor ? Math.min(window.innerHeight - 200, Math.max(12, r.top - 12)) : Math.max(12, r.top - 190)
+      cardEl.style.left = `${left}px`
+      cardEl.style.top = `${top}px`
+    }
+    cardEl.__fill = fill
+    if (!found) void lookup()
   }
 
-  function buildParamsForAction(action, extracted, enrichResult) {
-    const email = extracted.email || ""
-    const first = extracted.firstName || (extracted.fullName || "").split(/\s+/)[0] || ""
-    const last =
-      extracted.lastName ||
-      (extracted.fullName || "").split(/\s+/).slice(1).join(" ") ||
-      ""
-    if (action === "apollo.contacts.create") {
-      return {
-        first_name: first || "Unknown",
-        last_name: last || "Contact",
-        email: email || undefined,
-        organization_name: extracted.company || undefined,
+  /* -------------------------------------------------------------- */
+  /* Lookup in connected apps (only with "Detect automatically" on)   */
+  /* -------------------------------------------------------------- */
+
+  const SHORT = { hubspot: "HS", apollo: "AP", salesforce: "SF", gmail: "GM", slack: "SL" }
+  const APP = { hubspot: "HubSpot", apollo: "Apollo", salesforce: "Salesforce" }
+
+  async function lookup() {
+    const c = context()
+    if (!(c.fullName || c.email || c.company)) return
+    const url = location.href
+    const res = await send({ type: "ENRICH", pageUrl: url, pageContext: c })
+    if (location.href !== url) return
+    if (!res.ok) found = { error: true, items: [] }
+    else {
+      const items = []
+      for (const m of res.result?.matches || []) {
+        if (!m?.success || m.confidenceLabel !== "matched") continue
+        const app = String(m.action || "").split(".")[0]
+        if (items.some((i) => i.app === app)) continue
+        const what = String(m.action).includes("organizations") ? "company" : "contact"
+        items.push({ app, short: SHORT[app] || app.slice(0, 2).toUpperCase(), label: `${APP[app] || app} ${what}` })
       }
+      found = { items }
     }
-    if (action === "apollo.lists.create") {
-      return {
-        name: extracted.company
-          ? `${extracted.company} — Extension`
-          : `Extension list ${new Date().toISOString().slice(0, 10)}`,
-        modality: "contacts",
-      }
-    }
-    if (action === "apollo.lists.add") {
-      const match = (enrichResult.matches || []).find(
-        (m) => m.action === "apollo.people.match" && m.success,
-      )
-      const data = match?.data || {}
-      const person = data.person || data.contact || data
-      const id = person.id || person.contact_id || data.primary_contact_id
-      return {
-        entity_ids: id ? [String(id)] : [],
-        label_names: ["Extension Prospects"],
-        modality: "contacts",
-      }
-    }
-    if (action === "hubspot.contacts.create") {
-      return {
-        properties: {
-          email: email || undefined,
-          firstname: first || undefined,
-          lastname: last || "Contact",
-          company: extracted.company || undefined,
-          jobtitle: extracted.title || undefined,
-        },
-      }
-    }
-    if (action === "hubspot.lists.create") {
-      return {
-        name: extracted.company
-          ? `${extracted.company} — Extension`
-          : `Extension list ${new Date().toISOString().slice(0, 10)}`,
-      }
-    }
-    if (action === "hubspot.lists.add_contact") {
-      return {
-        list_id: "",
-        contact_id: "",
-      }
-    }
-    return {}
+    cardEl?.__fill?.()
+    placeChip()
   }
 
-  window.__gravitreOverlay = {
-    renderOverlay,
-    ensureRoot,
-    renderBusinessOutcomeCard,
-    showExecuteResult,
+  /** "In CRM" next to the name once a connected app has this person or company. */
+  function placeChip() {
+    chipEl?.remove()
+    chipEl = null
+    if (!found || !found.items.length || !adapter?.anchor) return
+    let anchor = null
+    try {
+      anchor = adapter.anchor()
+    } catch {
+      anchor = null
+    }
+    if (!anchor) return
+    chipEl = el("button", "gvx-chip", mark(10), "In CRM")
+    chipEl.type = "button"
+    chipEl.title = found.items.map((i) => i.label).join(", ")
+    chipEl.addEventListener("click", (e) => {
+      e.preventDefault()
+      e.stopPropagation()
+      showCard(chipEl)
+    })
+    anchor.insertAdjacentElement("afterend", chipEl)
   }
-  // Legacy alias for content scripts still reading __gravitreeOverlay.
-  window.__gravitreeOverlay = window.__gravitreOverlay
+
+  /* -------------------------------------------------------------- */
+  /* Floating button                                                  */
+  /* -------------------------------------------------------------- */
+
+  function closeMenu() {
+    menuEl?.remove()
+    menuEl = null
+  }
+
+  async function savePrefs(patch) {
+    const { gvPrefs } = await chrome.storage.local.get("gvPrefs")
+    await chrome.storage.local.set({ gvPrefs: { ...(gvPrefs || {}), ...patch } })
+  }
+
+  function showMenu() {
+    if (menuEl) return closeMenu()
+    closeCard()
+    const item = (label, run, hint) => {
+      const b = el("button", "gvx-mi", el("span", "gvx-grow", label), hint ? el("span", "gvx-kbd", hint) : null)
+      b.addEventListener("click", () => {
+        closeMenu()
+        run()
+      })
+      return b
+    }
+    const c = context()
+    const name = c.fullName || c.company
+    menuEl = el(
+      "div",
+      "gvx-menu",
+      item("Open side panel", () => openPanel(), "Alt G"),
+      name ? item(`About ${name}`, () => showCard(null)) : null,
+      item(`Hide on ${host}`, () => void savePrefs({ hiddenHosts: [...new Set([...(prefs.hiddenHosts || []), host])] })),
+      item("Hide everywhere", () => void savePrefs({ floating: false })),
+      el("div", "gvx-hint", "Drag the button to move it"),
+    )
+    menuEl.setAttribute("role", "menu")
+    ensureRoot().appendChild(menuEl)
+    const r = fabEl.getBoundingClientRect()
+    menuEl.style.left = `${Math.max(12, Math.min(window.innerWidth - 232, r.right - 220))}px`
+    menuEl.style.top = `${Math.max(12, r.top - menuEl.offsetHeight - 8)}px`
+  }
+
+  async function placeFab() {
+    const show = allowed() && prefs.floating !== false && !(prefs.hiddenHosts || []).includes(host)
+    if (!show) {
+      fabEl?.remove()
+      fabEl = null
+      closeMenu()
+      return
+    }
+    if (fabEl && fabEl.isConnected) return
+    fabEl = el("button", "gvx-fab", mark(16))
+    fabEl.type = "button"
+    fabEl.setAttribute("aria-label", "Gravitre")
+    fabEl.title = "Gravitre"
+    const { gvFab } = await chrome.storage.local.get("gvFab")
+    const pos = gvFab && gvFab[host]
+    if (pos) {
+      fabEl.style.right = `${pos.right}px`
+      fabEl.style.bottom = `${pos.bottom}px`
+    }
+    let drag = null
+    fabEl.addEventListener("pointerdown", (e) => {
+      drag = { x: e.clientX, y: e.clientY, right: parseFloat(getComputedStyle(fabEl).right), bottom: parseFloat(getComputedStyle(fabEl).bottom), moved: false }
+      fabEl.setPointerCapture(e.pointerId)
+    })
+    fabEl.addEventListener("pointermove", (e) => {
+      if (!drag) return
+      const dx = e.clientX - drag.x
+      const dy = e.clientY - drag.y
+      if (!drag.moved && Math.abs(dx) + Math.abs(dy) < 4) return
+      drag.moved = true
+      closeMenu()
+      fabEl.style.right = `${Math.max(4, Math.min(window.innerWidth - 40, drag.right - dx))}px`
+      fabEl.style.bottom = `${Math.max(4, Math.min(window.innerHeight - 40, drag.bottom - dy))}px`
+    })
+    fabEl.addEventListener("pointerup", async () => {
+      const d = drag
+      drag = null
+      if (!d) return
+      if (!d.moved) return showMenu()
+      const stored = (await chrome.storage.local.get("gvFab")).gvFab || {}
+      stored[host] = { right: parseFloat(fabEl.style.right), bottom: parseFloat(fabEl.style.bottom) }
+      await chrome.storage.local.set({ gvFab: stored })
+    })
+    fabEl.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault()
+        showMenu()
+      }
+    })
+    ensureRoot().appendChild(fabEl)
+  }
+
+  /* -------------------------------------------------------------- */
+  /* Lifecycle                                                        */
+  /* -------------------------------------------------------------- */
+
+  async function refresh() {
+    const stored = (await chrome.storage.local.get("gvPrefs")).gvPrefs || {}
+    prefs = { floating: true, hiddenHosts: [], detect: {}, sites: {}, added: [], ...stored }
+    applyTheme()
+    if (!allowed()) {
+      fabEl?.remove()
+      chipEl?.remove()
+      closeCard()
+      closeMenu()
+      fabEl = chipEl = null
+      return
+    }
+    await placeFab()
+    applyTheme()
+  }
+
+  /** Called on load and whenever a single-page app changes the address. */
+  function onPage() {
+    if (location.href === lastUrl) return
+    lastUrl = location.href
+    found = null
+    chipEl?.remove()
+    chipEl = null
+    closeCard()
+    if (!allowed() || !adapter || (prefs.detect || {})[kind()] === false) return
+    if (adapter.auto && adapter.auto()) setTimeout(() => void lookup(), 1200)
+  }
+
+  chrome.storage.onChanged.addListener((changes, area) => {
+    if (area !== "local" || !changes.gvPrefs) return
+    void refresh().then(() => {
+      if (found) return
+      lastUrl = ""
+      onPage()
+    })
+  })
+
+  chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
+    if (msg?.type === "GV_PAGE_CONTEXT") {
+      if (!allowed()) sendResponse({ ok: false, off: true })
+      else sendResponse({ ok: true, kind: kind(), context: context(), text: visibleText(), title: document.title, url: location.href })
+      return
+    }
+    if (msg?.type === "GV_SELECTION") {
+      if (!allowed()) return sendResponse({ ok: false, off: true })
+      const sel = window.getSelection()
+      const node = sel && sel.anchorNode && (sel.anchorNode.nodeType === 1 ? sel.anchorNode : sel.anchorNode.parentElement)
+      const inForm = node && node.closest("input,textarea,[contenteditable=''],[contenteditable='true']")
+      sendResponse({ ok: true, text: inForm ? "" : String(sel || "").slice(0, 4000) })
+      return
+    }
+    if (msg?.type === "OPEN_OVERLAY" && allowed()) showCard(null)
+  })
+
+  document.addEventListener(
+    "mousedown",
+    (e) => {
+      if (root && !root.contains(e.target) && e.target !== chipEl) {
+        closeCard()
+        closeMenu()
+      }
+    },
+    true,
+  )
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") {
+      closeCard()
+      closeMenu()
+    }
+  })
+  window.matchMedia?.("(prefers-color-scheme: dark)").addEventListener?.("change", applyTheme)
+
+  window.__gravitre = {
+    /** { kind: "people"|"company"|"crm"|"email", extract(): {...}, anchor?(): Element, auto?(): boolean } */
+    register(def) {
+      adapter = def
+      lastUrl = ""
+      void refresh().then(onPage)
+    },
+  }
+
+  void refresh().then(onPage)
+  setInterval(onPage, 1000)
 })()

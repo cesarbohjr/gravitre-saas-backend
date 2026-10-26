@@ -2181,7 +2181,7 @@ export const conversationsApi = {
     return fetcher<{ conversations: Conversation[] }>(apiUrl(`/api/conversations${qs ? `?${qs}` : ""}`))
   },
   get: (id: string) => fetcher<Conversation>(apiUrl(`/api/conversations/${id}`)),
-  create: (data: { title?: string }) => postJson<Conversation>(apiUrl("/api/conversations"), data),
+  create: (data: { title?: string }) => postJson<Conversation>(apiUrl("/api/conversations"), { surface: "web", ...data }),
   update: (id: string, data: { title?: string }) => patchJson<Conversation>(apiUrl(`/api/conversations/${id}`), data),
   archive: (id: string) => postJson<Conversation>(apiUrl(`/api/conversations/${id}/archive`), {}),
   unarchive: (id: string) => postJson<Conversation>(apiUrl(`/api/conversations/${id}/unarchive`), {}),

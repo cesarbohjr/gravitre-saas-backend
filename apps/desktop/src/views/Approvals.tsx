@@ -1,68 +1,85 @@
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import { ART } from "../art"
-import {
-  isPastSla,
-  lockNote,
-  policyCopy,
-  policyLine,
-  slaLine,
-  titleCase,
-  typeLabel,
-  whatWillHappen,
-  type Approval,
-} from "@web/components/approvals/decision-queue/model"
+import { lockNote, policyLine, slaLine, titleCase, whatWillHappen, type Approval, type DetailRow } from "@web/components/approvals/decision-queue/model"
 import { useStore } from "../store"
-import { Avatar, Empty, ErrorLine, Live, Logo, PageHead } from "../ui"
-import { systemBadge, timeAgo } from "../lib/model"
+import { AgentAvatar, Empty, ErrorLine, Logo } from "../ui"
+import { age, systemBadge } from "../lib/model"
+import { identityOf } from "../lib/identity"
 
 type Priority = "all" | "high" | "medium" | "low"
 
-function approvers(a: Approval): string {
+/** Rows that describe the request rather than a value it writes. */
+const META_TERMS = new Set(["Action", "App", "Tool", "Workflow", "Environment", "Approvals needed", "Proposed on", "Impact", "Run"])
+
+function approvers(a: Approval, canApprove: boolean): string {
   const roles = a.policy?.approverRoles
-  if (roles && roles.length) return roles.map((r) => titleCase(r)).join(", ")
-  if (a.policy?.source === "extension_confirm") return "The person who proposed it, or an admin"
-  return "Workspace admins and anyone allowed to approve"
+  const who = roles && roles.length ? roles.map((r) => `${titleCase(r)}s`).join(", ") : a.policy?.source === "extension_confirm" ? "The person who proposed it, or Admins" : "Admins"
+  return canApprove ? `${who} · you` : who
+}
+
+function oldestFirst(a: Approval, b: Approval) {
+  return new Date(a.requestedAt || 0).getTime() - new Date(b.requestedAt || 0).getTime()
 }
 
 export function Approvals() {
-  const { approvals, history, nav, api, toast, refresh, go, web } = useStore()
+  const { approvals, nav, api, toast, refresh, go, web, agents, approveWithUndo, canApprove } = useStore()
   const [priority, setPriority] = useState<Priority>("all")
   const [selected, setSelected] = useState<string | null>(nav.select ?? null)
   const [rejecting, setRejecting] = useState(false)
   const [reason, setReason] = useState("")
   const [busy, setBusy] = useState(false)
+  const [expanded, setExpanded] = useState(false)
+  const [convTitle, setConvTitle] = useState<Record<string, string>>({})
 
   useEffect(() => {
     if (nav.select) setSelected(nav.select)
   }, [nav.select])
 
-  const all = approvals.data
+  const all = useMemo(() => [...approvals.data].sort(oldestFirst), [approvals.data])
   const rows = all.filter((a) => priority === "all" || a.priority === priority)
   const sel = rows.find((a) => a.id === selected) || rows[0] || null
-  const pastSla = all.filter((a) => isPastSla(a)).length
-  const approvedN = history.at ? history.data.filter((a) => a.status === "approved").length : null
-  const rejectedN = history.at ? history.data.filter((a) => a.status === "rejected").length : null
 
-  const decide = useCallback(
-    async (a: Approval, approve: boolean) => {
+  // The conversation an approval came from, by title.
+  const convId = sel?.context.conversationId || null
+  useEffect(() => {
+    if (!convId || convTitle[convId]) return
+    api
+      .conversations()
+      .then((list) => setConvTitle((m) => ({ ...m, ...Object.fromEntries(list.map((c) => [c.id, c.title])) })))
+      .catch(() => {})
+  }, [api, convId, convTitle])
+
+  const move = useCallback(
+    (by: number) => {
+      if (!rows.length) return
+      const i = Math.max(0, rows.findIndex((a) => a.id === sel?.id))
+      const next = rows[Math.min(rows.length - 1, Math.max(0, i + by))]
+      setSelected(next.id)
+      setRejecting(false)
+    },
+    [rows, sel?.id],
+  )
+
+  const approve = useCallback(
+    (a: Approval) => {
+      if (!canApprove) return
+      move(1)
+      if (rows.length === 1 || rows[rows.length - 1].id === a.id) move(-1)
+      approveWithUndo(a)
+    },
+    [approveWithUndo, canApprove, move, rows],
+  )
+
+  const reject = useCallback(
+    async (a: Approval) => {
       if (busy) return
       setBusy(true)
       try {
-        if (approve) {
-          const result = await api.approve(a.id)
-          if (result && result.success === false) {
-            toast(String(result.message ?? "Approved, but the action didn't run."), "error")
-          } else {
-            toast(String(result?.status ?? "") === "pending_approval" ? "Recorded. Another approver is still needed." : `Approved · ${a.title}`)
-          }
-        } else {
-          await api.reject(a.id, reason.trim())
-          toast(`Rejected · ${a.title}`)
-        }
+        await api.reject(a.id, reason.trim())
+        toast(`Rejected: ${a.title}`)
         setRejecting(false)
         setReason("")
-        const idx = rows.findIndex((r) => r.id === a.id)
-        setSelected(rows[idx + 1]?.id ?? rows[idx - 1]?.id ?? null)
+        move(1)
         await refresh("approvals")
       } catch (err) {
         toast(err instanceof Error ? err.message : "That didn't go through", "error")
@@ -71,240 +88,253 @@ export function Approvals() {
         setBusy(false)
       }
     },
-    [api, busy, reason, refresh, rows, toast],
+    [api, busy, move, reason, refresh, toast],
   )
 
-  // A and R decide the selected request, like the web queue.
+  // J and K move, A approves, R rejects, E expands the change table: like the web queue.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const t = e.target as HTMLElement | null
-      if (!sel || rejecting || e.metaKey || e.ctrlKey || e.altKey) return
+      if (rejecting || e.metaKey || e.ctrlKey || e.altKey) return
       if (t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.tagName === "SELECT")) return
-      if (e.key === "a" || e.key === "A") void decide(sel, true)
-      if (e.key === "r" || e.key === "R") setRejecting(true)
+      const k = e.key.toLowerCase()
+      if (k === "j") move(1)
+      else if (k === "k") move(-1)
+      else if (k === "e") setExpanded((x) => !x)
+      else if (!sel) return
+      else if (k === "a") approve(sel)
+      else if (k === "r" && canApprove) setRejecting(true)
     }
     window.addEventListener("keydown", onKey)
     return () => window.removeEventListener("keydown", onKey)
-  }, [decide, rejecting, sel])
+  }, [approve, canApprove, move, rejecting, sel])
 
-  const n = all.length
-  const lede = !approvals.at
-    ? "Loading the decision queue…"
-    : n
-      ? `Oldest first.${pastSla ? ` ${pastSla} past ${pastSla === 1 ? "its" : "their"} SLA.` : " Every item is within its SLA."}`
-      : "No decisions are waiting. New requests appear the moment an agent pauses."
-  const policy = sel ? policyCopy(sel) : null
+  const detail: DetailRow[] = sel ? whatWillHappen(sel) : []
+  const fields = detail.filter((r) => !META_TERMS.has(r.term))
+  const meta = detail.filter((r) => META_TERMS.has(r.term) && r.term !== "Tool")
   const sla = sel ? slaLine(sel) : null
-  const rowsWhat = sel ? whatWillHappen(sel) : []
+  const who = sel ? identityOf(agents, sel.requestedBy) : null
+  const shownFields = expanded ? fields : fields.slice(0, 6)
+  const subject = sel ? [sel.context.integration ? titleCase(sel.context.integration) : null, sel.context.label || sel.context.entity || null].filter(Boolean).join(" · ") : ""
+  const convName = convId ? convTitle[convId] || "Open the conversation" : null
 
   return (
-    <div className="page fade">
-      <PageHead eyebrow="Governance" title="Approvals" lede="The same decision queue as Trust & Safety. Approve or reject what agents ask to do, with every detail in view.">
-        <Live at={approvals.at} />
-        <button className="btn" onClick={() => web("/trust-safety?tab=approvals")}>
-          Open in Trust &amp; Safety ↗
-        </button>
-      </PageHead>
-      <section className="bigcard" style={{ padding: "22px 24px", display: "flex", gap: 24, alignItems: "center", flexWrap: "wrap" }}>
-        <div style={{ flex: 1, minWidth: 280, display: "flex", flexDirection: "column", gap: 8 }}>
-          <span className="eyebrow">Approvals · decision queue</span>
-          <div style={{ display: "flex", alignItems: "baseline", gap: 12 }}>
-            <span style={{ fontSize: 44, fontWeight: 600, lineHeight: 1 }}>{approvals.at ? n : "–"}</span>
-            <span style={{ fontSize: 16, color: "var(--t2)" }}>waiting on you</span>
-          </div>
-          <span style={{ fontSize: 14, color: "var(--t2)" }}>{lede}</span>
-          <div style={{ display: "flex", gap: 8, marginTop: 6 }}>
-            <button className="btn btn-k" onClick={() => go("settings")}>
-              Notification rules
-            </button>
-            <button className="btn btn-l" onClick={() => web("/trust-safety?tab=audit")}>
-              View past decisions
-            </button>
-          </div>
+    <div className="body fade" style={{ minHeight: 0 }}>
+      <section className="lpane" aria-label="Waiting for approval" style={{ width: 296 }}>
+        <div className="lhead">
+          <h1>Approvals</h1>
+          <span className="sub">Oldest first</span>
         </div>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 146px)", gap: 8 }}>
-          <div className="tile">
-            <b>{approvals.at ? n : "–"}</b>
-            <span className="sub">Waiting on you</span>
-          </div>
-          <div className={`tile ${pastSla ? "warn" : ""}`}>
-            <b>{approvals.at ? pastSla : "–"}</b>
-            <span className={pastSla ? "" : "sub"} style={pastSla ? { fontSize: 12 } : undefined}>
-              Past SLA
-            </span>
-          </div>
-          <div className="tile good">
-            <b>{approvedN ?? "–"}</b>
-            <span style={{ fontSize: 12 }}>Approved</span>
-          </div>
-          <div className="tile">
-            <b>{rejectedN ?? "–"}</b>
-            <span className="sub">Rejected</span>
-          </div>
-        </div>
-      </section>
-      {approvals.error ? <ErrorLine message={approvals.error} onRetry={() => void refresh("approvals")} /> : null}
-      <section className="card" style={{ overflow: "hidden" }}>
-        <div className="band" style={{ padding: "14px 20px", display: "flex", alignItems: "center", gap: 12 }}>
-          <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
-            <span style={{ fontSize: 15, fontWeight: 600 }}>Decision queue</span>
-            <span className="sub">Oldest first, across every agent and workflow</span>
-          </div>
-          <div className="tabs" role="tablist" aria-label="Priority">
+        <div style={{ padding: "0 12px 8px" }}>
+          <div className="seg" role="tablist" aria-label="Priority">
             {(["all", "high", "medium", "low"] as Priority[]).map((p) => (
               <button key={p} className={priority === p ? "on" : ""} role="tab" aria-selected={priority === p} onClick={() => setPriority(p)}>
-                {p === "all" ? "All" : titleCase(p)}
-                {p !== "all" ? <span className="n">{all.filter((a) => a.priority === p).length}</span> : null}
+                {p === "all" ? `All ${all.length || ""}`.trim() : titleCase(p)}
               </button>
             ))}
           </div>
         </div>
-        {rows.length === 0 ? (
-          approvals.at ? (
-            <Empty art={ART.checklist} title="All clear" body={n ? "Nothing at this priority." : "No decisions are waiting. New requests appear the moment an agent pauses for a human."} />
-          ) : (
-            <div className="sub" style={{ padding: 24 }}>
-              Loading…
-            </div>
-          )
-        ) : (
-          <div className="split" style={{ height: 560 }}>
-            <div style={{ width: 360, flex: "none", borderRight: "1px solid var(--bs)", overflow: "auto", padding: 8, display: "flex", flexDirection: "column", gap: 2 }}>
-              {rows.map((a) => (
-                <button
-                  key={a.id}
-                  className={`lr ${sel?.id === a.id ? "on" : ""}`}
-                  onClick={() => {
-                    setSelected(a.id)
-                    setRejecting(false)
-                  }}
-                >
-                  <Avatar name={a.requestedBy} />
-                  <span style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 2 }}>
-                    <span style={{ display: "flex", gap: 8 }}>
-                      <span style={{ fontSize: 14, fontWeight: 600, flex: 1, minWidth: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{a.title}</span>
-                      <span className="sub">{timeAgo(a.requestedAt)}</span>
-                    </span>
-                    <span style={{ fontSize: 12, color: "var(--t3)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                      {a.requestedBy} · {policyLine(a)}
-                    </span>
+        <div className="scroll" style={{ flex: 1, padding: "0 8px 8px", display: "flex", flexDirection: "column", gap: 2 }}>
+          {approvals.error && !approvals.at ? <ErrorLine message={approvals.error} onRetry={() => void refresh("approvals")} /> : null}
+          {rows.length === 0 ? <div className="sub" style={{ padding: 12 }}>{approvals.at ? (all.length ? "Nothing at this priority." : "Nothing is waiting on you.") : "Loading…"}</div> : null}
+          {rows.map((a) => (
+            <button
+              key={a.id}
+              className={`lr ${sel?.id === a.id ? "on" : ""}`}
+              aria-current={sel?.id === a.id ? "true" : undefined}
+              onClick={() => {
+                setSelected(a.id)
+                setRejecting(false)
+              }}
+            >
+              <AgentAvatar id={identityOf(agents, a.requestedBy)} size={26} />
+              <span style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 1 }}>
+                <span style={{ display: "flex", gap: 8, alignItems: "baseline" }}>
+                  <span className="ell" style={{ fontSize: 13, fontWeight: 600, flex: 1 }}>
+                    {a.title}
                   </span>
+                  <span className="sub">{age(a.requestedAt)}</span>
+                </span>
+                <span className="sub ell">{canApprove ? `${a.requestedBy} · ${policyLine(a)}` : "Your role can't approve changes"}</span>
+              </span>
+              <Logo text={systemBadge(a.context.integration)} />
+            </button>
+          ))}
+        </div>
+        <div style={{ display: "flex", gap: 6, alignItems: "center", padding: "10px 14px", borderTop: "1px solid var(--bs)" }} className="sub">
+          <span className="kbd">J</span>
+          <span className="kbd">K</span> move <span style={{ width: 6 }} />
+          <span className="kbd">E</span> expand changes
+        </div>
+      </section>
+      {sel && who ? (
+        <section className="dpane" aria-label="Approval detail">
+          <div className="scroll fade" key={sel.id} style={{ flex: 1 }}>
+            <div className="dhead">
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <span className={`pill ${sla?.breached ? "st-fail" : "st-wait"}`}>
+                  <span className="dot" />
+                  {sla?.breached ? sla.text : `Waiting on you · ${age(sel.requestedAt) || "now"}`}
+                </span>
+                <span style={{ flex: 1 }} />
+                <button className="mlink" onClick={() => web(`/trust-safety?tab=approvals&id=${encodeURIComponent(sel.id)}`)}>
+                  Open in Trust &amp; Safety ↗
                 </button>
-              ))}
+              </div>
+              <h2>{sel.title}</h2>
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 8, fontSize: 13, color: "var(--t2)" }}>
+                <AgentAvatar id={who} size={18} />
+                <span>
+                  Requested by {sel.requestedBy}
+                  {sel.description && sel.description !== sel.title ? ` · ${sel.description}` : ""}
+                </span>
+              </span>
             </div>
-            {sel ? (
-              <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column" }}>
-                <div className="fade" key={sel.id} style={{ flex: 1, overflow: "auto", padding: "20px 24px", display: "flex", flexDirection: "column", gap: 16 }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                    <span className={`pill ${sla?.breached ? "st-fail" : "st-wait"}`}>
-                      <span className="dot" />
-                      {sla ? sla.text : "Waiting on you"}
+            <div style={{ padding: "16px 24px 24px", display: "flex", flexDirection: "column", gap: 14 }}>
+              <div className="card" style={{ overflow: "hidden" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 14px" }}>
+                  <Logo text={systemBadge(sel.context.integration) || "·"} style={{ width: 28, height: 28, fontSize: 10 }} />
+                  <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column" }}>
+                    <span className="ell" style={{ fontSize: 14, fontWeight: 600 }}>
+                      {subject || (meta.find((m) => m.term === "Action")?.value ?? "What happens if you approve")}
                     </span>
-                    <span style={{ flex: 1 }} />
-                    <Logo text={systemBadge(sel.context.integration)} />
-                  </div>
-                  <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                    <h2 style={{ margin: 0, fontSize: 22, fontWeight: 600, letterSpacing: "-0.01em" }}>{sel.title}</h2>
-                    <span style={{ display: "inline-flex", alignItems: "center", gap: 8, fontSize: 13, color: "var(--t2)" }}>
-                      <Avatar name={sel.requestedBy} size={20} />
-                      Requested by {sel.requestedBy} · {typeLabel(sel)}
+                    <span className="sub">
+                      {fields.length ? `${fields.length} ${fields.length === 1 ? "field changes" : "fields change"}` : meta.find((m) => m.term === "Action")?.value || "Details weren't reported"}
                     </span>
-                    {sel.description && sel.description !== sel.title ? <span style={{ fontSize: 14, color: "var(--t2)" }}>{sel.description}</span> : null}
                   </div>
-                  <div style={{ border: "1px solid var(--bd)", borderRadius: 14, overflow: "hidden" }}>
-                    <div style={{ padding: "10px 16px", background: "var(--band)" }}>
-                      <span className="eyebrow">What happens if you approve</span>
-                    </div>
-                    {rowsWhat.length === 0 ? (
-                      <div className="kv">
-                        <span style={{ color: "var(--t3)" }}>Details</span>
-                        <span>Not reported for this request</span>
-                      </div>
-                    ) : (
-                      rowsWhat.map((r, i) => (
-                        <div key={i} className="kv">
-                          <span style={{ color: "var(--t3)" }}>{r.term}</span>
-                          {r.href ? (
-                            <button className="btn btn-l btn-sm" style={{ justifySelf: "start", padding: 0 }} onClick={() => web(r.href!)}>
-                              {r.value} ↗
-                            </button>
-                          ) : (
-                            <span className={`new ${r.mono ? "mono" : ""}`} style={{ overflowWrap: "anywhere" }}>
-                              {r.value}
-                            </span>
-                          )}
-                        </div>
-                      ))
-                    )}
-                    {sel.steps.length ? (
-                      <div className="kv" style={{ alignItems: "start", paddingTop: 10, paddingBottom: 10 }}>
-                        <span style={{ color: "var(--t3)" }}>Steps</span>
-                        <span style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                          {sel.steps.map((s, i) => (
-                            <span key={i}>
-                              {i + 1}. {s.text}
-                              {s.access === "write" ? <span className="pill st-wait" style={{ height: 18, marginLeft: 6, fontSize: 11 }}>Writes</span> : null}
-                            </span>
-                          ))}
-                        </span>
-                      </div>
-                    ) : null}
-                  </div>
-                  <div style={{ border: "1px solid var(--bd)", borderRadius: 14, overflow: "hidden" }}>
-                    <div style={{ padding: "10px 16px", background: "var(--band)" }}>
-                      <span className="eyebrow">Why this needs approval</span>
-                    </div>
-                    <div className="kv">
-                      <span style={{ color: "var(--t3)" }}>Policy</span>
-                      <span>{policy?.title || policyLine(sel)}</span>
-                    </div>
-                    <div className="kv">
-                      <span style={{ color: "var(--t3)" }}>Who can approve</span>
-                      <span>{approvers(sel)}</span>
-                    </div>
-                    {sel.context.riskLevel ? (
-                      <div className="kv">
-                        <span style={{ color: "var(--t3)" }}>Risk</span>
-                        <span>{titleCase(sel.context.riskLevel)}</span>
-                      </div>
-                    ) : null}
-                  </div>
-                  {rejecting ? (
-                    <div className="fade" style={{ padding: "14px 16px", borderRadius: 14, border: "1px solid var(--bd)", display: "flex", flexDirection: "column", gap: 8 }}>
-                      <label htmlFor="rej" style={{ fontSize: 13, fontWeight: 600 }}>
-                        Why are you rejecting this?
-                      </label>
-                      <textarea id="rej" rows={2} autoFocus className="field" placeholder="The agent sees your reason and can replan" value={reason} onChange={(e) => setReason(e.target.value)} style={{ height: "auto", padding: "8px 10px", resize: "none" }} />
-                      <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
-                        <button className="btn btn-q btn-sm" onClick={() => setRejecting(false)}>
-                          Cancel
-                        </button>
-                        <button className="btn btn-dp btn-sm" disabled={busy} onClick={() => void decide(sel, false)}>
-                          Reject
-                        </button>
-                      </div>
-                    </div>
+                  {sel.context.runId ? (
+                    <button className="link" onClick={() => web(`/runs/${encodeURIComponent(sel.context.runId!)}`)}>
+                      View run ↗
+                    </button>
                   ) : null}
                 </div>
-                <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "12px 24px", borderTop: "1px solid var(--bs)" }}>
-                  <span className="sub" style={{ flex: 1 }}>
-                    {lockNote(sel)}
-                  </span>
-                  <button className="btn btn-d" disabled={busy} onClick={() => setRejecting(true)}>
-                    Reject <span className="kbd">R</span>
+                {fields.length ? (
+                  <table className="difft">
+                    <thead>
+                      <tr>
+                        <th style={{ width: "36%" }}>Field</th>
+                        <th>After approval</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {shownFields.map((r, i) => (
+                        <tr key={i}>
+                          <td>{r.term}</td>
+                          <td>
+                            <span className={`newp ${r.mono ? "mono" : ""}`}>{r.value}</span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                ) : null}
+                {fields.length > shownFields.length ? (
+                  <button className="link" style={{ padding: "8px 14px", borderTop: "1px solid var(--bs)", width: "100%", textAlign: "left" }} onClick={() => setExpanded(true)}>
+                    Show {fields.length - shownFields.length} more
                   </button>
-                  <button className="btn btn-k" disabled={busy} onClick={() => void decide(sel, true)}>
-                    Approve{" "}
-                    <span className="kbd" style={{ background: "transparent", color: "inherit", borderColor: "currentColor", opacity: 0.7 }}>
-                      A
-                    </span>
-                  </button>
-                </div>
+                ) : null}
+                {sel.steps.length ? (
+                  <div style={{ borderTop: "1px solid var(--bs)", padding: "8px 14px", display: "flex", flexDirection: "column", gap: 4, fontSize: 13 }}>
+                    {sel.steps.map((s, i) => (
+                      <span key={i} style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                        <span className="sub mono">{i + 1}</span>
+                        <span style={{ flex: 1 }}>{s.text}</span>
+                        {s.app ? <Logo text={systemBadge(s.app)} /> : null}
+                        {s.access === "write" ? <span className="pill st-wait" style={{ height: 18, fontSize: 11 }}>Writes</span> : null}
+                      </span>
+                    ))}
+                  </div>
+                ) : null}
               </div>
-            ) : null}
+              <div className="card" style={{ overflow: "hidden" }}>
+                <div className="sech" style={{ paddingBottom: 10 }}>
+                  <h2>Why this needs approval</h2>
+                </div>
+                <div className="kv">
+                  <span>Policy</span>
+                  <span>{policyLine(sel)}</span>
+                </div>
+                <div className="kv">
+                  <span>Who can approve</span>
+                  <span>{approvers(sel, canApprove)}</span>
+                </div>
+                {sel.context.riskLevel ? (
+                  <div className="kv">
+                    <span>Risk</span>
+                    <span>{titleCase(sel.context.riskLevel)}</span>
+                  </div>
+                ) : null}
+                {meta
+                  .filter((m) => m.term !== "Action")
+                  .map((m) => (
+                    <div key={m.term} className="kv">
+                      <span>{m.term}</span>
+                      {m.href ? (
+                        <button className="link" style={{ justifySelf: "start", fontSize: 13 }} onClick={() => web(m.href!)}>
+                          {m.value} ↗
+                        </button>
+                      ) : (
+                        <span>{m.value}</span>
+                      )}
+                    </div>
+                  ))}
+                {convId ? (
+                  <div className="kv">
+                    <span>Conversation</span>
+                    <button className="link" style={{ justifySelf: "start", fontSize: 13 }} onClick={() => go({ view: "ask", select: convId })}>
+                      {convName}
+                    </button>
+                  </div>
+                ) : null}
+              </div>
+              {rejecting ? (
+                <div className="card fade" style={{ padding: "12px 14px", display: "flex", flexDirection: "column", gap: 8 }}>
+                  <label htmlFor="rej" style={{ fontSize: 13, fontWeight: 600 }}>
+                    Why are you rejecting this?
+                  </label>
+                  <textarea
+                    id="rej"
+                    rows={2}
+                    autoFocus
+                    className="field"
+                    placeholder={`${sel.requestedBy} sees your reason and can replan`}
+                    value={reason}
+                    onChange={(e) => setReason(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Escape") setRejecting(false)
+                      if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) void reject(sel)
+                    }}
+                    style={{ height: "auto", padding: "8px 10px", resize: "none" }}
+                  />
+                  <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+                    <button className="btn btn-q btn-sm" onClick={() => setRejecting(false)}>
+                      Cancel
+                    </button>
+                    <button className="btn btn-dp btn-sm" disabled={busy} onClick={() => void reject(sel)}>
+                      Reject
+                    </button>
+                  </div>
+                </div>
+              ) : null}
+            </div>
           </div>
-        )}
-      </section>
+          <div className="dfoot">
+            <span className="sub" style={{ flex: 1 }}>
+              {canApprove ? lockNote(sel) : "Your role can't approve changes in this workspace. An admin can."}
+            </span>
+            <button className="btn btn-d btn-lg" disabled={busy || !canApprove} onClick={() => setRejecting(true)}>
+              Reject <span className="kbd">R</span>
+            </button>
+            <button className="btn btn-p btn-lg" disabled={busy || !canApprove} onClick={() => approve(sel)}>
+              Approve <span className="kbd">A</span>
+            </button>
+          </div>
+        </section>
+      ) : (
+        <section className="dpane">
+          {approvals.at ? <Empty art={ART.checklist} title="All clear" body="No decisions are waiting. New requests appear the moment an agent pauses for a person." /> : null}
+        </section>
+      )}
     </div>
   )
 }

@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Gravitre",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "description": "Ask about any page, approve what your agents propose and follow their work, with the same Gravitre workspace.",
   "permissions": [
     "activeTab",
@@ -121,5 +121,16 @@
     "16": "icons/icon16.png",
     "48": "icons/icon48.png",
     "128": "icons/icon128.png"
+  },
+  "optional_host_permissions": [
+    "https://*/*"
+  ],
+  "commands": {
+    "open-side-panel": {
+      "suggested_key": {
+        "default": "Alt+G"
+      },
+      "description": "Open the Gravitre side panel"
+    }
   }
 }

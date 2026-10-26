@@ -1690,6 +1690,47 @@ def should_handoff_extension_chat(
     return False, "quick_answer"
 
 
+def _mark_extension_conversation(settings: Any, *, org_id: str, conversation_id: str) -> None:
+    """Record that a new conversation started in the extension (best effort; column may not exist yet)."""
+    try:
+        from app.workflows.repository import get_supabase_client
+
+        (
+            get_supabase_client(settings)
+            .table("conversations")
+            .update({"surface": "extension"})
+            .eq("id", conversation_id)
+            .eq("org_id", org_id)
+            .is_("surface", "null")
+            .execute()
+        )
+    except Exception as exc:  # noqa: BLE001
+        logger.debug("extension conversation surface not recorded: %s", exc)
+
+
+def _org_agent_id(settings: Any, *, org_id: str, agent_id: str | None) -> str | None:
+    """The agent the side panel picked, only when it belongs to this org."""
+    wanted = (agent_id or "").strip()
+    if not wanted:
+        return None
+    try:
+        from app.workflows.repository import get_supabase_client
+
+        rows = (
+            get_supabase_client(settings)
+            .table("agents")
+            .select("id")
+            .eq("id", wanted)
+            .eq("org_id", org_id)
+            .limit(1)
+            .execute()
+        )
+        return wanted if rows.data else None
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("extension chat agent lookup failed org_id=%s error=%s", org_id, exc)
+        return None
+
+
 async def chat_from_extension(
     *,
     settings: Any,
@@ -1701,6 +1742,7 @@ async def chat_from_extension(
     conversation_id: str | None = None,
     spoken_mode: bool = False,
     environment_name: str = "production",
+    agent_id: str | None = None,
 ) -> dict[str, Any]:
     """Quick overlay Q&A via the same execute_task_streaming / unified-turn path as main chat."""
     from app.config import Settings
@@ -1728,6 +1770,8 @@ async def chat_from_extension(
     )
     if not conv_id:
         raise RuntimeError("could not ensure conversation")
+    if not (conversation_id or "").strip():
+        _mark_extension_conversation(settings, org_id=org_id, conversation_id=conv_id)
 
     handoff_url = f"/ai?c={quote(conv_id)}"
     # Write/long intents still enter execute_task_streaming so progressive stubs +
@@ -1824,9 +1868,11 @@ async def chat_from_extension(
     else:
         query = user_msg
 
+    agent_id = _org_agent_id(settings, org_id=org_id, agent_id=agent_id)
     intelligence = get_agent_intelligence()
     complete: AssistantStreamComplete | None = None
     streamed: list[str] = []
+    context_sources: dict[str, Any] | None = None
     # Same streaming entrypoint as main chat (execute_task_streaming → unified-turn LIVE).
     async for event in intelligence.execute_task_streaming(
         settings=settings,
@@ -1835,7 +1881,7 @@ async def chat_from_extension(
         query=query,
         mode="fast",
         requested_tools=[],
-        agent_id=None,
+        agent_id=agent_id,
         conversation_history=[],
         history_summary=f"Browser overlay page context (DATA):\n{page_block}",
         model_override=None,
@@ -1853,6 +1899,10 @@ async def chat_from_extension(
             delta = event.payload.get("delta")
             if isinstance(delta, str) and delta:
                 streamed.append(delta)
+        elif isinstance(event, AssistantStreamEvent) and event.sse_type == "data-intelligence":
+            data = event.payload.get("data")
+            if isinstance(data, dict) and isinstance(data.get("contextSources"), dict):
+                context_sources = data["contextSources"]
 
     answer = (complete.full_content if complete else "").strip() or "".join(streamed).strip()
     pending_task = getattr(complete, "pending_task", None) if complete else None
@@ -1952,4 +2002,7 @@ async def chat_from_extension(
         "source": "browser_extension",
         "path": path,
         "success": bool(answer),
+        # Same "sources used / left out" and staged-plan payloads the web chat shows.
+        "contextSources": context_sources,
+        "pendingTask": pending_task if isinstance(pending_task, dict) else None,
     }

@@ -393,3 +393,73 @@ def test_already_resolved_extension_approval_is_refused():
             _ctx_with(_staged_row(status="approved")), org_id="org-1", approval_id="appr-1",
             reviewer_id="user-1", reviewer_is_admin=False, approve=True,
         )
+
+
+async def _run_side_panel_chat(*, agent_rows: list[dict], agent_id: str | None, conversation_id: str | None):
+    from app.operators.stream_events import AssistantStreamComplete, AssistantStreamEvent
+
+    captured: dict[str, object] = {}
+
+    async def _stream(**kwargs):
+        captured.update(kwargs)
+        yield AssistantStreamEvent(
+            sse_type="data-intelligence",
+            payload={"data": {"contextSources": {"summary": "1 source", "used": [{"name": "HubSpot", "kind": "hubspot"}], "skipped": []}}},
+        )
+        yield AssistantStreamComplete(
+            full_content="Here's the plan.",
+            tool_results=[],
+            react_result=None,
+            model="test",
+            pending_task={"title": "Plan for Northwind", "status": "awaiting_confirm"},
+            message_id="msg-sp-1",
+        )
+
+    settings = MagicMock()
+    conv_svc = MagicMock()
+    conv_svc.ensure_owned_conversation = AsyncMock(return_value="conv-sp-1")
+    intel = MagicMock()
+    intel.execute_task_streaming = _stream
+    db = MagicMock()
+    chain = MagicMock()
+    for name in ("select", "eq", "limit", "update", "is_"):
+        getattr(chain, name).return_value = chain
+    chain.execute.return_value = MagicMock(data=agent_rows)
+    db.table.return_value = chain
+
+    with (
+        patch("app.config.get_settings", return_value=settings),
+        patch("app.services.conversation_state_service.get_conversation_state_service", return_value=conv_svc),
+        patch("app.operators.agent_intelligence.get_agent_intelligence", return_value=intel),
+        patch("app.routers.assistant._persist_conversation_turn"),
+        patch("app.workflows.audit.write_audit_event"),
+        patch("app.workflows.repository.get_supabase_client", return_value=db),
+    ):
+        out = await chat_from_extension(
+            settings=settings,
+            org_id="org-1",
+            user_id="user-1",
+            message="What do we know about this account?",
+            conversation_id=conversation_id,
+            agent_id=agent_id,
+        )
+    return out, captured, chain
+
+
+@pytest.mark.asyncio
+async def test_extension_chat_returns_sources_and_plan_and_uses_org_agent():
+    out, captured, chain = await _run_side_panel_chat(agent_rows=[{"id": "agent-1"}], agent_id="agent-1", conversation_id=None)
+
+    assert captured.get("agent_id") == "agent-1"
+    assert out["contextSources"]["used"][0]["name"] == "HubSpot"
+    assert out["pendingTask"]["title"] == "Plan for Northwind"
+    # A new conversation is marked as started in the extension.
+    chain.update.assert_called_with({"surface": "extension"})
+
+
+@pytest.mark.asyncio
+async def test_extension_chat_ignores_an_agent_from_another_org():
+    _out, captured, chain = await _run_side_panel_chat(agent_rows=[], agent_id="agent-elsewhere", conversation_id="conv-sp-1")
+
+    assert captured.get("agent_id") is None
+    chain.update.assert_not_called()

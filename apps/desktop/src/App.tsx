@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useState } from "react"
-import { StoreProvider, useStore, type View } from "./store"
+import { StoreProvider, useStore, type Toast, type View } from "./store"
 import { clearPendingSignIn, loadPendingSignIn, loadSession, parseAuthDeepLink, saveSession, type DesktopSession } from "./lib/session"
-import { isNewer, latestDesktopRelease, openWeb } from "./lib/api"
-import { Avatar, Icon, Mark, MOD, SHIFT, type IconName } from "./ui"
-import { CommandBar, Notifications, QuickAsk, UserMenu, VIEW_KEYS, WorkspaceMenu } from "./Overlays"
-import { SignIn } from "./views/SignIn"
+import { desktopRelease, isNewer, openWeb, type DesktopRelease } from "./lib/api"
+import { Avatar, Icon, MarkTile, WorkspaceTile, type IconName } from "./ui"
+import { CommandBar, Notices, QuickAsk, UserMenu, VIEW_KEYS, WorkspaceMenu } from "./Overlays"
+import { SignIn, SignedIn, Unsupported } from "./views/SignIn"
 import { Home } from "./views/Home"
 import { Ask } from "./views/Ask"
 import { Voice } from "./views/Voice"
@@ -13,15 +13,17 @@ import { Approvals } from "./views/Approvals"
 import { Activity } from "./views/Activity"
 import { Settings, useAppVersion } from "./views/Settings"
 
-const NAV: (null | [View, string, IconName])[] = [
+const NAV: [View, string, IconName][] = [
   ["home", "Home", "home"],
   ["ask", "Ask", "ask"],
-  ["voice", "Voice", "voice"],
-  null,
   ["assign", "Assignments", "assign"],
   ["appr", "Approvals", "appr"],
   ["act", "Activity", "act"],
+  ["voice", "Voice", "voice"],
 ]
+
+/** Ask and Voice give the thread room: the rail collapses to icons. */
+const COMPACT: View[] = ["ask", "voice"]
 
 /** Links inside answers and pages open in the default browser, never inside the app window. */
 function useExternalLinks(appBase: string) {
@@ -38,23 +40,39 @@ function useExternalLinks(appBase: string) {
   }, [appBase])
 }
 
-function UpdateBanner() {
+/** Release info from gravitre.app/desktop/latest.json, the file /download reads. */
+function useRelease(): { version: string | null; release: DesktopRelease | null } {
   const version = useAppVersion()
-  const { web } = useStore()
-  const [latest, setLatest] = useState<string | null>(null)
-  const [dismissed, setDismissed] = useState(false)
+  const [release, setRelease] = useState<DesktopRelease | null>(null)
   useEffect(() => {
-    if (!version) return
-    void latestDesktopRelease().then((r) => r && isNewer(r.version, version) && setLatest(r.version))
-  }, [version])
-  if (!latest || dismissed) return null
+    let alive = true
+    const load = () => void desktopRelease().then((r) => alive && r && setRelease(r))
+    load()
+    const t = window.setInterval(load, 6 * 3600_000)
+    return () => {
+      alive = false
+      window.clearInterval(t)
+    }
+  }, [])
+  return { version, release }
+}
+
+function UpdateBanner({ latest, notes }: { latest: string; notes: string | null }) {
+  const { web } = useStore()
+  const [dismissed, setDismissed] = useState(false)
+  if (dismissed) return null
   return (
-    <div role="status" style={{ display: "flex", alignItems: "center", gap: 12, minHeight: 44, padding: "0 10px 0 24px", background: "var(--sigs)", borderBottom: "1px solid var(--bd)" }}>
+    <div className="banner" role="status">
       <Icon name="download" style={{ color: "var(--sig)" }} />
       <span style={{ fontSize: 13, flex: 1 }}>
-        <b>Gravitre {latest} is out.</b> Download it to update. Your work stays put.
+        <b>Gravitre {latest} is ready.</b> Download it to update. It takes a few seconds and your work stays put.
       </span>
-      <button className="btn btn-k btn-sm" onClick={() => web("/download")}>
+      {notes ? (
+        <button className="btn btn-q btn-sm" onClick={() => web(notes)}>
+          What's new ↗
+        </button>
+      ) : null}
+      <button className="btn btn-p btn-sm" onClick={() => web("/download")}>
         Download update
       </button>
       <button className="ib" aria-label="Dismiss" onClick={() => setDismissed(true)}>
@@ -64,15 +82,111 @@ function UpdateBanner() {
   )
 }
 
-function Shell() {
-  const store = useStore()
-  const { nav, go, overlay, setOverlay, prefs, setPrefs, dark, me, session, approvals, assignments, toasts, web } = store
-  useExternalLinks(session.appBase)
-  const wide = prefs.railWide
-  const pending = approvals.data.length + assignments.data.filter((a) => a.status === "waiting").length
-  const ws = me?.organizations.find((o) => o.id === session.orgId)
+function ToastView({ t, i }: { t: Toast; i: number }) {
+  const [, tick] = useState(0)
+  useEffect(() => {
+    if (!t.undo) return
+    const id = window.setInterval(() => tick((n) => n + 1), 250)
+    return () => window.clearInterval(id)
+  }, [t.undo])
+  const left = t.undo ? Math.max(0, Math.ceil((t.undo.until - Date.now()) / 1000)) : 0
+  return (
+    <div className="toast fade" role="status" style={{ bottom: 76 + i * 50 }}>
+      <Icon name={t.tone === "error" ? "alert" : "check"} style={{ color: t.tone === "error" ? "#ec9a9a" : "#19c37d" }} />
+      <span>{t.text}</span>
+      {t.undo ? (
+        <button className="tbtn" onClick={t.undo.cancel}>
+          Undo · {left}s
+        </button>
+      ) : (
+        <span style={{ width: 8 }} />
+      )}
+    </div>
+  )
+}
 
-  // Shortcuts from the operating system (tray, global shortcuts) arrive as Tauri events.
+function Rail() {
+  const { nav, go, setOverlay, me, session, approvals, web, synced } = useStore()
+  const view = nav.view
+  const ws = me?.organizations.find((o) => o.id === session.orgId)
+  const wsName = ws?.name || "Workspace"
+  const n = approvals.data.length
+  const syncLabel = synced.offline ? "Offline" : synced.at ? "Synced" : "Connecting…"
+  const syncDot = synced.offline ? "var(--ap)" : synced.at ? "var(--ok)" : "var(--bx)"
+
+  if (COMPACT.includes(view)) {
+    return (
+      <nav className="crail" aria-label="Main">
+        <span style={{ height: 6 }} />
+        <MarkTile size={24} />
+        <span style={{ height: 14 }} />
+        {NAV.map(([v, label, icon]) => (
+          <button key={v} className={`cn ${view === v ? "on" : ""}`} aria-current={view === v ? "page" : undefined} aria-label={label} title={label} onClick={() => go(v)}>
+            <Icon name={icon} />
+            {v === "appr" && n ? <span className="badge">{n}</span> : null}
+          </button>
+        ))}
+        <span style={{ flex: 1 }} />
+        <span className="dot" title={syncLabel} aria-label={syncLabel} style={{ background: syncDot, marginBottom: 10 }} />
+        <button className="cn" onClick={() => setOverlay("ws")} aria-label={`Switch workspace, current ${wsName}`} title={wsName}>
+          <WorkspaceTile name={wsName} size={24} />
+        </button>
+        <button className={`cn ${view === "settings" ? "on" : ""}`} onClick={() => setOverlay("user")} aria-label="Account menu" title={me?.name || "Account"}>
+          <Avatar name={me?.name || "You"} size={24} color="var(--carbon)" />
+        </button>
+      </nav>
+    )
+  }
+
+  return (
+    <nav className="rail" aria-label="Main">
+      <div className="brand">
+        <MarkTile size={24} />
+        <span style={{ fontWeight: 600, fontSize: 15 }}>Gravitre</span>
+      </div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+        {NAV.map(([v, label, icon]) => (
+          <button key={v} className={`nv ${view === v ? "on" : ""}`} aria-current={view === v ? "page" : undefined} onClick={() => go(v)}>
+            <Icon name={icon} />
+            <span style={{ flex: 1 }}>{label}</span>
+            {v === "appr" && n ? <span className="count">{n}</span> : null}
+          </button>
+        ))}
+      </div>
+      <div style={{ height: 1, background: "var(--bd)", margin: "10px 4px" }} />
+      <button className="nv" onClick={() => web("/home")}>
+        <Icon name="ext" />
+        <span>Open Gravitre</span>
+      </button>
+      <span style={{ flex: 1 }} />
+      <div title={synced.at ? `Synced ${new Date(synced.at).toLocaleTimeString()}` : syncLabel} style={{ display: "flex", alignItems: "center", gap: 6, padding: "0 10px 8px", fontSize: 12, color: "var(--t3)" }}>
+        <span className="dot" style={{ background: syncDot }} />
+        {syncLabel}
+      </div>
+      <button className="wsbox" onClick={() => setOverlay("ws")} aria-label={`Switch workspace, current ${wsName}`}>
+        <WorkspaceTile name={wsName} />
+        <span className="ell" style={{ flex: 1, textAlign: "left", fontSize: 13, fontWeight: 600 }}>
+          {wsName}
+        </span>
+        <Icon name="chevrons" size={14} style={{ color: "var(--t3)" }} />
+      </button>
+      <button className={`mebtn ${view === "settings" ? "on" : ""}`} onClick={() => setOverlay("user")} aria-label="Account menu">
+        <Avatar name={me?.name || "You"} size={24} color="var(--carbon)" />
+        <span className="ell" style={{ flex: 1, fontSize: 13 }}>
+          {view === "settings" ? "Settings" : me?.name || "Account"}
+        </span>
+      </button>
+    </nav>
+  )
+}
+
+function Shell({ welcome, onWelcomeDone }: { welcome: boolean; onWelcomeDone: () => void }) {
+  const store = useStore()
+  const { nav, go, overlay, setOverlay, setPrefs, session, toasts } = store
+  useExternalLinks(session.appBase)
+  const { version, release } = useRelease()
+
+  // Shortcuts and tray items from the operating system arrive as Tauri events.
   useEffect(() => {
     const off: (() => void)[] = []
     let alive = true
@@ -91,6 +205,10 @@ function Shell() {
         await add("open-view", (payload) => {
           const v = String(payload) as View
           if (["home", "ask", "voice", "assign", "appr", "act", "settings"].includes(v)) go(v)
+        })
+        await add("pause-notifications", () => {
+          setPrefs({ pausedUntil: Date.now() + 3600_000 })
+          store.toast("Notifications paused for 1 hour. Failures still show.")
         })
       })
       .catch(() => {})
@@ -123,94 +241,36 @@ function Shell() {
     return () => window.removeEventListener("keydown", onKey)
   }, [go, overlay, setOverlay])
 
+  if (version && release?.minimum && isNewer(release.minimum, version)) {
+    return <Unsupported release={release} />
+  }
+  if (welcome) return <SignedIn onDone={onWelcomeDone} />
+
   const view = nav.view
+  const newer = version && release && isNewer(release.version, version) ? release : null
   return (
-    <div className={`g ${dark ? "dark" : ""}`}>
-      <div className="shell">
-        <div className="body">
-          <nav className={`rail ${wide ? "" : "mini"}`} aria-label="Main">
-            <div style={{ height: 12, flex: "none" }} />
-            <button className="wsbtn" onClick={() => setOverlay("ws")} title={`Gravitre · ${ws?.name || "workspace"}`} aria-label={`Switch workspace, current ${ws?.name || "workspace"}`}>
-              <Mark width={35} height={20} />
-            </button>
-            <span className="rsep" />
-            {NAV.map((n, i) =>
-              n ? (
-                <button key={n[0]} className={`rn ${view === n[0] ? "on" : ""}`} aria-current={view === n[0] ? "page" : undefined} aria-label={n[1]} title={n[1]} onClick={() => go(n[0])}>
-                  <Icon name={n[2]} />
-                  <span className="lbl">{n[1]}</span>
-                  {n[0] === "appr" && approvals.data.length ? (
-                    <span className="rdot" style={{ background: "#e2a33a" }}>
-                      {approvals.data.length}
-                    </span>
-                  ) : null}
-                </button>
-              ) : (
-                <span key={`s${i}`} className="rhead">
-                  Work
-                </span>
-              ),
-            )}
-            <span style={{ flex: 1 }} />
-            <button className="rn" aria-label="Open Gravitre on the web" title="Open Gravitre on the web" onClick={() => web("/home")}>
-              <Icon name="ext" />
-              <span className="lbl">Open on web</span>
-            </button>
-            <button className={`rn ${view === "settings" ? "on" : ""}`} aria-label="Settings" title="Settings" onClick={() => go("settings")}>
-              <Icon name="settings" />
-              <span className="lbl">Settings</span>
-            </button>
-            <span className="rsep" />
-            <button className="rn" onClick={() => setOverlay("user")} aria-label="Account menu">
-              <Avatar name={me?.name || "You"} size={24} color="#2b59e0" />
-              <span className="lbl" style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                {me?.name || "Account"}
-              </span>
-            </button>
-          </nav>
-          <div className="col">
-            <header className="top">
-              <button className="tb" aria-label={wide ? "Collapse sidebar" : "Show sidebar"} title={wide ? "Collapse sidebar" : "Show sidebar"} onClick={() => setPrefs({ railWide: !wide })}>
-                <Icon name="rail" />
-              </button>
-              <span style={{ flex: 1 }} />
-              <button className="search" onClick={() => setOverlay("cmd")}>
-                <Icon name="search" />
-                <span style={{ flex: 1, textAlign: "left" }}>Search or command…</span>
-                <span className="k">{MOD}K</span>
-              </button>
-              <span style={{ flex: 1 }} />
-              <button className="btn btn-sm" onClick={() => setOverlay("quick")} title={`Quick Ask ${MOD}${SHIFT}Space`}>
-                <Icon name="ask" size={14} style={{ color: "var(--br)" }} />
-                Quick Ask
-              </button>
-              <button className="tb" aria-label="Notifications" onClick={() => setOverlay("notif")}>
-                <Icon name="bell" />
-                {pending ? <span style={{ position: "absolute", top: 6, right: 6, width: 8, height: 8, borderRadius: "50%", background: "#e2a33a", boxShadow: "0 0 0 2px var(--cv)" }} /> : null}
-              </button>
-            </header>
-            <main className="main">
-              <UpdateBanner />
-              {view === "home" ? <Home /> : null}
-              {view === "ask" ? <Ask /> : null}
-              {view === "voice" ? <Voice /> : null}
-              {view === "assign" ? <Assignments /> : null}
-              {view === "appr" ? <Approvals /> : null}
-              {view === "act" ? <Activity /> : null}
-              {view === "settings" ? <Settings /> : null}
-            </main>
+    <div className="shell">
+      <div className="body">
+        <Rail />
+        <main className="main">
+          {newer ? <UpdateBanner latest={newer.version} notes={newer.notes} /> : null}
+          <div className="view" key={`${view}`}>
+            {view === "home" ? <Home /> : null}
+            {view === "ask" ? <Ask /> : null}
+            {view === "voice" ? <Voice /> : null}
+            {view === "assign" ? <Assignments /> : null}
+            {view === "appr" ? <Approvals /> : null}
+            {view === "act" ? <Activity /> : null}
+            {view === "settings" ? <Settings release={release} /> : null}
           </div>
-        </div>
+        </main>
       </div>
       {toasts.map((t, i) => (
-        <div key={t.id} className="toast fade" role="status" style={{ bottom: 28 + i * 52 }}>
-          <Icon name={t.tone === "error" ? "alert" : "check"} style={{ color: t.tone === "error" ? "#ec9a9a" : "#19c37d" }} />
-          <span>{t.text}</span>
-        </div>
+        <ToastView key={t.id} t={t} i={i} />
       ))}
+      <Notices />
       {overlay === "ws" ? <WorkspaceMenu /> : null}
       {overlay === "user" ? <UserMenu /> : null}
-      {overlay === "notif" ? <Notifications /> : null}
       {overlay === "cmd" ? <CommandBar /> : null}
       {overlay === "quick" ? <QuickAsk /> : null}
     </div>
@@ -229,9 +289,15 @@ function useSystemDark(): boolean {
   return dark
 }
 
+function Themed({ children }: { children: React.ReactNode }) {
+  const { dark } = useStore()
+  return <div className={`g ${dark ? "dark" : ""}`}>{children}</div>
+}
+
 export default function App() {
   const [session, setSession] = useState<DesktopSession | null>(() => loadSession())
   const [notice, setNotice] = useState<string | null>(null)
+  const [welcome, setWelcome] = useState(false)
   const systemDark = useSystemDark()
 
   const onSession = useCallback((next: DesktopSession | null) => {
@@ -248,13 +314,14 @@ export default function App() {
         const link = parseAuthDeepLink(url)
         if (!link) continue
         const expected = loadPendingSignIn()
-        if (!expected || link.code !== expected) {
+        if (!expected || expected.expired || link.code !== expected.code) {
           setNotice("That sign-in link doesn't match this computer's code. Start again from here.")
           continue
         }
         clearPendingSignIn()
         saveSession(link.session)
         setNotice(null)
+        setWelcome(true)
         setSession(link.session)
       }
     }
@@ -284,7 +351,9 @@ export default function App() {
   }
   return (
     <StoreProvider session={session} onSession={onSession}>
-      <Shell />
+      <Themed>
+        <Shell welcome={welcome} onWelcomeDone={() => setWelcome(false)} />
+      </Themed>
     </StoreProvider>
   )
 }

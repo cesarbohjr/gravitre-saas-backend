@@ -1,32 +1,21 @@
-/** Gmail thread context → Gravitre overlay (user-invoked via action). */
+/** Gmail: the sender of the open thread. */
 (function () {
-  function extractGmail() {
-    const email =
-      document.querySelector("span[email]")?.getAttribute("email") ||
-      document.querySelector("[data-hovercard-id]")?.getAttribute("data-hovercard-id") ||
-      ""
-    const fullName =
-      document.querySelector("span[email]")?.getAttribute("name") ||
-      document.querySelector("h2.hP")?.textContent?.trim() ||
-      ""
-    const subject = document.querySelector("h2.hP")?.textContent?.trim() || ""
-    return {
-      email,
-      fullName,
-      title: subject ? `Email: ${subject}` : undefined,
-      source: "gmail",
-    }
-  }
+  const onThread = () => Boolean(document.querySelector("h2.hP"))
 
-  function open() {
-    if (!window.__gravitreOverlay) return
-    window.__gravitreOverlay.renderOverlay({
-      pageUrl: location.href,
-      pageContext: extractGmail(),
-    })
-  }
-
-  chrome.runtime.onMessage.addListener((msg) => {
-    if (msg?.type === "OPEN_OVERLAY") open()
+  window.__gravitre?.register({
+    kind: "email",
+    auto: onThread,
+    anchor: () => document.querySelector("h2.hP"),
+    extract() {
+      if (!onThread()) return {}
+      const sender = document.querySelector(".gD[email]") || document.querySelector("span[email]")
+      const subject = document.querySelector("h2.hP")?.textContent?.trim() || ""
+      return {
+        email: sender?.getAttribute("email") || "",
+        fullName: sender?.getAttribute("name") || sender?.textContent?.trim() || "",
+        subject,
+        source: "gmail",
+      }
+    },
   })
 })()
