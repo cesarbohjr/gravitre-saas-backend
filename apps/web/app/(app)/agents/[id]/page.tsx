@@ -9,15 +9,11 @@ import { AgentCapabilitiesCard } from "@/components/gravitre/agent-capabilities-
 import { AgentReferenceFoldersPanel } from "@/components/agents/agent-reference-folders-panel"
 import { AgentSurfaceSwitch } from "@/components/agents/agent-surface-switch"
 import { AppShell } from "@/components/gravitre/app-shell"
-import {
-  GravitreEmpty,
-  GravitrePageHeader,
-} from "@/components/gravitre/nodus-product"
+import { GravitreEmpty } from "@/components/gravitre/nodus-product"
 import { WorkSectionErrorCard } from "@/components/gravitre/work-section-error-card"
 import { Illustration } from "@/components/gravitre/illustration"
 import { Button } from "@/components/ui/button"
 import { Icon, type IconName } from "@/lib/icons"
-import { NucleoWorkflow } from "@/components/icons/nucleo/semantic"
 import { AskGravitreSummonButton } from "@/components/intelligence/ask-gravitre-summon-button"
 import { usePublishGravitreAISelection } from "@/components/gravitre/ai-workspace-provider"
 import { cn } from "@/lib/utils"
@@ -25,15 +21,13 @@ import { useAuth } from "@/lib/auth-context"
 import { agentsApi, agentKnowledgeApi } from "@/lib/api"
 import { getSelectedOrgFromStorage } from "@/lib/org-context"
 import { AgentIntelligenceVisibilitySection } from "@/components/intelligence/agent-intelligence-visibility-section"
-import { AgentIdentityAvatar } from "@/components/gravitre/agent-identity-avatar"
-import { AgentIdentityEditor } from "@/components/gravitre/agent-identity-editor"
+import { AgentDetailHeader, AgentStat } from "@/components/agents/agent-detail-header"
 import {
   AgentCapabilitiesEditorCard,
   AgentPersonalityEditorCard,
 } from "@/components/gravitre/agent-profile-editors"
 import { CenteredLoader } from "@/components/gravitre/gravitre-loader"
 import type { Agent as ApiAgent, AgentStatus } from "@/types/api"
-import { presentAgentStatus, agentStatusIsLiveWork } from "@/lib/agent-runtime-status"
 import { OPERATIONAL_METHODOLOGY_SHORT } from "@/lib/outcome-labels"
 import { responseStyleLabel } from "@/lib/agent-response-style"
 import { voiceProfileIsConfigured } from "@/lib/voice-configure-gate"
@@ -41,7 +35,6 @@ import { AgentIdentityGovernanceCard } from "@/components/gravitre/agent-identit
 import { AgentToolPermissionsPanel } from "@/components/agents/agent-tool-permissions-panel"
 import { AgentAutonomyPanel, AgentStrengthProfile } from "@/components/agents/agent-autonomy-panel"
 import { useOrgAdmin } from "@/lib/use-org-admin"
-import { useMotionPrefs } from "@/lib/animations"
 // Types
 interface Agent {
   id: string
@@ -99,59 +92,6 @@ function toProfileAgent(api: ApiAgent): Agent {
         ]
       : [],
   }
-}
-
-// Avatar — shared identity treatment; pulse only while Running (processing).
-function AgentIdentityHero({ agent, apiAgent }: { agent: Agent; apiAgent: ApiAgent }) {
-  const { reduced } = useMotionPrefs()
-  const status = presentAgentStatus(agent.status)
-  const isRunning = agentStatusIsLiveWork(agent.status)
-
-  return (
-    <div className="relative">
-      <AgentIdentityAvatar agent={apiAgent} size="xl" showStatusDot={false} />
-
-      {isRunning && !reduced ? (
-        <motion.div
-          className="absolute -bottom-1 -right-1 flex h-8 w-8 items-center justify-center rounded-full border-2 border-divide bg-[color:var(--g-surface-1)]"
-          animate={{ scale: [1, 1.1, 1] }}
-          transition={{ duration: 1.5, repeat: Infinity }}
-        >
-          <Icon name="activity" size="sm" className="text-info" />
-        </motion.div>
-      ) : null}
-
-      <div
-        className={cn(
-          "absolute -bottom-3 left-1/2 flex -translate-x-1/2 items-center gap-1.5 border border-divide bg-[color:var(--g-surface-1)] px-3 py-1.5 shadow-[var(--np-shadow)]",
-          "rounded-[var(--np-radius-md)]",
-          status.chipClass,
-        )}
-      >
-        <span
-          className={cn(
-            "h-2 w-2 rounded-full",
-            status.dotColor,
-            isRunning && !reduced && "animate-pulse",
-          )}
-        />
-        <span className="text-xs font-medium text-foreground">
-          {status.label}
-        </span>
-      </div>
-    </div>
-  )
-}
-
-function PerformanceFact({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="min-w-[96px]">
-      <dt className="text-xs text-[color:var(--g-text-muted)]">{label}</dt>
-      <dd className="mt-0.5 text-lg font-semibold tabular-nums tracking-tight text-foreground">
-        {value}
-      </dd>
-    </div>
-  )
 }
 
 // Recent Work Item
@@ -256,83 +196,79 @@ export default function AgentProfilePage({
           <AgentSurfaceSwitch surface="operate" agentId={agent.id} />
         </div>
 
-        <GravitrePageHeader
-          title={agent.name}
-          description={`${agent.role} · ${agent.tagline}`}
-          icon={<NucleoWorkflow className="h-5 w-5" />}
-          actions={
-            <div className="flex flex-wrap items-center gap-2">
-              <AskGravitreSummonButton />
-              <Button
-                className="min-h-11"
-                variant="ghost"
-                onClick={() => router.push(`/agents/${agent.id}/knowledge`)}
-              >
-                <Icon name="database" size="sm" />
-                Knowledge
-              </Button>
-              <Button
-                className="min-h-11"
-                variant="outline"
-                onClick={() => router.push("/assignments/new?agent=" + agent.id)}
-              >
-                <Icon name="add" size="sm" />
-                Assign work
-              </Button>
-              <Button className="min-h-11" onClick={() => router.push(`/agents/${agent.id}/chat`)}>
-                <Icon name="chat" size="sm" />
-                Chat
-              </Button>
-            </div>
-          }
-        >
-          <div className="mb-4 flex flex-col items-center gap-4 sm:flex-row sm:items-start">
-            <AgentIdentityHero agent={agent} apiAgent={apiAgent} />
-            <div className="min-w-0 flex-1 space-y-2 text-center sm:pt-2 sm:text-left">
-              <p className="text-sm text-[color:var(--g-text-secondary)]">{agent.description}</p>
-              <div className="flex justify-center sm:justify-start">
-                <AgentIdentityEditor agent={apiAgent} />
-              </div>
-            </div>
-          </div>
-        </GravitrePageHeader>
-
-        <div className="flex-1 px-[var(--np-page-pad-sm)] pb-8 pt-2 sm:px-[var(--np-page-pad)]">
-          {error ? <WorkSectionErrorCard title="Could not refresh agent" error={error} onRetry={() => void mutateAgent()} /> : null}
-          {capabilityError ? <WorkSectionErrorCard title="Could not refresh access profile" error={capabilityError} onRetry={() => void mutateCapabilities()} /> : null}
-          <div className="mb-6 border-b border-[color:var(--g-border-subtle)] pb-5">
-            <dl className="flex flex-wrap gap-x-8 gap-y-3">
+        <div className="px-[var(--np-page-pad-sm)] pt-5 sm:px-[var(--np-page-pad)]">
+          <AgentDetailHeader
+            agent={apiAgent}
+            chips={
+              capabilityProfile?.allowedConnectors ? (
+                <span className="inline-flex items-center rounded-full border border-[#e4e4df] px-2.5 py-1 text-[13px] font-medium text-[#55564f] dark:border-[#2a2c29] dark:text-[#a3a49c]">
+                  {capabilityProfile.allowedConnectors.length === 0
+                    ? "No apps allowed yet"
+                    : `${capabilityProfile.allowedConnectors.length} app${capabilityProfile.allowedConnectors.length === 1 ? "" : "s"} allowed`}
+                </span>
+              ) : null
+            }
+            actions={
+              <>
+                <AskGravitreSummonButton className="px-2" />
+                <button type="button" className="ag-btn sm ghost" onClick={() => router.push(`/agents/${agent.id}/knowledge`)}>
+                  Knowledge
+                </button>
+                <button type="button" className="ag-btn sm ghost" onClick={() => router.push("/assignments/new?agent=" + agent.id)}>
+                  Assign work
+                </button>
+                <button type="button" className="ag-btn sm dark" onClick={() => router.push(`/agents/${agent.id}/chat`)}>
+                  <Icon name="chat" size="sm" />
+                  Chat with agent
+                </button>
+              </>
+            }
+          >
+            <dl className="grid grid-cols-2 divide-[#efefea] lg:grid-cols-4 lg:divide-x dark:divide-[#232522]">
               {apiAgent.stats?.totalRuns != null ? (
-                <PerformanceFact label="Total runs" value={apiAgent.stats.totalRuns.toLocaleString()} />
+                <AgentStat label="Total runs" value={apiAgent.stats.totalRuns.toLocaleString()} hint={apiAgent.stats.totalRuns === 0 ? "No runs yet" : undefined} />
               ) : (
-                <PerformanceFact label="Tasks today" value={agent.stats.tasksCompleted?.toLocaleString() ?? "Not reported"} />
+                <AgentStat
+                  label="Tasks today"
+                  value={agent.stats.tasksCompleted?.toLocaleString() ?? "Not reported"}
+                  hint={agent.stats.tasksCompleted === 0 ? "No tasks assigned" : undefined}
+                />
               )}
-              <PerformanceFact
+              <AgentStat
                 label="Success rate"
-                value={agent.stats.successRate != null ? `${Math.round(agent.stats.successRate)}%` : "—"}
+                value={agent.stats.successRate != null ? `${Math.round(agent.stats.successRate)}%` : "None yet"}
+                hint={agent.stats.successRate != null ? undefined : "Shows once runs finish"}
               />
-              <PerformanceFact label="Avg response" value={agent.stats.avgResponseTime} />
-              <PerformanceFact
+              <AgentStat
+                label="Avg response"
+                value={agent.stats.avgResponseTime === "—" ? "None yet" : agent.stats.avgResponseTime}
+                hint={agent.stats.avgResponseTime === "—" ? "Shows after the first run" : undefined}
+              />
+              <AgentStat
                 label="Workflows using"
                 value={agent.stats.hoursActive?.toLocaleString() ?? "Not reported"}
+                hint={agent.stats.hoursActive === 0 ? "Not in any workflow" : undefined}
               />
             </dl>
-            <p className="mt-3 text-xs text-[color:var(--g-text-muted)]">
-              {OPERATIONAL_METHODOLOGY_SHORT}
-            </p>
-          </div>
+          </AgentDetailHeader>
+        </div>
+
+        <div className="flex-1 px-[var(--np-page-pad-sm)] pb-8 pt-5 sm:px-[var(--np-page-pad)]">
+          {error ? <WorkSectionErrorCard title="Could not refresh agent" error={error} onRetry={() => void mutateAgent()} /> : null}
+          {capabilityError ? <WorkSectionErrorCard title="Could not refresh access profile" error={capabilityError} onRetry={() => void mutateCapabilities()} /> : null}
+          <p className="mb-4 text-xs text-[color:var(--g-text-muted)]">{OPERATIONAL_METHODOLOGY_SHORT}</p>
 
           <div
             role="tablist"
             aria-label="Agent profile"
-            className="mb-6 flex gap-5 overflow-x-auto border-b border-[color:var(--g-border-default)]"
+            className="mb-6 inline-flex max-w-full gap-0.5 overflow-x-auto rounded-full border border-[#e4e4df] bg-white p-1 [scrollbar-width:none] dark:border-[#2a2c29] dark:bg-[#171917]"
           >
             {[
               { id: "overview", label: "Overview" },
               { id: "personality", label: "Personality" },
-              { id: "skills", label: "Capabilities" },
+              { id: "skills", label: "Capabilities", count: apiAgent.capabilities?.length },
               { id: "governance", label: "Governance" },
-              { id: "history", label: "Work history" },
+              { id: "history", label: "Work history", count: agent.recentWork.length },
             ].map((tab) => (
               <button
                 key={tab.id}
@@ -341,13 +277,14 @@ export default function AgentProfilePage({
                 aria-selected={activeTab === tab.id}
                 onClick={() => setActiveTab(tab.id as typeof activeTab)}
                 className={cn(
-                  "-mb-px h-11 shrink-0 whitespace-nowrap sm:h-9 border-b-2 px-0.5 text-[13px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                  "inline-flex min-h-10 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full px-4 text-[15px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#19c37d]/50 max-sm:min-h-11",
                   activeTab === tab.id
-                    ? "border-foreground text-foreground"
-                    : "border-transparent text-muted-foreground hover:text-foreground",
+                    ? "bg-[#0b8a5c] text-white"
+                    : "text-[#55564f] hover:bg-[#efefea] hover:text-[#141513] dark:text-[#a3a49c] dark:hover:bg-[#262825] dark:hover:text-[#ededE8]",
                 )}
               >
                 {tab.label}
+                {tab.count != null ? <span className="font-mono text-xs opacity-75">{tab.count}</span> : null}
               </button>
             ))}
           </div>
@@ -495,7 +432,7 @@ export default function AgentProfilePage({
               >
                 <AgentAutonomyPanel agentId={agent.id} />
                 <AgentIdentityGovernanceCard agentId={agent.id} canEdit={isAdmin} />
-                <AgentToolPermissionsPanel agentId={agent.id} canEdit={isAdmin} />
+                <AgentToolPermissionsPanel agentId={agent.id} agentName={agent.name} canEdit={isAdmin} />
               </motion.div>
             )}
 

@@ -136,3 +136,18 @@ def test_list_assets_visibility_public(monkeypatch):
     response = client.get("/api/marketplace/assets?visibility=public")
     assert response.status_code == 200
     assert captured["visibility"] == "public"
+
+
+def test_list_assets_passes_sort(monkeypatch):
+    _authenticate()
+    seen: dict = {}
+
+    def fake(*_a, **kwargs):
+        seen.update(kwargs)
+        return {"assets": [], "total": 0, "limit": 24, "offset": 24}
+
+    monkeypatch.setattr("app.routers.marketplace.list_marketplace_assets", fake)
+    response = client.get("/api/marketplace/assets?sort=newest&limit=24&offset=24")
+    assert response.status_code == 200
+    assert seen["sort"] == "newest"
+    assert seen["offset"] == 24

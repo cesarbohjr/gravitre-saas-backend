@@ -308,12 +308,13 @@ describe("UX Reset Phase 3 — product IA flatten", () => {
   it("marketplace keeps authorized discovery tiles and treats installed as ops", () => {
     const catalog = readFileSync(resolve(webRoot, "app/(app)/marketplace/assets/page.tsx"), "utf8")
     expect(catalog).toMatch(/data-review-surface="marketplace-discovery"/)
-    expect(catalog).toMatch(/data-review-surface="marketplace-ops"/)
-    expect(catalog).toMatch(/PriceBadge/)
-    expect(catalog).toMatch(/discoveryAssets/)
-    expect(catalog).toMatch(/More about this pack/)
+    // Installed listings stay in the catalog with an Open action; managing them lives on /marketplace/installed.
+    expect(catalog).toMatch(/onOpenInstalled/)
+    expect(catalog).toMatch(/\/marketplace\/installed/)
     expect(catalog).not.toMatch(/2xl:grid-cols-4/)
     expect(catalog).not.toMatch(/FilterChip/)
+    const card = readFileSync(resolve(webRoot, "components/marketplace/catalog/listing-card.tsx"), "utf8")
+    expect(card).toMatch(/priceLabel/)
 
     const installed = readFileSync(resolve(webRoot, "app/(app)/marketplace/installed/page.tsx"), "utf8")
     expect(installed).toMatch(/data-review-surface="marketplace-ops"/)

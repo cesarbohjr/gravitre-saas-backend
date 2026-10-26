@@ -39,6 +39,8 @@ _ASSET_TYPES = frozenset({
     "outcome_pack",
 })
 _PRICING_TYPES = frozenset({"free", "paid", "subscription"})
+# Catalog orderings. Recommended puts featured listings first, then installs.
+_SORTS = frozenset({"recommended", "newest", "installs"})
 
 
 class MarketplaceBrowseError(Exception):
@@ -294,6 +296,7 @@ def list_marketplace_assets(
     visibility: str | None = None,
     featured: bool | None = None,
     search: str | None = None,
+    sort: str | None = None,
     limit: int = 50,
     offset: int = 0,
 ) -> dict[str, Any]:
@@ -304,6 +307,8 @@ def list_marketplace_assets(
         raise MarketplaceBrowseError(f"invalid pricing_type: {pricing_type}", code="VALIDATION_ERROR")
     if visibility and visibility not in {"public", "internal"}:
         raise MarketplaceBrowseError(f"invalid visibility: {visibility}", code="VALIDATION_ERROR")
+    if sort and sort not in _SORTS:
+        raise MarketplaceBrowseError(f"invalid sort: {sort}", code="VALIDATION_ERROR")
 
     limit = max(1, min(limit, 100))
     offset = max(0, offset)
@@ -333,7 +338,17 @@ def list_marketplace_assets(
             pattern = f'"%{term}%"'
             query = query.or_(f"title.ilike.{pattern},description.ilike.{pattern},slug.ilike.{pattern}")
 
-    query = query.order("install_count", desc=True).order("published_at", desc=True)
+    if sort == "newest":
+        query = query.order("published_at", desc=True).order("id")
+    elif sort == "recommended":
+        query = (
+            query.order("featured", desc=True)
+            .order("install_count", desc=True)
+            .order("published_at", desc=True)
+            .order("id")
+        )
+    else:
+        query = query.order("install_count", desc=True).order("published_at", desc=True)
     result = query.range(offset, offset + limit - 1).execute()
     rows = [dict(row) for row in (result.data or [])]
     asset_ids = [str(row["id"]) for row in rows]

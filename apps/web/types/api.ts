@@ -2111,6 +2111,11 @@ export interface MarketplaceAssetSummary {
   hasEntitlement?: boolean
   packItems?: MarketplacePackItem[]
   installCount?: number
+  publishedAt?: string | null
+  installId?: string | null
+  /** Workflow bindings that block install until someone reviews them. */
+  installReadyErrors?: Array<{ message?: string; code?: string } & Record<string, unknown>>
+  manualSetupRequired?: Array<{ connector: string; reason: string }>
   averageRating?: number | null
   reviewCount?: number
   featured?: boolean

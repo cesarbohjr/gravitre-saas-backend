@@ -17,6 +17,7 @@ vi.mock("@/lib/api", () => ({ marketplaceApi: { installAsset: mocks.install } })
 vi.mock("@/components/marketplace/department-pipeline-panel", () => ({ DepartmentPipelineByDepartment: () => null }))
 vi.mock("@/lib/marketplace-install-error", () => ({ toastMarketplaceInstallFailure: mocks.failure }))
 vi.mock("sonner", () => ({ toast: { success: mocks.success } }))
+vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn() }) }))
 
 ;(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true
 const asset: MarketplaceAssetDetail = {
