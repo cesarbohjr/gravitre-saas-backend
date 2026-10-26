@@ -144,6 +144,8 @@ def request_sweep(
     admin: Annotated[tuple, Depends(require_admin)],
     settings: Settings = Depends(get_settings),
 ) -> dict:
+    if os.getenv("INTELLIGENCE_OVERVIEW_SWEEP_WORKER_ENABLED", "").lower() not in {"1", "true"}:
+        raise HTTPException(status_code=503, detail="Intelligence sweep worker is not enabled.")
     # Queue the intent durably. No ingestion is started or implied: worker activation
     # requires an audited connector permission + orchestration implementation.
     client = _db(settings)
