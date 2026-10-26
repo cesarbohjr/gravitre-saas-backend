@@ -25,7 +25,8 @@ import { formatHours, formatUsd } from "@/components/intelligence/impact/impact-
 import {
   FEED_FILTERS,
   READINESS_TIERS,
-  SEVEN_ABILITIES,
+  ABILITY_MODES,
+  type Ability,
   appName,
   type AttentionItem,
   type DataReadiness,
@@ -431,6 +432,9 @@ export function HowGravitreThinks({
   awaiting,
   summary,
   routes,
+  abilities,
+  onModeChange,
+  savingAbility,
 }: {
   apps: Connector[]
   entities: number | null
@@ -439,6 +443,10 @@ export function HowGravitreThinks({
   awaiting: number | null
   summary: string | null
   routes: { knowledge: string; activity: string }
+  abilities: Ability[]
+  /** Admins only: how readily each ability adds optional evidence to answers. */
+  onModeChange?: (id: Ability["id"], mode: NonNullable<Ability["mode"]>) => void
+  savingAbility?: Ability["id"] | null
 }) {
   const [open, setOpen] = useState(false)
   const count = (value: number | null, one: string, many: string) =>
@@ -488,9 +496,30 @@ export function HowGravitreThinks({
             </p>
             {open ? (
               <ul id="overview-seven-abilities" className="mt-3 space-y-1.5">
-                {SEVEN_ABILITIES.map((ability) => (
-                  <li key={ability.id} className="text-[12.5px] leading-snug text-white/80">
-                    <span className="font-semibold text-white">{ability.label}.</span> {ability.detail}
+                {abilities.map((ability) => (
+                  <li key={ability.id} className="flex items-start justify-between gap-3 text-[12.5px] leading-snug text-white/80">
+                    <span className="min-w-0">
+                      <span className="font-semibold text-white">{ability.label}.</span> {ability.detail}
+                    </span>
+                    {onModeChange && ability.mode ? (
+                      <select
+                        aria-label={`${ability.label} setting`}
+                        value={ability.mode}
+                        disabled={savingAbility === ability.id}
+                        onChange={(event) => onModeChange(ability.id, event.target.value as NonNullable<Ability["mode"]>)}
+                        className="h-7 shrink-0 rounded-[7px] border border-white/20 bg-white/5 px-1.5 text-[12px] text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--g-brand)] disabled:opacity-60"
+                      >
+                        {ABILITY_MODES.map((mode) => (
+                          <option key={mode.id} value={mode.id} className="text-black">
+                            {mode.label}
+                          </option>
+                        ))}
+                      </select>
+                    ) : ability.mode ? (
+                      <span className="shrink-0 rounded-full bg-white/10 px-2 py-0.5 text-[11.5px] text-white/80">
+                        {ABILITY_MODES.find((mode) => mode.id === ability.mode)?.label}
+                      </span>
+                    ) : null}
                   </li>
                 ))}
               </ul>

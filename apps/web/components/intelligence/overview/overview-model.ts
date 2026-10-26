@@ -16,7 +16,14 @@
 import type { FailureAlertWithEvidence, Forecast } from "@/components/intelligence/forecasts/forecast-model"
 import { buildForecasts } from "@/components/intelligence/forecasts/forecast-model"
 import { impactTotals, type Certainty } from "@/components/intelligence/impact/impact-model"
-import type { IntelligencePageContextResponse, PromotionCandidate } from "@/lib/api"
+import type {
+  IntelligenceAbilityMode,
+  IntelligenceAbilityName,
+  IntelligenceAbilitySetting,
+  IntelligenceOverviewReadiness,
+  IntelligencePageContextResponse,
+  PromotionCandidate,
+} from "@/lib/api"
 import type { AgentRoiReport, Connector } from "@/types/api"
 
 export type OverviewPeriod = "today" | "week"
@@ -80,56 +87,57 @@ export const READINESS_TIERS: Array<{ id: ReadinessTier; label: string }> = [
 
 export type DataReadiness = { tier: ReadinessTier; label: string; summary: string }
 
-/** Apps it takes before readiness counts as comprehensive, with links across them. */
-export const COMPREHENSIVE_MIN_APPS = 4
-
 /**
- * How much Gravitre can see across systems. Readiness grows with the number of
- * signed-in apps and whether the knowledge graph has linked records between
- * them; there is no shared-account count in the backend, so the copy names the
- * apps and the links rather than a number of matched accounts.
- *   Limited:        fewer than two apps, or nothing linked yet.
- *   Cross-system:   two or more apps with linked records.
- *   Comprehensive:  four or more apps with linked records, none waiting to sign in.
+ * How much Gravitre can see across systems, from the Overview contract's
+ * readiness (`GET /api/intelligence/overview`). The backend counts usable,
+ * signed-in apps and never certifies coverage from a count, so:
+ *   Limited:        no usable app, or only one.
+ *   Cross-system:   two or more usable apps (a candidate, not verified coverage).
+ *   Comprehensive:  only when the backend reports verified coverage.
+ * There is no shared-account count in the backend, so the copy names the apps
+ * and how many synced recently rather than a number of matched accounts.
+ * Without the contract (older API) the same tiers come from the connector list.
  */
 export function dataReadiness({
   connectors,
-  metrics,
+  readiness,
 }: {
   connectors: Connector[] | null | undefined
-  metrics: Metrics | null
+  readiness?: IntelligenceOverviewReadiness | null
 }): DataReadiness {
   const connected = connectedApps(connectors)
-  const broken = appsNeedingReconnect(connectors)
-  const links = num(metrics?.knowledge?.knownRelationships) ?? 0
-  const names = connected.map(appName)
+  const byVendor = new Map(connected.map((c) => [String(c.vendor ?? "").toLowerCase(), appName(c)]))
+  const names = readiness
+    ? readiness.vendors.map((vendor) => byVendor.get(vendor) ?? humanize(vendor))
+    : connected.map(appName)
+  const count = names.length
+  const fresh = readiness ? readiness.fresh_count : null
+  const apps = `${listNames(names.slice(0, 3))}${count > 3 ? ` and ${count - 3} more` : ""}`
 
-  if (connected.length === 0) {
+  if (count === 0) {
     return {
       tier: "limited",
       label: "Limited",
       summary: "No apps are connected yet, so Gravitre only knows what your team tells it.",
     }
   }
-  if (connected.length === 1) {
+  if (count === 1) {
     return {
       tier: "limited",
       label: "Limited",
       summary: `Only ${names[0]} is connected, so Gravitre can't find patterns across systems yet.`,
     }
   }
-  if (links === 0) {
-    return {
-      tier: "limited",
-      label: "Limited",
-      summary: `${listNames(names.slice(0, 3))}${names.length > 3 ? " and more" : ""} are connected, but Gravitre hasn't linked records between them yet.`,
-    }
+  const synced =
+    fresh == null ? "" : fresh === count ? " All of them synced in the last three days." : ` ${fresh} of ${count} synced in the last three days.`
+  if (readiness?.comprehensive && readiness.coverage_verified) {
+    return { tier: "comprehensive", label: "Comprehensive", summary: `Gravitre reads ${apps}, with verified coverage across how you work.${synced}` }
   }
-  const linked = `Gravitre has linked ${links.toLocaleString("en-US")} ${links === 1 ? "record" : "records"} across ${listNames(names.slice(0, 3))}${names.length > 3 ? ` and ${names.length - 3} more` : ""}`
-  if (connected.length >= COMPREHENSIVE_MIN_APPS && broken.length === 0) {
-    return { tier: "comprehensive", label: "Comprehensive", summary: `${linked}, so it can find patterns across most of how you work.` }
+  return {
+    tier: "cross-system",
+    label: "Cross-system",
+    summary: `Gravitre reads ${apps}, so it can look for patterns between them.${synced}`,
   }
-  return { tier: "cross-system", label: "Cross-system", summary: `${linked}, so it can find patterns between them.` }
 }
 
 // ---------------------------------------------------------------- at a glance
@@ -458,16 +466,41 @@ export function overviewForecasts(
 
 // ---------------------------------------------------------------- how Gravitre thinks
 
-/** The intelligence engine's seven abilities (POST /api/intelligence/{ask,explain,...}). */
-export const SEVEN_ABILITIES: Array<{ id: string; label: string; detail: string }> = [
-  { id: "ask", label: "Ask", detail: "Answers questions from your own knowledge, with sources." },
-  { id: "explain", label: "Explain", detail: "Shows why a customer, deal or ticket looks the way it does." },
-  { id: "recommend", label: "Recommend", detail: "Suggests the next step, with how sure it is." },
-  { id: "forecast", label: "Forecast", detail: "Says what is likely to happen next, and when." },
-  { id: "optimize", label: "Optimize", detail: "Finds slow or failing steps in your workflows." },
-  { id: "plan", label: "Plan", detail: "Turns a goal into steps your agents can run." },
-  { id: "execute", label: "Execute", detail: "Carries out an approved plan, never without the approvals you set." },
+/**
+ * The seven abilities the intelligence router applies to every question
+ * (`CAPABILITY_NAMES` in the backend). Descriptions and each ability's mode come
+ * from the Overview contract; the defaults below mirror the backend's copy.
+ */
+export const ABILITY_MODES: Array<{ id: IntelligenceAbilityMode; label: string }> = [
+  { id: "conservative", label: "Careful" },
+  { id: "balanced", label: "Balanced" },
+  { id: "proactive", label: "Proactive" },
 ]
+
+const ABILITY_DEFAULTS: Array<{ id: IntelligenceAbilityName; label: string; detail: string }> = [
+  { id: "contextual", label: "Context", detail: "Understands the business context behind a question." },
+  { id: "sentiment", label: "Sentiment", detail: "Looks for changes in customer tone and friction." },
+  { id: "causal", label: "Cause", detail: "Investigates potential causes without confusing correlation with proof." },
+  { id: "temporal", label: "Timing", detail: "Recognizes changes over time and timing patterns." },
+  { id: "relational", label: "Relationships", detail: "Connects relevant people, accounts and business entities." },
+  { id: "adaptive", label: "Learning", detail: "Suggests improvements based on observed outcomes." },
+  { id: "predictive", label: "Prediction", detail: "Estimates future risks and opportunities when enough evidence exists." },
+]
+
+export type Ability = { id: IntelligenceAbilityName; label: string; detail: string; mode: IntelligenceAbilityMode | null }
+
+export function sevenAbilities(
+  capabilities: Partial<Record<IntelligenceAbilityName, IntelligenceAbilitySetting>> | null | undefined,
+): Ability[] {
+  return ABILITY_DEFAULTS.map((ability) => {
+    const setting = capabilities?.[ability.id]
+    return {
+      ...ability,
+      detail: setting?.description?.trim() || ability.detail,
+      mode: setting?.mode ?? null,
+    }
+  })
+}
 
 export function thinkingSummary({
   phrase,

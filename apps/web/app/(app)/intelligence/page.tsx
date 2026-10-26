@@ -13,6 +13,7 @@ import { AskGravitreSummonButton } from "@/components/intelligence/ask-gravitre-
 import type { FailureAlertWithEvidence } from "@/components/intelligence/forecasts/forecast-model"
 import { toast } from "@/components/intelligence/overlays/toast"
 import {
+  ABILITY_MODES,
   OVERVIEW_PERIODS,
   attentionItems,
   buildFeed,
@@ -24,6 +25,7 @@ import {
   overviewForecasts,
   pageMetrics,
   pendingCandidates,
+  sevenAbilities,
   thinkingSummary,
   type FeedItem,
   type OverviewPeriod,
@@ -46,8 +48,17 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { useAuth } from "@/lib/auth-context"
+import { useOrgAdmin } from "@/lib/use-org-admin"
 import { APP_ROUTES } from "@/lib/app-routes"
-import { connectorsApi, enterpriseApi, intelligenceApi, memoryPromotionApi, workflowsApi } from "@/lib/api"
+import {
+  connectorsApi,
+  enterpriseApi,
+  intelligenceApi,
+  memoryPromotionApi,
+  workflowsApi,
+  type IntelligenceAbilityMode,
+  type IntelligenceAbilityName,
+} from "@/lib/api"
 import { ApiError } from "@/lib/fetcher"
 import { ensureSelectedOrg, getQuickOrgId } from "@/lib/org-context"
 import { readCachedOrgMembership, writeCachedOrgMembership } from "@/lib/org-gate-cache"
@@ -113,6 +124,8 @@ function IntelligenceCenterInner() {
   })
   const [period, setPeriod] = useState<OverviewPeriod>("week")
   const [analyzing, setAnalyzing] = useState(false)
+  const [savingAbility, setSavingAbility] = useState<IntelligenceAbilityName | null>(null)
+  const { isAdmin } = useOrgAdmin()
   // The activity item under the pointer or focus becomes Ask Gravitre's context.
   const [selected, setSelected] = useState<GravitreAISelectedEntity | null>(null)
   usePublishGravitreAISelection(selected)
@@ -164,6 +177,12 @@ function IntelligenceCenterInner() {
     () => memoryPromotionApi.candidates({ limit: 50 }),
     { revalidateOnFocus: false, shouldRetryOnError: false },
   )
+  // Tenant Overview contract: readiness and the seven ability settings.
+  const { data: overview, mutate: mutateOverview } = useSWR(
+    enabled ? ["intelligence/overview/contract", orgId] : null,
+    () => intelligenceApi.overview(),
+    { revalidateOnFocus: false, shouldRetryOnError: false },
+  )
   const { data: heuristics, mutate: mutateHeuristics } = useSWR(
     enabled ? ["intelligence/overview/heuristics", orgId] : null,
     () => intelligenceApi.heuristicRecommendations(),
@@ -189,7 +208,8 @@ function IntelligenceCenterInner() {
     void mutateCandidates()
     void mutateHeuristics()
     void mutateAlerts()
-  }, [orgId, mutateSnapshot, mutateRoi, mutateConnectors, mutateCandidates, mutateHeuristics, mutateAlerts])
+    void mutateOverview()
+  }, [orgId, mutateSnapshot, mutateRoi, mutateConnectors, mutateCandidates, mutateHeuristics, mutateAlerts, mutateOverview])
 
   const metrics = pageMetrics(pageContext)
   const snapshotLoading = loadState === "LOADING" || loadState === "UNINITIALIZED"
@@ -206,7 +226,11 @@ function IntelligenceCenterInner() {
     [candidates, periodInfo.windowHours],
   )
   const topPattern = pending[0] ?? null
-  const readiness = useMemo(() => dataReadiness({ connectors, metrics }), [connectors, metrics])
+  const readiness = useMemo(
+    () => dataReadiness({ connectors, readiness: overview?.readiness ?? null }),
+    [connectors, overview],
+  )
+  const abilities = useMemo(() => sevenAbilities(overview?.capabilities), [overview])
   const glance = useMemo(
     () =>
       glanceCards({
@@ -270,13 +294,24 @@ function IntelligenceCenterInner() {
     try {
       // Re-read every producer behind the snapshot (skipping its short cache) and
       // check every workflow for likely failures, then refresh what the page shows.
-      const [fresh, , nextCards, nextAlerts] = await Promise.all([
+      // Admins also queue the tenant's durable sweep. It is opt-in on the server:
+      // when the worker is off (503) or nothing is connected (409) the re-read
+      // below is the whole analysis; at the daily limit (429) we say so.
+      const sweep = isAdmin
+        ? intelligenceApi.requestOverviewSweep().then(
+            () => "queued" as const,
+            (err: unknown) => (err instanceof ApiError && err.status === 429 ? ("limit" as const) : null),
+          )
+        : Promise.resolve(null)
+      const [fresh, , nextCards, nextAlerts, sweepState] = await Promise.all([
         intelligenceApi.pageContext({ windowHours: periodInfo.windowHours, refresh: true }),
         workflowsApi.scanAllFailurePredictions().catch(() => null),
         intelligenceApi.heuristicRecommendations().catch(() => null),
         workflowsApi.listFailurePredictions({ status: "open" }).catch(() => null),
+        sweep,
       ])
       mutateSnapshot()
+      void mutateOverview()
       void mutateHeuristics(nextCards ?? undefined, { revalidate: !nextCards })
       void mutateAlerts(nextAlerts ?? undefined, { revalidate: !nextAlerts })
       void mutateCandidates()
@@ -291,10 +326,15 @@ function IntelligenceCenterInner() {
       toast.success("Analyze my business finished", {
         id: ANALYZE_TOAST_ID,
         eyebrow: "Sweep complete",
-        description:
+        description: [
           added > 0
             ? `${added} new ${added === 1 ? "finding was" : "findings were"} added to Recent insights.`
             : "Nothing new turned up. Recent insights are up to date.",
+          sweepState === "queued" ? "A deeper sweep across your apps is queued." : "",
+          sweepState === "limit" ? "Today's deeper sweeps are used up; the next one runs tomorrow." : "",
+        ]
+          .filter(Boolean)
+          .join(" "),
         action: {
           label: "View findings",
           onClick: () => document.getElementById(FEED_ANCHOR)?.scrollIntoView({ behavior: "smooth", block: "start" }),
@@ -309,6 +349,25 @@ function IntelligenceCenterInner() {
       })
     } finally {
       setAnalyzing(false)
+    }
+  }
+
+  async function changeAbility(id: IntelligenceAbilityName, mode: IntelligenceAbilityMode) {
+    if (!isAdmin || savingAbility) return
+    const label = abilities.find((ability) => ability.id === id)?.label ?? "Ability"
+    setSavingAbility(id)
+    try {
+      const saved = await intelligenceApi.updateOverviewProfile({ [id]: { mode } })
+      await mutateOverview(overview ? { ...overview, capabilities: saved.capabilities } : undefined, { revalidate: !overview })
+      toast.success(`${label} set to ${ABILITY_MODES.find((m) => m.id === mode)?.label.toLowerCase()}`, {
+        description: "Gravitre uses this on the next question. Nothing runs on its own.",
+      })
+    } catch (err) {
+      toast.error(`Couldn't change ${label.toLowerCase()}`, {
+        description: err instanceof ApiError ? err.message : "Your previous setting is still in place.",
+      })
+    } finally {
+      setSavingAbility(null)
     }
   }
 
@@ -447,6 +506,9 @@ function IntelligenceCenterInner() {
                 awaiting={readyNumber(execution.awaitingApproval)}
                 summary={snapshotLoading ? null : summary}
                 routes={{ knowledge: APP_ROUTES.learning, activity: APP_ROUTES.activity }}
+                abilities={abilities}
+                onModeChange={isAdmin && overview ? (id, mode) => void changeAbility(id, mode) : undefined}
+                savingAbility={savingAbility}
               />
               <RecentActivity
                 id={FEED_ANCHOR}

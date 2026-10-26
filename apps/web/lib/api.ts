@@ -2990,6 +2990,44 @@ export type KnowledgeFabricPackQuality = {
   honesty: string
 }
 
+export type IntelligenceAbilityName =
+  | "contextual"
+  | "sentiment"
+  | "causal"
+  | "temporal"
+  | "relational"
+  | "adaptive"
+  | "predictive"
+export type IntelligenceAbilityMode = "conservative" | "balanced" | "proactive"
+export type IntelligenceAbilitySetting = { mode: IntelligenceAbilityMode; description: string; behavior_wired?: boolean }
+export type IntelligenceOverviewReadiness = {
+  tier: "insufficient" | "limited" | "cross_system_candidate"
+  connector_count: number
+  vendors: string[]
+  fresh_connectors: string[]
+  fresh_count: number
+  coverage_verified: boolean
+  comprehensive: boolean
+  recommended_connector_count: number
+  missing_evidence: string[]
+}
+export type IntelligenceOverviewSweep = {
+  id: string
+  status: string
+  created_at?: string | null
+  started_at?: string | null
+  completed_at?: string | null
+  error_code?: string | null
+}
+export type IntelligenceOverviewResponse = {
+  schema_version: string
+  capabilities: Record<IntelligenceAbilityName, IntelligenceAbilitySetting>
+  readiness: IntelligenceOverviewReadiness
+  latest_sweep: IntelligenceOverviewSweep | null
+  advisory_only: boolean
+  data_limitations: string[]
+}
+
 export const intelligenceApi = {
   snapshot: () => fetcher<IntelligenceSnapshot>(apiUrl("/api/admin/intelligence/snapshot")),
   knowledgeFabricQuality: () =>
@@ -3183,6 +3221,18 @@ export const intelligenceApi = {
     const suffix = query.toString() ? `?${query.toString()}` : ""
     return fetcher<IntelligencePageContextResponse>(apiUrl(`/api/intelligence/page-context${suffix}`))
   },
+  /** Tenant-scoped Overview contract: readiness, the seven ability settings and the sweep queue. */
+  overview: () => fetcher<IntelligenceOverviewResponse>(apiUrl("/api/intelligence/overview")),
+  updateOverviewProfile: (capabilities: Partial<Record<IntelligenceAbilityName, { mode: IntelligenceAbilityMode }>>) =>
+    patchJson<{ capabilities: Record<IntelligenceAbilityName, IntelligenceAbilitySetting>; saved: boolean }>(
+      apiUrl("/api/intelligence/overview/profile"),
+      { capabilities },
+    ),
+  requestOverviewSweep: () =>
+    postJson<{ sweep: IntelligenceOverviewSweep; started: boolean; message: string }>(
+      apiUrl("/api/intelligence/overview/sweeps"),
+      {},
+    ),
   churnRiskAdvisory: (params?: { limit?: number }) => {
     const query = new URLSearchParams()
     if (params?.limit != null) query.set("limit", String(params.limit))

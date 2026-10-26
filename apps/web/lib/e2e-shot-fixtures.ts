@@ -2737,6 +2737,41 @@ export const SHOT_FIXTURES: Record<string, unknown> = {
       },
     }
   })(),
+  // FIXTURE: tenant Overview contract (shape of GET /api/intelligence/overview).
+  "/api/intelligence/overview": {
+    schema_version: "intelligence_overview_v1",
+    org_id: "org_shot",
+    capabilities: Object.fromEntries(
+      [
+        ["contextual", "Understands the business context behind a question."],
+        ["sentiment", "Looks for changes in customer tone and friction."],
+        ["causal", "Investigates potential causes without confusing correlation with proof."],
+        ["temporal", "Recognizes changes over time and timing patterns."],
+        ["relational", "Connects relevant people, accounts and business entities."],
+        ["adaptive", "Suggests improvements based on observed outcomes."],
+        ["predictive", "Estimates future risks and opportunities when enough evidence exists."],
+      ].map(([name, description]) => [name, { mode: name === "predictive" ? "proactive" : "balanced", description, behavior_wired: true }]),
+    ),
+    knowledge: { usable_connectors: 3, vendors: ["hubspot", "slack", "zendesk"], facts: null, freshness: null },
+    readiness: {
+      tier: "cross_system_candidate",
+      connector_count: 3,
+      vendors: ["hubspot", "slack", "zendesk"],
+      fresh_connectors: ["hubspot", "zendesk"],
+      fresh_count: 2,
+      coverage_verified: false,
+      comprehensive: false,
+      recommended_connector_count: 3,
+      missing_evidence: ["authorized_read_scope", "business_function_coverage", "source_record_count", "cross_source_entity_match_quality"],
+    },
+    insights: [],
+    recommendations: [],
+    actions: [],
+    outcomes: [],
+    latest_sweep: null,
+    advisory_only: true,
+    data_limitations: ["Cross-connector historical analysis has not been certified."],
+  },
   // FIXTURE: heuristic suggestion cards (shape of GET /api/intelligence/recommendations/heuristics).
   "/api/intelligence/recommendations/heuristics": {
     advisoryOnly: true,
