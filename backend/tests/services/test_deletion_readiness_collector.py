@@ -7,7 +7,7 @@ from types import SimpleNamespace
 
 import pytest
 
-SCRIPT = Path(__file__).resolve().parents[2] / "scripts" / "check_deletion_lifecycle_readiness.py"
+SCRIPT = Path(__file__).resolve().parents[3] / "scripts" / "check_deletion_lifecycle_readiness.py"
 spec = importlib.util.spec_from_file_location("readiness_check", SCRIPT)
 mod = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(mod)
