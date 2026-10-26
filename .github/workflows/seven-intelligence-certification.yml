@@ -1,0 +1,50 @@
+name: Seven intelligence certification evidence
+on:
+  pull_request:
+    paths:
+      - 'backend/app/services/intelligence_router.py'
+      - 'backend/app/services/execution_intelligence_context.py'
+      - 'backend/scripts/phase3_intelligence_coverage.py'
+      - 'backend/tests/services/test_phase2_intelligence_coordination.py'
+      - 'backend/tests/services/test_phase2_router_consumers.py'
+      - 'docs/testing/PHASE3_SEVEN_LAYER_CERTIFICATION.md'
+      - '.github/workflows/seven-intelligence-certification.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  offline-contracts:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install test dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest
+      - name: Run existing seven-capability contracts
+        run: |
+          python -m pytest -q --no-header \
+            tests/services/test_phase2_intelligence_coordination.py \
+            tests/services/test_phase2_router_consumers.py
+      - name: Generate 56-cell coverage inventory
+        if: always()
+        run: |
+          python scripts/phase3_intelligence_coverage.py --output ../phase3-evidence/intelligence-coverage.json
+      - name: Upload inventory
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: seven-intelligence-coverage-inventory
+          path: phase3-evidence/intelligence-coverage.json
+      - name: Enforce certification gate (expected to fail until all 56 live verified)
+        if: always()
+        continue-on-error: true
+        run: |
+          python scripts/phase3_intelligence_coverage.py --output ../phase3-evidence/certification-check.json --require-certified
