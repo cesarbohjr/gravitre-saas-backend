@@ -10,7 +10,7 @@ def row():
     return {"type":"smartlead","status":"active","config":{
         "outreach_enabled":True,"auth_provider":"managed",
         "managed_connection_id":"tenant-a-smartlead",
-        "managed_integration_id":"smartlead"}}
+        "managed_integration_id":"smartlead-ai"}}
 
 def test_nango_connection_checks_org_and_connector_before_proxy():
     response=MagicMock(status_code=200)
@@ -22,7 +22,7 @@ def test_nango_connection_checks_org_and_connector_before_proxy():
     assert result.success
     assert ownership.call_args.kwargs["org_id"]=="tenant-a"
     assert ownership.call_args.kwargs["connector_id"]=="conn-a"
-    assert proxy.call_args.kwargs["integration_id"]=="smartlead"
+    assert proxy.call_args.kwargs["integration_id"]=="smartlead-ai"
     assert proxy.call_args.kwargs["endpoint"]=="/campaigns/"
 
 def test_missing_nango_connection_never_proxies():
