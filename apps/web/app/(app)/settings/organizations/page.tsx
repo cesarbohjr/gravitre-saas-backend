@@ -59,6 +59,7 @@ import {
 } from "@/lib/settings-api/orgs"
 import type { User } from "@/types/api"
 import "@/components/settings/orgs.css"
+import { OrganizationsArt } from "@/components/dashboard/art/dashboard-art"
 
 type Member = User & { role: string; user_id?: string }
 type View = "list" | "grid"
@@ -370,7 +371,7 @@ function OrganizationsContent({
 
             {inspectOrg ? (
               <aside className="gs-split-side" aria-label="Organization details" data-review-surface="settings-orgs-inspect">
-                <SetArt name="settings-organizations" ratio="320 / 170" />
+                <SetArt ratio="320 / 170"><OrganizationsArt /></SetArt>
                 <div className="orgs-panel-head">
                   <OrgAvatar org={inspectOrg} />
                   <div style={{ minWidth: 0 }}>

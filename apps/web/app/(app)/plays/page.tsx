@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react"
 import Link from "next/link"
 import useSWR from "swr"
 import { toast } from "@/components/agents/overlays/toast"
-import { ArrowRight, LayoutGrid, Rows3, Search, SquareKanban } from "lucide-react"
+import { ArrowRight, ChevronRight, Download, LayoutGrid, Rows3, Search, SquareKanban } from "lucide-react"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { WsPage } from "@/components/workspace/ws-page"
 import { AuPages, paginate } from "@/components/workspace/au-pages"
@@ -29,7 +29,6 @@ import {
   TIER_LABEL,
   TIER_ORDER,
   connectorChips,
-  departmentArt,
   departmentKey,
   departmentLabel,
   filterPlays,
@@ -45,8 +44,10 @@ import {
   type PlayReadinessState,
   type PlayTier,
 } from "@/components/plays/plays-board-model"
+import { PlayDetailArt, PlaysArt } from "@/components/dashboard/art/dashboard-art"
 import "@/components/workspace/ops-v4.css"
 import "@/components/workspace/automate-v1.css"
+import "@/components/dashboard/dashboard.css"
 
 type PlaysResponse = { plays: PlayListItem[]; count: number }
 type View = "cards" | "board" | "table"
@@ -54,38 +55,55 @@ type View = "cards" | "board" | "table"
 const PAGE_SIZE = 10
 
 const VIEWS: Array<{ id: View; label: string; icon: typeof LayoutGrid }> = [
-  { id: "cards", label: "Cards", icon: LayoutGrid },
-  { id: "board", label: "Authority board", icon: SquareKanban },
   { id: "table", label: "Table", icon: Rows3 },
+  { id: "cards", label: "Cards", icon: LayoutGrid },
+  { id: "board", label: "Board", icon: SquareKanban },
 ]
 
-/** The three authority levels, each with its library scene. */
-const TIERS: Array<{ tier: Exclude<PlayTier, "off">; n: string; title: string; body: string; art: string; alt: string }> = [
+/** The three authority levels. */
+const TIERS: Array<{ tier: Exclude<PlayTier, "off">; n: string; title: string; body: string }> = [
   {
     tier: "observe",
-    n: "01",
+    n: "1",
     title: "Watch and report",
     body: "The play reads your data and tells you what it would do. Nothing changes in your apps.",
-    art: "/illustrations/ops-activity.svg",
-    alt: "",
   },
   {
     tier: "recommend",
-    n: "02",
+    n: "2",
     title: "Suggest, you decide",
     body: "Each move arrives as a recommendation. You approve, edit or skip it.",
-    art: "/illustrations/ops-approvals.svg",
-    alt: "",
   },
   {
     tier: "act",
-    n: "03",
+    n: "3",
     title: "Act with approval",
     body: "The play prepares changes in your apps and each one waits for a person to approve it.",
-    art: "/illustrations/agents-guardrails.svg",
-    alt: "",
   },
 ]
+
+/** Department swatches in the plays table. */
+const DEPT_SWATCH: Record<string, string> = {
+  sales: "#5B5BD6",
+  growth: "#5B5BD6",
+  marketing: "#A5563C",
+  support: "#4D6472",
+  customer_success: "#4D6472",
+  service_desk: "#4D6472",
+  finance: "#4E7350",
+  operations: "#8A7A4E",
+}
+
+function appInitials(slug: string): string {
+  const name = vendorName(slug).replace(/[^A-Za-z0-9 ]/g, "").trim()
+  const words = name.split(/\s+/).filter(Boolean)
+  return (words.length > 1 ? words[0][0] + words[1][0] : name.slice(0, 2)) || "?"
+}
+
+function csvCell(value: string | number): string {
+  const text = String(value)
+  return /[",\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text
+}
 
 const EMPTY_FILTERS: PlayFilters = { query: "", department: "all", readiness: "all", tier: "all" }
 
@@ -137,7 +155,7 @@ function PlaysBoard() {
   const summary = useMemo(() => summarize(plays), [plays])
 
   const [filters, setFilters] = useState<PlayFilters>(EMPTY_FILTERS)
-  const [view, setView] = useState<View>("cards")
+  const [view, setView] = useState<View>("table")
   const [page, setPage] = useState(1)
   const [selectedKey, setSelectedKey] = useState<string | null>(null)
   const [grantTarget, setGrantTarget] = useState<{ item: PlayListItem; mode: PlayOperatingMode; label: string } | null>(null)
@@ -171,13 +189,39 @@ function PlaysBoard() {
     return map
   }, [impact])
 
-  const tierCounts: Array<{ id: "all" | PlayTier; label: string; count: number; dot: string }> = [
-    { id: "all", label: "All", count: summary.total, dot: "ink" },
-    { id: "observe", label: "Observe", count: summary.tiers.observe, dot: "" },
-    { id: "recommend", label: "Recommend", count: summary.tiers.recommend, dot: "amber" },
-    { id: "act", label: "Act", count: summary.tiers.act, dot: "green" },
-    { id: "off", label: "Not on", count: summary.tiers.off, dot: "" },
+  const tierCounts: Array<{ id: "all" | PlayTier; label: string; count: number }> = [
+    { id: "all", label: "All plays", count: summary.total },
+    { id: "observe", label: "Observe", count: summary.tiers.observe },
+    { id: "recommend", label: "Recommend", count: summary.tiers.recommend },
+    { id: "act", label: "Act", count: summary.tiers.act },
+    ...(summary.tiers.off ? [{ id: "off" as const, label: "Not on", count: summary.tiers.off }] : []),
   ]
+
+  /** CSV of the plays that match the current filters (every page, not only this one). */
+  const exportCsv = () => {
+    const header = ["Play", "Department", "Authority", "Readiness", "Apps", "Workflows", "Verified results"]
+    const rows = visible.map((item) => [
+      item.play.name,
+      departmentLabel(departmentKey(item)),
+      TIER_LABEL[tierOf(item)],
+      READINESS_LABEL[readinessOf(item)],
+      connectorChips(item)
+        .map((chip) => vendorName(chip.vendor) + (chip.ready ? "" : " (not connected)"))
+        .join("; "),
+      item.workflowBindingCount,
+      verifiedByPlay.get(item.play.key) ?? 0,
+    ])
+    const csv = [header, ...rows].map((row) => row.map(csvCell).join(",")).join("\n")
+    const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }))
+    const anchor = document.createElement("a")
+    anchor.href = url
+    anchor.download = "plays.csv"
+    document.body.appendChild(anchor)
+    anchor.click()
+    anchor.remove()
+    URL.revokeObjectURL(url)
+    toast.success(`Exported ${visible.length} ${visible.length === 1 ? "play" : "plays"}`, { description: "CSV with the plays that match your filters." })
+  }
 
   const showReady = filters.readiness === "ready" && filters.tier === "all"
 
@@ -208,11 +252,10 @@ function PlaysBoard() {
   const loading = isLoading && !data
 
   return (
-    <div className="ov-page" data-composition="operate">
+    <div className="ov-page dash" data-composition="operate">
       <section aria-labelledby="plays-hero" className="ov-hero">
         <div className="ov-hero-art">
-          {/* eslint-disable-next-line @next/next/no-img-element -- static library scene */}
-          <img src="/illustrations/hero-plays.svg" alt="" />
+          <PlaysArt />
           {plays.length ? (
             <div className="au-art-chip">
               <span className="t">
@@ -304,68 +347,82 @@ function PlaysBoard() {
       ) : null}
 
       {plays.length ? (
-        <section className="au-features" aria-label="Authority levels">
-          {TIERS.map((tier) => {
-            const count = summary.tiers[tier.tier]
-            const share = shareOf(count, summary.total)
-            return (
-              <button
-                key={tier.tier}
-                type="button"
-                className={cn("au-feature", `tone-${tier.tier}`)}
-                aria-pressed={filters.tier === tier.tier}
-                onClick={() => setFilters(filters.tier === tier.tier ? EMPTY_FILTERS : { ...EMPTY_FILTERS, tier: tier.tier })}
-              >
-                <div className="au-feature-art">
-                  {/* eslint-disable-next-line @next/next/no-img-element -- static library scene */}
-                  <img src={tier.art} alt={tier.alt} />
-                  <span className="au-count">
-                    <i aria-hidden />
-                    {count} {count === 1 ? "play" : "plays"}
+        <section className="pl-card-sec" aria-labelledby="plays-levels">
+          <div className="pl-lvls-head">
+            <div>
+              <h2 id="plays-levels">Authority levels</h2>
+              <p>Every play starts in Observe. Grant more authority when the results earn it.</p>
+            </div>
+            <span className="hint">Select a level to filter the list</span>
+          </div>
+          <div className="pl-lvls" role="group" aria-label="Filter by authority level">
+            {TIERS.map((tier) => {
+              const count = summary.tiers[tier.tier]
+              const share = shareOf(count, summary.total)
+              const on = filters.tier === tier.tier
+              return (
+                <button
+                  key={tier.tier}
+                  type="button"
+                  className="pl-lvl"
+                  data-tier={tier.tier}
+                  aria-pressed={on}
+                  onClick={() => setFilters(on ? EMPTY_FILTERS : { ...EMPTY_FILTERS, tier: tier.tier })}
+                >
+                  <span className="top">
+                    <span className="pl-lnum">{tier.n}</span>
+                    <span className="eb">{TIER_LABEL[tier.tier]}</span>
+                    {on ? <span className="sel">Showing</span> : null}
                   </span>
-                </div>
-                <div className="au-feature-body">
-                  <span className="au-eyebrow">
-                    {tier.n} · {TIER_LABEL[tier.tier]}
+                  <span className="n">
+                    <strong>{count}</strong>
+                    {count === 1 ? "play" : "plays"} · {share}% of total
                   </span>
-                  <b>{tier.title}</b>
-                  <p>{tier.body}</p>
-                  <div className="au-share" aria-label={`${share}% of plays are in ${TIER_LABEL[tier.tier]}`}>
-                    <span className="track">
-                      <span style={{ width: `${share}%` }} />
-                    </span>
-                    <small>{share}% of plays</small>
-                  </div>
-                </div>
-              </button>
-            )
-          })}
+                  <span className="t">{tier.title}</span>
+                  <span className="d">{tier.body}</span>
+                  <span className="bar" aria-hidden>
+                    <i style={{ width: `${share}%` }} />
+                  </span>
+                </button>
+              )
+            })}
+          </div>
         </section>
       ) : null}
 
       {!error || data ? (
         <section className="ov-panel" aria-labelledby="plays-list">
-          <div className="ov-band">
-            <div className="ov-band-l">
-              <span className="ov-dots" aria-hidden>
-                <i />
-                <i />
-                <i />
-              </span>
+          <div className="pl-head">
+            <div>
               <h2 id="plays-list">Your plays</h2>
+              <span className="sub" role="status">
+                {loading ? "Loading plays..." : `${visible.length} ${visible.length === 1 ? "play matches" : "plays match"} your filters`}
+              </span>
             </div>
-            <div className="ov-seg" role="group" aria-label="Filter by authority">
-              {tierCounts.map((item) => (
-                <button key={item.id} type="button" aria-pressed={filters.tier === item.id} onClick={() => setFilter("tier", item.id)}>
-                  <span className={cn("d", item.dot)} aria-hidden />
-                  {item.label}
-                  <span className="c">{loading ? "" : item.count}</span>
-                </button>
-              ))}
+            <div className="acts">
+              <button type="button" className="ov-btn sm" onClick={exportCsv} disabled={loading || visible.length === 0}>
+                <Download size={14} aria-hidden />
+                Export
+              </button>
             </div>
           </div>
+          <div className="pl-utabs" role="tablist" aria-label="Filter by authority">
+            {tierCounts.map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                role="tab"
+                className="pl-utab"
+                aria-selected={filters.tier === item.id}
+                onClick={() => setFilter("tier", item.id)}
+              >
+                {item.label}
+                <span className="c">{loading ? "" : item.count}</span>
+              </button>
+            ))}
+          </div>
 
-          <div className="au-tools">
+          <div className="pl-bar">
             <label className="ov-search">
               <Search size={16} aria-hidden />
               <span className="ov-sr">Search plays</span>
@@ -376,7 +433,7 @@ function PlaysBoard() {
                 onChange={(e) => setFilter("query", e.target.value)}
               />
             </label>
-            <label className="au-field">
+            <label className="pl-flt">
               Department
               <select value={filters.department} onChange={(e) => setFilter("department", e.target.value)}>
                 <option value="all">All</option>
@@ -387,7 +444,7 @@ function PlaysBoard() {
                 ))}
               </select>
             </label>
-            <label className="au-field">
+            <label className="pl-flt">
               Readiness
               <select
                 value={filters.readiness}
@@ -399,7 +456,7 @@ function PlaysBoard() {
                 <option value="setup">Needs setup</option>
               </select>
             </label>
-            <div className="ov-seg" role="group" aria-label="Layout">
+            <div className="pl-seg" role="group" aria-label="Layout">
               {VIEWS.map(({ id, label, icon: Icon }) => (
                 <button key={id} type="button" aria-pressed={view === id} onClick={() => setView(id)}>
                   <Icon size={14} aria-hidden />
@@ -471,43 +528,86 @@ function PlaysBoard() {
                 </div>
               ) : (
                 <div className="au-table-wrap">
-                  <table className="au-table">
+                  <table className="pl-tbl" aria-label="Plays">
+                    <colgroup>
+                      <col />
+                      <col style={{ width: 150 }} />
+                      <col style={{ width: 128 }} />
+                      <col style={{ width: 150 }} />
+                      <col style={{ width: 104 }} />
+                      <col style={{ width: 88 }} />
+                      <col style={{ width: 36 }} />
+                    </colgroup>
                     <thead>
                       <tr>
                         <th scope="col">Play</th>
-                        <th scope="col">Authority</th>
                         <th scope="col">Department</th>
+                        <th scope="col">Authority</th>
                         <th scope="col">Readiness</th>
-                        <th scope="col" className="num">Workflows</th>
-                        <th scope="col" className="num">Verified results</th>
+                        <th scope="col">Apps</th>
+                        <th scope="col" className="num">Verified</th>
+                        <th scope="col">
+                          <span className="ov-sr">Open</span>
+                        </th>
                       </tr>
                     </thead>
                     <tbody>
-                      {paged.rows.map((item) => (
-                        <tr
-                          key={item.play.key}
-                          aria-selected={selected?.play.key === item.play.key}
-                          onClick={() => setSelectedKey(item.play.key)}
-                        >
-                          <td>
-                            <button type="button" className="au-name" onClick={() => setSelectedKey(item.play.key)}>
-                              <b>{item.play.name}</b>
-                              <span>{item.play.objective}</span>
-                            </button>
-                          </td>
-                          <td className={`tone-${tierOf(item)}`}>
-                            <TierChip tier={tierOf(item)} />
-                          </td>
-                          <td>
-                            <span className="au-tag">{departmentLabel(departmentKey(item))}</span>
-                          </td>
-                          <td>
-                            <ReadinessBadge state={readinessOf(item)} />
-                          </td>
-                          <td className="num">{item.workflowBindingCount}</td>
-                          <td className="num">{verifiedByPlay.get(item.play.key) ?? 0}</td>
-                        </tr>
-                      ))}
+                      {paged.rows.map((item) => {
+                        const dept = departmentKey(item)
+                        const readiness = readinessOf(item)
+                        const tier = tierOf(item)
+                        const chips = connectorChips(item)
+                        return (
+                          <tr
+                            key={item.play.key}
+                            aria-selected={selected?.play.key === item.play.key}
+                            onClick={() => setSelectedKey(item.play.key)}
+                          >
+                            <td>
+                              <button type="button" className="pl-namebtn" onClick={() => setSelectedKey(item.play.key)}>
+                                <span className="pl-name">{item.play.name}</span>
+                                <span className="pl-desc">{item.play.objective}</span>
+                              </button>
+                            </td>
+                            <td>
+                              <span className="pl-dept">
+                                <span className="pl-dsq" style={{ background: DEPT_SWATCH[dept] }} aria-hidden />
+                                {departmentLabel(dept)}
+                              </span>
+                            </td>
+                            <td>
+                              <span className={cn("pl-auth", `tone-${tier}`)}>
+                                <i aria-hidden />
+                                {TIER_LABEL[tier]}
+                              </span>
+                            </td>
+                            <td>
+                              <span className={cn("pl-ready", readiness !== "ready" && "warn")}>
+                                <i aria-hidden />
+                                {READINESS_LABEL[readiness]}
+                              </span>
+                            </td>
+                            <td>
+                              <span className="pl-apps">
+                                {chips.slice(0, 3).map((chip, index) => (
+                                  <span
+                                    key={`${chip.vendor}-${index}`}
+                                    className={cn("pl-app", !chip.ready && "miss")}
+                                    title={chip.ready ? vendorName(chip.vendor) : `${vendorName(chip.vendor)} (not connected)`}
+                                  >
+                                    {appInitials(chip.vendor)}
+                                  </span>
+                                ))}
+                                {chips.length === 0 ? <span className="pl-desc">None</span> : null}
+                              </span>
+                            </td>
+                            <td className="num au-mono">{verifiedByPlay.get(item.play.key) ?? 0}</td>
+                            <td className="pl-chev" aria-hidden>
+                              <ChevronRight size={16} />
+                            </td>
+                          </tr>
+                        )
+                      })}
                     </tbody>
                   </table>
                 </div>
@@ -634,8 +734,7 @@ function PlaySide({
   return (
     <aside className={cn("au-side", `tone-${tier}`)} aria-label={`${item.play.name} details`}>
       <div className="au-side-art">
-        {/* eslint-disable-next-line @next/next/no-img-element -- static library scene */}
-        <img src={departmentArt(dept)} alt="" />
+        <PlayDetailArt />
       </div>
       <div className="ov-chips">
         <TierChip tier={tier} />

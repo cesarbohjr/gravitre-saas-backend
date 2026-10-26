@@ -1,0 +1,139 @@
+/*
+ * Dashboard designs (Dashboard-*.html): Workflows, Plays and Schedules.
+ * Layered on ops-v4.css and automate-v1.css, scoped under `.ov-page.dash`
+ * so the Agents pages that share those classes keep their own look.
+ */
+
+/* Hero: art column capped at 520px, heavier title and stat numbers */
+.gv-ws .ov-page.dash .ov-hero-art { flex: 1 1 340px; max-width: 520px; border-radius: 14px; background: #e7ece3; }
+.gv-ws .ov-page.dash .ov-hero-copy { flex: 999 1 420px; padding: 8px 4px; }
+.gv-ws .ov-page.dash .ov-eyebrow { font-size: 12px; letter-spacing: 0.14em; }
+.gv-ws .ov-page.dash .ov-hero h1 { font-size: 34px; font-weight: 600; letter-spacing: -0.02em; line-height: 1.1; }
+.gv-ws .ov-page.dash .ov-lead { line-height: 1.5; }
+.gv-ws .ov-page.dash .ov-stats { grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); }
+.gv-ws .ov-page.dash .ov-stat { border-radius: 12px; padding: 14px 16px; }
+.gv-ws .ov-page.dash .ov-stat .v { font-size: 28px; font-weight: 600; letter-spacing: -0.02em; }
+
+/* The status bar floating over the art */
+.gv-ws .ov-page.dash .au-art-chip { z-index: 2; background: rgba(255, 255, 255, 0.94); border-radius: 12px; padding: 6px 6px 6px 12px; box-shadow: 0 6px 16px rgba(20, 20, 20, 0.08); color: #262826; }
+.gv-ws .ov-page.dash .au-art-chip button { border-color: var(--ov-border); border-radius: 9px; }
+.gv-ws .ov-page.dash .au-art-chip button:hover { border-color: #0b8a5c; color: #0a6b47; }
+.dark .gv-ws .ov-page.dash .au-art-chip { background: rgba(23, 25, 23, 0.94); color: var(--ov-ink-2); }
+
+/* Buttons: 10px corners, the deeper brand green for primary actions */
+.gv-ws .ov-page.dash .ov-btn { border-radius: 10px; border-color: var(--ov-border); }
+.gv-ws .ov-page.dash .ov-btn:hover { border-color: #0b8a5c; color: #0a6b47; }
+.gv-ws .ov-page.dash .ov-btn.dark:hover,
+.gv-ws .ov-page.dash .ov-btn.green:hover { color: #ffffff; }
+.gv-ws .ov-page.dash .ov-btn.green { background: #0b8a5c; }
+.gv-ws .ov-page.dash .ov-btn.green:hover { background: #0a6b47; opacity: 1; }
+.gv-ws .ov-page.dash .ov-btn.sm { min-height: 36px; border-radius: 9px; font-size: 13px; padding: 0 12px; }
+.gv-ws .ov-page.dash .au-ask { color: #0b8a5c; border-radius: 10px; padding: 0 8px; }
+.gv-ws .ov-page.dash .au-ask:hover { background: #ddf3e8; text-decoration: none; }
+.dark .gv-ws .ov-page.dash .au-ask:hover { background: #143022; }
+
+/* Feature cards: art scenes instead of flat illustrations */
+.gv-ws .ov-page.dash .au-feature { border-radius: 14px; }
+.gv-ws .ov-page.dash .au-feature-art { background: #e7ece3; }
+.gv-ws .ov-page.dash .au-feature-art .ag-art { position: absolute; inset: 0; }
+
+/* Plays: authority levels band, the list header with underline tabs, the dense table */
+.gv-ws .ov-page.dash .pl-card-sec { background: var(--ov-card); border: 1px solid var(--ov-border); border-radius: 16px; overflow: hidden; }
+.gv-ws .ov-page.dash .pl-lvls-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px 16px; padding: 16px 20px; border-bottom: 1px solid var(--ov-line); }
+.gv-ws .ov-page.dash .pl-lvls-head h2 { margin: 0; font-size: 16px; font-weight: 600; color: var(--ov-ink); }
+.gv-ws .ov-page.dash .pl-lvls-head p { margin: 3px 0 0; font-size: 13px; color: var(--ov-muted); }
+.gv-ws .ov-page.dash .pl-lvls-head .hint { font-size: 12.5px; color: #8a8b85; }
+.gv-ws .ov-page.dash .pl-lvls { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.gv-ws .ov-page.dash .pl-lvl { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; text-align: left; font: inherit; color: inherit; background: var(--ov-card); border: 0; border-left: 1px solid var(--ov-line); padding: 18px 20px; cursor: pointer; min-height: 188px; position: relative; }
+.gv-ws .ov-page.dash .pl-lvl:first-child { border-left: 0; }
+.gv-ws .ov-page.dash .pl-lvl:hover { background: var(--ov-band); }
+.gv-ws .ov-page.dash .pl-lvl[aria-pressed="true"] { background: var(--ov-green-bg); box-shadow: inset 0 -2px 0 var(--ov-green); }
+.gv-ws .ov-page.dash .pl-lvl:focus-visible { outline: 2px solid #19c37d; outline-offset: -2px; }
+.gv-ws .ov-page.dash .pl-lvl .top { display: flex; align-items: center; gap: 8px; width: 100%; }
+.gv-ws .ov-page.dash .pl-lnum { width: 24px; height: 24px; border-radius: 7px; border: 1.5px solid #8a8b85; color: var(--ov-ink-2); display: grid; place-items: center; font-family: var(--font-mono), "Geist Mono", ui-monospace, monospace; font-size: 11px; font-weight: 600; flex: none; }
+.gv-ws .ov-page.dash .pl-lvl[data-tier="recommend"] .pl-lnum { border-color: var(--ov-amber); color: var(--ov-amber-ink); }
+.gv-ws .ov-page.dash .pl-lvl[data-tier="act"] .pl-lnum { border-color: var(--ov-green); color: var(--ov-green-ink); }
+.gv-ws .ov-page.dash .pl-lvl .eb { font-family: var(--font-mono), "Geist Mono", ui-monospace, monospace; font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ov-muted); }
+.gv-ws .ov-page.dash .pl-lvl .sel { margin-left: auto; font-size: 12px; font-weight: 600; color: var(--ov-green-ink); }
+.gv-ws .ov-page.dash .pl-lvl .n { display: flex; align-items: baseline; gap: 10px; font-size: 13px; color: var(--ov-muted); }
+.gv-ws .ov-page.dash .pl-lvl .n strong { font-size: 28px; font-weight: 600; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; color: var(--ov-ink); }
+.gv-ws .ov-page.dash .pl-lvl .t { font-weight: 600; font-size: 14.5px; color: var(--ov-ink); }
+.gv-ws .ov-page.dash .pl-lvl .d { font-size: 13px; line-height: 1.5; color: var(--ov-muted); }
+.gv-ws .ov-page.dash .pl-lvl .bar { display: block; width: 100%; height: 4px; border-radius: 2px; background: var(--ov-line); overflow: hidden; margin-top: auto; }
+.gv-ws .ov-page.dash .pl-lvl .bar i { display: block; height: 100%; border-radius: 2px; background: #8a8b85; transform-origin: left center; animation: dash-grow-x 0.7s cubic-bezier(0.22, 1, 0.36, 1) both; }
+.gv-ws .ov-page.dash .pl-lvl[data-tier="recommend"] .bar i { background: var(--ov-amber); }
+.gv-ws .ov-page.dash .pl-lvl[data-tier="act"] .bar i { background: var(--ov-green); }
+@keyframes dash-grow-x { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+@media (max-width: 860px) {
+  .gv-ws .ov-page.dash .pl-lvls { grid-template-columns: minmax(0, 1fr); }
+  .gv-ws .ov-page.dash .pl-lvl { border-left: 0; border-top: 1px solid var(--ov-line); min-height: 0; }
+  .gv-ws .ov-page.dash .pl-lvl:first-child { border-top: 0; }
+}
+
+.gv-ws .ov-page.dash .pl-head { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 12px; padding: 18px 20px 0; }
+.gv-ws .ov-page.dash .pl-head h2 { margin: 0; font-size: 17px; font-weight: 600; color: var(--ov-ink); }
+.gv-ws .ov-page.dash .pl-head .sub { font-size: 13px; color: var(--ov-muted); }
+.gv-ws .ov-page.dash .pl-head > div { display: flex; flex-direction: column; gap: 4px; padding-bottom: 14px; }
+.gv-ws .ov-page.dash .pl-head > .acts { flex-direction: row; gap: 8px; }
+.gv-ws .ov-page.dash .pl-utabs { display: flex; gap: 22px; flex-wrap: wrap; padding: 0 20px; }
+.gv-ws .ov-page.dash .pl-utab { border: 0; background: transparent; font: inherit; font-size: 13.5px; color: var(--ov-muted); padding: 0 0 12px; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; border-bottom: 2px solid transparent; margin-bottom: -1px; }
+.gv-ws .ov-page.dash .pl-utab:hover { color: var(--ov-ink); }
+.gv-ws .ov-page.dash .pl-utab[aria-selected="true"] { color: var(--ov-ink); font-weight: 600; border-bottom-color: var(--ov-ink); }
+.gv-ws .ov-page.dash .pl-utab .c { font-family: var(--font-mono), "Geist Mono", ui-monospace, monospace; font-size: 11px; color: var(--ov-muted); background: var(--ov-seg); border-radius: 6px; padding: 1px 6px; }
+.gv-ws .ov-page.dash .pl-utab:focus-visible { outline: 2px solid #19c37d; outline-offset: 2px; }
+.gv-ws .ov-page.dash .pl-bar { display: flex; flex-wrap: wrap; gap: 8px; padding: 12px 20px; align-items: center; border-top: 1px solid var(--ov-line); }
+.gv-ws .ov-page.dash .pl-bar .ov-search { min-height: 36px; flex: 1 1 240px; max-width: 360px; border-radius: 9px; }
+.gv-ws .ov-page.dash .pl-bar .ov-search input { font-size: 13px; }
+.gv-ws .ov-page.dash .pl-flt { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--ov-border); border-radius: 9px; background: var(--ov-card); padding: 0 4px 0 10px; min-height: 36px; font-size: 12.5px; color: var(--ov-muted); }
+.gv-ws .ov-page.dash .pl-flt select { border: 0; background: transparent; font: inherit; font-size: 13px; color: var(--ov-ink); font-weight: 500; min-height: 34px; outline: none; cursor: pointer; }
+.gv-ws .ov-page.dash .pl-flt:focus-within { border-color: #0b8a5c; }
+.gv-ws .ov-page.dash .pl-seg { display: flex; border: 1px solid var(--ov-border); border-radius: 9px; overflow: hidden; background: var(--ov-card); margin-left: auto; }
+.gv-ws .ov-page.dash .pl-seg button { border: 0; background: transparent; font: inherit; font-size: 12.5px; color: var(--ov-muted); min-height: 34px; padding: 0 10px; display: inline-flex; align-items: center; gap: 6px; cursor: pointer; }
+.gv-ws .ov-page.dash .pl-seg button + button { border-left: 1px solid var(--ov-border); }
+.gv-ws .ov-page.dash .pl-seg button[aria-pressed="true"] { background: var(--ov-band); color: var(--ov-ink); font-weight: 600; }
+.gv-ws .ov-page.dash .pl-seg button:focus-visible { outline: 2px solid #19c37d; outline-offset: -2px; }
+
+.gv-ws .ov-page.dash .pl-tbl { width: 100%; min-width: 820px; border-collapse: collapse; font-size: 14px; table-layout: fixed; }
+.gv-ws .ov-page.dash .pl-tbl thead th { position: sticky; top: 0; z-index: 1; background: var(--ov-band); border-top: 1px solid var(--ov-line); border-bottom: 1px solid var(--ov-border); font-size: 11px; font-weight: 500; letter-spacing: 0.06em; text-transform: uppercase; color: #8a8b85; text-align: left; padding: 9px 12px; white-space: nowrap; }
+.gv-ws .ov-page.dash .pl-tbl th:first-child, .gv-ws .ov-page.dash .pl-tbl td:first-child { padding-left: 20px; }
+.gv-ws .ov-page.dash .pl-tbl th.num, .gv-ws .ov-page.dash .pl-tbl td.num { text-align: right; }
+.gv-ws .ov-page.dash .pl-tbl tbody tr { cursor: pointer; border-bottom: 1px solid var(--ov-line); }
+.gv-ws .ov-page.dash .pl-tbl tbody tr:hover { background: var(--ov-band); }
+.gv-ws .ov-page.dash .pl-tbl tbody tr[aria-selected="true"] { background: var(--ov-green-bg); box-shadow: inset 2px 0 0 var(--ov-green); }
+.gv-ws .ov-page.dash .pl-tbl td { padding: 11px 12px; vertical-align: middle; min-width: 0; }
+.gv-ws .ov-page.dash .pl-tbl .pl-namebtn { all: unset; display: block; max-width: 100%; cursor: pointer; }
+.gv-ws .ov-page.dash .pl-tbl .pl-namebtn:focus-visible { outline: 2px solid #19c37d; outline-offset: 2px; border-radius: 4px; }
+.gv-ws .ov-page.dash .pl-name { display: block; font-weight: 600; font-size: 13.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--ov-ink); }
+.gv-ws .ov-page.dash .pl-desc { display: block; font-size: 12.5px; color: #8a8b85; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.gv-ws .ov-page.dash .pl-dept { display: inline-flex; align-items: center; gap: 7px; font-size: 13px; color: var(--ov-ink-2); white-space: nowrap; }
+.gv-ws .ov-page.dash .pl-dsq { width: 8px; height: 8px; border-radius: 2px; flex: none; background: #8a8b85; }
+.gv-ws .ov-page.dash .pl-auth { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 500; border: 1px solid var(--ov-border); border-radius: 6px; padding: 2px 8px; background: var(--ov-card); color: var(--ov-ink-2); white-space: nowrap; }
+.gv-ws .ov-page.dash .pl-auth i { width: 7px; height: 7px; border-radius: 50%; background: #8a8b85; }
+.gv-ws .ov-page.dash .pl-auth.tone-recommend i { background: var(--ov-amber); }
+.gv-ws .ov-page.dash .pl-auth.tone-act i { background: var(--ov-green); }
+.gv-ws .ov-page.dash .pl-auth.tone-off i { background: var(--ov-idle); }
+.gv-ws .ov-page.dash .pl-ready { display: inline-flex; align-items: center; gap: 7px; font-size: 13px; color: var(--ov-green-ink); white-space: nowrap; }
+.gv-ws .ov-page.dash .pl-ready i { width: 7px; height: 7px; border-radius: 50%; background: var(--ov-green); }
+.gv-ws .ov-page.dash .pl-ready.warn { color: var(--ov-amber-ink); }
+.gv-ws .ov-page.dash .pl-ready.warn i { background: var(--ov-amber); }
+.gv-ws .ov-page.dash .pl-apps { display: flex; gap: 4px; align-items: center; }
+.gv-ws .ov-page.dash .pl-app { width: 24px; height: 24px; border-radius: 6px; display: grid; place-items: center; font-family: var(--font-mono), "Geist Mono", ui-monospace, monospace; font-size: 9.5px; font-weight: 600; background: var(--ov-band); color: var(--ov-ink-2); border: 1px solid var(--ov-border); text-transform: uppercase; }
+.gv-ws .ov-page.dash .pl-app.miss { background: var(--ov-card); color: var(--ov-amber-ink); border: 1px dashed var(--ov-amber); }
+.gv-ws .ov-page.dash .pl-chev { width: 36px; color: var(--ov-control); }
+.gv-ws .ov-page.dash .pl-tbl tbody tr:hover .pl-chev { color: var(--ov-muted); }
+
+/* Schedules: calendar day entries as dot and name, and the bottom art cards */
+.gv-ws .ov-page.dash .au-day { min-height: 112px; gap: 6px; border-color: var(--ov-line); }
+.gv-ws .ov-page.dash .au-day[aria-pressed="true"] { border-color: var(--ov-green); }
+.gv-ws .ov-page.dash .dash-cal-item { display: flex; align-items: center; gap: 6px; min-width: 0; font-size: 11.5px; line-height: 1.3; color: var(--ov-ink-2); }
+.gv-ws .ov-page.dash .dash-cal-item i { width: 6px; height: 6px; border-radius: 50%; flex: none; background: var(--au-tone, #8a8b85); }
+.gv-ws .ov-page.dash .dash-cal-item span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.gv-ws .ov-page.dash .au-more { font-size: 11.5px; padding-left: 12px; }
+.gv-ws .ov-page.dash .dash-card-art { position: relative; height: 228px; overflow: hidden; border-bottom: 1px solid var(--ov-art-border); background: #e7ece3; }
+.gv-ws .ov-page.dash .dash-card-art svg { display: block; width: 100%; height: 100%; }
+
+/* iOS zooms into fields under 16px; keep the toolbar fields at 16px there. */
+@supports (-webkit-touch-callout: none) {
+  .gv-ws .ov-page.dash .pl-bar .ov-search input,
+  .gv-ws .ov-page.dash .pl-flt select { font-size: 16px; }
+}

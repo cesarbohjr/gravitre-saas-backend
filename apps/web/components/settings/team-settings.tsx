@@ -56,6 +56,7 @@ import {
 } from "@/lib/settings-api/team"
 import type { LiteSeatsResponse, User } from "@/types/api"
 import "./team.css"
+import { TeamInviteArt } from "@/components/dashboard/art/dashboard-art"
 
 export function TeamSettings({
   members,
@@ -444,7 +445,7 @@ export function TeamSettings({
       </section>
 
       <section className="gs-card team-promo">
-        <SetArt name="settings-team" ratio="320 / 180" />
+        <SetArt ratio="320 / 180"><TeamInviteArt /></SetArt>
         <div>
           <div className="gs-eyebrow">Better together</div>
           <h3>Bring in the people who approve the work</h3>

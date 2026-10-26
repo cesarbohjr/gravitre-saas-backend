@@ -21,29 +21,24 @@ it("gives iPad and phone a scrolling row of section pills with real hrefs", () =
   expect(row.getAttribute("aria-label")).toBe("Settings sections")
   expect(row.querySelector('a[href="/settings/profile"]')?.getAttribute("aria-current")).toBe("page")
   expect(row.querySelector('a[href="/settings?section=organization"]')?.getAttribute("aria-current")).toBeNull()
-  expect(row.querySelector('a[href="/trust-safety?tab=security"]')?.textContent).toBe("Security")
+  expect(row.querySelector('a[href="/settings/security"]')?.textContent).toBe("Security")
   expect(container.textContent).toContain("Profile form")
 })
 
 it("keeps admin-only sections out of the row and rail for members", () => {
   render(false)
-  expect(pills().querySelector('a[href="/trust-safety?tab=roles"]')).toBeNull()
+  expect(pills().querySelector('a[href="/settings/roles"]')).toBeNull()
   expect(rail().textContent).not.toContain("Admins only")
 })
 
-it("lists the Admin group, marked admins only, for admins", () => {
+it("lists the Advanced and Governance groups, marked admins only, for admins", () => {
   render(true, false, "organization")
-  const admin = [...rail().querySelectorAll(".gs-group")].find((group) => group.textContent?.startsWith("Admin"))!
-  expect(admin.textContent).toContain("Admins only")
-  expect([...admin.querySelectorAll("a")].map((a) => a.textContent)).toEqual([
-    "Role permissions",
-    "Human in the loop",
-    "Enterprise",
-    "Federation and B2B",
-    "Environments",
-    "Audit trail",
-    "MCP servers",
-  ])
+  const group = (label: string) => [...rail().querySelectorAll(".gs-group")].find((g) => g.textContent?.startsWith(label))!
+  const links = (label: string) => [...group(label).querySelectorAll("a")].map((a) => a.textContent)
+  expect(group("Advanced").textContent).toContain("Admins only")
+  expect(links("Advanced")).toEqual(["Federation and B2B", "Enterprise", "Human in the loop", "MCP servers"])
+  expect(links("Governance")).toEqual(["Audit trail", "Environments"])
+  expect(links("People and plan")).toEqual(["Team members", "Role permissions", "Lite seats", "Billing and plan", "Meson add-ons", "Clients"])
   expect(rail().querySelector('a[href="/settings?section=organization"]')?.getAttribute("aria-current")).toBe("page")
   expect(pills().querySelector('a[href="/trust-safety?tab=policies"]')?.textContent).toBe("Human in the loop")
 })

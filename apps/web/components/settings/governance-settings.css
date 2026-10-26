@@ -1,0 +1,3 @@
+/* Trust & Safety panels inside the settings shell: the shell owns the page background and header. */
+.gv-set .ts-root.gs-ts { background: transparent; min-height: 0; display: flex; flex-direction: column; gap: 22px; }
+.gv-set .ts-root.gs-ts .ag-art { border-radius: inherit; }

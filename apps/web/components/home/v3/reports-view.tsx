@@ -465,7 +465,7 @@ function MonitorBody({ ctx, idx }: { ctx: Ctx; idx: number }) {
     <div style={{ overflowX: "auto", margin: "0 -20px -20px" }}>
       <table className="gv-table">
         <thead>
-          <tr style={{ textAlign: "left", color: "var(--gv-muted)", fontSize: 12 }}>
+          <tr className="gv-thead" style={{ textAlign: "left", color: "var(--gv-muted)", fontSize: 11 }}>
             <th style={{ padding: "10px 20px", fontWeight: 500 }}>Agent</th>
             <th style={{ padding: 10, fontWeight: 500 }}>Model</th>
             <th style={{ padding: 10, fontWeight: 500 }}>Status</th>

@@ -25,14 +25,15 @@ import {
 
 export type SettingsTier = "personal" | "organization" | "admin"
 
-/** Left-nav groups from the Agents settings design: Account, Workspace, People and plan, Admin. */
-export type SettingsGroup = "account" | "workspace" | "people" | "advanced"
+/** Left-nav groups from the Dashboard settings design: Account, Workspace, People and plan, Advanced, Governance. */
+export type SettingsGroup = "account" | "workspace" | "people" | "advanced" | "governance"
 
 export const SETTINGS_GROUPS: { id: SettingsGroup; label: string; hint?: string; locked?: boolean }[] = [
   { id: "account", label: "Account" },
   { id: "workspace", label: "Workspace" },
   { id: "people", label: "People and plan" },
-  { id: "advanced", label: "Admin", hint: "Admins only" },
+  { id: "advanced", label: "Advanced", hint: "Admins only" },
+  { id: "governance", label: "Governance", hint: "Admins only" },
 ]
 
 export type SettingsSectionId =
@@ -236,25 +237,26 @@ export const SETTINGS_SECTIONS: SettingsSection[] = [
     href: "/marketplace/capabilities?filter=mcp#mcp-servers",
     adminOnly: true,
   },
-  // Security, role permissions, approval rules, environments and the audit trail
-  // live in Trust & Safety; the rail links straight to its tabs.
+  // Security, role permissions, environments and the audit trail have their own
+  // settings pages built on the Trust & Safety panels; approval rules stay a
+  // Trust & Safety tab.
   {
     id: "security",
     title: "Security",
-    description: "Sign-in rules, sessions and data protection for this workspace.",
+    description: "Sign in, single sign on and access controls for everyone in this workspace.",
     group: "workspace",
     icon: ShieldCheck,
     tier: "organization",
-    href: "/trust-safety?tab=security",
+    href: "/settings/security",
   },
   {
     id: "roles",
     title: "Role permissions",
-    description: "What each role can see and change.",
-    group: "advanced",
+    description: "What each workspace role can do. Roles come from your organization's role definitions.",
+    group: "people",
     icon: UserCog,
     tier: "admin",
-    href: "/trust-safety?tab=roles",
+    href: "/settings/roles",
     adminOnly: true,
   },
   {
@@ -270,21 +272,21 @@ export const SETTINGS_SECTIONS: SettingsSection[] = [
   {
     id: "environments",
     title: "Environments",
-    description: "Production, staging and sandbox, and what agents may do in each.",
-    group: "advanced",
+    description: "Where your agents and workflows run, and how changes move from testing to production.",
+    group: "governance",
     icon: Layers,
     tier: "admin",
-    href: "/trust-safety?tab=envs",
+    href: "/settings/environments",
     adminOnly: true,
   },
   {
     id: "audit",
     title: "Audit trail",
-    description: "Every change and decision, with who made it and when.",
-    group: "advanced",
+    description: "Who did what, when, and how it turned out.",
+    group: "governance",
     icon: FileClock,
     tier: "admin",
-    href: "/trust-safety?tab=audit",
+    href: "/settings/audit",
     adminOnly: true,
   },
 ]
@@ -312,6 +314,10 @@ export const WIDE_SETTINGS_SECTIONS = new Set<SettingsSectionId>([
   "ai-models",
   "clients",
   "branding",
+  "security",
+  "roles",
+  "audit",
+  "environments",
 ])
 
 export function settingsHrefForSection(section: SettingsSectionId): string {
@@ -333,26 +339,30 @@ export function settingsSectionsForTier(
 
 /** Order inside each group, following the redesign's sidebar. */
 const GROUP_ORDER: Partial<Record<SettingsSectionId, number>> = {
+  // Workspace
   organizations: 0,
   organization: 1,
   branding: 1.5,
   security: 2,
   "api-keys": 3,
   notifications: 4,
-  webhooks: 5,
-  "ai-models": 6,
+  "ai-models": 5,
+  webhooks: 6,
+  // People and plan
   team: 0,
+  roles: 1,
   "lite-seats": 2,
-  "meson-addons": 3,
-  billing: 4,
+  billing: 3,
+  "meson-addons": 4,
   clients: 5,
-  roles: 0,
-  hitl: 1,
-  enterprise: 2,
-  federation: 3,
-  environments: 4,
-  audit: 5,
-  "mcp-servers": 6,
+  // Advanced
+  federation: 0,
+  enterprise: 1,
+  hitl: 2,
+  "mcp-servers": 3,
+  // Governance
+  audit: 0,
+  environments: 1,
 }
 
 export function settingsSectionsForGroup(group: SettingsGroup, isAdmin: boolean): SettingsSection[] {

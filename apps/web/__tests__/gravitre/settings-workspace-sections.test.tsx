@@ -137,7 +137,7 @@ describe("API keys", () => {
     mocks.swr = { "/api/settings/api-keys": { data: { apiKeys: [] } } }
     render(<ApiKeysSettings isAdmin />)
     expect(container.textContent).toContain("No API keys yet")
-    expect(container.querySelector('[data-illustration="settings-api-keys"]')).not.toBeNull()
+    expect(container.querySelector('.gs-art svg[role="img"]')).not.toBeNull()
     expect(container.querySelector('a[href="/docs/api/authentication"]')?.textContent).toBe("API reference")
     expect(container.querySelector('a[href="/audit"]')?.textContent).toBe("Audit trail")
   })
