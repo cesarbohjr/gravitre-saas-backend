@@ -9,6 +9,7 @@ from app.plays.prospecting_execution import run_stage
 from app.marketplace.workflows.qualified_prospecting_workflow import STAGE_ACTIONS
 from app.services.tool_service import invoke_tool
 from app.services.tool_types import ToolContext
+from app.core.safe_dict import safe_normalize_stored_dict
 
 def invoke_prospecting_stage(ctx:ToolContext, *,stage:str,
     params:dict[str,Any], approval_resolver:Callable[[str,str,str,str],bool]|None=None
@@ -43,7 +44,7 @@ def invoke_approved_external_stage(ctx:ToolContext,*,stage:str,
     if not ctx.run_id or stage not in {"crm_export","outreach_enroll"}:
         raise ValueError("Authenticated durable run and supported external stage required")
     action="hubspot.contacts.create" if stage=="crm_export" else "smartlead.leads.enroll"
-    exact_payload=(dict(params["payload"]) if stage=="crm_export" else {
+    exact_payload=(safe_normalize_stored_dict(params, key="payload") if stage=="crm_export" else {
         **{k:params[k] for k in ("connector_id","campaign_id","contact_id","email")},
         "first_name":str(params.get("first_name") or ""),
         "last_name":str(params.get("last_name") or "")})
