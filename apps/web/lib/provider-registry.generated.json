@@ -2090,6 +2090,60 @@
       "srcDark": "/brand-logos/huggingface.svg",
       "darkPlate": false,
       "lightPlate": true
+    },
+    "smartlead": {
+      "id": "smartlead",
+      "name": "Smartlead.ai",
+      "category": "email",
+      "aliases": [],
+      "source": "fallback",
+      "darkPlate": false,
+      "lightPlate": false
+    },
+    "quickmail": {
+      "id": "quickmail",
+      "name": "QuickMail",
+      "category": "email",
+      "aliases": [],
+      "source": "fallback",
+      "darkPlate": false,
+      "lightPlate": false
+    },
+    "hunter": {
+      "id": "hunter",
+      "name": "Hunter",
+      "category": "sales",
+      "aliases": [],
+      "source": "fallback",
+      "darkPlate": false,
+      "lightPlate": false
+    },
+    "snov": {
+      "id": "snov",
+      "name": "Snov.io",
+      "category": "sales",
+      "aliases": [],
+      "source": "fallback",
+      "darkPlate": false,
+      "lightPlate": false
+    },
+    "emailable": {
+      "id": "emailable",
+      "name": "Emailable",
+      "category": "sales",
+      "aliases": [],
+      "source": "fallback",
+      "darkPlate": false,
+      "lightPlate": false
+    },
+    "millionverifier": {
+      "id": "millionverifier",
+      "name": "MillionVerifier",
+      "category": "sales",
+      "aliases": [],
+      "source": "fallback",
+      "darkPlate": false,
+      "lightPlate": false
     }
   }
 }
