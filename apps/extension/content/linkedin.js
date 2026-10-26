@@ -1,44 +1,23 @@
-/** LinkedIn profile page context → Gravitre overlay. */
+/** LinkedIn: the person on a profile page. */
 (function () {
-  function textOf(sel) {
-    const node = document.querySelector(sel)
-    return (node?.textContent || "").replace(/\s+/g, " ").trim()
-  }
+  const textOf = (sel) => (document.querySelector(sel)?.textContent || "").replace(/\s+/g, " ").trim()
+  const onProfile = () => /linkedin\.com\/in\//i.test(location.href)
 
-  function extractLinkedInProfile() {
-    const fullName =
-      textOf("h1") ||
-      textOf(".text-heading-xlarge") ||
-      textOf("[data-anonymize='person-name']")
-    const headline =
-      textOf(".text-body-medium") ||
-      textOf("[data-anonymize='headline']") ||
-      textOf(".pv-text-details__left-panel .text-body-medium")
-    const company =
-      textOf("[data-field='experience_company_logo']") ||
-      textOf(".pv-text-details__right-panel .inline-show-more-text") ||
-      ""
-    return {
-      fullName,
-      title: headline,
-      company,
-      linkedinUrl: location.href,
-      source: "linkedin",
-    }
-  }
-
-  function maybeOpen() {
-    if (!/linkedin\.com\/in\//i.test(location.href)) return
-    if (!window.__gravitreOverlay) return
-    window.__gravitreOverlay.renderOverlay({
-      pageUrl: location.href,
-      pageContext: extractLinkedInProfile(),
-    })
-  }
-
-  // Auto-open on profile; also listen for toolbar message.
-  setTimeout(maybeOpen, 1200)
-  chrome.runtime.onMessage.addListener((msg) => {
-    if (msg?.type === "OPEN_OVERLAY") maybeOpen()
+  window.__gravitre?.register({
+    kind: "people",
+    auto: onProfile,
+    anchor: () => (onProfile() ? document.querySelector("main h1") || document.querySelector("h1") : null),
+    extract() {
+      if (!onProfile()) return {}
+      const headline = textOf(".text-body-medium") || textOf("[data-anonymize='headline']")
+      const company = textOf("[data-field='experience_company_logo']") || textOf(".pv-text-details__right-panel .inline-show-more-text")
+      return {
+        fullName: textOf("main h1") || textOf(".text-heading-xlarge") || textOf("[data-anonymize='person-name']"),
+        title: headline,
+        company,
+        linkedinUrl: location.href,
+        source: "linkedin",
+      }
+    },
   })
 })()
