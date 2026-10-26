@@ -91,6 +91,7 @@ export type GoalPrefill = Pick<GoalTemplate, "objective"> & {
   department?: GoalDepartmentId | null
   metric?: string
   systems?: string[]
+  frequency?: string
 }
 
 // Department scenes shared with the agents roster (Workspace design).
@@ -174,7 +175,7 @@ export function GoalWorkflowWizard({
       setObjective(g?.objective ?? template?.objective ?? "")
       setDepartment(departmentId(g?.department) ?? template?.department ?? "")
       setPriority(g?.priority?.toLowerCase() || "medium")
-      setFrequency(g?.frequency?.toLowerCase() || "once")
+      setFrequency(g?.frequency?.toLowerCase() || template?.frequency || "once")
       setMetric(m?.metric ?? template?.metric ?? "")
       setStart(m?.start !== null && m?.start !== undefined ? String(m.start) : "")
       setTarget(m?.target !== null && m?.target !== undefined ? String(m.target) : "")
