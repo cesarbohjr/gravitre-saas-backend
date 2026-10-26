@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import useSWR from "swr"
-import { toast } from "sonner"
+import { toast } from "@/components/agents/overlays/toast"
 import { Shield, KeyRound, Send, Lock, CheckCircle2, XCircle } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"

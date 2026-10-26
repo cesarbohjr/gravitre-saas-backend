@@ -8,11 +8,12 @@
  * /api/msp/program; wholesale amounts are read from the configured Stripe
  * Prices, never invented.
  */
+import { confirmDialog } from "@/components/agents/overlays/confirm"
 import { useMemo, useState } from "react"
 import Link from "next/link"
 import useSWR from "swr"
 import { Building2, Download, HandCoins, Plus, Users, Wallet } from "lucide-react"
-import { toast } from "sonner"
+import { toast } from "@/components/agents/overlays/toast"
 import {
   Dialog,
   DialogContent,
@@ -224,7 +225,7 @@ function PartnerClients({ overview, onOverviewChange }: { overview: MspOverview;
       row.status === "pending_client_approval"
         ? `Withdraw the request to manage ${label}?`
         : `Stop managing ${label}? You stop paying for it, your people lose any access it gave them, and it moves to a 7-day trial.`
-    if (!window.confirm(msg)) return
+    if (!(await confirmDialog({ title: row.status === "pending_client_approval" ? "Withdraw this request?" : `Stop managing ${label}?`, description: msg, confirmLabel: row.status === "pending_client_approval" ? "Withdraw" : "Stop managing" }))) return
     try {
       await mspProgramApi.detach(row.id)
       toast.success(row.status === "pending_client_approval" ? "Request withdrawn" : `${label} detached`)

@@ -39,7 +39,7 @@ import {
   Sparkles,
   XCircle,
 } from "lucide-react"
-import { toast } from "sonner"
+import { toast } from "@/components/agents/overlays/toast"
 import type { MarketplaceAssetSummary } from "@/types/api"
 import { Illustration } from "@/components/gravitre/illustration"
 

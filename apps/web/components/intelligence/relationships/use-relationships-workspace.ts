@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react"
 import useSWR from "swr"
-import { toast } from "sonner"
+import { toast } from "@/components/agents/overlays/toast"
 import { intelligenceApi, type IntelligenceSnapshot } from "@/lib/api"
 import {
   buildEntityLabelMap,

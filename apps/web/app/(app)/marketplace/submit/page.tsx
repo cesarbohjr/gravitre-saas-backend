@@ -13,7 +13,7 @@ import { marketplaceApi } from "@/lib/api"
 import { fetcher } from "@/lib/fetcher"
 import { useAuth } from "@/lib/auth-context"
 import { Loader2, Package, ShieldCheck, ArrowLeft } from "lucide-react"
-import { toast } from "sonner"
+import { toast } from "@/components/agents/overlays/toast"
 import type { PartnerConnectorSubmission } from "@/types/api"
 import { Illustration } from "@/components/gravitre/illustration"
 

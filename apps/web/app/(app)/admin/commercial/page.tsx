@@ -1,5 +1,6 @@
 "use client"
 
+import { confirmDialog } from "@/components/agents/overlays/confirm"
 import { useCallback, useEffect, useMemo, useState } from "react"
 import Link from "next/link"
 import useSWR from "swr"
@@ -220,7 +221,7 @@ function CommercialAccountsPanel() {
     if (!Number.isFinite(capCents) || capCents < 1) return
     const terms = offerType === "trial" ? `${trialDays}-day trial` : `${percentOff}% off for ${months} month(s)`
     const classifyNote = needsClassification ? ` ${current.name} will be classified as an External customer ("${reason.trim()}").` : ""
-    if (!window.confirm(`Issue ${terms} to ${current.name}? Maximum promotional value: $${promotionCap} USD. Stripe applies it at the next eligible checkout.${classifyNote}`)) return
+    if (!(await confirmDialog({ title: `Issue ${terms} to ${current.name}?`, description: `Maximum promotional value: $${promotionCap} USD. Stripe applies it at the next eligible checkout.${classifyNote}`, confirmLabel: "Issue offer", tone: "default" }))) return
     setSaving(true); setError(""); setNotice("")
     try {
       await requestJson("/api/billing/admin/promotional-offers", {
@@ -241,7 +242,7 @@ function CommercialAccountsPanel() {
     const question = revoke
       ? "Release the reserved checkout and revoke this offer? Open Stripe Checkout sessions for it are expired first; a completed checkout blocks this."
       : "Release the reserved checkout? Open Stripe Checkout sessions for it are expired so the customer can start a fresh checkout."
-    if (!window.confirm(question)) return
+    if (!(await confirmDialog({ title: revoke ? "Release and revoke this offer?" : "Release the reserved checkout?", description: question, confirmLabel: revoke ? "Release and revoke" : "Release", tone: revoke ? "danger" : "default" }))) return
     setSaving(true); setError(""); setNotice("")
     try {
       const result = await promotionAdminApi.releaseFounderCheckout(id, revoke)
@@ -251,7 +252,7 @@ function CommercialAccountsPanel() {
     finally { setSaving(false) }
   }
   async function revokeOffer(id: string) {
-    if (!window.confirm("Revoke this unredeemed offer? Its Stripe coupon is deleted; existing Stripe subscriptions are not changed.")) return
+    if (!(await confirmDialog({ title: "Revoke this unredeemed offer?", description: "Its Stripe coupon is deleted; existing Stripe subscriptions are not changed.", confirmLabel: "Revoke offer" }))) return
     setSaving(true); setError(""); setNotice("")
     try {
       await requestJson(`/api/billing/admin/promotional-offers/${id}/revoke`, {})

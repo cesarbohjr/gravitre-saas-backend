@@ -9,7 +9,7 @@ import { Icon } from "@/lib/icons"
 import { cn } from "@/lib/utils"
 import { liteApi } from "@/lib/api"
 import { useAuth } from "@/lib/auth-context"
-import { toast } from "sonner"
+import { toast } from "@/components/agents/overlays/toast"
 import { WorkSectionErrorCard } from "@/components/gravitre/work-section-error-card"
 import { LitePageShell } from "@/components/gravitre/lite-page-shell"
 

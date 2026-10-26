@@ -9,7 +9,7 @@ import { pipelineDepartmentKey } from "@/lib/marketplace-department-pipeline"
 import { useOrgAdmin } from "@/lib/use-org-admin"
 import { Switch } from "@/components/ui/switch"
 import { CheckCircle2, Circle, AlertTriangle, Loader2, Clock } from "lucide-react"
-import { toast } from "sonner"
+import { toast } from "@/components/agents/overlays/toast"
 
 export type DepartmentPipelineStage = {
   stageId: string

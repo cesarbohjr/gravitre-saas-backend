@@ -9,7 +9,7 @@ import { AssetSaveButton } from "@/components/marketplace/asset-save-button"
 import { MarketplaceDecisionDialog } from "@/components/marketplace/marketplace-decision-dialog"
 import { marketplaceApi } from "@/lib/api"
 import { Star } from "lucide-react"
-import { toast } from "sonner"
+import { toast } from "@/components/agents/overlays/toast"
 import { Illustration } from "@/components/gravitre/illustration"
 
 type Props = {

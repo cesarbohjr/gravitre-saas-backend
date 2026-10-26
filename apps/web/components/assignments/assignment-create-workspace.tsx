@@ -16,7 +16,7 @@ import {
 } from "@/lib/resolve-default-agent"
 import { useAsyncJob } from "@/hooks/use-async-job"
 import { cn } from "@/lib/utils"
-import { toast } from "sonner"
+import { toast } from "@/components/agents/overlays/toast"
 
 const steps = [
   "Agent",

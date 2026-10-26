@@ -1,8 +1,9 @@
 "use client"
 
+import { confirmDialog } from "@/components/agents/overlays/confirm"
 import { useMemo, useState } from "react"
 import useSWR from "swr"
-import { toast } from "sonner"
+import { toast } from "@/components/agents/overlays/toast"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -44,9 +45,15 @@ export function AgentToolPermissionsPanel({ agentId, canEdit }: { agentId: strin
 
   async function grant() {
     if (!canEdit || !selected || !validScopes || !validHours) return
-    if (!window.confirm(
-      `Grant agent access to ${selected.name} for ${hours} hour(s), with scopes: ${scopes.join(", ")}? Confirm only permissions required for its task.`,
-    )) return
+    if (
+      !(await confirmDialog({
+        title: `Grant access to ${selected.name} for ${hours} hour(s)?`,
+        description: `Scopes: ${scopes.join(", ")}. Confirm only permissions required for its task.`,
+        confirmLabel: "Grant access",
+        tone: "default",
+      }))
+    )
+      return
     setBusy(true)
     try {
       await agentToolPermissionsApi.grant(agentId, {
@@ -66,7 +73,8 @@ export function AgentToolPermissionsPanel({ agentId, canEdit }: { agentId: strin
   }
 
   async function revoke(permission: AgentToolPermission) {
-    if (!canEdit || !window.confirm("Revoke this agent's connector permission? Future tool requests must be denied.")) return
+    if (!canEdit) return
+    if (!(await confirmDialog({ title: "Revoke this connector permission?", description: "Future tool requests from this agent will be denied.", confirmLabel: "Revoke" }))) return
     setBusy(true)
     try {
       await agentToolPermissionsApi.revoke(agentId, permission.id)

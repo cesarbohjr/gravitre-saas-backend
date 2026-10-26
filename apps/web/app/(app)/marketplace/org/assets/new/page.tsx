@@ -11,7 +11,7 @@ import { marketplaceApi } from "@/lib/api"
 import { useAuth } from "@/lib/auth-context"
 import { useOrgAdmin } from "@/lib/use-org-admin"
 import { ArrowLeft, Loader2, PlusCircle } from "lucide-react"
-import { toast } from "sonner"
+import { toast } from "@/components/agents/overlays/toast"
 import { ESTIMATED_HOURS_SAVED_MONTHLY } from "@/lib/outcome-labels"
 
 function slugify(value: string): string {

@@ -21,7 +21,7 @@ import {
   ArrowLeft,
   Play,
 } from "lucide-react"
-import { toast } from "sonner"
+import { toast } from "@/components/agents/overlays/toast"
 import type {
   MarketplaceSandboxDemoResult,
   MarketplaceSandboxStatus,

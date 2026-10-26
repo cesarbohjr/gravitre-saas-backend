@@ -6,10 +6,11 @@
  * - "Managed by <partner>" with detach and health access for health-only links.
  * Renders nothing when the workspace has no partner and no request.
  */
+import { confirmDialog } from "@/components/agents/overlays/confirm"
 import { useState } from "react"
 import { useMspOverview } from "@/lib/use-msp-overview"
 import { Building2, ShieldCheck } from "lucide-react"
-import { toast } from "sonner"
+import { toast } from "@/components/agents/overlays/toast"
 import { SetNote, SetPill } from "@/components/settings/settings-kit"
 import { MspDelegationPanel } from "@/components/settings/msp-delegation-panel"
 import {
@@ -54,7 +55,7 @@ function PendingRequest({ overview, onDone }: { overview: MspOverview; onDone: (
   }
 
   async function decline() {
-    if (!window.confirm(`Decline ${request.msp_name}'s request? Nothing changes for this workspace.`)) return
+    if (!(await confirmDialog({ title: `Decline ${request.msp_name}'s request?`, description: "Nothing changes for this workspace.", confirmLabel: "Decline" }))) return
     setBusy(true)
     try {
       await mspProgramApi.decline(request.relationship_id)
@@ -136,10 +137,12 @@ function ManagedBy({ overview, onDone }: { overview: MspOverview; onDone: () => 
 
   async function detach() {
     if (
-      !window.confirm(
-        `Detach from ${managed.msp_name}? They stop billing you and lose any access you gave them. ` +
-          "This workspace moves to a 7-day trial, so pick a plan in Billing to keep going.",
-      )
+      !(await confirmDialog({
+        title: `Detach from ${managed.msp_name}?`,
+        description:
+          "They stop billing you and lose any access you gave them. This workspace moves to a 7-day trial, so pick a plan in Billing to keep going.",
+        confirmLabel: "Detach",
+      }))
     )
       return
     setBusy(true)

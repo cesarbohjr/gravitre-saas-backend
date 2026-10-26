@@ -3,7 +3,7 @@
 import { useState } from "react"
 import useSWR from "swr"
 import { Laptop, Loader2, Smartphone } from "lucide-react"
-import { toast } from "sonner"
+import { toast } from "@/components/agents/overlays/toast"
 import { authApi } from "@/lib/api"
 import { fetcher as apiFetcher } from "@/lib/fetcher"
 import {

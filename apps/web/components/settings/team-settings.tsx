@@ -1,10 +1,11 @@
 "use client"
 
+import { confirmDialog } from "@/components/agents/overlays/confirm"
 import { useMemo, useState } from "react"
 import Link from "next/link"
 import useSWR from "swr"
 import { Armchair, Loader2, MailPlus, Search, Send, UserCheck, Users, X } from "lucide-react"
-import { toast } from "sonner"
+import { toast } from "@/components/agents/overlays/toast"
 import { UserAccountAvatar } from "@/components/gravitre/user-account-avatar"
 import {
   SetArt,
@@ -152,7 +153,7 @@ export function TeamSettings({
 
   const handleRemoveMember = async (row: TeamRow) => {
     if (!isAdmin) return
-    if (!confirm(`Remove ${row.name} from the organization?`)) return
+    if (!(await confirmDialog({ title: `Remove ${row.name}?`, description: "They lose access to this organization right away.", confirmLabel: "Remove member" }))) return
     setIsRemoving(true)
     try {
       await removeRow(row)

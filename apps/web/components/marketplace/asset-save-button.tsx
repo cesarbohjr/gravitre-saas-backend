@@ -6,7 +6,7 @@ import { Bookmark, BookmarkCheck } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { marketplaceApi } from "@/lib/api"
 import { cn } from "@/lib/utils"
-import { toast } from "sonner"
+import { toast } from "@/components/agents/overlays/toast"
 
 export function AssetSaveButton({
   slug,

@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react"
 import useSWR from "swr"
-import { toast } from "sonner"
+import { toast } from "@/components/agents/overlays/toast"
 import { Loader2, Plus, Trash2 } from "lucide-react"
 import {
   Dialog,

@@ -20,7 +20,7 @@ import {
   UserRound,
   X,
 } from "lucide-react"
-import { toast } from "sonner"
+import { toast } from "@/components/agents/overlays/toast"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { UserAccountAvatar } from "@/components/gravitre/user-account-avatar"
 import { SettingsShell } from "@/components/settings/settings-shell"

@@ -1,10 +1,11 @@
 "use client"
 
+import { confirmDialog } from "@/components/agents/overlays/confirm"
 import { useState } from "react"
 import useSWR from "swr"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
-import { toast } from "sonner"
+import { toast } from "@/components/agents/overlays/toast"
 import { mspDelegationsApi, type MspAuditEvent, type MspGrant } from "@/lib/msp-delegations"
 import { personLabel } from "@/lib/msp-program"
 
@@ -76,7 +77,7 @@ export function MspDelegationPanel({ customerOrgId }: { customerOrgId: string })
 
   async function revokeGrant(grant: MspGrant) {
     const who = personLabel({ name: grant.grantee_name, email: grant.grantee_email }, "this person")
-    if (!window.confirm(`Remove health access for ${who}? It stops on their next request.`)) return
+    if (!(await confirmDialog({ title: `Remove health access for ${who}?`, description: "It stops on their next request.", confirmLabel: "Remove access" }))) return
     setBusy(true)
     try {
       await mspDelegationsApi.revoke(grant.id, customerOrgId)

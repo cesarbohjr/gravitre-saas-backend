@@ -5,7 +5,7 @@ import { fetcher } from "@/lib/fetcher"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Spinner } from "@/components/ui/spinner"
-import { toast } from "sonner"
+import { toast } from "@/components/agents/overlays/toast"
 import { useState } from "react"
 import { TYPE } from "@/lib/design-system"
 

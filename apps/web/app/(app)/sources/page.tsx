@@ -1,12 +1,14 @@
 "use client"
 
+import { confirmDialog } from "@/components/agents/overlays/confirm"
 import { useEffect, useMemo, useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import useSWR from "swr"
 import { Plus, RefreshCw, X } from "lucide-react"
-import { toast } from "sonner"
+import { toast } from "@/components/agents/overlays/toast"
 import { AppShell } from "@/components/gravitre/app-shell"
+import { SourcesArt, HeroArt } from "@/components/agents/art/agents-art"
 import { WsPage } from "@/components/workspace/ws-page"
 import { ProviderLogo } from "@/components/gravitre/provider-logo"
 import { hasConnectorBrandLogo } from "@/components/gravitre/connector-icon"
@@ -210,7 +212,8 @@ export default function SourcesPage() {
   }
 
   const handleDelete = async (sourceId: string) => {
-    if (!window.confirm("Delete this source?")) return
+    const name = sources.find((s) => s.id === sourceId)?.name
+    if (!(await confirmDialog({ title: `Delete ${name || "this source"}?`, description: "Agents lose read access to it now. Answers that cite it will say the source is unavailable.", confirmLabel: "Delete source" }))) return
     try {
       setMutatingSourceId(sourceId)
       await sourcesApi.delete(sourceId)
@@ -292,6 +295,10 @@ export default function SourcesPage() {
     Boolean(error) && !(error instanceof PlanRequiredApiError) && !(error instanceof ApiError && error.status === 402)
   const loaded = !isLoading || sources.length > 0
 
+  const showFailing = () => {
+    setTableFilter("errors")
+    document.getElementById("sources-all")?.scrollIntoView({ behavior: "smooth", block: "start" })
+  }
   const select = (id: string) => setExpandedSource((current) => (current === id ? null : id))
 
   return (
@@ -299,10 +306,20 @@ export default function SourcesPage() {
       <WsPage wide={false}>
         <div className="ov-page" data-testid="sources-hub-b" data-composition="manage">
           <section aria-labelledby="sources-hero" className="ov-hero">
-            <div className="ov-hero-art">
-              {/* eslint-disable-next-line @next/next/no-img-element -- static library scene */}
-              <img src="/illustrations/ops-sources.svg" alt="" />
-            </div>
+            <HeroArt
+              art={<SourcesArt broken={attention.length} />}
+              {...(!loaded || error
+                ? {}
+                : sources.length === 0
+                  ? { status: "No sources connected yet", action: { label: "Add source", onClick: () => openAdd(null) } }
+                  : attention.length > 0
+                    ? {
+                        status: `${attention.length} of ${sources.length} source${sources.length === 1 ? "" : "s"} failing`,
+                        tone: "red" as const,
+                        action: { label: "Show failing", onClick: showFailing },
+                      }
+                    : { status: `All ${sources.length} source${sources.length === 1 ? "" : "s"} healthy`, tone: "green" as const })}
+            />
             <div className="ov-hero-copy">
               <div className="ov-hero-eb">
                 <span className="ov-eyebrow">Data</span>

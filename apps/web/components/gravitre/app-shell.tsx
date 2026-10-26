@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect, useRef, startTransition } from "react"
+import { AgentsSurfaceProvider } from "@/components/agents/overlays/agents-surface"
 import useSWR, { mutate } from "swr"
 import Link from "next/link"
 import { Sidebar } from "./sidebar"
@@ -131,9 +132,11 @@ export function PersistentAppShell({ children }: { children: React.ReactNode }) 
   const { host, options } = useAppShellHost()
   return (
     <AppShellHostProvider host={host}>
-      <AppShellFrame title={options.title} fillViewport={options.fillViewport ?? false} persistent>
-        {children}
-      </AppShellFrame>
+      <AgentsSurfaceProvider>
+        <AppShellFrame title={options.title} fillViewport={options.fillViewport ?? false} persistent>
+          {children}
+        </AppShellFrame>
+      </AgentsSurfaceProvider>
     </AppShellHostProvider>
   )
 }

@@ -4,11 +4,12 @@ import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "rea
 import Link from "next/link"
 import useSWR, { useSWRConfig } from "swr"
 import { useRouter, useSearchParams } from "next/navigation"
-import { toast } from "sonner"
+import { toast } from "@/components/agents/overlays/toast"
 import { Check, MoreHorizontal, RefreshCw, Search, Shield } from "lucide-react"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { WsPage } from "@/components/workspace/ws-page"
 import { OvPager } from "@/components/workspace/ov-pager"
+import { ApprovalsArt, HeroArt } from "@/components/agents/art/agents-art"
 import { AskGravitreSummonButton } from "@/components/intelligence/ask-gravitre-summon-button"
 import { usePublishGravitreAISelection } from "@/components/gravitre/ai-workspace-provider"
 import { fetcher as apiFetcher } from "@/lib/fetcher"
@@ -373,10 +374,28 @@ function DecisionQueue() {
     <WsPage wide={false} className={cn(selected?.status === "pending" && "dq-has-dock")}>
       <div className="ov-page">
         <section aria-labelledby="ap-hero" className="ov-hero">
-          <div className="ov-hero-art">
-            {/* eslint-disable-next-line @next/next/no-img-element -- static library scene */}
-            <img src="/illustrations/ops-approvals.svg" alt="" />
-          </div>
+          <HeroArt
+            art={<ApprovalsArt waiting={pending.length} />}
+            {...(!pendingData
+              ? {}
+              : pending.length === 0
+                ? {
+                    status: "Queue clear, nothing waiting",
+                    tone: "green" as const,
+                    action: segment === "pending" ? undefined : { label: "Open waiting", onClick: () => pickTab("pending") },
+                  }
+                : breached.length > 0
+                  ? {
+                      status: `${breached.length} past SLA`,
+                      tone: "red" as const,
+                      action: { label: "Show past SLA", onClick: () => pickTab("breached") },
+                    }
+                  : {
+                      status: `${pending.length} waiting on you`,
+                      tone: "amber" as const,
+                      action: segment === "pending" ? undefined : { label: "Open waiting", onClick: () => pickTab("pending") },
+                    })}
+          />
           <div className="ov-hero-copy">
             <div className="ov-hero-eb">
               <span className="ov-eyebrow">Human in the loop</span>

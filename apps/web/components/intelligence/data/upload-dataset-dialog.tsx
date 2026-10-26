@@ -2,7 +2,7 @@
 
 /** "Upload a file": read a CSV, JSON or document and add it to a new or existing training dataset. */
 import { useRef, useState } from "react"
-import { toast } from "sonner"
+import { toast } from "@/components/agents/overlays/toast"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,

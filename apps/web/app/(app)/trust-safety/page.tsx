@@ -2,7 +2,7 @@
 
 import { Suspense, useEffect, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
-import { toast } from "sonner"
+import { toast } from "@/components/agents/overlays/toast"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { exportAudit, rangeStart } from "@/lib/settings-api/audit"
 import { Icon, type IconName } from "@/components/trust-safety/ts-ui"

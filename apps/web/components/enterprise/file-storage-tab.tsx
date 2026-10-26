@@ -2,7 +2,7 @@
 
 import { useState, type ChangeEvent } from "react"
 import useSWR from "swr"
-import { toast } from "sonner"
+import { toast } from "@/components/agents/overlays/toast"
 import { CheckCircle2, HardDrive, Info, Lock, PlugZap, Trash2, XCircle } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"

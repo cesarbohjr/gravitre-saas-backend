@@ -4,7 +4,7 @@
 import { useEffect, useRef, useState } from "react"
 import useSWR from "swr"
 import { Loader2, Mail, Minus, Plus, Trash2, X } from "lucide-react"
-import { toast } from "sonner"
+import { toast } from "@/components/agents/overlays/toast"
 import { settingsApi } from "@/lib/api"
 import {
   LITE_RESOURCE_TYPES,

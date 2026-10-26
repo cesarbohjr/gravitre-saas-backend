@@ -36,7 +36,7 @@ import { mcpAdminApi, portableCapabilitiesApi } from "@/lib/api"
 import type { MCPAdminServer } from "@/lib/api"
 import { useAuth } from "@/lib/auth-context"
 import { useOrgAdmin } from "@/lib/use-org-admin"
-import { toast } from "sonner"
+import { toast } from "@/components/agents/overlays/toast"
 import { Illustration } from "@/components/gravitre/illustration"
 
 function riskLabel(value?: string) {

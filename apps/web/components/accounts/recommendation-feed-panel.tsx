@@ -3,7 +3,7 @@
 import { useState } from "react"
 import Link from "next/link"
 import useSWR from "swr"
-import { toast } from "sonner"
+import { toast } from "@/components/agents/overlays/toast"
 import { Button } from "@/components/ui/button"
 import { accountIntelligenceApi, isFeatureOff, type RecommendationFeedItem } from "@/lib/api"
 import { CustomerContextOffState } from "@/components/accounts/customer-context-off-state"

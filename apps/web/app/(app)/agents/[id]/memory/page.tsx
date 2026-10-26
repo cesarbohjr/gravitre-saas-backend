@@ -5,7 +5,7 @@ import Link from "next/link"
 import { MemoryCard, type DisplayMemory } from "@/components/agents/agent-memory-row"
 import { WorkSectionErrorCard } from "@/components/gravitre/work-section-error-card"
 import useSWR from "swr"
-import { toast } from "sonner"
+import { toast } from "@/components/agents/overlays/toast"
 import { AppShell } from "@/components/gravitre/app-shell"
 import {
   GravitreEmpty,

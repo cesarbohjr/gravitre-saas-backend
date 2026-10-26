@@ -45,7 +45,7 @@ import {
 } from "@/lib/search-typeahead"
 import { consumeFocusSearchAfterNav } from "@/lib/work-page-shortcuts"
 import type { SearchResult, SearchHistoryItem } from "@/types/api"
-import { toast } from "sonner"
+import { toast } from "@/components/agents/overlays/toast"
 
 const CHIP_STAGGER_S = 0.08
 

@@ -5,6 +5,22 @@ import * as DialogPrimitive from '@radix-ui/react-dialog'
 import { XIcon } from 'lucide-react'
 
 import { cn } from '@/lib/utils'
+import { useAgentsSurface } from '@/components/agents/overlays/surface-context'
+
+/*
+ * On the Agents surface (see components/agents/overlays) dialogs wear the Agents
+ * shell: white card, 14px radius, centered on a 48% ink scrim, and a bottom sheet
+ * on phones (overlays.css). Elsewhere they keep the original look.
+ */
+export const AGENTS_SCRIM =
+  'data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 motion-reduce:animate-none fixed inset-0 z-50 bg-[rgba(11,12,12,0.48)]'
+export const AGENTS_CARD =
+  'ag-dialog bg-white text-[#141513] dark:bg-[#171917] dark:text-[#ededE8] data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 fixed top-[50%] left-[50%] z-50 grid w-full max-w-[calc(100%-2rem)] translate-x-[-50%] translate-y-[-50%] gap-3.5 rounded-[14px] border-0 px-[22px] py-5 shadow-[0_24px_60px_rgba(0,0,0,0.25)] duration-200 motion-reduce:animate-none motion-reduce:transition-none sm:max-w-[440px]'
+export const AGENTS_CLOSE =
+  "absolute top-4 right-4 grid size-8 place-items-center rounded-lg bg-[#EFEFEA] text-[#33342F] transition-colors hover:bg-[#E4E4DF] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#19C37D] disabled:pointer-events-none dark:bg-[#262825] dark:text-[#d6d6d0] [&_svg]:pointer-events-none [&_svg]:size-3.5"
+export const AGENTS_TITLE = 'break-words text-[19px] leading-snug font-semibold'
+export const AGENTS_DESCRIPTION = 'text-sm leading-normal text-[#55564F] dark:text-[#a3a49c]'
+export const AGENTS_FOOTER = 'ag-dialog-foot flex flex-wrap justify-end gap-2.5'
 
 function Dialog({
   ...props
@@ -34,11 +50,12 @@ function DialogOverlay({
   className,
   ...props
 }: React.ComponentProps<typeof DialogPrimitive.Overlay>) {
+  const agents = useAgentsSurface()
   return (
     <DialogPrimitive.Overlay
       data-slot="dialog-overlay"
       className={cn(
-        'data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 motion-reduce:animate-none fixed inset-0 z-50 bg-[color:var(--overlay)] backdrop-blur-[2px]',
+        agents ? AGENTS_SCRIM : 'data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 motion-reduce:animate-none fixed inset-0 z-50 bg-[color:var(--overlay)] backdrop-blur-[2px]',
         className,
       )}
       {...props}
@@ -56,13 +73,14 @@ function DialogContent({
   showCloseButton?: boolean
   overlayClassName?: string
 }) {
+  const agents = useAgentsSurface()
   return (
     <DialogPortal data-slot="dialog-portal">
       <DialogOverlay className={overlayClassName} />
       <DialogPrimitive.Content
         data-slot="dialog-content"
         className={cn(
-          'bg-[color:var(--g-surface-1)] text-[color:var(--g-text-primary)] data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 fixed top-[50%] left-[50%] z-50 grid w-full max-w-[calc(100%-2rem)] translate-x-[-50%] translate-y-[-50%] gap-4 rounded-[var(--np-radius-lg)] border border-divide p-6 shadow-[var(--np-shadow)] duration-200 motion-reduce:animate-none motion-reduce:transition-none sm:max-w-lg',
+          agents ? AGENTS_CARD : 'bg-[color:var(--g-surface-1)] text-[color:var(--g-text-primary)] data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 fixed top-[50%] left-[50%] z-50 grid w-full max-w-[calc(100%-2rem)] translate-x-[-50%] translate-y-[-50%] gap-4 rounded-[var(--np-radius-lg)] border border-divide p-6 shadow-[var(--np-shadow)] duration-200 motion-reduce:animate-none motion-reduce:transition-none sm:max-w-lg',
           className,
         )}
         {...props}
@@ -71,7 +89,7 @@ function DialogContent({
         {showCloseButton && (
           <DialogPrimitive.Close
             data-slot="dialog-close"
-            className="ring-offset-background focus:ring-ring absolute top-3.5 right-3.5 flex size-11 items-center justify-center rounded-lg text-muted-foreground/70 opacity-80 transition-colors hover:bg-secondary hover:text-foreground hover:opacity-100 focus:ring-2 focus:ring-offset-2 focus:outline-hidden disabled:pointer-events-none [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4"
+            className={agents ? AGENTS_CLOSE : "ring-offset-background focus:ring-ring absolute top-3.5 right-3.5 flex size-11 items-center justify-center rounded-lg text-muted-foreground/70 opacity-80 transition-colors hover:bg-secondary hover:text-foreground hover:opacity-100 focus:ring-2 focus:ring-offset-2 focus:outline-hidden disabled:pointer-events-none [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4"}
           >
             <XIcon />
             <span className="sr-only">Close</span>
@@ -83,21 +101,23 @@ function DialogContent({
 }
 
 function DialogHeader({ className, ...props }: React.ComponentProps<'div'>) {
+  const agents = useAgentsSurface()
   return (
     <div
       data-slot="dialog-header"
-      className={cn('flex min-w-0 flex-col gap-2 pr-10 text-center sm:text-left', className)}
+      className={cn(agents ? 'flex min-w-0 flex-col gap-1 pr-10 text-left' : 'flex min-w-0 flex-col gap-2 pr-10 text-center sm:text-left', className)}
       {...props}
     />
   )
 }
 
 function DialogFooter({ className, ...props }: React.ComponentProps<'div'>) {
+  const agents = useAgentsSurface()
   return (
     <div
       data-slot="dialog-footer"
       className={cn(
-        'flex flex-col-reverse gap-2 sm:flex-row sm:justify-end',
+        agents ? AGENTS_FOOTER : 'flex flex-col-reverse gap-2 sm:flex-row sm:justify-end',
         className,
       )}
       {...props}
@@ -109,10 +129,11 @@ function DialogTitle({
   className,
   ...props
 }: React.ComponentProps<typeof DialogPrimitive.Title>) {
+  const agents = useAgentsSurface()
   return (
     <DialogPrimitive.Title
       data-slot="dialog-title"
-      className={cn('break-words text-lg leading-none font-semibold', className)}
+      className={cn(agents ? AGENTS_TITLE : 'break-words text-lg leading-none font-semibold', className)}
       {...props}
     />
   )
@@ -122,10 +143,11 @@ function DialogDescription({
   className,
   ...props
 }: React.ComponentProps<typeof DialogPrimitive.Description>) {
+  const agents = useAgentsSurface()
   return (
     <DialogPrimitive.Description
       data-slot="dialog-description"
-      className={cn('text-muted-foreground text-sm', className)}
+      className={cn(agents ? AGENTS_DESCRIPTION : 'text-muted-foreground text-sm', className)}
       {...props}
     />
   )

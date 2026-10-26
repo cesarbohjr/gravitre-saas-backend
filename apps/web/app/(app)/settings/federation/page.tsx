@@ -8,7 +8,7 @@
 import { Suspense, useMemo, useState } from "react"
 import Link from "next/link"
 import useSWR from "swr"
-import { toast } from "sonner"
+import { toast } from "@/components/agents/overlays/toast"
 import {
   ArrowLeftRight,
   Handshake,

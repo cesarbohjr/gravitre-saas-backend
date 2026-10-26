@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
 import Link from "next/link"
 import useSWR from "swr"
-import { toast } from "sonner"
+import { toast } from "@/components/agents/overlays/toast"
 import { useAuth } from "@/lib/auth-context"
 import {
   AUDIT_CATEGORIES,

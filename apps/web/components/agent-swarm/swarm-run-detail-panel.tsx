@@ -3,7 +3,7 @@
 import { useMemo, useRef, useState } from "react"
 import useSWR from "swr"
 import { formatDistanceToNow } from "date-fns"
-import { toast } from "sonner"
+import { toast } from "@/components/agents/overlays/toast"
 import {
   Lightbulb,
   ListChecks,

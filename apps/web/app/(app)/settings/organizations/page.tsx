@@ -1,10 +1,11 @@
 "use client"
 
+import { confirmDialog } from "@/components/agents/overlays/confirm"
 import { useEffect, useMemo, useState } from "react"
 import Link from "next/link"
 import useSWR from "swr"
 import { Check, LayoutGrid, List, Loader2, Plus, Search } from "lucide-react"
-import { toast } from "sonner"
+import { toast } from "@/components/agents/overlays/toast"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { UserAccountAvatar } from "@/components/gravitre/user-account-avatar"
 import { MspClientRelationship } from "@/components/settings/msp-client-relationship"
@@ -250,7 +251,7 @@ function OrganizationsContent({
 
   const handleRemoveMember = async (member: Member) => {
     if (!membersDialogOrg) return
-    if (!window.confirm(`Remove ${member.email ?? member.id} from organization?`)) return
+    if (!(await confirmDialog({ title: `Remove ${member.email ?? member.id}?`, description: "They lose access to this organization right away.", confirmLabel: "Remove member" }))) return
     try {
       setIsMutating(true)
       await organizationsApi.removeMember(membersDialogOrg.id, memberKey(member))

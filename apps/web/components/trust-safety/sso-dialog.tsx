@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { Copy, Download, Loader2 } from "lucide-react"
-import { toast } from "sonner"
+import { toast } from "@/components/agents/overlays/toast"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import {

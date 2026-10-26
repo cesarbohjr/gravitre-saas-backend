@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { toast } from "sonner"
+import { toast } from "@/components/agents/overlays/toast"
 import { enterpriseApi } from "@/lib/api"
 import type { ResidencyOverview, ResidencyRegion } from "@/lib/settings-api/enterprise"
 import type { EnterpriseRegion } from "@/types/api"

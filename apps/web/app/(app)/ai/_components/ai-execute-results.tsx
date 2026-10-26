@@ -19,7 +19,7 @@ import {
   executeSuggestedAction,
   runAutoFix,
 } from "@/lib/execute-action-service"
-import { toast } from "sonner"
+import { toast } from "@/components/agents/overlays/toast"
 
 type ResultBlockId = "stats" | "analysis" | "results" | "prevention" | "actions" | "plan"
 

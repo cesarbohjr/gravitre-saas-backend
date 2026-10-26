@@ -6,6 +6,11 @@ import {
   Building,
   Building2,
   CreditCard,
+  FileClock,
+  Layers,
+  ShieldCheck,
+  UserCheck,
+  UserCog,
   HandCoins,
   KeyRound,
   Link2,
@@ -20,14 +25,14 @@ import {
 
 export type SettingsTier = "personal" | "organization" | "admin"
 
-/** Left-nav groups from the Settings Pages Redesign: Account, Workspace, People and plan, Advanced. */
+/** Left-nav groups from the Agents settings design: Account, Workspace, People and plan, Admin. */
 export type SettingsGroup = "account" | "workspace" | "people" | "advanced"
 
-export const SETTINGS_GROUPS: { id: SettingsGroup; label: string; locked?: boolean }[] = [
+export const SETTINGS_GROUPS: { id: SettingsGroup; label: string; hint?: string; locked?: boolean }[] = [
   { id: "account", label: "Account" },
   { id: "workspace", label: "Workspace" },
   { id: "people", label: "People and plan" },
-  { id: "advanced", label: "Advanced" },
+  { id: "advanced", label: "Admin", hint: "Admins only" },
 ]
 
 export type SettingsSectionId =
@@ -44,6 +49,10 @@ export type SettingsSectionId =
   | "billing"
   | "webhooks"
   | "audit"
+  | "security"
+  | "roles"
+  | "hitl"
+  | "environments"
   | "enterprise"
   | "federation"
   | "clients"
@@ -227,9 +236,58 @@ export const SETTINGS_SECTIONS: SettingsSection[] = [
     href: "/marketplace/capabilities?filter=mcp#mcp-servers",
     adminOnly: true,
   },
+  // Security, role permissions, approval rules, environments and the audit trail
+  // live in Trust & Safety; the rail links straight to its tabs.
+  {
+    id: "security",
+    title: "Security",
+    description: "Sign-in rules, sessions and data protection for this workspace.",
+    group: "workspace",
+    icon: ShieldCheck,
+    tier: "organization",
+    href: "/trust-safety?tab=security",
+  },
+  {
+    id: "roles",
+    title: "Role permissions",
+    description: "What each role can see and change.",
+    group: "advanced",
+    icon: UserCog,
+    tier: "admin",
+    href: "/trust-safety?tab=roles",
+    adminOnly: true,
+  },
+  {
+    id: "hitl",
+    title: "Human in the loop",
+    description: "Which actions wait for a person, and how risk decides who approves.",
+    group: "advanced",
+    icon: UserCheck,
+    tier: "admin",
+    href: "/trust-safety?tab=policies",
+    adminOnly: true,
+  },
+  {
+    id: "environments",
+    title: "Environments",
+    description: "Production, staging and sandbox, and what agents may do in each.",
+    group: "advanced",
+    icon: Layers,
+    tier: "admin",
+    href: "/trust-safety?tab=envs",
+    adminOnly: true,
+  },
+  {
+    id: "audit",
+    title: "Audit trail",
+    description: "Every change and decision, with who made it and when.",
+    group: "advanced",
+    icon: FileClock,
+    tier: "admin",
+    href: "/trust-safety?tab=audit",
+    adminOnly: true,
+  },
 ]
-// Security, role permissions, approval rules, environments and the audit trail
-// live in Trust & Safety (/trust-safety), not in Settings.
 
 export const PRIMARY_SETTINGS_SECTIONS = SETTINGS_SECTIONS.filter((section) => !section.footer)
 export const FOOTER_SETTINGS_SECTIONS = SETTINGS_SECTIONS.filter((section) => section.footer)
@@ -278,6 +336,7 @@ const GROUP_ORDER: Partial<Record<SettingsSectionId, number>> = {
   organizations: 0,
   organization: 1,
   branding: 1.5,
+  security: 2,
   "api-keys": 3,
   notifications: 4,
   webhooks: 5,
@@ -287,9 +346,13 @@ const GROUP_ORDER: Partial<Record<SettingsSectionId, number>> = {
   "meson-addons": 3,
   billing: 4,
   clients: 5,
-  federation: 0,
-  enterprise: 1,
-  "mcp-servers": 2,
+  roles: 0,
+  hitl: 1,
+  enterprise: 2,
+  federation: 3,
+  environments: 4,
+  audit: 5,
+  "mcp-servers": 6,
 }
 
 export function settingsSectionsForGroup(group: SettingsGroup, isAdmin: boolean): SettingsSection[] {

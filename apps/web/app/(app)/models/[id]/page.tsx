@@ -3,7 +3,7 @@
 import { use, useEffect, useMemo, useState } from "react"
 import useSWR from "swr"
 import Link from "next/link"
-import { toast } from "sonner"
+import { toast } from "@/components/agents/overlays/toast"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { ModelDetailInsights } from "@/components/gravitre/model-detail-insights"
 import { WorkSectionErrorCard } from "@/components/gravitre/work-section-error-card"

@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react"
 import { mutate as globalMutate } from "swr"
-import { toast } from "sonner"
+import { toast } from "@/components/agents/overlays/toast"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import {

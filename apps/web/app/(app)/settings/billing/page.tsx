@@ -62,7 +62,7 @@ import {
   usageTiles,
   type InvoiceRow,
 } from "@/lib/settings-api/billing"
-import { toast } from "sonner"
+import { toast } from "@/components/agents/overlays/toast"
 import { PromotionNotices } from "@/components/billing/promotion-notices"
 import { UpgradePromoField } from "@/components/billing/upgrade-promo-field"
 import type { AppliedPromo } from "@/components/billing/promo-code-field"
@@ -71,7 +71,6 @@ import { withPromoParam } from "@/lib/promotions"
 export default function BillingPage() {
   const { isAdmin, showAdmin, pending: adminPending } = useOrgAdmin()
   const onSectionChange = useSettingsSectionNav("billing")
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
   return (
     <AppShell title="Settings">
@@ -86,8 +85,6 @@ export default function BillingPage() {
           <SettingsShell
             activeSection="billing"
             isAdmin={showAdmin}
-            mobileMenuOpen={mobileMenuOpen}
-            onMobileMenuOpenChange={setMobileMenuOpen}
             onSectionChange={onSectionChange}
             hideHeader
           >

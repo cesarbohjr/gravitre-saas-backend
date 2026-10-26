@@ -53,7 +53,7 @@ import { canConfigureVoice } from "@/lib/seat-entitlements"
 import useSWR from "swr"
 import { fetcher as apiFetcher } from "@/lib/fetcher"
 import { mutate as globalMutate } from "swr"
-import { toast } from "sonner"
+import { toast } from "@/components/agents/overlays/toast"
 import type { AgentVoiceProfile } from "@/types/api"
 import {
   AGENT_CAPABILITY_OPTIONS,

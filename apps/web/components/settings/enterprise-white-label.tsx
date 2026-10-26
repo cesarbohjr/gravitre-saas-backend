@@ -9,7 +9,7 @@
  */
 import { useEffect, useState } from "react"
 import useSWR from "swr"
-import { toast } from "sonner"
+import { toast } from "@/components/agents/overlays/toast"
 import { Check, Copy, RotateCw, ShieldCheck } from "lucide-react"
 import { enterpriseApi } from "@/lib/api"
 import { useEnterpriseBranding } from "@/lib/enterprise-branding-context"

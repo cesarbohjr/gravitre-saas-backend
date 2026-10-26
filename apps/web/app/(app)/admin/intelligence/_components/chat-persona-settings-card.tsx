@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react"
 import useSWR from "swr"
 import { UserRound } from "lucide-react"
-import { toast } from "sonner"
+import { toast } from "@/components/agents/overlays/toast"
 import { Button } from "@/components/ui/button"
 import {
   Card,
