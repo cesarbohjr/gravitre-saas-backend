@@ -109,9 +109,30 @@ def assessment_for_org(client: Any, org_id: str) -> dict[str, Any]:
     }
 
 
+def _settle_completed_sweep(client: Any, org_id: str, sweep_id: str) -> None:
+    """Conservative consumption: completed, partial and attempted failures all count.
+
+    Failed settlement is retried by the recovery batch. No automatic refunds of
+    performed provider reads, and no silent unmetered processing.
+    """
+    from app.billing.intelligence_sweep_meter import settle_sweep
+    settle_sweep(client, org_id, sweep_id)
+
+
+def _has_reserved_sweep_unit(client: Any, org_id: str, sweep_id: str) -> bool:
+    rows = (client.table("intelligence_sweep_usage_ledger")
+            .select("sweep_id,state").eq("org_id", org_id)
+            .eq("sweep_id", sweep_id).eq("state", "reserved")
+            .limit(1).execute()).data or []
+    return bool(rows)
+
+
 def process_queued_sweep(client: Any, row: dict[str, Any], settings: Settings | None = None) -> dict[str, Any]:
     """Claim with status CAS and enforce explicit tenant constraints on all writes."""
     org_id, sweep_id = str(row["org_id"]), str(row["id"])
+    # Never execute work admitted by the deprecated non-metered RPC.
+    if not _has_reserved_sweep_unit(client, org_id, sweep_id):
+        return {"id": sweep_id, "status": "billing_reservation_missing"}
     claim = (client.table("intelligence_overview_sweeps")
              .update({"status": "running", "started_at": _sweep_utc_timestamp()})
              .eq("org_id", org_id).eq("id", sweep_id)
@@ -123,14 +144,24 @@ def process_queued_sweep(client: Any, row: dict[str, Any], settings: Settings | 
         results = assessment_for_org(client, org_id)
         results["knowledge_syncs"] = syncs
         update = {"status": "partial", "results": results, "completed_at": _sweep_utc_timestamp()}
-        (client.table("intelligence_overview_sweeps").update(update)
+        completed = (client.table("intelligence_overview_sweeps").update(update)
          .eq("org_id", org_id).eq("id", sweep_id).eq("status", "running").execute())
+        if not completed.data:
+            return {"id": sweep_id, "status": "completion_conflict"}
+        try:
+            _settle_completed_sweep(client, org_id, sweep_id)
+        except Exception:
+            pass  # Keep reserved; recovery reconciles without rerunning work.
         return {"id": sweep_id, "status": "partial", "analysis_type": "integration_telemetry_only"}
     except Exception:
         # Never log raw provider records or internal exception details.
         (client.table("intelligence_overview_sweeps")
          .update({"status": "failed", "error_code": "assessment_failed", "completed_at": _sweep_utc_timestamp()})
          .eq("org_id", org_id).eq("id", sweep_id).eq("status", "running").execute())
+        try:
+            _settle_completed_sweep(client, org_id, sweep_id)
+        except Exception:
+            pass  # Durable reserved unit is reconciled on a later recovery tick.
         return {"id": sweep_id, "status": "failed"}
 
 
@@ -151,13 +182,39 @@ def recover_stale_sweeps(client: Any, *, max_age_minutes: int = 30) -> int:
                            "completed_at": _sweep_utc_timestamp()})
                   .eq("org_id", str(row["org_id"])).eq("id", str(row["id"]))
                   .eq("status", "running").execute())
+        if result.data:
+            try:
+                _settle_completed_sweep(client, str(row["org_id"]), str(row["id"]))
+            except Exception:
+                pass  # Pending ledger remains reserved, never over-admits.
         recovered += bool(result.data)
     return recovered
+
+
+def reconcile_unsettled_sweep_usage(client: Any, limit: int = 100) -> int:
+    """Retry idempotent ledger settlement after a worker/process crash."""
+    rows = (client.table("intelligence_sweep_usage_ledger")
+            .select("org_id,sweep_id,state")
+            .eq("state", "reserved").limit(max(1, min(limit, 100))).execute()).data or []
+    settled = 0
+    for ledger in rows:
+        org_id, sweep_id = str(ledger["org_id"]), str(ledger["sweep_id"])
+        sweep = (client.table("intelligence_overview_sweeps")
+                 .select("id,status").eq("org_id", org_id).eq("id", sweep_id)
+                 .limit(1).execute()).data or []
+        if sweep and sweep[0]["status"] in {"partial", "completed", "failed"}:
+            try:
+                _settle_completed_sweep(client, org_id, sweep_id)
+                settled += 1
+            except Exception:
+                continue
+    return settled
 
 
 def process_sweep_batch(settings: Settings | None = None) -> list[dict[str, Any]]:
     client = get_supabase_client(settings or get_settings())
     recover_stale_sweeps(client)
+    reconcile_unsettled_sweep_usage(client)
     rows = (client.table("intelligence_overview_sweeps")
             .select("id,org_id,status,created_at")
             .eq("status", "queued").order("created_at").limit(MAX_SWEEPS_PER_TICK).execute())
