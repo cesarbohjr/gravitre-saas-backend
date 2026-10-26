@@ -130,7 +130,7 @@ describe("UX Reset Phase 3 — product IA flatten", () => {
     expect(page).toMatch(/<ApiKeysSettings/)
     expect(page).toMatch(/<WebhooksSettings/)
     expect(page).toMatch(/<AIModelsSettings/)
-    expect(page).toMatch(/border-b border-divide py-3/)
+    expect(page).toMatch(/className="gs-locked"/)
     expect(page).not.toMatch(/shadow-\[var\(--np-shadow\)\]/)
     expect(page).not.toMatch(/AI Operator/)
     expect(page).not.toMatch(/ModelSelector/)

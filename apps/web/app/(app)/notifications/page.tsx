@@ -27,7 +27,7 @@ import {
   Building2,
 } from "lucide-react"
 import Link from "next/link"
-import { toast } from "sonner"
+import { toast } from "@/components/agents/overlays/toast"
 import { notificationsApi } from "@/lib/api"
 import { useAuth } from "@/lib/auth-context"
 import type { Notification as ApiNotification, NotificationType } from "@/types/api"

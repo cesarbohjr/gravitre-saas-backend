@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { marketplaceApi } from "@/lib/api"
 import { History } from "lucide-react"
-import { toast } from "sonner"
+import { toast } from "@/components/agents/overlays/toast"
 import { Illustration } from "@/components/gravitre/illustration"
 
 export function AssetVersionHistory({

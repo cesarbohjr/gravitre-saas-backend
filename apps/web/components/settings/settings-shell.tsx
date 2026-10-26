@@ -1,11 +1,8 @@
 "use client"
 
-import React, { useEffect, useId, useState } from "react"
+import React, { useEffect, useId, useRef, useState } from "react"
 import Link from "next/link"
 import { Search } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
-import { useIsMobile } from "@/hooks/use-mobile"
 import {
   ADMIN_ONLY_SETTINGS_SECTIONS,
   SETTINGS_GROUPS,
@@ -80,7 +77,10 @@ function SettingsNavGroups({
     <>
       {groups.map(({ group, sections }) => (
         <div key={group.id} className="gs-group">
-          <span className="gs-group-label">{group.label}</span>
+          <span className="gs-group-label">
+            {group.label}
+            {group.hint ? <span className="gs-group-hint">{group.hint}</span> : null}
+          </span>
           {sections.map((section) => (
             <SettingsNavItem
               key={section.id}
@@ -100,8 +100,6 @@ interface SettingsShellProps {
   activeSection: SettingsSectionId
   onSectionChange?: (section: SettingsSectionId) => void
   isAdmin: boolean
-  mobileMenuOpen?: boolean
-  onMobileMenuOpenChange?: (open: boolean) => void
   /** Hide the default title block (page supplies its own hero). */
   hideHeader?: boolean
   /** Buttons on the right of the page header. */
@@ -123,8 +121,6 @@ export function SettingsShell({
   activeSection,
   onSectionChange,
   isAdmin,
-  mobileMenuOpen,
-  onMobileMenuOpenChange,
   hideHeader,
   actions,
   title,
@@ -132,84 +128,85 @@ export function SettingsShell({
   crumb,
   children,
 }: SettingsShellProps) {
-  const [localMenuOpen, setLocalMenuOpen] = useState(false)
   const [query, setQuery] = useState("")
-  const isCompact = useIsMobile(1024)
-  const menuOpen = mobileMenuOpen ?? localMenuOpen
-  const setMenuOpen = onMobileMenuOpenChange ?? setLocalMenuOpen
-  useEffect(() => {
-    if (!isCompact && menuOpen) setMenuOpen(false)
-  }, [isCompact, menuOpen, setMenuOpen])
   const activeMeta = SETTINGS_SECTIONS.find((section) => section.id === activeSection)
   const crumbText = crumb ?? crumbFor(activeMeta?.group)
   const heading = title ?? activeMeta?.title
   const lede = description ?? activeMeta?.description
 
   return (
-    <Sheet open={isCompact && menuOpen} onOpenChange={setMenuOpen}>
-      <div className="st5 gv-set relative h-full min-h-0 overflow-auto">
-        <div className="gs-wrap">
-          <aside className="gs-nav hidden lg:block" aria-label="Settings">
-            <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
-              <div className="gs-nav-head">
-                <b>Settings</b>
-                <span>Organization and workspace</span>
-              </div>
-              <SettingsFind value={query} onChange={setQuery} />
-              <nav aria-label="Settings sections" className="gs-nav-groups">
-                <SettingsNavGroups
-                  isAdmin={isAdmin}
-                  query={query}
-                  activeSection={activeSection}
-                  onSectionChange={onSectionChange}
-                />
-              </nav>
+    <div className="st5 gv-set relative h-full min-h-0 overflow-auto">
+      <div className="gs-wrap">
+        <aside className="gs-nav hidden lg:block" aria-label="Settings">
+          <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+            <div className="gs-nav-head">
+              <b>Settings</b>
+              <span>Organization and workspace</span>
             </div>
-          </aside>
+            <SettingsFind value={query} onChange={setQuery} />
+            <nav aria-label="Settings sections" className="gs-nav-groups">
+              <SettingsNavGroups
+                isAdmin={isAdmin}
+                query={query}
+                activeSection={activeSection}
+                onSectionChange={onSectionChange}
+              />
+            </nav>
+          </div>
+        </aside>
 
-          <main className="gs-main">
-            <div className="gs-mobile">
-              <span className="gs-crumb">{crumbText}</span>
-              <SheetTrigger asChild>
-                <Button variant="outline" className="min-h-11 shrink-0 gap-2" aria-label="Choose settings section">
-                  Sections
-                </Button>
-              </SheetTrigger>
-            </div>
-            {!hideHeader ? (
-              <div className="gs-head">
-                <div>
-                  <span className="gs-crumb">{crumbText}</span>
-                  <h1>{heading}</h1>
-                  {lede ? <p>{lede}</p> : null}
-                </div>
-                {actions ? <div className="gs-head-actions">{actions}</div> : null}
+        <main className="gs-main">
+          <SettingsPills isAdmin={isAdmin} activeSection={activeSection} onSectionChange={onSectionChange} />
+          {!hideHeader ? (
+            <div className="gs-head">
+              <div>
+                <span className="gs-crumb">{crumbText}</span>
+                <h1>{heading}</h1>
+                {lede ? <p>{lede}</p> : null}
               </div>
-            ) : null}
-            {children}
-          </main>
-        </div>
+              {actions ? <div className="gs-head-actions">{actions}</div> : null}
+            </div>
+          ) : null}
+          {children}
+        </main>
       </div>
-      <SheetContent
-        side="left"
-        className="st5 gv-set w-[min(92vw,360px)] overflow-y-auto p-0 sm:max-w-[360px] data-[state=open]:duration-200 [&>button]:size-11"
-      >
-        <SheetHeader className="pr-14">
-          <SheetTitle className="font-sans">Settings sections</SheetTitle>
-          <SheetDescription>Choose the settings you want to manage.</SheetDescription>
-        </SheetHeader>
-        <nav aria-label="Settings section sheet" className="px-4 pb-6" style={{ display: "flex", flexDirection: "column", gap: 18 }}>
-          <SettingsFind value={query} onChange={setQuery} />
-          <SettingsNavGroups
-            isAdmin={isAdmin}
-            query={query}
-            activeSection={activeSection}
-            onSectionChange={onSectionChange}
-            onNavigate={() => setMenuOpen(false)}
-          />
-        </nav>
-      </SheetContent>
-    </Sheet>
+    </div>
+  )
+}
+
+/** iPad and phone: every section as one scrolling row of pills, the current one kept in view. */
+function SettingsPills({
+  isAdmin,
+  activeSection,
+  onSectionChange,
+}: {
+  isAdmin: boolean
+  activeSection: SettingsSectionId
+  onSectionChange?: (section: SettingsSectionId) => void
+}) {
+  const row = useRef<HTMLElement>(null)
+  useEffect(() => {
+    // Scroll only the row (not the page) so the current pill sits in the middle.
+    const nav = row.current
+    const current = nav?.querySelector<HTMLElement>('[aria-current="page"]')
+    if (!nav || !current) return
+    nav.scrollLeft = Math.max(0, current.offsetLeft - nav.clientWidth / 2 + current.clientWidth / 2)
+  }, [activeSection])
+  const sections = SETTINGS_GROUPS.filter((group) => !group.locked || isAdmin).flatMap((group) =>
+    settingsSectionsForGroup(group.id, isAdmin),
+  )
+  return (
+    <nav ref={row} aria-label="Settings sections" className="gs-pills">
+      {sections.map((section) => (
+        <SettingsNavItem
+          key={section.id}
+          section={section}
+          activeSection={activeSection}
+          onSectionChange={onSectionChange}
+          pill
+        />
+      ))}
+    </nav>
   )
 }
 
@@ -218,17 +215,20 @@ function SettingsNavItem({
   activeSection,
   onSectionChange,
   onNavigate,
+  pill,
 }: {
   section: (typeof SETTINGS_SECTIONS)[number]
   activeSection: SettingsSectionId
   onSectionChange?: (section: SettingsSectionId) => void
   onNavigate?: () => void
+  pill?: boolean
 }) {
   const isActive = activeSection === section.id
   const Icon = section.icon
+  const className = pill ? "gs-pill" : "gs-nav-item"
   const body = (
     <>
-      <Icon size={17} strokeWidth={1.8} aria-hidden />
+      {pill ? null : <Icon size={17} strokeWidth={1.8} aria-hidden />}
       <span className="min-w-0 [overflow-wrap:anywhere]">{section.title}</span>
     </>
   )
@@ -237,7 +237,7 @@ function SettingsNavItem({
       <Link
         href={section.href}
         onClick={onNavigate}
-        className="gs-nav-item"
+        className={className}
         aria-current={isActive ? "page" : undefined}
       >
         {body}
@@ -252,7 +252,7 @@ function SettingsNavItem({
         onNavigate?.()
         onSectionChange?.(section.id)
       }}
-      className="gs-nav-item"
+      className={className}
     >
       {body}
     </button>

@@ -11,7 +11,7 @@
  * records through `POST /api/assistant/recommendation-feedback`.
  */
 import { useEffect, useMemo, useState } from "react"
-import { toast } from "sonner"
+import { toast } from "@/components/agents/overlays/toast"
 import { GravitreMetric } from "@/components/gravitre/nodus-product"
 import { Button } from "@/components/ui/button"
 import { PredictionRiskOpportunityTopology } from "@/components/intelligence/prediction-risk-opportunity-topology"

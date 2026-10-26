@@ -20,7 +20,7 @@ import {
   type BillingInterval,
   type PlanCode,
 } from "@/lib/plans"
-import { toast } from "sonner"
+import { toast } from "@/components/agents/overlays/toast"
 
 const stripePublishableKey = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY ?? ""
 const stripePromise = stripePublishableKey ? loadStripe(stripePublishableKey) : null

@@ -20,7 +20,7 @@ import { CHART_EMERALD, CHART_TEAL, cacheHitBarClass } from "@/components/gravit
 import { intelligenceApi } from "@/lib/api"
 import { ApiError } from "@/lib/fetcher"
 import { cn } from "@/lib/utils"
-import { toast } from "sonner"
+import { toast } from "@/components/agents/overlays/toast"
 import {
   Bar,
   BarChart,

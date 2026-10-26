@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { BookOpen, Loader2 } from "lucide-react"
-import { toast } from "sonner"
+import { toast } from "@/components/agents/overlays/toast"
 import { Button } from "@/components/ui/button"
 import { knowledgeSyncApi } from "@/lib/api"
 import { useOrgAdmin } from "@/lib/use-org-admin"

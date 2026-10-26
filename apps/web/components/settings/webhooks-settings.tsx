@@ -1,9 +1,10 @@
 "use client"
 
+import { confirmDialog } from "@/components/agents/overlays/confirm"
 import { useState } from "react"
 import useSWR from "swr"
 import { Loader2, Webhook, X } from "lucide-react"
-import { toast } from "sonner"
+import { toast } from "@/components/agents/overlays/toast"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import {
@@ -64,7 +65,7 @@ export function WebhooksSettings({ isAdmin }: { isAdmin: boolean }) {
   }
 
   const handleDeleteWebhook = async (id: string) => {
-    if (!confirm("Remove this webhook?")) return
+    if (!(await confirmDialog({ title: "Remove this webhook?", description: "It stops receiving events right away.", confirmLabel: "Remove webhook" }))) return
     setDeletingId(id)
     try {
       await settingsApi.deleteWebhook(id)

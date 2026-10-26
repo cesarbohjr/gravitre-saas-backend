@@ -35,7 +35,7 @@ import {
   ArrowLeft,
 } from "lucide-react"
 import { NucleoApproval } from "@/components/icons/nucleo/semantic"
-import { toast } from "sonner"
+import { toast } from "@/components/agents/overlays/toast"
 import type {
   MarketplaceRegistryConnector,
   PartnerConnectorSubmission,

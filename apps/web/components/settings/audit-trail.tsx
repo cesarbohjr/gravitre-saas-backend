@@ -29,7 +29,7 @@ import {
   Users,
   X,
 } from "lucide-react"
-import { toast } from "sonner"
+import { toast } from "@/components/agents/overlays/toast"
 import { useAuth } from "@/lib/auth-context"
 import { useOrgAdmin } from "@/lib/use-org-admin"
 import { ApiError } from "@/lib/fetcher"

@@ -22,10 +22,11 @@ import {
   X
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { Dialog, DialogClose, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog"
 import { cn } from "@/lib/utils"
 import Link from "next/link"
 import { mesonApi } from "@/lib/api"
-import { toast } from "sonner"
+import { toast } from "@/components/agents/overlays/toast"
 import { AgentIdentityPicker } from "@/components/gravitre/agent-identity-picker"
 import {
   suggestAgentColor,
@@ -278,36 +279,18 @@ export function MesonWizard({ open, onClose, onComplete, userPlan = "control" }:
   // Show upgrade prompt for Node users
   if (!canAccessMeson) {
     return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center">
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          className="absolute inset-0 bg-[color:var(--overlay)] backdrop-blur-sm"
-          onClick={handleClose}
-        />
-        <motion.div
-          initial={{ opacity: 0, scale: 0.95, y: 20 }}
-          animate={{ opacity: 1, scale: 1, y: 0 }}
-          exit={{ opacity: 0, scale: 0.95, y: 20 }}
-          className="relative w-full max-w-md overflow-hidden rounded-[10px] border border-border bg-card shadow-2xl"
-        >
-          <div className="relative p-6 bg-gradient-to-br from-[color:var(--g-emerald-pale)] to-transparent">
-            <button
-              onClick={handleClose}
-              className="absolute top-4 right-4 h-8 w-8 rounded-lg hover:bg-secondary flex items-center justify-center transition-colors"
-            >
-              <X className="h-4 w-4 text-muted-foreground" />
-            </button>
+      <Dialog open onOpenChange={(next) => (next ? null : handleClose())}>
+        <DialogContent className="gap-0 overflow-hidden p-0 sm:max-w-md">
+          <div className="relative p-6 pr-14 bg-gradient-to-br from-[color:var(--g-emerald-pale)] to-transparent">
             <div className="h-14 w-14 rounded-[10px] bg-gradient-to-br from-[color:var(--g-emerald)] to-[color:var(--g-emerald-deep)] flex items-center justify-center mb-4">
               <Blocks className="h-7 w-7 text-brand-foreground" />
             </div>
-            <h2 className="text-xl font-semibold text-foreground">
+            <DialogTitle className="text-xl font-semibold text-foreground">
               Meson is available in Control and Command
-            </h2>
-            <p className="mt-2 text-sm text-muted-foreground">
+            </DialogTitle>
+            <DialogDescription className="mt-2 text-sm text-muted-foreground">
               Meson creates agents, training, and workflows from a single request. Upgrade to unlock this powerful system builder.
-            </p>
+            </DialogDescription>
           </div>
           <div className="p-6 space-y-4">
             <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
@@ -348,29 +331,14 @@ export function MesonWizard({ open, onClose, onComplete, userPlan = "control" }:
               </Button>
             </div>
           </div>
-        </motion.div>
-      </div>
+        </DialogContent>
+      </Dialog>
     )
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      {/* Backdrop */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        className="absolute inset-0 bg-[color:var(--overlay)] backdrop-blur-sm"
-        onClick={handleClose}
-      />
-
-      {/* Modal */}
-      <motion.div
-        initial={{ opacity: 0, scale: 0.95, y: 20 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        exit={{ opacity: 0, scale: 0.95, y: 20 }}
-        className="relative w-full max-w-2xl max-h-[90vh] overflow-hidden rounded-[10px] border border-[color:var(--g-emerald)]/20 bg-card shadow-2xl shadow-[color:var(--g-emerald)]/10"
-      >
+    <Dialog open onOpenChange={(next) => (next ? null : handleClose())}>
+      <DialogContent showCloseButton={false} className="max-h-[90vh] gap-0 overflow-hidden p-0 sm:max-w-2xl">
         {/* Header */}
         <div className="border-b border-border px-6 py-4 bg-gradient-to-r from-[color:var(--g-emerald-pale)] to-transparent">
           <div className="flex items-center justify-between">
@@ -379,16 +347,16 @@ export function MesonWizard({ open, onClose, onComplete, userPlan = "control" }:
                 <Blocks className="h-5 w-5 text-[color:var(--g-emerald-deep)]" />
               </div>
               <div>
-                <h2 className="text-lg font-semibold text-foreground">Build with Meson</h2>
-                <p className="text-xs text-muted-foreground">Create your system from a single request</p>
+                <DialogTitle className="text-lg font-semibold text-foreground">Build with Meson</DialogTitle>
+                <DialogDescription className="text-xs text-muted-foreground">Create your system from a single request</DialogDescription>
               </div>
             </div>
-            <button
-              onClick={handleClose}
-              className="h-8 w-8 rounded-lg hover:bg-secondary flex items-center justify-center transition-colors"
+            <DialogClose
+              aria-label="Close"
+              className="grid size-8 place-items-center rounded-lg bg-[#EFEFEA] text-[#33342F] transition-colors hover:bg-[#E4E4DF] dark:bg-[#262825] dark:text-[#d6d6d0]"
             >
-              <X className="h-4 w-4 text-muted-foreground" />
-            </button>
+              <X className="h-3.5 w-3.5" aria-hidden />
+            </DialogClose>
           </div>
 
           {/* Progress Steps */}
@@ -877,7 +845,7 @@ export function MesonWizard({ open, onClose, onComplete, userPlan = "control" }:
             )}
           </div>
         </div>
-      </motion.div>
-    </div>
+      </DialogContent>
+    </Dialog>
   )
 }

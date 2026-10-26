@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react"
 import Image from "next/image"
 import useSWR from "swr"
-import { toast } from "sonner"
+import { toast } from "@/components/agents/overlays/toast"
 import { Loader2 } from "lucide-react"
 import { organizationsApi, settingsApi, type WorkspaceDefaults } from "@/lib/api"
 import { fetcher as apiFetcher } from "@/lib/fetcher"

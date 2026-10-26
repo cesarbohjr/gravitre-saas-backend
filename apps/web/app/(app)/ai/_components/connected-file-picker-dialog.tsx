@@ -9,7 +9,7 @@ import {
   Loader2,
   Search,
 } from "lucide-react"
-import { toast } from "sonner"
+import { toast } from "@/components/agents/overlays/toast"
 
 import {
   browseConnectedFiles,

@@ -24,7 +24,7 @@ import type { VendorActionCatalog, ConnectorActionCatalogResponse } from "@/lib/
 import { Button } from "@/components/ui/button"
 import { Spinner } from "@/components/ui/spinner"
 import { Input } from "@/components/ui/input"
-import { toast } from "sonner"
+import { toast } from "@/components/agents/overlays/toast"
 import { cn } from "@/lib/utils"
 import { TYPE } from "@/lib/design-system"
 import {

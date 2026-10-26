@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react"
 import useSWR from "swr"
-import { toast } from "sonner"
+import { toast } from "@/components/agents/overlays/toast"
 import { memoryPromotionApi, type PromotionCandidate } from "@/lib/api"
 import { ApiError } from "@/lib/fetcher"
 import { memoryCategoryLabel } from "@/lib/learning-ui-copy"

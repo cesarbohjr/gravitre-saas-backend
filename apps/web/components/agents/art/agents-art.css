@@ -1,0 +1,51 @@
+/* Agents hero scenes (agents-art.tsx). Motion values come from the design's Art card. */
+.ag-art { position: absolute; inset: 0; overflow: hidden; background: #e7ece3; }
+.ag-art svg { display: block; width: 100%; height: 100%; transition: transform 0.9s cubic-bezier(0.2, 0.7, 0.2, 1); }
+.ag-art:hover svg { transform: scale(1.035); }
+
+.ag-art .g-float { animation: ag-float 5s ease-in-out infinite; }
+.ag-art .g-bob { animation: ag-float 3.6s ease-in-out infinite; }
+@keyframes ag-float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
+.ag-art .g-twinkle { animation: ag-twinkle 3.2s ease-in-out infinite; transform-box: fill-box; transform-origin: center; }
+@keyframes ag-twinkle { 0%, 100% { opacity: 0.35; transform: scale(0.8); } 50% { opacity: 1; transform: scale(1); } }
+.ag-art .g-pulse { animation: ag-pulse 2.6s ease-in-out infinite; }
+@keyframes ag-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.45; } }
+.ag-art .g-beat { animation: ag-beat 2.2s ease-in-out infinite; transform-box: fill-box; transform-origin: center; }
+@keyframes ag-beat { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.12); } }
+.ag-art .g-ring { animation: ag-ring 2.4s ease-out infinite; transform-box: fill-box; transform-origin: center; }
+@keyframes ag-ring { 0% { opacity: 0.7; transform: scale(1); } 100% { opacity: 0; transform: scale(1.25); } }
+.ag-art .g-flow { animation: ag-flow 1.6s linear infinite; }
+@keyframes ag-flow { to { stroke-dashoffset: -24; } }
+.ag-art .g-run { animation: ag-run 6s linear infinite; }
+@keyframes ag-run { 0% { transform: translateX(0); opacity: 0; } 8% { opacity: 1; } 92% { opacity: 1; } 100% { transform: translateX(252px); opacity: 0; } }
+.ag-art .g-nudge { animation: ag-nudge 3.4s ease-in-out infinite; }
+@keyframes ag-nudge { 0%, 100% { transform: translateX(0); } 50% { transform: translateX(4px); } }
+.ag-art .g-reach { animation: ag-reach 3.4s ease-in-out infinite; transform-box: fill-box; transform-origin: 0% 100%; }
+@keyframes ag-reach { 0%, 100% { transform: rotate(0); } 50% { transform: rotate(-5deg); } }
+.ag-art .g-mesh { animation: ag-mesh 16s ease-in-out infinite; transform-box: fill-box; transform-origin: center; }
+@keyframes ag-mesh { 0%, 100% { transform: translate(0, 0); } 50% { transform: translate(-6%, 3%); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .ag-art [class*="g-"] { animation: none !important; }
+  .ag-art:hover svg { transform: none; }
+}
+
+/* Floating status bar over the hero art */
+.ag-art-bar {
+  position: absolute; left: 12px; right: 12px; bottom: 12px; z-index: 1;
+  display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px;
+  background: rgba(255, 255, 255, 0.94); border: 1px solid #e4e4df; border-radius: 12px;
+  padding: 6px 6px 6px 12px; box-shadow: 0 6px 16px rgba(20, 20, 20, 0.08);
+}
+.ag-art-status { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; color: #262826; }
+.ag-art-status i { width: 8px; height: 8px; border-radius: 50%; background: #8a8b85; flex: none; }
+.ag-art-status i.green { background: #19c37d; }
+.ag-art-status i.red { background: #a3333d; }
+.ag-art-status i.amber { background: #e2a33a; }
+.ag-art-bar button {
+  min-height: 32px; padding: 0 12px; border-radius: 8px; border: 1px solid #cbcbc3; background: #ffffff;
+  font: inherit; font-size: 13px; font-weight: 500; color: #1c1e1d; cursor: pointer;
+}
+.ag-art-bar button:hover { border-color: #55564f; }
+.ag-art-bar button:disabled { opacity: 0.5; cursor: default; }
+.ag-art-bar button:focus-visible { outline: 2px solid #19c37d; outline-offset: 2px; }

@@ -20,7 +20,7 @@ import { WorkflowPreRunPanel } from "@/components/workflows/workflow-pre-run-pan
 import type { IntelligenceDrawerNode } from "@/components/workflows/intelligence-drawer"
 import { workflowsApi, runsApi } from "@/lib/api"
 import { useAuth } from "@/lib/auth-context"
-import { toast } from "sonner"
+import { toast } from "@/components/agents/overlays/toast"
 import { ArrowLeft, Calendar, ChevronRight, Loader2, Play, Rocket, GitBranch } from "lucide-react"
 
 export default function WorkflowDetailPage({ params }: { params: Promise<{ id: string }> }) {

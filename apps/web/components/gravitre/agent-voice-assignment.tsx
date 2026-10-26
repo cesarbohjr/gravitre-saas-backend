@@ -20,7 +20,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { cn } from "@/lib/utils"
 import { apiFetch } from "@/lib/fetcher"
 import type { AgentVoiceProfile } from "@/types/api"
-import { toast } from "sonner"
+import { toast } from "@/components/agents/overlays/toast"
 import { GravitreWave } from "@/components/gravitre/assistant/voice-presentation"
 import { Check, ChevronRight, Loader2, Play, Sparkles } from "lucide-react"
 

@@ -2,7 +2,7 @@
 
 import { useMemo, useState, type FormEvent } from "react"
 import Link from "next/link"
-import { toast } from "sonner"
+import { toast } from "@/components/agents/overlays/toast"
 import { useGravitreAIWorkspace } from "@/components/gravitre/ai-workspace-provider"
 import { workforceState } from "@/components/home/operating-flow"
 import { APP_ROUTES } from "@/lib/app-routes"

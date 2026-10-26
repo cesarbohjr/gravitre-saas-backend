@@ -27,7 +27,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { agentKnowledgeApi, type AgentKnowledgeAssignment } from "@/lib/api"
-import { toast } from "sonner"
+import { toast } from "@/components/agents/overlays/toast"
 import { Illustration } from "@/components/gravitre/illustration"
 
 export function AgentKnowledgeSourcesTab({

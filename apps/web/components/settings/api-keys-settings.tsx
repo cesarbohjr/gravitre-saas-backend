@@ -4,7 +4,7 @@ import { useState } from "react"
 import Link from "next/link"
 import useSWR from "swr"
 import { Check, Copy, Info, KeyRound, Loader2, Plus, RefreshCw, Trash2, TriangleAlert } from "lucide-react"
-import { toast } from "sonner"
+import { toast } from "@/components/agents/overlays/toast"
 import {
   AlertDialog,
   AlertDialogAction,

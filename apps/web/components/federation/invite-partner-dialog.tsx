@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { toast } from "sonner"
+import { toast } from "@/components/agents/overlays/toast"
 import { Building2, ShieldCheck, ArrowRight, ArrowLeft, Check, Loader2 } from "lucide-react"
 import {
   Dialog,

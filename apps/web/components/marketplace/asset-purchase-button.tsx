@@ -4,7 +4,7 @@ import { useRef, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { marketplaceApi } from "@/lib/api"
 import { Loader2, ShoppingCart } from "lucide-react"
-import { toast } from "sonner"
+import { toast } from "@/components/agents/overlays/toast"
 import type {
   MarketplaceAssetInstallCheck,
   MarketplaceAssetSummary,

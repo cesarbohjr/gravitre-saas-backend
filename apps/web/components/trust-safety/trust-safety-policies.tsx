@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react"
 import useSWR from "swr"
-import { toast } from "sonner"
+import { toast } from "@/components/agents/overlays/toast"
 import { useAuth } from "@/lib/auth-context"
 import { fetcher } from "@/lib/fetcher"
 import { settingsApi, type ApprovalRules } from "@/lib/api"

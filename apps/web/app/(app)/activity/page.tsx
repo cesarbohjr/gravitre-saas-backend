@@ -13,7 +13,7 @@ import { Suspense, useEffect, useMemo, useRef, useState, type KeyboardEvent, typ
 import useSWR from "swr"
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
-import { toast } from "sonner"
+import { toast } from "@/components/agents/overlays/toast"
 import { ArrowLeft, ChevronRight, Download, ExternalLink, Sparkles, X } from "lucide-react"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { WsPage } from "@/components/workspace/ws-page"
@@ -21,6 +21,7 @@ import { OvPager } from "@/components/workspace/ov-pager"
 import type { BusinessOutcomeDto } from "@/components/gravitre/business-outcome/business-outcome-view"
 import { buildActivityTraceStages, type ActivityTraceStage } from "@/components/activity/activity-trace-panel"
 import { CenteredLoader } from "@/components/gravitre/gravitre-loader"
+import { ActivityArt, HeroArt, type HeroArtState } from "@/components/agents/art/agents-art"
 import { FailureAlertsPanel } from "@/components/workflows/failure-alerts-panel"
 import { AskGravitreSummonButton } from "@/components/intelligence/ask-gravitre-summon-button"
 import { useGravitreAIWorkspace, usePublishGravitreAISelection } from "@/components/gravitre/ai-workspace-provider"
@@ -789,6 +790,33 @@ function ActivityPageInner() {
     rowRefs.current[next]?.scrollIntoView({ block: "nearest" })
   }
 
+  // The hero art follows the failures: it shows which one is open and steps to the next.
+  const exceptionIds = outcomes.filter(isException).map(outcomeKey)
+  const viewingFailure = tab === "all" && selectedOutcome != null && isException(selectedOutcome)
+  const nextFailure = () => {
+    const current = selectedOutcome ? exceptionIds.indexOf(outcomeKey(selectedOutcome)) : -1
+    const nextId = exceptionIds[(current + 1) % exceptionIds.length]
+    if (!nextId) return
+    if (tab !== "all") setTab("all")
+    setSelectedOutcomeId(nextId)
+    window.setTimeout(() => document.getElementById(`activity-row-${nextId}`)?.scrollIntoView({ block: "nearest" }), 0)
+  }
+  const heroArtState: HeroArtState = !statsReady
+    ? {}
+    : exceptionIds.length === 0
+      ? { status: outcomes.length > 0 ? "No failures in recent work" : "Nothing has run yet", tone: "green" }
+      : viewingFailure
+        ? {
+            status: "Viewing a failed step",
+            tone: "red",
+            action: exceptionIds.length > 1 ? { label: "Next failure", onClick: nextFailure } : undefined,
+          }
+        : {
+            status: `${exceptionIds.length} failure${exceptionIds.length === 1 ? "" : "s"} to look at`,
+            tone: "red",
+            action: { label: "Show failure", onClick: nextFailure },
+          }
+
   const verifiedLabel =
     statsReady && summary.completed > 0 && summary.verified >= summary.completed ? "Verified, all of them" : "Verified"
 
@@ -813,10 +841,10 @@ function ActivityPageInner() {
       <WsPage wide={false}>
         <div className="ov-page" data-composition="operate">
           <section aria-labelledby="activity-hero" className="ov-hero">
-            <div className="ov-hero-art">
-              {/* eslint-disable-next-line @next/next/no-img-element -- static library scene */}
-              <img src="/illustrations/ops-activity.svg" alt="" />
-            </div>
+            <HeroArt
+              art={<ActivityArt failed={exceptionIds.length > 0} />}
+              {...heroArtState}
+            />
             <div className="ov-hero-copy">
               <div className="ov-hero-eb">
                 <span className="ov-eyebrow">Operate / Work in motion</span>

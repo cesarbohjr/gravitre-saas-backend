@@ -17,7 +17,7 @@ import { Input } from "@/components/ui/input"
 import { ErrorState } from "@/components/gravitre/empty-state"
 import { intelligenceApi } from "@/lib/api"
 import { ApiError } from "@/lib/fetcher"
-import { toast } from "sonner"
+import { toast } from "@/components/agents/overlays/toast"
 import { GearSix } from "@phosphor-icons/react"
 
 export function EngineSettingsTab({ enabled }: { enabled: boolean }) {

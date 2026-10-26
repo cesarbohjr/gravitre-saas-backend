@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import useSWR from "swr"
 import Link from "next/link"
-import { toast } from "sonner"
+import { toast } from "@/components/agents/overlays/toast"
 import { organizationsApi } from "@/lib/api"
 import type { Organization } from "@/types/api"
 import { useAuth } from "@/lib/auth-context"

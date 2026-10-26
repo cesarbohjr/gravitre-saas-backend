@@ -22,6 +22,7 @@ import "@/components/settings/enterprise-sections.css"
 import { SettingsShell, canAccessSettingsSection } from "@/components/settings/settings-shell"
 import { SETTINGS_SECTIONS, settingsHrefForSection, type SettingsSectionId } from "@/lib/settings-sections"
 import { useOrgAdmin } from "@/lib/use-org-admin"
+import { AccessArt } from "@/components/agents/art/agents-art"
 
 /** Redesigned sections that render their own SetHeader (title, lede and header actions). */
 const OWN_HEADER_SECTIONS = new Set<SettingsSectionId>([
@@ -43,7 +44,6 @@ function SettingsContent() {
   const { isAdmin, showAdmin, pending: adminPending } = useOrgAdmin()
   const sectionParam = (searchParams.get("section") || "organization") as SettingsSectionId
   const [activeSection, setActiveSection] = useState<SettingsSectionId>(sectionParam)
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
   useEffect(() => {
     const section = searchParams.get("section")
@@ -67,8 +67,8 @@ function SettingsContent() {
       router.replace("/settings/billing")
       return
     }
-    if (section === "audit") {
-      router.replace("/audit")
+    if (section === "audit" || section === "security" || section === "roles" || section === "hitl" || section === "environments") {
+      router.replace(settingsHrefForSection(section))
       return
     }
     if (section === "mcp-servers") {
@@ -108,9 +108,15 @@ function SettingsContent() {
         )
       }
       return (
-        <div className="border-b border-divide py-3 text-sm text-muted-foreground">
-          Admin or owner permission is required to manage this section.
-        </div>
+        <section className="gs-locked" aria-label="Admins only">
+          <div className="gs-locked-art">
+            <AccessArt />
+          </div>
+          <div className="gs-locked-copy">
+            <b>Admins only</b>
+            <span>An owner or admin of this workspace can manage this section. Ask one of them to change it, or to give you the admin role.</span>
+          </div>
+        </section>
       )
     }
 
@@ -158,6 +164,10 @@ function SettingsContent() {
       case "billing-usage":
       case "billing":
       case "audit":
+      case "security":
+      case "roles":
+      case "hitl":
+      case "environments":
       case "enterprise":
       case "federation":
       case "profile":
@@ -200,8 +210,6 @@ function SettingsContent() {
       onSectionChange={handleSectionChange}
       isAdmin={showAdmin}
       hideHeader={OWN_HEADER_SECTIONS.has(activeSection) && canAccessSettingsSection(activeSection, isAdmin)}
-      mobileMenuOpen={mobileMenuOpen}
-      onMobileMenuOpenChange={setMobileMenuOpen}
     >
       {renderContent()}
       </SettingsShell>

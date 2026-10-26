@@ -1,4 +1,4 @@
-import { toast } from "sonner"
+import { toast } from "@/components/agents/overlays/toast"
 
 export type PlanLimitDetail = {
   limitType: string

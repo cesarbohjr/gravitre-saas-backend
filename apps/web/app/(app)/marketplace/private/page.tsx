@@ -15,7 +15,7 @@ import { fetcher } from "@/lib/fetcher"
 import { useAuth } from "@/lib/auth-context"
 import { useOrgAdmin } from "@/lib/use-org-admin"
 import { ArrowLeft, Loader2, Lock, Play, Square } from "lucide-react"
-import { toast } from "sonner"
+import { toast } from "@/components/agents/overlays/toast"
 import type { PrivateConnectorBundle } from "@/types/api"
 import { Illustration } from "@/components/gravitre/illustration"
 

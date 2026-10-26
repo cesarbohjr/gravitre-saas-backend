@@ -11,7 +11,7 @@
 import { useMemo, useState } from "react"
 import useSWR from "swr"
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion"
-import { toast } from "sonner"
+import { toast } from "@/components/agents/overlays/toast"
 import { WorkSectionErrorCard } from "@/components/gravitre/work-section-error-card"
 import { Illustration } from "@/components/gravitre/illustration"
 import { GravitreSurface } from "@/components/gravitre/nodus-product"

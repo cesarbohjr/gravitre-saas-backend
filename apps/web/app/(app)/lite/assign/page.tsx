@@ -12,7 +12,7 @@ import { Card } from "@/components/ui/card"
 import { Icon } from "@/lib/icons"
 import { liteApi } from "@/lib/api"
 import { useAuth } from "@/lib/auth-context"
-import { toast } from "sonner"
+import { toast } from "@/components/agents/overlays/toast"
 import { cn } from "@/lib/utils"
 import { LitePageShell } from "@/components/gravitre/lite-page-shell"
 

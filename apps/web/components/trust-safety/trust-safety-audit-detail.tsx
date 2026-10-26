@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react"
 import Link from "next/link"
-import { toast } from "sonner"
+import { toast } from "@/components/agents/overlays/toast"
 import type { AuditEvent } from "@/lib/settings-api/audit"
 import { eventActor, eventDescription, eventEntity, eventLinks, eventMeta, eventTitle, isErrorEvent } from "@/components/settings/audit-model"
 import { Icon, Pill, TONE } from "./ts-ui"

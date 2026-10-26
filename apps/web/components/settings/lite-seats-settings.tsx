@@ -9,7 +9,7 @@
 import { useEffect, useMemo, useState } from "react"
 import useSWR from "swr"
 import { Armchair, Building2, LayoutGrid, Loader2, Plus, Search, Table2, UserCheck } from "lucide-react"
-import { toast } from "sonner"
+import { toast } from "@/components/agents/overlays/toast"
 import { fetcher as apiFetcher } from "@/lib/fetcher"
 import { settingsApi } from "@/lib/api"
 import { useOrgAdmin } from "@/lib/use-org-admin"

@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react"
 import useSWR from "swr"
 import Link from "next/link"
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion"
-import { toast } from "sonner"
+import { toast } from "@/components/agents/overlays/toast"
 import {
   Dialog,
   DialogContent,

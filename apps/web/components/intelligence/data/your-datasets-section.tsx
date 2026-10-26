@@ -3,7 +3,7 @@
 /** "Your datasets": the three ways to add the org's own training material. */
 import { useRef, useState, type ReactNode } from "react"
 import { MessageSquare, Sparkles, Upload } from "lucide-react"
-import { toast } from "sonner"
+import { toast } from "@/components/agents/overlays/toast"
 import { trainingApi } from "@/lib/api"
 import { TYPE } from "@/lib/design-system"
 import { ensureSelectedOrg } from "@/lib/org-context"

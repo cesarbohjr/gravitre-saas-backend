@@ -5,6 +5,8 @@ import * as SheetPrimitive from '@radix-ui/react-dialog'
 import { XIcon } from 'lucide-react'
 
 import { cn } from '@/lib/utils'
+import { useAgentsSurface } from '@/components/agents/overlays/surface-context'
+import { AGENTS_SCRIM } from '@/components/ui/dialog'
 
 function Sheet({ ...props }: React.ComponentProps<typeof SheetPrimitive.Root>) {
   return <SheetPrimitive.Root data-slot="sheet" {...props} />
@@ -32,11 +34,12 @@ function SheetOverlay({
   className,
   ...props
 }: React.ComponentProps<typeof SheetPrimitive.Overlay>) {
+  const agents = useAgentsSurface()
   return (
     <SheetPrimitive.Overlay
       data-slot="sheet-overlay"
       className={cn(
-        'data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 motion-reduce:animate-none fixed inset-0 z-50 bg-[color:var(--overlay)]',
+        agents ? AGENTS_SCRIM : 'data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 motion-reduce:animate-none fixed inset-0 z-50 bg-[color:var(--overlay)]',
         className,
       )}
       {...props}
@@ -54,6 +57,7 @@ function SheetContent({
   side?: 'top' | 'right' | 'bottom' | 'left'
   closeDisabled?: boolean
 }) {
+  const agents = useAgentsSurface()
   return (
     <SheetPortal>
       <SheetOverlay />
@@ -69,12 +73,15 @@ function SheetContent({
             'data-[state=closed]:slide-out-to-top data-[state=open]:slide-in-from-top inset-x-0 top-0 h-auto border-b',
           side === 'bottom' &&
             'data-[state=closed]:slide-out-to-bottom data-[state=open]:slide-in-from-bottom inset-x-0 bottom-0 h-auto border-t',
+          // Agents shell: white panel on the ink scrim; a bottom panel gets the sheet's rounded top.
+          agents && 'bg-white text-[#141513] border-[#E4E4DF] shadow-[0_24px_60px_rgba(0,0,0,0.25)] dark:bg-[#171917] dark:text-[#ededE8] dark:border-[#2a2c29]',
+          agents && side === 'bottom' && 'rounded-t-[20px] border-t-0',
           className,
         )}
         {...props}
       >
         {children}
-        <SheetPrimitive.Close disabled={closeDisabled} className="ring-offset-background focus:ring-ring data-[state=open]:bg-secondary absolute top-3 right-3 inline-flex size-11 items-center justify-center rounded-[var(--np-radius-md)] opacity-70 hover:bg-accent transition-opacity hover:opacity-100 focus:ring-2 focus:ring-offset-2 focus:outline-hidden disabled:pointer-events-none">
+        <SheetPrimitive.Close disabled={closeDisabled} className={agents ? "absolute top-3 right-3 grid size-11 place-items-center rounded-[10px] text-[#33342F] transition-colors hover:bg-[#EFEFEA] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#19C37D] disabled:pointer-events-none dark:text-[#d6d6d0] dark:hover:bg-[#262825]" : "ring-offset-background focus:ring-ring data-[state=open]:bg-secondary absolute top-3 right-3 inline-flex size-11 items-center justify-center rounded-[var(--np-radius-md)] opacity-70 hover:bg-accent transition-opacity hover:opacity-100 focus:ring-2 focus:ring-offset-2 focus:outline-hidden disabled:pointer-events-none"}>
           <XIcon className="size-4" />
           <span className="sr-only">Close</span>
         </SheetPrimitive.Close>

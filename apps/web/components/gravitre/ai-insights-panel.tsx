@@ -12,7 +12,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { toast } from "sonner"
+import { toast } from "@/components/agents/overlays/toast"
 import { Loader2, Check, Download, ExternalLink, Zap, BookOpen, LifeBuoy } from "lucide-react"
 import {
   Tooltip,

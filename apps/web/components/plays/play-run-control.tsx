@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { toast } from "sonner"
+import { toast } from "@/components/agents/overlays/toast"
 import { Button } from "@/components/ui/button"
 import { apiFetch } from "@/lib/fetcher"
 import { Play, ShieldCheck } from "lucide-react"

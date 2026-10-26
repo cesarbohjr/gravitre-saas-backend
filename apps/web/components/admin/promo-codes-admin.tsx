@@ -1,5 +1,6 @@
 "use client"
 
+import { confirmDialog } from "@/components/agents/overlays/confirm"
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -83,7 +84,7 @@ export function PromoCodesAdmin() {
       return
     }
     const planText = plans.length && plans.length < 3 ? ` on ${plans.join(", ")}` : " on every plan"
-    if (!window.confirm(`Create public code ${normalizedCode}: ${preview}${planText}? Anyone with the code can use it at checkout.`)) return
+    if (!(await confirmDialog({ title: `Create public code ${normalizedCode}?`, description: `${preview}${planText}. Anyone with the code can use it at checkout.`, confirmLabel: "Create code", tone: "default" }))) return
     setSaving(true)
     setError("")
     setNotice("")
@@ -110,7 +111,7 @@ export function PromoCodesAdmin() {
   }
 
   async function deactivate(row: AdminPromotionCode) {
-    if (!window.confirm(`Deactivate ${row.code}? New checkouts can no longer use it; existing discounts continue.`)) return
+    if (!(await confirmDialog({ title: `Deactivate ${row.code}?`, description: "New checkouts can no longer use it; existing discounts continue.", confirmLabel: "Deactivate" }))) return
     setSaving(true)
     setError("")
     setNotice("")

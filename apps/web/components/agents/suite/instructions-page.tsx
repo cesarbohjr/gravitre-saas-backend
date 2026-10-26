@@ -5,7 +5,7 @@
 import { useEffect, useMemo, useRef, useState } from "react"
 import Link from "next/link"
 import useSWR from "swr"
-import { toast } from "sonner"
+import { toast } from "@/components/agents/overlays/toast"
 import { useSearchParams } from "next/navigation"
 import { AgentsHubTabs } from "@/components/agents/agents-hub-tabs"
 import { useGravitreAIWorkspace } from "@/components/gravitre/ai-workspace-provider"

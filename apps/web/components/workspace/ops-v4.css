@@ -1,54 +1,55 @@
 /*
- * Decision queue (/approvals), Sources and Activity, from "Gravitre Agents v4",
+ * Decision queue (/approvals), Sources and Activity, from the Agents designs,
  * with the v5 type scale (lighter headings, 380px scrolling lists, pagers).
  * Scoped under .gv-ws (workspace.css). The --ov-* tokens carry the design's
  * exact light values and a matching dark set.
  */
 .gv-ws {
   --ov-card: #ffffff;
-  --ov-border: #e6e4de;
-  --ov-line: #eceae4;
-  --ov-line-soft: #efede8;
-  --ov-line-faint: #f3f1ec;
-  --ov-band: #f7f6f2;
-  --ov-pane: #fbfaf7;
-  --ov-stat: #f5f4f0;
-  --ov-seg: #eceae3;
-  --ov-chip: #f1f0eb;
-  --ov-chip-ink: #3e3d3a;
-  --ov-ink: #141414;
-  --ov-ink-2: #3e3d3a;
-  --ov-head: #1d1e1c;
-  --ov-title: #26272a;
-  --ov-muted: #5a5955;
-  --ov-control: #d6d4ce;
-  --ov-input: #dedcd6;
-  --ov-dark: #111211;
+  --ov-border: #e4e4df;
+  --ov-line: #efefea;
+  --ov-line-soft: #efefea;
+  --ov-line-faint: #f4f4f1;
+  --ov-band: #f7f7f4;
+  --ov-pane: #f7f7f4;
+  --ov-stat: #f4f4f1;
+  --ov-seg: #efefea;
+  --ov-chip: #efefea;
+  --ov-chip-ink: #33342f;
+  --ov-tag: #f3f2ee;
+  --ov-ink: #141513;
+  --ov-ink-2: #33342f;
+  --ov-head: #1c1e1d;
+  --ov-title: #262826;
+  --ov-muted: #55564f;
+  --ov-control: #cbcbc3;
+  --ov-input: #e4e4df;
+  --ov-dark: #141513;
   --ov-on-dark: #ffffff;
-  --ov-green: #2e9e5b;
-  --ov-green-bg: #eaf6ef;
+  --ov-green: #19c37d;
+  --ov-green-bg: #f3fbf7;
   --ov-green-sel: #f2faf5;
-  --ov-green-ink: #1f6b42;
+  --ov-green-ink: #0a6b47;
   --ov-green-ring: #cdebd9;
   --ov-green-line: #9fd3b4;
-  --ov-amber: #c98a1b;
-  --ov-amber-bg: #fdf3e1;
-  --ov-amber-ink: #6b4a0b;
+  --ov-amber: #e2a33a;
+  --ov-amber-bg: #fbf1dc;
+  --ov-amber-ink: #8a5a06;
   --ov-amber-soft: #fdf6e8;
   --ov-amber-border: #f0ddb3;
   --ov-amber-tile: #f7e6c3;
   --ov-amber-deep: #5c3d08;
   --ov-red: #a3333d;
-  --ov-red-bg: #f8e9ea;
+  --ov-red-bg: #f8e4e6;
   --ov-red-sel: #fcf3f4;
-  --ov-red-ink: #8a2530;
+  --ov-red-ink: #a3333d;
   --ov-red-band: #fbf2f3;
   --ov-red-line: #f1dcdf;
   --ov-red-dot: #e3c3c6;
   --ov-slate: #4a6a8e;
-  --ov-idle: #b5b4ad;
-  --ov-empty: #e2e0da;
-  --ov-art-border: #e4e1d9;
+  --ov-idle: #c9c7c0;
+  --ov-empty: #e4e4df;
+  --ov-art-border: #e4e4df;
 }
 .dark .gv-ws {
   --ov-card: #171917;
@@ -62,6 +63,7 @@
   --ov-seg: #232522;
   --ov-chip: #262825;
   --ov-chip-ink: #d6d6d0;
+  --ov-tag: #262825;
   --ov-ink: #ededE8;
   --ov-ink-2: #d6d6d0;
   --ov-head: #ededE8;
@@ -199,7 +201,7 @@
 .gv-ws .ov-chip.amber { background: var(--ov-amber-bg); color: var(--ov-amber-ink); }
 .gv-ws .ov-chip.red { background: var(--ov-red-bg); color: var(--ov-red-ink); }
 .gv-ws .ov-chip.bold { font-weight: 600; }
-.gv-ws .ov-tag { background: var(--ov-chip); border-radius: 6px; padding: 2px 8px; font-size: 12px; color: var(--ov-chip-ink); }
+.gv-ws .ov-tag { background: var(--ov-tag); border-radius: 6px; padding: 2px 8px; font-size: 12px; color: var(--ov-chip-ink); }
 .gv-ws .ov-item[aria-current="true"] .ov-tag { background: var(--ov-card); box-shadow: inset 0 0 0 1px var(--ov-border); }
 .gv-ws .ov-status { flex: none; display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--ov-muted); }
 .gv-ws .ov-status i, .gv-ws .ov-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--ov-idle); flex: none; display: inline-block; }

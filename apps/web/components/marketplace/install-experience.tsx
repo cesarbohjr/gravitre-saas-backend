@@ -42,7 +42,7 @@ import {
   Package,
   Workflow,
 } from "lucide-react"
-import { toast } from "sonner"
+import { toast } from "@/components/agents/overlays/toast"
 import { Illustration } from "@/components/gravitre/illustration"
 
 type InstallStep = "check" | "confirm" | "installing" | "done"

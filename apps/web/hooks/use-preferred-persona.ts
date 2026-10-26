@@ -2,7 +2,7 @@
 
 import { useCallback, useRef, useState } from "react"
 import useSWR from "swr"
-import { toast } from "sonner"
+import { toast } from "@/components/agents/overlays/toast"
 import { assistantApi } from "@/lib/api"
 import { ApiError } from "@/lib/fetcher"
 import { DEFAULT_CHAT_PERSONA_KEY } from "@/lib/chat-personas"

@@ -39,7 +39,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { Spinner } from "@/components/ui/spinner"
 import { Input } from "@/components/ui/input"
-import { toast } from "sonner"
+import { toast } from "@/components/agents/overlays/toast"
 import { 
   ChevronUp,
   ChevronDown,

@@ -23,7 +23,7 @@ import { formatReportedCount as formatCount, reportedNumber, sourceSyncFeedback 
 import { sourcesApi } from "@/lib/api"
 import { buildWorkflowFromSourceUrl } from "@/lib/source-workflow-handoff"
 import { useAuth } from "@/lib/auth-context"
-import { toast } from "sonner"
+import { toast } from "@/components/agents/overlays/toast"
 import {
   ArrowLeft,
   RefreshCw,

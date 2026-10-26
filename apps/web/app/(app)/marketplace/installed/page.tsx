@@ -42,7 +42,7 @@ import {
   Loader2,
   Trash2,
 } from "lucide-react"
-import { toast } from "sonner"
+import { toast } from "@/components/agents/overlays/toast"
 import type { MarketplaceInstall } from "@/types/api"
 import { Illustration } from "@/components/gravitre/illustration"
 

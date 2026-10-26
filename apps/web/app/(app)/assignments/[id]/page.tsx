@@ -6,7 +6,7 @@ import { useAgentDepartments } from "@/lib/use-agent-departments"
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
 import useSWR from "swr"
-import { toast } from "sonner"
+import { toast } from "@/components/agents/overlays/toast"
 import {
   AlertTriangle,
   ArrowUpRight,

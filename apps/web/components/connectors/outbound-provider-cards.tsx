@@ -3,7 +3,7 @@
 import { useState } from "react"
 import Image from "next/image"
 import useSWR from "swr"
-import { toast } from "sonner"
+import { toast } from "@/components/agents/overlays/toast"
 import { Mail, ShieldCheck, PlugZap } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { connectorsApi } from "@/lib/api"

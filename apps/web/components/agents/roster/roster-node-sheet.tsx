@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { useState } from "react"
-import { toast } from "sonner"
+import { toast } from "@/components/agents/overlays/toast"
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 import { ConnectorIcon } from "@/components/gravitre/connector-icon"
 import {

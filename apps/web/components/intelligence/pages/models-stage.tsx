@@ -8,7 +8,7 @@
  */
 import { useEffect, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
-import { toast } from "sonner"
+import { toast } from "@/components/agents/overlays/toast"
 import { EmptyState } from "@/components/gravitre/empty-state"
 import { BusinessModelCard } from "@/components/intelligence/business-model-card"
 import { ModelUsageTopology, type ModelUsageRow } from "@/components/intelligence/model-usage-topology"

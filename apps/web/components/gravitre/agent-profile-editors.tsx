@@ -2,7 +2,7 @@
 
 import { useMemo, useRef, useState } from "react"
 import { mutate as globalMutate } from "swr"
-import { toast } from "sonner"
+import { toast } from "@/components/agents/overlays/toast"
 import { Button } from "@/components/ui/button"
 import { AgentPersonalitySection } from "@/components/gravitre/agent-personality-section"
 import { AgentCapabilitiesEditor } from "@/components/gravitre/agent-capabilities-editor"

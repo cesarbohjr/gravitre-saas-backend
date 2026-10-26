@@ -6,7 +6,7 @@ import { AI_EXAMPLE_PROMPTS, type ModeId } from "./ai-mode-config"
 import { SharedChatComposerControls } from "@/components/gravitre/assistant/shared-chat-composer-controls"
 import type { ChatModality } from "@/components/gravitre/assistant/voice-mode-toggle"
 import type { VoicePresenceState } from "@/components/gravitre/assistant/voice-session-presence"
-import { toast } from "sonner"
+import { toast } from "@/components/agents/overlays/toast"
 
 type AiLandingProps = {
   mode: ModeId

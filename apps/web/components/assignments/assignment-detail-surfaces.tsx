@@ -8,7 +8,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Textarea } from "@/components/ui/textarea"
 import { Icon, type IconName } from "@/lib/icons"
 import { cn } from "@/lib/utils"
-import { toast } from "sonner"
+import { toast } from "@/components/agents/overlays/toast"
 
 export function reportedAssignmentConfidence(raw: unknown): number | null {
   if (typeof raw !== "number" || !Number.isFinite(raw) || raw < 0 || raw > 100) return null

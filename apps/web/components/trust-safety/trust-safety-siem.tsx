@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { toast } from "sonner"
+import { toast } from "@/components/agents/overlays/toast"
 import { enterpriseApi } from "@/lib/api"
 import type { EnterpriseSiemConfig, EnterpriseSiemEventType } from "@/types/api"
 import { Icon, Pill, Switch, TONE } from "./ts-ui"

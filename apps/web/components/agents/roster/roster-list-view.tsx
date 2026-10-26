@@ -3,7 +3,7 @@
 import Link from "next/link"
 import { useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
-import { toast } from "sonner"
+import { toast } from "@/components/agents/overlays/toast"
 import { agentsApi } from "@/lib/api"
 import { mapFleetDepartmentToApi } from "@/lib/agent-identity-bridge"
 import { models as MODEL_OPTIONS } from "@/components/gravitre/model-selector"

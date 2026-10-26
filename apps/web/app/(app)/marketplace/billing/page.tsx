@@ -26,7 +26,7 @@ import {
   RefreshCw,
   TrendingUp,
 } from "lucide-react"
-import { toast } from "sonner"
+import { toast } from "@/components/agents/overlays/toast"
 import type {
   MarketplaceAssetPayoutRow,
   MarketplaceAssetPayoutSummary,

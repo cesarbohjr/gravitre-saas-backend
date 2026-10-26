@@ -11,7 +11,7 @@
 import { useState } from "react"
 import Link from "next/link"
 import useSWR from "swr"
-import { toast } from "sonner"
+import { toast } from "@/components/agents/overlays/toast"
 import { BookOpen, CalendarClock, FileText, OctagonAlert, RefreshCw, TriangleAlert } from "lucide-react"
 import { knowledgeSyncApi } from "@/lib/api"
 import { fetcher } from "@/lib/fetcher"
