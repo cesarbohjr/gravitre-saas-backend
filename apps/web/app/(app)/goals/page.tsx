@@ -7,6 +7,8 @@ import { toast } from "@/components/agents/overlays/toast"
 import { LayoutList, Plus, RefreshCw, Search, SquareKanban } from "lucide-react"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { WsPage } from "@/components/workspace/ws-page"
+import { WsArt } from "@/components/workspace/ws-art"
+import { useWorkforce } from "@/hooks/use-workforce"
 import { GoalWorkflowWizard } from "@/components/gravitre/goal-workflow-wizard"
 import { GoalBoardCard, GoalCard } from "@/components/goals/goal-card"
 import { apiFetch } from "@/lib/fetcher"
@@ -29,6 +31,17 @@ import {
 } from "@/lib/goal-insights"
 import { cn } from "@/lib/utils"
 import "@/components/goals/goals.css"
+import type { AgentDepartmentId } from "@/components/agents/fleet-v4/types"
+
+/** Goal departments mapped to the roster's departments, for template agent counts. */
+const TEMPLATE_ROSTER_DEPT: Partial<Record<GoalTemplate["department"], AgentDepartmentId>> = {
+  sales: "sales",
+  marketing: "marketing",
+  support: "customer_success",
+  operations: "operations",
+  finance: "finance",
+  engineering: "engineering",
+}
 
 type Tab = GoalStatus | "unreported"
 type Sort = "recent" | "due" | "priority"
@@ -53,6 +66,14 @@ export default function GoalsPage() {
   const [view, setView] = useState<"list" | "board">("list")
   const [picked, setPicked] = useState<Tab | null>(null)
   const [wizardOpen, setWizardOpen] = useState(false)
+  const workforce = useWorkforce()
+  /** Real agent count for a template's department, e.g. "3 Marketing agents". */
+  const templateChip = (dept: GoalTemplate["department"]) => {
+    const roster = TEMPLATE_ROSTER_DEPT[dept]
+    const n = roster ? workforce.byDepartment(roster) : null
+    if (n == null) return null
+    return n === 0 ? `No ${departmentLabel(dept)} agents yet` : `${n} ${departmentLabel(dept)} ${n === 1 ? "agent" : "agents"}`
+  }
   const [editing, setEditing] = useState<GoalRecord | null>(null)
   const [template, setTemplate] = useState<GoalTemplate | null>(null)
   const { data, error, isLoading, isValidating, mutate } = useSWR(
@@ -181,10 +202,19 @@ export default function GoalsPage() {
             </div>
           </div>
           <div className="gv-rise gv-hide-sm" style={{ animationDelay: "120ms" }}>
-            <div className="gv-card gv-goals-art">
-              {/* eslint-disable-next-line @next/next/no-img-element -- static SVG scene */}
-              <img src="/illustrations/header-goals-office.svg" alt="" data-illustration="header-goals-office" />
-            </div>
+            <WsArt
+              className="gv-card gv-goals-art"
+              src="/illustrations/header-goals-office.svg"
+              alt="Three colleagues working in a bright office"
+              status={
+                workforce.working == null
+                  ? null
+                  : workforce.working === 0
+                    ? "No agent working right now"
+                    : `${workforce.working} ${workforce.working === 1 ? "agent" : "agents"} working`
+              }
+              tone={workforce.working ? "green" : "grey"}
+            />
           </div>
         </section>
 
@@ -407,8 +437,7 @@ export default function GoalsPage() {
                     className="gv-card gv-tpl"
                     onClick={() => openNew(t)}
                   >
-                    {/* eslint-disable-next-line @next/next/no-img-element -- static SVG scene */}
-                    <img src={`/illustrations/${t.illustration}.svg`} alt="" data-illustration={t.illustration} />
+                    <WsArt src={`/illustrations/${t.illustration}.svg`} status={templateChip(t.department)} tone="green" />
                     <div className="cap">
                       <div className="k">{departmentLabel(t.department)}</div>
                       <div className="t">{t.objective}</div>
