@@ -35,12 +35,17 @@ export type Me = {
   organizations: { id: string; name: string; role: string | null }[]
 }
 
+export type Surface = "web" | "desktop" | "extension" | "voice"
+
 export type Conversation = {
   id: string
   title: string
   preview: string | null
   updatedAt: string
+  createdAt: string
   messageCount: number
+  /** Where the conversation was started; null for conversations from before this was recorded. */
+  surface: Surface | null
 }
 
 export type StoredMessage = { id: string; role: "user" | "assistant"; content: string; createdAt: string }
@@ -70,7 +75,7 @@ export type ActivityEvent = {
   created_at: string | null
 }
 
-export type Agent = { id: string; name: string; role: string | null; status: string | null }
+export type Agent = { id: string; name: string; role: string | null; status: string | null; department: string | null }
 
 export type PendingTask = {
   title: string
@@ -93,6 +98,23 @@ export type ChatTurn = { role: "user" | "assistant"; text: string }
 
 function str(value: unknown): string {
   return typeof value === "string" ? value.trim() : ""
+}
+
+function surfaceOf(value: unknown): Surface | null {
+  const s = str(value).toLowerCase()
+  return s === "web" || s === "desktop" || s === "extension" || s === "voice" ? s : null
+}
+
+function toConversation(c: Record<string, unknown>, fallbackTitle = "New conversation"): Conversation {
+  return {
+    id: str(c.id),
+    title: str(c.title) || fallbackTitle,
+    preview: str(c.preview) || null,
+    updatedAt: str(c.updated_at) || str(c.created_at),
+    createdAt: str(c.created_at) || str(c.updated_at),
+    messageCount: Number(c.message_count) || 0,
+    surface: surfaceOf(c.surface),
+  }
 }
 
 function pendingTaskOf(value: unknown): PendingTask | null {
@@ -270,18 +292,16 @@ export function createApi(store: SessionStore) {
       const q = new URLSearchParams({ limit: "60" })
       if (search.trim()) q.set("search", search.trim())
       const body = await json<{ conversations?: Record<string, unknown>[] }>(`/api/conversations?${q}`, {}, "Couldn't load conversations")
-      return (body.conversations || []).map((c) => ({
-        id: str(c.id),
-        title: str(c.title) || "New conversation",
-        preview: str(c.preview) || null,
-        updatedAt: str(c.updated_at) || str(c.created_at),
-        messageCount: Number(c.message_count) || 0,
-      }))
+      return (body.conversations || []).map((c) => toConversation(c))
     },
 
-    async createConversation(title: string): Promise<Conversation> {
-      const c = await post<Record<string, unknown>>("/api/conversations", { title: title.slice(0, 80) }, "Couldn't start a conversation")
-      return { id: str(c.id), title: str(c.title) || title, preview: null, updatedAt: str(c.updated_at), messageCount: 0 }
+    async createConversation(title: string, surface: Surface = "desktop"): Promise<Conversation> {
+      const c = await post<Record<string, unknown>>(
+        "/api/conversations",
+        { title: title.slice(0, 80), surface },
+        "Couldn't start a conversation",
+      )
+      return { ...toConversation(c, title), surface: surfaceOf(c.surface) ?? surface }
     },
 
     async messages(conversationId: string): Promise<StoredMessage[]> {
@@ -303,12 +323,14 @@ export function createApi(store: SessionStore) {
     async chat(
       args: { history: ChatTurn[]; message: string; conversationId: string | null; agentId: string | null; spoken?: boolean },
       events: ChatEvents = {},
+      signal?: AbortSignal,
     ): Promise<ChatResult> {
       const messages = [...args.history.slice(-30), { role: "user" as const, text: args.message }]
         .filter((turn) => turn.text.trim())
         .map((turn, i) => ({ id: `d${i}`, role: turn.role, parts: [{ type: "text", text: turn.text }] }))
       const res = await request("/api/assistant/chat", {
         method: "POST",
+        signal,
         headers: { Accept: "text/event-stream" },
         body: JSON.stringify({
           messages,
@@ -330,8 +352,29 @@ export function createApi(store: SessionStore) {
       const body = await json<{ agents?: Record<string, unknown>[] } | Record<string, unknown>[]>("/api/agents", {}, "Couldn't load agents")
       const rows = Array.isArray(body) ? body : body.agents || []
       return rows
-        .map((a) => ({ id: str(a.id), name: str(a.name) || "Agent", role: str(a.role) || null, status: str(a.status) || null }))
+        .map((a) => {
+          const config = (a.config && typeof a.config === "object" ? a.config : {}) as Record<string, unknown>
+          return {
+            id: str(a.id),
+            name: str(a.name) || "Agent",
+            role: str(a.role) || null,
+            status: str(a.status) || null,
+            department: str(a.department) || str(config.department) || null,
+          }
+        })
         .filter((a) => a.id)
+    },
+
+    /** What the signed-in role may do in this workspace (approve_writes and so on). */
+    async capabilities(): Promise<{ role: string | null; capabilities: string[] } | null> {
+      try {
+        const body = await json<{ my_role?: string | null; my_capabilities?: unknown }>("/api/org/role-permissions")
+        const caps = Array.isArray(body.my_capabilities) ? body.my_capabilities.map(String) : null
+        return caps ? { role: str(body.my_role) || null, capabilities: caps } : null
+      } catch (err) {
+        if (err instanceof SignedOutError) throw err
+        return null
+      }
     },
 
     async approvals(): Promise<Approval[]> {
@@ -422,18 +465,25 @@ export async function openWeb(appBase: string, path = "/") {
   }
 }
 
-export type LatestRelease = { version: string; url: string }
+export type DesktopRelease = {
+  version: string
+  /** Release notes page. */
+  notes: string | null
+  /** Oldest version that may keep running; older builds must update. */
+  minimum: string | null
+}
 
-/** Newest published desktop release on GitHub, the same source /download uses. */
-export async function latestDesktopRelease(): Promise<LatestRelease | null> {
+const RELEASE_FEED = "https://gravitre.app/desktop/latest.json"
+
+/** The published desktop release, from the same file the /download page reads. */
+export async function desktopRelease(): Promise<DesktopRelease | null> {
   try {
-    const res = await fetch("https://api.github.com/repos/cesarbohjr/gravitre-saas-backend/releases?per_page=20", {
-      headers: { Accept: "application/vnd.github+json" },
-    })
+    const res = await fetch(RELEASE_FEED, { cache: "no-store" })
     if (!res.ok) return null
-    const rows = (await res.json()) as { tag_name: string; html_url: string; draft: boolean; prerelease: boolean }[]
-    const hit = rows.find((r) => !r.draft && !r.prerelease && r.tag_name.startsWith("desktop-v"))
-    return hit ? { version: hit.tag_name.replace(/^desktop-v/, ""), url: hit.html_url } : null
+    const body = (await res.json()) as { version?: unknown; releaseUrl?: unknown; minimumSupported?: unknown }
+    const version = str(body.version)
+    if (!version) return null
+    return { version, notes: str(body.releaseUrl) || null, minimum: str(body.minimumSupported) || null }
   } catch {
     return null
   }

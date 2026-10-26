@@ -1,5 +1,7 @@
+use std::sync::Mutex;
+
 use tauri::{
-    menu::{Menu, MenuItem},
+    menu::{Menu, MenuItem, PredefinedMenuItem},
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
     AppHandle, Emitter, Manager, WindowEvent,
 };
@@ -61,6 +63,45 @@ fn show_companion_window(app: AppHandle) -> Result<(), String> {
     Ok(())
 }
 
+/// The tray menu rows that change while the app runs.
+struct TrayRows {
+    approvals: MenuItem<tauri::Wry>,
+    running: MenuItem<tauri::Wry>,
+}
+
+struct TrayState(Mutex<Option<TrayRows>>);
+
+/// Keeps the tray menu's live rows ("3 approvals waiting", "Running: …") and its visibility in step with the app.
+#[tauri::command]
+fn set_tray_status(
+    app: AppHandle,
+    state: tauri::State<'_, TrayState>,
+    approvals: u32,
+    running: Option<String>,
+    progress: Option<u32>,
+    visible: bool,
+) -> Result<(), String> {
+    if let Some(rows) = state.0.lock().map_err(|e| e.to_string())?.as_ref() {
+        let waiting = match approvals {
+            0 => "No approvals waiting".to_string(),
+            1 => "1 approval waiting".to_string(),
+            n => format!("{n} approvals waiting"),
+        };
+        rows.approvals.set_text(waiting).map_err(|e| e.to_string())?;
+        rows.approvals.set_enabled(approvals > 0).map_err(|e| e.to_string())?;
+        let run = match (running, progress) {
+            (Some(title), Some(pct)) => format!("Running: {title} · {pct}%"),
+            (Some(title), None) => format!("Running: {title}"),
+            (None, _) => "Nothing running".to_string(),
+        };
+        rows.running.set_text(run).map_err(|e| e.to_string())?;
+    }
+    if let Some(tray) = app.tray_by_id("main") {
+        tray.set_visible(visible).map_err(|e| e.to_string())?;
+    }
+    Ok(())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let quick = quick_ask_shortcut();
@@ -91,8 +132,10 @@ pub fn run() {
         )
         .invoke_handler(tauri::generate_handler![
             open_web_deep_link,
-            show_companion_window
+            show_companion_window,
+            set_tray_status
         ])
+        .manage(TrayState(Mutex::new(None)))
         .on_window_event(|window, event| {
             // Closing the window keeps Gravitre in the tray so approval notifications still arrive.
             if let WindowEvent::CloseRequested { api, .. } = event {
@@ -103,13 +146,27 @@ pub fn run() {
             }
         })
         .setup(move |app| {
-            let show_i = MenuItem::with_id(app, "show", "Open Gravitre", true, None::<&str>)?;
+            let approvals_i = MenuItem::with_id(app, "approvals", "No approvals waiting", false, None::<&str>)?;
+            let running_i = MenuItem::with_id(app, "running", "Nothing running", true, None::<&str>)?;
             let quick_i = MenuItem::with_id(app, "quick", "Quick Ask", true, None::<&str>)?;
-            let approvals_i = MenuItem::with_id(app, "approvals", "Approvals", true, None::<&str>)?;
+            let talk_i = MenuItem::with_id(app, "talk", "Talk", true, None::<&str>)?;
+            let show_i = MenuItem::with_id(app, "show", "Open Gravitre", true, None::<&str>)?;
+            let pause_i = MenuItem::with_id(app, "pause", "Pause notifications for 1 hour", true, None::<&str>)?;
             let quit_i = MenuItem::with_id(app, "quit", "Quit Gravitre", true, None::<&str>)?;
-            let menu = Menu::with_items(app, &[&show_i, &quick_i, &approvals_i, &quit_i])?;
+            let sep_a = PredefinedMenuItem::separator(app)?;
+            let sep_b = PredefinedMenuItem::separator(app)?;
+            let menu = Menu::with_items(
+                app,
+                &[&approvals_i, &running_i, &sep_a, &quick_i, &talk_i, &show_i, &sep_b, &pause_i, &quit_i],
+            )?;
+            if let Ok(mut rows) = app.state::<TrayState>().0.lock() {
+                *rows = Some(TrayRows {
+                    approvals: approvals_i.clone(),
+                    running: running_i.clone(),
+                });
+            }
 
-            let _tray = TrayIconBuilder::new()
+            let _tray = TrayIconBuilder::with_id("main")
                 .icon(app.default_window_icon().unwrap().clone())
                 .menu(&menu)
                 .show_menu_on_left_click(false)
@@ -117,7 +174,12 @@ pub fn run() {
                 .on_menu_event(|app, event| match event.id.as_ref() {
                     "show" => show_main(app),
                     "quick" => show_and_emit(app, "quick-ask", ""),
+                    "talk" => show_and_emit(app, "push-to-talk", ""),
                     "approvals" => show_and_emit(app, "open-view", "appr"),
+                    "running" => show_and_emit(app, "open-view", "assign"),
+                    "pause" => {
+                        let _ = app.emit("pause-notifications", "");
+                    }
                     "quit" => app.exit(0),
                     _ => {}
                 })

@@ -1,11 +1,14 @@
-import { useCallback, useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { ART } from "../art"
 import type { ContextSourcesSummary } from "@web/lib/context-sources"
+import { policyLine } from "@web/components/approvals/decision-queue/model"
 import { useStore } from "../store"
-import { Art, Avatar, ErrorLine, Icon, Logo } from "../ui"
-import { systemBadge, timeAgo } from "../lib/model"
-import type { Conversation, PendingTask } from "../lib/api"
+import { AgentAvatar, Art, ErrorLine, Icon, Logo, MOD, type IconName } from "../ui"
+import { clock, dayLabel, systemBadge } from "../lib/model"
+import { identityOf } from "../lib/identity"
+import type { Conversation, PendingTask, Surface } from "../lib/api"
 import { RichText } from "../components/RichText"
+import { AgentChip, clipboardAttachment, Composer, withAttachments, type Attachment } from "../components/Composer"
 import { STARTERS } from "./Home"
 import { useAgentName, VoiceStage } from "./Voice"
 
@@ -13,6 +16,7 @@ type Msg = {
   id: string
   role: "user" | "assistant"
   text: string
+  at?: string
   thinking?: boolean
   status?: string
   sources?: ContextSourcesSummary | null
@@ -23,32 +27,24 @@ type Msg = {
 let seq = 0
 const mid = () => `m${Date.now()}-${seq++}`
 
-function Sources({ s }: { s: ContextSourcesSummary }) {
-  if (!s.used.length && !s.skipped.length) return null
-  return (
-    <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
-      <span className="eyebrow" style={{ fontSize: 10 }}>
-        Sources
-      </span>
-      {s.used.slice(0, 6).map((u, i) => (
-        <span
-          key={i}
-          style={{ display: "inline-flex", alignItems: "center", gap: 5, height: 26, padding: "0 9px 0 4px", borderRadius: 13, border: "1px solid var(--bd)", background: "var(--s1)", fontSize: 12, color: "var(--t2)" }}
-        >
-          <span className="logo" style={{ width: 18, height: 18, fontSize: 8, borderRadius: 9 }}>
-            {systemBadge(u.kind) || "·"}
-          </span>
-          {u.name}
-        </span>
-      ))}
-      {s.skipped.length ? <span className="sub">Left out: {s.skipped.map((x) => `${x.label} (${x.count})`).join(", ")}</span> : null}
-    </div>
-  )
+const SURFACE: Record<Surface, { label: string; icon: IconName; started: string }> = {
+  web: { label: "Web", icon: "globe", started: "Started on the web" },
+  desktop: { label: "Desktop", icon: "monitor", started: "Started on desktop" },
+  extension: { label: "Extension", icon: "puzzle", started: "Started in the extension" },
+  voice: { label: "Voice", icon: "voice", started: "Started by voice" },
+}
+
+function startedLine(c: Conversation | undefined): string {
+  if (!c) return "New conversation"
+  const where = c.surface ? SURFACE[c.surface].started : "Started"
+  const d = dayLabel(c.createdAt)
+  return `${where} · ${d === "Today" ? "today" : d === "Yesterday" ? "yesterday" : d} ${clock(c.createdAt)}`
 }
 
 export function Ask() {
-  const { api, nav, go, agents, prefs, setPrefs, toast, web, refresh } = useStore()
+  const { api, nav, go, agents, prefs, toast, web, refresh, approvals } = useStore()
   const agent = useAgentName()
+  const agentId = identityOf(agents, agent, prefs.agentId || null)
   const [convs, setConvs] = useState<Conversation[]>([])
   const [convsError, setConvsError] = useState<string | null>(null)
   const [q, setQ] = useState("")
@@ -59,14 +55,17 @@ export function Ask() {
   const [busy, setBusy] = useState(false)
   const [ctxOpen, setCtxOpen] = useState(true)
   const [voice, setVoice] = useState(false)
+  const [attachments, setAttachments] = useState<Attachment[]>([])
+  const [attached, setAttached] = useState<(Attachment & { at: string })[]>([])
   const scroller = useRef<HTMLDivElement>(null)
-  const input = useRef<HTMLInputElement>(null)
+  const search = useRef<HTMLInputElement>(null)
+  const abort = useRef<AbortController | null>(null)
   const sentInitial = useRef<string | null>(null)
 
   const loadConvs = useCallback(
-    async (search = q) => {
+    async (term = q) => {
       try {
-        setConvs(await api.conversations(search))
+        setConvs(await api.conversations(term))
         setConvsError(null)
       } catch (err) {
         setConvsError(err instanceof Error ? err.message : "Couldn't load conversations")
@@ -80,11 +79,25 @@ export function Ask() {
     return () => window.clearTimeout(t)
   }, [q, loadConvs])
 
+  // ⌘F searches conversations.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "f") {
+        e.preventDefault()
+        search.current?.focus()
+      }
+    }
+    window.addEventListener("keydown", onKey)
+    return () => window.removeEventListener("keydown", onKey)
+  }, [])
+
   // Opening a stored conversation loads its history; a new one starts empty.
   const openConv = useCallback(
     async (id: string | null) => {
+      abort.current?.abort()
       setConvId(id)
       setVoice(false)
+      setAttached([])
       if (!id) {
         setMsgs([])
         return
@@ -92,7 +105,7 @@ export function Ask() {
       setLoadingMsgs(true)
       try {
         const rows = await api.messages(id)
-        setMsgs(rows.map((m) => ({ id: m.id || mid(), role: m.role, text: m.content })))
+        setMsgs(rows.map((m) => ({ id: m.id || mid(), role: m.role, text: m.content, at: m.createdAt })))
       } catch (err) {
         toast(err instanceof Error ? err.message : "Couldn't load the conversation", "error")
       } finally {
@@ -115,13 +128,20 @@ export function Ask() {
     async (text: string, opts: { fresh?: boolean } = {}) => {
       const t = text.trim()
       if (!t || busy) return
+      const files = opts.fresh ? [] : attachments
+      const message = withAttachments(t, files)
       setDraft("")
+      setAttachments([])
+      if (files.length) setAttached((prev) => [...prev, ...files.map((f) => ({ ...f, at: new Date().toISOString() }))])
       setBusy(true)
       let id = opts.fresh ? null : convId
       const history = opts.fresh ? [] : msgs.filter((m) => !m.thinking && !m.error && m.text).map((m) => ({ role: m.role, text: m.text }))
       const botId = mid()
-      setMsgs((prev) => [...(opts.fresh ? [] : prev), { id: mid(), role: "user", text: t }, { id: botId, role: "assistant", text: "", thinking: true }])
+      const now = new Date().toISOString()
+      setMsgs((prev) => [...(opts.fresh ? [] : prev), { id: mid(), role: "user", text: t, at: now }, { id: botId, role: "assistant", text: "", thinking: true, at: now }])
       const patch = (p: Partial<Msg>) => setMsgs((prev) => prev.map((m) => (m.id === botId ? { ...m, ...p } : m)))
+      const ctl = new AbortController()
+      abort.current = ctl
       try {
         if (!id) {
           const conv = await api.createConversation(t)
@@ -130,23 +150,28 @@ export function Ask() {
           setConvs((prev) => [conv, ...prev.filter((c) => c.id !== conv.id)])
         }
         const result = await api.chat(
-          { history, message: t, conversationId: id, agentId: prefs.agentId || null },
+          { history, message, conversationId: id, agentId: prefs.agentId || null },
           {
             onText: (sofar) => patch({ text: sofar, thinking: false }),
             onStatus: (status) => patch({ status }),
           },
+          ctl.signal,
         )
         patch({ text: result.text || (result.pendingTask ? "" : "Done."), thinking: false, sources: result.sources, pending: result.pendingTask })
         if (result.pendingTask) void refresh("approvals")
         void loadConvs()
       } catch (err) {
-        patch({ thinking: false, error: err instanceof Error ? err.message : "The answer didn't come through." })
+        if (err instanceof DOMException && err.name === "AbortError") {
+          setMsgs((prev) => prev.map((m) => (m.id === botId ? { ...m, thinking: false, text: m.text || "Stopped." } : m)))
+        } else {
+          patch({ thinking: false, error: err instanceof Error ? err.message : "The answer didn't come through." })
+        }
       } finally {
+        if (abort.current === ctl) abort.current = null
         setBusy(false)
-        input.current?.focus()
       }
     },
-    [api, busy, convId, loadConvs, msgs, prefs.agentId, refresh],
+    [api, attachments, busy, convId, loadConvs, msgs, prefs.agentId, refresh],
   )
 
   // Asked from Home, the command bar or Quick Ask: start a new conversation with it.
@@ -158,77 +183,100 @@ export function Ask() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [nav.ask])
 
-  const pasteClipboard = async () => {
-    try {
-      const text = (await navigator.clipboard.readText()).trim()
-      if (!text) return toast("The clipboard is empty.", "error")
-      setDraft((d) => `${d ? `${d}\n\n` : ""}${text.slice(0, 4000)}`)
-      input.current?.focus()
-    } catch {
-      toast("Gravitre couldn't read the clipboard.", "error")
-    }
+  const attach = async () => {
+    const a = await clipboardAttachment()
+    if (a === "denied") toast("Gravitre couldn't read the clipboard.", "error")
+    else if (!a) toast("The clipboard is empty.", "error")
+    else setAttachments((prev) => [...prev, a])
   }
 
   const conv = convs.find((c) => c.id === convId)
   const title = conv?.title || (convId ? "Conversation" : "New conversation")
   const lastSources = [...msgs].reverse().find((m) => m.sources)?.sources || null
   const lastText = [...msgs].reverse().find((m) => m.text && !m.thinking)?.text || ""
+  const related = convId ? approvals.data.filter((a) => a.context.conversationId === convId) : []
+
+  const groups = useMemo(() => {
+    const out: { label: string; items: Conversation[] }[] = []
+    for (const c of convs) {
+      const label = dayLabel(c.updatedAt)
+      const last = out[out.length - 1]
+      if (last && last.label === label) last.items.push(c)
+      else out.push({ label, items: [c] })
+    }
+    return out
+  }, [convs])
 
   return (
-    <div className="split fade" style={{ height: "100%" }}>
-      <section aria-label="Conversations" style={{ width: 300, flex: "none", borderRight: "1px solid var(--bd)", background: "var(--s1)", display: "flex", flexDirection: "column", minHeight: 0 }}>
-        <div style={{ padding: "22px 16px 10px", display: "flex", flexDirection: "column", gap: 10 }}>
-          <span className="eyebrow">Ask Gravitre</span>
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <span style={{ fontSize: 22, fontWeight: 600, letterSpacing: "-0.01em", flex: 1 }}>Conversations</span>
-            <button className="btn btn-k btn-sm" onClick={() => void openConv(null)}>
-              <Icon name="plus" size={14} />
-              New
-            </button>
-          </div>
-          <label htmlFor="conv-q" className="sr">
-            Search conversations
-          </label>
-          <input
-            id="conv-q"
-            className="field"
-            placeholder="Search conversations"
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-          />
+    <div className="body fade" style={{ minHeight: 0 }}>
+      <section className="lpane" aria-label="Conversations" style={{ width: 268 }}>
+        <div className="lhead">
+          <h1>Ask</h1>
+          <button className="ib" aria-label="New conversation" title="New conversation" onClick={() => void openConv(null)}>
+            <Icon name="edit" />
+          </button>
         </div>
-        <div style={{ flex: 1, overflow: "auto", padding: "0 8px 12px", display: "flex", flexDirection: "column", gap: 2 }}>
+        <div style={{ padding: "0 10px 6px" }}>
+          <label className="field" style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <Icon name="search" size={14} style={{ color: "var(--t3)" }} />
+            <input
+              ref={search}
+              aria-label="Search conversations"
+              placeholder="Search conversations"
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              style={{ flex: 1, minWidth: 0, border: 0, outline: 0, background: "transparent", color: "inherit", font: "inherit" }}
+            />
+            <span className="kbd">{MOD} F</span>
+          </label>
+        </div>
+        <div className="scroll" style={{ flex: 1, padding: "0 6px 10px" }}>
           {convsError ? <div className="sub" style={{ padding: 10 }}>{convsError}</div> : null}
           {!convsError && convs.length === 0 ? (
             <div className="sub" style={{ padding: 10 }}>
               {q ? "No conversations match." : "Your conversations from the web, desktop and extension show up here."}
             </div>
           ) : null}
-          {convs.map((c) => (
-            <button key={c.id} className={`lr ${c.id === convId ? "on" : ""}`} onClick={() => void openConv(c.id)} style={{ padding: 10 }}>
-              <span style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 1 }}>
-                <span style={{ display: "flex", gap: 8 }}>
-                  <span style={{ fontSize: 13, fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", flex: 1 }}>{c.title}</span>
-                  <span className="sub" style={{ fontSize: 11 }}>
-                    {timeAgo(c.updatedAt)}
+          {groups.map((g) => (
+            <div key={g.label}>
+              <div className="grp">{g.label}</div>
+              {g.items.map((c) => (
+                <button key={c.id} className={`cv ${c.id === convId ? "on" : ""}`} aria-current={c.id === convId ? "true" : undefined} onClick={() => void openConv(c.id)}>
+                  <AgentAvatar id={agentId} size={20} />
+                  <span style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 1 }}>
+                    <span className="ell" style={{ fontSize: 13, fontWeight: 600 }}>
+                      {c.title}
+                    </span>
+                    <span className="sub ell">{c.preview || "No messages yet"}</span>
+                    {c.surface ? (
+                      <span className="sub" style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 11 }}>
+                        <Icon name={SURFACE[c.surface].icon} size={11} />
+                        {SURFACE[c.surface].label}
+                      </span>
+                    ) : null}
                   </span>
-                </span>
-                <span style={{ fontSize: 12, color: "var(--t3)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{c.preview || "No messages yet"}</span>
-              </span>
-            </button>
+                </button>
+              ))}
+            </div>
           ))}
         </div>
       </section>
-      <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", minHeight: 0 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "18px 24px 14px", borderBottom: "1px solid var(--bd)", background: "var(--s1)" }}>
+      <section className="dpane" aria-label="Conversation">
+        <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 16px 10px 24px", borderBottom: "1px solid var(--bs)" }}>
           <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column" }}>
-            <span className="eyebrow">With {agent}</span>
-            <span style={{ fontSize: 20, fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{title}</span>
+            <span className="ell" style={{ fontSize: 15, fontWeight: 600 }}>
+              {title}
+            </span>
+            <span className="sub">{startedLine(conv)}</span>
           </div>
-          <button className="btn btn-sm" onClick={() => web(convId ? `/ai?c=${encodeURIComponent(convId)}` : "/ai")}>
+          <span className="chip">
+            <AgentAvatar id={agentId} size={18} />
+            {agent}
+          </span>
+          <button className="mlink" onClick={() => web(convId ? `/ai?c=${encodeURIComponent(convId)}` : "/ai")}>
             Continue on web ↗
           </button>
-          <button className="ib" aria-label="Toggle context panel" aria-pressed={ctxOpen} onClick={() => setCtxOpen((o) => !o)}>
+          <button className="ib" aria-label={ctxOpen ? "Hide context" : "Show context"} aria-pressed={ctxOpen} onClick={() => setCtxOpen((o) => !o)}>
             <Icon name="panel" />
           </button>
         </div>
@@ -240,25 +288,23 @@ export function Ask() {
               setConvId(id)
               void loadConvs()
             }}
-            onTurn={(turn) => setMsgs((prev) => [...prev, { id: mid(), role: turn.who === "you" ? "user" : "assistant", text: turn.text }])}
+            onTurn={(turn) => setMsgs((prev) => [...prev, { id: mid(), role: turn.who === "you" ? "user" : "assistant", text: turn.text, at: turn.at }])}
             onClose={() => setVoice(false)}
           />
         ) : (
           <>
-            <div ref={scroller} aria-live="polite" style={{ flex: 1, minHeight: 0, overflow: "auto", padding: 24, display: "flex", flexDirection: "column", gap: 18 }}>
+            <div ref={scroller} aria-live="polite" className="scroll" style={{ flex: 1, padding: "18px 24px", display: "flex", flexDirection: "column", gap: 16 }}>
               {loadingMsgs ? <span className="sub">Loading the conversation…</span> : null}
               {!loadingMsgs && msgs.length === 0 ? (
-                <div style={{ margin: "auto", display: "flex", flexDirection: "column", alignItems: "center", gap: 10, textAlign: "center", maxWidth: 460 }}>
-                  <Art src={ART.conversation} width={220} style={{ marginBottom: 8 }} />
-                  <span className="eyebrow">New conversation</span>
-                  <span style={{ fontSize: 26, fontWeight: 600, letterSpacing: "-0.01em" }}>What should {agent} work on?</span>
-                  <span className="sub" style={{ fontSize: 14 }}>
+                <div style={{ margin: "auto", display: "flex", flexDirection: "column", alignItems: "center", gap: 8, textAlign: "center", maxWidth: 420 }}>
+                  <Art src={ART.conversation} width={180} style={{ marginBottom: 6 }} />
+                  <span style={{ fontSize: 20, fontWeight: 600 }}>What should {agent} work on?</span>
+                  <span className="sub" style={{ fontSize: 13 }}>
                     {agent} checks your connected apps, plans multi-step work, and asks before changing anything.
                   </span>
-                  <div style={{ display: "flex", flexWrap: "wrap", gap: 8, justifyContent: "center", marginTop: 6 }}>
-                    {STARTERS.slice(0, 2).map((t) => (
-                      <button key={t} className="qchip" style={{ height: 36, fontSize: 13 }} onClick={() => void send(t)}>
-                        <span style={{ color: "var(--br)" }}>↳</span>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 6, justifyContent: "center", marginTop: 6 }}>
+                    {STARTERS.slice(0, 3).map((t) => (
+                      <button key={t} className="btn btn-sm" style={{ borderRadius: 14 }} onClick={() => void send(t)}>
                         {t}
                       </button>
                     ))}
@@ -267,162 +313,148 @@ export function Ask() {
               ) : null}
               {msgs.map((m) =>
                 m.role === "user" ? (
-                  <div key={m.id} className="ubub" style={{ whiteSpace: "pre-wrap" }}>
+                  <div key={m.id} className="ubub">
                     {m.text}
                   </div>
                 ) : (
-                  <div key={m.id} style={{ display: "flex", gap: 12 }} className="fade">
-                    <Avatar name={agent} />
-                    <div style={{ display: "flex", flexDirection: "column", gap: 10, minWidth: 0, flex: 1, maxWidth: 680 }}>
-                      <div style={{ fontSize: 13 }}>
-                        <b>{agent}</b>
+                  <div key={m.id} style={{ display: "flex", gap: 10 }} className="fade">
+                    <AgentAvatar id={agentId} size={22} />
+                    <div style={{ display: "flex", flexDirection: "column", gap: 8, minWidth: 0, flex: 1, maxWidth: 640 }}>
+                      <div style={{ fontSize: 13, display: "flex", gap: 6, alignItems: "center" }}>
+                        <b style={{ fontWeight: 600 }}>{agent}</b>
+                        {m.thinking || (busy && m === msgs[msgs.length - 1]) ? (
+                          <span style={{ color: "var(--sig)", display: "inline-flex", alignItems: "center", gap: 5 }}>
+                            <span className="dot" style={{ background: "var(--sig)", width: 5, height: 5 }} />
+                            {m.thinking ? m.status || "Checking your sources" : "Writing"}
+                          </span>
+                        ) : (
+                          <span className="sub">
+                            {agentId.dept.label}
+                            {m.at ? ` · ${clock(m.at)}` : ""}
+                          </span>
+                        )}
                       </div>
                       {m.thinking ? (
-                        <span style={{ display: "inline-flex", alignItems: "center", gap: 8, fontSize: 13, color: "var(--sig)" }}>
-                          <span className="typing">
-                            <span />
-                            <span />
-                            <span />
-                          </span>
-                          {m.status || "Checking your sources"}
+                        <span className="typing" aria-label="Thinking">
+                          <span />
+                          <span />
+                          <span />
                         </span>
                       ) : null}
                       {m.text ? <RichText text={m.text} /> : null}
                       {m.error ? <ErrorLine message={m.error} /> : null}
                       {m.pending ? (
-                        <div className="card" style={{ overflow: "hidden" }}>
-                          <div className="band" style={{ padding: "12px 16px", display: "flex", gap: 10, alignItems: "center" }}>
-                            <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column" }}>
-                              <span style={{ fontSize: 15, fontWeight: 600 }}>{m.pending.title}</span>
-                              <span className="sub">Nothing changes until it's approved</span>
-                            </div>
-                            <span className="pill st-wait">
-                              <span className="dot" />
-                              Needs approval
+                        <div className="card" style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", boxShadow: "none" }}>
+                          <Logo text="·" style={{ width: 28, height: 28 }} />
+                          <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column" }}>
+                            <span className="ell" style={{ fontSize: 13, fontWeight: 600 }}>
+                              {m.pending.title}
+                            </span>
+                            <span className="sub ell">
+                              {m.pending.steps.length ? `${m.pending.steps.length} ${m.pending.steps.length === 1 ? "step" : "steps"} · ` : ""}
+                              Nothing changes until it's approved
                             </span>
                           </div>
-                          {m.pending.steps.map((st, i) => (
-                            <div key={i} style={{ display: "flex", gap: 10, alignItems: "center", minHeight: 42, padding: "0 16px", borderTop: "1px solid var(--bs)", fontSize: 13 }}>
-                              <span className="stp st-q">
-                                <Icon name="circle" size={12} strokeWidth={2} />
-                              </span>
-                              <span style={{ flex: 1 }}>{st}</span>
-                            </div>
-                          ))}
-                          <div style={{ padding: "10px 16px", display: "flex", gap: 8, alignItems: "center", borderTop: "1px solid var(--bs)" }}>
-                            <span className="sub" style={{ flex: 1 }}>
-                              In Approvals · waiting on a decision
-                            </span>
-                            <button className="btn btn-l btn-sm" onClick={() => go("appr")}>
-                              Review in Approvals →
-                            </button>
-                          </div>
+                          <span className="pill st-wait">
+                            <span className="dot" />
+                            Needs approval
+                          </span>
+                          <button className="btn btn-sm" onClick={() => go("appr")}>
+                            Review
+                          </button>
                         </div>
                       ) : null}
-                      {m.sources ? <Sources s={m.sources} /> : null}
                     </div>
                   </div>
                 ),
               )}
             </div>
-            <div style={{ padding: "12px 24px 20px" }}>
-              <div className="composer">
-                <label htmlFor="ask-in" className="sr">
-                  Message {agent}
-                </label>
-                <input
-                  id="ask-in"
-                  ref={input}
-                  className="ta"
-                  autoFocus
-                  placeholder={`Ask ${agent}`}
-                  value={draft}
-                  onChange={(e) => setDraft(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" && !e.shiftKey) {
-                      e.preventDefault()
-                      void send(draft)
-                    }
-                  }}
-                />
-                <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                  <button className="ib" aria-label="Paste clipboard" title="Paste clipboard" style={{ width: 30, height: 30 }} onClick={() => void pasteClipboard()}>
-                    <Icon name="clip" />
-                  </button>
-                  <label className="sr" htmlFor="agent-pick">
-                    Agent
-                  </label>
-                  <select id="agent-pick" className="select-sm" value={prefs.agentId} onChange={(e) => setPrefs({ agentId: e.target.value })}>
-                    <option value="">Gravitre</option>
-                    {agents.map((a) => (
-                      <option key={a.id} value={a.id}>
-                        {a.name}
-                        {a.role ? ` · ${a.role}` : ""}
-                      </option>
-                    ))}
-                  </select>
-                  <span style={{ flex: 1 }} />
-                  <div className="mode" role="radiogroup" aria-label="Conversation mode">
-                    <button className="on" role="radio" aria-checked="true">
-                      <Icon name="ask" size={14} />
-                      Text
-                    </button>
-                    <button role="radio" aria-checked="false" onClick={() => setVoice(true)}>
-                      <Icon name="voice" size={14} />
-                      Voice
-                    </button>
-                  </div>
-                  <button className="btn btn-k btn-sm" disabled={busy || !draft.trim()} onClick={() => void send(draft)}>
-                    Send <span style={{ opacity: 0.6 }}>↵</span>
-                  </button>
-                </div>
-              </div>
+            <div style={{ padding: "8px 24px 18px" }}>
+              <Composer
+                id="ask-in"
+                autoFocus
+                value={draft}
+                onChange={setDraft}
+                onSend={() => void send(draft)}
+                placeholder={busy ? `Type to redirect ${agent}, or press Esc to stop` : `Ask ${agent}`}
+                busy={busy}
+                onStop={() => abort.current?.abort()}
+                onVoice={() => setVoice(true)}
+                attachments={attachments}
+                onAttach={() => void attach()}
+                onRemove={(id) => setAttachments((prev) => prev.filter((a) => a.id !== id))}
+                leading={<AgentChip />}
+              />
             </div>
           </>
         )}
-      </div>
+      </section>
       {ctxOpen ? (
-        <aside aria-label="Context" style={{ width: 290, flex: "none", borderLeft: "1px solid var(--bd)", background: "var(--s1)", padding: "22px 18px", display: "flex", flexDirection: "column", gap: 22, overflow: "auto" }}>
-          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            <span className="eyebrow">Sources used</span>
+        <aside aria-label="Context" className="ctx">
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            <h3 style={{ margin: 0, fontSize: 13, fontWeight: 600 }}>Sources used</h3>
             {lastSources?.used.length ? (
               lastSources.used.map((s, i) => (
                 <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13 }}>
                   <Logo text={systemBadge(s.kind) || "·"} />
-                  <span style={{ flex: 1, minWidth: 0 }}>{s.name}</span>
+                  <span className="ell" style={{ flex: 1, minWidth: 0 }}>
+                    {s.name}
+                  </span>
                   {s.freshness ? <span className="sub">{s.freshness}</span> : null}
                 </div>
               ))
             ) : (
               <span className="sub">{lastSources?.summary || "Sources show here after an answer that used your connected data."}</span>
             )}
-            {lastSources?.skipped.length ? (
-              <>
-                <span className="eyebrow" style={{ marginTop: 6 }}>
-                  Left out
+            {lastSources?.skipped.map((s, i) => (
+              <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: "var(--t3)" }}>
+                <Logo text={systemBadge(s.label) || "·"} />
+                <span style={{ flex: 1 }}>
+                  Left out: {s.label} ({s.count})
                 </span>
-                {lastSources.skipped.map((s, i) => (
-                  <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: "var(--t3)" }}>
-                    <span style={{ flex: 1 }}>
-                      {s.label} ({s.count})
-                    </span>
-                  </div>
-                ))}
-              </>
+              </div>
+            ))}
+            {lastSources?.skipped.length ? (
+              <button className="link" style={{ alignSelf: "flex-start" }} onClick={() => web("/connectors")}>
+                Connect apps on web ↗
+              </button>
             ) : null}
-            <button className="btn btn-l btn-sm" style={{ alignSelf: "flex-start", padding: 0 }} onClick={() => web("/connectors")}>
-              Connect apps on web ↗
-            </button>
           </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            <span className="eyebrow">How context works</span>
-            <span className="sub" style={{ fontSize: 13 }}>
-              Answers use the apps and knowledge your workspace connected. Nothing is changed without an approval.
-            </span>
-            <button className="btn btn-l btn-sm" style={{ alignSelf: "flex-start", padding: 0 }} onClick={() => web("/ai/help/context")}>
-              How Gravitre uses your context ↗
-            </button>
-          </div>
+          {attached.length ? (
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              <h3 style={{ margin: 0, fontSize: 13, fontWeight: 600 }}>Attached</h3>
+              {attached.map((a) => (
+                <div key={a.id} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13 }}>
+                  <Icon name={a.icon} size={14} style={{ color: "var(--t3)" }} />
+                  <span className="ell" style={{ flex: 1 }}>
+                    {a.label}
+                  </span>
+                  <span className="sub">{clock(a.at)}</span>
+                </div>
+              ))}
+            </div>
+          ) : null}
+          {related.length ? (
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              <h3 style={{ margin: 0, fontSize: 13, fontWeight: 600 }}>Waiting on approval</h3>
+              {related.map((a) => (
+                <div key={a.id} className="card" style={{ padding: "10px 12px", display: "flex", flexDirection: "column", gap: 6, boxShadow: "none" }}>
+                  <span className="pill st-wait" style={{ alignSelf: "flex-start" }}>
+                    <span className="dot" />
+                    Needs approval
+                  </span>
+                  <span style={{ fontSize: 13, fontWeight: 600 }}>{a.title}</span>
+                  <span className="sub">{policyLine(a)}</span>
+                  <button className="link" style={{ alignSelf: "flex-start" }} onClick={() => go({ view: "appr", select: a.id })}>
+                    Review
+                  </button>
+                </div>
+              ))}
+            </div>
+          ) : null}
+          <button className="link" style={{ alignSelf: "flex-start", marginTop: "auto" }} onClick={() => web("/ai/help/context")}>
+            How Gravitre uses your context ↗
+          </button>
         </aside>
       ) : null}
     </div>

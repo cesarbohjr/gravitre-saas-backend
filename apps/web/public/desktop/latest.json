@@ -1,5 +1,6 @@
 {
   "version": "0.3.0",
+  "minimumSupported": "0.3.0",
   "publishedAt": "2026-10-22T04:53:00.000Z",
   "signed": false,
   "releaseUrl": "https://github.com/cesarbohjr/gravitre-saas-backend/releases/tag/desktop-v0.3.0",

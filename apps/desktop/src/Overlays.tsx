@@ -1,9 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from "react"
 import { useStore, type View } from "./store"
-import { Avatar, Icon, Mark, MOD, SHIFT, type IconName } from "./ui"
-import { avatarColor, initials, timeAgo } from "./lib/model"
+import { AgentAvatar, Icon, MarkTile, MOD, SHIFT, WorkspaceTile, type IconName } from "./ui"
+import { timeAgo } from "./lib/model"
 import type { Conversation } from "./lib/api"
 import { RichText } from "./components/RichText"
+import { AgentChip, clipboardAttachment, Composer, withAttachments, type Attachment } from "./components/Composer"
+import { identityOf } from "./lib/identity"
+import { systemBadge } from "./lib/model"
+import { Logo } from "./ui"
+import type { ContextSourcesSummary } from "@web/lib/context-sources"
 import { useAgentName } from "./views/Voice"
 
 function Backdrop({ onClose }: { onClose: () => void }) {
@@ -16,8 +21,8 @@ export function WorkspaceMenu() {
   return (
     <>
       <Backdrop onClose={() => setOverlay(null)} />
-      <div className="pop menu fade" role="menu" style={{ left: 10, top: 56 }}>
-        <div className="eyebrow" style={{ padding: "8px 10px" }}>
+      <div className="pop menu fade" role="menu" aria-label="Workspaces" style={{ left: 10, bottom: 100 }}>
+        <div className="eyebrow" style={{ padding: "6px 10px" }}>
           Workspaces
         </div>
         {orgs.length === 0 ? (
@@ -40,10 +45,10 @@ export function WorkspaceMenu() {
                 } else setOverlay(null)
               }}
             >
-              <span style={{ width: 22, height: 22, borderRadius: 6, background: avatarColor(o.id), color: "#fff", fontSize: 11, fontWeight: 700, display: "inline-flex", alignItems: "center", justifyContent: "center" }} aria-hidden="true">
-                {initials(o.name)}
+              <WorkspaceTile name={o.name} size={22} />
+              <span className="ell" style={{ flex: 1 }}>
+                {o.name}
               </span>
-              <span style={{ flex: 1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{o.name}</span>
               <span className="sub">{o.role ? o.role.charAt(0).toUpperCase() + o.role.slice(1) : ""}</span>
             </button>
           )
@@ -63,7 +68,7 @@ export function UserMenu() {
   return (
     <>
       <Backdrop onClose={() => setOverlay(null)} />
-      <div className="pop menu fade" role="menu" style={{ left: 10, bottom: 56 }}>
+      <div className="pop menu fade" role="menu" aria-label="Account" style={{ left: 10, bottom: 54 }}>
         <div style={{ padding: "8px 10px", display: "flex", flexDirection: "column" }}>
           <span style={{ fontSize: 14, fontWeight: 600 }}>{me?.name || "Signed in"}</span>
           <span className="sub">{[me?.email, me?.role ? me.role.charAt(0).toUpperCase() + me.role.slice(1) : null].filter(Boolean).join(" · ")}</span>
@@ -81,12 +86,12 @@ export function UserMenu() {
             setOverlay(null)
           }}
         >
-          <Icon name="moon" />
+          <Icon name="circle" />
           {dark ? "Light theme" : "Dark theme"}
         </button>
-        <button className="mi" role="menuitem" onClick={() => web("/home")}>
+        <button className="mi" role="menuitem" onClick={() => web("/settings/profile")}>
           <Icon name="ext" />
-          Open Gravitre on the web
+          Account on the web
         </button>
         <div style={{ borderTop: "1px solid var(--bs)", margin: "6px 0" }} />
         <button className="mi" role="menuitem" onClick={signOut}>
@@ -98,79 +103,52 @@ export function UserMenu() {
   )
 }
 
-export function Notifications() {
-  const { approvals, assignments, go, setOverlay, api, toast, refresh } = useStore()
-  const dayAgo = Date.now() - 24 * 3600 * 1000
-  const items: { key: string; title: string; body: string; time: string; cls: string; icon: IconName; open: () => void; approve?: () => void }[] = [
-    ...approvals.data.slice(0, 3).map((a) => ({
-      key: a.id,
-      title: "Approval needed",
-      body: `${a.title} · ${a.requestedBy}`,
-      time: timeAgo(a.requestedAt),
-      cls: "st-wait",
-      icon: "appr" as IconName,
-      open: () => go({ view: "appr", select: a.id }),
-      approve: () => {
-        setOverlay(null)
-        api
-          .approve(a.id)
-          .then(() => toast(`Approved · ${a.title}`))
-          .catch((err) => toast(err instanceof Error ? err.message : "Couldn't approve", "error"))
-          .finally(() => void refresh("approvals"))
-      },
-    })),
-    ...assignments.data
-      .filter((a) => (a.status === "done" || a.status === "failed") && new Date(a.finishedAt || a.createdAt).getTime() > dayAgo)
-      .slice(0, 4)
-      .map((a) => ({
-        key: a.id,
-        title: a.status === "done" ? "Assignment finished" : `Run failed: ${a.title}`,
-        body: a.status === "done" ? `${a.title}${a.outcome && a.outcome !== "Finished." ? ` · ${a.outcome}` : ""}` : a.outcome || "Open it to see why.",
-        time: timeAgo(a.finishedAt || a.createdAt),
-        cls: a.status === "done" ? "st-done" : "st-fail",
-        icon: (a.status === "done" ? "check" : "alert") as IconName,
-        open: () => go({ view: "assign", select: a.id }),
-      })),
-  ]
+/** In-app copies of the native notifications, with the buttons the OS ones can't carry. */
+export function Notices() {
+  const { notices, dismissNotice, go, approveWithUndo, canApprove } = useStore()
+  if (!notices.length) return null
   return (
-    <>
-      <Backdrop onClose={() => setOverlay(null)} />
-      <div className="pop menu fade" role="dialog" aria-label="Notifications" style={{ right: 12, top: 48, width: 390, padding: 8 }}>
-        <div style={{ display: "flex", alignItems: "center", padding: "8px 8px 10px" }}>
-          <span style={{ fontSize: 15, fontWeight: 600, flex: 1 }}>Notifications</span>
-          <button className="btn btn-l btn-sm" onClick={() => go("settings")}>
-            Preferences
+    <div className="notices" aria-live="polite">
+      {notices.map((n) => (
+        <div key={n.id} className="notice fade" role="status">
+          <MarkTile size={30} />
+          <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 2 }}>
+            <div style={{ display: "flex", gap: 8, alignItems: "baseline" }}>
+              <span style={{ fontSize: 13, fontWeight: 600, flex: 1 }} className="ell">
+                {n.title}
+              </span>
+              <span className="sub">{n.time}</span>
+            </div>
+            <span style={{ fontSize: 13, color: "var(--t2)" }}>{n.body}</span>
+            <div style={{ display: "flex", gap: 6, marginTop: 6 }}>
+              <button
+                className="btn btn-sm"
+                onClick={() => {
+                  dismissNotice(n.id)
+                  go(n.open)
+                }}
+              >
+                Open
+              </button>
+              {n.approval && canApprove ? (
+                <button
+                  className="btn btn-p btn-sm"
+                  onClick={() => {
+                    dismissNotice(n.id)
+                    approveWithUndo(n.approval!)
+                  }}
+                >
+                  Approve
+                </button>
+              ) : null}
+            </div>
+          </div>
+          <button className="ib" aria-label="Dismiss" style={{ width: 24, height: 24 }} onClick={() => dismissNotice(n.id)}>
+            <Icon name="x" size={13} />
           </button>
         </div>
-        {items.length === 0 ? (
-          <div className="sub" style={{ padding: "12px 8px", borderTop: "1px solid var(--bs)" }}>
-            Nothing new. Approvals and finished work from the last day show here.
-          </div>
-        ) : null}
-        {items.map((n) => (
-          <div key={n.key} style={{ display: "flex", gap: 10, padding: "12px 8px", borderTop: "1px solid var(--bs)" }}>
-            <span className={`pill ${n.cls}`} style={{ width: 30, height: 30, padding: 0, justifyContent: "center", borderRadius: 9 }}>
-              <Icon name={n.icon} size={14} />
-            </span>
-            <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 2 }}>
-              <span style={{ fontSize: 13, fontWeight: 600 }}>{n.title}</span>
-              <span style={{ fontSize: 13, color: "var(--t2)", overflow: "hidden", textOverflow: "ellipsis", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>{n.body}</span>
-              <div style={{ display: "flex", gap: 6, marginTop: 6 }}>
-                <button className="btn btn-sm" onClick={n.open}>
-                  Open
-                </button>
-                {n.approve ? (
-                  <button className="btn btn-k btn-sm" onClick={n.approve}>
-                    Approve
-                  </button>
-                ) : null}
-              </div>
-            </div>
-            <span className="sub">{n.time}</span>
-          </div>
-        ))}
-      </div>
-    </>
+      ))}
+    </div>
   )
 }
 
@@ -179,10 +157,10 @@ type Cmd = { head?: string; t?: string; k?: string; icon?: IconName; run?: () =>
 export const VIEW_KEYS: [View, string, IconName, string][] = [
   ["home", "Home", "home", "1"],
   ["ask", "Ask", "ask", "2"],
-  ["voice", "Voice", "voice", "3"],
-  ["assign", "Assignments", "assign", "4"],
-  ["appr", "Approvals", "appr", "5"],
-  ["act", "Activity", "act", "6"],
+  ["assign", "Assignments", "assign", "3"],
+  ["appr", "Approvals", "appr", "4"],
+  ["act", "Activity", "act", "5"],
+  ["voice", "Voice", "voice", "6"],
 ]
 
 export function CommandBar() {
@@ -210,7 +188,7 @@ export function CommandBar() {
       { head: "Actions" },
       { t: "New conversation", k: `${MOD} N`, icon: "plus" as IconName, run: () => go({ view: "ask", select: null }) },
       { t: "Quick Ask", k: `${MOD}${SHIFT}Space`, icon: "ask" as IconName, run: () => setOverlay("quick") },
-      { t: dark ? "Switch to light theme" : "Switch to dark theme", icon: "moon" as IconName, run: () => (setPrefs({ theme: dark ? "light" : "dark" }), setOverlay(null)) },
+      { t: dark ? "Switch to light theme" : "Switch to dark theme", icon: "circle" as IconName, run: () => (setPrefs({ theme: dark ? "light" : "dark" }), setOverlay(null)) },
       ...(approvals.data.length ? [{ head: "Waiting on you" }] : []),
       ...approvals.data.slice(0, 5).map((a) => ({ t: a.title, k: "Approval", icon: "appr" as IconName, run: () => go({ view: "appr", select: a.id }) })),
       ...(assignments.data.length ? [{ head: "Assignments" }] : []),
@@ -293,132 +271,145 @@ export function CommandBar() {
 }
 
 export function QuickAsk() {
-  const { api, setOverlay, go, prefs } = useStore()
-  const agent = useAgentName()
+  const { api, setOverlay, go, prefs, agents, toast } = useStore()
+  const agent = identityOf(agents, null, prefs.agentId || null)
   const [draft, setDraft] = useState("")
-  const [question, setQuestion] = useState("")
-  const [answer, setAnswer] = useState("")
+  const [turns, setTurns] = useState<{ q: string; a: string; sources: ContextSourcesSummary | null }[]>([])
   const [status, setStatus] = useState("")
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [attachments, setAttachments] = useState<Attachment[]>([])
   const conv = useRef<string | null>(null)
-  const input = useRef<HTMLInputElement>(null)
+  const abort = useRef<AbortController | null>(null)
+  const scroller = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    scroller.current?.scrollTo({ top: scroller.current.scrollHeight })
+  }, [turns])
 
   const send = async () => {
     const t = draft.trim()
     if (!t || busy) return
+    const message = withAttachments(t, attachments)
     setDraft("")
-    setQuestion(t)
-    setAnswer("")
+    setAttachments([])
     setError(null)
     setBusy(true)
+    const history = turns.flatMap((x) => [
+      { role: "user" as const, text: x.q },
+      { role: "assistant" as const, text: x.a },
+    ])
+    setTurns((prev) => [...prev, { q: t, a: "", sources: null }])
+    const patch = (p: { a?: string; sources?: ContextSourcesSummary | null }) =>
+      setTurns((prev) => prev.map((x, i) => (i === prev.length - 1 ? { ...x, ...p } : x)))
+    abort.current = new AbortController()
     try {
       if (!conv.current) conv.current = (await api.createConversation(t)).id
-      const history = question && answer ? [{ role: "user" as const, text: question }, { role: "assistant" as const, text: answer }] : []
-      const res = await api.chat({ history, message: t, conversationId: conv.current, agentId: prefs.agentId || null }, { onText: setAnswer, onStatus: setStatus })
-      setAnswer(res.text || "Done.")
+      const res = await api.chat(
+        { history, message, conversationId: conv.current, agentId: prefs.agentId || null },
+        { onText: (a) => patch({ a }), onStatus: setStatus },
+        abort.current.signal,
+      )
+      patch({ a: res.text || "Done.", sources: res.sources })
     } catch (err) {
-      setError(err instanceof Error ? err.message : "The answer didn't come through.")
+      if (!(err instanceof DOMException && err.name === "AbortError")) setError(err instanceof Error ? err.message : "The answer didn't come through.")
     } finally {
+      abort.current = null
       setBusy(false)
       setStatus("")
-      input.current?.focus()
     }
   }
 
-  const pasteClipboard = async () => {
-    try {
-      const text = (await navigator.clipboard.readText()).trim()
-      if (text) setDraft((d) => `${d ? `${d} ` : ""}${text.slice(0, 4000)}`)
-    } catch {
-      setError("Gravitre couldn't read the clipboard.")
-    }
+  const attach = async () => {
+    const a = await clipboardAttachment()
+    if (a === "denied") toast("Gravitre couldn't read the clipboard.", "error")
+    else if (!a) toast("The clipboard is empty.", "error")
+    else setAttachments((prev) => [...prev, a])
   }
 
   return (
-    <div className="scrim" onClick={() => setOverlay(null)} style={{ background: "transparent", justifyContent: "flex-end", alignItems: "flex-start", padding: "56px 56px 0 0" }}>
-      <div className="pop fade" role="dialog" aria-label="Quick Ask" style={{ width: 420, height: 520, display: "flex", flexDirection: "column", overflow: "hidden", background: "var(--cv)", borderRadius: 16 }} onClick={(e) => e.stopPropagation()}>
-        <div style={{ height: 44, display: "flex", alignItems: "center", gap: 10, padding: "0 8px 0 14px", background: "var(--s3)", borderBottom: "1px solid var(--bd)", flex: "none" }}>
-          <Mark width={20} height={12} />
-          <span style={{ fontSize: 14, fontWeight: 600, flex: 1 }}>Quick Ask</span>
-          <button aria-label="Close" className="ib" onClick={() => setOverlay(null)}>
-            <Icon name="x" />
+    <div className="scrim" onClick={() => setOverlay(null)} style={{ background: "transparent", justifyContent: "flex-end", alignItems: "flex-start", padding: "16px 16px 0 0" }}>
+      <div className="pop fade" role="dialog" aria-label="Quick Ask" style={{ width: 380, height: 470, display: "flex", flexDirection: "column", overflow: "hidden", background: "var(--cv)", borderRadius: 12 }} onClick={(e) => e.stopPropagation()}>
+        <div style={{ height: 40, display: "flex", alignItems: "center", gap: 8, padding: "0 6px 0 12px", background: "var(--s1)", borderBottom: "1px solid var(--bd)", flex: "none" }}>
+          <MarkTile size={20} />
+          <span style={{ fontSize: 13, fontWeight: 600, flex: 1 }}>Quick Ask</span>
+          <button aria-label="Continue in full window" title="Continue in full window" className="ib" style={{ width: 28, height: 28 }} onClick={() => go({ view: "ask", select: conv.current })}>
+            <Icon name="expand" size={14} />
+          </button>
+          <button aria-label="Close" className="ib" style={{ width: 28, height: 28 }} onClick={() => setOverlay(null)}>
+            <Icon name="x" size={14} />
           </button>
         </div>
-        <div style={{ flex: 1, overflow: "auto", padding: 16, display: "flex", flexDirection: "column", gap: 12 }}>
-          {!question ? (
-            <div style={{ margin: "auto", textAlign: "center", display: "flex", flexDirection: "column", gap: 6, maxWidth: 300 }}>
-              <span className="eyebrow">From any app</span>
-              <span style={{ fontSize: 18, fontWeight: 600 }}>Ask without switching windows</span>
+        <div ref={scroller} style={{ flex: 1, overflow: "auto", padding: 12, display: "flex", flexDirection: "column", gap: 12 }}>
+          {!turns.length ? (
+            <div style={{ margin: "auto", textAlign: "center", display: "flex", flexDirection: "column", gap: 4, maxWidth: 280 }}>
+              <span style={{ fontSize: 15, fontWeight: 600 }}>Ask without switching windows</span>
               <span className="sub">
-                Paste your clipboard into the question. Press {MOD}
-                {SHIFT}Space anywhere.
+                Attach your clipboard with the clip button. Press {MOD}
+                {SHIFT}Space from any app.
               </span>
             </div>
-          ) : (
-            <div className="ubub">{question}</div>
-          )}
-          {question ? (
-            <div style={{ display: "flex", gap: 10 }} className="fade">
-              <Avatar name={agent} size={24} />
-              <div style={{ display: "flex", flexDirection: "column", gap: 8, minWidth: 0 }}>
-                {busy && !answer ? (
-                  <span style={{ display: "inline-flex", alignItems: "center", gap: 8, fontSize: 13, color: "var(--sig)" }}>
-                    <span className="typing">
-                      <span />
-                      <span />
-                      <span />
-                    </span>
-                    {status || "Checking your sources"}
-                  </span>
-                ) : null}
-                {answer ? <RichText text={answer} size={14} /> : null}
-                {error ? <span style={{ fontSize: 13, color: "var(--dgk)" }}>{error}</span> : null}
-                {answer && !busy ? (
-                  <button className="btn btn-l btn-sm" style={{ alignSelf: "flex-start", padding: 0 }} onClick={() => go({ view: "ask", select: conv.current })}>
-                    Continue in full window →
-                  </button>
-                ) : null}
-              </div>
-            </div>
           ) : null}
-        </div>
-        <div style={{ padding: "10px 12px 12px" }}>
-          <div className="composer">
-            <label htmlFor="qa" className="sr">
-              Quick Ask
-            </label>
-            <input
-              id="qa"
-              ref={input}
-              className="ta"
-              autoFocus
-              placeholder={`Ask ${agent}`}
-              value={draft}
-              onChange={(e) => setDraft(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") void send()
-                if (e.key === "Escape") setOverlay(null)
-              }}
-            />
-            <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-              <button className="ib" aria-label="Paste clipboard" title="Paste clipboard" style={{ width: 30, height: 30 }} onClick={() => void pasteClipboard()}>
-                <Icon name="clip" />
-              </button>
-              <span style={{ flex: 1 }} />
-              <div className="mode" role="radiogroup" aria-label="Conversation mode">
-                <button className="on" role="radio" aria-checked="true">
-                  Text
-                </button>
-                <button role="radio" aria-checked="false" onClick={() => go("voice")}>
-                  Voice
-                </button>
+          {turns.map((x, i) => (
+            <div key={i} style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              <div className="ubub" style={{ fontSize: 13 }}>
+                {x.q}
               </div>
-              <button className="btn btn-k btn-sm" disabled={busy || !draft.trim()} onClick={() => void send()}>
-                Ask ↵
-              </button>
+              <div style={{ display: "flex", gap: 8 }} className="fade">
+                <AgentAvatar id={agent} size={22} />
+                <div style={{ display: "flex", flexDirection: "column", gap: 6, minWidth: 0, flex: 1 }}>
+                  <span style={{ fontSize: 13 }}>
+                    <b>{agent.name}</b> <span className="sub">{agent.dept.id !== "general" ? agent.dept.label : ""}</span>
+                  </span>
+                  {busy && i === turns.length - 1 && !x.a ? (
+                    <span style={{ display: "inline-flex", alignItems: "center", gap: 8, fontSize: 13, color: "var(--sig)" }}>
+                      <span className="typing">
+                        <span />
+                        <span />
+                        <span />
+                      </span>
+                      {status || "Checking your sources"}
+                    </span>
+                  ) : null}
+                  {x.a ? <RichText text={x.a} size={13} /> : null}
+                  {x.sources?.used.length ? (
+                    <span className="sub" style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+                      {x.sources.used.slice(0, 2).map((u, j) => (
+                        <span key={j} style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
+                          <Logo text={systemBadge(u.kind) || "·"} style={{ width: 16, height: 16, fontSize: 7 }} />
+                          {u.name}
+                          {u.freshness ? ` · ${u.freshness}` : ""}
+                        </span>
+                      ))}
+                    </span>
+                  ) : null}
+                  {x.a && !(busy && i === turns.length - 1) && i === turns.length - 1 ? (
+                    <button className="link" style={{ alignSelf: "flex-start" }} onClick={() => go({ view: "ask", select: conv.current })}>
+                      Continue in full window
+                    </button>
+                  ) : null}
+                </div>
+              </div>
             </div>
-          </div>
+          ))}
+          {error ? <span style={{ fontSize: 13, color: "var(--dgk)" }}>{error}</span> : null}
+        </div>
+        <div style={{ padding: "8px 10px 10px" }}>
+          <Composer
+            id="qa"
+            autoFocus
+            value={draft}
+            onChange={setDraft}
+            onSend={() => void send()}
+            placeholder={turns.length ? "Ask a follow-up" : `Ask ${agent.name}`}
+            busy={busy}
+            onStop={() => abort.current?.abort()}
+            onVoice={() => go("voice")}
+            attachments={attachments}
+            onAttach={() => void attach()}
+            onRemove={(id) => setAttachments((prev) => prev.filter((a) => a.id !== id))}
+            leading={<AgentChip />}
+          />
         </div>
       </div>
     </div>
