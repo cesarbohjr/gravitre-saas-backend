@@ -80,3 +80,51 @@ def apply_response_sensitivity(result: dict[str, Any], policy: dict[str, str]) -
     new_enrichments["capabilities"] = {**capabilities, **adjusted}
     output["enrichments"] = new_enrichments
     return output
+
+
+def select_enrichment_work(
+    classification: dict[str, Any],
+    context: dict[str, Any],
+    policy: dict[str, str],
+) -> dict[str, bool]:
+    """Per-capability thresholds for OPTIONAL router intelligence work.
+
+    Explicit user intent is always eligible, irrespective of sensitivity mode.
+    Proactive mode expands candidate work only when relevant *authorized*
+    classification evidence exists. No mode changes permissions or write gates.
+    """
+    deferred = context.get("defer_optional") is True
+    department = bool(classification.get("department"))
+    entity = bool(classification.get("entity_type") and classification.get("entity_id"))
+    requested = {
+        "causal": bool(classification.get("requires_causal")),
+        "predictive": bool(classification.get("requires_prediction")),
+        "relational": bool(classification.get("requires_graph")),
+        "adaptive": department,
+    }
+    return {
+        "causal": not deferred and requested["causal"],
+        "predictive": not deferred and (
+            requested["predictive"] or (policy.get("predictive") == "proactive" and
+                                        department and bool(classification.get("metric")))),
+        "relational": not deferred and (
+            requested["relational"] or (policy.get("relational") == "proactive" and entity)),
+        "adaptive": not deferred and (
+            department or (policy.get("adaptive") == "proactive"
+                           and bool(context.get("retrieval_plan")))),
+    }
+
+
+def evidence_threshold(capability: str, mode: str) -> float:
+    """Default recommendation surfacing threshold. Never an execution threshold."""
+    defaults = {
+        "contextual": (0.85, 0.65, 0.45),
+        "sentiment": (0.85, 0.65, 0.45),
+        "causal": (0.95, 0.80, 0.70),
+        "temporal": (0.90, 0.70, 0.50),
+        "relational": (0.90, 0.70, 0.50),
+        "adaptive": (0.90, 0.70, 0.50),
+        "predictive": (0.95, 0.80, 0.65),
+    }
+    level = {"conservative": 0, "balanced": 1, "proactive": 2}.get(mode, 1)
+    return defaults[capability][level]
