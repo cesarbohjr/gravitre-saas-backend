@@ -6,6 +6,7 @@ import { toast } from "@/components/agents/overlays/toast"
 import { useGravitreAIWorkspace } from "@/components/gravitre/ai-workspace-provider"
 import { workforceState } from "@/components/home/operating-flow"
 import { APP_ROUTES } from "@/lib/app-routes"
+import { DashboardTeamArt } from "@/components/dashboard/art/dashboard-art"
 import { DepartmentIcon } from "@/components/agents/department-icon"
 import { relativeTime } from "@/lib/agent-job-result"
 import { approvalsApi } from "@/lib/api"
@@ -144,46 +145,29 @@ function nodeStyle(state: LiveState) {
   return { chip: "Available", fg: "#55564F", dot: GREY, line: "#33342F", flow: 0, lift: false }
 }
 
-const NODE_SLOTS = [
-  { x: 360, y: 64, trace: "M314 186 C 340 150 346 100 360 84" },
-  { x: 380, y: 114, trace: "M316 190 C 352 160 366 140 380 134" },
-  { x: 360, y: 164, trace: "M316 196 C 346 192 350 186 360 184" },
-]
-
-/** Page-header scene from the design: the viewer relaxing while their department agents work. */
+/** Page-header scene from the design: the team at the table, with each department agent's live state on a chip. */
 function HeroScene({ nodes }: { nodes: Array<{ id: string; label: string; state: LiveState }> }) {
   const label = nodes.length
-    ? `A person relaxing at their desk while ${joinNames(nodes.map((n) => n.label))} agents work`
-    : "A person relaxing at their desk"
+    ? `A team around a table with an approved check above them. ${nodes.map((n) => `${n.label}: ${nodeStyle(n.state).chip}`).join(", ")}`
+    : "A team around a table with an approved check above them"
   return (
-    <svg viewBox="0 0 520 340" width="100%" style={{ display: "block" }} role="img" aria-label={label}>
-      <image href="/illustrations/home-hero.svg?v=2" x={0} y={0} width={520} height={340} />
-      {nodes.map((n, i) => {
-        const slot = NODE_SLOTS[i]
-        const s = nodeStyle(n.state)
-        return (
-          <path key={`trace-${n.id}`} d={slot.trace} fill="none" stroke={s.line} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" className="gv-trace" pathLength={100} opacity={s.flow} />
-        )
-      })}
-      {nodes.map((n, i) => {
-        const slot = NODE_SLOTS[i]
-        const s = nodeStyle(n.state)
-        const text = n.label.length > 18 ? `${n.label.slice(0, 17)}…` : n.label
-        return (
-          <g key={n.id} className="gv-node" style={{ transform: s.lift ? "translateY(-6px)" : undefined }}>
-            <title>{`${n.label}: ${s.chip}`}</title>
-            <rect x={slot.x} y={slot.y} width={136} height={40} rx={9} fill="#FBF8F2" stroke="#D9D1C2" strokeWidth={1.5} />
-            <circle cx={slot.x + 15} cy={slot.y + 20} r={4.5} fill={s.dot} />
-            <text x={slot.x + 27} y={slot.y + 17} fontFamily="var(--font-sans), sans-serif" fontSize={11} fontWeight={600} fill="#141513">
-              {text}
-            </text>
-            <text x={slot.x + 27} y={slot.y + 30} fontFamily="var(--font-mono), monospace" fontSize={9.5} fill={s.fg}>
-              {s.chip}
-            </text>
-          </g>
-        )
-      })}
-    </svg>
+    <div className="gv-hero-art">
+      <DashboardTeamArt label={label} />
+      {nodes.length ? (
+        <div className="gv-hero-chips" aria-hidden>
+          {nodes.map((n) => {
+            const s = nodeStyle(n.state)
+            return (
+              <span key={n.id} className="gv-hero-chip" title={`${n.label}: ${s.chip}`}>
+                <i style={{ background: s.dot }} />
+                <b>{n.label}</b>
+                <span style={{ color: s.fg }}>{s.chip}</span>
+              </span>
+            )
+          })}
+        </div>
+      ) : null}
+    </div>
   )
 }
 
@@ -373,7 +357,7 @@ export function AiNativeView({
     <div data-dashboard-view="ai">
       <section style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 440px), 1fr))", gap: 40, alignItems: "center", padding: "48px 0 32px" }}>
         <div className="gv-rise">
-          <div className="gv-mono" style={{ fontSize: 11, color: "var(--gv-muted)", marginBottom: 18 }}>
+          <div className="gv-mono" style={{ fontSize: 11, letterSpacing: "0.12em", textTransform: "uppercase", color: "var(--gv-muted)", marginBottom: 18 }}>
             {greeting()}
             {name ? `, ${name}` : ""}
           </div>
@@ -422,7 +406,7 @@ export function AiNativeView({
         </div>
 
         <div className="gv-rise" style={{ animationDelay: "120ms", position: "relative" }}>
-          <div className="gv-card" style={{ padding: 0, borderRadius: 14, overflow: "hidden", background: "#F3EEE4", borderColor: "var(--gv-paper-border)" }}>
+          <div className="gv-card" style={{ padding: 0, borderRadius: 14, overflow: "hidden", background: "#E7ECE3", borderColor: "var(--gv-paper-border)" }}>
             <HeroScene nodes={heroNodes} />
           </div>
         </div>

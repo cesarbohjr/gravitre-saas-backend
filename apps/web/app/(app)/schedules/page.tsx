@@ -25,7 +25,8 @@ import { fetcher as apiFetcher } from "@/lib/fetcher"
 import { useAuth } from "@/lib/auth-context"
 import { useOrgAdmin } from "@/lib/use-org-admin"
 import { ensureSelectedOrg, getQuickOrgId } from "@/lib/org-context"
-import { normalizeApprovals } from "@/components/approvals/decision-queue/model"
+import { ConnectionsQueueArt, QuietHoursArt, SchedulesArt } from "@/components/dashboard/art/dashboard-art"
+import { DEFAULT_QUIET, PREFERENCES_KEY, notificationPrefsApi, timeZoneLabel } from "@/lib/settings-api/notifications"
 import { cn } from "@/lib/utils"
 import type { ScheduleOccurrence } from "@/lib/schedules"
 import { WeekView } from "./_components/week-view"
@@ -54,6 +55,7 @@ import {
 } from "./_components/month-model"
 import "@/components/workspace/ops-v4.css"
 import "@/components/workspace/automate-v1.css"
+import "@/components/dashboard/dashboard.css"
 
 type CalendarView = "month" | "week" | "timeline" | "list"
 
@@ -65,7 +67,7 @@ const VIEWS: Array<{ id: CalendarView; label: string; icon: typeof CalendarDays 
 ]
 
 const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
-const CHIPS_PER_DAY = 2
+const CHIPS_PER_DAY = 3
 
 type ConnectorRow = { id?: string; name?: string; type?: string; status?: string; authStatus?: string }
 
@@ -148,11 +150,9 @@ function SchedulesCalendar() {
   )
   const brokenConnectors = useMemo(() => (connectorData?.connectors ?? []).filter(needsReconnect), [connectorData])
 
-  const { data: approvalsData } = useSWR(user ? "/api/approvals" : null, apiFetcher, { revalidateOnFocus: false })
-  const pendingApprovals = useMemo(
-    () => (approvalsData ? normalizeApprovals(approvalsData).filter((a) => a.status === "pending").length : null),
-    [approvalsData],
-  )
+  // Quiet hours are per person: they hold email and Slack alerts, not the runs themselves.
+  const { data: prefsData } = useSWR(user ? PREFERENCES_KEY : null, () => notificationPrefsApi.get(), { revalidateOnFocus: false })
+  const quiet = prefsData?.quietHours ?? DEFAULT_QUIET
 
   const allEntries = useMemo(() => buildEntries(items, range.from, range.to, now), [items, range, now])
   const deptEntries = useMemo(
@@ -233,11 +233,10 @@ function SchedulesCalendar() {
   const loading = isLoading && items.length === 0
 
   return (
-    <div className="ov-page" data-composition="operate">
+    <div className="ov-page dash" data-composition="operate">
       <section aria-labelledby="schedules-hero" className="ov-hero">
         <div className="ov-hero-art">
-          {/* eslint-disable-next-line @next/next/no-img-element -- static library scene */}
-          <img src="/illustrations/hero-schedules.svg" alt="" />
+          <SchedulesArt />
           {items.length ? (
             <div className="au-art-chip">
               <span className="t">
@@ -420,8 +419,9 @@ function SchedulesCalendar() {
                       <span className="num">{date.getDate()}</span>
                       {hasFailure ? <span className="flag" aria-hidden /> : null}
                       {shownChips.map((entry) => (
-                        <span key={entry.key} className={cn("au-ev", `st-${entry.state}`)} aria-hidden>
-                          {timeLabel(entry.date)} {entry.name}
+                        <span key={entry.key} className={cn("dash-cal-item", `st-${entry.state}`)} title={`${timeLabel(entry.date)} ${entry.name}`} aria-hidden>
+                          <i />
+                          <span>{entry.name}</span>
                         </span>
                       ))}
                       {entries.length > CHIPS_PER_DAY ? (
@@ -578,8 +578,7 @@ function SchedulesCalendar() {
 
         <article className="au-feature">
           <div className="au-feature-art tall">
-            {/* eslint-disable-next-line @next/next/no-img-element -- static library scene */}
-            <img src={brokenConnectors.length ? "/illustrations/ops-sources.svg" : "/illustrations/spot-connectors.svg"} alt="" />
+            <ConnectionsQueueArt broken={brokenConnectors.length > 0} />
           </div>
           <div className="au-feature-body">
             <span className="au-eyebrow">Connections</span>
@@ -609,19 +608,18 @@ function SchedulesCalendar() {
 
         <article className="au-feature">
           <div className="au-feature-art tall">
-            {/* eslint-disable-next-line @next/next/no-img-element -- static library scene */}
-            <img src="/illustrations/agents-guardrails.svg" alt="" />
+            <QuietHoursArt enabled={quiet.enabled} from={quiet.from} to={quiet.to} />
           </div>
           <div className="au-feature-body">
-            <span className="au-eyebrow">Approvals</span>
-            <b>
-              {pendingApprovals
-                ? `${pendingApprovals} ${pendingApprovals === 1 ? "request is" : "requests are"} waiting for your OK`
-                : "Writes wait for your OK"}
-            </b>
-            <p>Scheduled runs that need approval to change a record pause in Approvals until someone decides.</p>
-            <Link className="ov-btn sm au-feature-act" href="/approvals">
-              Open approvals
+            <span className="au-eyebrow">Quiet hours</span>
+            <b>{quiet.enabled ? `Alerts wait from ${quiet.from} to ${quiet.to}` : "Quiet hours are off"}</b>
+            <p>
+              {quiet.enabled
+                ? `Email and Slack alerts are held until ${quiet.to} ${timeZoneLabel(quiet.timezone)}. Requests that need your OK still reach you. Runs keep their schedule.`
+                : "Hold email and Slack alerts overnight. Runs keep their schedule, and requests that need your OK still reach you."}
+            </p>
+            <Link className="ov-btn sm au-feature-act" href="/settings?section=notifications">
+              Edit quiet hours
             </Link>
           </div>
         </article>

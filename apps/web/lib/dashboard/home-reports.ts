@@ -179,7 +179,8 @@ export type HomeReports = {
 }
 
 /** Series colours, in volume order: the design's green, blue and amber, then more. */
-export const SERIES_COLORS = ["#19C37D", "#2B59E0", "#E2A33A", "#7E9A7B", "#B5654A", "#5B6E7A", "#C98F5B"]
+// Green family from the Dashboard design first, then muted neutrals for larger teams.
+export const SERIES_COLORS = ["#0A6B47", "#19C37D", "#CDEBDC", "#6ED6A5", "#7E9A7B", "#5B6E7A", "#C98F5B"]
 export const WORKFLOWS_COLOR = "#A3A49C"
 
 export function seriesColor(series: HomeReportsSeries[], key: string): string {

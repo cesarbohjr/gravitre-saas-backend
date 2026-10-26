@@ -1,0 +1,10 @@
+/* Motion used by the Dashboard scenes on top of agents-art.css (same values as the designs' Art card). */
+.ag-art .g-spin { animation: dash-spin 16s linear infinite; transform-box: fill-box; transform-origin: center; }
+.ag-art .g-spin-rev { animation: dash-spin 9s linear infinite reverse; transform-box: fill-box; transform-origin: center; }
+@keyframes dash-spin { to { transform: rotate(360deg); } }
+.ag-art .g-grow { animation: dash-grow 4.5s ease-in-out infinite; transform-box: fill-box; transform-origin: bottom; }
+@keyframes dash-grow { 0%, 100% { transform: scaleY(0.9); } 50% { transform: scaleY(1.05); } }
+.ag-art .g-draw { stroke-dasharray: 120; animation: dash-draw 6s ease-in-out infinite; }
+@keyframes dash-draw { 0% { stroke-dashoffset: 120; } 35%, 100% { stroke-dashoffset: 0; } }
+.ag-art .g-steam { animation: dash-steam 2.8s ease-in-out infinite; }
+@keyframes dash-steam { 0% { opacity: 0; transform: translateY(4px); } 40% { opacity: 0.9; } 100% { opacity: 0; transform: translateY(-6px); } }

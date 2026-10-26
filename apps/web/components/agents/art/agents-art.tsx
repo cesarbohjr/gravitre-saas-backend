@@ -15,9 +15,20 @@ import "./agents-art.css"
  * the right, a ground line and film grain. Motion stops under reduced motion.
  */
 
-type Wash = { cx: number; cy: number; rx: number; ry: number; fill: string }
+export type Wash = { cx: number; cy: number; rx: number; ry: number; fill: string }
 
-function ArtFrame({ label, wash, children }: { label: string; wash: Wash; children: ReactNode }) {
+export function ArtFrame({
+  label,
+  wash,
+  ground = [20, 300],
+  children,
+}: {
+  label: string
+  wash: Wash
+  /** Ground line ends; the Dashboard scenes draw a slightly shorter one. */
+  ground?: [number, number]
+  children: ReactNode
+}) {
   const raw = useId()
   const id = `ag${raw.replace(/[^a-zA-Z0-9]/g, "")}`
   return (
@@ -51,7 +62,7 @@ function ArtFrame({ label, wash, children }: { label: string; wash: Wash; childr
         </g>
         <rect width="320" height="260" fill={`url(#${id}d)`} opacity="0.2" mask={`url(#${id}m)`} />
         {children}
-        <line x1="20" y1="214" x2="300" y2="214" stroke="#9C8C74" strokeWidth="2" />
+        <line x1={ground[0]} y1="214" x2={ground[1]} y2="214" stroke="#9C8C74" strokeWidth="2" />
         <rect width="320" height="260" filter={`url(#${id}g)`} opacity="0.55" />
       </svg>
     </div>

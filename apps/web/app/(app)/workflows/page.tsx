@@ -40,8 +40,11 @@ import {
   type WorkflowSegment,
   type WorkflowSort,
 } from "@/components/workflows/workflow-fleet-model"
+import { ActivityArt, ApprovalsArt, SourcesArt } from "@/components/agents/art/agents-art"
+import { WorkflowsArt } from "@/components/dashboard/art/dashboard-art"
 import "@/components/workspace/ops-v4.css"
 import "@/components/workspace/automate-v1.css"
+import "@/components/dashboard/dashboard.css"
 
 type WorkflowView = "table" | "cards" | "board"
 
@@ -71,20 +74,20 @@ const EXPLAINERS = [
   {
     eyebrow: "01 · Trigger",
     title: "A connector event starts it",
-    body: "A new record in a connected app, a schedule or a webhook kicks off the run.",
-    art: "/illustrations/spot-connectors.svg",
+    body: "A new HubSpot lead, a schedule or a webhook kicks off the run.",
+    art: <SourcesArt broken={0} />,
   },
   {
     eyebrow: "02 · Steps and gates",
     title: "Agents work, writes wait for you",
     body: "Steps that only read run on their own. Steps that change a record can wait for your approval first.",
-    art: "/illustrations/ops-approvals.svg",
+    art: <ApprovalsArt waiting={1} />,
   },
   {
     eyebrow: "03 · Verified outcome",
     title: "Every run leaves evidence",
-    body: "Each run lands in Activity with its steps and results, so success rates come from real runs.",
-    art: "/illustrations/ops-activity.svg",
+    body: "Results land in Activity with their steps and evidence, so success rates come from real runs.",
+    art: <ActivityArt failed={false} />,
   },
 ]
 
@@ -221,11 +224,10 @@ function WorkflowFleet() {
   const showPaused = segment === "paused"
 
   return (
-    <div className="ov-page" data-composition="operate">
+    <div className="ov-page dash" data-composition="operate">
       <section aria-labelledby="workflows-hero" className="ov-hero">
         <div className="ov-hero-art">
-          {/* eslint-disable-next-line @next/next/no-img-element -- static library scene */}
-          <img src="/illustrations/hero-workflows.svg" alt="" />
+          <WorkflowsArt />
           {workflows.length ? (
             <div className="au-art-chip">
               <span className="t">
@@ -554,10 +556,7 @@ function WorkflowFleet() {
       <section className="au-features" aria-label="How workflows run">
         {EXPLAINERS.map((card) => (
           <article key={card.title} className="au-feature">
-            <div className="au-feature-art tall">
-              {/* eslint-disable-next-line @next/next/no-img-element -- static library scene */}
-              <img src={card.art} alt="" />
-            </div>
+            <div className="au-feature-art tall">{card.art}</div>
             <div className="au-feature-body">
               <span className="au-eyebrow">{card.eyebrow}</span>
               <b>{card.title}</b>
