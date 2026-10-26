@@ -4,7 +4,7 @@ from __future__ import annotations
 import time
 import uuid
 from datetime import datetime, timedelta, timezone
-from typing import Annotated, Any
+from typing import Annotated, Any, Literal
 
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -50,6 +50,7 @@ def _normalize_conversation(row: dict) -> dict:
         "message_count": int(row.get("message_count") or 0),
         "archived_at": row.get("archived_at"),
         "pinned_at": row.get("pinned_at"),
+        "surface": row.get("surface"),
     }
 
 
@@ -58,6 +59,15 @@ def _missing_column_error(error: Exception | None) -> bool:
         return False
     message = str(error).lower()
     return "column" in message and "does not exist" in message
+
+
+def _missing_surface_column(error: Exception | None) -> bool:
+    if error is None:
+        return False
+    message = str(error).lower()
+    return "surface" in message and (
+        "does not exist" in message or "schema cache" in message or "pgrst204" in message or "42703" in message
+    )
 
 
 def _conversation_sort_key(row: dict) -> tuple:
@@ -134,8 +144,13 @@ def _normalize_message(row: dict) -> dict:
     }
 
 
+ConversationSurface = Literal["web", "desktop", "extension", "voice"]
+
+
 class ConversationCreateRequest(BaseModel):
     title: str | None = Field(default=None, max_length=500)
+    # Where the conversation was started, so other surfaces can say "Started in the extension".
+    surface: ConversationSurface | None = None
 
 
 class ConversationUpdateRequest(BaseModel):
@@ -348,7 +363,7 @@ def list_conversations(
     org_id = _require_org(org_id)
     load_started = time.monotonic()
     client = shared_service_client(settings, create_client)
-    select_cols = "id, title, preview, message_count, created_at, updated_at, archived_at, pinned_at"
+    select_cols = "id, title, preview, message_count, created_at, updated_at, archived_at, pinned_at, surface"
     select_fallback = "id, title, preview, message_count, created_at, updated_at, archived_at"
     term = (search or "").strip()
 
@@ -527,8 +542,16 @@ def create_conversation(
         "created_at": now,
         "updated_at": now,
     }
+    if body.surface:
+        row["surface"] = body.surface
     try:
-        response = client.table("conversations").insert(row).execute()
+        try:
+            response = client.table("conversations").insert(row).execute()
+        except Exception as exc:  # postgrest raises for an unknown column
+            if "surface" not in row or not _missing_surface_column(exc):
+                raise
+            row.pop("surface")
+            response = client.table("conversations").insert(row).execute()
     except httpx.TransportError as exc:
         # A dropped connection can lose the response after the row was
         # written, so look for it before trying the insert once more.
@@ -544,6 +567,10 @@ def create_conversation(
         )
         if landed.data:
             return _normalize_conversation(landed.data[0])
+        response = client.table("conversations").insert(row).execute()
+    if "surface" in row and _missing_surface_column(response_error(response)):
+        # Before the surface column is migrated, keep creating conversations without it.
+        row.pop("surface")
         response = client.table("conversations").insert(row).execute()
     if _is_missing_table_error(response_error(response)):
         raise HTTPException(
