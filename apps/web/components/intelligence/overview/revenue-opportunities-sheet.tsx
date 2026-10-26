@@ -133,7 +133,7 @@ export function RevenueOpportunitiesSheet({
             </>
           )}
           <div className="space-y-1.5 border-t border-[color:var(--g-border-subtle)] pt-4">
-            <p className={cn(TYPE.meta, "font-semibold uppercase tracking-[0.08em]")}>How it is counted</p>
+            <p className={cn(TYPE.meta, "font-semibold tracking-[0.08em]")}>How it is counted</p>
             <p className={TYPE.bodyMuted}>{data?.method ?? "Sum of open HubSpot deal amounts closing soon."}</p>
           </div>
           <Button size="sm" variant="outline" onClick={onRefresh} disabled={refreshing}>
