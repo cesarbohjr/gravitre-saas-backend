@@ -10,6 +10,7 @@ import { EmptyState, ErrorState } from "@/components/gravitre/empty-state"
 import { GravitrePageHeader } from "@/components/gravitre/nodus-product"
 import { CenteredLoader } from "@/components/gravitre/gravitre-loader"
 import { AskGravitreSummonButton } from "@/components/intelligence/ask-gravitre-summon-button"
+import { EvidencePlayRecommendations } from "@/components/intelligence/evidence-play-recommendations"
 import type { FailureAlertWithEvidence } from "@/components/intelligence/forecasts/forecast-model"
 import { toast } from "@/components/intelligence/overlays/toast"
 import { ShareFindingDialog, type ShareableFinding } from "@/components/intelligence/overlays/share-finding-dialog"
@@ -544,6 +545,7 @@ function IntelligenceCenterInner() {
                 onModeChange={isAdmin && overview ? (id, mode) => void changeAbility(id, mode) : undefined}
                 savingAbility={savingAbility}
               />
+              <EvidencePlayRecommendations enabled={enabled} orgId={orgId ?? null} />
               <RecentActivity
                 id={FEED_ANCHOR}
                 items={feed}
