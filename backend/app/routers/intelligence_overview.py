@@ -15,6 +15,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from app.auth.dependencies import get_org_context, get_environment_context, require_admin, require_org_member
 from app.config import Settings, get_settings
 from app.services.intelligence_router import CAPABILITY_NAMES
+from app.services.intelligence_overview_readiness import score_readiness
 from app.services.recommendation_heuristics_service import (
     build_heuristic_recommendations,
     load_connected_connectors,
@@ -101,8 +102,7 @@ def overview(
         "org_id": org_id,
         "capabilities": _settings(profile.get("capabilities") or {}),
         "knowledge": {"usable_connectors": count, "vendors": vendors, "facts": None, "freshness": None},
-        "readiness": {"tier": readiness, "connector_count": count, "coverage_verified": False,
-                      "comprehensive": False, "recommended_connector_count": 3},
+        "readiness": score_readiness(connections),
         "insights": ((latest.data or [{}])[0].get("results") or {}).get("insights", []),
         "recommendations": ((latest.data or [{}])[0].get("results") or {}).get("recommendations") or cards.get("recommendations") or [],
         "actions": ((latest.data or [{}])[0].get("results") or {}).get("actions", []),
