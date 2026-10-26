@@ -39,3 +39,10 @@ def test_no_unauthorized_unknown_capability_update(monkeypatch):
         mod.update_profile(mod.ProfilePatch(capabilities={"nonexistent": {"mode": "balanced"}}),
                            "org-a", ({"sub": "admin"}, None, "admin"), object())
     assert exc.value.status_code == 422
+
+
+def test_sweep_refuses_to_queue_when_worker_disabled(monkeypatch):
+    monkeypatch.delenv("INTELLIGENCE_OVERVIEW_SWEEP_WORKER_ENABLED", raising=False)
+    with pytest.raises(HTTPException) as exc:
+        mod.request_sweep("org-a", ({"sub": "admin"}, None, "admin"), object())
+    assert exc.value.status_code == 503
