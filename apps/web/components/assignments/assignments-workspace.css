@@ -192,3 +192,7 @@
 .gv-ws .asgd-goal b { display: block; font-weight: 600; }
 .gv-ws .asgd-goal span span { display: block; font-size: 12px; color: var(--gv-muted); }
 .gv-ws .asgd-goal-open { width: 100%; justify-content: center; margin-top: 14px; }
+.gv-ws .asgd-goal-hint { margin: 8px 0 10px; font-size: 13px; color: var(--gv-muted); line-height: 1.5; }
+.gv-ws .asgd-goal-pick select { width: 100%; min-height: 40px; border: 1px solid var(--gv-border); border-radius: 10px; padding: 0 10px; background: var(--gv-card); color: var(--gv-text); font: inherit; font-size: 14px; }
+.gv-ws .asgd-goal-unlink { display: block; margin-top: 8px; font-size: 13px; }
+@supports (-webkit-touch-callout: none) { .gv-ws .asgd-goal-pick select { font-size: 16px; } }

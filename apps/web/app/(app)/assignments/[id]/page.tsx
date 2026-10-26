@@ -35,7 +35,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { approveAssignment, fetchAssignmentJob, pushAssignmentDeliverable, rejectAssignment, updateAssignmentDeliverable } from "@/lib/demo-assignments"
-import { cancelAssignmentJob, createAssignment, retryAssignmentJob } from "@/lib/assignments"
+import { cancelAssignmentJob, createAssignment, linkJobGoal, retryAssignmentJob, retryFailedSteps } from "@/lib/assignments"
 import { readableAssignmentText } from "@/lib/assignments-list"
 import { deliverableExport, parseDeliverable } from "@/lib/assignment-deliverable"
 import { DeliverableEditorDialog } from "@/components/assignments/deliverable-editor"
@@ -101,7 +101,8 @@ export default function AssignmentDetailPage({ params }: { params: Promise<{ id:
   const [editOpen, setEditOpen] = useState(false)
   const [isSavingEdit, setIsSavingEdit] = useState(false)
   const [isPushing, setIsPushing] = useState(false)
-  const [jobAction, setJobAction] = useState<null | "retry" | "cancel" | "rerun">(null)
+  const [jobAction, setJobAction] = useState<null | "retry" | "cancel" | "rerun" | "retry-failed" | "goal">(null)
+  const [goalPick, setGoalPick] = useState("")
   const [activeTab, setActiveTab] = useState<"deliverable" | "actions" | "steps">("deliverable")
   const [traceOpen, setTraceOpen] = useState<boolean | null>(null)
   const [openErrors, setOpenErrors] = useState<Set<string>>(() => new Set())
@@ -121,7 +122,10 @@ export default function AssignmentDetailPage({ params }: { params: Promise<{ id:
   )
 
   const goalId = job?.goalId ?? null
-  const { data: goalList } = useSWR(goalId ? GOALS_REFRESH_KEY : null, fetchGoalList, { revalidateOnFocus: false })
+  const goalLinks = job?.goalLinksEnabled === true
+  const { data: goalList } = useSWR(goalId || goalLinks ? GOALS_REFRESH_KEY : null, fetchGoalList, {
+    revalidateOnFocus: false,
+  })
   const linkedGoal = goalId ? goalList?.find((g) => g.id === goalId) ?? null : null
 
   const handoff = useMemo(() => parseHandoffResult(job ?? null), [job])
@@ -276,6 +280,38 @@ export default function AssignmentDetailPage({ params }: { params: Promise<{ id:
       toast.success(job?.status === "paused" ? "Assignment resumed" : "Assignment queued to run again")
     } catch (err) {
       toast.error("Could not retry", { description: err instanceof Error ? err.message : "Please try again." })
+    } finally {
+      setJobAction(null)
+    }
+  }
+
+  // Redo only the steps that failed: a new job gets the same brief plus what already succeeded.
+  const handleRetryFailed = async () => {
+    if (jobAction) return
+    setJobAction("retry-failed")
+    try {
+      const next = await retryFailedSteps(id)
+      toast.success("Retrying the failed steps", { description: "Steps that already worked are not repeated." })
+      if (next.jobId) router.push(`/assignments/${next.jobId}`)
+    } catch (err) {
+      toast.error("Could not retry", { description: err instanceof Error ? err.message : "Please try again." })
+    } finally {
+      setJobAction(null)
+    }
+  }
+
+  const handleLinkGoal = async (nextGoalId: string | null) => {
+    if (jobAction) return
+    setJobAction("goal")
+    try {
+      const updated = await linkJobGoal(id, nextGoalId)
+      await mutate({ ...job!, ...updated }, { revalidate: true })
+      setGoalPick("")
+      toast.success(nextGoalId ? "Linked to the goal" : "Unlinked from the goal", {
+        description: nextGoalId ? "This assignment now counts toward the goal's progress." : undefined,
+      })
+    } catch (err) {
+      toast.error("Could not change the goal", { description: err instanceof Error ? err.message : "Please try again." })
     } finally {
       setJobAction(null)
     }
@@ -463,6 +499,16 @@ export default function AssignmentDetailPage({ params }: { params: Promise<{ id:
         actions: (
           <>
             {upgradeButton}
+            {(job.failedStepCount ?? 0) > 0 ? (
+              <button
+                type="button"
+                className={upgrade ? "gv-btn outline" : "gv-btn primary"}
+                onClick={() => void handleRetryFailed()}
+                disabled={Boolean(jobAction)}
+              >
+                {jobAction === "retry-failed" ? "Retrying" : "Retry from failed step"}
+              </button>
+            ) : null}
             <button type="button" className="gv-btn outline" onClick={() => void handleRetry()} disabled={Boolean(jobAction)}>
               {jobAction === "retry" ? "Retrying" : "Retry assignment"}
             </button>
@@ -517,6 +563,16 @@ export default function AssignmentDetailPage({ params }: { params: Promise<{ id:
         actions: (
           <>
             {upgradeButton}
+            {(job.failedStepCount ?? 0) > 0 ? (
+              <button
+                type="button"
+                className={upgrade ? "gv-btn outline" : "gv-btn primary"}
+                onClick={() => void handleRetryFailed()}
+                disabled={Boolean(jobAction)}
+              >
+                {jobAction === "retry-failed" ? "Retrying" : "Retry from failed step"}
+              </button>
+            ) : null}
             {canRerun ? (
               <button type="button" className="gv-btn outline" onClick={() => void handleRerun()} disabled={Boolean(jobAction)}>
                 {jobAction === "rerun" ? "Assigning" : "Run again"}
@@ -947,6 +1003,43 @@ export default function AssignmentDetailPage({ params }: { params: Promise<{ id:
               <Link href={`/goals/${encodeURIComponent(linkedGoal.id)}`} className="gv-btn ghost asgd-goal-open">
                 Open the goal
               </Link>
+              {goalLinks ? (
+                <button
+                  type="button"
+                  className="ov-linkbtn asgd-goal-unlink"
+                  disabled={Boolean(jobAction)}
+                  onClick={() => void handleLinkGoal(null)}
+                >
+                  Unlink from this goal
+                </button>
+              ) : null}
+            </div>
+          ) : goalLinks && goalList && goalList.length > 0 ? (
+            <div className="gv-card asgd-side">
+              <div className="gv-eyebrow">Goal</div>
+              <p className="asgd-goal-hint">Link this assignment so its work counts toward a goal.</p>
+              <label className="asgd-goal-pick">
+                <span className="sr-only">Goal</span>
+                <select value={goalPick} onChange={(event) => setGoalPick(event.target.value)}>
+                  <option value="">Pick a goal</option>
+                  {goalList
+                    .filter((g) => g.status !== "cancelled" && g.status !== "completed")
+                    .map((g) => (
+                      <option key={g.id} value={g.id}>
+                        {g.objective || "Untitled goal"}
+                      </option>
+                    ))}
+                </select>
+              </label>
+              <button
+                type="button"
+                className="gv-btn outline asgd-goal-open"
+                disabled={!goalPick || Boolean(jobAction)}
+                onClick={() => void handleLinkGoal(goalPick)}
+              >
+                <Target size={16} aria-hidden />
+                {jobAction === "goal" ? "Linking" : "Link to this goal"}
+              </button>
             </div>
           ) : null}
 
