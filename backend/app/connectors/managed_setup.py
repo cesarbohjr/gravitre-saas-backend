@@ -40,7 +40,7 @@ def provider_readiness(spec: Any, inventory: list[dict[str, Any]]) -> tuple[bool
     if not spec.provider:
         return False, "provider_not_supported"
     # Interactive account consent only: client-credentials is not user OAuth.
-    if spec.auth_mode not in {"OAUTH1", "OAUTH2"}:
+    if spec.auth_mode not in {"OAUTH1", "OAUTH2", "API_KEY"}:
         return False, "interactive_oauth_unavailable"
     integration = next((r for r in inventory if r["key"] == spec.integration_id), None)
     if not integration:

@@ -19,7 +19,7 @@ export async function waitForManagedConnection(connectorId: string, attemptId: s
 export async function openManagedConnector(vendor: string, data: { name: string; connectorId?: string }): Promise<boolean> {
   const catalog = await connectorsApi.managedCatalog()
   const provider = catalog.connectors.find((entry) => entry.vendor === vendor)
-  if (provider?.authMode && !["OAUTH1", "OAUTH2"].includes(provider.authMode)) {
+  if (provider?.authMode && !["OAUTH1", "OAUTH2", "API_KEY"].includes(provider.authMode)) {
     throw new Error("Sign-in authorization is not available for this provider yet.")
   }
   if (!managedProviderAvailable(catalog, vendor)) throw new Error("This provider needs administrator setup before accounts can connect.")

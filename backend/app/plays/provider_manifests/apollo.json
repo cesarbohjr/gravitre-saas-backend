@@ -1,0 +1,62 @@
+{
+  "manifestVersion": "1.0",
+  "id": "prospecting-apollo",
+  "name": "apollo Prospecting",
+  "version": "0.1.0",
+  "vendor": "apollo",
+  "description": "Prospecting Play connector contract. Inactive until vetted handler registration and vault-based credentials.",
+  "auth": {
+    "type": "apiKey",
+    "headerName": "Authorization"
+  },
+  "capabilities": [
+    "actions"
+  ],
+  "actions": [
+    {
+      "id": "people.search",
+      "name": "people.search",
+      "description": "Read-only provider research or verification. Credit authorization required.",
+      "scopes": [
+        "apollo:people.search"
+      ],
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {}
+      },
+      "idempotent": true,
+      "destructive": false
+    },
+    {
+      "id": "people.match",
+      "name": "people.match",
+      "description": "Read-only provider research or verification. Credit authorization required.",
+      "scopes": [
+        "apollo:people.match"
+      ],
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {}
+      },
+      "idempotent": true,
+      "destructive": false
+    },
+    {
+      "id": "usage.read",
+      "name": "usage.read",
+      "description": "Read-only provider research or verification. Credit authorization required.",
+      "scopes": [
+        "apollo:usage.read"
+      ],
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {}
+      },
+      "idempotent": true,
+      "destructive": false
+    }
+  ]
+}

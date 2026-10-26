@@ -1,0 +1,77 @@
+{
+  "manifestVersion": "1.0",
+  "id": "prospecting-hunter",
+  "name": "hunter Prospecting",
+  "version": "0.1.0",
+  "vendor": "hunter",
+  "description": "Prospecting Play connector contract. Inactive until vetted handler registration and vault-based credentials.",
+  "auth": {
+    "type": "apiKey",
+    "headerName": "Authorization"
+  },
+  "capabilities": [
+    "actions"
+  ],
+  "actions": [
+    {
+      "id": "domain.search",
+      "name": "domain.search",
+      "description": "Read-only provider research or verification. Credit authorization required.",
+      "scopes": [
+        "hunter:domain.search"
+      ],
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {}
+      },
+      "idempotent": true,
+      "destructive": false
+    },
+    {
+      "id": "email.find",
+      "name": "email.find",
+      "description": "Read-only provider research or verification. Credit authorization required.",
+      "scopes": [
+        "hunter:email.find"
+      ],
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {}
+      },
+      "idempotent": true,
+      "destructive": false
+    },
+    {
+      "id": "email.verify",
+      "name": "email.verify",
+      "description": "Read-only provider research or verification. Credit authorization required.",
+      "scopes": [
+        "hunter:email.verify"
+      ],
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {}
+      },
+      "idempotent": true,
+      "destructive": false
+    },
+    {
+      "id": "usage.read",
+      "name": "usage.read",
+      "description": "Read-only provider research or verification. Credit authorization required.",
+      "scopes": [
+        "hunter:usage.read"
+      ],
+      "inputSchema": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {}
+      },
+      "idempotent": true,
+      "destructive": false
+    }
+  ]
+}

@@ -23,7 +23,7 @@ def test_unknown_provider_mapping_is_not_available():
     assert provider_readiness(get_nango_connector_spec("syncro"), []) == (False,"provider_not_supported")
 
 
-@pytest.mark.parametrize("vendor", ["freshservice", "cal_com", "crowdstrike", "sage_intacct"])
+@pytest.mark.parametrize("vendor", ["freshservice", "crowdstrike", "sage_intacct"])
 def test_non_interactive_credentials_never_count_as_user_oauth(vendor):
     spec = get_nango_connector_spec(vendor)
     assert provider_readiness(spec, [{"key": spec.integration_id, "provider": spec.provider, "missing_fields": []}]) == (False, "interactive_oauth_unavailable")
@@ -50,3 +50,12 @@ def test_inventory_cache_is_key_scoped_and_drops_credentials(monkeypatch):
     integration_inventory(one); integration_inventory(two)
     assert call.call_count==2
     _cache.clear()
+
+@pytest.mark.parametrize("vendor", ["instantly", "smartlead", "quickmail", "hunter", "snov", "emailable", "millionverifier"])
+def test_api_key_connection_ready_only_when_nango_template_is_configured(vendor):
+    spec = get_nango_connector_spec(vendor)
+    ready, reason = provider_readiness(spec, [
+        {"key": spec.integration_id, "provider": spec.provider, "missing_fields": []}
+    ])
+    assert (ready, reason) == (True, None)
+    assert provider_readiness(spec, []) == (False, "integration_missing")

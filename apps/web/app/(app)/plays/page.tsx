@@ -672,8 +672,12 @@ function PlaySide({
             {chips.map((chip, index) => (
               <span key={`${chip.vendor}-${index}`} className={chip.ready ? undefined : "off"}>
                 <i aria-hidden />
-                {vendorName(chip.vendor)}
-                <span className="ov-sr">{chip.ready ? " connected" : " not connected"}</span>
+                {chip.ready ? vendorName(chip.vendor) : (
+                  <Link href={`/connectors?connect=${encodeURIComponent(chip.vendor)}`} aria-label={`Connect ${vendorName(chip.vendor)} in Gravitre`}>
+                    {vendorName(chip.vendor)}
+                  </Link>
+                )}
+                <span className="ov-sr">{chip.ready ? " connected" : " not connected; select to connect"}</span>
               </span>
             ))}
           </div>

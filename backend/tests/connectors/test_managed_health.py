@@ -82,7 +82,9 @@ def test_remote_health_uses_current_api_and_rejects_invalid_metadata(monkeypatch
 
 
 def test_managed_types_migration_covers_registry():
-    migration = (Path(__file__).parents[3] / 'supabase/migrations/20261001233000_add_nango_long_tail_connector_types.sql').read_text()
+    migrations = Path(__file__).parents[3] / 'supabase/migrations'
+    # Provider types are extended by forward-only migrations; never rewrite history.
+    migration = "\n".join(p.read_text() for p in sorted(migrations.glob("*.sql")) if "connector_type" in p.name or "nango_long_tail" in p.name)
     from app.connectors.nango_registry import BUSINESS_CONNECTORS
     business = {r["vendor"] for r in BUSINESS_CONNECTORS}
     assert len(business) == 30
