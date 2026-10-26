@@ -207,19 +207,13 @@ def _hubspot_deals(client: Any, org_id: str, settings: Settings) -> tuple[str, l
 
 
 def _stripe_invoices(client: Any, org_id: str, settings: Settings) -> list[dict[str, Any]] | None:
-    from app.connectors.repository import get_connector_by_type
-    from app.connectors.stripe_api import StripeAPIError, list_invoices, resolve_stripe_credentials
+    from app.services.stripe_tools import StripeAPIError, fetch_open_invoices
 
-    conn = get_connector_by_type(client, org_id, "stripe", environment_name="default")
-    if not conn:
-        return None
     try:
-        api_key, account = resolve_stripe_credentials(client, org_id, str(conn["id"]), settings)
-        payload = list_invoices(api_key, stripe_account=account, status="open", limit=100)
+        return fetch_open_invoices(client, org_id, settings)
     except StripeAPIError as exc:
         logger.warning("revenue opportunities: stripe invoices failed org_id=%s: %s", org_id, exc)
         return None
-    return [dict(i) for i in (payload.get("data") or []) if isinstance(i, dict)]
 
 
 def get_revenue_opportunities(
