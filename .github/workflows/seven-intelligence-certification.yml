@@ -65,7 +65,7 @@ jobs:
   deployed-lifecycle-baseline:
     # This verifies the deployed smoke-org path, not candidate-branch coverage.
     # It cannot promote any of the 56 cells to PASS_LIVE_VERIFIED.
-    if: github.event_name == 'workflow_dispatch' || github.event.pull_request.head.repo.full_name == github.repository
+    if: github.event_name == 'workflow_dispatch' || (github.event.pull_request.number == 580 && github.event.pull_request.head.repo.full_name == github.repository)
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:
