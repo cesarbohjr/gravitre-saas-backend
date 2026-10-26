@@ -7,13 +7,14 @@ def test_seven_capabilities_are_all_present():
     assert CAPABILITIES == {"contextual", "sentiment", "causal", "temporal", "relational", "adaptive", "predictive"}
     assert set(DESCRIPTIONS) == CAPABILITIES
 
-def test_default_settings_do_not_claim_runtime_wiring():
+def test_default_settings_report_current_runtime_policy_contract():
     profile = _settings({})
     assert set(profile) == CAPABILITIES
     assert all(x["mode"] == "balanced" for x in profile.values())
     assert profile["adaptive"]["behavior_wired"] is True
     assert profile["predictive"]["behavior_wired"] is True
-    assert profile["predictive"]["runtime_effect"] == "optional_evidence_presentation"
+    assert profile["predictive"]["runtime_effect"] == "optional_enrichment_eligibility_and_evidence_threshold"
+    assert profile["adaptive"]["runtime_effect"] == "optional_enrichment_eligibility_guidance_and_evidence_threshold"
 
 def test_profile_validates_mode():
     with pytest.raises(ValidationError):
