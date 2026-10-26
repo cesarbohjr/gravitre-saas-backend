@@ -56,7 +56,11 @@ jobs:
             tests/services/test_intelligence_outcome_verification.py \
             tests/services/test_intelligence_overview_sweep_worker.py \
             tests/routers/test_intelligence_overview_atomic_admission.py \
-            tests/routers/test_intelligence_overview_tenant_isolation.py
+            tests/routers/test_intelligence_overview_tenant_isolation.py \
+            tests/services/test_connector_api_import_boundaries.py \
+            tests/services/test_connector_catalog_audit.py \
+            tests/services/test_connector_registry_verification.py \
+            tests/services/test_stripe_tools.py
   offline-web:
     runs-on: ubuntu-latest
     timeout-minutes: 15
