@@ -7,7 +7,7 @@ vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn() }) }))
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
 vi.mock("@/lib/api", () => ({ agentsApi: { update: vi.fn(), stop: vi.fn() } }))
 
-import { RosterTeamView, TEAM_BAND_LIMIT } from "@/components/agents/roster/roster-team-view"
+import { RosterTeamView, TEAM_BAND_COUNT, TEAM_BAND_LIMIT } from "@/components/agents/roster/roster-team-view"
 import { LIST_PAGE_SIZE, RosterListView, pageItems } from "@/components/agents/roster/roster-list-view"
 import { ROSTER_DEPARTMENTS, toRosterAgent, yesterdayBestAgent, type RosterStatsPayload } from "@/lib/agents-roster"
 
@@ -56,14 +56,33 @@ describe("agents team view limits", () => {
   const raw = [...fleet("Sales", 6, "s"), ...fleet("Security", 1, "sec"), ...fleet("General", 1, "g")]
   const agents = raw.map((r) => toRosterAgent(r, undefined))
 
-  it("shows four agents per department and links the rest to the filtered list", () => {
-    const el = render(<RosterTeamView agents={agents} statsAvailable={false} days={0} />)
+  it("shows six agents per department and links the rest to the filtered list", () => {
+    const many = [...fleet("Sales", 8, "s"), ...fleet("Security", 1, "sec")].map((r) => toRosterAgent(r, undefined))
+    const el = render(<RosterTeamView agents={many} statsAvailable={false} days={0} />)
     const sales = band(el, "sales")
     expect(sales.querySelectorAll("article")).toHaveLength(TEAM_BAND_LIMIT)
-    expect(sales.textContent).toContain("Showing 4 of 6 Sales agents")
-    const links = linksNamed(sales, /View all 6 in list view/)
+    expect(sales.textContent).toContain("Showing 6 of 8 Sales agents")
+    const links = linksNamed(sales, /View all 8 in list view/)
     expect(links).toHaveLength(1)
     expect(links[0].getAttribute("href")).toBe("/agents?view=list&dept=sales")
+    expect(sales.textContent).toContain("8 agents live")
+  })
+
+  it("gives the top three departments bands and lists the rest under More of your team", () => {
+    const wide = [
+      ...fleet("Sales", 3, "s"), ...fleet("Marketing", 2, "m"), ...fleet("Finance", 2, "f"),
+      ...fleet("Security", 1, "sec"), ...fleet("General", 5, "g"),
+    ].map((r) => toRosterAgent(r, undefined))
+    const el = render(<RosterTeamView agents={wide} statsAvailable={false} days={0} />)
+    expect(el.querySelectorAll(".rs-band")).toHaveLength(TEAM_BAND_COUNT)
+    const rest = el.querySelector<HTMLElement>('section[aria-labelledby="rs-more-heading"]')!
+    expect(rest.textContent).toContain("More of your team")
+    const restText = rest.textContent ?? ""
+    const bandNames = [...el.querySelectorAll(".rs-band h2")].map((h) => h.textContent)
+    expect(bandNames.some((n) => n?.includes("Security")) || restText.includes("Security")).toBe(true)
+    const viewAll = linksNamed(rest, /View all/)
+    for (const a of viewAll) expect(a.getAttribute("href")).toMatch(/^\/agents\?view=list&dept=/)
+    expect(linksNamed(rest, /Hire an? /).length).toBeGreaterThan(0)
   })
 
   it("gives Security and General their own bands with the v2 department art", () => {

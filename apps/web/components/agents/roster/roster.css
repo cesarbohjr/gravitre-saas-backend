@@ -68,7 +68,7 @@
 .gv-ws .rs-standout a { color: #19c37d; font-weight: 500; text-decoration: none; font-size: 14px; }
 .gv-ws .rs-standout a:hover { color: #3fd99a; }
 .gv-ws .rs-standout .gv-pill { background: #1c3a2d; color: #19c37d; }
-.gv-ws .rs-standout .rs-ava { width: 54px; height: 54px; font-size: 17px; border-radius: 13px; background: #3a2e12; color: #f1c46b; }
+.gv-ws .rs-standout .rs-ava { width: 54px; height: 54px; font-size: 17px; border-radius: 13px; background: #8a5a06; color: #f1c46b; }
 .gv-ws .rs-standout .rs-ava .dot { border-color: #0b0c0c; }
 .gv-ws .rs-spark { display: flex; align-items: flex-end; gap: 6px; height: 64px; }
 .gv-ws .rs-spark span { flex: 1; background: #19c37d; border-radius: 4px; min-height: 3px; transform-origin: bottom; animation: rsGrow 0.9s cubic-bezier(0.22, 1, 0.36, 1) both; }
@@ -82,9 +82,12 @@
 
 /* Department bands */
 .gv-ws .rs-band { margin-top: 20px; display: flex; flex-wrap: wrap; overflow: hidden; border-radius: 20px; }
-.gv-ws .rs-band-side { flex: 1 1 280px; min-width: 0; background: var(--gv-paper-soft); border-right: 1px solid var(--gv-subtle); padding: 16px; display: flex; flex-direction: column; gap: 14px; }
+.gv-ws .rs-band-side { flex: 1 1 250px; max-width: 100%; min-width: 0; background: var(--gv-amber-bg); border-right: 1px solid var(--gv-subtle); padding: 16px; display: flex; flex-direction: column; gap: 14px; }
 /* v2: a tall fixed-height department scene above the name, beside up to 4 agents. */
-.gv-ws .rs-band-art { flex: none; height: 300px; border-radius: 14px; border: 1px solid var(--gv-paper-border); overflow: hidden; background: var(--gv-paper); }
+.gv-ws .rs-band-art { position: relative; flex: none; height: 150px; border-radius: 14px; border: 1px solid var(--gv-paper-border); overflow: hidden; background: var(--gv-paper); }
+/* "N agents live" pill over the department scene */
+.gv-ws .rs-live { position: absolute; left: 10px; bottom: 10px; display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px 4px 8px; border-radius: 999px; background: var(--gv-card); color: var(--gv-text); font-size: 12px; font-weight: 500; box-shadow: 0 1px 2px rgba(20, 22, 21, 0.12); }
+.gv-ws .rs-live .gv-ping { width: 8px; height: 8px; background: var(--gv-accent); }
 .gv-ws .rs-band-art img { display: block; width: 100%; height: 100%; object-fit: cover; }
 .gv-ws .rs-band-copy { display: flex; flex-direction: column; gap: 8px; padding: 0 4px 4px; }
 .gv-ws .rs-band-copy .rs-dsq { width: 12px; height: 12px; }
@@ -94,16 +97,17 @@
 .gv-ws .rs-band-side h2 { margin: 0; font-size: 24px; font-weight: 600; letter-spacing: -0.01em; }
 .gv-ws .rs-band-side p { margin: 0; font-size: 15px; color: var(--gv-muted); line-height: 1.5; }
 .gv-ws .rs-band-main { flex: 999 1 520px; min-width: 0; padding: 16px; display: flex; flex-direction: column; gap: 14px; }
-.gv-ws .rs-band-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 360px), 1fr)); gap: 14px; align-content: start; }
+.gv-ws .rs-band-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 260px), 1fr)); gap: 14px; align-content: start; }
 .gv-ws .rs-band-more { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; padding: 2px 4px 0; font-size: 14px; color: var(--gv-muted); }
 .gv-ws .rs-viewall { min-height: 44px; display: inline-flex; align-items: center; gap: 8px; }
 
-@media (max-width: 760px) { .gv-ws .rs-band-side { border-right: 0; border-bottom: 1px solid var(--gv-subtle); } .gv-ws .rs-band-art { height: 220px; } }
+@media (max-width: 760px) { .gv-ws .rs-band-side { border-right: 0; border-bottom: 1px solid var(--gv-subtle); } .gv-ws .rs-band-art { height: 170px; } }
 
 /* Agent card */
 .gv-ws .rs-ag { background: var(--gv-card); border: 1px solid var(--gv-border); border-radius: 14px; padding: 18px; display: flex; flex-direction: column; gap: 12px; transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease; }
 .gv-ws .rs-ag:hover { transform: translateY(-3px); border-color: var(--gv-border-strong); box-shadow: 0 16px 32px -22px rgba(20, 22, 21, 0.4); }
 .gv-ws .rs-ag.star { border-color: var(--gv-mint-2); box-shadow: 0 0 0 3px var(--gv-brand-surface); }
+.gv-ws .rs-ag .rs-ava { border-radius: 50%; background: var(--gv-card); box-shadow: 0 2px 8px rgba(20, 21, 19, .1), 0 0 0 1px var(--gv-border); }
 .gv-ws .rs-ag .nm { font-weight: 600; font-size: 15px; line-height: 1.3; color: var(--gv-text); text-decoration: none; }
 .gv-ws .rs-ag .nm:hover { text-decoration: underline; color: var(--gv-text); }
 .gv-ws .rs-ag .role { font-size: 13px; color: var(--gv-muted); }
@@ -123,7 +127,7 @@
 /* More of your team */
 .gv-ws .rs-rest { margin-top: 20px; }
 .gv-ws .rs-rest h2 { margin: 0 0 12px; font-size: 16px; font-weight: 600; color: var(--gv-muted); }
-.gv-ws .rs-rest-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr)); gap: 14px; }
+.gv-ws .rs-rest-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 200px), 1fr)); gap: 14px; }
 .gv-ws .rs-mini { padding: 16px 18px; }
 .gv-ws .rs-mini ul { list-style: none; margin: 12px 0 0; padding: 0; display: grid; gap: 8px; }
 .gv-ws .rs-mini li a { display: flex; align-items: center; gap: 10px; font-size: 14px; color: var(--gv-text); text-decoration: none; }
@@ -131,6 +135,13 @@
 .gv-ws .rs-mini .gv-ava { width: 30px; height: 30px; border-radius: 9px; font-size: 11px; }
 .gv-ws .rs-mini .cnt, .gv-ws .rs-cnt { font-family: var(--font-mono), "Geist Mono", monospace; font-size: 12px; color: var(--gv-muted); }
 .gv-ws .rs-mini .cnt { margin-left: auto; }
+.gv-ws .rs-mini li a { min-height: 32px; }
+.gv-ws .rs-mini li .nm { flex: 1 1 auto; min-width: 0; overflow-wrap: anywhere; }
+.gv-ws .rs-mini-ic { width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; flex: 0 0 auto; background: var(--gv-card); color: var(--dept-ink); box-shadow: 0 0 0 1px var(--gv-border); }
+.gv-ws .rs-mini-dot { width: 8px; height: 8px; border-radius: 50%; flex: 0 0 auto; background: var(--gv-accent); }
+.gv-ws .rs-mini-dot.amber { background: var(--gv-amber); }
+.gv-ws .rs-mini-dot.grey { background: var(--gv-border-strong); }
+.gv-ws .rs-mini-more { display: inline-block; margin-top: 10px; font-size: 13px; }
 .gv-ws .rs-emptydept { border: 1.5px dashed var(--gv-border-strong); border-radius: 14px; padding: 16px 18px; display: flex; flex-direction: column; gap: 8px; justify-content: center; }
 .gv-ws .rs-emptydept p { margin: 0; font-size: 13px; color: var(--gv-muted); line-height: 1.45; }
 
