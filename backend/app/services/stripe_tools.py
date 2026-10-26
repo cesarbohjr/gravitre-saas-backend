@@ -5,7 +5,7 @@ from typing import Any
 
 from app.config import Settings
 from app.connectors.repository import get_connector_by_type
-from app.connectors.stripe_api import get_subscription, resolve_stripe_credentials, subscription_state
+from app.connectors.stripe_api import StripeAPIError, get_subscription, resolve_stripe_credentials, subscription_state
 
 
 def fetch_subscription_state(
