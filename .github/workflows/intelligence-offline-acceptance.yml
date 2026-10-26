@@ -1,0 +1,80 @@
+name: Intelligence offline engineering acceptance
+
+on:
+  push:
+    branches: [fix/intelligence-offline-e2e-acceptance]
+  pull_request:
+    branches: [main]
+    paths:
+      - 'backend/app/billing/intelligence_sweep_meter.py'
+      - 'backend/app/services/intelligence_*.py'
+      - 'backend/app/routers/intelligence_overview.py'
+      - 'backend/tests/e2e/test_intelligence_*.py'
+      - 'backend/tests/billing/test_intelligence_sweep_atomic_meter.py'
+      - 'backend/tests/services/test_intelligence_*.py'
+      - 'supabase/migrations/20261026*intelligence*.sql'
+      - 'apps/web/components/intelligence/evidence-play-recommendations.tsx'
+      - 'apps/web/lib/api.ts'
+      - 'apps/web/__tests__/intelligence-evidence-api.test.ts'
+      - '.github/workflows/intelligence-offline-acceptance.yml'
+  workflow_dispatch:
+
+jobs:
+  offline-backend:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: backend
+    env:
+      APP_ENV: dev
+      SUPABASE_URL: https://test.supabase.co
+      SUPABASE_ANON_KEY: anon-test
+      SUPABASE_SERVICE_ROLE_KEY: service-role-test
+      SUPABASE_JWT_SECRET: jwt-secret-test
+      OPENAI_API_KEY: sk-test-openai
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+      - name: Install test dependencies
+        run: python -m pip install -r requirements-dev.txt
+      - name: Run offline isolation, recovery, billing, history, governed handoff, and migration contract tests
+        run: |
+          python -m pytest -q --no-header \
+            tests/e2e/test_intelligence_tenant_recovery_regression.py \
+            tests/e2e/test_intelligence_migration_security_contract.py \
+            tests/e2e/test_intelligence_recommendation_full_lifecycle.py \
+            tests/e2e/test_intelligence_evidence_play_handoff.py \
+            tests/e2e/test_intelligence_overview_offline_contract.py \
+            tests/billing/test_intelligence_sweep_atomic_meter.py \
+            tests/services/test_intelligence_history_pipeline.py \
+            tests/services/test_intelligence_history_adapters.py \
+            tests/services/test_intelligence_outcome_verification.py \
+            tests/services/test_intelligence_overview_sweep_worker.py \
+            tests/routers/test_intelligence_overview_atomic_admission.py \
+            tests/routers/test_intelligence_overview_tenant_isolation.py
+  offline-web:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: apps/web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: pnpm
+          cache-dependency-path: apps/web/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - name: Evidence journey tests
+        run: pnpm test -- intelligence-evidence-api
+      - name: TypeScript check
+        run: pnpm typecheck
