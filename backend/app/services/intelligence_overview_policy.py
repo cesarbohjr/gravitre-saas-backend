@@ -107,7 +107,7 @@ def select_enrichment_work(
         "causal": bool(classification.get("requires_causal")),
         "predictive": bool(classification.get("requires_prediction")),
         "relational": bool(classification.get("requires_graph")),
-        "adaptive": department,
+        "adaptive": department or bool(context.get("retrieval_plan")) or bool(context.get("catalog_model_inputs")) or any(bool(classification.get(key)) for key in ("requires_prediction", "requires_causal", "requires_graph")),
     }
     return {
         "causal": not deferred and requested["causal"],
@@ -117,8 +117,8 @@ def select_enrichment_work(
         "relational": not deferred and (
             requested["relational"] or (policy.get("relational") == "proactive" and entity)),
         "adaptive": not deferred and (
-            department or (policy.get("adaptive") == "proactive"
-                           and bool(context.get("retrieval_plan")))),
+            requested["adaptive"] or (policy.get("adaptive") == "proactive"
+                                      and bool(context.get("understanding")))),
     }
 
 
