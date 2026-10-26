@@ -24,7 +24,12 @@ def _member_role(client: Any, *, org_id: str, user_id: str) -> str | None:
             .execute()
             .data or []
         )
-        if len(rows) != 1:\n            return None\n        row = rows[0]\n        if str(row.get("org_id") or "") != org_id or str(row.get("user_id") or "") != user_id:\n            return None\n        return str(row.get("role") or "").strip().lower() or None
+        if len(rows) != 1:
+            return None
+        row = rows[0]
+        if str(row.get("org_id") or "") != org_id or str(row.get("user_id") or "") != user_id:
+            return None
+        return str(row.get("role") or "").strip().lower() or None
     except Exception:  # Fail closed on errors or schema drift.
         return None
 
