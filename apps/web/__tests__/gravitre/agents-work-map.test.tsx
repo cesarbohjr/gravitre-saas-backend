@@ -8,7 +8,7 @@ vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
 vi.mock("@/lib/api", () => ({ agentsApi: { update: vi.fn(), stop: vi.fn(), start: vi.fn() } }))
 vi.mock("@/components/gravitre/goal-workflow-wizard", () => ({ GoalWorkflowWizard: () => null }))
 
-import { DORMANT_CAP, RosterWorkMap } from "@/components/agents/roster/roster-work-map"
+import { RosterWorkMap } from "@/components/agents/roster/roster-work-map"
 import {
   buildWorkMap,
   missingPieces,
@@ -63,19 +63,30 @@ describe("work map wiring", () => {
     expect(missingPieces(byId.get("ph0")!, model)).toEqual(["instructions", "a connector", "an output", "a goal"])
   })
 
-  it("draws wired agents in the lanes and caps the dormant group", () => {
+  it("draws every agent in the lanes, grouped by department, and dims what is off the trace", () => {
     const el = render(<RosterWorkMap agents={agents} goals={stats.goals} statsAvailable onGoalsChanged={() => {}} />)
-    const laneCards = [...el.querySelectorAll("button.wm-card")].map((b) => b.textContent ?? "")
-    expect(laneCards.some((t) => t.includes("Lead Scouting Analyst"))).toBe(true)
-    expect(laneCards.some((t) => t.includes("Marketing Agent"))).toBe(false)
-    const dormant = el.querySelector(".wm-dormant")!
-    expect(dormant.textContent).toContain("Dormant · 10")
-    expect(dormant.querySelectorAll("button.wm-grow")).toHaveLength(DORMANT_CAP)
-    expect(dormant.querySelector("a")?.getAttribute("href")).toBe("/agents?view=list")
-    // Lines are drawn for wired agents only: one app link, one output link, one goal link.
-    expect(el.querySelectorAll("path.wm-link")).toHaveLength(3)
-    // Apps only dormant agents use sit apart, with no lines.
-    expect(el.querySelector(".wm-group:not(.wm-dormant)")?.textContent).toContain("HubSpot")
+    const laneCards = [...el.querySelectorAll<HTMLButtonElement>("button.wm-card")]
+    const named = (re: RegExp) => laneCards.find((b) => re.test(b.textContent ?? ""))
+    expect(named(/Lead Scouting Analyst/)?.classList.contains("dim")).toBe(false)
+    expect(named(/Marketing Agent/)?.classList.contains("dim")).toBe(true)
+    expect(el.querySelector(".wm-dormant")).toBeNull()
+    // Agents with no connector get one note under the apps lane.
+    const noApp = el.querySelector(".wm-nodata")!
+    expect(noApp.textContent).toContain("No app connected")
+    expect(noApp.querySelector("a")?.getAttribute("href")).toBe("/connectors")
+    // Status pills count agent states.
+    const pills = el.querySelector(".wm-counts")?.textContent ?? ""
+    expect(pills).toMatch(/\d+ working/)
+    expect(pills).toMatch(/\d+ ready/)
+    expect(pills).toMatch(/\d+ not set up/)
+  })
+
+  it("shows a goal's stored start and target on its card", () => {
+    const goals = [{ ...stats.goals[0], status: "draft", successMetrics: { metric: "MSP leads", start: 0, target: 100 } }]
+    const el = render(<RosterWorkMap agents={agents} goals={goals} statsAvailable onGoalsChanged={() => {}} />)
+    const card = el.querySelector(".wm-goal")!
+    expect(card.textContent).toContain("0 of 100 MSP leads")
+    expect(card.querySelector('[role="progressbar"]')).toBeTruthy()
   })
 
   it("opens a detail sheet for agents, connectors, outputs and goals", () => {
