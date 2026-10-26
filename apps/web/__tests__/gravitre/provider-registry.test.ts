@@ -45,6 +45,8 @@ describe("provider registry", () => {
       "cisa_kev",
       "halo_psa",
       "syncro",
+      // New prospecting integrations use neutral marks until verified vendor assets exist.
+      "smartlead", "quickmail", "hunter", "snov", "emailable", "millionverifier",
     ])
     const missing = CONNECTOR_CATALOG.map((c) => c.vendorKey).filter(
       (key) => !NO_MARK.has(key) && !hasProviderMark(key),
