@@ -157,7 +157,8 @@ async def test_catalog_exposes_only_registered_action_support(flow):
         result = (await client.get('/api/connectors/managed-auth/catalog')).json()
     assert result['configured']
     providers = {r['vendor']:r for r in result['connectors']}
-    assert len(providers) == 80
+    from app.connectors.nango_registry import NANGO_CONNECTOR_REGISTRY, NANGO_FALLBACK_REGISTRY
+    assert set(providers) == set(NANGO_CONNECTOR_REGISTRY) | set(NANGO_FALLBACK_REGISTRY)
     assert len(providers['freshservice']['actions']) == 4
     assert len(providers['okta']['actions']) == 6
     assert 'okta.users.suspend' in providers['okta']['actions']
