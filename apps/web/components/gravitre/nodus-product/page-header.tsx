@@ -116,7 +116,7 @@ export function GravitrePageHeader({
                 className={cn(
                   TYPE.pageLead,
                   "max-w-2xl",
-                  display && "sm:text-[15px] sm:leading-relaxed sm:text-[color:var(--g-text-secondary)]",
+                  display && "max-w-[640px] sm:text-[16px] sm:leading-[1.4] sm:text-[color:var(--g-text-secondary)]",
                 )}
               >
                 {description}

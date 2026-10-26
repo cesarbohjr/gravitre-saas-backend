@@ -31,7 +31,6 @@ import {
 } from "@/lib/intelligence/learning-filters"
 import { isSnapshotMetricsReady, type SnapshotLoadState } from "@/lib/intelligence/snapshot-state"
 import { cn } from "@/lib/utils"
-import { LearningCapabilitiesPanel } from "@/components/intelligence/learning-capabilities-panel"
 
 function LearningFilterRow({
   filters,
@@ -360,9 +359,6 @@ export function LearningStage({
           </section>
         ) : null}
       </div>
-
-      {/* What the org's learning can and can't do yet: reference, so it sits under the working views. */}
-      <LearningCapabilitiesPanel enabled={enabled} />
     </div>
   )
 }

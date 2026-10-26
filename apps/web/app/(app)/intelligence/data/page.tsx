@@ -1,8 +1,8 @@
 "use client"
 
-import { Suspense, useRef, useState } from "react"
+import { Suspense, useEffect, useRef, useState } from "react"
 import Link from "next/link"
-import { PAGE_FRAME, TYPE } from "@/lib/design-system"
+import { INTELLIGENCE_PAGE_FRAME, TYPE } from "@/lib/design-system"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { NucleoIntelligence } from "@/components/icons/nucleo/semantic"
 import { EmptyState } from "@/components/gravitre/empty-state"
@@ -38,8 +38,14 @@ export default function IntelligenceDataPage() {
   function manageDataset(id: string) {
     setManageOpen(true)
     setFocusDataset((current) => ({ id, nonce: (current?.nonce ?? 0) + 1 }))
-    requestAnimationFrame(() => manageRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }))
   }
+
+  // The dataset editor is not part of the v3 page; it appears under the table
+  // only after someone picks a dataset to manage, and scrolls into view then.
+  useEffect(() => {
+    if (!focusDataset) return
+    requestAnimationFrame(() => manageRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }))
+  }, [focusDataset])
 
   if (!user) {
     return (
@@ -53,7 +59,7 @@ export default function IntelligenceDataPage() {
 
   return (
     <AppShell title={copy.title}>
-      <div className={PAGE_FRAME} data-composition="create">
+      <div className={INTELLIGENCE_PAGE_FRAME} data-composition="create">
         <GravitrePageHeader
           eyebrow={copy.eyebrow}
           titleScale="display"
@@ -85,6 +91,7 @@ export default function IntelligenceDataPage() {
               <TrainingDatasetsTable sources={sources} onManageDataset={manageDataset} />
             </div>
 
+            {manageOpen ? (
             <details
               id="manage-datasets"
               ref={manageRef}
@@ -107,6 +114,7 @@ export default function IntelligenceDataPage() {
                 ) : null}
               </div>
             </details>
+            ) : null}
           </div>
         </IntelligenceShell>
         <UploadDatasetDialog

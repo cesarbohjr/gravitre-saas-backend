@@ -8,6 +8,7 @@ from supabase import create_client
 from app.config import Settings, get_settings
 from app.core.db import shared_service_client
 from app.core.logging import get_logger
+from app.services.intelligence_reports_service import run_intelligence_reports_tick
 from app.services.ops_notifications import run_ops_notifications_tick
 
 logger = get_logger(__name__)
@@ -25,6 +26,11 @@ async def _run_once(settings: Settings) -> None:
         summary.get("escalated"),
         summary.get("summaries"),
     )
+    # Scheduled Intelligence reports ride the same tick (15 min), so a report
+    # set for 8:00 AM arrives by about 8:15 in the org's time zone.
+    reports = await run_intelligence_reports_tick(client, settings)
+    if reports:
+        logger.info("intelligence_reports_tick sent=%s", reports)
 
 
 async def _loop(interval: int, settings: Settings) -> None:

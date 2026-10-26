@@ -119,6 +119,13 @@ export type PageFamilyId = keyof typeof PAGE_FAMILY
 export const PAGE_FRAME =
   "min-w-0 space-y-6 px-[var(--np-page-pad-sm)] pb-8 sm:px-[var(--np-page-pad)] [&>*:first-child]:-mx-[var(--np-page-pad-sm)] sm:[&>*:first-child]:-mx-[var(--np-page-pad)]"
 
+/**
+ * Intelligence pages (Overview, Knowledge, Forecasts, Impact, Reports, Data,
+ * Models): the v3 design centres the page in a 1320px column with 40px gutters
+ * on desktop, 24px on tablets and 16px on phones.
+ */
+export const INTELLIGENCE_PAGE_FRAME = `${PAGE_FRAME} mx-auto w-full max-w-[1320px] pb-24 [--np-page-pad-sm:16px] [--np-page-pad:24px] lg:[--np-page-pad:40px]`
+
 /** Window Manager chrome tokens (presentation-only). */
 export const WINDOW_CHROME = {
   frame:

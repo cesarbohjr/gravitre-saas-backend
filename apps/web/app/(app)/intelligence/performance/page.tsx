@@ -17,7 +17,7 @@ import {
 import { useAuth } from "@/lib/auth-context"
 import { connectorsApi, enterpriseApi } from "@/lib/api"
 import { ApiError } from "@/lib/fetcher"
-import { PAGE_FRAME } from "@/lib/design-system"
+import { INTELLIGENCE_PAGE_FRAME } from "@/lib/design-system"
 import { useIntelligenceSnapshot } from "@/lib/intelligence/use-intelligence-snapshot"
 import { NucleoIntelligence } from "@/components/icons/nucleo/semantic"
 
@@ -101,7 +101,7 @@ export default function IntelligencePerformancePage() {
 
   return (
     <AppShell title={copy.title}>
-      <div className={PAGE_FRAME} data-composition="understand">
+      <div className={INTELLIGENCE_PAGE_FRAME} data-composition="understand">
         <GravitrePageHeader
           eyebrow={copy.eyebrow}
           titleScale="display"

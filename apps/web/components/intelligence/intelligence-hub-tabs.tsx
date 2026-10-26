@@ -8,8 +8,6 @@
  *     Overview  → what is changing?
  *     Knowledge → what has Gravitre learned and remembered? (route /intelligence/learning; Memory lives here)
  *     Forecasts → what is likely to happen next? (route /intelligence/predictive)
- *     Accounts  → how is each customer account doing? (route /intelligence/accounts;
- *                 /intelligence/predictive#account-health and ?section=accounts redirect here)
  *     Impact    → what did agents deliver? (route /intelligence/performance)
  *     Reports   → shareable summaries.
  *   Build
@@ -28,7 +26,6 @@ export type IntelligenceHubTab =
   | "overview"
   | "learning"
   | "predictions"
-  | "accounts"
   | "performance"
   | "models"
   | "reports"
@@ -66,13 +63,6 @@ export const INTELLIGENCE_HUB_TABS: Array<
     group: "understand",
   },
   {
-    id: "accounts",
-    label: "Accounts",
-    href: APP_ROUTES.intelligenceAccounts,
-    description: "How each customer account is doing, from what customers say and do",
-    group: "understand",
-  },
-  {
     id: "performance",
     label: "Impact",
     href: APP_ROUTES.intelligencePerformance,
@@ -107,7 +97,6 @@ export function resolveIntelligenceHubTab(pathname: string): IntelligenceHubTab 
   if (pathname.startsWith("/intelligence/memory")) return "learning"
   if (pathname.startsWith("/intelligence/data")) return "data"
   if (pathname.startsWith("/intelligence/predictive")) return "predictions"
-  if (pathname.startsWith("/intelligence/accounts")) return "accounts"
   if (pathname.startsWith("/intelligence/performance")) return "performance"
   if (pathname.startsWith("/intelligence/model-studio")) return "models"
   if (pathname.startsWith("/models")) return "models"
@@ -130,7 +119,7 @@ export function IntelligenceHubTabs({
     <nav
       aria-label="Intelligence hub"
       className={cn(
-        "-mb-px flex items-end gap-x-5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
+        "-mb-px flex items-end gap-x-7 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
         className,
       )}
     >
@@ -141,16 +130,16 @@ export function IntelligenceHubTabs({
           aria-labelledby={`intelligence-hub-group-${group.id}`}
           className={cn(
             "flex shrink-0 flex-col",
-            groupIndex > 0 && "border-l border-[color:var(--g-border-subtle)] pl-5",
+            groupIndex > 0 && "border-l border-[color:var(--g-border-subtle)] pl-7",
           )}
         >
           <span
             id={`intelligence-hub-group-${group.id}`}
-            className="pb-0.5 font-mono text-[10px] uppercase tracking-[0.08em] text-[color:var(--g-text-muted)]"
+            className="pb-1.5 font-mono text-[10px] uppercase tracking-[0.1em] text-[color:var(--g-text-muted)]"
           >
             {group.label}
           </span>
-          <div className="flex items-end gap-x-5">
+          <div className="flex items-end gap-x-[22px]">
             {INTELLIGENCE_HUB_TABS.filter((link) => link.group === group.id).map((link) => {
               const isActive = current === link.id
               return (
@@ -161,11 +150,11 @@ export function IntelligenceHubTabs({
                   title={link.description}
                   className={cn(
                     TYPE.meta,
-                    "relative inline-flex min-h-11 shrink-0 items-end whitespace-nowrap pb-2.5 pt-1 text-[13px] sm:min-h-0 font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                    "after:absolute after:inset-x-0 after:bottom-0 after:h-[2px] after:rounded-full",
+                    "relative inline-flex min-h-11 shrink-0 items-end whitespace-nowrap pb-3 pt-2 text-[14px] sm:min-h-0 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+                    "after:absolute after:inset-x-0 after:bottom-0 after:h-[2px]",
                     isActive
-                      ? "text-[color:var(--g-text-primary)] after:bg-[color:var(--g-intelligence)]"
-                      : "text-[color:var(--g-text-muted)] after:bg-transparent hover:text-[color:var(--g-text-primary)]",
+                      ? "font-semibold text-[color:var(--g-text-primary)] after:bg-[color:var(--g-brand)]"
+                      : "font-normal text-[color:var(--g-text-secondary)] after:bg-transparent hover:text-[color:var(--g-text-primary)]",
                   )}
                 >
                   {link.label}

@@ -83,10 +83,10 @@ export function TrainingPermissionDialog({ showList = true }: { showList?: boole
       </Dialog>
   )
   // The prompt opens on any Intelligence page when data is detected; the list
-  // of permissions lives on the Build pages (Data, Models), where training is set up.
+  // of permissions lives on Models, under "Show technical details".
   if (!showList) return dialog
   return (
-    <section aria-label="Training permissions" className="mb-5 rounded-xl border p-4">
+    <section aria-label="Training permissions" className="rounded-[var(--g-radius-panel)] border border-[color:var(--g-border-subtle)] bg-[color:var(--g-surface-1)] p-4">
       <details>
         <summary className="cursor-pointer text-sm font-medium">Training permissions</summary>
         <p className="mt-2 text-sm text-muted-foreground">Review detected data, approve automatic training, or pause and revoke permission. Provider processing and federation require their own explicit purpose-specific permissions.</p>

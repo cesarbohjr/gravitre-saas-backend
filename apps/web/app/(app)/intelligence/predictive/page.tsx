@@ -1,7 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
-import { useRouter } from "next/navigation"
+import { useState } from "react"
 import useSWR from "swr"
 import { toast } from "@/components/intelligence/overlays/toast"
 import { AppShell } from "@/components/gravitre/app-shell"
@@ -12,11 +11,10 @@ import { Button } from "@/components/ui/button"
 import { IntelligenceShell } from "@/components/intelligence/shell"
 import { PredictionsStage } from "@/components/intelligence/pages/predictions-stage"
 import { RecommendationFeedPanel } from "@/components/accounts/recommendation-feed-panel"
-import { APP_ROUTES } from "@/lib/app-routes"
 import type { FailureAlertWithEvidence } from "@/components/intelligence/forecasts/forecast-model"
 import { workflowsApi } from "@/lib/api"
 import { useAuth } from "@/lib/auth-context"
-import { PAGE_FRAME } from "@/lib/design-system"
+import { INTELLIGENCE_PAGE_FRAME } from "@/lib/design-system"
 import { ApiError } from "@/lib/fetcher"
 import { useIntelligenceSnapshot } from "@/lib/intelligence/use-intelligence-snapshot"
 import { SURFACE_COPY } from "@/lib/surface-copy"
@@ -30,14 +28,7 @@ const FAILURE_ALERTS_KEY = ["workflow-failure-predictions", "open"] as const
 
 export default function PredictiveOpsPage() {
   const { user } = useAuth()
-  const router = useRouter()
   const [scanning, setScanning] = useState(false)
-  // Old links to the account health section of Forecasts keep working.
-  useEffect(() => {
-    if (window.location.hash === "#account-health") {
-      router.replace(`${APP_ROUTES.intelligenceAccounts}#account-health`)
-    }
-  }, [router])
   const {
     data: pageContext,
     loadState,
@@ -98,7 +89,7 @@ export default function PredictiveOpsPage() {
 
   return (
     <AppShell title={copy.title}>
-      <div className={PAGE_FRAME}>
+      <div className={INTELLIGENCE_PAGE_FRAME}>
         <GravitrePageHeader
           eyebrow="Understand / Forecasts"
           titleScale="display"
@@ -107,7 +98,7 @@ export default function PredictiveOpsPage() {
           icon={<NucleoIntelligence className="h-5 w-5" />}
           actions={
             <div className="flex items-center gap-3">
-              <DataFreshness updatedAt={generatedAt} isRefreshing={refreshing} />
+              <DataFreshness label="Updated" updatedAt={generatedAt} isRefreshing={refreshing} />
               <Button variant="outline" size="sm" onClick={refresh} disabled={refreshing}>
                 <ArrowsClockwise
                   className={`mr-2 h-4 w-4 ${refreshing ? "animate-spin" : ""}`}

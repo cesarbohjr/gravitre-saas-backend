@@ -12,6 +12,8 @@ import { CenteredLoader } from "@/components/gravitre/gravitre-loader"
 import { AskGravitreSummonButton } from "@/components/intelligence/ask-gravitre-summon-button"
 import type { FailureAlertWithEvidence } from "@/components/intelligence/forecasts/forecast-model"
 import { toast } from "@/components/intelligence/overlays/toast"
+import { ShareFindingDialog, type ShareableFinding } from "@/components/intelligence/overlays/share-finding-dialog"
+import { RevenueOpportunitiesSheet } from "@/components/intelligence/overview/revenue-opportunities-sheet"
 import {
   ABILITY_MODES,
   OVERVIEW_PERIODS,
@@ -54,6 +56,7 @@ import {
   connectorsApi,
   enterpriseApi,
   intelligenceApi,
+  intelligenceFindingsApi,
   memoryPromotionApi,
   workflowsApi,
   type IntelligenceAbilityMode,
@@ -63,7 +66,7 @@ import { ApiError } from "@/lib/fetcher"
 import { ensureSelectedOrg, getQuickOrgId } from "@/lib/org-context"
 import { readCachedOrgMembership, writeCachedOrgMembership } from "@/lib/org-gate-cache"
 import { useIntelligenceSnapshot } from "@/lib/intelligence/use-intelligence-snapshot"
-import { PAGE_FRAME } from "@/lib/design-system"
+import { INTELLIGENCE_PAGE_FRAME } from "@/lib/design-system"
 import { SURFACE_COPY } from "@/lib/surface-copy"
 
 /** Same SWR key as Forecasts and Activity › Failures so all three share one cache entry. */
@@ -97,10 +100,6 @@ function IntelligenceSectionRedirect() {
     }
     if (section === "predictive") {
       router.replace(APP_ROUTES.intelligencePredictive)
-      return
-    }
-    if (section === "accounts" || section === "account-health") {
-      router.replace(APP_ROUTES.intelligenceAccounts)
     }
   }, [router, searchParams])
   return null
@@ -129,6 +128,9 @@ function IntelligenceCenterInner() {
   // The activity item under the pointer or focus becomes Ask Gravitre's context.
   const [selected, setSelected] = useState<GravitreAISelectedEntity | null>(null)
   usePublishGravitreAISelection(selected)
+  const [revenueOpen, setRevenueOpen] = useState(false)
+  const [refreshingRevenue, setRefreshingRevenue] = useState(false)
+  const [sharing, setSharing] = useState<ShareableFinding | null>(null)
   const periodInfo = OVERVIEW_PERIODS[period]
 
   useEffect(() => {
@@ -188,6 +190,12 @@ function IntelligenceCenterInner() {
     () => intelligenceApi.heuristicRecommendations(),
     { revalidateOnFocus: false, shouldRetryOnError: false },
   )
+  // Open HubSpot deal value (Revenue opportunities); the backend caches it for ten minutes.
+  const { data: opportunities, mutate: mutateOpportunities } = useSWR(
+    enabled ? ["intelligence/overview/revenue-opportunities", orgId] : null,
+    () => intelligenceFindingsApi.revenueOpportunities(),
+    { revalidateOnFocus: false, shouldRetryOnError: false },
+  )
   // Same key as Forecasts and Activity › Failures, so the three share one cache entry.
   const { data: alerts, mutate: mutateAlerts } = useSWR(
     enabled ? FAILURE_ALERTS_KEY : null,
@@ -209,7 +217,18 @@ function IntelligenceCenterInner() {
     void mutateHeuristics()
     void mutateAlerts()
     void mutateOverview()
-  }, [orgId, mutateSnapshot, mutateRoi, mutateConnectors, mutateCandidates, mutateHeuristics, mutateAlerts, mutateOverview])
+    void mutateOpportunities()
+  }, [
+    orgId,
+    mutateSnapshot,
+    mutateRoi,
+    mutateConnectors,
+    mutateCandidates,
+    mutateHeuristics,
+    mutateAlerts,
+    mutateOverview,
+    mutateOpportunities,
+  ])
 
   const metrics = pageMetrics(pageContext)
   const snapshotLoading = loadState === "LOADING" || loadState === "UNINITIALIZED"
@@ -236,14 +255,16 @@ function IntelligenceCenterInner() {
       glanceCards({
         roi,
         metrics,
+        opportunities,
         routes: {
           impact: APP_ROUTES.intelligencePerformance,
           reports: APP_ROUTES.intelligenceReports,
           approvals: APP_ROUTES.approvals,
           plays: APP_ROUTES.plays,
+          connectors: APP_ROUTES.connectors,
         },
       }),
-    [roi, metrics],
+    [roi, metrics, opportunities],
   )
   const attention = useMemo(
     () =>
@@ -278,7 +299,13 @@ function IntelligenceCenterInner() {
   )
   const hours = glance.find((card) => card.id === "hours")?.value ?? null
   const revenue = glance.find((card) => card.id === "revenue")?.value ?? null
-  const summary = thinkingSummary({ phrase: periodInfo.phrase, forecasts, hours, revenue })
+  const summary = thinkingSummary({
+    phrase: periodInfo.phrase,
+    forecasts,
+    hours,
+    revenue,
+    currency: opportunities?.currency,
+  })
 
   const findingKeys = (items: FeedItem[]) => new Set(items.filter((i) => i.kind !== "action" && i.kind !== "outcome").map((i) => i.id))
 
@@ -423,7 +450,7 @@ function IntelligenceCenterInner() {
 
   return (
     <AppShell title={copy.title}>
-      <div className={PAGE_FRAME} data-composition="understand">
+      <div className={INTELLIGENCE_PAGE_FRAME} data-composition="understand">
         <IntelligenceSectionRedirect />
         <GravitrePageHeader
           titleScale="display"
@@ -476,7 +503,14 @@ function IntelligenceCenterInner() {
                 href={APP_ROUTES.connectors}
               />
               <div className="space-y-3">
-                <AtAGlance cards={glance} loading={(roiLoading && !roi) || snapshotLoading} phrase={periodInfo.phrase} />
+                <AtAGlance
+                  cards={glance}
+                  loading={(roiLoading && !roi) || snapshotLoading}
+                  phrase={periodInfo.phrase}
+                  onOpenEvidence={(id) => {
+                    if (id === "revenue") setRevenueOpen(true)
+                  }}
+                />
                 <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
                   <KnowsCard
                     entities={readyNumber(knowledge.knownEntities)}
@@ -516,6 +550,35 @@ function IntelligenceCenterInner() {
                 loading={snapshotLoading}
                 onDismiss={(cardId) => void dismissCard(cardId)}
                 onSelect={(item) => setSelected({ kind: `intelligence-${item.kind}`, id: item.id, label: item.title })}
+                onShare={(item) =>
+                  setSharing({
+                    id: item.id,
+                    title: item.title,
+                    summary: item.detail,
+                    path: item.href.startsWith("/") ? item.href : APP_ROUTES.intelligencePredictive,
+                  })
+                }
+              />
+              <RevenueOpportunitiesSheet
+                open={revenueOpen}
+                onOpenChange={setRevenueOpen}
+                data={opportunities}
+                refreshing={refreshingRevenue}
+                connectorsHref={APP_ROUTES.connectors}
+                onRefresh={() => {
+                  setRefreshingRevenue(true)
+                  void intelligenceFindingsApi
+                    .revenueOpportunities(true)
+                    .then((fresh) => mutateOpportunities(fresh, { revalidate: false }))
+                    .catch(() => toast.error("HubSpot couldn't be read just now. Try again in a moment."))
+                    .finally(() => setRefreshingRevenue(false))
+                }}
+              />
+              <ShareFindingDialog
+                finding={sharing}
+                onOpenChange={(open) => {
+                  if (!open) setSharing(null)
+                }}
               />
             </div>
           )}

@@ -15,7 +15,7 @@ import {
 } from "@/components/intelligence/forecasts/forecast-tone"
 import { TYPE } from "@/lib/design-system"
 import { cn } from "@/lib/utils"
-import { ArrowRight, Sparkle } from "@phosphor-icons/react"
+import { ArrowRight, ShareNetwork, Sparkle } from "@phosphor-icons/react"
 
 const SECTION_LABEL = "font-mono text-[11px] font-medium uppercase tracking-[0.08em] text-[color:var(--g-text-muted)]"
 
@@ -26,11 +26,14 @@ export function ForecastDetail({
   rejecting,
   rejected,
   onReject,
+  onShare,
 }: {
   forecast: Forecast
   rejecting: boolean
   rejected: boolean
   onReject: () => void
+  /** Opens "Share this finding" for this forecast. */
+  onShare?: () => void
 }) {
   const { summonWorkspace } = useGravitreAIWorkspace()
   const pct = forecast.confidence == null ? null : Math.round(forecast.confidence * 100)
@@ -171,6 +174,12 @@ export function ForecastDetail({
         >
           Snooze
         </Button>
+        {onShare ? (
+          <Button variant="outline" onClick={onShare}>
+            <ShareNetwork className="mr-1.5 h-4 w-4" aria-hidden />
+            Share
+          </Button>
+        ) : null}
         <span className="flex-1" />
         <Button
           variant="ghost"
