@@ -10,7 +10,7 @@ def test_atomic_finish_advances_only_on_database_confirmation():
     assert result["next_stage"]=="research"
     rpc_names=[call.args[0] for call in db.rpc.call_args_list]
     assert rpc_names==["prospect_claim_step","prospect_finish_step"]
-    assert db.rpc.call_args.kwargs["p_next"]=="research"
+    assert db.rpc.call_args.args[1]["p_next"]=="research"
 
 def test_atomic_finish_failure_is_not_success():
     db=MagicMock()
