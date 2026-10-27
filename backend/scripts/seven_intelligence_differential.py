@@ -15,6 +15,7 @@ import subprocess
 import sys
 import uuid
 import re
+from collections import Counter
 from pathlib import Path
 from types import SimpleNamespace
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -184,6 +185,12 @@ async def execute(output, model, commit_sha, client=None):
         if client is None: await provider.close()
     report['evidence_scopes']=sorted({case['evidence_scope'] for case in report['cases']})
     report['passed_cases']=sum(c['status']=='PASS_LIVE_DECISION' for c in report['cases'])
+    # Sanitized failure breakdown for CI diagnosis; never print response bodies,
+    # tokens, model-generated content or provider exception messages.
+    report['failure_summary'] = dict(sorted(Counter(
+        f"{case.get('error_class', 'DecisionMismatch')}:{case.get('http_status') or 'none'}"
+        for case in report['cases'] if case.get('status') != 'PASS_LIVE_DECISION'
+    ).items()))
     report['decision_gate']='PASS' if len(report['cases'])==21 and report['passed_cases']==21 else 'FAIL'
     product_conversations = [c.get('product_conversation_id') for c in report['cases']
                              if c.get('evidence_scope') == 'live_product_synthetic_sources']
@@ -193,7 +200,8 @@ async def execute(output, model, commit_sha, client=None):
     dest=Path(output); dest.parent.mkdir(parents=True,exist_ok=True)
     dest.write_text(json.dumps(report,indent=2)+'\n')
     print(json.dumps({'decision_gate':report['decision_gate'],'passed_cases':report['passed_cases'],
-        'total_cases':len(report['cases']),'blocker':report.get('blocker')}))
+        'total_cases':len(report['cases']),'blocker':report.get('blocker'),
+        'failure_summary':report['failure_summary']}))
     return 0 if report['decision_gate']=='PASS' else 1
 
 if __name__=='__main__':
