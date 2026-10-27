@@ -209,3 +209,28 @@ async def test_gateway_shortcuts_ambiguous_confirm() -> None:
     assert decision.candidate_id == "spoken_write_clarify"
     assert (decision.extras or {}).get("provider_invoked") is False
 
+
+
+@pytest.mark.parametrize("utterance", [
+    "Yes, wait.", "Yeah wait a sec", "Yep, hold up", "Okay, hold on please",
+    "Sure, not yet", "Yes please wait", "Yes, go ahead. Wait!",
+    "Yeah, send it, actually wait", "OK, just a second",
+    "Yes, give me a second", "Yes, hang on", "Yes, pause",
+    "Yes, don't send it", "Yes, do not send", "Yes, stop",
+])
+def test_natural_yes_wait_variants_never_authorize_write(utterance: str) -> None:
+    result = classify_spoken_write_approval(utterance, task_state=PENDING)
+    assert result.decision == "hold_commit"
+    assert result.invoke_allowed is False
+    assert result.as_trace()["provider_invoked"] is False
+    assert will_execute_staged_connector_write(PENDING, utterance) is False
+
+
+@pytest.mark.parametrize("utterance", [
+    "yes maybe", "yes I think", "yeah probably", "okay not sure",
+    "sure I guess", "yes sort of", "yes if you want",
+])
+def test_ambiguous_speech_never_authorizes_write(utterance: str) -> None:
+    result = classify_spoken_write_approval(utterance, task_state=PENDING)
+    assert result.invoke_allowed is False
+    assert will_execute_staged_connector_write(PENDING, utterance) is False
