@@ -1598,6 +1598,10 @@ class AgentIntelligence:
             entity_block = "\n\n".join(
                 p for p in (entity_block or "", cognitive_sections["knowledge_section"]) if p
             ).strip()
+        if cognitive_sections.get("dialogue_section"):
+            entity_block = "\n\n".join(
+                p for p in (entity_block, cognitive_sections["dialogue_section"]) if p
+            )
         if fabric_section:
             entity_block = "\n\n".join(p for p in (entity_block or "", fabric_section) if p).strip()
 

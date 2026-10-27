@@ -9,6 +9,7 @@ from uuid import uuid4
 
 from app.config import Settings, get_settings
 from app.core.logging import get_logger
+from app.services.dialogue_interpreter import DialogueInterpretation, interpret_dialogue
 
 logger = get_logger(__name__)
 
@@ -104,6 +105,7 @@ class CognitiveTurnContext:
     learn: dict[str, Any] = field(default_factory=dict)
     stages: list[StageRecord] = field(default_factory=list)
     skipped: bool = False
+    dialogue: DialogueInterpretation = field(default_factory=DialogueInterpretation)
 
 
 @dataclass
@@ -166,7 +168,7 @@ class CognitiveTurnKernel:
         if not request.org_id:
             raise ValueError("CognitiveTurnRequest.org_id is required (cross-org isolation)")
 
-        ctx = CognitiveTurnContext(turn_id=turn_id)
+        ctx = CognitiveTurnContext(turn_id=turn_id, dialogue=interpret_dialogue(request.message))
         client = request.client
 
         # 1 RETRIEVE
@@ -177,7 +179,11 @@ class CognitiveTurnKernel:
                 stage="RETRIEVE",
                 ok=True,
                 ms=_elapsed_ms(t0),
-                meta={"surface": request.surface, "entry_point": request.entry_point},
+                meta={
+                    "surface": request.surface,
+                    "entry_point": request.entry_point,
+                    "dialogue": ctx.dialogue.diagnostics(),
+                },
             )
         )
 
@@ -1153,6 +1159,10 @@ def to_prompt_sections(ctx: CognitiveTurnContext) -> dict[str, str]:
         if not knowledge_section:
             entity = str(ctx.knowledge_pack.get("entity_section") or "")
             knowledge_section = entity
+    # Keep dialogue independent of knowledge-retrieval budgets: chitchat and
+    # conversational voice turns deliberately skip heavy knowledge retrieval.
+    dialogue = getattr(ctx, "dialogue", None)
+    dialogue_section = dialogue.prompt_section() if isinstance(dialogue, DialogueInterpretation) else ""
     outcome_bias_section = _outcome_bias_prompt_section(
         (ctx.plan or {}).get("outcome_bias") if isinstance(ctx.plan, dict) else None
     )
@@ -1162,6 +1172,7 @@ def to_prompt_sections(ctx: CognitiveTurnContext) -> dict[str, str]:
     return {
         "memory_section": memory_section,
         "knowledge_section": knowledge_section,
+        "dialogue_section": dialogue_section,
         "outcome_bias_section": outcome_bias_section,
         "what_if_section": what_if_section,
     }

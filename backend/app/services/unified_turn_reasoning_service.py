@@ -1021,6 +1021,10 @@ async def run_unified_turn_shadow(
             except Exception as exc:  # noqa: BLE001
                 logger.warning("unified_turn_kernel_sections_unavailable error=%s", exc)
 
+        dialogue_section = cognitive_prompt_sections.get("dialogue_section") or ""
+        if dialogue_section:
+            _add_part("dialogue_interpretation", dialogue_section)
+
         if client is not None and org_id and not remind_me:
             from app.services.unified_turn_knowledge_context import (
                 build_unified_turn_knowledge_context,
