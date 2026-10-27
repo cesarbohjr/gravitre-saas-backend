@@ -440,8 +440,12 @@ class BackchannelAwareUserTurnStartStrategy(ExternalUserTurnStartStrategy):
                 else classify_user_utterance(interim)
             )
             if decision is not None and decision.action is TurnAction.WAIT:
+                # Only new words extend the semantic continuation window.
+                # Repeated STT interim frames must not keep an unfinished
+                # utterance waiting forever or delay interruption handling.
+                if interim != self._interim_text:
+                    self._interim_at = time.monotonic()
                 self._interim_text = interim
-                self._interim_at = time.monotonic()
                 return ProcessFrameResult.CONTINUE
             if self._is_bot_echo(interim):
                 return ProcessFrameResult.CONTINUE
