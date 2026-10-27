@@ -178,6 +178,28 @@ function normalizeTranscript(text: string): string {
   return text.trim().toLowerCase().replace(/\s+/g, " ")
 }
 
+/** Legacy duplex endpointing: distinguish sentence completion from hesitation. */
+function legacyEndpointDelayMs(text: string): number {
+  const value = text.trim()
+  if (!value) return 900
+  // Explicit unfinished clauses, fillers and trailing conjunctions need time.
+  if (/(?:[,;:]|\\b(?:and|but|because|so|if|when|while|although|or|to|that|um|uh|like))$/i.test(value)) return 1250
+  if (/\\b(?:can you|could you|would you|i want to|i need to|the thing is|what if)$/i.test(value)) return 1250
+  if (/[.!?]$/.test(value)) return 380
+  // Short, unpunctuated segments are frequently incomplete.
+  if (value.split(/\\s+/).length <= 4) return 850
+  return 650
+}
+
+/** Short, explicit commands are legitimate interruptions, unlike acknowledgments. */
+function legacyInterruptionIntent(transcript: string, confidence: number): boolean {
+  const normalized = normalizeTranscript(transcript).replace(/[.!?,]/g, "")
+  if (!normalized || confidence < 0.5) return false
+  if (/^(stop|wait|pause|hold on|cancel|no stop|hang on)$/.test(normalized)) return true
+  if (/^(yeah|yes|okay|ok|right|mm hmm|uh huh|sure|thanks)$/.test(normalized)) return false
+  return normalized.split(/\\s+/).length >= 2
+}
+
 /** True when final meaningfully diverges from the speculative partial (restart needed). */
 function speculativeTranscriptDiverged(partial: string, finalText: string): boolean {
   const a = normalizeTranscript(partial)
@@ -1269,8 +1291,7 @@ export function useVoiceDuplexSession(options: Options) {
     const capturedEpoch = startupEpochRef.current
     const text = pendingFinalRef.current
     // Longer pause after conjunctions or incomplete clauses; shorter at sentence end.
-    const unfinished = /(?:,|\\b(?:and|but|because|so|if|when|that|or|to))$/i.test(text)
-    const delay = unfinished ? 1100 : /[.!?]$/.test(text) ? 360 : 650
+    const delay = legacyEndpointDelayMs(text)
     finalTimerRef.current = setTimeout(() => {
       finalTimerRef.current = null
       if (capturedEpoch !== startupEpochRef.current || !sessionWantedRef.current) return
@@ -1327,7 +1348,7 @@ export function useVoiceDuplexSession(options: Options) {
       // prevents a one-word backchannel or echo transient from ending a reply.
       // Explicit manual interruption remains immediate through bargeIn().
       const interruptionWords = transcript.split(/\\s+/).filter(Boolean)
-      if (agentSpeakingRef.current && interruptionWords.length >= 2 && confidence >= 0.5) {
+      if (agentSpeakingRef.current && legacyInterruptionIntent(transcript, confidence)) {
         await bargeIn()
       }
 
