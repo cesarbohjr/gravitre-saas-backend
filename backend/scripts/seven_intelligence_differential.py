@@ -14,6 +14,7 @@ import os
 import subprocess
 import sys
 import uuid
+import re
 from pathlib import Path
 from types import SimpleNamespace
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -138,13 +139,23 @@ async def run_case(client, model, scenario, capability, commit_sha):
         else:
             response = await client.chat.completions.create(model=model,messages=messages,
                 response_format={'type':'json_object'},max_completion_tokens=2000)
-        decisions = json.loads(response.choices[0].message.content or '')
         result.update(request_id=getattr(response,'_request_id',None) or response.id,
-            response_id=response.id,observed=decisions,model=response.model)
+            response_id=response.id,model=response.model)
         result.update(getattr(response, 'provenance', {}))
         if result['evidence_scope'] == 'live_product_synthetic_sources':
             result['writes_committed'] = None
             result['provider_effects_verified'] = False
+        content = response.choices[0].message.content or ''
+        try:
+            decisions = json.loads(content)
+        except json.JSONDecodeError:
+            # This conversation contains only our controlled synthetic cases.
+            # Keep bounded protocol diagnostics, never provider exception bodies.
+            preview = re.sub(r'(?:sk-|eyJ)[A-Za-z0-9_.-]{10,}', '[REDACTED]', content[:1200])
+            result['synthetic_response_preview'] = preview
+            result['response_chars'] = len(content)
+            raise
+        result['observed'] = decisions
         if grade(decisions) and result['request_id']:
             result['status']='PASS_LIVE_DECISION'
     except Exception as exc:
