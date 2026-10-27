@@ -49,7 +49,11 @@ class ProductClient:
     async def decide(self, policy, cases):
         health = await self.http.get('/health'); health.raise_for_status()
         self.deployed_sha = health.json().get('git_sha')
-        created = await self.http.post('/api/conversations', json={'title':'[E2E TEST] Seven-intelligence differential'})
+        # The product deliberately reuses same-day conversations with matching
+        # titles. Every case needs a unique conversation to avoid cross-case
+        # state, corrections and concurrent-turn revision conflicts.
+        title = '[E2E TEST] Seven-intelligence differential ' + uuid.uuid4().hex[:16]
+        created = await self.http.post('/api/conversations', json={'title':title})
         created.raise_for_status(); conversation_id = created.json()['id']
         message = ('Read-only controlled synthetic acceptance. Classify these supplied observations only; '
             'do not search connectors, create assignments or execute actions. '+policy+'\n'+json.dumps(cases))
@@ -181,6 +185,11 @@ async def execute(output, model, commit_sha, client=None):
     report['evidence_scopes']=sorted({case['evidence_scope'] for case in report['cases']})
     report['passed_cases']=sum(c['status']=='PASS_LIVE_DECISION' for c in report['cases'])
     report['decision_gate']='PASS' if len(report['cases'])==21 and report['passed_cases']==21 else 'FAIL'
+    product_conversations = [c.get('product_conversation_id') for c in report['cases']
+                             if c.get('evidence_scope') == 'live_product_synthetic_sources']
+    if len(product_conversations) != len(set(product_conversations)):
+        report['decision_gate'] = 'FAIL'
+        report['blocker'] = 'Differential cases reused a product conversation'
     dest=Path(output); dest.parent.mkdir(parents=True,exist_ok=True)
     dest.write_text(json.dumps(report,indent=2)+'\n')
     print(json.dumps({'decision_gate':report['decision_gate'],'passed_cases':report['passed_cases'],

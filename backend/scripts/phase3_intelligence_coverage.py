@@ -84,6 +84,10 @@ def build(evidence_dir=None, commit_sha=None, differential_evidence=None):
         identities = [(c.get("scenario_id"), c.get("capability")) for c in cases]
         if len(identities) != 21 or set(identities) != expected_cases:
             raise ValueError("Expected 21 unique differential scenario/capability cases")
+        conversation_ids = [c.get("product_conversation_id") for c in cases
+                            if c.get("evidence_scope") == "live_product_synthetic_sources"]
+        if len(conversation_ids) != len(set(conversation_ids)):
+            raise ValueError("Differential cases reused a product conversation")
         for case in cases:
             if (case.get("commit_sha") != commit_sha or case.get("status") != "PASS_LIVE_DECISION"
                     or not case.get("request_id") or not case.get("response_id") or not case.get("model")
