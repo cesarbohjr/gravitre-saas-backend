@@ -296,6 +296,7 @@ export function useVoiceDuplexSession(options: Options) {
   const scheduledTtsUntilRef = useRef(0)
   const ttsDecodeChainRef = useRef<Promise<void>>(Promise.resolve())
   const ttsDecodedModeRef = useRef(false)
+  const ttsHtmlFallbackRef = useRef(false)
   const playingRef = useRef(false)
   const playbackBlockedRef = useRef(false)
   const marksRef = useRef<Record<string, number>>({})
@@ -563,6 +564,7 @@ export function useVoiceDuplexSession(options: Options) {
     scheduledTtsUntilRef.current = 0
     ttsDecodeChainRef.current = Promise.resolve()
     ttsDecodedModeRef.current = false
+    ttsHtmlFallbackRef.current = false
     playingRef.current = false
     audioQueueRef.current = []
     const standby = standbyAudioRef.current
@@ -941,7 +943,7 @@ export function useVoiceDuplexSession(options: Options) {
       const generation = playbackGenerationRef.current
       ttsDecodeChainRef.current = ttsDecodeChainRef.current.then(async () => {
         if (generation !== playbackGenerationRef.current) return
-        const decoded = await scheduleDecodedTts(bytes, generation)
+        const decoded = !ttsHtmlFallbackRef.current && await scheduleDecodedTts(bytes, generation)
         if (generation !== playbackGenerationRef.current) return
         if (decoded) {
           ttsDecodedModeRef.current = true
@@ -953,6 +955,7 @@ export function useVoiceDuplexSession(options: Options) {
           optsRef.current.onError?.("Voice audio decoding interrupted; please retry.")
           return
         }
+        ttsHtmlFallbackRef.current = true
         audioQueueRef.current.push(blob)
         if (playingRef.current) preloadNextAudio()
         void playNext()
