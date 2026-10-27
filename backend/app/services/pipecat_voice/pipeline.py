@@ -283,8 +283,8 @@ def build_pipecat_voice_task(
         api_key=el_key, voice_id=voice_id, model=str(model),
         sample_rate=LIVE_VOICE_OUTPUT_SAMPLE_RATE,
         delivery_tier=(
-            delivery_tier
-            if getattr(settings, "voice_expressive_tts_v1", False) and delivery_tier
+            delivery_tier or "light"
+            if getattr(settings, "voice_expressive_tts_v1", False)
             else None
         ),
     )
