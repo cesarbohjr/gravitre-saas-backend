@@ -1682,7 +1682,10 @@ export function useVoiceDuplexSession(options: Options) {
             if (typeof msg.reply_id === "number" && isInterruptedReplyAudio(msg.reply_id)) return
             if (overlapDuckRef.current.duck(msg.reply_id)) pcmPlayerRef.current?.setDuck(true)
           } else if (overlapDuckRef.current.unduck(msg.reply_id)) {
-            pcmPlayerRef.current?.setDuck(false)
+            // The server has released its hold, but a provisional local
+            // microphone hold may still be active. Restore only when both
+            // independent duck sources have cleared.
+            if (!localDuckActiveRef.current) pcmPlayerRef.current?.setDuck(false)
           }
           return
         }
