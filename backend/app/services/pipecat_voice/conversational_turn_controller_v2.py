@@ -51,6 +51,23 @@ class ConversationalTurnControllerV2:
         if not words:
             return TurnDecision(TurnAction.WAIT, classification, "no_transcript")
         intent = classify_interrupt_intent(words)
+        # Intent normalization recognizes conversational murmurs such as
+        # "mm-hmm" that the stricter legacy turn classifier labels as
+        # INTERRUPTION. Acknowledgements should not cut off a speaking or
+        # thinking assistant, but must remain real answers when prompted.
+        if intent is InterruptIntent.BACKCHANNEL:
+            if expects_answer:
+                return TurnDecision(
+                    TurnAction.INTERRUPT,
+                    BackchannelClassification.INTERRUPTION,
+                    "answer_expected",
+                )
+            if bot_speaking or assistant_thinking:
+                return TurnDecision(
+                    TurnAction.BACKCHANNEL,
+                    BackchannelClassification.BACKCHANNEL,
+                    "acknowledgment",
+                )
         if intent is InterruptIntent.SPEECH_STOP:
             return TurnDecision(TurnAction.SPEECH_ONLY_STOP, classification, "explicit_speech_stop")
         if intent is InterruptIntent.PAUSE:
