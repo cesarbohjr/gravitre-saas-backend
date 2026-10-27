@@ -61,10 +61,18 @@ def run_provider_checks(env, transport=None):
     with httpx.Client(timeout=30, follow_redirects=False, transport=transport) as client:
         for case, phrase in CASES:
             started = time.monotonic()
-            audio, content_type, tts_meta = synthesize_speech(settings, text=phrase, voice_key=env.get("ELEVENLABS_VOICE_ID"), http_client=client)
+            try:
+                audio, content_type, tts_meta = synthesize_speech(settings, text=phrase, voice_key=env.get("ELEVENLABS_VOICE_ID"), http_client=client)
+            except Exception as exc:
+                exc.acceptance_stage = "elevenlabs_tts"
+                raise
             if not audio or len(audio) > 5_000_000:
                 raise ValueError("Provider returned empty or oversized audio")
-            transcript, stt_meta = transcribe_audio(settings, audio_bytes=audio, content_type=content_type, filename="synthetic-acceptance.mp3", http_client=client)
+            try:
+                transcript, stt_meta = transcribe_audio(settings, audio_bytes=audio, content_type=content_type, filename="synthetic-acceptance.mp3", http_client=client)
+            except Exception as exc:
+                exc.acceptance_stage = "deepgram_stt"
+                raise
             passed = asyncio.run(prove_commit_block(transcript))
             rows.append({"case": case, "passed": passed, "audio_sha256": hashlib.sha256(audio).hexdigest(),
                 "request_id": stt_meta.get("request_id"), "tts_request_id": tts_meta.get("request_id"),
@@ -77,7 +85,16 @@ def sanitized_failure(exc):
     """Emit fixed diagnostic categories, never provider response bodies."""
     import httpx
     info = {"error_type": type(exc).__name__}
-    status = getattr(exc, "status_code", None)
+    from app.services.tier1_voice_service import VoiceProviderError
+    if isinstance(exc, VoiceProviderError):
+        info["provider"] = (exc.provider or "unknown").lower()
+        info["upstream_error_class"] = exc.error_class
+    stage = getattr(exc, "acceptance_stage", None)
+    if stage in ("elevenlabs_tts", "deepgram_stt"):
+        info["stage"] = stage
+    status = getattr(exc, "upstream_status", None)
+    if not isinstance(status, int):
+        status = getattr(exc, "status_code", None)
     response = getattr(exc, "response", None)
     if not isinstance(status, int):
         status = getattr(response, "status_code", None)
