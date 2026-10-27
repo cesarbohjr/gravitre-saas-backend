@@ -1179,6 +1179,12 @@ class Settings(BaseSettings):
     # Voice 3.0 Phase 5 — spoken register and played-audio reconciliation are
     # production defaults; adaptive length remains opt-in because prior live
     # measurements showed prompt-only ceilings were not reliably obeyed.
+    # Per-agent provider-level expressive TTS stability tiers; disabled until
+    # isolated smoke validation confirms model and voice compatibility.
+    voice_expressive_tts_v1: bool = Field(
+        default=False,
+        validation_alias=AliasChoices("VOICE_EXPRESSIVE_TTS_V1", "voice_expressive_tts_v1"),
+    )
     voice_spoken_prompt_v2: bool = Field(
         default=True,
         validation_alias=AliasChoices(
