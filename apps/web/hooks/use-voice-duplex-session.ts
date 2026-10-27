@@ -290,6 +290,12 @@ export function useVoiceDuplexSession(options: Options) {
   const standbyUrlRef = useRef<string | null>(null)
   const playingUrlRef = useRef<string | null>(null)
   const playbackGenerationRef = useRef(0)
+  // Legacy HTTP TTS: decoded MP3 phrases are placed on a single WebAudio
+  // sample clock, instead of starting a new HTML media player at each boundary.
+  const scheduledTtsSourcesRef = useRef<AudioBufferSourceNode[]>([])
+  const scheduledTtsUntilRef = useRef(0)
+  const ttsDecodeChainRef = useRef<Promise<void>>(Promise.resolve())
+  const ttsDecodedModeRef = useRef(false)
   const playingRef = useRef(false)
   const playbackBlockedRef = useRef(false)
   const marksRef = useRef<Record<string, number>>({})
@@ -549,6 +555,14 @@ export function useVoiceDuplexSession(options: Options) {
     browserAudioPlaybackStartedRef.current = false
     audioFallbackTriggeredRef.current = false
     playbackGenerationRef.current += 1
+    for (const source of scheduledTtsSourcesRef.current) {
+      try { source.stop() } catch { /* source already finished */ }
+      source.disconnect()
+    }
+    scheduledTtsSourcesRef.current = []
+    scheduledTtsUntilRef.current = 0
+    ttsDecodeChainRef.current = Promise.resolve()
+    ttsDecodedModeRef.current = false
     playingRef.current = false
     audioQueueRef.current = []
     const standby = standbyAudioRef.current
@@ -876,16 +890,79 @@ export function useVoiceDuplexSession(options: Options) {
   const resumeBlockedPlaybackRef = useRef(resumeBlockedPlayback)
   resumeBlockedPlaybackRef.current = resumeBlockedPlayback
 
+  const scheduleDecodedTts = useCallback(async (
+    bytes: Uint8Array,
+    generation: number,
+  ): Promise<boolean> => {
+    const ctx = audioCtxRef.current
+    if (!ctx || ctx.state !== "running") return false
+    let decoded: AudioBuffer
+    try {
+      // Each server audio.delta contains a complete MP3 phrase, not an
+      // arbitrary MP3 transport fragment. Decode before committing its slot.
+      decoded = await ctx.decodeAudioData(bytes.buffer.slice(
+        bytes.byteOffset, bytes.byteOffset + bytes.byteLength,
+      ) as ArrayBuffer)
+    } catch {
+      return false
+    }
+    if (generation !== playbackGenerationRef.current) return true
+    const source = ctx.createBufferSource()
+    source.buffer = decoded
+    source.connect(ctx.destination)
+    const startAt = Math.max(ctx.currentTime + 0.012, scheduledTtsUntilRef.current)
+    scheduledTtsUntilRef.current = startAt + decoded.duration
+    scheduledTtsSourcesRef.current.push(source)
+    source.onended = () => {
+      scheduledTtsSourcesRef.current = scheduledTtsSourcesRef.current.filter((item) => item !== source)
+      source.disconnect()
+    }
+    source.start(startAt)
+    agentSpeakingRef.current = true
+    setPresence("speaking")
+    if (!browserAudioPlaybackStartedRef.current) {
+      browserAudioPlaybackStartedRef.current = true
+      emitOutputDiagnostic("playback_scheduled")
+      setLatency((prev) => ({ ...prev, browser_audio_playback_started: true }))
+    }
+    return true
+  }, [emitOutputDiagnostic])
+
   const enqueueAudio = useCallback(
     (b64: string, contentType?: string) => {
       const raw = atob(b64)
       const bytes = new Uint8Array(raw.length)
       for (let i = 0; i < raw.length; i++) bytes[i] = raw.charCodeAt(i)
-      audioQueueRef.current.push(new Blob([bytes], { type: contentType || "audio/mpeg" }))
-      if (playingRef.current) preloadNextAudio()
-      void playNext()
+      const blob = new Blob([bytes], { type: contentType || "audio/mpeg" })
+      // Keep existing HTMLAudioElement path as a compatibility fallback when
+      // MP3 decoding is unsupported or the shared AudioContext is suspended.
+      // Promise serialization preserves the text/TTS phrase order even if
+      // decoding the later phrase is faster.
+      const generation = playbackGenerationRef.current
+      ttsDecodeChainRef.current = ttsDecodeChainRef.current.then(async () => {
+        if (generation !== playbackGenerationRef.current) return
+        const decoded = await scheduleDecodedTts(bytes, generation)
+        if (generation !== playbackGenerationRef.current) return
+        if (decoded) {
+          ttsDecodedModeRef.current = true
+          return
+        }
+        // Do not mix two independently timed output clocks within one reply.
+        // The first failed decode selects HTML playback for the whole turn.
+        if (ttsDecodedModeRef.current) {
+          optsRef.current.onError?.("Voice audio decoding interrupted; please retry.")
+          return
+        }
+        audioQueueRef.current.push(blob)
+        if (playingRef.current) preloadNextAudio()
+        void playNext()
+      }).catch(() => {
+        if (generation === playbackGenerationRef.current) {
+          optsRef.current.onError?.("Voice audio decoding failed.")
+        }
+      })
     },
-    [playNext, preloadNextAudio],
+    [playNext, preloadNextAudio, scheduleDecodedTts],
   )
 
   const stopRaf = () => {
