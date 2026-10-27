@@ -10,6 +10,7 @@ from uuid import uuid4
 from app.config import Settings, get_settings
 from app.core.logging import get_logger
 from app.services.dialogue_interpreter import DialogueInterpretation, interpret_dialogue
+from app.services.dialogue_session_continuity import SessionContinuity, build_session_continuity
 
 logger = get_logger(__name__)
 
@@ -106,6 +107,7 @@ class CognitiveTurnContext:
     stages: list[StageRecord] = field(default_factory=list)
     skipped: bool = False
     dialogue: DialogueInterpretation = field(default_factory=DialogueInterpretation)
+    session_continuity: SessionContinuity = field(default_factory=SessionContinuity)
 
 
 @dataclass
@@ -169,6 +171,11 @@ class CognitiveTurnKernel:
             raise ValueError("CognitiveTurnRequest.org_id is required (cross-org isolation)")
 
         ctx = CognitiveTurnContext(turn_id=turn_id, dialogue=interpret_dialogue(request.message))
+        ctx.session_continuity = build_session_continuity(
+            org_id=request.org_id, user_id=request.user_id,
+            conversation_id=request.conversation_id, history=request.conversation_history,
+            task_state=request.task_state,
+        )
         client = request.client
 
         # 1 RETRIEVE
@@ -183,6 +190,7 @@ class CognitiveTurnKernel:
                     "surface": request.surface,
                     "entry_point": request.entry_point,
                     "dialogue": ctx.dialogue.diagnostics(),
+                    "session_continuity": ctx.session_continuity.diagnostics(),
                 },
             )
         )
@@ -661,7 +669,15 @@ class CognitiveTurnKernel:
                     if k in act_result
                 }
             # Persist typed memories from confirmed turns (workspace-scoped).
-            if request.org_id and request.client is not None:
+            memory_learning_allowed = True
+            if getattr(self.settings, "dialogue_memory_governance_v1", False) is True:
+                from app.services.dialogue_memory_policy import load_dialogue_memory_access
+
+                access = await asyncio.to_thread(load_dialogue_memory_access, request.client, request.org_id, request.user_id)
+                memory_learning_allowed = access.learn
+                learn["memory_policy"] = access.reason
+                learn["memory_learning_allowed"] = access.learn
+            if request.org_id and request.client is not None and memory_learning_allowed:
                 from app.services.workspace_memory_service import (
                     extract_typed_memories_from_act,
                     promote_turn_memories,
@@ -733,6 +749,15 @@ class CognitiveTurnKernel:
         if not org_id:
             # ran stays False: this is "did not execute", not "found nothing".
             return pack
+        governed = getattr(self.settings, "dialogue_memory_governance_v1", False) is True
+        access = None
+        if governed:
+            from app.services.dialogue_memory_policy import load_dialogue_memory_access
+
+            access = await asyncio.to_thread(load_dialogue_memory_access, client, org_id, request.user_id)
+            if not access.recall:
+                stats["skipped"] = access.reason if access.reason != "policy_loaded" else "recall_disabled"
+                return pack
 
         async def _hybrid() -> tuple[list[dict], list[dict], BaseException | None]:
             try:
@@ -878,15 +903,44 @@ class CognitiveTurnKernel:
             (workspace_rows, workspace_err, workspace_attempted),
         ) = await asyncio.gather(_hybrid(), _agent(), _department(), _ledger(), _workspace())
 
+        if governed:
+            from app.services.dialogue_memory_policy import filter_dialogue_recall
+
+            # Re-read after asynchronous retrieval: a policy revoked while the
+            # stores were running must not reach prompt assembly.
+            access = await asyncio.to_thread(load_dialogue_memory_access, client, org_id, request.user_id)
+            if not access.recall:
+                stats["skipped"] = access.reason if access.reason != "policy_loaded" else "recall_disabled"
+                return pack
+
+            groups = [hybrid_episodic, hybrid_graph, agent_rows, dept_rows, ledger_rows, workspace_rows]
+            # One authoritative, tenant-scoped snapshot; no stale search result
+            # can resurrect a deleted, expired or superseded memory.
+            tagged = [{**r, "_recall_group": i} for i, group in enumerate(groups) for r in group]
+            permitted = await asyncio.to_thread(
+                filter_dialogue_recall, client, org_id, request.user_id, tagged,
+                retention_days=access.retention_days, agent_id=request.agent_id,
+                diagnostics=stats.setdefault("governance", {}),
+            )
+            filtered = [[] for _ in groups]
+            for row in permitted:
+                group = row.pop("_recall_group")
+                filtered[group].append(row)
+            hybrid_episodic, hybrid_graph, agent_rows, dept_rows, ledger_rows, workspace_rows = filtered
+
         # hybrid has no "attempted" gate in the original (it always ran when
         # org_id was present, which is already guaranteed by the early return
         # above) — merge first so department's dedup below sees its rows.
         got = 0
         for row in hybrid_episodic:
+            if row.get("org_id") is not None and str(row["org_id"]) != org_id:
+                continue
             bucket = _CATEGORY_MAP.get(str(row.get("category") or "fact").lower(), "episodic")
             pack[bucket].append(row)
             got += 1
         for row in hybrid_graph:
+            if row.get("org_id") is not None and str(row["org_id"]) != org_id:
+                continue
             pack["relationship"].append(row)
             got += 1
         _note_recall(stats, "hybrid", count=got, error=hybrid_err)
@@ -942,6 +996,8 @@ class CognitiveTurnKernel:
                 got += 1
             _note_recall(stats, "workspace", count=got, error=workspace_err)
 
+        if (stats.get("governance") or {}).get("reason") == "metadata_unavailable":
+            stats["errors"].append("governance")
         pack["prompt_section"] = _memory_prompt_section(pack)
         return pack
 
@@ -1173,6 +1229,10 @@ def to_prompt_sections(ctx: CognitiveTurnContext) -> dict[str, str]:
         "memory_section": memory_section,
         "knowledge_section": knowledge_section,
         "dialogue_section": dialogue_section,
+        "session_continuity_section": (
+            ctx.session_continuity.section
+            if isinstance(getattr(ctx, "session_continuity", None), SessionContinuity) else ""
+        ),
         "outcome_bias_section": outcome_bias_section,
         "what_if_section": what_if_section,
     }
@@ -1308,6 +1368,8 @@ def memory_recall_signal(ctx: CognitiveTurnContext) -> dict[str, Any]:
         # the thing a query has to infer.
         "degraded": bool(errors),
         "failedSources": errors,
+        **({"policyGate": stats["governance"]} if stats.get("governance") else {}),
+        **({"skipReason": stats["skipped"]} if stats.get("skipped") else {}),
     }
 
 

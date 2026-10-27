@@ -1456,6 +1456,9 @@ class Settings(BaseSettings):
     browser_agent_interact_enabled: bool = False
     # Module B phase 2 — cross-conversation ledger recall via entity_resolution_store.
     cross_conversation_ledger_memory_enabled: bool = True
+    # New dialogue-memory consent gate. Enable only after configuring the org's
+    # admin-owned settings.dialogueMemory policy; missing policy fails closed.
+    dialogue_memory_governance_v1: bool = False
     # Heuristic prompt-injection detection on assistant/agent user turns (audit + hardening).
     prompt_injection_detection_enabled: bool = True
     # Assistant context window + summarization (STA-146).

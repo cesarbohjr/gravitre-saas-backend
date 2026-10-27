@@ -1022,6 +1022,9 @@ async def run_unified_turn_shadow(
                 logger.warning("unified_turn_kernel_sections_unavailable error=%s", exc)
 
         dialogue_section = cognitive_prompt_sections.get("dialogue_section") or ""
+        continuity = cognitive_prompt_sections.get("session_continuity_section") or ""
+        if continuity:
+            _add_part("session_continuity", continuity)
         if dialogue_section:
             _add_part("dialogue_interpretation", dialogue_section)
 
