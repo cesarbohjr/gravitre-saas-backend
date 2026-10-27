@@ -1258,9 +1258,14 @@ export function useVoiceDuplexSession(options: Options) {
     const previous = pendingFinalRef.current.trim()
     const next = segment.trim()
     // Deepgram may repeat the accumulated transcript; avoid duplication.
-    pendingFinalRef.current = previous && !next.startsWith(previous)
-      ? previous + " " + next
-      : next
+    // Some STT providers emit repeated finals, others emit only the new
+    // segment. Preserve both cases without duplicating previously heard words.
+    const previousNorm = normalizeTranscript(previous)
+    const nextNorm = normalizeTranscript(next)
+    pendingFinalRef.current = !previous ? next
+      : nextNorm === previousNorm || previousNorm.endsWith(nextNorm) ? previous
+      : nextNorm.startsWith(previousNorm) ? next
+      : previous + " " + next
     const capturedEpoch = startupEpochRef.current
     const text = pendingFinalRef.current
     // Longer pause after conjunctions or incomplete clauses; shorter at sentence end.
@@ -1272,6 +1277,7 @@ export function useVoiceDuplexSession(options: Options) {
       const ready = pendingFinalRef.current.trim()
       pendingFinalRef.current = ""
       if (!ready) return
+      lastUserFinalRef.current = ready
       marksRef.current.first_partial = 0
       setProvisionalTranscript("")
       void runSessionTurn(ready)
@@ -1303,6 +1309,11 @@ export function useVoiceDuplexSession(options: Options) {
       const confidence = Number(alt?.confidence ?? data.confidence ?? 0)
       const stability = Number(data.stability ?? alt?.stability ?? 0)
       const isFinal = Boolean(data.is_final || data.speech_final)
+      // Ignore a repeated final transcript already submitted to the model.
+      // Duplicate STT finals otherwise trigger two answers over each other.
+      if (isFinal && transcript && normalizeTranscript(transcript) === normalizeTranscript(lastUserFinalRef.current)) {
+        return
+      }
 
       if (type === "SpeechStarted" || type === "speech_started") {
         if (finalTimerRef.current) { clearTimeout(finalTimerRef.current); finalTimerRef.current = null }
