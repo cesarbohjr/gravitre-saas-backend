@@ -26,9 +26,9 @@ export function validateBundle(bundle: Bundle): void {
 }
 export function classifyEvaluationError(error: unknown): string {
   const message = error instanceof Error ? error.message : "unknown";
-  if (/^provider_http_(401|403|404|429|5\\d\\d)$/.test(message)) return message;
+  if (/^provider_http_(401|403|404|429|5\d\d)$/.test(message)) return message;
   if (["invalid_judge","truncated_response","empty_response","rate_limited"].includes(message)) return message;
-  if (error instanceof Error && (error.name === "TimeoutError" || error.name === "AbortError" || /timed?\\s*out/i.test(message))) return "provider_timeout";
+  if (error instanceof Error && (error.name === "TimeoutError" || error.name === "AbortError" || /timed?\s*out/i.test(message))) return "provider_timeout";
   if (error instanceof SyntaxError) return "invalid_provider_json";
   if (error instanceof TypeError) return "provider_network_error";
   return "evaluation_error";
@@ -89,8 +89,7 @@ export async function runEvaluation(bundle: Bundle, env: Record<string,string|un
         const row={event:"pair",...key,status:verdictPasses(verdict)?"PASS":"FAIL",verdict,text:typed.text,voice:spoken.text,request_ids:[typed.request_id,spoken.request_id,judged.request_id]};
         rows.push(row);emit(row);
       } catch(e) {
-        const raw=e instanceof Error?e.message:"unknown";
-        const reason=/^provider_http_\d{3}$/.test(raw)||["invalid_judge","truncated_response","empty_response","rate_limited"].includes(raw)?raw:"evaluation_error";
+        const reason=classifyEvaluationError(e);
         const row={event:"pair",...key,status:"ERROR",reason};rows.push(row);emit(row);
         if(reason==="provider_http_401" || reason==="provider_http_403" || reason==="provider_http_404")fatal=true;
       }
