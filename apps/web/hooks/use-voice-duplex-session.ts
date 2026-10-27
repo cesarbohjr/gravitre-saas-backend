@@ -819,8 +819,14 @@ export function useVoiceDuplexSession(options: Options) {
         // accidental ducks from ambient noise. Only Pipecat PCM playback is
         // controlled; the server still determines whether to interrupt.
         const now = performance.now()
+        // Speaker playback can leak into the mic despite browser echo cancellation.
+        // Do not locally duck while output is audible until a separate
+        // echo-discriminating speech signal is available. Server VAD/intent
+        // still owns overlap ducking in that situation.
+        const playbackAudible = browserAudioPlaybackStartedRef.current &&
+          presenceRef.current === "speaking"
         const eligible = orchestrationRef.current === "pipecat" &&
-          !micMutedRef.current && pcmPlayerRef.current !== null
+          !micMutedRef.current && pcmPlayerRef.current !== null && !playbackAudible
         if (eligible && amplitude >= 0.38) {
           localDuckLastLoudRef.current = now
           localDuckSinceRef.current ??= now
@@ -940,6 +946,10 @@ export function useVoiceDuplexSession(options: Options) {
     intentionalCloseRef.current = true
     cancelReconnect()
     stopRaf()
+    localDuckSinceRef.current = null
+    localDuckActiveRef.current = false
+    localDuckLastLoudRef.current = 0
+    overlapDuckRef.current.reset()
     stopMicTelemetry()
     emitMicDiagnostics("session_end")
     micProcessorRef.current?.dispose()
