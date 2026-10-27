@@ -170,7 +170,7 @@ class CognitiveTurnKernel:
         if not request.org_id:
             raise ValueError("CognitiveTurnRequest.org_id is required (cross-org isolation)")
 
-        ctx = CognitiveTurnContext(turn_id=turn_id, dialogue=interpret_dialogue(request.message))
+        ctx = CognitiveTurnContext(turn_id=turn_id, dialogue=interpret_dialogue(request.message, contextual=True))
         ctx.session_continuity = build_session_continuity(
             org_id=request.org_id, user_id=request.user_id,
             conversation_id=request.conversation_id, history=request.conversation_history,

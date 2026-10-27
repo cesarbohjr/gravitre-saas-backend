@@ -126,7 +126,10 @@ async def test_multiturn_emotional_repair_and_hesitation_preserve_governance(spo
             if guidance:
                 assert guidance in dialogue
             else:
-                assert dialogue == ""
+                # Neutral turns now retain semantic interpretation policy even
+                # without lexical cues; no stale emotional cue is introduced.
+                assert "Contextual understanding" in dialogue
+                assert "advisory cues, not established facts" not in dialogue
             # Previous emotional cues must not masquerade as the current mood.
             if "distress_cue" not in expected_cues:
                 assert "Respond calmly" not in dialogue
