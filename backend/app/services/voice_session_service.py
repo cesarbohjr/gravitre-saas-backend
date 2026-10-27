@@ -216,6 +216,23 @@ def split_speakable_chunks(
     if sentences is not None:
         return sentences
 
+    # A long clause can sound breathless when synthesized as one sentence.
+    # Prefer strong natural breath points before the emergency hard ceiling,
+    # while avoiding tiny isolated fragments that reset the voice's prosody.
+    # Keep the punctuation on the emitted phrase for the TTS model.
+    clause_floor = max(80, min_chars * 5)
+    if len(buffer) >= clause_floor:
+        for separator in ("; ", " — ", " – ", ": "):
+            boundary = buffer.rfind(separator, clause_floor, min(len(buffer), 165))
+            if boundary >= clause_floor:
+                end = boundary + len(separator.rstrip())
+                return [buffer[:end].strip()], buffer[end:].lstrip()
+    if len(buffer) >= max(145, clause_floor + 35):
+        boundary = buffer.rfind(", ", clause_floor, min(len(buffer), 185))
+        if boundary >= clause_floor:
+            end = boundary + 1
+            return [buffer[:end].strip()], buffer[end:].lstrip()
+
     hard_ceiling = max(120 if aggressive else 180, max(1, min_chars) * 8)
     if len(buffer) < hard_ceiling:
         return [], buffer
