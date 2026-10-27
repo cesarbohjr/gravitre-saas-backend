@@ -1231,6 +1231,15 @@ class Settings(BaseSettings):
     # restore it (speech.unduck) when the overlap turns out not to be an
     # interruption. A real interruption still cuts via speech.interrupted.
     # Off: nothing is sent and the reply plays at full level until resolved.
+    # Experimental unified turn policy: bounded semantic hold for incomplete
+    # interim speech while the assistant is speaking. Disabled until certified.
+    voice_conversational_turn_v2: bool = Field(
+        default=False,
+        validation_alias=AliasChoices(
+            "VOICE_CONVERSATIONAL_TURN_V2",
+            "voice_conversational_turn_v2",
+        ),
+    )
     voice_overlap_duck_v1: bool = Field(
         default=False,
         validation_alias=AliasChoices(
