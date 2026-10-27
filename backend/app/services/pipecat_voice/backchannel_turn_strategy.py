@@ -418,17 +418,31 @@ class BackchannelAwareUserTurnStartStrategy(ExternalUserTurnStartStrategy):
             # of turn, so waiting for the final kept the bot talking over a
             # new request for the whole grace window.
             interim = f"{self._buffer_text} {frame.text}".strip()
-            interim_class = classify_user_utterance(interim)
-            if self._turn_controller_v2 is not None and interim:
-                decision = self._turn_controller_v2.decide(
-                    interim, bot_speaking=self._bot_speaking,
-                    assistant_thinking=self._pending_thinking, final=False,
-                    expects_answer=bool(self._voice_session is not None and self._voice_session.expects_answer()),
+            # V2 is the single classification authority when enabled.
+            # With the flag off, retain the existing legacy decision path.
+            decision = (
+                self._turn_controller_v2.decide(
+                    interim,
+                    bot_speaking=self._bot_speaking,
+                    assistant_thinking=self._pending_thinking,
+                    final=False,
+                    expects_answer=bool(
+                        self._voice_session is not None
+                        and self._voice_session.expects_answer()
+                    ),
                 )
-                if decision.action is TurnAction.WAIT:
-                    self._interim_text = interim
-                    self._interim_at = time.monotonic()
-                    return ProcessFrameResult.CONTINUE
+                if self._turn_controller_v2 is not None and interim
+                else None
+            )
+            interim_class = (
+                decision.classification
+                if decision is not None
+                else classify_user_utterance(interim)
+            )
+            if decision is not None and decision.action is TurnAction.WAIT:
+                self._interim_text = interim
+                self._interim_at = time.monotonic()
+                return ProcessFrameResult.CONTINUE
             if self._is_bot_echo(interim):
                 return ProcessFrameResult.CONTINUE
             if self._intents_enabled() and interim:
