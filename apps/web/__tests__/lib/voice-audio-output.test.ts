@@ -202,7 +202,11 @@ describe("voice live turn completion lifecycle", () => {
     expect(hook).toMatch(/player\.enqueue\(pcm, sampleRate \|\| 16000\)/)
     expect(player).toMatch(/schedulePcmStart\(/)
     expect(dsp).toMatch(/initialLeadS \?\? 0\.12/)
-    expect(hook).not.toMatch(/Math\.max\(ctx\.currentTime \+ 0\.01/)
+    // Only streamed PCM uses this jitter policy. Complete decoded MP3 phrases
+    // have a separate sample clock and must not trigger the PCM assertion.
+    const pcmPath = hook.slice(hook.indexOf("const enqueuePcm ="), hook.indexOf("const clearStandbyAudio ="))
+    expect(pcmPath).toContain("player.enqueue(pcm, sampleRate || 16000)")
+    expect(pcmPath).not.toMatch(/Math\.max\(ctx\.currentTime \+ 0\.01/)
   })
 
   it("drops queued reply audio when the server reports a barge-in", () => {
