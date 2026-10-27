@@ -1758,7 +1758,11 @@ export function useVoiceDuplexSession(options: Options) {
           if (audioFallbackTriggeredRef.current) return
           if (isInterruptedReplyAudio(msg.reply_id)) return
           // A newer reply never plays ducked.
-          if (overlapDuckRef.current.audio(msg.reply_id)) pcmPlayerRef.current?.setDuck(false)
+          if (overlapDuckRef.current.audio(msg.reply_id)) {
+            // A newer reply releases the server's previous duck, but must
+            // not override an active local microphone hold.
+            if (!localDuckActiveRef.current) pcmPlayerRef.current?.setDuck(false)
+          }
           const pcm = pcmDecoderRef.current.decode(msg.pcm16_b64)
           if (pcm.length > 0) {
             if (firstAudioReceivedAtRef.current == null) {
