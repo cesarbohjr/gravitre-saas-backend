@@ -10,6 +10,7 @@ from app.core.logging import get_logger
 from app.services.consensus_personas import CHAT_CONSENSUS_PERSONAS, build_agent_defs
 from app.services.council_service import AgentCouncilService, DecisionMethod
 from app.services.chat_dialogue_settings import load_chat_dialogue_settings
+from app.services.confidence_honesty import CONFIDENCE_SOURCE_MODEL, label_confidence
 from app.workflows.repository import get_supabase_client
 
 logger = get_logger(__name__)
@@ -70,6 +71,9 @@ class ConversationalConsensusService:
                 ),
                 timeout=self.CONSENSUS_TIMEOUT_SECONDS,
             )
+            if consensus.get("independent_review_available") is False:
+                return {"response": primary_response, "consensus_used": False,
+                        "note": "independent_review_unavailable"}
             refined = str(consensus.get("consensus_recommendation") or primary_response)
             summary = str(consensus.get("consensus_explanation") or "")
             if summary and summary not in refined:
@@ -120,13 +124,21 @@ class ConversationalConsensusService:
             }
             for op in session.dissenting_opinions
         ]
+        opinions = next((row.get("opinions", []) for row in reversed(session.debate_rounds)
+                         if row.get("opinions")), [])
+        model_reviewers = {op.get("agent_name") for op in opinions
+                           if op.get("confidence_source") == CONFIDENCE_SOURCE_MODEL and op.get("agent_name")}
+        # Unanimous fallback votes measure neither independent review nor
+        # confidence in the answer. Unknown provenance also fails closed.
+        review_available = (len(model_reviewers) >= 2 and bool(opinions)
+                            and all(op.get("confidence_source") == CONFIDENCE_SOURCE_MODEL for op in opinions))
         result = {
-            "consensus_recommendation": session.final_recommendation,
-            "confidence": session.final_confidence,
+            "consensus_recommendation": session.final_recommendation if review_available else recommendation,
+            **label_confidence(session.final_confidence if review_available else None,
+                               source=CONFIDENCE_SOURCE_MODEL, is_estimate=True),
+            "independent_review_available": review_available,
             "minority_opinions": minority,
-            "consensus_explanation": (
-                f"Independent review reached {session.final_confidence:.0%} confidence."
-            ),
+            "consensus_explanation": "A second review was completed." if review_available else "",
         }
         await self._persist_deliberation(org_id, recommendation, result)
         return result
@@ -148,6 +160,9 @@ class ConversationalConsensusService:
                     "metadata": {
                         "source": "conversational_consensus_service",
                         "advisory_only": True,
+                        "independent_review_available": payload.get("independent_review_available", False),
+                        "confidence_source": payload.get("confidence_source"),
+                        "confidence_is_estimate": payload.get("confidence_is_estimate"),
                     },
                 }
             ).execute()

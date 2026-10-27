@@ -41,6 +41,8 @@ jobs:
             tests/services/test_phase2_router_consumers.py \
             tests/services/test_execution_intelligence_context.py \
             tests/services/test_intelligence_acceptance_regressions.py \
+            tests/services/test_consensus_provider_failure_honesty.py \
+            tests/test_conversational_intelligence.py \
             tests/services/test_intelligence_outcome_verification.py \
             tests/services/test_intelligence_outcome_path.py \
             tests/services/test_react_write_gate.py \

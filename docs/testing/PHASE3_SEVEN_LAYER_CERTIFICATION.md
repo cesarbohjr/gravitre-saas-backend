@@ -74,3 +74,19 @@ zero writes are not treated as verified provider effects or business outcomes.
 Full `CERTIFIED` still requires all 56 cells to have independent live provider
 readback across all three scenarios, plus passing differential decisions. No
 boundary result or internal-assignment baseline is promoted to that status.
+
+## Observed deployment blocker
+
+The deployed `1c63feef51399efb4385e51b64c3466c19de9d8a` returned
+`401 invalid_api_key` from OpenAI. Request `df86d3c0-fde7-4aa6-8030-e4f99a160b6b`
+subsequently exhausted OpenAI, Anthropic and Gemini with open circuit breakers.
+The product returned clarification fallback text instead of graded decisions.
+No live decision or provider-outcome certification is claimed from these replies.
+
+The same outage exposed a false-review claim: unanimous fallback council votes
+were presented as “Independent review reached 100% confidence.” The candidate
+now requires at least two distinct model-backed reviewers, rejects mixed or
+unknown/fallback provenance, preserves the primary response when review is
+unavailable, and records unavailable confidence as null. Vote agreement is no
+longer presented as a factual-confidence percentage in the conversational copy.
+A working provider credential is required before repeating the live gate.
