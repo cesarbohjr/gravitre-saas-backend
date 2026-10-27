@@ -336,10 +336,12 @@ def _resolved_voices(settings: Settings) -> dict[str, dict[str, str]]:
 
 def resolve_voice_id(settings: Settings, voice_key: str | None) -> tuple[str, str]:
     voices = _resolved_voices(settings)
-    key = (voice_key or settings.elevenlabs_default_voice or "sarah").strip().lower()
+    requested = (voice_key or settings.elevenlabs_default_voice or "sarah").strip()
+    key = requested.lower()
     if key not in voices:
-        if len(key) >= 16:
-            return key, key
+        if len(requested) >= 16:
+            # ElevenLabs voice IDs are case-sensitive; never lowercase raw IDs.
+            return requested, requested
         key = "sarah"
     return key, voices[key]["id"]
 
@@ -350,6 +352,7 @@ def synthesize_speech(
     text: str,
     voice_key: str | None = None,
     model_id: str | None = None,
+    expression_tier: str | None = None,
     http_client: httpx.Client | None = None,
 ) -> tuple[bytes, str, dict[str, Any]]:
     api_key = (settings.elevenlabs_api_key or "").strip()
@@ -381,7 +384,7 @@ def synthesize_speech(
     body = {
         "text": clean,
         "model_id": model,
-        "voice_settings": dict(CONVERSATIONAL_VOICE_SETTINGS),
+        "voice_settings": expressive_voice_settings(expression_tier),
     }
     client = http_client or _get_elevenlabs_http_client(60.0)
     resp = client.post(url, headers=headers, json=body)
@@ -421,6 +424,17 @@ def normalize_elevenlabs_output_format(output_format: str | None) -> tuple[str, 
     return "mp3_44100_128", "audio/mpeg"
 
 
+def expressive_voice_settings(tier: str | None = None) -> dict[str, float | bool]:
+    """Conservative, bounded prosody control for legacy ElevenLabs HTTP TTS.
+
+    Use stability to vary delivery without introducing the extra latency and
+    inconsistent chunk-to-chunk emphasis associated with style exaggeration.
+    """
+    settings = dict(CONVERSATIONAL_VOICE_SETTINGS)
+    settings["stability"] = voice_stability_for_tier(tier)
+    return settings
+
+
 def synthesize_speech_stream(
     settings: Settings,
     *,
@@ -428,6 +442,7 @@ def synthesize_speech_stream(
     voice_key: str | None = None,
     model_id: str | None = None,
     output_format: str = "mp3_44100_128",
+    expression_tier: str | None = None,
 ) -> Iterator[bytes]:
     """Stream audio chunks from ElevenLabs as soon as first byte is available.
 
@@ -461,7 +476,7 @@ def synthesize_speech_stream(
     body = {
         "text": clean,
         "model_id": model,
-        "voice_settings": dict(CONVERSATIONAL_VOICE_SETTINGS),
+        "voice_settings": expressive_voice_settings(expression_tier),
         "optimize_streaming_latency": 3,
     }
     timeout = httpx.Timeout(connect=5.0, read=20.0, write=20.0, pool=10.0)

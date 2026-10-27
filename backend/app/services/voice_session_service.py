@@ -191,6 +191,20 @@ def is_turn_cancelled(turn_id: str) -> bool:
     return False
 
 
+def expression_tier_for_phrase(text: str) -> str:
+    """Map conversational punctuation to subtle prosody, not theatrical style.
+
+    Keep exclamations lively, explanations steady, and neutral statements at
+    the provider baseline. Avoid sentiment inference or voice cloning.
+    """
+    phrase = (text or "").strip()
+    if phrase.endswith("!") or phrase.endswith("?"):
+        return "light"
+    if len(phrase) >= 180 or phrase.endswith(":"):
+        return "deep"
+    return "medium"
+
+
 def split_speakable_chunks(
     buffer: str,
     *,
@@ -215,6 +229,23 @@ def split_speakable_chunks(
     sentences = split_sentence_chunks(buffer)
     if sentences is not None:
         return sentences
+
+    # A long clause can sound breathless when synthesized as one sentence.
+    # Prefer strong natural breath points before the emergency hard ceiling,
+    # while avoiding tiny isolated fragments that reset the voice's prosody.
+    # Keep the punctuation on the emitted phrase for the TTS model.
+    clause_floor = max(80, min_chars * 5)
+    if len(buffer) >= clause_floor:
+        for separator in ("; ", " — ", " – ", ": "):
+            boundary = buffer.rfind(separator, clause_floor, min(len(buffer), 165))
+            if boundary >= clause_floor:
+                end = boundary + len(separator.rstrip())
+                return [buffer[:end].strip()], buffer[end:].lstrip()
+    if len(buffer) >= max(145, clause_floor + 35):
+        boundary = buffer.rfind(", ", clause_floor, min(len(buffer), 185))
+        if boundary >= clause_floor:
+            end = boundary + 1
+            return [buffer[:end].strip()], buffer[end:].lstrip()
 
     hard_ceiling = max(120 if aggressive else 180, max(1, min_chars) * 8)
     if len(buffer) < hard_ceiling:
@@ -581,13 +612,19 @@ async def _stream_voice_turn_events(
                             voice_key=resolved_voice,
                             model_id=model,
                             output_format=tts_output_format,
+                            expression_tier=expression_tier_for_phrase(spoken_chunk),
                         )
                     )
 
                 audio_chunks = await asyncio.to_thread(_fetch_chunks)
                 if cached_pieces is None and standing and audio_chunks:
                     _PERCEIVE_TTS_CACHE[cache_key] = audio_chunks
-            for audio in audio_chunks:
+            # The legacy browser WebAudio scheduler needs independently
+            # decodable MP3 phrases. ElevenLabs transport pieces are arbitrary
+            # byte ranges, not MP3 files; assemble each phrase before emitting.
+            # _fetch_chunks already materializes the stream, so this does not
+            # add provider wait time beyond the existing collection.
+            for audio in [b"".join(audio_chunks)]:
                 if _cancelled():
                     cancelled = True
                     return

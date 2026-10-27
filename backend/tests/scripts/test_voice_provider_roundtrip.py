@@ -33,6 +33,12 @@ def test_synthetic_provider_protocol_and_commit_gate_roundtrip():
     assert len(calls) == 4
     assert all(row['business_write_executors_called'] == 0 for row in result['cases'])
     assert result['physical_acceptance'] == 'NOT RUN'
+    assert [r['stt_diagnostics']['decision'] for r in result['cases']] == ['hold_commit', 'reject']
+    assert all(r['stt_diagnostics']['invoke_allowed'] is False for r in result['cases'])
+    assert all(r['stt_diagnostics']['transcript_present'] is True for r in result['cases'])
+    serialized = json.dumps(result)
+    assert 'Yes, wait. Hold on.' not in serialized
+    assert 'Cancel it. Do not send anything.' not in serialized
 
 
 @pytest.mark.asyncio
