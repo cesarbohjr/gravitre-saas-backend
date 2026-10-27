@@ -122,3 +122,19 @@ def test_explicit_short_stop_commands_interrupt_without_two_word_requirement():
     s = source()
     assert "stop|wait|pause|hold on|cancel|no stop|hang on" in s
     assert "legacyInterruptionIntent(transcript, confidence)" in s
+
+
+def test_legacy_tts_preloads_next_segment_and_promotes_standby():
+    s = source()
+    assert "const preloadNextAudio = useCallback" in s
+    assert 'el.preload = "auto"' in s
+    assert "standbyBlobRef.current === next" in s
+    assert "if (playingRef.current) preloadNextAudio()" in s
+
+
+def test_interruption_invalidates_pending_media_start_and_releases_urls():
+    s = source()
+    assert "playbackGenerationRef.current += 1" in s
+    assert "generation !== playbackGenerationRef.current" in s
+    assert "URL.revokeObjectURL(standbyUrlRef.current)" in s
+    assert "URL.revokeObjectURL(playingUrlRef.current)" in s
