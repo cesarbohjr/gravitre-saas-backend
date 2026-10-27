@@ -548,8 +548,17 @@ export function useVoiceDuplexSession(options: Options) {
     maxPcmPeakRef.current = 0
     browserAudioPlaybackStartedRef.current = false
     audioFallbackTriggeredRef.current = false
+    playbackGenerationRef.current += 1
     playingRef.current = false
     audioQueueRef.current = []
+    const standby = standbyAudioRef.current
+    if (standby) { standby.pause(); standby.removeAttribute("src") }
+    if (standbyUrlRef.current) URL.revokeObjectURL(standbyUrlRef.current)
+    standbyAudioRef.current = null
+    standbyBlobRef.current = null
+    standbyUrlRef.current = null
+    if (playingUrlRef.current) URL.revokeObjectURL(playingUrlRef.current)
+    playingUrlRef.current = null
     playbackWiredRef.current = false
     playbackBlockedRef.current = false
     setPlaybackBlocked(false)
@@ -806,7 +815,7 @@ export function useVoiceDuplexSession(options: Options) {
         /* analyser optional — still attempt audible playback */
       }
     }
-    if (el.src !== url) el.src = url
+    if (el.src !== url && !el.src.endsWith(url)) el.src = url
     try {
       await el.play()
       if (generation !== playbackGenerationRef.current) return
