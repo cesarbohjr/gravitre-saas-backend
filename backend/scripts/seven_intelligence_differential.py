@@ -34,6 +34,28 @@ FACTS = {
 }
 EXPECTED = {'baseline':'routine','enriched':'urgent_review','missing':'uncertain'}
 
+class AnthropicClient:
+    """Direct provider-backed read-only decisions; not a deployed product receipt."""
+    def __init__(self):
+        from anthropic import AsyncAnthropic
+        self.client = AsyncAnthropic(timeout=60, max_retries=0)
+
+    async def decide(self, model, messages):
+        system = next(m['content'] for m in messages if m['role'] == 'system')
+        user = next(m['content'] for m in messages if m['role'] == 'user')
+        response = await self.client.messages.create(
+            model=model, system=system, max_tokens=2000,
+            messages=[{'role': 'user', 'content': user}])
+        content = ''.join(block.text for block in response.content if block.type == 'text')
+        return SimpleNamespace(
+            choices=[SimpleNamespace(message=SimpleNamespace(content=content))],
+            id=response.id, _request_id=response.id, model=response.model,
+            provenance={'evidence_scope': 'live_anthropic_synthetic_sources'})
+
+    async def close(self):
+        await self.client.close()
+
+
 class ProductClient:
     """Use the authenticated product path when CI does not own provider keys."""
     def __init__(self, transport=None):
@@ -141,6 +163,8 @@ async def run_case(client, model, scenario, capability, commit_sha):
     try:
         if isinstance(client, ProductClient):
             response = await client.decide(policy, cases)
+        elif isinstance(client, AnthropicClient):
+            response = await client.decide(model, messages)
         else:
             response = await client.chat.completions.create(model=model,messages=messages,
                 response_format={'type':'json_object'},max_completion_tokens=2000)
@@ -173,11 +197,19 @@ async def execute(output, model, commit_sha, client=None):
         'evidence_scope':'live_model_synthetic_sources','certification':'NOT_CERTIFIED',
         'business_outcomes_verified':False,'cases':[]}
     product_available = bool(os.environ.get('PLATFORM_LIVE_BEARER_TOKEN'))
-    if client is None and not os.environ.get('OPENAI_API_KEY') and not product_available:
+    anthropic_available = bool(os.environ.get('ANTHROPIC_API_KEY'))
+    provider_choice = os.environ.get('CERTIFICATION_PROVIDER', 'product').lower()
+    if client is None and provider_choice == 'anthropic' and not anthropic_available:
+        report['blocker']='Anthropic certification selected but ANTHROPIC_API_KEY unavailable'
+    elif client is None and not os.environ.get('OPENAI_API_KEY') and not product_available and not anthropic_available:
         report['blocker']='Neither isolated product session nor OPENAI_API_KEY is available'
     else:
         from openai import AsyncOpenAI
-        provider = client or (ProductClient() if product_available else AsyncOpenAI(timeout=60,max_retries=0))
+        provider = client or (AnthropicClient() if provider_choice == 'anthropic' and anthropic_available
+            else ProductClient() if product_available else AnthropicClient() if anthropic_available
+            else AsyncOpenAI(timeout=60,max_retries=0))
+        if isinstance(provider, AnthropicClient):
+            model = os.environ.get('ANTHROPIC_CERTIFICATION_MODEL', 'claude-sonnet-4-5')
         sem=asyncio.Semaphore(3)
         async def one(s,c):
             async with sem: return await run_case(provider,model,s,c,commit_sha)
