@@ -138,3 +138,23 @@ def test_interruption_invalidates_pending_media_start_and_releases_urls():
     assert "generation !== playbackGenerationRef.current" in s
     assert "URL.revokeObjectURL(standbyUrlRef.current)" in s
     assert "URL.revokeObjectURL(playingUrlRef.current)" in s
+
+
+def test_legacy_tts_uses_single_sample_clock_when_decode_succeeds():
+    s = source()
+    assert "ctx.decodeAudioData(" in s
+    assert "scheduledTtsUntilRef.current" in s
+    assert "source.start(startAt)" in s
+    assert "ttsDecodeChainRef.current.then(async () =>" in s
+
+
+def test_legacy_tts_fallback_stays_on_one_output_clock():
+    s = source()
+    assert "ttsHtmlFallbackRef.current = true" in s
+    assert "!ttsHtmlFallbackRef.current && await scheduleDecodedTts" in s
+
+
+def test_legacy_tts_interruption_stops_scheduled_sources():
+    s = source()
+    assert "for (const source of scheduledTtsSourcesRef.current)" in s
+    assert "scheduledTtsUntilRef.current = 0" in s
