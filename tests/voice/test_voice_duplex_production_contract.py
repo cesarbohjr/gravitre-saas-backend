@@ -75,7 +75,7 @@ def test_stale_pipecat_socket_events_cannot_mutate_new_session():
 def test_legacy_endpointing_holds_thoughtful_pauses():
     s = source()
     assert "const scheduleFinal = useCallback" in s
-    assert "unfinished ? 1100" in s
+    assert "legacyEndpointDelayMs(text)" in s
     assert "scheduleFinal(finalized)" in s
     assert "scheduleFinal(transcript)" in s
 
@@ -89,8 +89,8 @@ def test_pending_endpointing_is_cancelled_on_stop_and_unmount():
 
 def test_legacy_barge_in_requires_transcript_not_just_noise():
     s = source()
-    assert "interruptionWords.length >= 2 && confidence >= 0.5" in s
-    assert "transcript.split(/\\s+/)" in s
+    assert "legacyInterruptionIntent(transcript, confidence)" in s
+    assert "function legacyInterruptionIntent(" in s
 
 
 def test_duplicate_stt_final_does_not_start_second_reply():
@@ -108,3 +108,17 @@ def test_voice_cleanup_cancels_pending_final_before_teardown():
     start = s.index("// Unmount only.")
     end = s.index("return {\n    presence,", start)
     assert "clearPendingFinal()" in s[start:end]
+
+
+def test_legacy_turn_end_has_contextual_pause_classes():
+    s = source()
+    assert "function legacyEndpointDelayMs(" in s
+    assert "return 1250" in s
+    assert "return 380" in s
+    assert "return 850" in s
+
+
+def test_explicit_short_stop_commands_interrupt_without_two_word_requirement():
+    s = source()
+    assert "stop|wait|pause|hold on|cancel|no stop|hang on" in s
+    assert "legacyInterruptionIntent(transcript, confidence)" in s
