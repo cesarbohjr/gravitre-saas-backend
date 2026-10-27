@@ -829,8 +829,14 @@ class BackchannelAwareUserTurnStartStrategy(ExternalUserTurnStartStrategy):
         if self._pending:
             # Timed out without a confident classification. Safe default:
             # treat as a real interruption, never suppress on ambiguity.
-            if self._intents_enabled() and not self._buffer_text and self._interim_text:
-                # Decide on the words heard so far: a bare "stop" stays a stop.
+            if (
+                (self._intents_enabled() or self._turn_controller_v2 is not None)
+                and not self._buffer_text
+                and self._interim_text
+            ):
+                # Preserve the partial transcript after a bounded semantic
+                # wait. Without this, V2's WAIT decision could expire into
+                # an empty interruption, losing the user's actual words.
                 self._buffer_text = self._interim_text
             classification = self._classify_pending_turn(self._buffer_text, final=False)
             await self._resolve(classification, resolved_by_timeout=True)
