@@ -1488,7 +1488,7 @@ export function useVoiceDuplexSession(options: Options) {
       dropAudioUntilRef.current = 0
 
       ws.onopen = () => {
-        if (!isCurrentStartup()) {
+        if (wsRef.current !== ws || !isCurrentStartup()) {
           ws.close()
           return
         }
@@ -1507,6 +1507,8 @@ export function useVoiceDuplexSession(options: Options) {
       }
 
       ws.onmessage = (ev) => {
+        // Ignore delayed frames from a socket replaced during recovery.
+        if (wsRef.current !== ws || !isCurrentStartup()) return
         let msg: Record<string, unknown>
         try {
           msg = JSON.parse(String(ev.data)) as Record<string, unknown>
@@ -1796,8 +1798,13 @@ export function useVoiceDuplexSession(options: Options) {
       // error and close share one handler because which of them fires is not a
       // reliable signal (Node's ws and browsers disagree on unclean teardown), and
       // both can fire for a single failure. Intent decides, and this runs once.
-      ws.onerror = () => handlePipecatSocketFailure({ event: "error" })
+      ws.onerror = () => {
+        if (wsRef.current !== ws || !isCurrentStartup()) return
+        handlePipecatSocketFailure({ event: "error" })
+      }
       ws.onclose = (ev) => {
+        // An obsolete socket must never retry or complete a newer session.
+        if (wsRef.current !== ws || !isCurrentStartup()) return
         const wasIntentional = intentionalCloseRef.current
         // The close code is the fact that separates the remaining candidate
         // causes, and it exists nowhere else, so hand it to the diagnostic.
