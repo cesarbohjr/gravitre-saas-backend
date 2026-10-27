@@ -32,3 +32,7 @@ Existing runtime/security tests and standing live batteries remain separate.
 Offline contracts: `node --test scripts/social_intelligence/evaluator.test.ts`
 and `pytest backend/tests/services/test_social_intelligence_evaluation_bundle.py`.
 These never call a provider. No evaluator answer keys are runtime few-shots.
+
+Guidance preserves message priority: classical kernel context is system context;
+unified dialogue interpretation is compiled into user context. The paired-path
+offline regression checks this distinction explicitly.

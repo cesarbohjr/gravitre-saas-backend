@@ -60,7 +60,15 @@ export async function runEvaluation(bundle: Bundle, env: Record<string,string|un
       const {text,voice,c}=pairs[cursor++];
       const key={role:text.role,path:text.path,case:c.id};
       try {
-        const generate=(p:Profile)=>call([{type:"text",text:p.system,cache_control:{type:"ephemeral"}},{type:"text",text:c.dialogue}],c.messages,500);
+        const generate=(p:Profile)=>{
+          // Match runtime placement: classical merges kernel sections into
+          // system context; unified compiles them into the user context.
+          const system:any[]=[{type:"text",text:p.system,cache_control:{type:"ephemeral"}}];
+          const messages=c.messages.map((m,i)=>p.path==="unified" && i===c.messages.length-1
+            ? {...m,content:m.content+"\n\n"+c.dialogue}:m);
+          if(p.path==="classical")system.push({type:"text",text:c.dialogue});
+          return call(system,messages,500);
+        };
         const [typed,spoken]=await Promise.all([generate(text),generate(voice)]);
         const judged=await call(JUDGE,[{role:"user",content:JSON.stringify({scenario:c.messages,expected:c.expect,text_reply:typed.text,voice_reply:spoken.text})}],350);
         const verdict=parseVerdict(judged.text);

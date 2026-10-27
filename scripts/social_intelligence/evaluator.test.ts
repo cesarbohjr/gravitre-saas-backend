@@ -32,3 +32,18 @@ test('real runner pairs text/voice, parses judge and fails any criterion',async(
  };
  try{const result=await runEvaluation(bundle,{ANTHROPIC_API_KEY:'test'},r=>rows.push(r));assert.equal(result?.status,'FAIL');assert.equal(result?.failed,1);assert.equal(result?.requests,3);assert.equal(rows[1].text,'Synthetic response.');assert.equal(rows[1].voice,'Synthetic response.');} finally{globalThis.fetch=original;}
 });
+test('dialogue guidance retains each runtime paths actual message priority',async()=>{
+ const original=globalThis.fetch;const seen:any[]=[];
+ const profiles=['unified','classical'].flatMap(path=>['text','voice'].map(channel=>({role:'DEFAULT',path,channel,system:path})));
+ globalThis.fetch=async(_url,options)=>{
+  const req=JSON.parse(String(options?.body));seen.push(req);
+  return Response.json({stop_reason:'end_turn',content:[{type:'text',text:typeof req.system==='string'?JSON.stringify(good):'Reply.'}]});
+ };
+ try{await runEvaluation({...bundle,profiles},{ANTHROPIC_API_KEY:'test'},()=>{});
+  for(const req of seen.filter(r=>Array.isArray(r.system))){
+   const classical=req.system[0].text==='classical';
+   assert.equal(req.system.some((s:any)=>s.text==='d'),classical);
+   assert.equal(req.messages.at(-1).content.includes('\n\nd'),!classical);
+  }
+ }finally{globalThis.fetch=original;}
+});
