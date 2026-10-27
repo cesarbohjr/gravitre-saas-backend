@@ -70,3 +70,24 @@ def test_stale_pipecat_socket_events_cannot_mutate_new_session():
     assert 'if (wsRef.current !== ws || !isCurrentStartup()) {' in s
     assert 'An obsolete socket must never retry or complete a newer session.' in s
     assert 'Ignore delayed frames from a socket replaced during recovery.' in s
+
+
+def test_legacy_endpointing_holds_thoughtful_pauses():
+    s = source()
+    assert "const scheduleFinal = useCallback" in s
+    assert "unfinished ? 1100" in s
+    assert "scheduleFinal(finalized)" in s
+    assert "scheduleFinal(transcript)" in s
+
+
+def test_pending_endpointing_is_cancelled_on_stop_and_unmount():
+    s = source()
+    assert "const clearPendingFinal = useCallback" in s
+    assert s.count("clearPendingFinal()") >= 2
+    assert "capturedEpoch !== startupEpochRef.current" in s
+
+
+def test_legacy_barge_in_requires_transcript_not_just_noise():
+    s = source()
+    assert "interruptionWords.length >= 2 && confidence >= 0.5" in s
+    assert "transcript.split(/\\s+/)" in s
