@@ -191,6 +191,20 @@ def is_turn_cancelled(turn_id: str) -> bool:
     return False
 
 
+def expression_tier_for_phrase(text: str) -> str:
+    """Map conversational punctuation to subtle prosody, not theatrical style.
+
+    Keep exclamations lively, explanations steady, and neutral statements at
+    the provider baseline. Avoid sentiment inference or voice cloning.
+    """
+    phrase = (text or "").strip()
+    if phrase.endswith("!") or phrase.endswith("?"):
+        return "light"
+    if len(phrase) >= 180 or phrase.endswith(":"):
+        return "deep"
+    return "medium"
+
+
 def split_speakable_chunks(
     buffer: str,
     *,
@@ -598,6 +612,7 @@ async def _stream_voice_turn_events(
                             voice_key=resolved_voice,
                             model_id=model,
                             output_format=tts_output_format,
+                            expression_tier=expression_tier_for_phrase(spoken_chunk),
                         )
                     )
 
