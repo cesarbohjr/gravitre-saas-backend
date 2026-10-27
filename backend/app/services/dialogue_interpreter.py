@@ -19,6 +19,10 @@ _CUES = (
     ("frustration_cue", r"\b(?:i'm frustrated|i am frustrated|this is frustrating|you keep misunderstanding)\b"),
     ("gratitude", r"\b(?:thanks|thank you|much appreciated)\b"),
     ("explicit_humor", r"\b(?:just kidding|only joking|i'm joking|i am joking)\b"),
+    ("distress_cue", r"\\b(?:i'm overwhelmed|i am overwhelmed|i'm anxious|i am anxious|i'm worried|i am worried|this is stressful)\\b"),
+    ("positive_excitement", r"\\b(?:i'm excited|i am excited|can't wait|so happy about)\\b"),
+    ("conversational_repair", r"\\b(?:sorry[, ]+i meant|no[, ]+what i mean is|let me start over|scratch that)\\b"),
+    ("thinking_aloud", r"\\b(?:thinking out loud|just brainstorming|i'm exploring options|i am exploring options)\\b"),
     ("explicit_sarcasm", r"(?:/s\s*$|\b(?:being sarcastic|that was sarcasm)\b)"),
 )
 _PATTERNS = tuple((name, re.compile(pattern, re.I)) for name, pattern in _CUES)
@@ -31,6 +35,10 @@ _GUIDANCE = {
     "frustration_cue": "The wording contains a frustration cue; check the misunderstanding without claiming to know the user's emotional state.",
     "gratitude": "A brief acknowledgment may suffice; avoid restarting a completed explanation.",
     "explicit_humor": "An explicit joking cue is present; interpret it proportionately in context.",
+    "distress_cue": "The user explicitly signals possible distress. Respond calmly and supportively without diagnosing, exaggerating, or claiming to know their feelings; prioritize the concrete request.",
+    "positive_excitement": "The user expresses enthusiasm. Match their energy briefly while remaining accurate and task-focused.",
+    "conversational_repair": "The user is revising an earlier utterance. Prefer the corrected request, avoid defending the prior interpretation, and clarify only material ambiguity.",
+    "thinking_aloud": "The user is exploring rather than committing. Collaborate on options without treating tentative ideas as final decisions or authorization.",
     "explicit_sarcasm": "An explicit sarcasm cue is present; check intended meaning before consequential action.",
 }
 
