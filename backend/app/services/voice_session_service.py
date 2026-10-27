@@ -604,7 +604,12 @@ async def _stream_voice_turn_events(
                 audio_chunks = await asyncio.to_thread(_fetch_chunks)
                 if cached_pieces is None and standing and audio_chunks:
                     _PERCEIVE_TTS_CACHE[cache_key] = audio_chunks
-            for audio in audio_chunks:
+            # The legacy browser WebAudio scheduler needs independently
+            # decodable MP3 phrases. ElevenLabs transport pieces are arbitrary
+            # byte ranges, not MP3 files; assemble each phrase before emitting.
+            # _fetch_chunks already materializes the stream, so this does not
+            # add provider wait time beyond the existing collection.
+            for audio in [b"".join(audio_chunks)]:
                 if _cancelled():
                     cancelled = True
                     return
