@@ -8,6 +8,7 @@ on:
       - 'backend/app/services/execution_intelligence_context.py'
       - 'backend/scripts/phase3_intelligence_coverage.py'
       - 'backend/scripts/seven_intelligence_differential.py'
+      - 'scripts/seven-intelligence-live-preflight.py'
       - 'backend/tests/services/test_phase2_intelligence_coordination.py'
       - 'backend/tests/services/test_phase2_router_consumers.py'
       - 'docs/testing/PHASE3_SEVEN_LAYER_CERTIFICATION.md'
@@ -51,6 +52,7 @@ jobs:
             tests/test_phase3_intelligence_coverage.py \
             tests/e2e/test_seven_intelligence_cross_surface.py \
             tests/scripts/test_seven_intelligence_differential.py \
+            tests/scripts/test_seven_intelligence_live_preflight.py \
             --junitxml=../phase3-evidence/contracts.xml
       - name: Generate 56-cell coverage inventory
         if: always()
@@ -85,6 +87,8 @@ jobs:
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           SUPABASE_JWT_SECRET: ${{ secrets.SUPABASE_JWT_SECRET }}
         run: python scripts/mint_smoke_org_session.py --github-env
+      - name: Read-only discovery of isolated live fixtures
+        run: python scripts/seven-intelligence-live-preflight.py --output "$RUNNER_TEMP/intelligence-live-preflight.json"
       - name: Verify deployed internal assignment, approval, outcome and learning
         run: python scripts/run-intelligence-isolated-live.py --allow-synthetic-write --out "$RUNNER_TEMP/intelligence-e2e-report.json"
       - name: Clear session and reject token-bearing evidence
@@ -102,7 +106,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: deployed-intelligence-lifecycle-baseline
-          path: ${{ runner.temp }}/intelligence-e2e-report.json
+          path: |
+            ${{ runner.temp }}/intelligence-e2e-report.json
+            ${{ runner.temp }}/intelligence-live-preflight.json
           if-no-files-found: error
 
 
@@ -122,11 +128,20 @@ jobs:
       - name: Install inference dependencies
         working-directory: backend
         run: python -m pip install -r requirements-dev.txt
+      - name: Mint isolated product session for inference
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          SUPABASE_JWT_SECRET: ${{ secrets.SUPABASE_JWT_SECRET }}
+        run: python scripts/mint_smoke_org_session.py --github-env
       - name: Compare baseline, enriched and missing evidence across three domains and seven capabilities
         working-directory: backend
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: python scripts/seven_intelligence_differential.py --output ../phase3-differential/differential.json --commit-sha "$GITHUB_SHA"
+      - name: Clear inference session
+        if: always()
+        run: echo 'PLATFORM_LIVE_BEARER_TOKEN=' >> "$GITHUB_ENV"
       - name: Upload live model decisions (synthetic sources; no business outcome claim)
         if: always()
         uses: actions/upload-artifact@v4

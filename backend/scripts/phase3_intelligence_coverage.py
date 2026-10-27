@@ -87,8 +87,11 @@ def build(evidence_dir=None, commit_sha=None, differential_evidence=None):
         for case in cases:
             if (case.get("commit_sha") != commit_sha or case.get("status") != "PASS_LIVE_DECISION"
                     or not case.get("request_id") or not case.get("response_id") or not case.get("model")
-                    or case.get("evidence_scope") != "live_model_synthetic_sources"):
+                    or case.get("evidence_scope") not in ("live_model_synthetic_sources", "live_product_synthetic_sources")):
                 raise ValueError("Differential case has no passing live-model provenance")
+            if case.get("evidence_scope") == "live_product_synthetic_sources" and not (
+                    case.get("product_conversation_id") and case.get("deployed_git_sha")):
+                raise ValueError("Product differential has no conversation/deployment provenance")
             observed = case.get("observed", {})
             expected_decisions = {"baseline": "routine", "enriched": "urgent_review", "missing": "uncertain"}
             if set(observed) != set(expected_decisions):
@@ -136,13 +139,23 @@ def main():
     parser.add_argument("--commit-sha", default=os.environ.get("GITHUB_SHA"))
     parser.add_argument("--differential-evidence")
     args = parser.parse_args()
-    report = build(args.evidence_dir, args.commit_sha, args.differential_evidence)
-    stats = validate(report)
+    validation_error = None
+    try:
+        report = build(args.evidence_dir, args.commit_sha, args.differential_evidence)
+        stats = validate(report)
+    except (ValueError, OSError) as exc:
+        validation_error = str(exc) if isinstance(exc, ValueError) else "Required evidence artifact is unavailable"
+        try:
+            report = build(args.evidence_dir, args.commit_sha)
+        except (ValueError, OSError):
+            report = build()
+        report["validation_error"] = validation_error
+        stats = validate(report)
     dest = Path(args.output)
     dest.parent.mkdir(parents=True, exist_ok=True)
     dest.write_text(json.dumps({**report, "summary": stats}, indent=2) + "\n")
     print(json.dumps({"certification": report["certification"], **stats}))
-    return 1 if args.require_certified and report["certification"] != "CERTIFIED" else 0
+    return 1 if validation_error or (args.require_certified and report["certification"] != "CERTIFIED") else 0
 
 if __name__ == "__main__":
     raise SystemExit(main())

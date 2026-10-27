@@ -38,3 +38,39 @@ For every test record: commit SHA, deterministic seed, scenario ID, capability, 
 5. Expand to the full Plays catalog; inventory is not end-to-end certification.
 
 Do not merge or deploy on the strength of this document alone.
+
+## Executable evidence scopes
+
+`test_seven_intelligence_cross_surface.py` now executes 168 individual boundary
+contracts (56 cells × the three scenario IDs). Each record is written only after
+its assertion succeeds, includes the tested commit, seed, selector, observed and
+expected values, and is hashed into the coverage report. Missing scenario files,
+stale commits, duplicate records, mismatched results and unauthorized writes are
+rejected. These records are **PASS_OFFLINE_CONTRACT**, never live certification.
+
+| Surface | Boundary actually exercised |
+| --- | --- |
+| Flows | Shared turn's actual model request receives the isolated capability |
+| Plays | Canonical Play dispatch carries server evidence into the workflow and agent task prompt |
+| Agents | Actual `execute_task` passes evidence to the ReAct prompt |
+| Workflows | Actual workflow agent handoff invokes `execute_task` and retains evidence |
+| Connectors | Actual write-proposal gate still requires approval despite intelligence evidence |
+| Knowledge | Tenant-scoped production retrieval adapter preserves the evidence content |
+| Memory | Production recall formatter retains evidence and treats it as untrusted data |
+| Governance | Actual final provider-effect gate refuses a paused write |
+
+The knowledge adapter and memory formatter probes do not prove live indexing,
+retrieval or database authorization. The workflow handoff probe does not certify
+the complete graph engine. The mocked model sink verifies prompt consumption,
+not a business decision or a successful provider mutation.
+
+The differential runner independently grades 21 capability/domain pairs, each
+with baseline, enriched and unavailable cases. It uses the production evidence
+formatter and either live inference or authenticated smoke-org product chat.
+Its synthetic source records are explicitly labeled. Product inference records
+include the deployed SHA, conversation/message and request IDs. Model-declared
+zero writes are not treated as verified provider effects or business outcomes.
+
+Full `CERTIFIED` still requires all 56 cells to have independent live provider
+readback across all three scenarios, plus passing differential decisions. No
+boundary result or internal-assignment baseline is promoted to that status.

@@ -100,3 +100,14 @@ def test_live_cell_requires_readback_independent_of_provider_acceptance(tmp_path
         provider_readback={'verified':True,'independent':False,'source_record_id':'record-1','request_id':'read-1'})
     with pytest.raises(ValueError, match='independent provider readback'):
         module.build(tmp_path, 'candidate-sha')
+
+
+def test_failed_gate_still_writes_reviewable_verdict(tmp_path,monkeypatch):
+    import json
+    output=tmp_path/'verdict.json'
+    monkeypatch.setattr('sys.argv',['gate','--output',str(output),
+        '--differential-evidence',str(tmp_path/'missing.json'),'--evidence-dir',str(tmp_path),'--commit-sha','candidate-sha','--require-certified'])
+    assert module.main()==1
+    report=json.loads(output.read_text())
+    assert report['certification']=='NOT_CERTIFIED'
+    assert report['validation_error']

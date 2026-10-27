@@ -13,6 +13,7 @@ import json
 import os
 import subprocess
 import sys
+import uuid
 from pathlib import Path
 from types import SimpleNamespace
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -30,6 +31,58 @@ FACTS = {
     'predictive': ({'risk_probability':.05,'calibration_samples':1000},{'risk_probability':.92,'calibration_samples':1000},'risk_probability >= 0.8 AND calibration_samples >= 100; a prediction is not an observed outcome'),
 }
 EXPECTED = {'baseline':'routine','enriched':'urgent_review','missing':'uncertain'}
+
+class ProductClient:
+    """Use the authenticated product path when CI does not own provider keys."""
+    def __init__(self, transport=None):
+        import httpx
+        if (os.environ.get('PLATFORM_LIVE_ORG_ID') != 'f07e57c0-1501-4000-8000-c04e57a00001'
+                or os.environ.get('PLATFORM_LIVE_AUTH_MODE') != 'smoke_org_short_lived'):
+            raise ValueError('Isolated short-lived smoke-org session required')
+        self.org = os.environ['PLATFORM_LIVE_ORG_ID']
+        self.http = httpx.AsyncClient(base_url='https://api.gravitre.app', timeout=180, transport=transport, headers={
+            'Authorization':'Bearer '+os.environ['PLATFORM_LIVE_BEARER_TOKEN'],
+            'X-Org-Id':self.org,'X-Environment':'production'})
+        self.deployed_sha = None
+
+    async def decide(self, policy, cases):
+        health = await self.http.get('/health'); health.raise_for_status()
+        self.deployed_sha = health.json().get('git_sha')
+        created = await self.http.post('/api/conversations', json={'title':'[E2E TEST] Seven-intelligence differential'})
+        created.raise_for_status(); conversation_id = created.json()['id']
+        message = ('Read-only controlled synthetic acceptance. Classify these supplied observations only; '
+            'do not search connectors, create assignments or execute actions. '+policy+'\n'+json.dumps(cases))
+        response = await self.http.post('/api/assistant/chat', json={
+            'org_id':self.org,'conversation_id':conversation_id,'mode':'standard',
+            'messages':[{'id':str(uuid.uuid4()),'role':'user','parts':[{'type':'text','text':message}]}]})
+        response.raise_for_status()
+        text, message_id, model = [], None, None
+        for line in response.text.splitlines():
+            if not line.startswith('data:'): continue
+            try: event = json.loads(line[5:].strip())
+            except ValueError: continue
+            if event.get('type') == 'text-delta': text.append(str(event.get('delta') or ''))
+            data = event.get('data')
+            if isinstance(data, dict):
+                message_id = data.get('messageId') or data.get('message_id') or message_id
+                model = data.get('model') or model
+        state = await self.http.get(f'/api/assistant/conversation/{conversation_id}/state')
+        state.raise_for_status()
+        if (state.json().get('task_state') or {}).get('pending_task'):
+            raise ValueError('Read-only differential unexpectedly staged an action')
+        request_id = response.headers.get('x-request-id')
+        if not request_id or not message_id or not self.deployed_sha:
+            raise ValueError('Product inference has no request/message/deployment provenance')
+        content = ''.join(text).strip()
+        if content.startswith('```') and content.endswith('```'):
+            content = '\n'.join(content.splitlines()[1:-1]).strip()
+        return SimpleNamespace(choices=[SimpleNamespace(message=SimpleNamespace(content=content))],
+            id=message_id, _request_id=request_id, model=model or 'deployed_gravitre_reasoning',
+            provenance={'evidence_scope':'live_product_synthetic_sources',
+                'product_conversation_id':conversation_id,'deployed_git_sha':self.deployed_sha})
+
+    async def close(self):
+        await self.http.aclose()
 
 class FixtureRouter(IntelligenceRouter):
     """Only provider I/O is synthetic; coordination and envelope are production."""
@@ -80,11 +133,18 @@ async def run_case(client, model, scenario, capability, commit_sha):
         'input_sha256':hashlib.sha256(json.dumps(messages,sort_keys=True).encode()).hexdigest(),
         'expected':EXPECTED,'provider_readback':None,'writes_committed':0}
     try:
-        response = await client.chat.completions.create(model=model,messages=messages,
-            response_format={'type':'json_object'},max_completion_tokens=2000)
+        if isinstance(client, ProductClient):
+            response = await client.decide(policy, cases)
+        else:
+            response = await client.chat.completions.create(model=model,messages=messages,
+                response_format={'type':'json_object'},max_completion_tokens=2000)
         decisions = json.loads(response.choices[0].message.content or '')
         result.update(request_id=getattr(response,'_request_id',None) or response.id,
             response_id=response.id,observed=decisions,model=response.model)
+        result.update(getattr(response, 'provenance', {}))
+        if result['evidence_scope'] == 'live_product_synthetic_sources':
+            result['writes_committed'] = None
+            result['provider_effects_verified'] = False
         if grade(decisions) and result['request_id']:
             result['status']='PASS_LIVE_DECISION'
     except Exception as exc:
@@ -96,16 +156,18 @@ async def execute(output, model, commit_sha, client=None):
     report={'schema':'gravitre.seven_intelligence.differential.v1','commit_sha':commit_sha,
         'evidence_scope':'live_model_synthetic_sources','certification':'NOT_CERTIFIED',
         'business_outcomes_verified':False,'cases':[]}
-    if client is None and not os.environ.get('OPENAI_API_KEY'):
-        report['blocker']='OPENAI_API_KEY unavailable in acceptance environment'
+    product_available = bool(os.environ.get('PLATFORM_LIVE_BEARER_TOKEN'))
+    if client is None and not os.environ.get('OPENAI_API_KEY') and not product_available:
+        report['blocker']='Neither isolated product session nor OPENAI_API_KEY is available'
     else:
         from openai import AsyncOpenAI
-        provider = client or AsyncOpenAI(timeout=60,max_retries=0)
+        provider = client or (ProductClient() if product_available else AsyncOpenAI(timeout=60,max_retries=0))
         sem=asyncio.Semaphore(3)
         async def one(s,c):
             async with sem: return await run_case(provider,model,s,c,commit_sha)
         report['cases']=await asyncio.gather(*(one(s,c) for s in SCENARIOS for c in CAPABILITY_NAMES))
         if client is None: await provider.close()
+    report['evidence_scopes']=sorted({case['evidence_scope'] for case in report['cases']})
     report['passed_cases']=sum(c['status']=='PASS_LIVE_DECISION' for c in report['cases'])
     report['decision_gate']='PASS' if len(report['cases'])==21 and report['passed_cases']==21 else 'FAIL'
     dest=Path(output); dest.parent.mkdir(parents=True,exist_ok=True)
