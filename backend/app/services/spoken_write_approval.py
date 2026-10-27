@@ -307,10 +307,10 @@ def classify_spoken_write_approval(
     # A later hesitation or stop clause vetoes an earlier affirmative.
     # Fail closed on natural STT punctuation and filler variants.
     normalized = re.sub(r"[^a-z0-9']+", " ", text.lower()).strip()
-    affirmative_prefix = re.match(r"^(?:yes|yeah|yep|y|ok|okay|sure)\\b", normalized)
+    affirmative_prefix = re.match(r"^(?:yes|yeah|yep|y|ok|okay|sure)\b", normalized)
     hold_words = re.search(
-        r"\\b(?:wait|hold on|hold up|pause|hang on|not yet|one second|"
-        r"just a second|give me a second|stop|don't|do not)\\b", normalized
+        r"\b(?:wait|hold on|hold up|pause|hang on|not yet|one second|"
+        r"just a second|give me a second|stop|don't|do not)\b", normalized
     )
     if affirmative_prefix and hold_words:
         return _result("hold_commit", invoke_allowed=False,

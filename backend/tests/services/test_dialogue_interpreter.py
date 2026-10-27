@@ -105,3 +105,14 @@ def test_emotional_and_conversation_cues_cannot_approve_writes(message):
     state = {"pending_task": {"id": "pending-1", "type": "connector_action", "status": "awaiting_confirm", "invoke_action": "gmail.messages.send"}}
     interpret_dialogue(message)
     assert classify_spoken_write_approval(message, task_state=state).invoke_allowed is False
+
+
+@pytest.mark.parametrize("message", [
+    "I'm not worried about this.", "I am no longer overwhelmed.",
+    "I'm not excited about it.", "The word overwhelmed has eleven letters.",
+    "The brainstorming document is ready.", "The scratch card arrived.",
+])
+def test_new_cues_do_not_match_negations_or_unrelated_words(message):
+    assert not set(interpret_dialogue(message).cues).intersection({
+        "distress_cue", "positive_excitement", "conversational_repair", "thinking_aloud",
+    })

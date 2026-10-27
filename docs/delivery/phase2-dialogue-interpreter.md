@@ -8,7 +8,8 @@ execution remain in the existing runtime. The interpreter does not call an LLM,
 read another tenant's context, create memories, or issue authorization decisions.
 
 Supported cues: correction, clarification, uncertainty, hesitation, indirect
-requests, explicit frustration wording, gratitude, explicit joking, and explicit
+requests, explicit frustration/worry/stress/overwhelm/excitement wording,
+conversational repair, thinking aloud, gratitude, explicit joking, and explicit
 sarcasm. These are lexical cues, not proof of intent or emotion. Unmarked sarcasm,
 implicit humour, multilingual understanding and full contextual interpretation
 are not certified by this increment.
@@ -34,3 +35,25 @@ combined LLM quality battery remain NOT RUN for this branch. They are release
 gates before promotion, not evidence supplied by mocked or unit tests. Emotional
 intelligence, natural-conversation policy, long-term memory, multilingual behaviour
 and Pipecat performance remain subsequent workstreams.
+
+## Emotional and natural-conversation validation increment
+
+Fixed doubled regex word-boundary escapes in the four new cue patterns and the
+spoken-write affirmative/hold veto rule. Existing assertions were retained.
+The veto correction makes later stop/hesitation clauses classify as `hold_commit`
+instead of an unmatched utterance; it does not expand write authorization.
+
+Multi-turn integration runs six successive requests through the real pre-ACT
+kernel and context compiler in text and spoken modes: worry, correction,
+brainstorming/hesitation, excitement, yes-wait, and gratitude. It verifies cue
+changes, absence of stale emotional guidance, history input preservation,
+transcript-free cue diagnostics, unchanged pending-action state, and denied
+write approval. Recall/storage are mocked; model-generated replies and physical
+voice output are not exercised. Spoken conversational depth intentionally skips
+heavy recall under the existing latency policy; the test checks that policy
+explicitly and does not claim a memory lookup occurred.
+
+Negation/unrelated-word cases guard against obvious false positives. Passing
+these deterministic tests is not certification of conversational naturalness,
+human emotional understanding, or end-to-end provider/device behaviour. The
+branch remains unmerged and undeployed pending those separate release gates.

@@ -19,10 +19,10 @@ _CUES = (
     ("frustration_cue", r"\b(?:i'm frustrated|i am frustrated|this is frustrating|you keep misunderstanding)\b"),
     ("gratitude", r"\b(?:thanks|thank you|much appreciated)\b"),
     ("explicit_humor", r"\b(?:just kidding|only joking|i'm joking|i am joking)\b"),
-    ("distress_cue", r"\\b(?:i'm overwhelmed|i am overwhelmed|i'm anxious|i am anxious|i'm worried|i am worried|this is stressful)\\b"),
-    ("positive_excitement", r"\\b(?:i'm excited|i am excited|can't wait|so happy about)\\b"),
-    ("conversational_repair", r"\\b(?:sorry[, ]+i meant|no[, ]+what i mean is|let me start over|scratch that)\\b"),
-    ("thinking_aloud", r"\\b(?:thinking out loud|just brainstorming|i'm exploring options|i am exploring options)\\b"),
+    ("distress_cue", r"\b(?:i'm overwhelmed|i am overwhelmed|i'm anxious|i am anxious|i'm worried|i am worried|this is stressful)\b"),
+    ("positive_excitement", r"\b(?:i'm excited|i am excited|can't wait|so happy about)\b"),
+    ("conversational_repair", r"\b(?:sorry[, ]+i meant|no[, ]+what i mean is|let me start over|scratch that)\b"),
+    ("thinking_aloud", r"\b(?:thinking out loud|just brainstorming|i'm exploring options|i am exploring options)\b"),
     ("explicit_sarcasm", r"(?:/s\s*$|\b(?:being sarcastic|that was sarcasm)\b)"),
 )
 _PATTERNS = tuple((name, re.compile(pattern, re.I)) for name, pattern in _CUES)
