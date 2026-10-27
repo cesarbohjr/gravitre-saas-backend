@@ -1270,17 +1270,17 @@ export function useVoiceDuplexSession(options: Options) {
       const isFinal = Boolean(data.is_final || data.speech_final)
 
       if (type === "SpeechStarted" || type === "speech_started") {
-        // Acoustic barge-in while agent holds the floor
-        if (agentSpeakingRef.current) {
-          await bargeIn()
-        }
+        // Acoustic activity alone may be speaker echo, a breath, or a backchannel.
+        // Keep the assistant's floor until the transcript supplies speech evidence.
         marksRef.current.speech_started = performance.now()
-        setPresence("listening")
+        if (!agentSpeakingRef.current) setPresence("listening")
       }
 
-      // Some providers/browsers occasionally miss an explicit SpeechStarted frame.
-      // Treat first real transcript while agent audio is active as immediate barge-in.
-      if (transcript && agentSpeakingRef.current) {
+      // Require meaningful recognized speech before cutting playback. This
+      // prevents a one-word backchannel or echo transient from ending a reply.
+      // Explicit manual interruption remains immediate through bargeIn().
+      const interruptionWords = transcript.split(/\\s+/).filter(Boolean)
+      if (agentSpeakingRef.current && interruptionWords.length >= 2 && confidence >= 0.5) {
         await bargeIn()
       }
 
