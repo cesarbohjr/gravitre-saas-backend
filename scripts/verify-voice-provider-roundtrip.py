@@ -73,6 +73,29 @@ def run_provider_checks(env, transport=None):
             "physical_acceptance": "NOT RUN", "scope": "synthetic prerecorded provider roundtrip and local final commit gate"}
 
 
+def sanitized_failure(exc):
+    """Emit fixed diagnostic categories, never provider response bodies."""
+    import httpx
+    info = {"error_type": type(exc).__name__}
+    status = getattr(exc, "status_code", None)
+    response = getattr(exc, "response", None)
+    if not isinstance(status, int):
+        status = getattr(response, "status_code", None)
+    if isinstance(status, int) and 100 <= status <= 599:
+        info["http_status"] = status
+        info["error_category"] = ("authentication" if status in (401, 403) else
+                                  "rate_limit" if status == 429 else
+                                  "invalid_request" if status in (400, 404, 422) else
+                                  "provider_server" if status >= 500 else "http_error")
+    elif isinstance(exc, httpx.TimeoutException):
+        info["error_category"] = "timeout"
+    elif isinstance(exc, httpx.TransportError):
+        info["error_category"] = "transport"
+    else:
+        info["error_category"] = "provider_error_unclassified"
+    return info
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output", type=Path, required=True)
@@ -81,12 +104,12 @@ def main():
         result = run_provider_checks(os.environ)
     except Exception as exc:
         # Do not serialize exception URLs/headers; they may contain credentials.
-        result = {"status": "FAIL", "error_type": type(exc).__name__, "physical_acceptance": "NOT RUN"}
+        result = {"status": "FAIL", **sanitized_failure(exc), "physical_acceptance": "NOT RUN"}
     result["commit_sha"] = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip()
     result["worktree_dirty"] = bool(subprocess.check_output(["git", "status", "--porcelain"], cwd=ROOT, text=True).strip())
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(result, indent=2) + "\n")
-    print(json.dumps({"status": result["status"], "output": str(args.output)}))
+    print(json.dumps({key: result[key] for key in ("status", "error_type", "error_category", "http_status") if key in result}))
     return 0 if result["status"] == "PASS" else 2 if result["status"] == "NOT RUN" else 1
 
 
