@@ -73,8 +73,22 @@ def run_provider_checks(env, transport=None):
             except Exception as exc:
                 exc.acceptance_stage = "deepgram_stt"
                 raise
+            from app.services.spoken_write_approval import classify_spoken_write_approval
+            decision = classify_spoken_write_approval(transcript)
             passed = asyncio.run(prove_commit_block(transcript))
-            rows.append({"case": case, "passed": passed, "audio_sha256": hashlib.sha256(audio).hexdigest(),
+            # No raw transcript, transcript hashes or free-text provider metadata.
+            rows.append({"case": case, "passed": passed,
+                "stt_diagnostics": {
+                    "transcript_present": bool(transcript and transcript.strip()),
+                    "decision": decision.decision,
+                    "reason": decision.reason if decision.reason in {
+                        "yes_wait_hold_commit", "spoken_reject",
+                        "ambiguous_spoken_confirm", "no_spoken_write_match",
+                        "empty_message", "no_pending_confirmation",
+                    } else "other",
+                    "invoke_allowed": decision.invoke_allowed,
+                },
+                "audio_sha256": hashlib.sha256(audio).hexdigest(),
                 "request_id": stt_meta.get("request_id"), "tts_request_id": tts_meta.get("request_id"),
                 "roundtrip_ms": round((time.monotonic() - started) * 1000), "business_write_executors_called": 0})
     return {"status": "PASS" if rows and all(row["passed"] for row in rows) else "FAIL", "cases": rows,
