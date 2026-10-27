@@ -59,6 +59,7 @@ from pipecat.turns.user_start.external_user_turn_start_strategy import (
     ExternalUserTurnStartStrategy,
 )
 
+from app.services.pipecat_voice.conversational_turn_controller_v2 import ConversationalTurnControllerV2, TurnAction
 from app.core.logging import get_logger
 from app.services.pipecat_voice.backchannel_classifier import (
     BackchannelClassification,
@@ -188,6 +189,7 @@ class BackchannelAwareUserTurnStartStrategy(ExternalUserTurnStartStrategy):
         self._gravitre_conversation_id = gravitre_conversation_id
         self._voice_session = voice_session
 
+        self._turn_controller_v2 = ConversationalTurnControllerV2() if getattr(gravitre_settings, 'voice_conversational_turn_v2', False) else None
         self._bot_speaking = False
         self._pending = False
         self._buffer_text = ""
@@ -417,6 +419,16 @@ class BackchannelAwareUserTurnStartStrategy(ExternalUserTurnStartStrategy):
             # new request for the whole grace window.
             interim = f"{self._buffer_text} {frame.text}".strip()
             interim_class = classify_user_utterance(interim)
+            if self._turn_controller_v2 is not None and interim:
+                decision = self._turn_controller_v2.decide(
+                    interim, bot_speaking=self._bot_speaking,
+                    assistant_thinking=self._pending_thinking, final=False,
+                    expects_answer=bool(self._voice_session is not None and self._voice_session.expects_answer()),
+                )
+                if decision.action is TurnAction.WAIT:
+                    self._interim_text = interim
+                    self._interim_at = time.monotonic()
+                    return ProcessFrameResult.CONTINUE
             if self._is_bot_echo(interim):
                 return ProcessFrameResult.CONTINUE
             if self._intents_enabled() and interim:
@@ -766,6 +778,14 @@ class BackchannelAwareUserTurnStartStrategy(ExternalUserTurnStartStrategy):
                         self._intents_enabled()
                         and not self._buffer_text
                         and could_become_speech_stop(self._interim_text)
+                    )
+                    or (
+                        self._turn_controller_v2 is not None
+                        and self._turn_controller_v2.hold_incomplete_interim(
+                            self._interim_text,
+                            elapsed_s=time.monotonic() - self._pending_started_at,
+                            max_wait_s=self._max_wordless_wait_s,
+                        )
                     )
                 )
                 and not self._bare_stop_settled()
