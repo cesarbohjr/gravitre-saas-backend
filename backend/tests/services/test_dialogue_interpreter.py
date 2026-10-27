@@ -66,3 +66,42 @@ def test_cues_do_not_approve_pending_writes(message):
     interpret_dialogue(message)
     assert classify_spoken_write_approval(message, task_state=state).invoke_allowed is False
     assert json.dumps(state, sort_keys=True) == before
+
+
+@pytest.mark.parametrize(("message", "cue"), [
+    ("I'm overwhelmed by this rollout.", "distress_cue"),
+    ("I’m anxious about the deadline.", "distress_cue"),
+    ("This is stressful.", "distress_cue"),
+    ("I'm excited about the launch!", "positive_excitement"),
+    ("Can't wait to see the results.", "positive_excitement"),
+    ("Sorry, I meant the second option.", "conversational_repair"),
+    ("No, what I mean is the staging tenant.", "conversational_repair"),
+    ("Scratch that, use the new plan.", "conversational_repair"),
+    ("Just brainstorming here.", "thinking_aloud"),
+    ("I'm exploring options.", "thinking_aloud"),
+])
+def test_emotional_and_natural_conversation_cues(message, cue):
+    result = interpret_dialogue(message)
+    assert cue in result.cues
+    assert cue in result.diagnostics()["cues"]
+    assert result.prompt_section()
+
+
+def test_emotional_cues_do_not_expose_sensitive_content_or_claim_diagnosis():
+    result = interpret_dialogue("I'm worried about secret-user@example.com")
+    output = json.dumps(result.diagnostics()) + result.prompt_section()
+    assert "secret-user" not in output
+    assert "example.com" not in output
+    assert "diagnosing" in output
+    assert not hasattr(result, "invoke_allowed")
+
+
+@pytest.mark.parametrize("message", [
+    "I'm excited, send it.", "I'm worried, send it.",
+    "Just brainstorming, send it.", "Scratch that, send it.",
+])
+def test_emotional_and_conversation_cues_cannot_approve_writes(message):
+    from app.services.spoken_write_approval import classify_spoken_write_approval
+    state = {"pending_task": {"id": "pending-1", "type": "connector_action", "status": "awaiting_confirm", "invoke_action": "gmail.messages.send"}}
+    interpret_dialogue(message)
+    assert classify_spoken_write_approval(message, task_state=state).invoke_allowed is False
