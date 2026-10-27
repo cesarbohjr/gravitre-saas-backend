@@ -817,6 +817,11 @@ class BackchannelAwareUserTurnStartStrategy(ExternalUserTurnStartStrategy):
                             self._interim_text,
                             elapsed_s=time.monotonic() - self._pending_started_at,
                             max_wait_s=self._max_wordless_wait_s,
+                            since_last_word_s=(
+                                time.monotonic() - self._interim_at
+                                if self._interim_at > 0
+                                else None
+                            ),
                         )
                     )
                 )
