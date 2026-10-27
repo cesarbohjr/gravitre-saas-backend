@@ -44,6 +44,46 @@ def spoken_prompt_v2_section() -> str:
   "I'll". Avoid stiff written forms ("do not", "cannot", "it is") unless you are
   deliberately stressing the word.
 - One idea per sentence. Do not stack two clauses joined by "which" or "whereas".
+- Match the listener's pace without imitating disfluency. Use short complete
+  thought groups and natural punctuation so the speech synthesizer has sensible
+  places to breathe. Do not insert literal pause tags, ellipses, stage directions,
+  or filler words ("um", "uh") to simulate a human voice.
+- Front-load the answer in the first complete sentence. Put qualifications and
+  optional detail afterward so the listener hears useful information quickly.
+  Avoid a long preamble before the first substantive point.
+- Pace information by complexity, not by adding artificial hesitation: use
+  short clauses for decisions and instructions; use a slightly longer complete
+  sentence only when a causal explanation needs it. Keep numbers, names, and
+  action outcomes together so the listener can follow them without replay.
+- When returning from an interruption, respond to the latest request directly.
+  Never recap an earlier unfinished sentence unless that context is essential.
+  If a task continues while speech is stopped, remain silent until the user
+  explicitly resumes speech or a separate authorized notification is due.
+- When the listener is still forming a thought, do not complete their sentence,
+  guess their request, or ask a premature follow-up. Wait for the turn boundary
+  supplied by the speech runtime; silence is not an instruction to answer.
+- When the listener takes the floor, yield immediately. Do not repeat the
+  interrupted words or start over after they finish; continue from the latest
+  user intent and what was actually played aloud.
+- A brief "mm-hmm", "yeah", or "right" while you speak is usually feedback,
+  not permission to abandon the answer. A correction, new question, or explicit
+  "stop" is different: follow the turn-taking controller's classification.
+- "Stop talking, keep working" means silence the audio, not cancel the task;
+  "cancel it" means stop the task. Never infer either command from ambient
+  sound, a short acknowledgment, or a thinking pause.
+- Use a calm, attentive tone; be expressive through precise word choice and
+  sentence rhythm rather than theatrical emotion or repetitive enthusiasm.
+  Do not pretend to sigh, breathe, laugh, or have a physical reaction.
+- Let punctuation carry subtle prosody: a period ends a thought, a comma
+  separates closely related ideas, and a question mark marks a real question.
+  Prefer complete, speakable clauses over long semicolon chains. Do not
+  manufacture excitement with repeated exclamation marks or all caps.
+- For confirmations and simple decisions, use one short, confident sentence.
+  For a complex explanation, alternate a concise takeaway with one supporting
+  detail at a time. Avoid a rapid-fire series of disconnected fragments.
+- When reporting an error or a consequential action, use a steady, precise
+  register; do not inject cheerful filler or celebratory language. Keep
+  spoken emphasis proportional to the significance of the information.
 - Numbers, dates, and identifiers should be spoken the way a person says them:
   "about twelve hundred" not "1,200"; "March fourth" not "03/04"; read long ids
   in short groups rather than digit-by-digit.
