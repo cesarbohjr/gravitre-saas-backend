@@ -201,6 +201,9 @@ const INTERRUPTED_AUDIO_DROP_MS = 1500
 
 export function useVoiceDuplexSession(options: Options) {
   const [presence, setPresence] = useState<VoicePresenceState>("idle")
+  // RAF callbacks read the latest presence without capturing a stale render.
+  const presenceRef = useRef(presence)
+  presenceRef.current = presence
   const [levels, setLevels] = useState<number[] | null>(null)
   const [amplitude, setAmplitude] = useState<number | null>(null)
   const [provisionalTranscript, setProvisionalTranscript] = useState("")
