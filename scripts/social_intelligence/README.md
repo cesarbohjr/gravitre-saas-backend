@@ -42,7 +42,8 @@ offline regression checks this distinction explicitly.
 `railway_runner.ts` performs bounded live inference authentication for Anthropic
 and OpenAI, then runs all 520 pairs with Anthropic when its authentication passes.
 `build_railway_runner.py` embeds a clean synthetic bundle and the tested modules
-into one compressed, self-contained Function source. The embedded JSON is
+into one Brotli-compressed, self-contained Function source using Node's built-in
+compression (Node must be available while building). The embedded JSON is
 byte-equivalent after decoding; source module SHA-256 hashes identify the harness.
 The evaluated prompt revision remains the bundle's commit, independently of the
 harness revision. This is source evaluation, not deployed production certification.
