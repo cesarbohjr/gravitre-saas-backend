@@ -178,6 +178,28 @@ function normalizeTranscript(text: string): string {
   return text.trim().toLowerCase().replace(/\s+/g, " ")
 }
 
+/** Legacy duplex endpointing: distinguish sentence completion from hesitation. */
+function legacyEndpointDelayMs(text: string): number {
+  const value = text.trim()
+  if (!value) return 900
+  // Explicit unfinished clauses, fillers and trailing conjunctions need time.
+  if (/(?:[,;:]|\\b(?:and|but|because|so|if|when|while|although|or|to|that|um|uh|like))$/i.test(value)) return 1250
+  if (/\\b(?:can you|could you|would you|i want to|i need to|the thing is|what if)$/i.test(value)) return 1250
+  if (/[.!?]$/.test(value)) return 380
+  // Short, unpunctuated segments are frequently incomplete.
+  if (value.split(/\\s+/).length <= 4) return 850
+  return 650
+}
+
+/** Short, explicit commands are legitimate interruptions, unlike acknowledgments. */
+function legacyInterruptionIntent(transcript: string, confidence: number): boolean {
+  const normalized = normalizeTranscript(transcript).replace(/[.!?,]/g, "")
+  if (!normalized || confidence < 0.5) return false
+  if (/^(stop|wait|pause|hold on|cancel|no stop|hang on)$/.test(normalized)) return true
+  if (/^(yeah|yes|okay|ok|right|mm hmm|uh huh|sure|thanks)$/.test(normalized)) return false
+  return normalized.split(/\\s+/).length >= 2
+}
+
 /** True when final meaningfully diverges from the speculative partial (restart needed). */
 function speculativeTranscriptDiverged(partial: string, finalText: string): boolean {
   const a = normalizeTranscript(partial)
@@ -260,6 +282,21 @@ export function useVoiceDuplexSession(options: Options) {
   const audioElRef = useRef<HTMLAudioElement | null>(null)
   const playbackWiredRef = useRef(false)
   const audioQueueRef = useRef<Blob[]>([])
+  // Preload the next encoded segment while the current one plays. Switching
+  // a single HTMLAudioElement at ended incurs an extra network/media decode
+  // turn; the standby element is already decoded enough to begin immediately.
+  const standbyAudioRef = useRef<HTMLAudioElement | null>(null)
+  const standbyBlobRef = useRef<Blob | null>(null)
+  const standbyUrlRef = useRef<string | null>(null)
+  const playingUrlRef = useRef<string | null>(null)
+  const playbackGenerationRef = useRef(0)
+  // Legacy HTTP TTS: decoded MP3 phrases are placed on a single WebAudio
+  // sample clock, instead of starting a new HTML media player at each boundary.
+  const scheduledTtsSourcesRef = useRef<AudioBufferSourceNode[]>([])
+  const scheduledTtsUntilRef = useRef(0)
+  const ttsDecodeChainRef = useRef<Promise<void>>(Promise.resolve())
+  const ttsDecodedModeRef = useRef(false)
+  const ttsHtmlFallbackRef = useRef(false)
   const playingRef = useRef(false)
   const playbackBlockedRef = useRef(false)
   const marksRef = useRef<Record<string, number>>({})
@@ -518,8 +555,26 @@ export function useVoiceDuplexSession(options: Options) {
     maxPcmPeakRef.current = 0
     browserAudioPlaybackStartedRef.current = false
     audioFallbackTriggeredRef.current = false
+    playbackGenerationRef.current += 1
+    for (const source of scheduledTtsSourcesRef.current) {
+      try { source.stop() } catch { /* source already finished */ }
+      source.disconnect()
+    }
+    scheduledTtsSourcesRef.current = []
+    scheduledTtsUntilRef.current = 0
+    ttsDecodeChainRef.current = Promise.resolve()
+    ttsDecodedModeRef.current = false
+    ttsHtmlFallbackRef.current = false
     playingRef.current = false
     audioQueueRef.current = []
+    const standby = standbyAudioRef.current
+    if (standby) { standby.pause(); standby.removeAttribute("src") }
+    if (standbyUrlRef.current) URL.revokeObjectURL(standbyUrlRef.current)
+    standbyAudioRef.current = null
+    standbyBlobRef.current = null
+    standbyUrlRef.current = null
+    if (playingUrlRef.current) URL.revokeObjectURL(playingUrlRef.current)
+    playingUrlRef.current = null
     playbackWiredRef.current = false
     playbackBlockedRef.current = false
     setPlaybackBlocked(false)
@@ -679,6 +734,34 @@ export function useVoiceDuplexSession(options: Options) {
     [emitOutputDiagnostic, handlePcmActiveChange],
   )
 
+  const clearStandbyAudio = useCallback(() => {
+    const standby = standbyAudioRef.current
+    if (standby) {
+      standby.onended = null
+      standby.onerror = null
+      standby.pause()
+      standby.removeAttribute("src")
+    }
+    if (standbyUrlRef.current) URL.revokeObjectURL(standbyUrlRef.current)
+    standbyAudioRef.current = null
+    standbyBlobRef.current = null
+    standbyUrlRef.current = null
+  }, [])
+
+  const preloadNextAudio = useCallback(() => {
+    if (standbyAudioRef.current || playbackBlockedRef.current) return
+    const next = audioQueueRef.current[0]
+    if (!next) return
+    const el = new Audio()
+    const url = URL.createObjectURL(next)
+    el.preload = "auto"
+    el.src = url
+    el.load()
+    standbyAudioRef.current = el
+    standbyBlobRef.current = next
+    standbyUrlRef.current = url
+  }, [])
+
   const playNext = useCallback(async () => {
     if (playingRef.current) return
     // Autoplay gate is open — wait for resumeBlockedPlayback() (a fresh user
@@ -688,13 +771,36 @@ export function useVoiceDuplexSession(options: Options) {
     const next = audioQueueRef.current.shift()
     if (!next) return
     playingRef.current = true
+    const generation = playbackGenerationRef.current
 
     await unlockVoicePlayback()
+    if (generation !== playbackGenerationRef.current) {
+      playingRef.current = false
+      return
+    }
+
+    // A prepared element avoids a decode/startup gap at segment boundaries.
+    const standbyMatches = standbyBlobRef.current === next
+    if (standbyMatches && standbyAudioRef.current) {
+      audioElRef.current = standbyAudioRef.current
+      playingUrlRef.current = standbyUrlRef.current
+      standbyAudioRef.current = null
+      standbyBlobRef.current = null
+      standbyUrlRef.current = null
+      playbackWiredRef.current = false
+    } else if (standbyAudioRef.current) {
+      clearStandbyAudio()
+    }
 
     if (!audioElRef.current) {
       const el = new Audio()
       el.onended = () => {
+        if (generation !== playbackGenerationRef.current) return
         playingRef.current = false
+        if (playingUrlRef.current) URL.revokeObjectURL(playingUrlRef.current)
+        playingUrlRef.current = null
+        audioElRef.current = null
+        playbackWiredRef.current = false
         void playNext()
       }
       el.onerror = () => {
@@ -705,7 +811,18 @@ export function useVoiceDuplexSession(options: Options) {
       audioElRef.current = el
     }
     const el = audioElRef.current
-    const url = URL.createObjectURL(next)
+    // Rebind callbacks on a promoted standby player too.
+    el.onended = () => {
+      if (generation !== playbackGenerationRef.current) return
+      playingRef.current = false
+      if (playingUrlRef.current) URL.revokeObjectURL(playingUrlRef.current)
+      playingUrlRef.current = null
+      audioElRef.current = null
+      playbackWiredRef.current = false
+      void playNext()
+    }
+    const url = playingUrlRef.current || URL.createObjectURL(next)
+    playingUrlRef.current = url
     if (analyserRef.current && !playbackWiredRef.current) {
       try {
         analyserRef.current.connectElement(el)
@@ -714,9 +831,11 @@ export function useVoiceDuplexSession(options: Options) {
         /* analyser optional — still attempt audible playback */
       }
     }
-    el.src = url
+    if (el.src !== url && !el.src.endsWith(url)) el.src = url
     try {
       await el.play()
+      if (generation !== playbackGenerationRef.current) return
+      preloadNextAudio()
       if (!browserAudioPlaybackStartedRef.current) {
         emitOutputDiagnostic("playback_started")
       }
@@ -725,6 +844,7 @@ export function useVoiceDuplexSession(options: Options) {
     } catch (err) {
       playingRef.current = false
       URL.revokeObjectURL(url)
+      playingUrlRef.current = null
       const blocked =
         err instanceof DOMException && (err.name === "NotAllowedError" || err.name === "AbortError")
       if (blocked) {
@@ -744,7 +864,7 @@ export function useVoiceDuplexSession(options: Options) {
       optsRef.current.onError?.("Audio playback failed during voice reply")
       void playNext()
     }
-  }, [emitOutputDiagnostic])
+  }, [clearStandbyAudio, emitOutputDiagnostic, preloadNextAudio])
 
   /** Fresh user gesture (tap "Enable sound" / mic) — retry the held-back reply. */
   const resumeBlockedPlayback = useCallback(async () => {
@@ -772,15 +892,80 @@ export function useVoiceDuplexSession(options: Options) {
   const resumeBlockedPlaybackRef = useRef(resumeBlockedPlayback)
   resumeBlockedPlaybackRef.current = resumeBlockedPlayback
 
+  const scheduleDecodedTts = useCallback(async (
+    bytes: Uint8Array,
+    generation: number,
+  ): Promise<boolean> => {
+    const ctx = audioCtxRef.current
+    if (!ctx || ctx.state !== "running") return false
+    let decoded: AudioBuffer
+    try {
+      // Each server audio.delta contains a complete MP3 phrase, not an
+      // arbitrary MP3 transport fragment. Decode before committing its slot.
+      decoded = await ctx.decodeAudioData(bytes.buffer.slice(
+        bytes.byteOffset, bytes.byteOffset + bytes.byteLength,
+      ) as ArrayBuffer)
+    } catch {
+      return false
+    }
+    if (generation !== playbackGenerationRef.current) return true
+    const source = ctx.createBufferSource()
+    source.buffer = decoded
+    source.connect(ctx.destination)
+    const startAt = Math.max(ctx.currentTime + 0.012, scheduledTtsUntilRef.current)
+    scheduledTtsUntilRef.current = startAt + decoded.duration
+    scheduledTtsSourcesRef.current.push(source)
+    source.onended = () => {
+      scheduledTtsSourcesRef.current = scheduledTtsSourcesRef.current.filter((item) => item !== source)
+      source.disconnect()
+    }
+    source.start(startAt)
+    agentSpeakingRef.current = true
+    setPresence("speaking")
+    if (!browserAudioPlaybackStartedRef.current) {
+      browserAudioPlaybackStartedRef.current = true
+      emitOutputDiagnostic("playback_started")
+      setLatency((prev) => ({ ...prev, browser_audio_playback_started: true }))
+    }
+    return true
+  }, [emitOutputDiagnostic])
+
   const enqueueAudio = useCallback(
     (b64: string, contentType?: string) => {
       const raw = atob(b64)
       const bytes = new Uint8Array(raw.length)
       for (let i = 0; i < raw.length; i++) bytes[i] = raw.charCodeAt(i)
-      audioQueueRef.current.push(new Blob([bytes], { type: contentType || "audio/mpeg" }))
-      playNext()
+      const blob = new Blob([bytes], { type: contentType || "audio/mpeg" })
+      // Keep existing HTMLAudioElement path as a compatibility fallback when
+      // MP3 decoding is unsupported or the shared AudioContext is suspended.
+      // Promise serialization preserves the text/TTS phrase order even if
+      // decoding the later phrase is faster.
+      const generation = playbackGenerationRef.current
+      ttsDecodeChainRef.current = ttsDecodeChainRef.current.then(async () => {
+        if (generation !== playbackGenerationRef.current) return
+        const decoded = !ttsHtmlFallbackRef.current && await scheduleDecodedTts(bytes, generation)
+        if (generation !== playbackGenerationRef.current) return
+        if (decoded) {
+          ttsDecodedModeRef.current = true
+          return
+        }
+        // Do not mix two independently timed output clocks within one reply.
+        // The first failed decode selects HTML playback for the whole turn.
+        if (ttsDecodedModeRef.current) {
+          optsRef.current.onError?.("Voice audio decoding interrupted; please retry.")
+          return
+        }
+        ttsHtmlFallbackRef.current = true
+        audioQueueRef.current.push(blob)
+        if (playingRef.current) preloadNextAudio()
+        void playNext()
+      }).catch(() => {
+        if (generation === playbackGenerationRef.current) {
+          optsRef.current.onError?.("Voice audio decoding failed.")
+        }
+      })
     },
-    [playNext],
+    [playNext, preloadNextAudio, scheduleDecodedTts],
   )
 
   const stopRaf = () => {
@@ -1243,6 +1428,46 @@ export function useVoiceDuplexSession(options: Options) {
     [enqueueAudio, stopPlayback],
   )
 
+  // Keep a brief thinking pause open instead of answering every final STT segment.
+  // This is only for the legacy HTTP duplex path; Pipecat owns its own endpointing.
+  const pendingFinalRef = useRef<string>("")
+  const finalTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const clearPendingFinal = useCallback(() => {
+    if (finalTimerRef.current) clearTimeout(finalTimerRef.current)
+    finalTimerRef.current = null
+    pendingFinalRef.current = ""
+  }, [])
+  const scheduleFinal = useCallback((segment: string) => {
+    if (!segment.trim()) return
+    if (finalTimerRef.current) clearTimeout(finalTimerRef.current)
+    const previous = pendingFinalRef.current.trim()
+    const next = segment.trim()
+    // Deepgram may repeat the accumulated transcript; avoid duplication.
+    // Some STT providers emit repeated finals, others emit only the new
+    // segment. Preserve both cases without duplicating previously heard words.
+    const previousNorm = normalizeTranscript(previous)
+    const nextNorm = normalizeTranscript(next)
+    pendingFinalRef.current = !previous ? next
+      : nextNorm === previousNorm || previousNorm.endsWith(nextNorm) ? previous
+      : nextNorm.startsWith(previousNorm) ? next
+      : previous + " " + next
+    const capturedEpoch = startupEpochRef.current
+    const text = pendingFinalRef.current
+    // Longer pause after conjunctions or incomplete clauses; shorter at sentence end.
+    const delay = legacyEndpointDelayMs(text)
+    finalTimerRef.current = setTimeout(() => {
+      finalTimerRef.current = null
+      if (capturedEpoch !== startupEpochRef.current || !sessionWantedRef.current) return
+      const ready = pendingFinalRef.current.trim()
+      pendingFinalRef.current = ""
+      if (!ready) return
+      lastUserFinalRef.current = ready
+      marksRef.current.first_partial = 0
+      setProvisionalTranscript("")
+      void runSessionTurn(ready)
+    }, delay)
+  }, [runSessionTurn])
+
   const handleDeepgramMessage = useCallback(
     async (raw: MessageEvent) => {
       let data: Record<string, unknown>
@@ -1268,19 +1493,25 @@ export function useVoiceDuplexSession(options: Options) {
       const confidence = Number(alt?.confidence ?? data.confidence ?? 0)
       const stability = Number(data.stability ?? alt?.stability ?? 0)
       const isFinal = Boolean(data.is_final || data.speech_final)
-
-      if (type === "SpeechStarted" || type === "speech_started") {
-        // Acoustic barge-in while agent holds the floor
-        if (agentSpeakingRef.current) {
-          await bargeIn()
-        }
-        marksRef.current.speech_started = performance.now()
-        setPresence("listening")
+      // Ignore a repeated final transcript already submitted to the model.
+      // Duplicate STT finals otherwise trigger two answers over each other.
+      if (isFinal && transcript && normalizeTranscript(transcript) === normalizeTranscript(lastUserFinalRef.current)) {
+        return
       }
 
-      // Some providers/browsers occasionally miss an explicit SpeechStarted frame.
-      // Treat first real transcript while agent audio is active as immediate barge-in.
-      if (transcript && agentSpeakingRef.current) {
+      if (type === "SpeechStarted" || type === "speech_started") {
+        if (finalTimerRef.current) { clearTimeout(finalTimerRef.current); finalTimerRef.current = null }
+        // Acoustic activity alone may be speaker echo, a breath, or a backchannel.
+        // Keep the assistant's floor until the transcript supplies speech evidence.
+        marksRef.current.speech_started = performance.now()
+        if (!agentSpeakingRef.current) setPresence("listening")
+      }
+
+      // Require meaningful recognized speech before cutting playback. This
+      // prevents a one-word backchannel or echo transient from ending a reply.
+      // Explicit manual interruption remains immediate through bargeIn().
+      const interruptionWords = transcript.split(/\\s+/).filter(Boolean)
+      if (agentSpeakingRef.current && legacyInterruptionIntent(transcript, confidence)) {
         await bargeIn()
       }
 
@@ -1488,7 +1719,7 @@ export function useVoiceDuplexSession(options: Options) {
       dropAudioUntilRef.current = 0
 
       ws.onopen = () => {
-        if (!isCurrentStartup()) {
+        if (wsRef.current !== ws || !isCurrentStartup()) {
           ws.close()
           return
         }
@@ -1507,6 +1738,8 @@ export function useVoiceDuplexSession(options: Options) {
       }
 
       ws.onmessage = (ev) => {
+        // Ignore delayed frames from a socket replaced during recovery.
+        if (wsRef.current !== ws || !isCurrentStartup()) return
         let msg: Record<string, unknown>
         try {
           msg = JSON.parse(String(ev.data)) as Record<string, unknown>
@@ -1796,8 +2029,13 @@ export function useVoiceDuplexSession(options: Options) {
       // error and close share one handler because which of them fires is not a
       // reliable signal (Node's ws and browsers disagree on unclean teardown), and
       // both can fire for a single failure. Intent decides, and this runs once.
-      ws.onerror = () => handlePipecatSocketFailure({ event: "error" })
+      ws.onerror = () => {
+        if (wsRef.current !== ws || !isCurrentStartup()) return
+        handlePipecatSocketFailure({ event: "error" })
+      }
       ws.onclose = (ev) => {
+        // An obsolete socket must never retry or complete a newer session.
+        if (wsRef.current !== ws || !isCurrentStartup()) return
         const wasIntentional = intentionalCloseRef.current
         // The close code is the fact that separates the remaining candidate
         // causes, and it exists nowhere else, so hand it to the diagnostic.
@@ -2057,6 +2295,7 @@ export function useVoiceDuplexSession(options: Options) {
     // failure handler sees a session nobody is waiting on and neither retries nor
     // toasts. This is the user-initiated half of the interrupted-toast fix.
     sessionWantedRef.current = false
+    clearPendingFinal()
     startupEpochRef.current += 1
     reconnectAttemptRef.current = 0
     activeRef.current = false
@@ -2066,7 +2305,7 @@ export function useVoiceDuplexSession(options: Options) {
     teardownMic()
     setPresence("idle")
     setProvisionalTranscript("")
-  }, [stopPlayback, teardownMic])
+  }, [clearPendingFinal, stopPlayback, teardownMic])
 
   const toggle = useCallback(() => {
     if (activeRef.current || startingRef.current) stop()
@@ -2083,13 +2322,14 @@ export function useVoiceDuplexSession(options: Options) {
     return () => {
       // Unmount is deliberate: no retry, no toast on the way out.
       sessionWantedRef.current = false
+      clearPendingFinal()
       startupEpochRef.current += 1
       activeRef.current = false
       abortRef.current?.abort()
       stopPlaybackRef.current()
       teardownMicRef.current?.()
     }
-  }, [])
+  }, [clearPendingFinal])
 
   return {
     presence,
