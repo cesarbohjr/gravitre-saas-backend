@@ -59,3 +59,19 @@ def get_agent_manifest(role: AgentRole) -> AgentCapabilityManifest:
 
 def list_agent_manifests() -> tuple[AgentCapabilityManifest, ...]:
     return tuple(MANIFESTS.values())
+
+
+def resolve_agent_manifest(role: str | None) -> AgentCapabilityManifest | None:
+    """Fail closed on unknown role identifiers; never fall back to a privileged role."""
+    if not isinstance(role, str):
+        return None
+    normalized = role.strip().lower()
+    return MANIFESTS.get(normalized)  # type: ignore[arg-type]
+
+
+def render_agent_guidance(role: str | None) -> str | None:
+    """Return prompt guidance only, not a runtime authorization grant."""
+    manifest = resolve_agent_manifest(role)
+    if manifest is None:
+        return None
+    return f"Role: {manifest.display_name}\nPurpose: {manifest.purpose}\nGuidance: {manifest.system_guidance}"
