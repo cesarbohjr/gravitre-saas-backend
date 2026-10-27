@@ -924,7 +924,7 @@ export function useVoiceDuplexSession(options: Options) {
     setPresence("speaking")
     if (!browserAudioPlaybackStartedRef.current) {
       browserAudioPlaybackStartedRef.current = true
-      emitOutputDiagnostic("playback_scheduled")
+      emitOutputDiagnostic("playback_started")
       setLatency((prev) => ({ ...prev, browser_audio_playback_started: true }))
     }
     return true
