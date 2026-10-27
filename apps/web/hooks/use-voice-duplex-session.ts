@@ -497,6 +497,11 @@ export function useVoiceDuplexSession(options: Options) {
     pcmPlayerRef.current?.flush()
     // The flush also restores the player's gain, so no duck is left pending.
     overlapDuckRef.current.reset()
+    // A flushed reply must not carry a provisional microphone duck into
+    // the next reply. Fresh microphone activity can establish a new hold.
+    localDuckActiveRef.current = false
+    localDuckSinceRef.current = null
+    localDuckLastLoudRef.current = 0
     // The player's played count restarts at the flush; so does the timeline.
     playbackTrackerRef.current.reset()
     pcmBlockedQueueRef.current = []
