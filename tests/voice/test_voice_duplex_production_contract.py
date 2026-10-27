@@ -62,3 +62,11 @@ def test_microphone_ducking_uses_current_presence():
     assert "const presenceRef = useRef(presence)" in s
     assert "presenceRef.current = presence" in s
     assert 'presenceRef.current === "speaking"' in s
+
+
+def test_stale_pipecat_socket_events_cannot_mutate_new_session():
+    s = source()
+    assert 'if (wsRef.current !== ws || !isCurrentStartup()) return' in s
+    assert 'if (wsRef.current !== ws || !isCurrentStartup()) {' in s
+    assert 'An obsolete socket must never retry or complete a newer session.' in s
+    assert 'Ignore delayed frames from a socket replaced during recovery.' in s
