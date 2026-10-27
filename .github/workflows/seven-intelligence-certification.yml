@@ -140,6 +140,8 @@ jobs:
         working-directory: backend
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          CERTIFICATION_PROVIDER: anthropic
         run: python scripts/seven_intelligence_differential.py --output ../phase3-differential/differential.json --commit-sha "$GITHUB_SHA"
       - name: Clear inference session
         if: always()
