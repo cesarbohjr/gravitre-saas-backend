@@ -4,6 +4,7 @@ from __future__ import annotations
 import time
 from datetime import datetime, timedelta, timezone
 from typing import Any
+from uuid import UUID
 
 from supabase import Client
 from app.core.db import shared_service_client
@@ -19,6 +20,38 @@ from app.core.safe_dict import safe_normalize_stored_dict
 logger = get_logger(__name__)
 
 DEFAULT_SYNC_INTERVAL_SECONDS = 300
+
+
+def scheduled_source_owned(row: dict[str, Any]) -> bool:
+    """Only poll external connections owned by this scheduler.
+
+    Connector-ingested knowledge has its own scheduler; static/manual sources
+    have no remote connection to test. Never rewrite their ingestion status.
+    """
+    metadata = safe_normalize_stored_dict(row, key="metadata")
+    type_id = str(metadata.get("typeId") or row.get("type") or "").lower()
+    if not get_source_type(type_id):
+        return False
+    return not (metadata.get("source") and metadata.get("connector_id")
+                and not row.get("connection_string_encrypted"))
+
+
+def resolve_source_sync_actor(client: Client, org_id: str, row: dict[str, Any]) -> str | None:
+    """Attribute automation to a current responsible member, never a fake UUID."""
+    members = client.table("organization_members").select("user_id,role").eq("org_id", org_id).execute().data or []
+    valid = []
+    for member in members:
+        try:
+            UUID(str(member.get("user_id")))
+        except (ValueError, TypeError):
+            continue
+        valid.append(member)
+    creator = str(row.get("created_by") or "")
+    if any(str(m["user_id"]) == creator for m in valid):
+        return creator
+    responsible = [m for m in valid if m.get("role") in {"owner", "admin"}]
+    responsible.sort(key=lambda m: (0 if m["role"] == "owner" else 1, str(m["user_id"])))
+    return str(responsible[0]["user_id"]) if responsible else None
 
 SAAS_CONNECTOR_VENDOR_MAP: dict[str, str] = {
     "salesforce": "salesforce",
@@ -209,6 +242,8 @@ async def sync_source_row(
 ) -> dict[str, Any]:
     started = time.perf_counter()
     source_id = str(row["id"])
+    if row.get("org_id") is not None and str(row["org_id"]) != org_id:
+        raise ValueError("Source organization mismatch")
     metadata = safe_normalize_stored_dict(row, key='metadata') if isinstance(row.get("metadata"), dict) else {}
     type_id, config = load_source_config(settings, row)
     tables_count = int(metadata.get("tablesCount") or row.get("tables_count") or 0)
@@ -216,7 +251,7 @@ async def sync_source_row(
     status = "connected"
     error_message: str | None = None
 
-    client.table("rag_sources").update({"status": "syncing"}).eq("id", source_id).execute()
+    client.table("rag_sources").update({"status": "syncing"}).eq("id", source_id).eq("org_id", org_id).execute()
     try:
         test_result = await run_connection_test(
             type_id,
@@ -239,6 +274,7 @@ async def sync_source_row(
         )
         if full_sync:
             metadata["lastFullSyncAt"] = _now_iso()
+        metadata.pop("lastSyncError", None)
     except ConnectionTestError as exc:
         status = "error"
         error_message = str(exc)
@@ -255,7 +291,7 @@ async def sync_source_row(
             "tables_count": tables_count,
             "metadata": metadata,
         }
-    ).eq("id", source_id).execute()
+    ).eq("id", source_id).eq("org_id", org_id).execute()
 
     if status == "error":
         from app.services.ops_notifications import notify_source_attention
@@ -287,6 +323,7 @@ async def sync_source_row(
             "durationMs": duration_ms,
             "status": "success" if status == "connected" else "error",
             "error": error_message,
+            "executionActor": "system" if trigger == "scheduled" else "user",
         },
     )
     return {
@@ -341,24 +378,29 @@ async def run_scheduled_source_syncs(settings: Settings) -> dict[str, Any]:
     now = datetime.now(timezone.utc)
     response = (
         client.table("rag_sources")
-        .select("id, org_id, environment, status, metadata, type, connection_string_encrypted, tables_count, last_sync_at")
+        .select("id, org_id, environment, status, metadata, type, connection_string_encrypted, tables_count, last_sync_at, created_by")
         .is_("deleted_at", "null")
         .in_("status", ["connected", "error", "syncing"])
         .execute()
     )
-    due_rows = [row for row in (response.data or []) if _is_due(row, now=now)]
+    due_rows = [row for row in (response.data or []) if scheduled_source_owned(row) and _is_due(row, now=now)]
     processed = 0
     errors = 0
 
     for row in due_rows:
         try:
+            actor_id = resolve_source_sync_actor(client, str(row["org_id"]), row)
+            if not actor_id:
+                errors += 1
+                logger.warning("scheduled_source_sync_no_audit_actor source_id=%s", row.get("id"))
+                continue
             result = await sync_source_row(
                 client,
                 settings,
                 org_id=str(row["org_id"]),
                 row=row,
                 environment=str(row.get("environment") or "production"),
-                actor_id="system",
+                actor_id=actor_id,
                 trigger="scheduled",
             )
             processed += 1
