@@ -574,6 +574,18 @@ async def run_play(
 
     from app.routers.workflows import ExecuteRequest, execute_workflow
 
+    # Carry server-produced advisory evidence into the canonical workflow's
+    # parameters. Readiness and approval checks above remain authoritative.
+    from app.services.execution_intelligence_context import execution_intelligence_context
+
+    intelligence_evidence = await execution_intelligence_context(
+        settings=settings,
+        org_id=org_id,
+        task=f"Review execution of Play {play.key}",
+        agent={},
+        briefing={"play_key": play.key, "objective_id": body.objective_id},
+    )
+
     play_run_id = str(uuid4())
     client.table("play_runs").insert({
         "id": play_run_id,
@@ -604,6 +616,7 @@ async def run_play(
                     workflow_id=workflow_id,
                     playKey=play.key,
                     parameters={
+                        "intelligence_evidence": intelligence_evidence,
                         "play": {
                             "key": play.key,
                             "version": play.version,

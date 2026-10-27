@@ -7,6 +7,7 @@ on:
       - 'backend/requirements*.txt'
       - 'backend/app/services/execution_intelligence_context.py'
       - 'backend/scripts/phase3_intelligence_coverage.py'
+      - 'backend/scripts/seven_intelligence_differential.py'
       - 'backend/tests/services/test_phase2_intelligence_coordination.py'
       - 'backend/tests/services/test_phase2_router_consumers.py'
       - 'docs/testing/PHASE3_SEVEN_LAYER_CERTIFICATION.md'
@@ -16,6 +17,9 @@ permissions:
   contents: read
 jobs:
   offline-contracts:
+    timeout-minutes: 25
+    env:
+      SEVEN_INTELLIGENCE_EVIDENCE_DIR: ../phase3-evidence/cells
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -45,15 +49,13 @@ jobs:
             tests/e2e/test_intelligence_migration_security_contract.py \
             tests/e2e/test_intelligence_recommendation_full_lifecycle.py \
             tests/test_phase3_intelligence_coverage.py \
+            tests/e2e/test_seven_intelligence_cross_surface.py \
+            tests/scripts/test_seven_intelligence_differential.py \
             --junitxml=../phase3-evidence/contracts.xml
       - name: Generate 56-cell coverage inventory
         if: always()
         run: |
-          python scripts/phase3_intelligence_coverage.py --output ../phase3-evidence/intelligence-coverage.json
-      - name: Enforce certification gate (all 56 live verified required)
-        if: always()
-        run: |
-          python scripts/phase3_intelligence_coverage.py --output ../phase3-evidence/certification-check.json --require-certified
+          python scripts/phase3_intelligence_coverage.py --evidence-dir ../phase3-evidence/cells --commit-sha "$GITHUB_SHA" --output ../phase3-evidence/intelligence-coverage.json
       - name: Upload inventory
         if: always()
         uses: actions/upload-artifact@v4
@@ -101,4 +103,62 @@ jobs:
         with:
           name: deployed-intelligence-lifecycle-baseline
           path: ${{ runner.temp }}/intelligence-e2e-report.json
+          if-no-files-found: error
+
+
+  live-decision-differentials:
+    if: github.event_name == 'workflow_dispatch' || (github.event.pull_request.number == 580 && github.event.pull_request.head.repo.full_name == github.repository)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: backend/requirements*.txt
+      - name: Install inference dependencies
+        working-directory: backend
+        run: python -m pip install -r requirements-dev.txt
+      - name: Compare baseline, enriched and missing evidence across three domains and seven capabilities
+        working-directory: backend
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: python scripts/seven_intelligence_differential.py --output ../phase3-differential/differential.json --commit-sha "$GITHUB_SHA"
+      - name: Upload live model decisions (synthetic sources; no business outcome claim)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: seven-intelligence-live-decisions
+          path: phase3-differential/
+          if-no-files-found: error
+
+  certification:
+    if: always()
+    needs: [offline-contracts, live-decision-differentials, deployed-lifecycle-baseline]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: seven-intelligence-*
+          path: phase3-evidence
+          merge-multiple: true
+      - name: Enforce full certification (offline propagation alone cannot pass)
+        run: |
+          python backend/scripts/phase3_intelligence_coverage.py \
+            --evidence-dir phase3-evidence/cells --commit-sha "$GITHUB_SHA" \
+            --differential-evidence phase3-evidence/differential.json \
+            --output certification-evidence/certification-check.json --require-certified
+      - name: Retain certification verdict
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: certification-verdict
+          path: certification-evidence/
           if-no-files-found: error
