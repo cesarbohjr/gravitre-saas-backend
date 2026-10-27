@@ -1,10 +1,10 @@
 """Use the provider protocol required by the selected synthesis model."""
 from typing import Any
 
-from app.services.tier1_voice_service import CONVERSATIONAL_VOICE_SETTINGS
+from app.services.tier1_voice_service import CONVERSATIONAL_VOICE_SETTINGS, voice_stability_for_tier
 
 
-def build_live_tts_service(*, api_key: str, voice_id: str, model: str, sample_rate: int) -> Any:
+def build_live_tts_service(*, api_key: str, voice_id: str, model: str, sample_rate: int, delivery_tier: str | None = None) -> Any:
     if model.startswith("eleven_v3"):
         from pipecat.services.elevenlabs.dialogue.tts import ElevenLabsDialogueTTSService
 
@@ -19,8 +19,13 @@ def build_live_tts_service(*, api_key: str, voice_id: str, model: str, sample_ra
         )
     from pipecat.services.elevenlabs.tts import ElevenLabsTTSService
 
+    # Only the Flash/TTS protocol supports the full conversational settings.
+    # Keep v3 Dialogue on its supported baseline stability value.
+    params = dict(CONVERSATIONAL_VOICE_SETTINGS)
+    if delivery_tier is not None:
+        params["stability"] = voice_stability_for_tier(delivery_tier)
     return ElevenLabsTTSService(
         api_key=api_key, voice_id=voice_id, model=model, sample_rate=sample_rate,
         auto_mode=True,
-        params=ElevenLabsTTSService.InputParams(**CONVERSATIONAL_VOICE_SETTINGS),
+        params=ElevenLabsTTSService.InputParams(**params),
     )
