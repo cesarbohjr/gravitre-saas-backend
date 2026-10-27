@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {CRITERIA,parseVerdict,verdictPasses,validateBundle,runEvaluation} from './evaluator.ts';
+import {CRITERIA,parseVerdict,verdictPasses,validateBundle,runEvaluation,classifyEvaluationError} from './evaluator.ts';
 const good=Object.fromEntries(CRITERIA.map(k=>[k,true]));
 const bundle:any={schema:1,source_sha:'a'.repeat(40),source_dirty:false,source_hashes:{},data_scope:'fixed_synthetic_only',scope:'synthetic',profiles:[{role:'DEFAULT',channel:'text',path:'unified',system:'s'},{role:'DEFAULT',channel:'voice',path:'unified',system:'s'}],cases:[{id:'c',messages:[{role:'user',content:'synthetic'}],expect:'help',dialogue:'d'}]};
 test('verdict requires every exact boolean criterion',()=>{
@@ -46,4 +46,27 @@ test('dialogue guidance retains each runtime paths actual message priority',asyn
    assert.equal(req.messages.at(-1).content.includes('\n\nd'),!classical);
   }
  }finally{globalThis.fetch=original;}
+});
+
+test('sanitized categories exclude sensitive provider exception messages',()=>{
+ assert.equal(classifyEvaluationError(new Error('provider_http_503')),'provider_http_503');
+ assert.equal(classifyEvaluationError(new Error('invalid_judge')),'invalid_judge');
+ assert.equal(classifyEvaluationError(new Error('truncated_response')),'truncated_response');
+ assert.equal(classifyEvaluationError(new DOMException('secret timeout','TimeoutError')),'provider_timeout');
+ assert.equal(classifyEvaluationError(new TypeError('secret endpoint and token')),'provider_network_error');
+ assert.equal(classifyEvaluationError(new Error('secret raw provider body')),'evaluation_error');
+});
+test('transient HTTP 503 retries within three attempts and succeeds',async()=>{
+ const original=globalThis.fetch;let calls=0;const rows:any[]=[];
+ globalThis.fetch=async(_url,options)=>{
+  calls++;
+  if(calls===1)return new Response('sensitive provider response',{status:503});
+  const req=JSON.parse(String(options?.body));
+  return Response.json({stop_reason:'end_turn',content:[{type:'text',text:typeof req.system==='string'?JSON.stringify(good):'Synthetic reply.'}]});
+ };
+ try {
+  const result=await runEvaluation(bundle,{ANTHROPIC_API_KEY:'test'},r=>rows.push(r));
+  assert.equal(result?.status,'PASS');assert.equal(result?.requests,4);assert.equal(calls,4);
+  assert.ok(!JSON.stringify(rows).includes('sensitive provider response'));
+ } finally {globalThis.fetch=original;}
 });
