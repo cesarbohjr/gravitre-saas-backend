@@ -381,7 +381,7 @@ def synthesize_speech(
     body = {
         "text": clean,
         "model_id": model,
-        "voice_settings": dict(CONVERSATIONAL_VOICE_SETTINGS),
+        "voice_settings": expressive_voice_settings(expression_tier),
     }
     client = http_client or _get_elevenlabs_http_client(60.0)
     resp = client.post(url, headers=headers, json=body)
@@ -421,6 +421,17 @@ def normalize_elevenlabs_output_format(output_format: str | None) -> tuple[str, 
     return "mp3_44100_128", "audio/mpeg"
 
 
+def expressive_voice_settings(tier: str | None = None) -> dict[str, float | bool]:
+    """Conservative, bounded prosody control for legacy ElevenLabs HTTP TTS.
+
+    Use stability to vary delivery without introducing the extra latency and
+    inconsistent chunk-to-chunk emphasis associated with style exaggeration.
+    """
+    settings = dict(CONVERSATIONAL_VOICE_SETTINGS)
+    settings["stability"] = voice_stability_for_tier(tier)
+    return settings
+
+
 def synthesize_speech_stream(
     settings: Settings,
     *,
@@ -428,6 +439,7 @@ def synthesize_speech_stream(
     voice_key: str | None = None,
     model_id: str | None = None,
     output_format: str = "mp3_44100_128",
+    expression_tier: str | None = None,
 ) -> Iterator[bytes]:
     """Stream audio chunks from ElevenLabs as soon as first byte is available.
 
