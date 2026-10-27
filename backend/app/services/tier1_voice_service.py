@@ -336,10 +336,12 @@ def _resolved_voices(settings: Settings) -> dict[str, dict[str, str]]:
 
 def resolve_voice_id(settings: Settings, voice_key: str | None) -> tuple[str, str]:
     voices = _resolved_voices(settings)
-    key = (voice_key or settings.elevenlabs_default_voice or "sarah").strip().lower()
+    requested = (voice_key or settings.elevenlabs_default_voice or "sarah").strip()
+    key = requested.lower()
     if key not in voices:
-        if len(key) >= 16:
-            return key, key
+        if len(requested) >= 16:
+            # ElevenLabs voice IDs are case-sensitive; never lowercase raw IDs.
+            return requested, requested
         key = "sarah"
     return key, voices[key]["id"]
 
