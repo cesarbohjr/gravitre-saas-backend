@@ -342,7 +342,8 @@ async def test_interrupt_during_ack_stops_it_and_the_engine_never_starts(harness
             # The client's barge-in (POST /api/voice/session/cancel).
             voice_session_service.request_turn_cancel(turn_id)
     audio = [base64.b64decode(e["audio_base64"]) for e in events if e.get("type") == "voice.audio.delta"]
-    assert audio == [b"ack-1"]
+    # The ack phrase is emitted as one decodable MP3; nothing follows the barge-in.
+    assert audio == [b"ack-1ack-2ack-3"]
     assert "kernel" not in harness["order"]
     cancelled = next(e for e in events if e.get("type") == "voice.turn.cancelled")
     assert cancelled["partial_text"].count("Nothing has run yet") == 1

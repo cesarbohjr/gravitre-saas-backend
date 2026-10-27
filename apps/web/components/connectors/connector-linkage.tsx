@@ -32,7 +32,7 @@ interface ConnectorLinkageProps {
 // Scans a free-form workflow definition for references to this vendor or its
 // connector nodes. The backend stores definitions as opaque JSON, so we walk it
 // defensively rather than relying on a fixed shape.
-function workflowUsesVendor(workflow: Workflow, vendor: string): boolean {
+export function workflowUsesVendor(workflow: Workflow, vendor: string): boolean {
   const needle = vendor.toLowerCase()
   const haystacks: unknown[] = [
     workflow.active_version?.definition,

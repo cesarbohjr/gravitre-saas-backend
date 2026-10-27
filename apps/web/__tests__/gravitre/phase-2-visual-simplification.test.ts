@@ -34,7 +34,8 @@ describe("UX Reset Phase 2 — visual simplification", () => {
       "app/(app)/activity/page.tsx",
       "app/(app)/agents/page.tsx",
       "app/(app)/workflows/page.tsx",
-      "app/(app)/connectors/page.tsx",
+      // The Connectors hub summons it from the hero ("Ask Gravitre what to connect").
+      "components/connectors/redesign/hub.tsx",
       // Impact summons Ask Gravitre from its "How these numbers are worked out" disclosure.
       "components/intelligence/impact/by-agent-table.tsx",
       "app/(app)/approvals/page.tsx",
