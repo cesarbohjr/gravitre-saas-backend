@@ -276,6 +276,10 @@ export function useVoiceDuplexSession(options: Options) {
   // the socket opens -- so a refused first connect would otherwise look like nobody
   // was waiting and be silently swallowed.
   const sessionWantedRef = useRef(false)
+  // Prevent overlapping async start() calls before the socket becomes active.
+  const startingRef = useRef(false)
+  // Invalidates asynchronous startup continuations after stop/unmount.
+  const startupEpochRef = useRef(0)
   // Re-entry points for a retry, assigned once the callbacks below exist.
   const startPipecatRef = useRef<(() => Promise<void>) | null>(null)
   const teardownMicRef = useRef<(() => void) | null>(null)
@@ -1817,8 +1821,10 @@ export function useVoiceDuplexSession(options: Options) {
   teardownMicRef.current = teardownMic
 
   const start = useCallback(async () => {
-    if (activeRef.current) return
+    if (activeRef.current || startingRef.current) return
     if (options.enabled === false) return
+    startingRef.current = true
+    const startupEpoch = ++startupEpochRef.current
     // Outer guard for the whole function: toggle() invokes this as `void start()`,
     // so any uncaught throw anywhere below — a slow/erroring getVoiceStatus,
     // mintDeepgramLiveTokenDetailed, buildPipecatVoiceWsUrl, or unlockVoicePlayback —
@@ -1834,6 +1840,7 @@ export function useVoiceDuplexSession(options: Options) {
       reconnectAttemptRef.current = 0
       pendingMuteRestoreRef.current = false
       await unlockVoicePlayback()
+      if (startupEpoch !== startupEpochRef.current || !sessionWantedRef.current) return
       marksRef.current = { mic_open: performance.now() }
       turnStateRef.current = null
       micSessionIdRef.current =
@@ -1842,6 +1849,7 @@ export function useVoiceDuplexSession(options: Options) {
           : `mic-${Date.now()}`
 
       const status = options.forceHttpDuplex ? null : await getVoiceStatus(true)
+      if (startupEpoch !== startupEpochRef.current || !sessionWantedRef.current) return
       voiceStatusRef.current = status
       setVoiceStatus(status)
       phase1FlagsRef.current = voiceMicPhase1FlagsFromStatus(status)
@@ -1856,6 +1864,7 @@ export function useVoiceDuplexSession(options: Options) {
       }
 
       const tokenResult = await mintDeepgramLiveTokenDetailed()
+      if (startupEpoch !== startupEpochRef.current || !sessionWantedRef.current) return
       if (!tokenResult.ok) {
         setPresence("error")
         optsRef.current.onError?.(tokenResult.detail)
@@ -1873,12 +1882,18 @@ export function useVoiceDuplexSession(options: Options) {
         audioCtxSharedRef.current = Boolean(sharedOutput && ctx === sharedOutput)
         audioCtxRef.current = ctx
         await ensureAudioOutputRunning(ctx)
+        if (startupEpoch !== startupEpochRef.current || !sessionWantedRef.current) return
 
         const { stream, tuning, prerollEnabled } = await setupVoiceMicrophone(ctx)
+        if (startupEpoch !== startupEpochRef.current || !sessionWantedRef.current) {
+          stream.getTracks().forEach((track) => track.stop())
+          return
+        }
         if (!(await ensureAudioOutputRunning(ctx)) && audioCtxRef.current === ctx) {
           playbackBlockedRef.current = true
           setPlaybackBlocked(true)
         }
+        if (startupEpoch !== startupEpochRef.current || !sessionWantedRef.current) return
         analyserRef.current = createVoiceAnalyser()
         analyserRef.current.connectStream(stream)
         startRaf()
@@ -1890,6 +1905,10 @@ export function useVoiceDuplexSession(options: Options) {
         wsRef.current = ws
 
         ws.onopen = () => {
+          if (startupEpoch !== startupEpochRef.current || !sessionWantedRef.current) {
+            ws.close()
+            return
+          }
           activeRef.current = true
           setIsActive(true)
           setPresence("listening")
@@ -1940,13 +1959,14 @@ export function useVoiceDuplexSession(options: Options) {
             }
           },
         })
-        if (audioCtxRef.current !== ctx) {
+        if (startupEpoch !== startupEpochRef.current || !sessionWantedRef.current || audioCtxRef.current !== ctx) {
           mic.dispose()
           return
         }
         micProcessorRef.current = mic
         processorRef.current = mic.processor
       } catch (err) {
+        if (startupEpoch !== startupEpochRef.current) return
         teardownMic()
         activeRef.current = false
         setIsActive(false)
@@ -1956,6 +1976,7 @@ export function useVoiceDuplexSession(options: Options) {
         )
       }
     } catch (err) {
+      if (startupEpoch !== startupEpochRef.current) return
       teardownMic()
       activeRef.current = false
       setIsActive(false)
@@ -1963,6 +1984,8 @@ export function useVoiceDuplexSession(options: Options) {
       optsRef.current.onError?.(
         err instanceof Error ? err.message : "Voice session failed to start. Try again.",
       )
+    } finally {
+      startingRef.current = false
     }
   }, [handleDeepgramMessage, options.enabled, options.forceHttpDuplex, setupVoiceMicrophone, startMicTelemetry, startPipecat, teardownMic])
 
@@ -1971,6 +1994,7 @@ export function useVoiceDuplexSession(options: Options) {
     // failure handler sees a session nobody is waiting on and neither retries nor
     // toasts. This is the user-initiated half of the interrupted-toast fix.
     sessionWantedRef.current = false
+    startupEpochRef.current += 1
     reconnectAttemptRef.current = 0
     activeRef.current = false
     setIsActive(false)
@@ -1982,7 +2006,7 @@ export function useVoiceDuplexSession(options: Options) {
   }, [stopPlayback, teardownMic])
 
   const toggle = useCallback(() => {
-    if (activeRef.current) stop()
+    if (activeRef.current || startingRef.current) stop()
     else void start()
   }, [start, stop])
 
@@ -1996,6 +2020,7 @@ export function useVoiceDuplexSession(options: Options) {
     return () => {
       // Unmount is deliberate: no retry, no toast on the way out.
       sessionWantedRef.current = false
+      startupEpochRef.current += 1
       activeRef.current = false
       abortRef.current?.abort()
       stopPlaybackRef.current()
