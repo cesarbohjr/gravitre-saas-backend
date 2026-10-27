@@ -67,3 +67,21 @@ async def test_cancelled_turn_still_blocks_write_after_conversation_marker_clear
     with bound_turn_cancellation(cancelled):
         with pytest.raises(ToolValidationError, match="Stopped before sending"):
             begin_write_effect(ctx, "gmail.send")
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize('trial', range(20))
+async def test_twenty_spoken_yes_wait_trials_never_reach_provider_commit(trial):
+    """Repeated final-boundary trials; neither advisory evidence nor yes resumes wait."""
+    from unittest.mock import Mock
+    ctx = _context()
+    ctx.conversation_id = f'phase3-yes-wait-{trial}'
+    provider_commit = Mock()
+    # A confirmation followed by wait must be checked at the actual effect gate,
+    # even when the earlier preflight accepted the confirmation.
+    voice_pause_gate.resume(ctx.org_id, ctx.conversation_id)
+    assert voice_pause_gate.pause(ctx.org_id, ctx.conversation_id)
+    with pytest.raises(ToolValidationError, match='Paused before sending'):
+        begin_write_effect(ctx, 'gmail.send')
+        provider_commit()
+    provider_commit.assert_not_called()

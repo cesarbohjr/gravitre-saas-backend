@@ -6835,7 +6835,18 @@ class AgentIntelligence:
         if memory_section:
             parts.append(memory_section)
         if parameters:
-            parts.append(f"<workflow_context>{json.dumps(parameters, default=str)[:8000]}</workflow_context>")
+            # The shared seven-capability envelope has its own bounded budget.
+            # Putting it in the legacy 8K parameter snapshot can silently drop
+            # later capabilities or the entire envelope behind large inputs.
+            workflow_parameters = {key: value for key, value in parameters.items() if key != "intelligence_evidence"}
+            parts.append(f"<workflow_context>{json.dumps(workflow_parameters, default=str)[:8000]}</workflow_context>")
+            upstream_intelligence = parameters.get("intelligence_evidence")
+            if isinstance(upstream_intelligence, str) and upstream_intelligence.strip():
+                from app.services.agent_security_gateway import fence_external_content
+
+                parts.append(fence_external_content(
+                    upstream_intelligence, kind="knowledge", source_id="workflow_intelligence", max_chars=20000,
+                ).fenced_block)
         return "\n".join(parts)
 
     @staticmethod
