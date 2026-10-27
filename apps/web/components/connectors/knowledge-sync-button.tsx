@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { BookOpen, Loader2 } from "lucide-react"
-import { toast } from "@/components/agents/overlays/toast"
+import { toast } from "@/components/connectors/overlays/toast"
 import { Button } from "@/components/ui/button"
 import { knowledgeSyncApi } from "@/lib/api"
 import { useOrgAdmin } from "@/lib/use-org-admin"
@@ -30,7 +30,8 @@ export function KnowledgeSyncButton({
 
   const normalizedType = String(connectorType ?? "").toLowerCase()
   const isKnowledgeConnector = KNOWLEDGE_CONNECTOR_TYPES.has(normalizedType)
-  const isActive = String(connectorStatus ?? "").toLowerCase() === "active"
+  // The API reports a working connector as "healthy" (or "connected"); the stored row says "active".
+  const isActive = ["active", "healthy", "connected"].includes(String(connectorStatus ?? "").toLowerCase())
 
   if (!isKnowledgeConnector || !isActive || !isAdmin) {
     return null

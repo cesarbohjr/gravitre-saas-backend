@@ -36,9 +36,9 @@ describe("UX Reset Phase 3 — product IA flatten", () => {
 
   it("connectors default to discovery then a compact management list", () => {
     const src = readFileSync(resolve(webRoot, "app/(app)/connectors/page.tsx"), "utf8")
-    expect(src).toMatch(/useState<"topology" \| "grid">\("grid"\)/)
-    expect(src).toMatch(/<ConnectorOperatingRow/)
-    expect(src).toMatch(/\{selectedConnector \? \(\s*<ResponsiveConnectorInspector/)
+    expect(src).toMatch(/useState<"list" \| "topology">\("list"\)/)
+    expect(src).toMatch(/<SystemsTable/)
+    expect(src).toMatch(/\{selectedConnector \? \(\s*<HubInspector/)
     expect(src).toMatch(/data-review-surface="connectors-management"/)
     expect(src).not.toMatch(/requestsToday|dataFlowRate|usedByWorkflows|triggeredByAgents/)
     expect(src).not.toMatch(/ConnectorsAtmosphere/)

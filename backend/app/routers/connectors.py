@@ -325,6 +325,7 @@ def _connector_response_item(
         "displayStatus": availability.get("display_status"),
         "environment": row.get("environment") or environment_name,
         "lastSync": row.get("last_sync_at"),
+        "createdAt": row.get("created_at"),
         "recordsSynced": row.get("records_synced") or 0,
         "syncFrequency": row.get("sync_frequency") or "1h",
         "availability": {
@@ -343,6 +344,7 @@ def _connector_response_item(
             "apiKey": api_key,
             "webhookUrl": row.get("webhook_url"),
             "authType": config.get("auth_type"),
+            "authProvider": config.get("auth_provider"),
         },
         "docsUrl": row.get("docs_url"),
         "phiCapable": bool(row.get("phi_capable")),
@@ -567,7 +569,7 @@ def list_connectors_route_alias(
             client.table("connectors")
             .select(
                 "id, org_id, name, vendor, type, description, status, environment, config, sync_frequency, "
-                "last_sync_at, records_synced, docs_url, api_key_encrypted, webhook_url"
+                "last_sync_at, records_synced, docs_url, api_key_encrypted, webhook_url, created_at"
             )
             .eq("org_id", org_id)
             .eq("environment", environment_name)
@@ -791,7 +793,7 @@ async def get_connector_route_alias(
         client.table("connectors")
         .select(
                 "id, org_id, name, vendor, type, description, status, environment, config, sync_frequency, "
-            "last_sync_at, records_synced, docs_url, api_key_encrypted, webhook_url"
+            "last_sync_at, records_synced, docs_url, api_key_encrypted, webhook_url, created_at"
         )
         .eq("org_id", org_id)
         .eq("environment", environment_name)
@@ -803,15 +805,111 @@ async def get_connector_route_alias(
     if not row.data:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Connector not found")
     data = row.data[0]
-    return {
-        "connector": _connector_response_item(
-            data,
-            environment_name=environment_name,
-            settings=settings,
-            client=client,
-            org_id=org_id,
+    item = _connector_response_item(
+        data,
+        environment_name=environment_name,
+        settings=settings,
+        client=client,
+        org_id=org_id,
+    )
+    item["credentials"] = _oauth_credentials_summary(client, str(connector_id), settings, org_id=org_id)
+    return {"connector": item}
+
+
+def _oauth_credentials_summary(client, connector_id: str, settings: Settings, *, org_id: str) -> dict:
+    """What the stored OAuth grant allows, without the secret itself.
+
+    Providers store scopes either as a list (``scopes``) or as the space
+    separated ``scope`` string from the token response. Only names and the
+    expiry leave the server; tokens never do.
+    """
+    summary: dict[str, Any] = {"hasOAuthTokens": False, "grantedScopes": [], "tokenExpiresAt": None}
+    try:
+        raw = get_decrypted_secret(client, connector_id, "oauth_tokens", settings, org_id=org_id)
+    except Exception:  # noqa: BLE001 — an unreadable secret must not 500 the detail page
+        logger.exception("connector oauth token read failed id=%s", connector_id)
+        return summary
+    if not raw:
+        return summary
+    try:
+        import json
+
+        tokens = json.loads(raw)
+    except (TypeError, ValueError):
+        return summary
+    if not isinstance(tokens, dict):
+        return summary
+    summary["hasOAuthTokens"] = True
+    scopes = tokens.get("scopes")
+    if isinstance(scopes, str):
+        scopes = scopes.split()
+    if not isinstance(scopes, list):
+        scope = tokens.get("scope")
+        scopes = scope.replace(",", " ").split() if isinstance(scope, str) else []
+    summary["grantedScopes"] = sorted({str(s).strip() for s in scopes if str(s).strip()})
+    expires_at = tokens.get("expires_at")
+    if isinstance(expires_at, (int, float)) and expires_at > 0:
+        summary["tokenExpiresAt"] = datetime.fromtimestamp(float(expires_at), tz=timezone.utc).isoformat()
+    elif isinstance(expires_at, str) and expires_at.strip():
+        summary["tokenExpiresAt"] = expires_at.strip()
+    return summary
+
+
+@connectors_router.get("/{connector_id}/activity")
+def connector_activity_route(
+    connector_id: UUID,
+    _user: Annotated[dict, Depends(get_current_user)],
+    org_id: Annotated[str | None, Depends(get_org_context)],
+    environment_name: Annotated[str, Depends(get_environment_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+    limit: int = Query(default=50, ge=1, le=200),
+) -> dict:
+    """Audit trail for one connector: every audit event written against it, newest first."""
+    if org_id is None:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
+    client = shared_service_client(settings, create_client)
+    exists = (
+        client.table("connectors")
+        .select("id")
+        .eq("org_id", org_id)
+        .eq("environment", environment_name)
+        .eq("id", str(connector_id))
+        .is_("deleted_at", "null")
+        .limit(1)
+        .execute()
+    )
+    if not exists.data:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Connector not found")
+    try:
+        result = (
+            client.table("audit_events")
+            .select("id, action, actor_id, metadata, created_at", count="exact")
+            .eq("org_id", org_id)
+            .eq("resource_type", "connector")
+            .eq("resource_id", str(connector_id))
+            .order("created_at", desc=True)
+            .limit(limit)
+            .execute()
         )
-    }
+    except Exception as exc:  # noqa: BLE001
+        logger.exception("connector activity query failed id=%s", connector_id)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=error_detail("Failed to load connector activity.", "CONNECTOR_ACTIVITY_QUERY_FAILED"),
+        ) from exc
+    rows = list(result.data or [])
+    events = [
+        {
+            "id": str(r.get("id") or ""),
+            "action": str(r.get("action") or ""),
+            "actorId": r.get("actor_id"),
+            "metadata": r.get("metadata") if isinstance(r.get("metadata"), dict) else {},
+            "createdAt": r.get("created_at"),
+        }
+        for r in rows
+    ]
+    total = getattr(result, "count", None)
+    return {"events": events, "total": total if isinstance(total, int) else len(events)}
 
 
 @connectors_router.post("/{connector_id}/test")
