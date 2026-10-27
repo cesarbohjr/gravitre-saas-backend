@@ -116,3 +116,24 @@ def test_new_cues_do_not_match_negations_or_unrelated_words(message):
     assert not set(interpret_dialogue(message).cues).intersection({
         "distress_cue", "positive_excitement", "conversational_repair", "thinking_aloud",
     })
+
+
+@pytest.mark.parametrize("message", [
+    'The customer said "I am worried about the launch".',
+    'The example is “I am overwhelmed”.',
+    "'I'm worried about the launch' is the example sentence.",
+    "She wrote 'I am excited about the launch'.",
+    "If I'm worried tomorrow, we can revisit it.",
+    "Imagine I'm frustrated with the rollout.",
+    "The customer said I am anxious about the deadline.",
+])
+def test_reported_and_hypothetical_feelings_are_not_current_user_emotion(message):
+    result = interpret_dialogue(message, contextual=True)
+    assert not set(result.cues).intersection({"distress_cue", "frustration_cue", "positive_excitement"})
+    assert "without declaring sarcasm as fact" in result.prompt_section()
+
+
+def test_reported_feeling_does_not_hide_later_direct_feeling():
+    result = interpret_dialogue('She said "I am excited". I am worried about the deadline.')
+    assert "distress_cue" in result.cues
+    assert "positive_excitement" not in result.cues

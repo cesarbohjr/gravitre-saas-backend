@@ -60,3 +60,19 @@ def test_classical_system_prompt_includes_conversational_behavior():
     assert "## Conversational behavior" in prompt
     assert "## Voice" in prompt
     assert "Ask for clarification" in RULES_SECTION
+
+
+def test_social_awareness_is_shared_by_unified_and_classical_prompts():
+    agent = {"id": "a1", "name": "Support", "role": "CS", "config": {}}
+    prompts = [
+        build_module_d_unified_system_prompt(agent=agent),
+        build_module_d_unified_system_prompt(agent=agent, spoken_mode=True),
+        get_agent_intelligence()._build_system_prompt("agent_chat", agent, rag_results=[], org_context={}),
+    ]
+    for prompt in prompts:
+        assert "### 13. Emotional and social awareness" in prompt
+        assert "Negated, quoted, hypothetical and third-person" in prompt
+        assert "Do not scold a user merely for swearing" in prompt
+        assert "brief, proportionate boundary" in prompt
+        assert "persist an inferred emotional" in prompt
+        assert "pressure to obtain consent or bypass" in prompt

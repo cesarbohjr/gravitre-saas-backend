@@ -47,3 +47,48 @@ its prior cue, privacy and governance assertions remain intact.
 Local focused result: 299 tests passed, one existing Starlette deprecation warning.
 Full Phase 2 status: INCOMPLETE. No merge, deploy, customer consent or live
 certification has been performed by this increment.
+
+## Workstream 2 source increment and Workstream 3 test isolation
+
+Shared conversational behavior now distinguishes direct emotional disclosure
+from quoted, hypothetical, negated and third-person language; prevents inferred
+emotional profiling and social-pressure consent; and defines proportionate
+boundaries without treating ordinary profanity or disagreement as harassment.
+This system section is already consumed by unified text/voice, classical prompts
+and the response composer. The cue extractor masks quoted spans and omits
+reported/hypothetical emotional sentences while preserving later direct cues.
+
+Local focused result: 356 contextual, social-policy and natural-dialogue tests
+passed. This does not assess the actual generated response to harassment or
+certify emotional intelligence.
+
+The natural-turn subset initially exposed unit fixtures reaching real provider
+moderation. Automatic approval review blocked an attempted OpenAI connection;
+no live quality evidence is claimed. The silence and cancelled-output fixtures
+now inject a local successful guard and local base prompt, retaining all timing,
+output and cancellation assertions and additionally asserting the guard was
+awaited. This changes test isolation, not runtime guard behavior. The dedicated
+shared-guard refusal/concurrency tests run alongside them. Isolated result:
+73 tests passed. Real microphone, speaker, acoustic overlap and provider quality
+remain NOT RUN; these tests do not substitute for them.
+
+Full CI is running through draft PR #587. Do not interpret a submitted or running
+check as green, and do not advance the completion status without its result.
+
+Combined isolated regression result after these changes: 1,179 tests passed
+(with three existing dependency deprecation warnings). A subsequent quote-parser
+edge case adds coverage for single-quoted contractions; rerun recorded in PR.
+Railway OAuth inventory confirms ANTHROPIC_API_KEY, OPENAI_API_KEY,
+DEEPGRAM_API_KEY and ELEVENLABS_API_KEY names are configured in production,
+but values are redacted. Inventory is not authentication or provider acceptance.
+DIALOGUE_MEMORY_GOVERNANCE_V1 was not listed. No variable was changed.
+
+Final combined rerun after the single-quoted contraction regression: 1,180 tests
+passed (three dependency deprecation warnings). PR #587's initial CI revision
+has green web, shared runtime and dependency-audit jobs; backend remains running.
+The live-provider job was SKIPPED because its workflow condition requires manual
+workflow_dispatch/workflow_call or ACCEPTANCE_AUTOMATION_ENABLED=true for a PR.
+This is not evidence of missing or invalid provider credentials. GitHub's
+connected tool exposes no workflow-dispatch action; a run must be initiated from
+Actions or an authenticated maintainer CLI. Acceptance secret availability is
+still unverified. The physical-voice placeholder job is not physical evidence.

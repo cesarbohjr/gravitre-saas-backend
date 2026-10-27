@@ -82,5 +82,16 @@ class DialogueInterpretation:
 
 
 def interpret_dialogue(message: str, *, contextual: bool = False) -> DialogueInterpretation:
-    text = (message or "").replace("’", "'")
-    return DialogueInterpretation(tuple(name for name, pattern in _PATTERNS if pattern.search(text)), contextual=contextual is True)
+    text = (message or "").replace("’", "'").replace("“", '"').replace("”", '"')
+    # Quotation is conversation data, not the current speaker's own cue.
+    # Keep apostrophes in contractions; only remove standalone quoted spans.
+    text = re.sub(r'''"[^"\n]*"|(?<!\w)'(?:[^'\n]|(?<=\w)'(?=\w))*'(?!\w)''', " ", text)
+    emotional = {"frustration_cue", "distress_cue", "positive_excitement"}
+    direct_sentences = " ".join(
+        sentence for sentence in re.split(r"[.!?\n]+", text)
+        if not re.search(r"\b(?:said|says|wrote|quoted|suppose|imagine|what if)\b|^\s*(?:if|whether)\b", sentence, re.I)
+    )
+    return DialogueInterpretation(tuple(
+        name for name, pattern in _PATTERNS
+        if pattern.search(direct_sentences if name in emotional else text)
+    ), contextual=contextual is True)
