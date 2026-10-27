@@ -1243,6 +1243,41 @@ export function useVoiceDuplexSession(options: Options) {
     [enqueueAudio, stopPlayback],
   )
 
+  // Keep a brief thinking pause open instead of answering every final STT segment.
+  // This is only for the legacy HTTP duplex path; Pipecat owns its own endpointing.
+  const pendingFinalRef = useRef<string>("")
+  const finalTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const clearPendingFinal = useCallback(() => {
+    if (finalTimerRef.current) clearTimeout(finalTimerRef.current)
+    finalTimerRef.current = null
+    pendingFinalRef.current = ""
+  }, [])
+  const scheduleFinal = useCallback((segment: string) => {
+    if (!segment.trim()) return
+    if (finalTimerRef.current) clearTimeout(finalTimerRef.current)
+    const previous = pendingFinalRef.current.trim()
+    const next = segment.trim()
+    // Deepgram may repeat the accumulated transcript; avoid duplication.
+    pendingFinalRef.current = previous && !next.startsWith(previous)
+      ? previous + " " + next
+      : next
+    const capturedEpoch = startupEpochRef.current
+    const text = pendingFinalRef.current
+    // Longer pause after conjunctions or incomplete clauses; shorter at sentence end.
+    const unfinished = /(?:,|\\b(?:and|but|because|so|if|when|that|or|to))$/i.test(text)
+    const delay = unfinished ? 1100 : /[.!?]$/.test(text) ? 360 : 650
+    finalTimerRef.current = setTimeout(() => {
+      finalTimerRef.current = null
+      if (capturedEpoch !== startupEpochRef.current || !sessionWantedRef.current) return
+      const ready = pendingFinalRef.current.trim()
+      pendingFinalRef.current = ""
+      if (!ready) return
+      marksRef.current.first_partial = 0
+      setProvisionalTranscript("")
+      void runSessionTurn(ready)
+    }, delay)
+  }, [runSessionTurn])
+
   const handleDeepgramMessage = useCallback(
     async (raw: MessageEvent) => {
       let data: Record<string, unknown>
@@ -1269,7 +1304,7 @@ export function useVoiceDuplexSession(options: Options) {
       const stability = Number(data.stability ?? alt?.stability ?? 0)
       const isFinal = Boolean(data.is_final || data.speech_final)
 
-      if (type === "SpeechStarted" || type === "speech_started") {
+      if (type === "SpeechStarted" || type === "speech_started") {\n        if (finalTimerRef.current) { clearTimeout(finalTimerRef.current); finalTimerRef.current = null }
         // Acoustic activity alone may be speaker echo, a breath, or a backchannel.
         // Keep the assistant's floor until the transcript supplies speech evidence.
         marksRef.current.speech_started = performance.now()
@@ -2073,7 +2108,7 @@ export function useVoiceDuplexSession(options: Options) {
     teardownMic()
     setPresence("idle")
     setProvisionalTranscript("")
-  }, [stopPlayback, teardownMic])
+  }, [clearPendingFinal, stopPlayback, teardownMic])
 
   const toggle = useCallback(() => {
     if (activeRef.current || startingRef.current) stop()
