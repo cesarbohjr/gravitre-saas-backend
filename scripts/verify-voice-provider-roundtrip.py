@@ -89,6 +89,25 @@ def sanitized_failure(exc):
     if isinstance(exc, VoiceProviderError):
         info["provider"] = (exc.provider or "unknown").lower()
         info["upstream_error_class"] = exc.error_class
+        # Provider detail is untrusted and may contain secrets. Extract only a
+        # tightly allowlisted machine-readable status, never the raw message.
+        try:
+            detail = json.loads(exc.provider_detail or "{}")
+            payload = detail.get("detail", detail)
+            if isinstance(payload, dict):
+                candidates = (payload.get("status"), payload.get("code"))
+                allowed = {
+                    "invalid_api_key", "invalid_api_key_prefix", "voice_not_found",
+                    "model_not_found", "quota_exceeded", "max_character_limit_exceeded",
+                    "invalid_output_format", "insufficient_permissions",
+                    "voice_limit_reached", "subscription_required",
+                }
+                info["provider_reason"] = next(
+                    (value for value in candidates if isinstance(value, str) and value in allowed),
+                    "unclassified",
+                )
+        except (ValueError, TypeError, AttributeError):
+            info["provider_reason"] = "unclassified"
     stage = getattr(exc, "acceptance_stage", None)
     if stage in ("elevenlabs_tts", "deepgram_stt"):
         info["stage"] = stage
@@ -126,7 +145,7 @@ def main():
     result["worktree_dirty"] = bool(subprocess.check_output(["git", "status", "--porcelain"], cwd=ROOT, text=True).strip())
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(result, indent=2) + "\n")
-    print(json.dumps({key: result[key] for key in ("status", "error_type", "error_category", "http_status") if key in result}))
+    print(json.dumps({key: result[key] for key in ("status", "provider", "stage", "provider_reason", "error_type", "error_category", "http_status") if key in result}))
     return 0 if result["status"] == "PASS" else 2 if result["status"] == "NOT RUN" else 1
 
 
