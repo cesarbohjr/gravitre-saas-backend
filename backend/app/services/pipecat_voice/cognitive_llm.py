@@ -282,7 +282,11 @@ def merge_unanswered_turn(
     if fragment:
         return f"{carried.rstrip(' .,-').rstrip('.').rstrip()} {text}", trimmed
     if _replaces_unanswered_turn(text):
-        return user_text, history
+        # The cancelled, unanswered request is superseded. Keeping it in
+        # history lets session-continuity compilation copy it back into the
+        # new turn, defeating the replacement decision made here. Retain all
+        # earlier answered exchanges, but drop this trailing abandoned turn.
+        return user_text, trimmed
     joiner = " " if carried[-1] in ".!?," else ", "
     return f"{carried}{joiner}{text}", trimmed
 

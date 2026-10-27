@@ -2,7 +2,7 @@
 
 `build_bundle.py --output <scratch-path>` freezes the real unified and classical
 prompt builders for every current `AGENT_PERSONAS` role in text and voice modes,
-and sixteen synthetic social-boundary/emotional scenarios. No organization or
+and twenty-six synthetic social, emotional, multilingual and continuity scenarios. No organization or
 customer records are loaded. The classical builder is called without running
 the constructor that initializes routers/DB clients; all prompt methods are real.
 Voice settings use source defaults. A clean committed source tree is required by
@@ -13,8 +13,8 @@ script with `ANTHROPIC_API_KEY` and optionally `SOCIAL_EVAL_MODEL` (only the two
 repository-supported Anthropic model IDs are accepted). Railway service-variable
 references can supply the credential server-side without exporting its value.
 Do not add an HTTP listener or a public domain. No tools, application endpoints,
-customer data or write executors are available. The workload has 320 paired
-cases: 640 generated replies and 320 separate judge calls, with two bounded
+customer data or write executors are available. The workload has 520 paired
+cases: 1,040 generated replies and 520 separate judge calls, with two bounded
 workers and at most three attempts on rate limits. No completion/failure restart
 loop should be configured. The report's status, not deployment/process exit,
 determines success. Missing keys are NOT RUN; invalid/failed judgments are ERROR.
