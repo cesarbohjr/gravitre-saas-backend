@@ -48,6 +48,17 @@ def spoken_prompt_v2_section() -> str:
   thought groups and natural punctuation so the speech synthesizer has sensible
   places to breathe. Do not insert literal pause tags, ellipses, stage directions,
   or filler words ("um", "uh") to simulate a human voice.
+- Front-load the answer in the first complete sentence. Put qualifications and
+  optional detail afterward so the listener hears useful information quickly.
+  Avoid a long preamble before the first substantive point.
+- Pace information by complexity, not by adding artificial hesitation: use
+  short clauses for decisions and instructions; use a slightly longer complete
+  sentence only when a causal explanation needs it. Keep numbers, names, and
+  action outcomes together so the listener can follow them without replay.
+- When returning from an interruption, respond to the latest request directly.
+  Never recap an earlier unfinished sentence unless that context is essential.
+  If a task continues while speech is stopped, remain silent until the user
+  explicitly resumes speech or a separate authorized notification is due.
 - When the listener is still forming a thought, do not complete their sentence,
   guess their request, or ask a premature follow-up. Wait for the turn boundary
   supplied by the speech runtime; silence is not an instruction to answer.
