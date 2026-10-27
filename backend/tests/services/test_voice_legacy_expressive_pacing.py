@@ -28,3 +28,23 @@ def test_complete_short_sentence_is_not_rewritten():
     chunks, remaining = split_speakable_chunks(text)
     assert chunks == [text]
     assert remaining == ""
+
+
+def test_expressive_phrase_tiers_are_bounded():
+    from app.services.voice_session_service import expression_tier_for_phrase
+    assert expression_tier_for_phrase("Really?") == "light"
+    assert expression_tier_for_phrase("That's great!") == "light"
+    assert expression_tier_for_phrase("Here is the answer.") == "medium"
+    assert expression_tier_for_phrase("Here is the explanation:") == "deep"
+
+
+def test_provider_expression_preserves_conversational_style_and_similarity():
+    from app.services.tier1_voice_service import expressive_voice_settings
+    assert expressive_voice_settings("light")["stability"] == 0.4
+    assert expressive_voice_settings("medium")["stability"] == 0.5
+    assert expressive_voice_settings("deep")["stability"] == 0.6
+    for tier in ("light", "medium", "deep", "unknown"):
+        settings = expressive_voice_settings(tier)
+        assert settings["style"] == 0.0
+        assert settings["similarity_boost"] == 0.75
+        assert settings["use_speaker_boost"] is True
