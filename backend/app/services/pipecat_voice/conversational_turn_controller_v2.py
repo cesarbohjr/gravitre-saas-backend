@@ -90,11 +90,27 @@ class ConversationalTurnControllerV2:
             return TurnDecision(TurnAction.INTERRUPT, BackchannelClassification.INTERRUPTION, "answer_expected")
         return TurnDecision(TurnAction.INTERRUPT, classification, "substantive_utterance")
 
-    def hold_incomplete_interim(self, text: str, *, elapsed_s: float, max_wait_s: float) -> bool:
-        """Bound the semantic hold; silence alone never authorizes an action."""
+    def hold_incomplete_interim(
+        self,
+        text: str,
+        *,
+        elapsed_s: float,
+        max_wait_s: float,
+        since_last_word_s: float | None = None,
+        continuation_s: float = 0.45,
+    ) -> bool:
+        """Hold a visibly unfinished thought, but never indefinitely.
+
+        The absolute cap prevents a stream of incomplete interims from keeping
+        a reply ducked forever. The shorter inactivity window lets the assistant
+        respond promptly once an unfinished phrase stops changing. Explicit
+        stop/pause intents are handled by decide() before this policy.
+        """
         decision = self.decide(text, bot_speaking=True, final=False)
-        return (
-            bool((text or "").strip())
-            and decision.reason == "incomplete_interim"
-            and elapsed_s < max_wait_s
-        )
+        if not (text or "").strip() or decision.reason != "incomplete_interim":
+            return False
+        if elapsed_s >= max_wait_s:
+            return False
+        if since_last_word_s is not None and since_last_word_s >= continuation_s:
+            return False
+        return True
