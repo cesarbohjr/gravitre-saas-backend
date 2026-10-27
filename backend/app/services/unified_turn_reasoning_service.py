@@ -1021,6 +1021,9 @@ async def run_unified_turn_shadow(
             except Exception as exc:  # noqa: BLE001
                 logger.warning("unified_turn_kernel_sections_unavailable error=%s", exc)
 
+        intelligence = cognitive_prompt_sections.get("intelligence_section") or ""
+        if intelligence:
+            _add_part("kernel_intelligence", intelligence)
         dialogue_section = cognitive_prompt_sections.get("dialogue_section") or ""
         continuity = cognitive_prompt_sections.get("session_continuity_section") or ""
         if continuity:

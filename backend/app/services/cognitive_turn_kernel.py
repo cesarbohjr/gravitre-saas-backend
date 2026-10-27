@@ -1,6 +1,8 @@
 """CognitiveTurnKernel — mandatory pre-ACT thinking sequence (Phase 1+)."""
 from __future__ import annotations
 
+from copy import deepcopy
+
 import asyncio
 import time
 from dataclasses import asdict, dataclass, field
@@ -83,6 +85,8 @@ class CognitiveTurnRequest:
     # When the caller already listed connectors (e.g. agent_intelligence pre-kernel),
     # reuse that snapshot in PLAN — do not pay a second live list_connected_integrations.
     connected_integrations: list[str] | None = None
+    # Backend-collected evidence, never executable authority; tenant binding is required.
+    intelligence_pack: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
@@ -108,6 +112,7 @@ class CognitiveTurnContext:
     skipped: bool = False
     dialogue: DialogueInterpretation = field(default_factory=DialogueInterpretation)
     session_continuity: SessionContinuity = field(default_factory=SessionContinuity)
+    intelligence_pack: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
@@ -170,7 +175,10 @@ class CognitiveTurnKernel:
         if not request.org_id:
             raise ValueError("CognitiveTurnRequest.org_id is required (cross-org isolation)")
 
-        ctx = CognitiveTurnContext(turn_id=turn_id, dialogue=interpret_dialogue(request.message, contextual=True))
+        if request.intelligence_pack and request.intelligence_pack.get("org_id") != request.org_id:
+            raise ValueError("Intelligence evidence organization mismatch")
+        ctx = CognitiveTurnContext(turn_id=turn_id, dialogue=interpret_dialogue(request.message, contextual=True),
+                                   intelligence_pack=deepcopy(request.intelligence_pack))
         ctx.session_continuity = build_session_continuity(
             org_id=request.org_id, user_id=request.user_id,
             conversation_id=request.conversation_id, history=request.conversation_history,
@@ -191,6 +199,7 @@ class CognitiveTurnKernel:
                     "entry_point": request.entry_point,
                     "dialogue": ctx.dialogue.diagnostics(),
                     "session_continuity": ctx.session_continuity.diagnostics(),
+                    **({"capabilities": _intelligence_diagnostics(ctx.intelligence_pack)} if ctx.intelligence_pack else {}),
                 },
             )
         )
@@ -1175,6 +1184,7 @@ class CognitiveTurnKernel:
             knowledge_summary = {
                 "fabric_chunks": len((ctx.knowledge_pack or {}).get("fabric_chunks") or []),
                 "has_entity": bool((ctx.knowledge_pack or {}).get("entity_section")),
+                **({"capabilities": _intelligence_diagnostics(ctx.intelligence_pack)} if ctx.intelligence_pack else {}),
                 "org_metrics": len((ctx.knowledge_pack or {}).get("org_metrics") or []),
             }
             confidence_summary = _confidence_summary_from_ctx(ctx, request)
@@ -1229,6 +1239,7 @@ def to_prompt_sections(ctx: CognitiveTurnContext) -> dict[str, str]:
         "memory_section": memory_section,
         "knowledge_section": knowledge_section,
         "dialogue_section": dialogue_section,
+        "intelligence_section": _intelligence_section(getattr(ctx, "intelligence_pack", None)),
         "session_continuity_section": (
             ctx.session_continuity.section
             if isinstance(getattr(ctx, "session_continuity", None), SessionContinuity) else ""
@@ -1737,3 +1748,17 @@ def _what_if_prompt_section(sim: Any) -> str:
             )
     lines.append("</what_if>")
     return "\n".join(lines)
+
+
+def _intelligence_section(packet: Any) -> str:
+    if not isinstance(packet, dict) or not packet:
+        return ""
+    from app.services.intelligence_router import intelligence_context_block
+
+    return intelligence_context_block(packet)
+
+
+def _intelligence_diagnostics(packet: Any) -> dict:
+    from app.services.execution_intelligence_context import capability_diagnostics
+
+    return capability_diagnostics(packet)

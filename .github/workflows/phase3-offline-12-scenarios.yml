@@ -3,6 +3,12 @@ on:
   pull_request:
     paths:
       - 'backend/scripts/phase3_offline_12_scenarios.py'
+      - 'backend/app/services/**'
+      - 'backend/app/operators/**'
+      - 'backend/app/plays/**'
+      - 'backend/app/workflows/**'
+      - 'backend/tests/services/test_phase3*.py'
+      - 'backend/tests/e2e/test_phase3*.py'
       - '.github/workflows/phase3-offline-12-scenarios.yml'
   workflow_dispatch:
 jobs:

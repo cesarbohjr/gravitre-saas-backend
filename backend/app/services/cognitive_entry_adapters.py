@@ -24,15 +24,29 @@ async def run_kernel_for_entry(
     client: Any = None,
     settings: Settings | None = None,
     agent: dict[str, Any] | None = None,
+    task_state: dict[str, Any] | None = None,
+    conversation_history: list[Any] | None = None,
+    spoken_mode: bool = False,
 ) -> Any:
-    """Run RETRIEVE→GOVERN for an entry adapter. Never raises."""
+    """Run shared intelligence and RETRIEVE→GOVERN; execution gates remain downstream.
+
+    Missing/foreign tenant identity is an error, not degraded intelligence.
+    """
+    if not org_id or (agent and agent.get("org_id") is not None and agent["org_id"] != org_id):
+        raise ValueError("A matching execution organization is required")
     try:
         from app.services.cognitive_turn_kernel import (
             CognitiveTurnRequest,
             get_cognitive_turn_kernel,
         )
 
-        return await get_cognitive_turn_kernel(settings or get_settings()).run_pre_act(
+        from app.services.execution_intelligence_context import collect_execution_intelligence
+
+        active = settings or get_settings()
+        intelligence = await collect_execution_intelligence(
+            settings=active, org_id=org_id, task=message or "", agent=agent or {}, briefing=parameters or {},
+        ) if getattr(active, "cognitive_turn_kernel_enabled", True) else {}
+        return await get_cognitive_turn_kernel(active).run_pre_act(
             CognitiveTurnRequest(
                 org_id=org_id,
                 user_id=user_id,
@@ -45,6 +59,10 @@ async def run_kernel_for_entry(
                 parameters=parameters or {},
                 client=client,
                 agent=agent,
+                task_state=task_state,
+                conversation_history=conversation_history,
+                intelligence_pack=intelligence,
+                spoken_mode=spoken_mode,
             )
         )
     except Exception as exc:  # noqa: BLE001
@@ -64,16 +82,21 @@ def run_kernel_for_entry_sync(**kwargs: Any) -> Any:
     bridge helpers), run the coroutine on a short-lived worker thread so callers
     still receive the CognitiveTurnContext instead of fire-and-forget None.
     """
+    agent = kwargs.get("agent") or {}
+    if not kwargs.get("org_id") or (agent.get("org_id") is not None and agent["org_id"] != kwargs["org_id"]):
+        raise ValueError("A matching execution organization is required")
     try:
         asyncio.get_running_loop()
     except RuntimeError:
         return asyncio.run(run_kernel_for_entry(**kwargs))
 
     import concurrent.futures
+    import contextvars
 
     try:
         with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
-            return pool.submit(lambda: asyncio.run(run_kernel_for_entry(**kwargs))).result(
+            inherited = contextvars.copy_context()
+            return pool.submit(inherited.run, lambda: asyncio.run(run_kernel_for_entry(**kwargs))).result(
                 timeout=60
             )
     except Exception as exc:  # noqa: BLE001
@@ -93,6 +116,12 @@ def attach_kernel_pack_to_evidence(evidence: dict[str, Any] | None, ctx: Any) ->
         bag["cognitiveTurnId"] = getattr(ctx, "turn_id", None)
         bag["cognitiveMemorySection"] = sections.get("memory_section") or ""
         bag["cognitiveKnowledgeSection"] = sections.get("knowledge_section") or ""
+        bag["cognitiveDialogueSection"] = sections.get("dialogue_section") or ""
+        bag["cognitiveSessionContinuitySection"] = sections.get("session_continuity_section") or ""
+        bag["cognitiveIntelligenceSection"] = sections.get("intelligence_section") or ""
+        from app.services.execution_intelligence_context import capability_diagnostics
+
+        bag["cognitiveIntelligenceStatus"] = capability_diagnostics(getattr(ctx, "intelligence_pack", {}))
         bag["cognitiveOutcomeBiasSection"] = sections.get("outcome_bias_section") or ""
         bag["cognitiveStages"] = [
             getattr(s, "stage", s) for s in (getattr(ctx, "stages", None) or [])

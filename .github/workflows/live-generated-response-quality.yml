@@ -27,6 +27,14 @@ jobs:
           DEPLOYED_SHA: ${{ inputs.deployed_sha }}
         run: |
           test "$DEPLOYED_SHA" = "$(git rev-parse HEAD)" || { echo "Production SHA does not match main; refusing certification"; exit 1; }
+          python - <<'PYHEALTH'
+          import json, os, urllib.request
+          with urllib.request.urlopen("https://api.gravitre.app/health", timeout=20) as response:
+              health = json.load(response)
+          if health.get("git_sha") != os.environ["DEPLOYED_SHA"]:
+              raise SystemExit("Live backend SHA does not match evaluated source; refusing certification")
+          print("Live backend revision matches evaluated source")
+          PYHEALTH
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'

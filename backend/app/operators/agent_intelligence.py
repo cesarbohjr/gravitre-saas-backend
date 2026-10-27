@@ -1642,9 +1642,14 @@ class AgentIntelligence:
             ).strip()
             or None,
         )
-        from app.services.execution_intelligence_context import execution_intelligence_context
-        shared_intelligence = await execution_intelligence_context(settings=active_settings, org_id=org_id,
+        from app.services.execution_intelligence_context import collect_execution_intelligence, capability_diagnostics
+        from app.services.intelligence_router import intelligence_context_block
+
+        shared_packet = await collect_execution_intelligence(settings=active_settings, org_id=org_id,
             task=task_text, agent=agent, briefing=effective_briefing)
+        if cognitive_ctx is not None:
+            cognitive_ctx.intelligence_pack = shared_packet
+        shared_intelligence = intelligence_context_block(shared_packet)
         if shared_intelligence:
             system_prompt += "\n\n" + shared_intelligence
         persona = get_agent_persona(agent)
@@ -1706,6 +1711,8 @@ class AgentIntelligence:
                 "taskId": task_id,
                 "runId": run_id,
                 "personaKey": persona.key,
+                "cognitiveTurnId": getattr(cognitive_ctx, "turn_id", None),
+                "intelligenceCapabilities": capability_diagnostics(shared_packet),
                 "reactStatus": agent_result.react_status,
                 "toolCallCount": len(agent_result.tool_calls),
                 "ragSourceCount": len(rag_sources),
