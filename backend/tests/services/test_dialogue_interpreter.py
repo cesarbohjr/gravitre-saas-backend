@@ -137,3 +137,13 @@ def test_reported_feeling_does_not_hide_later_direct_feeling():
     result = interpret_dialogue('She said "I am excited". I am worried about the deadline.')
     assert "distress_cue" in result.cues
     assert "positive_excitement" not in result.cues
+
+
+@pytest.mark.parametrize("message", ["I'm not so happy about this.", "I'm never so happy about that."])
+def test_negated_embedded_positive_cue_is_not_affirmative(message):
+    assert "positive_excitement" not in interpret_dialogue(message).cues
+
+
+def test_later_direct_emotion_survives_negated_embedded_cue():
+    result = interpret_dialogue("I'm not so happy about that. I am excited about the new plan.")
+    assert "positive_excitement" in result.cues

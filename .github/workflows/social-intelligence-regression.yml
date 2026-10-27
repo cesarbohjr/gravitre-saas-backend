@@ -1,0 +1,19 @@
+name: Social intelligence evaluation contracts
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  evaluator-contracts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Offline evaluator schema, failure and paired-channel contracts
+        run: node --test scripts/social_intelligence/evaluator.test.ts

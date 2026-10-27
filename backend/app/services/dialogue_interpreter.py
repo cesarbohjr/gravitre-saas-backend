@@ -99,9 +99,9 @@ def interpret_dialogue(message: str, *, contextual: bool = False) -> DialogueInt
             # Negated self-reports are not evidence of the positive cue.
             # Evaluate each match separately so a later direct disclosure survives.
             matches = [match for match in matches if not re.search(
-                r"\\b(?:not|never)\\s+$", source[max(0, match.start() - 16):match.start()], re.I
+                r"\b(?:not|never)\s+$", source[max(0, match.start() - 16):match.start()], re.I
             ) and not re.match(
-                r"\\b(?:i[' ]?m|i am)\\s+not\\s+", source[match.start():], re.I
+                r"\b(?:i[' ]?m|i am)\s+not\s+", source[match.start():], re.I
             )]
         if matches:
             detected.append(name)
