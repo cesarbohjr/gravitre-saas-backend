@@ -1304,7 +1304,8 @@ export function useVoiceDuplexSession(options: Options) {
       const stability = Number(data.stability ?? alt?.stability ?? 0)
       const isFinal = Boolean(data.is_final || data.speech_final)
 
-      if (type === "SpeechStarted" || type === "speech_started") {\n        if (finalTimerRef.current) { clearTimeout(finalTimerRef.current); finalTimerRef.current = null }
+      if (type === "SpeechStarted" || type === "speech_started") {
+        if (finalTimerRef.current) { clearTimeout(finalTimerRef.current); finalTimerRef.current = null }
         // Acoustic activity alone may be speaker echo, a breath, or a backchannel.
         // Keep the assistant's floor until the transcript supplies speech evidence.
         marksRef.current.speech_started = performance.now()
@@ -2099,6 +2100,7 @@ export function useVoiceDuplexSession(options: Options) {
     // failure handler sees a session nobody is waiting on and neither retries nor
     // toasts. This is the user-initiated half of the interrupted-toast fix.
     sessionWantedRef.current = false
+    clearPendingFinal()
     startupEpochRef.current += 1
     reconnectAttemptRef.current = 0
     activeRef.current = false
@@ -2125,13 +2127,14 @@ export function useVoiceDuplexSession(options: Options) {
     return () => {
       // Unmount is deliberate: no retry, no toast on the way out.
       sessionWantedRef.current = false
+      clearPendingFinal()
       startupEpochRef.current += 1
       activeRef.current = false
       abortRef.current?.abort()
       stopPlaybackRef.current()
       teardownMicRef.current?.()
     }
-  }, [])
+  }, [clearPendingFinal])
 
   return {
     presence,
