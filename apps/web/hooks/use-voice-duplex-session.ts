@@ -337,8 +337,13 @@ export function useVoiceDuplexSession(options: Options) {
   // voice_overlap_duck_v1: the reply is ducked while the server classifies a
   // user turn that overlaps it (speech.duck / speech.unduck).
   const overlapDuckRef = useRef(createOverlapDuckState())
+  // Local duck is deliberately provisional: server intent classification owns
+  // interruption/cancellation. Never infer an intent from microphone amplitude.
+  const localDuckSinceRef = useRef<number | null>(null)
+  const localDuckActiveRef = useRef(false)
+  const localDuckLastLoudRef = useRef(0)
   const endOverlapDuck = () => {
-    if (overlapDuckRef.current.reset()) pcmPlayerRef.current?.setDuck(false)
+    if (overlapDuckRef.current.reset() && !localDuckActiveRef.current) pcmPlayerRef.current?.setDuck(false)
   }
   // The current reply was silenced by a "stop talking" (speech_stop) while its
   // text keeps streaming: no HTTP TTS fallback may speak it again.
@@ -808,7 +813,28 @@ export function useVoiceDuplexSession(options: Options) {
       const a = analyserRef.current
       if (a && activeRef.current) {
         setLevels(a.getLevels())
-        setAmplitude(a.getAmplitude())
+        const amplitude = a.getAmplitude()
+        setAmplitude(amplitude)
+        // Require sustained, relatively strong microphone input to reduce
+        // accidental ducks from ambient noise. Only Pipecat PCM playback is
+        // controlled; the server still determines whether to interrupt.
+        const now = performance.now()
+        const eligible = orchestrationRef.current === "pipecat" &&
+          !micMutedRef.current && pcmPlayerRef.current !== null
+        if (eligible && amplitude >= 0.38) {
+          localDuckLastLoudRef.current = now
+          localDuckSinceRef.current ??= now
+          if (!localDuckActiveRef.current && now - localDuckSinceRef.current >= 90) {
+            localDuckActiveRef.current = true
+            pcmPlayerRef.current?.setDuck(true)
+          }
+        } else {
+          localDuckSinceRef.current = null
+          if (localDuckActiveRef.current && now - localDuckLastLoudRef.current >= 350) {
+            localDuckActiveRef.current = false
+            if (!overlapDuckRef.current.isDucked()) pcmPlayerRef.current?.setDuck(false)
+          }
+        }
       }
       rafRef.current = requestAnimationFrame(tick)
     }
