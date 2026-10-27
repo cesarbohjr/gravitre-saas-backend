@@ -91,3 +91,20 @@ def test_legacy_barge_in_requires_transcript_not_just_noise():
     s = source()
     assert "interruptionWords.length >= 2 && confidence >= 0.5" in s
     assert "transcript.split(/\\s+/)" in s
+
+
+def test_duplicate_stt_final_does_not_start_second_reply():
+    s = source()
+    assert "normalizeTranscript(transcript) === normalizeTranscript(lastUserFinalRef.current)" in s
+    assert "lastUserFinalRef.current = ready" in s
+    assert "previousNorm.endsWith(nextNorm)" in s
+
+
+def test_voice_cleanup_cancels_pending_final_before_teardown():
+    s = source()
+    start = s.index("const stop = useCallback")
+    end = s.index("const toggle = useCallback", start)
+    assert "clearPendingFinal()" in s[start:end]
+    start = s.index("// Unmount only.")
+    end = s.index("return {\n    presence,", start)
+    assert "clearPendingFinal()" in s[start:end]
