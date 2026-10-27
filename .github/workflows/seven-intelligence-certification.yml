@@ -153,6 +153,7 @@ jobs:
           if-no-files-found: error
 
   certification:
+    timeout-minutes: 15
     if: always()
     needs: [offline-contracts, live-decision-differentials, deployed-lifecycle-baseline]
     runs-on: ubuntu-latest
