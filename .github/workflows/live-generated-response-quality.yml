@@ -44,7 +44,7 @@ jobs:
       - name: Install backend prompt-builder dependencies
         run: pip install -r backend/requirements.txt
       - name: Offline evaluator contracts
-        run: node --test scripts/social_intelligence/evaluator.test.ts
+        run: node --test scripts/social_intelligence/evaluator.test.ts scripts/social_intelligence/durable_results.test.ts
       - name: Freeze actual prompt builders (synthetic data only)
         run: python scripts/social_intelligence/build_bundle.py --output /tmp/social-eval-bundle.json
       - name: Evaluate all roles, paths, channels and adversarial cases

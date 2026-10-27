@@ -36,3 +36,34 @@ These never call a provider. No evaluator answer keys are runtime few-shots.
 Guidance preserves message priority: classical kernel context is system context;
 unified dialogue interpretation is compiled into user context. The paired-path
 offline regression checks this distinction explicitly.
+
+## Durable private Railway results
+
+`railway_runner.ts` performs bounded live inference authentication for Anthropic
+and OpenAI, then runs all 520 pairs with Anthropic when its authentication passes.
+`build_railway_runner.py` embeds a clean synthetic bundle and the tested modules
+into one compressed, self-contained Function source. The embedded JSON is
+byte-equivalent after decoding; source module SHA-256 hashes identify the harness.
+The evaluated prompt revision remains the bundle's commit, independently of the
+harness revision. This is source evaluation, not deployed production certification.
+
+The `certification-evidence` private bucket supplies endpoint, bucket, region and
+credentials through Railway references using the `EVAL_S3_*` variables. No
+application database credentials are needed. The runner has no HTTP listener.
+Each invocation uses a new run UUID under `runs/<source-sha>/<run-id>/`.
+It writes and reads back an initial RUNNING manifest, individual numbered event
+objects and a terminal manifest. Duplicate/inconsistent/incomplete PASS evidence
+is rejected; an abort records ERROR when storage is available. Stored RUNNING
+is never interpreted as PASS, including if a container is terminated mid-run.
+
+Stored fields are allowlisted: identities, status, counters and boolean rubric
+verdicts. Replies, prompts, raw exceptions, provider bodies, credentials, headers
+and signed URLs are omitted from these durable diagnostics. Unlike the older
+private synthetic reply report, this diagnostic format does not retain replies
+for manual response review. Human-readable `EVAL_RESULT`, `EVAL_EVIDENCE_READY`,
+`EVAL_DURABLE_COMPLETE` and fixed error messages make progress visible even when
+Railway's plain-text viewer omits structured JSON fields. Completion explicitly
+sets `production_certified=false`.
+
+Tests: `node --test scripts/social_intelligence/{evaluator,durable_results}.test.ts`
+and `python scripts/social_intelligence/test_build_railway_runner.py`.
