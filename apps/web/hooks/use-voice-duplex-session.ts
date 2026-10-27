@@ -282,6 +282,14 @@ export function useVoiceDuplexSession(options: Options) {
   const audioElRef = useRef<HTMLAudioElement | null>(null)
   const playbackWiredRef = useRef(false)
   const audioQueueRef = useRef<Blob[]>([])
+  // Preload the next encoded segment while the current one plays. Switching
+  // a single HTMLAudioElement at ended incurs an extra network/media decode
+  // turn; the standby element is already decoded enough to begin immediately.
+  const standbyAudioRef = useRef<HTMLAudioElement | null>(null)
+  const standbyBlobRef = useRef<Blob | null>(null)
+  const standbyUrlRef = useRef<string | null>(null)
+  const playingUrlRef = useRef<string | null>(null)
+  const playbackGenerationRef = useRef(0)
   const playingRef = useRef(false)
   const playbackBlockedRef = useRef(false)
   const marksRef = useRef<Record<string, number>>({})
@@ -701,6 +709,34 @@ export function useVoiceDuplexSession(options: Options) {
     [emitOutputDiagnostic, handlePcmActiveChange],
   )
 
+  const clearStandbyAudio = useCallback(() => {
+    const standby = standbyAudioRef.current
+    if (standby) {
+      standby.onended = null
+      standby.onerror = null
+      standby.pause()
+      standby.removeAttribute("src")
+    }
+    if (standbyUrlRef.current) URL.revokeObjectURL(standbyUrlRef.current)
+    standbyAudioRef.current = null
+    standbyBlobRef.current = null
+    standbyUrlRef.current = null
+  }, [])
+
+  const preloadNextAudio = useCallback(() => {
+    if (standbyAudioRef.current || playbackBlockedRef.current) return
+    const next = audioQueueRef.current[0]
+    if (!next) return
+    const el = new Audio()
+    const url = URL.createObjectURL(next)
+    el.preload = "auto"
+    el.src = url
+    el.load()
+    standbyAudioRef.current = el
+    standbyBlobRef.current = next
+    standbyUrlRef.current = url
+  }, [])
+
   const playNext = useCallback(async () => {
     if (playingRef.current) return
     // Autoplay gate is open — wait for resumeBlockedPlayback() (a fresh user
@@ -710,13 +746,36 @@ export function useVoiceDuplexSession(options: Options) {
     const next = audioQueueRef.current.shift()
     if (!next) return
     playingRef.current = true
+    const generation = playbackGenerationRef.current
 
     await unlockVoicePlayback()
+    if (generation !== playbackGenerationRef.current) {
+      playingRef.current = false
+      return
+    }
+
+    // A prepared element avoids a decode/startup gap at segment boundaries.
+    const standbyMatches = standbyBlobRef.current === next
+    if (standbyMatches && standbyAudioRef.current) {
+      audioElRef.current = standbyAudioRef.current
+      playingUrlRef.current = standbyUrlRef.current
+      standbyAudioRef.current = null
+      standbyBlobRef.current = null
+      standbyUrlRef.current = null
+      playbackWiredRef.current = false
+    } else if (standbyAudioRef.current) {
+      clearStandbyAudio()
+    }
 
     if (!audioElRef.current) {
       const el = new Audio()
       el.onended = () => {
+        if (generation !== playbackGenerationRef.current) return
         playingRef.current = false
+        if (playingUrlRef.current) URL.revokeObjectURL(playingUrlRef.current)
+        playingUrlRef.current = null
+        audioElRef.current = null
+        playbackWiredRef.current = false
         void playNext()
       }
       el.onerror = () => {
@@ -727,7 +786,18 @@ export function useVoiceDuplexSession(options: Options) {
       audioElRef.current = el
     }
     const el = audioElRef.current
-    const url = URL.createObjectURL(next)
+    // Rebind callbacks on a promoted standby player too.
+    el.onended = () => {
+      if (generation !== playbackGenerationRef.current) return
+      playingRef.current = false
+      if (playingUrlRef.current) URL.revokeObjectURL(playingUrlRef.current)
+      playingUrlRef.current = null
+      audioElRef.current = null
+      playbackWiredRef.current = false
+      void playNext()
+    }
+    const url = playingUrlRef.current || URL.createObjectURL(next)
+    playingUrlRef.current = url
     if (analyserRef.current && !playbackWiredRef.current) {
       try {
         analyserRef.current.connectElement(el)
@@ -736,9 +806,11 @@ export function useVoiceDuplexSession(options: Options) {
         /* analyser optional — still attempt audible playback */
       }
     }
-    el.src = url
+    if (el.src !== url) el.src = url
     try {
       await el.play()
+      if (generation !== playbackGenerationRef.current) return
+      preloadNextAudio()
       if (!browserAudioPlaybackStartedRef.current) {
         emitOutputDiagnostic("playback_started")
       }
@@ -747,6 +819,7 @@ export function useVoiceDuplexSession(options: Options) {
     } catch (err) {
       playingRef.current = false
       URL.revokeObjectURL(url)
+      playingUrlRef.current = null
       const blocked =
         err instanceof DOMException && (err.name === "NotAllowedError" || err.name === "AbortError")
       if (blocked) {
@@ -766,7 +839,7 @@ export function useVoiceDuplexSession(options: Options) {
       optsRef.current.onError?.("Audio playback failed during voice reply")
       void playNext()
     }
-  }, [emitOutputDiagnostic])
+  }, [clearStandbyAudio, emitOutputDiagnostic, preloadNextAudio])
 
   /** Fresh user gesture (tap "Enable sound" / mic) — retry the held-back reply. */
   const resumeBlockedPlayback = useCallback(async () => {
@@ -800,9 +873,10 @@ export function useVoiceDuplexSession(options: Options) {
       const bytes = new Uint8Array(raw.length)
       for (let i = 0; i < raw.length; i++) bytes[i] = raw.charCodeAt(i)
       audioQueueRef.current.push(new Blob([bytes], { type: contentType || "audio/mpeg" }))
-      playNext()
+      if (playingRef.current) preloadNextAudio()
+      void playNext()
     },
-    [playNext],
+    [playNext, preloadNextAudio],
   )
 
   const stopRaf = () => {
