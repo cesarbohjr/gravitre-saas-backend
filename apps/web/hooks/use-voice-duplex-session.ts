@@ -1320,7 +1320,8 @@ export function useVoiceDuplexSession(options: Options) {
     [bargeIn, runSessionTurn],
   )
 
-  const startPipecat = useCallback(async () => {
+  const startPipecat = useCallback(async (startupEpoch = startupEpochRef.current) => {
+    const isCurrentStartup = () => startupEpoch === startupEpochRef.current && sessionWantedRef.current
     // getVoiceStatus() already can't throw (internally caught). buildPipecatVoiceWsUrl()
     // returns `{ error }` for the expected auth/org gaps, but getSelectedOrgFromStorage()
     // reading corrupted localStorage — or anything else unforeseen — is still a bare
@@ -1328,6 +1329,7 @@ export function useVoiceDuplexSession(options: Options) {
     // already wraps the mic/WS setup) now wraps this too, so no path through
     // startPipecat() can throw silently past `void start()`'s caller.
     const status = await getVoiceStatus(true)
+    if (!isCurrentStartup()) return
     voiceStatusRef.current = status
     setVoiceStatus(status)
     phase1FlagsRef.current = voiceMicPhase1FlagsFromStatus(status)
@@ -1337,6 +1339,7 @@ export function useVoiceDuplexSession(options: Options) {
       agentId: optsRef.current.agentId,
       conversationId: optsRef.current.conversationId,
     })
+    if (!isCurrentStartup()) return
     if ("error" in built) {
       setPresence("error")
       optsRef.current.onError?.(built.error)
@@ -1378,6 +1381,7 @@ export function useVoiceDuplexSession(options: Options) {
       outputContextStateHandlerRef.current = onOutputStateChange
       ctx.addEventListener("statechange", onOutputStateChange)
       await ensureAudioOutputRunning(ctx)
+      if (!isCurrentStartup()) return
       pcmDecoderRef.current.reset()
       pcmPlayerRef.current?.dispose()
       pcmPlayerRef.current = null
@@ -1385,6 +1389,10 @@ export function useVoiceDuplexSession(options: Options) {
       const playerReady = createVoicePcmPlayer(ctx, { onActiveChange: handlePcmActiveChange })
 
       const { stream, tuning, prerollEnabled } = await setupVoiceMicrophone(ctx)
+      if (!isCurrentStartup()) {
+        stream.getTracks().forEach((track) => track.stop())
+        return
+      }
       // Opening the mic is what interrupts output on iOS. Resume after it, and
       // only then decide whether the person has to tap Enable sound.
       if (!(await ensureAudioOutputRunning(ctx)) && audioCtxRef.current === ctx) {
@@ -1392,7 +1400,7 @@ export function useVoiceDuplexSession(options: Options) {
         setPlaybackBlocked(true)
       }
       const player = await playerReady
-      if (audioCtxRef.current !== ctx) {
+      if (!isCurrentStartup() || audioCtxRef.current !== ctx) {
         // Torn down while we waited: release what this attempt acquired.
         player.dispose()
         // This attempt's mic is ours to stop even if a newer start already
@@ -1436,6 +1444,10 @@ export function useVoiceDuplexSession(options: Options) {
       dropAudioUntilRef.current = 0
 
       ws.onopen = () => {
+        if (!isCurrentStartup()) {
+          ws.close()
+          return
+        }
         activeRef.current = true
         socketOpenedRef.current = true
         // A clean open retires the retry ladder, so a later unrelated blip gets its
@@ -1793,7 +1805,7 @@ export function useVoiceDuplexSession(options: Options) {
         // a genuine interruption. Manual UI bargeIn() remains available.
         agentSpeaking: () => agentSpeakingRef.current,
       })
-      if (audioCtxRef.current !== ctx) {
+      if (!isCurrentStartup() || audioCtxRef.current !== ctx) {
         mic.dispose()
         stream.getTracks().forEach((t) => t.stop())
         if (streamRef.current === stream) streamRef.current = null
@@ -1859,7 +1871,7 @@ export function useVoiceDuplexSession(options: Options) {
       setOrchestration(orchestrationRef.current)
 
       if (usePipecat) {
-        await startPipecat()
+        await startPipecat(startupEpoch)
         return
       }
 
