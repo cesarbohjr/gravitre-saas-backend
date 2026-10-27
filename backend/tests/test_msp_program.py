@@ -711,3 +711,74 @@ def test_wholesale_setup_reports_honest_status():
     assert msp_billing.wholesale_setup(settings(stripe_price_id_msp_command_wholesale=""))["status"] == "partial"
     assert msp_billing.wholesale_setup(settings())["status"] == "ready"
     assert msp_billing.monthly_cents(120000, "year") == 10000
+
+
+# ---------------------------------------------------------------------------
+# Wholesale billing authorization and fail-closed entitlement propagation
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("sync_status", ["error", "not_configured"])
+def test_wholesale_sync_failure_never_changes_client_entitlements(world, monkeypatch, sync_status):
+    from app.routers import msp_program as router
+
+    calls = []
+    monkeypatch.setattr(router, "_client", lambda _settings: world.db)
+    monkeypatch.setattr(
+        msp_billing,
+        "sync_wholesale_quantities",
+        lambda *_args, **_kwargs: {"status": sync_status, "quantities": {"node": 1}},
+    )
+    monkeypatch.setattr(
+        msp_billing, "propagate_to_clients",
+        lambda *_args, **_kwargs: calls.append("propagated"),
+    )
+    with pytest.raises(HTTPException) as exc:
+        router.sync_wholesale_billing(
+            user={"user_id": world.msp_owner}, org_id=world.msp, settings=settings()
+        )
+    assert exc.value.status_code == 503
+    assert exc.value.detail["code"] == "wholesale_sync_unavailable"
+    assert calls == []
+
+
+@pytest.mark.parametrize("user_kind", ["msp_tech", "client_owner", "rival"])
+def test_wholesale_sync_rejects_unauthorized_caller_before_stripe(world, monkeypatch, user_kind):
+    from app.routers import msp_program as router
+
+    calls = []
+    monkeypatch.setattr(router, "_client", lambda _settings: world.db)
+    monkeypatch.setattr(
+        msp_billing, "sync_wholesale_quantities",
+        lambda *_args, **_kwargs: calls.append("stripe") or {"status": "synced"},
+    )
+    monkeypatch.setattr(
+        msp_billing, "propagate_to_clients",
+        lambda *_args, **_kwargs: calls.append("propagated"),
+    )
+    with pytest.raises(HTTPException) as exc:
+        router.sync_wholesale_billing(
+            user={"user_id": getattr(world, user_kind)}, org_id=world.msp, settings=settings()
+        )
+    assert exc.value.status_code == 403
+    assert calls == []
+
+
+def test_wholesale_sync_success_propagates_only_after_sync(world, monkeypatch):
+    from app.routers import msp_program as router
+
+    calls = []
+    monkeypatch.setattr(router, "_client", lambda _settings: world.db)
+    monkeypatch.setattr(
+        msp_billing, "sync_wholesale_quantities",
+        lambda *_args, **_kwargs: calls.append("synced") or {"status": "synced"},
+    )
+    monkeypatch.setattr(
+        msp_billing, "propagate_to_clients",
+        lambda *_args, **_kwargs: calls.append("propagated"),
+    )
+    result = router.sync_wholesale_billing(
+        user={"user_id": world.msp_admin}, org_id=world.msp, settings=settings()
+    )
+    assert result["status"] == "synced"
+    assert calls == ["synced", "propagated"]
