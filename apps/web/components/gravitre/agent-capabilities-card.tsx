@@ -1,9 +1,12 @@
 "use client"
 
 import { Shield, Plug, BookOpen, Brain } from "lucide-react"
+import { AgentConnectorRecommendations } from "@/components/connectors/agent-connector-recommendations"
+import type { AgentConnectorProfile } from "@/types/api"
 import { cn } from "@/lib/utils"
 
 type AgentCapabilitiesCardProps = {
+  connectorProfile?: AgentConnectorProfile
   capabilities?: string[]
   permissions?: string[]
   systems?: string[]
@@ -13,6 +16,7 @@ type AgentCapabilitiesCardProps = {
 }
 
 export function AgentCapabilitiesCard({
+  connectorProfile,
   capabilities = [],
   permissions = [],
   systems = [],
@@ -55,9 +59,9 @@ export function AgentCapabilitiesCard({
         />
         <CapabilityBlock
           icon={Plug}
-          title="Connectors"
+          title="Execution grants"
           items={systems}
-          empty="No connectors attached — connect tools to unlock actions"
+          empty="No execution grants configured; advisory work is available"
         />
         <CapabilityBlock
           icon={Brain}
@@ -66,6 +70,7 @@ export function AgentCapabilitiesCard({
           empty="Not reported until the agent has run"
         />
       </div>
+      {connectorProfile ? <AgentConnectorRecommendations profile={connectorProfile} /> : null}
     </section>
   )
 }

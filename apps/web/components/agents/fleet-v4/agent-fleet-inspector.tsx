@@ -1,5 +1,7 @@
 "use client"
 
+import { InstalledAgentConnectorRecommendations } from "@/components/connectors/agent-connector-recommendations"
+
 import Link from "next/link"
 import {
   ArrowUpRight,
@@ -274,7 +276,8 @@ export function AgentFleetInspectorBody({
           {agent.lastActionTime ? (
             <p className="mt-0.5 text-xs text-muted-foreground">{relativeTime(agent.lastActionTime)}</p>
           ) : null}
-        </section>
+        <InstalledAgentConnectorRecommendations agentId={agent.id} />
+    </section>
       </div>
 
       <nav

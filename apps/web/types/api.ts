@@ -2065,13 +2065,39 @@ export interface EnterpriseTransparencyExport {
   }
 }
 
+export interface AgentConnectorRecommendation {
+  connectorType: string
+  label: string
+  priority: number
+  group: "first" | "next" | "optional"
+  purpose: string
+  capabilities: string[]
+  supported: boolean
+  required: false
+  requiredForExecution: boolean
+  connectPath: string | null
+  state: "connected" | "available" | "needs_attention" | "not_supported"
+  stateLabel: string
+  connected: boolean
+  ready: boolean
+  canExecute: false
+}
+
+export interface AgentConnectorProfile {
+  schemaVersion: number
+  recommendations: AgentConnectorRecommendation[]
+  offlineCapabilities: string[]
+  noIntegrationRationale?: string | null
+  authorityNote: string
+}
+
 // Unified marketplace assets (MKT-5 / MKT-6)
 export interface MarketplaceConnectorChecklistItem {
   connectorType: string
   label: string
   required: boolean
   connected: boolean
-  connectPath: string
+  connectPath: string | null
   action_url?: string
   ready: boolean
   requirementNote?: string | null
@@ -2104,6 +2130,7 @@ export interface MarketplaceAssetSummary {
   installed: boolean
   installedAt?: string | null
   connectorChecklist: MarketplaceConnectorChecklistItem[]
+  connectorProfile?: AgentConnectorProfile
   connectorsReady: boolean
   requiredConnectorsConnected: number
   requiredConnectorsTotal: number
@@ -2187,6 +2214,7 @@ export interface MarketplaceAssetInstallCheck {
   canInstall: boolean
   blockers: MarketplaceInstallBlocker[]
   connectorChecklist: MarketplaceConnectorChecklistItem[]
+  connectorProfile?: AgentConnectorProfile
   connectorsReady?: boolean
   requiredConnectorsConnected?: number
   requiredConnectorsTotal?: number

@@ -1,5 +1,7 @@
 "use client"
 
+import { InstalledAgentConnectorRecommendations } from "@/components/connectors/agent-connector-recommendations"
+
 // Connectors Page - Integration Hub with Network Topology View
 import { Suspense, startTransition, useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
@@ -3520,6 +3522,7 @@ function ConnectorsPageContent() {
           ) : null}
           {!chromeCollapsed && connectors.length > 0 ? (
             <div className="-mx-4 mt-8 border-t border-[color:var(--g-border-default)] pt-2 md:-mx-6" data-testid="connectors-discovery">
+              {searchParams.get("agentId") ? <InstalledAgentConnectorRecommendations agentId={searchParams.get("agentId")!} /> : null}
               <ConnectorRecommendations onConnect={(type) => openAddModal(type)} />
               <AvailableConnectorsStrip
                 entries={availableToConnect}

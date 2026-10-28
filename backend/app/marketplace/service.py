@@ -183,6 +183,7 @@ def validate_connectors_for_asset(
     probe_apollo_discovery: bool = True,
     active_types: set[str] | None = None,
     staged_types: set[str] | None = None,
+    asset: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Return ``{can_install, blockers, checklist}`` (MKT-9.1 shape).
 
@@ -324,7 +325,13 @@ def validate_connectors_for_asset(
                     "needsConnection": needs_connection,
                 }
             )
+    profile = {}
+    if asset and asset.get("asset_type") == "ai_agent":
+        from app.services.agent_connector_profile import load_profile
+
+        profile["connectorProfile"] = load_profile(client, org_id, asset, environment_name=environment_name)
     return {
+        **profile,
         "can_install": len(blockers) == 0,
         "blockers": blockers,
         "checklist": checklist,
@@ -1949,6 +1956,7 @@ def install_asset(
         environment_name=environment_name,
         settings=None,
         probe_apollo_discovery=False,
+        asset=asset,
     )
     from app.marketplace.install_ready import merge_install_ready
 
@@ -2160,6 +2168,7 @@ def install_asset(
         "entities": installed,
         "deepLinks": deep_links,
         "connectorChecklist": connector_validation["checklist"],
+        **({"connectorProfile": connector_validation["connectorProfile"]} if "connectorProfile" in connector_validation else {}),
     }
 
 
@@ -2188,6 +2197,7 @@ def preview_install(
         environment_name=environment_name,
         settings=settings,
         probe_apollo_discovery=True,
+        asset=asset,
     )
     from app.marketplace.entitlements import get_entitlement_status
     from app.marketplace.install_ready import merge_install_ready
@@ -2226,5 +2236,6 @@ def preview_install(
         "blockers": ([] if asset.get("asset_type") == "ai_agent" else validation["blockers"]) + payment_blockers + ready["bindingBlockers"],
         "capabilityBlockers": validation["blockers"],
         "connectorChecklist": validation["checklist"],
+        **({"connectorProfile": validation["connectorProfile"]} if "connectorProfile" in validation else {}),
         **entitlement,
     }

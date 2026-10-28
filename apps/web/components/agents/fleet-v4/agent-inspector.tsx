@@ -1,5 +1,7 @@
 "use client"
 
+import { InstalledAgentConnectorRecommendations } from "@/components/connectors/agent-connector-recommendations"
+
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 import { relativeTime } from "@/lib/agent-job-result"
 import { GravitreAgentDepartmentBadge } from "./gravitre-agent-department-badge"
@@ -51,6 +53,7 @@ export function AgentInspector({
               <Field label="Current activity" value={agent.currentActivity ?? "Idle"} />
               <Field label="Last action" value={relativeTime(agent.lastActiveLabel)} />
               <Field label="Model" value={agent.model} />
+              <InstalledAgentConnectorRecommendations agentId={agent.id} />
               <Field label="Tools" value={agent.tools.join(", ") || "—"} />
               <Field label="Workflows" value={agent.workflows.join(", ") || "—"} />
               <div className="flex flex-wrap gap-2 border-t border-divide pt-4">
