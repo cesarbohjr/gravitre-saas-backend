@@ -27,7 +27,11 @@ class KernelBackend:
         # Existing rows are the synthetic candidate corpus, including stale or
         # poisoned records. Only final authoritative host checks grant recall.
         for row in rows:
-            scope = self.engine.scope(row["org_id"], row.get("created_by") or request.user_id,
+            # Organization-shared rows belong to the authorized reader's view;
+            # creator identity only narrows private rows. Final host checks still
+            # decide visibility, membership, consent and source liveness.
+            subject = row.get("created_by") if row.get("visibility") == "private" else request.user_id
+            scope = self.engine.scope(row["org_id"], subject or request.user_id,
                                       row.get("agent_id") or request.agent_id)
             await asyncio.to_thread(self.engine.upsert, scope, row["id"], row["content"])
         scope = self.engine.scope(request.org_id, request.user_id, request.agent_id)
@@ -106,7 +110,7 @@ def lifecycle(python, root):
 
 async def run(python, root):
     from tests.support.governed_memory_benchmark import execute_case
-    cases = json.loads((HERE / "cases.json").read_text())
+    cases = json.loads((HERE / "cases.json").read_text()) + json.loads((HERE / "sdk_cases.json").read_text())
     results = []
     for case in cases:
         engine = Mem0Engine(python, root / case["id"], namespace_key=b"synthetic-kernel-namespace-key-32")
@@ -140,6 +144,7 @@ async def run(python, root):
             "lifecycle": actual_lifecycle,
             "upstream": json.loads((HERE / "engine_source.json").read_text()),
             "dataset_sha256": hashlib.sha256((HERE / "cases.json").read_bytes()).hexdigest(),
+            "sdk_additional_dataset_sha256": hashlib.sha256((HERE / "sdk_cases.json").read_bytes()).hexdigest(),
             "embedding": "controlled_sha256_token_hash_128d", "neural_retrieval_quality": "NOT_RUN",
             "latency_scope": "local SDK + worker startup + canonical fixture dependencies, not provider SLA",
             "inference": "disabled; add infer=False; attempted calls fail", "cost_usd": None,

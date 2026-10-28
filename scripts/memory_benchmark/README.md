@@ -148,3 +148,12 @@ no vendor quality score, latency comparison, cost estimate or winner is emitted.
 Both actual engine statuses remain **NOT_RUN**. No Mem0/Letta install or runtime
 is implied. The actual isolated engine comparison remains an outstanding step;
 this replay closes the contract-to-canonical-gate gap, not the whole benchmark.
+
+## Shared-visibility positive control
+
+The executable SDK corpus also includes an organization-shared memory authored
+by another user. The native kernel permits that fact for the authorized reader;
+the SDK materialized view now preserves that visibility rather than incorrectly
+using the creator as its private namespace. Private memories remain narrowed to
+their owning subject. This adds one SDK-specific case to the unchanged 26-case
+canonical reference, for 27 SDK governance cases, plus 16 lifecycle checks.

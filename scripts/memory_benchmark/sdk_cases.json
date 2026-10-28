@@ -1,0 +1,12 @@
+[
+  {
+    "id": "sdk_org_shared_other_creator",
+    "row": {
+      "visibility": "org",
+      "created_by": "user-b"
+    },
+    "expected_ids": [
+      "m1"
+    ]
+  }
+]

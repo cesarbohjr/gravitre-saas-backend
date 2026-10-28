@@ -104,3 +104,12 @@ def test_cli_interpreter_selection_preserves_virtual_environment(tmp_path):
     interpreter = engine_interpreter_path(location / "bin/python")
     result = subprocess.check_output([str(interpreter), "-c", "import sys; print(sys.prefix)"], text=True)
     assert Path(result.strip()) == location
+
+
+@pytest.mark.asyncio
+async def test_sdk_shared_visibility_case_matches_native_authorization_contract():
+    from tests.support.governed_memory_benchmark import execute_case
+    cases = json.loads((HERE / "sdk_cases.json").read_text())
+    for case in cases:
+        result = await execute_case(case)
+        assert result["passed"], result

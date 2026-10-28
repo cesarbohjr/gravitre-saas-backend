@@ -142,3 +142,12 @@ Exact-head CI and combined regression evidence for this continuation are recorde
 in the PR description after execution. The existing no-merge/no-deploy and
 no-vendor-install boundary remains in force; the full engine comparison is still
 outstanding.
+
+## Shared-visibility positive control
+
+The executable SDK corpus also includes an organization-shared memory authored
+by another user. The native kernel permits that fact for the authorized reader;
+the SDK materialized view now preserves that visibility rather than incorrectly
+using the creator as its private namespace. Private memories remain narrowed to
+their owning subject. This adds one SDK-specific case to the unchanged 26-case
+canonical reference, for 27 SDK governance cases, plus 16 lifecycle checks.
