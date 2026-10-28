@@ -92,3 +92,15 @@ def test_oversized_command_is_rejected_before_process_construction(tmp_path):
     with pytest.raises(ValueError, match="Bounded"):
         engine.call("upsert", engine.scope("org", "user", "agent"), text="x" * 100001)
     assert engine.process is None and engine.commands == 0
+
+
+def test_cli_interpreter_selection_preserves_virtual_environment(tmp_path):
+    import subprocess
+    import venv
+    from run_engine import engine_interpreter_path
+
+    location = tmp_path / "sdk-environment"
+    venv.EnvBuilder(with_pip=False, symlinks=True).create(location)
+    interpreter = engine_interpreter_path(location / "bin/python")
+    result = subprocess.check_output([str(interpreter), "-c", "import sys; print(sys.prefix)"], text=True)
+    assert Path(result.strip()) == location

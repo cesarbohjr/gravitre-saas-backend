@@ -115,7 +115,7 @@ async def run(python, root):
             result = await execute_case(case, candidate_backend=KernelBackend(engine))
             expected = case.get("expected_writes", 0) if case.get("operation") == "learn" else case.get("expected_searches", 1)
             # No SDK is even constructed when canonical consent denies access.
-            if expected == 0 and engine.commands:
+            if (expected == 0) != (engine.commands == 0):
                 result["passed"] = False
             result["sdk_commands"] = engine.commands
         except Exception:
@@ -150,6 +150,12 @@ async def run(python, root):
                       "reason": "current Letta Code agent harness is not a governed retrieval adapter; autonomous/self-editing runtime excluded"}}
 
 
+def engine_interpreter_path(path):
+    # Resolving a venv's python symlink selects the base interpreter and loses
+    # the isolated site-packages. Preserve its path when executing the worker.
+    return path.expanduser().absolute()
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--engine-python", type=Path, required=True)
@@ -163,10 +169,11 @@ def main():
     guard.pytest_configure(None)
     try:
         with tempfile.TemporaryDirectory(prefix="gravitre-memory-sdk-") as directory:
-            report = asyncio.run(run(args.engine_python.resolve(), Path(directory)))
+            report = asyncio.run(run(engine_interpreter_path(args.engine_python), Path(directory)))
         if guard._attempts:
             raise RuntimeError("Parent attempted external network")
         report["external_attempts"] = 0 if report["status"] == "SDK_ENGINEERING_PASS" else None
+        report["source_dirty"] = False
         report["source_sha"] = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip()
         report["source_hashes"] = {p.name: hashlib.sha256(p.read_bytes()).hexdigest() for p in HERE.iterdir() if p.suffix in (".py", ".json", ".lock")}
     finally:
