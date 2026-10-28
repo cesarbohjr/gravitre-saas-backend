@@ -436,6 +436,8 @@ jobs:
           tests/services/test_ai_guardrails.py
           tests/services/test_model_policy_service.py
           tests/services/test_conversation_evaluation_bundle.py
+          tests/services/test_guidance_optimization.py
+          tests/services/test_dialogue_evaluation_feedback.py
           tests/services/test_social_intelligence_evaluation_bundle.py
           tests/services/test_governed_memory_benchmark.py
           tests/services/test_memory_quarantine_boundaries.py

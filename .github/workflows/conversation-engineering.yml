@@ -1,0 +1,36 @@
+name: Conversational guidance engineering
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  dspy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install isolated hash-pinned offline tooling
+        run: |
+          python -m venv "$RUNNER_TEMP/dspy-venv"
+          "$RUNNER_TEMP/dspy-venv/bin/pip" install --require-hashes -r scripts/guidance_optimization/requirements.lock
+      - name: Compile actual SDK with credentials and network denied
+        run: timeout 120s "$RUNNER_TEMP/dspy-venv/bin/python" scripts/guidance_optimization/verify_compilation.py "$RUNNER_TEMP/dspy-compilation.json"
+      - name: Exercise actual SDK HTTP transport against a local fixture
+        run: timeout 120s "$RUNNER_TEMP/dspy-venv/bin/python" scripts/guidance_optimization/verify_transport.py "$RUNNER_TEMP/dspy-transport.json"
+      - name: Audit isolated dependencies and explicit offline containment
+        run: |
+          python -m pip install pip-audit
+          python scripts/guidance_optimization/audit.py "$RUNNER_TEMP/dspy-audit.json"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: conversational-guidance-engineering
+          path: |
+            ${{ runner.temp }}/dspy-compilation.json
+            ${{ runner.temp }}/dspy-audit.json
+            ${{ runner.temp }}/dspy-transport.json

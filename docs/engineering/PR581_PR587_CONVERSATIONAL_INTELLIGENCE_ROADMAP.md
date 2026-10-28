@@ -1,6 +1,10 @@
 # PR581 + PR587 — Conversational intelligence research and adoption roadmap
 
-Status: **approved for planning and controlled research only**. This record preserves the user-requested research in both draft PR branches. It is not approval to install packages, activate telemetry, change provider credentials, publish Marketplace SKUs, merge, deploy, or change production policies.
+Status: **full engineering authorized for DSPy optimization/rollback, shared text/voice feedback and the previously approved Paid Media inventory**. The user's latest direct implementation instruction supersedes the earlier planning/package-install restrictions for this scope. Current engineering records are `docs/delivery/pr587-guidance-voice-feedback.md` on PR587 and `docs/engineering/PR581_PAID_MEDIA_IMPLEMENTATION.md` on PR581. Provider/physical/deployed acceptance follows the authorized release stage; both PRs remain open/draft and unmerged.
+
+Historical research authorization below is preserved as history, not a restriction on the newly authorized implementation.
+
+Original status: **approved for planning and controlled research only**. This record preserves the user-requested research in both draft PR branches. It is not approval to install packages, activate telemetry, change provider credentials, publish Marketplace SKUs, merge, deploy, or change production policies.
 
 ## Ownership and architecture
 - **PR587 (owner):** shared seven-capability intelligence, dialogue/session state, conversation planning, personality and tone behavior, governed memory, consent, voice turn taking, text/voice parity, evaluation, feedback, and versioned optimization.

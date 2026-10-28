@@ -724,6 +724,9 @@ class CognitiveTurnKernel:
                 "promoted_memory_ids": [],
             }
 
+        from app.services.dialogue_evaluation_feedback import record_turn_feedback
+
+        learn["evaluation_feedback"] = await record_turn_feedback(request, context, self.settings)
         context.learn = learn
         context.stages.append(
             StageRecord(stage="LEARN", ok=bool(learn.get("ok")), ms=_elapsed_ms(t0), meta=learn)

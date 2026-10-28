@@ -214,4 +214,7 @@ fabrication.
 
 def conversational_behavior_section() -> str:
     """Canonical shared conversational-behavior block for system prompts."""
-    return CONVERSATIONAL_BEHAVIOR_SECTION
+    from app.services.guidance_optimization import active_guidance
+
+    guidance = active_guidance()
+    return CONVERSATIONAL_BEHAVIOR_SECTION + ("\n\n" + guidance if guidance else "")
