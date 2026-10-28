@@ -63,6 +63,33 @@ FLAG_STATES = pytest.mark.parametrize("intents_on", [False, True], ids=["flag_of
 
 @pytest.fixture(autouse=True)
 def _isolated(monkeypatch: pytest.MonkeyPatch):
+    # The harness captures transcript persistence below. Connection-recovery
+    # bookkeeping still uses the real state service against this scoped DB,
+    # never a configured external Supabase host.
+    from tests.support.fake_supabase import FakeSupabase, FakeQuery
+
+    class Query(FakeQuery):
+        def filter(self, column, operation, value):
+            assert operation == "is" and value == "null"
+            return self.eq(column, None)
+
+        def _matches(self, row):
+            for column, value in self.filters:
+                if column == "task_state->>task_revision":
+                    current = (row.get("task_state") or {}).get("task_revision")
+                    if (None if current is None else str(current)) != value:
+                        return False
+                elif row.get(column) != value:
+                    return False
+            return True
+
+    class DB(FakeSupabase):
+        def table(self, name):
+            return Query(self, name)
+
+    db = DB()
+    db.seed_conversation(org_id=ORG, user_id=USER, conversation_id=CONV)
+    monkeypatch.setattr("app.services.conversation_state_service.get_supabase_client", lambda *_: db)
     chat_turn_cancel_service.reset_local_stops_for_tests()
     voice_barge_in_write.reset_write_effects_for_tests()
     monkeypatch.setattr(chat_turn_cancel_service, "get_redis_client", lambda _s=None: None)
@@ -375,6 +402,7 @@ class _Harness:
         self.first_turn_narration: str | None = None
         self.persisted: list[dict[str, Any]] = []
         self.during_first_turn: Any = None
+        self.first_turn_started = asyncio.Event()
 
     async def _stream(self, **kwargs: Any):
         from app.operators.stream_events import AssistantStreamComplete, AssistantStreamEvent
@@ -386,6 +414,7 @@ class _Harness:
                 await self.service._speak_narration(self.first_turn_narration)
             if self.during_first_turn is not None:
                 self.during_first_turn()
+            self.first_turn_started.set()
             await asyncio.sleep(5)
         yield AssistantStreamEvent(sse_type="text-delta", payload={"delta": "Here is the answer."})
         yield AssistantStreamComplete(full_content="", tool_results=[], react_result=None, model="test")
@@ -394,7 +423,9 @@ class _Harness:
         """Run turn 1, cut it off with a real barge-in, cancel the brain's task."""
         await BaseObject.setup(self.reporter, TaskManager())
         task = asyncio.create_task(self.service.process_frame(_ctx(first), FrameDirection.DOWNSTREAM))
-        await asyncio.sleep(0.3)
+        # Synchronize on the actual stream/write setup, not a machine-speed
+        # assumption. The interrupted request must exist before barge-in.
+        await asyncio.wait_for(self.first_turn_started.wait(), timeout=5)
         await self.reporter.process_frame(LLMFullResponseStartFrame(), FrameDirection.DOWNSTREAM)
         await self.reporter.process_frame(InterruptionFrame(), FrameDirection.DOWNSTREAM)
         task.cancel()

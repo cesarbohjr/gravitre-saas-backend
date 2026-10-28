@@ -421,6 +421,7 @@ jobs:
       - name: Scripted voice external-source isolation (offline)
         run: >-
           python -m pytest -p tests.offline_network -q
+          tests/services/pipecat_voice/test_interrupt_intents.py
           tests/services/pipecat_voice/test_cognitive_llm_barge_in_and_seed.py
           tests/services/pipecat_voice/test_cognitive_llm_speculative_adoption.py
           tests/services/pipecat_voice/test_cognitive_llm_text_streaming.py

@@ -73,3 +73,16 @@ planning/template assertions are unchanged, and both are added to the required
 offline CI gate. This is provider isolation, not a quality PASS or a relaxed
 network guard. Feedback receipt identity and telemetry readback also bind the
 agent, preventing same-tenant cross-agent reuse.
+
+The expanded joint run also exposed a 300ms timing assumption in the existing
+interruption harness: under load, barge-in could cancel the turn before the
+stream recorded the interrupted request. The harness now waits (bounded to five
+seconds) for an explicit stream-start signal after first-turn setup. Original
+correction, flag-off/on, cancellation and write-effect assertions are unchanged.
+The entire interruption suite is added to the required offline CI gate. This
+repairs the synchronization rather than rerunning a flaky result into a PASS.
+
+The interruption fixture also provides a filter-honoring, revision-aware local
+database for real connection-recovery bookkeeping, so background marker writes
+cannot escape to a configured Supabase host. This keeps the actual state service
+and tenant/revision filters in the test instead of suppressing persistence.
