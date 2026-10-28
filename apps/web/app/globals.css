@@ -6,23 +6,25 @@
 
 /*
  * Nodus Agent Template tokens → Gravitre (Gate 0 approved 2026-09-06).
- * Orange #f17463 → logo green #00a878. Light-first only.
+ * Layout stays Nodus; the ramp now mirrors the app's Workspace Redesign v4
+ * palette (carbon ink, porcelain/bone neutrals, #0b8a5c action green) so the
+ * marketing site and the product read as one system. Light-first only.
  * Vendor zip remains gitignored; committed mirrors live under apps/web/fonts.
  */
 @theme {
   --font-primary: var(--font-geist), 'Geist', ui-sans-serif, sans-serif;
-  --color-charcoal-900: #202020;
-  --color-charcoal-800: #29292e;
-  --color-charcoal-700: #343434;
-  --color-gray-100: #f9f9f9;
-  --color-gray-200: #f5f5f5;
-  --color-gray-300: #eaedf1;
-  --color-gray-400: #d7d7d7;
-  --color-gray-500: #c0c0c0;
-  --color-gray-600: #6b6b70;
-  /* Nodus --color-brand was #f17463; Gravitre brand green */
-  --color-brand: #00a878;
-  --color-brand-soft: #cff7e8;
+  --color-charcoal-900: #141513;
+  --color-charcoal-800: #1c1e1d;
+  --color-charcoal-700: #3f4b45;
+  --color-gray-100: #f7f7f4;
+  --color-gray-200: #efefea;
+  --color-gray-300: #e4e4df;
+  --color-gray-400: #cbcbc3;
+  --color-gray-500: #9a9d98;
+  --color-gray-600: #59665f;
+  /* Nodus --color-brand was #f17463; Gravitre action green (= --signal-600) */
+  --color-brand: #0b8a5c;
+  --color-brand-soft: #ddf3e8;
   --shadow-aceternity:
     0px 2px 3px -1px rgba(0, 0, 0, 0.1), 0px 1px 0px 0px rgba(25, 28, 33, 0.02),
     0px 0px 0px 1px rgba(25, 28, 33, 0.08);
@@ -66,12 +68,12 @@
   --dept-general: #8a8a85; --dept-general-tint: #efefea; --dept-general-ink: #33342f;
   /* Marketing System 4.0 — canvas aliases (Nodus daylight; marketing is light-locked, so these live on :root) */
   --g-marketing-canvas: #ffffff;
-  --g-marketing-surface: #f9f9f9;
+  --g-marketing-surface: #f7f7f4;
   --g-marketing-text: var(--g-text-primary);
   --g-marketing-muted: var(--g-text-muted);
   --g-marketing-border: var(--divide);
   --g-marketing-shadow: var(--g-shadow-surface);
-  --g-marketing-radius: 1rem;
+  --g-marketing-radius: 0.875rem;
   /* Emerald Intelligence — approved Gravitre product identity (2026-10). */
   --g-viz-primary: var(--g-emerald);
   --g-viz-secondary: var(--g-electric);
@@ -148,9 +150,9 @@
      structure is carried by border-default rules, so they must read on white. */
   --g-text-disabled: color-mix(in srgb, var(--g-text-muted) 55%, transparent);
   /* Nodus divide / pattern tokens */
-  --footer-link: #676767;
-  --canvas: #c0c0c0;
-  --canvas-fill: #d7d7d7;
+  --footer-link: #59665f;
+  --canvas: #cbcbc3;
+  --canvas-fill: #e4e4df;
   --g-shadow-product: 0 20px 48px -16px oklch(0.22 0.02 165 / 0.18), 0 8px 20px -8px oklch(0.22 0.02 165 / 0.08);
   --g-blur-atmosphere: 64px;
   /* Duration + ease base */

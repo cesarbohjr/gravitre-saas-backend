@@ -11,6 +11,7 @@ import {
 } from "@/components/marketing/nodus/agentic-intelligence/card"
 import { Container } from "@/components/marketing/nodus/container"
 import { DivideX } from "@/components/marketing/nodus/divide"
+import { HeroImage } from "@/components/marketing/nodus/hero-image"
 import {
   MarketingPageEndCta,
   MarketingPageHero,
@@ -88,6 +89,13 @@ export function FeaturesPage() {
         </div>
       </MarketingPageHero>
 
+      <DivideX />
+      <HeroImage
+        src="/product/app-agents-team.png"
+        alt="Gravitre Agents: your AI workforce by department"
+        width={2880}
+        height={1620}
+      />
       <DivideX />
 
       <GravitreSection>

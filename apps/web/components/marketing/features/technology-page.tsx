@@ -9,6 +9,7 @@ import {
 } from "@/components/icons/nucleo/semantic"
 import { Button } from "@/components/marketing/nodus/button"
 import { DivideX } from "@/components/marketing/nodus/divide"
+import { HeroImage } from "@/components/marketing/nodus/hero-image"
 import { MarketingPageEndCta, MarketingPageHero } from "@/components/marketing/nodus/page-shell"
 import {
   AgentOrchestrationField,
@@ -65,6 +66,13 @@ export function TechnologyPage() {
         </GravitreReveal>
       </MarketingPageHero>
 
+      <DivideX />
+      <HeroImage
+        src="/product/app-connectors-hub.png"
+        alt="Gravitre Connectors: each system from connected to ready for agents"
+        width={2880}
+        height={1620}
+      />
       <DivideX />
 
       <GravitreSection>

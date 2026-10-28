@@ -5,13 +5,26 @@ import { Dot } from "./common/dots"
 
 /**
  * Hero product screenshot — server-rendered for crisp marketing display.
- * Uses the full-resolution dashboard capture in public/nodus/.
+ * Defaults to the full-resolution dashboard capture in public/nodus/; other
+ * pages pass their own capture (scripts/capture-product-shots.mjs).
  *
  * The corner `Dot`s are a small client island (mousemove + framer-motion) —
  * matching the Nodus reference's hover glow. The `<Image>` itself stays a
  * plain server-rendered element with `priority`, so this doesn't touch LCP.
  */
-export const HeroImage = () => {
+type HeroImageProps = {
+  src?: string
+  alt?: string
+  width?: number
+  height?: number
+}
+
+export const HeroImage = ({
+  src = "/nodus/dashboard@3x.png",
+  alt = "Gravitre product preview",
+  width = 3312,
+  height = 1863,
+}: HeroImageProps = {}) => {
   return (
     <Container className="border-divide relative flex items-start justify-start md:border-x bg-gray-100 p-2 perspective-distant md:p-4 lg:p-8">
       <Dot top left />
@@ -21,15 +34,15 @@ export const HeroImage = () => {
       <div className="relative w-full">
         <div className="relative z-10 h-full w-full">
           <Image
-            src="/nodus/dashboard@3x.png"
-            alt="Gravitre product preview"
+            src={src}
+            alt={alt}
             className="w-full"
             priority
             fetchPriority="high"
             quality={75}
             sizes="(max-width: 1024px) 100vw, min(100vw, 1280px)"
-            width={3312}
-            height={1860}
+            width={width}
+            height={height}
             draggable={false}
           />
         </div>
