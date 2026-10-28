@@ -60,6 +60,13 @@ def _date(value: Any) -> datetime | None:
 
 
 def live_memory_row(row: dict, *, org_id: str, user_id: str | None, now: datetime, retention_days: int | None = None) -> bool:
+    from app.services.memory_contamination_guard import SOURCE_UNTRUSTED_EXTERNAL, looks_like_injection
+
+    if row.get("blocked_injection") is True or (
+        row.get("source_class") == SOURCE_UNTRUSTED_EXTERNAL
+        and looks_like_injection(str(row.get("content") or ""))
+    ):
+        return False
     if row.get("org_id") != org_id or row.get("deleted_at") or row.get("superseded_by"):
         return False
     if row.get("is_active") is not True or row.get("is_current") is not True:
@@ -118,6 +125,8 @@ def filter_dialogue_recall(client: Any, org_id: str, user_id: str | None, rows: 
     kept = []
     seen = set()
     for hit in rows:
+        if not isinstance(hit, dict):
+            continue
         rid = str(hit.get("id") or "")
         row = current.get(rid)
         if row is None or rid in seen:
