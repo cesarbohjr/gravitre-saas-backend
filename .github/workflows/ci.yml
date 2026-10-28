@@ -209,6 +209,33 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements-dev.txt
 
+      - name: Pinned Mem0 SDK engineering integration (isolated, no provider calls)
+        run: |
+          python -m venv "$RUNNER_TEMP/mem0-engine-venv"
+          "$RUNNER_TEMP/mem0-engine-venv/bin/pip" install --require-hashes -r ../scripts/memory_benchmark/engine-requirements.lock
+          mkdir -p "$RUNNER_TEMP/mem0-engine-source"
+          git -C "$RUNNER_TEMP/mem0-engine-source" init
+          git -C "$RUNNER_TEMP/mem0-engine-source" remote add origin https://github.com/mem0ai/mem0.git
+          git -C "$RUNNER_TEMP/mem0-engine-source" fetch --depth=1 origin 26cdefb46600c0fa5953c4b5ee5003c125539fc4
+          git -C "$RUNNER_TEMP/mem0-engine-source" checkout --detach FETCH_HEAD
+          test "$(git -C "$RUNNER_TEMP/mem0-engine-source" rev-parse HEAD)" = 26cdefb46600c0fa5953c4b5ee5003c125539fc4
+          "$RUNNER_TEMP/mem0-engine-venv/bin/pip" install --no-deps --no-build-isolation "$RUNNER_TEMP/mem0-engine-source"
+          timeout 300s python ../scripts/memory_benchmark/run_engine.py --engine-python "$RUNNER_TEMP/mem0-engine-venv/bin/python" --output "$RUNNER_TEMP/mem0-sdk-report.json"
+        env:
+          APP_ENV: dev
+          SUPABASE_URL: https://test.supabase.co
+          SUPABASE_ANON_KEY: anon-test
+          SUPABASE_SERVICE_ROLE_KEY: service-role-test
+          OPENAI_API_KEY: sk-test-openai
+
+      - name: Upload sanitized Mem0 engineering evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mem0-sdk-engineering-evidence
+          path: ${{ runner.temp }}/mem0-sdk-report.json
+          if-no-files-found: warn
+
       - name: Verify bounded media decoder
         run: |
           if command -v ffmpeg >/dev/null 2>&1; then
@@ -316,33 +343,6 @@ jobs:
           tests/services/test_memory_source_liveness.py
         env:
           APP_ENV: dev
-
-      - name: Pinned Mem0 SDK engineering integration (isolated, no provider calls)
-        run: |
-          python -m venv "$RUNNER_TEMP/mem0-engine-venv"
-          "$RUNNER_TEMP/mem0-engine-venv/bin/pip" install --require-hashes -r ../scripts/memory_benchmark/engine-requirements.lock
-          mkdir -p "$RUNNER_TEMP/mem0-engine-source"
-          git -C "$RUNNER_TEMP/mem0-engine-source" init
-          git -C "$RUNNER_TEMP/mem0-engine-source" remote add origin https://github.com/mem0ai/mem0.git
-          git -C "$RUNNER_TEMP/mem0-engine-source" fetch --depth=1 origin 26cdefb46600c0fa5953c4b5ee5003c125539fc4
-          git -C "$RUNNER_TEMP/mem0-engine-source" checkout --detach FETCH_HEAD
-          test "$(git -C "$RUNNER_TEMP/mem0-engine-source" rev-parse HEAD)" = 26cdefb46600c0fa5953c4b5ee5003c125539fc4
-          "$RUNNER_TEMP/mem0-engine-venv/bin/pip" install --no-deps --no-build-isolation "$RUNNER_TEMP/mem0-engine-source"
-          timeout 300s python ../scripts/memory_benchmark/run_engine.py --engine-python "$RUNNER_TEMP/mem0-engine-venv/bin/python" --output "$RUNNER_TEMP/mem0-sdk-report.json"
-        env:
-          APP_ENV: dev
-          SUPABASE_URL: https://test.supabase.co
-          SUPABASE_ANON_KEY: anon-test
-          SUPABASE_SERVICE_ROLE_KEY: service-role-test
-          OPENAI_API_KEY: sk-test-openai
-
-      - name: Upload sanitized Mem0 engineering evidence
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: mem0-sdk-engineering-evidence
-          path: ${{ runner.temp }}/mem0-sdk-report.json
-          if-no-files-found: warn
 
       - name: Workflow approval projection contract
         run: >-
