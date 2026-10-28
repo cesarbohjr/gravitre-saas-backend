@@ -16,6 +16,6 @@ jobs:
         with:
           node-version: '24'
       - name: Offline evaluator schema, failure and paired-channel contracts
-        run: node --test scripts/social_intelligence/evaluator.test.ts scripts/social_intelligence/durable_results.test.ts
+        run: node --test scripts/social_intelligence/evaluator.test.ts scripts/social_intelligence/durable_results.test.ts scripts/social_intelligence/conversation_evaluator.test.ts
       - name: Self-contained runner payload contracts
         run: python3 scripts/social_intelligence/test_build_railway_runner.py

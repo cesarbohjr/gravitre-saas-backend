@@ -408,6 +408,8 @@ jobs:
           tests/services/pipecat_voice/test_voice_shared_turn_guardrails.py
           tests/services/test_ai_guardrails.py
           tests/services/test_model_policy_service.py
+          tests/services/test_conversation_evaluation_bundle.py
+          tests/services/test_social_intelligence_evaluation_bundle.py
         env:
           APP_ENV: dev
           SUPABASE_URL: https://test.supabase.co

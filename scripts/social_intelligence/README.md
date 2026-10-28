@@ -68,3 +68,52 @@ sets `production_certified=false`.
 
 Tests: `node --test scripts/social_intelligence/{evaluator,durable_results}.test.ts`
 and `python scripts/social_intelligence/test_build_railway_runner.py`.
+
+## Separate generated-history multi-turn baseline
+
+The existing 26 scenarios / 520 paired cases are unchanged. The new
+`build_conversation_bundle.py --output <scratch-path>` builds a separate pinned
+dataset: 12 three-turn scenarios, ten canonical personas, unified/classical
+paths and paired text/voice. This defines 240 paired conversations and 720
+turn checkpoints; it does **not** mean any live evaluation has run.
+
+The corpus covers intent retention, corrections, non-repetition, requested
+brevity, naturalness, role consistency, uncertainty, attribution, tool choice,
+handoff honesty and governance. Its six Marketplace target labels reference
+already approved agents; labels grant no role, SKU, connector or permission.
+Dialogue and current-session continuity sections come from the real builders.
+No reference assistant replies are provided: each channel's actual generated
+reply becomes that channel's history for the next turn. Histories reset between
+scenarios and personas. The common `generationInput` helper preserves the
+existing unified user-context / classical system-context placement.
+
+`runConversationEvaluation(bundle, dependencies)` has no default transport,
+credential lookup, deployment or runtime activation. Generation and judging
+callbacks must be explicitly supplied by an authorized host. Missing callbacks
+are `NOT_RUN`; fixture-mode success is `CONTRACT_PASS`, never generated quality
+or production certification. Generated mode requires callback-reported provider
+provenance and request IDs, but cannot independently authenticate callbacks or
+their claimed receipts. A trusted host must retain provider evidence separately.
+No live callback is connected or invoked by this increment.
+
+Each call has an abortable deadline (at most 60 seconds), without automatic
+retries. Calls are sequential and bounded to 2,000 turn pairs. A failed turn
+does not invent history for later turns; authorization errors stop the suite.
+The existing strict eight-criterion judge rubric remains authoritative;
+explicit user-requested word limits also gate channel style. No new global
+product-quality threshold is invented or silently applied to the old baseline.
+
+Reports bind evaluator version, clean source SHA/file hashes, dataset hash and
+baseline-case hash. They include category pass/fail/error counts, negative
+security outcomes, measured callback latency, hashed reply/request references
+and supplied token usage. Missing usage stays unknown; cost is `null` without
+verified pricing. Prompts, replies, raw request IDs and provider exception bodies
+are excluded from reports. These diagnostics are not wired to the older durable
+520-pair reporter or to Langfuse. Production certification is always false.
+
+Offline contracts:
+`node --test scripts/social_intelligence/conversation_evaluator.test.ts` and
+`pytest -p tests.offline_network tests/services/test_conversation_evaluation_bundle.py`
+(run pytest from `backend`). CI retains the existing evaluator contracts and
+adds these tests. Unit tests use injected synthetic callbacks; they verify
+harness behavior, not naturalness or live conversational quality.
