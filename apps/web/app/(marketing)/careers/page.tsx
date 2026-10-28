@@ -3,8 +3,8 @@ import { Badge } from "@/components/marketing/nodus/badge"
 import { Button } from "@/components/marketing/nodus/button"
 import { Container } from "@/components/marketing/nodus/container"
 import { CTA } from "@/components/marketing/nodus/cta"
-import { DivideX } from "@/components/marketing/nodus/divide"
 import { MarketingScene } from "@/components/marketing/nodus/scene"
+import { DivideX } from "@/components/marketing/nodus/divide"
 import { SectionHeading } from "@/components/marketing/nodus/seciton-heading"
 import { SubHeading } from "@/components/marketing/nodus/subheading"
 import {
@@ -87,15 +87,6 @@ export default function CareersPage() {
             </Button>
           </div>
           <div className="flex flex-col justify-center gap-4 px-4 py-10 md:px-8">
-            <MarketingScene
-              name="market-product"
-              width={300}
-              height={190}
-              aspect="aspect-[16/10]"
-              priority
-              status="Planning the next release together"
-              className="mb-4"
-            />
             <p className="font-mono text-xs tracking-tight text-muted-foreground uppercase">
               How we work
             </p>

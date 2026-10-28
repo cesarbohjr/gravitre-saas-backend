@@ -3,9 +3,9 @@ import { Badge } from "@/components/marketing/nodus/badge"
 import { Button } from "@/components/marketing/nodus/button"
 import { Container } from "@/components/marketing/nodus/container"
 import { CTA } from "@/components/marketing/nodus/cta"
+import { MarketingScene } from "@/components/marketing/nodus/scene"
 import { DivideX } from "@/components/marketing/nodus/divide"
 import { Heading } from "@/components/marketing/nodus/heading"
-import { MarketingScene } from "@/components/marketing/nodus/scene"
 import { SectionHeading } from "@/components/marketing/nodus/seciton-heading"
 import { SubHeading } from "@/components/marketing/nodus/subheading"
 import {
@@ -42,16 +42,7 @@ export default function AboutPage() {
               Put Gravitre to work
             </Button>
           </div>
-          <div className="flex flex-col gap-4">
-            <MarketingScene
-              name="market-pipeline"
-              width={300}
-              height={190}
-              aspect="aspect-[16/10]"
-              priority
-              status="Sales, Support and Finance working from one brain"
-            />
-            <div className="border-divide rounded-3xl border bg-[color:var(--g-marketing-surface)] p-6 md:p-8">
+          <div className="border-divide flex flex-col justify-center rounded-3xl border bg-[color:var(--g-marketing-surface)] p-8 md:p-10">
             <p className="font-mono text-xs tracking-tight text-muted-foreground uppercase">
               What we believe
             </p>
@@ -61,7 +52,6 @@ export default function AboutPage() {
             <p className="mt-6 text-sm text-gray-600">
               {MARKETING_COPY.homeNarrative.categoryLine}
             </p>
-            </div>
           </div>
         </div>
       </Container>

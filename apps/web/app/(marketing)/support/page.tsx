@@ -4,6 +4,8 @@ import Link from "next/link"
 import {
   Search,
   BookOpen,
+  MessageSquare,
+  Mail,
   HelpCircle,
   Zap,
   Shield,
@@ -176,7 +178,6 @@ export default function SupportPage() {
             height={190}
             aspect="aspect-[4/3]"
             status="Most answers are a guide away"
-            tone="green"
             className="md:sticky md:top-28"
           />
           <div>
@@ -234,29 +235,35 @@ export default function SupportPage() {
           className="mb-8"
         />
         <div className="grid gap-6 sm:grid-cols-3">
-          <GravitreFlow className="group rounded-xl border border-border bg-card p-3 pb-6 text-center transition-all hover:border-primary/30 hover:shadow-md">
+          <GravitreFlow className="group rounded-xl border border-border bg-card p-6 text-center transition-all hover:border-primary/30 hover:shadow-md">
             <Link href="/docs" className="block">
-              <MarketingScene name="spot-report-easel" width={300} height={190} aspect="aspect-[16/10]" className="mb-4" />
+              <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-primary/15 mb-4">
+                <BookOpen className="h-5 w-5 text-primary" />
+              </div>
               <h3 className="font-medium text-foreground mb-1">Documentation</h3>
               <p className="text-sm text-muted-foreground">Guides, concepts, and API reference</p>
             </Link>
           </GravitreFlow>
           <GravitreFlow
             delay={0.1}
-            className="group rounded-xl border border-border bg-card p-3 pb-6 text-center transition-all hover:border-primary/30 hover:shadow-md"
+            className="group rounded-xl border border-border bg-card p-6 text-center transition-all hover:border-primary/30 hover:shadow-md"
           >
             <a href="mailto:support@gravitre.app" className="block">
-              <MarketingScene name="market-tickets" width={300} height={190} aspect="aspect-[16/10]" className="mb-4" />
+              <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-primary/15 mb-4">
+                <Mail className="h-5 w-5 text-primary" />
+              </div>
               <h3 className="font-medium text-foreground mb-1">Email support</h3>
               <p className="text-sm text-muted-foreground">support@gravitre.app</p>
             </a>
           </GravitreFlow>
           <GravitreResolve
             delay={0.2}
-            className="group rounded-xl border border-border bg-card p-3 pb-6 text-center transition-all hover:border-primary/30 hover:shadow-md"
+            className="group rounded-xl border border-border bg-card p-6 text-center transition-all hover:border-primary/30 hover:shadow-md"
           >
             <Link href="/contact" className="block">
-              <MarketingScene name="ws-approvals-inbox-tray" width={320} height={190} aspect="aspect-[16/10]" className="mb-4" />
+              <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-primary/15 mb-4">
+                <MessageSquare className="h-5 w-5 text-primary" />
+              </div>
               <h3 className="font-medium text-foreground mb-1">Contact</h3>
               <p className="text-sm text-muted-foreground">Send a message through our contact form</p>
             </Link>

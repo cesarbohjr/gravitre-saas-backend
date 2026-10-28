@@ -30,20 +30,12 @@ import {
   StageTraceVisual,
 } from "@/components/marketing/system"
 
-/** App illustrations used as guide thumbnails (public/illustrations). */
+/** App illustrations (no people) used as featured-guide thumbnails. */
 const GUIDE_ART: Record<string, string> = {
   "Install the Chrome browser extension": "market-site-health",
   "Create Your First AI Agent": "market-leads",
   "Understanding Agent Capabilities": "market-campaigns",
   "Building Multi-Step Workflows": "spot-workflows",
-}
-
-const CATEGORY_ART: Record<string, string> = {
-  "getting-started": "market-onboarding",
-  agents: "market-leads",
-  workflows: "spot-workflows",
-  integrations: "market-deals",
-  "best-practices": "spot-reports",
 }
 
 const categories = [
@@ -292,11 +284,11 @@ export default function GuidesPage() {
                 className="group relative block overflow-hidden rounded-2xl border border-border bg-card transition-all hover:border-primary/30 hover:shadow-lg"
               >
                 <MarketingScene
-                  name={GUIDE_ART[guide.title] ?? CATEGORY_ART[guide.category] ?? "spot-reports"}
-                  width={320}
-                  height={230}
+                  name={GUIDE_ART[guide.title] ?? "spot-reports"}
+                  width={300}
+                  height={190}
                   aspect="aspect-video"
-                  className="rounded-none border-0 border-b transition-transform"
+                  className="rounded-none border-0 border-b"
                 />
                 <div className="p-6">
                   <div className="flex items-center gap-3 mb-3">
@@ -413,13 +405,9 @@ export default function GuidesPage() {
         <div className="mx-auto max-w-4xl">
           <GravitreReveal className="rounded-2xl border border-border bg-[color:var(--g-marketing-surface)] p-8 lg:p-12">
             <div className="flex items-center gap-4 mb-6">
-              <MarketingScene
-                name="spot-schedules"
-                width={300}
-                height={190}
-                aspect="aspect-[4/3]"
-                className="w-24 shrink-0 rounded-xl"
-              />
+              <div className="h-14 w-14 rounded-xl bg-muted flex items-center justify-center">
+                <BookOpen className="h-7 w-7 text-muted-foreground" />
+              </div>
               <div>
                 <h2 className="text-2xl font-bold text-foreground">Prefer docs?</h2>
                 <p className="text-muted-foreground">Written guides live in the documentation hub</p>
