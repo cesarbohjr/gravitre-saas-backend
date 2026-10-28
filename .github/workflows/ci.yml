@@ -384,6 +384,7 @@ jobs:
           tests/marketplace/test_agency_agents_catalog.py
           tests/routers/test_marketplace_install_pack_routes.py
           tests/services/test_native_agent_adapters.py
+          tests/marketplace/test_paid_media.py
           tests/services/test_pr581_shared_prompt_compatibility.py
           tests/operators/test_agent_intelligence.py::test_streaming_emits_text_events_when_react_returns_answer_only
         env:

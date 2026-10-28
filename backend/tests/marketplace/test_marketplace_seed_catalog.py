@@ -12,7 +12,7 @@ def test_catalog_asset_counts():
     by_type: dict[str, int] = {}
     for asset in assets:
         by_type[asset.asset_type] = by_type.get(asset.asset_type, 0) + 1
-    assert by_type["ai_agent"] == 23
+    assert by_type["ai_agent"] == 26  # Three explicitly approved Paid Media specialists.
     assert by_type["workflow"] == 20
     assert by_type["knowledge_pack"] == 15
     assert by_type["department_pack"] == 6
@@ -24,7 +24,7 @@ def test_catalog_asset_counts():
     assert by_type.get("dataset_pack", 0) == 1
     assert by_type.get("dashboard_pack", 0) == 1
     assert by_type.get("outcome_pack", 0) == 1
-    assert len(assets) == 88
+    assert len(assets) == 91
 
 
 # Formerly deferred Slice A binding failures — remediated (Part 2 finish).

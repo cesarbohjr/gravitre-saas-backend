@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from app.capabilities.agency_enrichment import render_agency_enrichment
+from app.capabilities.paid_media import render_paid_media
 from app.capabilities.agent_manifest import render_agent_guidance
 
 DEFAULT_HANDOFF_FORMAT = (
@@ -580,6 +581,9 @@ def build_agent_instructions_section(agent: dict[str, Any] | None, *, max_custom
     role_guidance = render_agent_guidance(agent.get("role"))
     if role_guidance:
         lines.append(role_guidance)
+    paid_media = render_paid_media(agent)
+    if paid_media:
+        lines.append(paid_media)
     enrichment = render_agency_enrichment(agent)
     if enrichment:
         lines.append(enrichment)
@@ -669,6 +673,9 @@ def build_agent_system_prompt(
     role_guidance = render_agent_guidance(agent.get("role"))
     if role_guidance:
         lines.append(role_guidance)
+    paid_media = render_paid_media(agent)
+    if paid_media:
+        lines.append(paid_media)
     enrichment = render_agency_enrichment(agent)
     if enrichment:
         lines.append(enrichment)

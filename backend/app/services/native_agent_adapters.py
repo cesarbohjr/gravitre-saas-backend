@@ -152,3 +152,44 @@ def export_langfuse_run(
         # failure must not change the business run or claim delivery succeeded.
         return "export_failed"
     return "submitted"
+
+
+def export_langfuse_feedback(
+    client: Any, receipt_id: str, *, scope: AdapterScope, permit: TelemetryPermit,
+    correlation_key: bytes, langfuse_client: Any,
+) -> str:
+    """Submit allowlisted metrics from a verified tenant-local feedback receipt.
+
+    This does not export prompts or claim a durable remote receipt. Local ledger
+    readback and remote submission remain separate, observable outcomes.
+    """
+    if permit.scope != scope or permit.enabled is not True:
+        return "disabled"
+    if not isinstance(correlation_key, bytes) or len(correlation_key) < 32:
+        raise ValueError("A dedicated correlation key of at least 32 bytes is required")
+    rows = (client.table("intelligence_outcome_events").select("id,org_id,entity_id,outcome_event,metadata")
+            .eq("org_id", scope.org_id).eq("id", receipt_id).eq("outcome_event", "dialogue_evaluated")
+            .limit(1).execute().data or [])
+    if len(rows) != 1:
+        return "receipt_missing"
+    row = rows[0]
+    if row.get("org_id") != scope.org_id or row.get("entity_id") != scope.run_id or row.get("outcome_event") != "dialogue_evaluated":
+        raise ValueError("Feedback receipt scope mismatch")
+    metrics = safe_normalize_stored_dict(row.get("metadata"))
+    if metrics.get("evaluator_version") != "dialogue-metrics-v1" or metrics.get("channel") not in {"text", "voice"}:
+        raise ValueError("Invalid feedback metrics")
+    values = {}
+    for key, maximum in (("stage_count",20),("failed_stage_count",20),("duration_ms",604800000)):
+        value = metrics.get(key)
+        if type(value) is not int or not 0 <= value <= maximum:
+            raise ValueError("Invalid feedback metric range")
+        values[key] = value
+    scoped_id = json.dumps([scope.org_id, scope.agent_id, scope.run_id], separators=(",", ":"))
+    metadata = {"schema_version":1, "run_ref":hmac.new(correlation_key,scoped_id.encode(),hashlib.sha256).hexdigest(),
+                "channel":metrics["channel"], "evaluator_version":"dialogue-metrics-v1", **values}
+    try:
+        with langfuse_client.start_as_current_observation(as_type="span",name="gravitre.dialogue_evaluation") as span:
+            span.update(metadata=metadata)
+    except Exception:
+        return "export_failed"
+    return "submitted"

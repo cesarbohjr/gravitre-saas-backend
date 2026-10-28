@@ -18,7 +18,7 @@ from app.marketplace.versions import MarketplaceVersionError, rollback_asset_ver
 from app.operators.agent_prompts import build_agent_instructions_section, build_agent_system_prompt
 from tests.support.fake_supabase import FakeAPIError, FakeQuery, FakeResponse, FakeSupabase
 
-ASSETS = {a.slug: a for a in approved_marketplace_candidates()}
+ASSETS = {a.slug: a for a in approved_marketplace_candidates() if a.slug in {s.target_slug for s in APPROVED_ENRICHMENTS}}
 SLUGS = tuple(ASSETS)
 
 
@@ -205,7 +205,10 @@ def test_only_reviewed_reference_renders_bounded_guidance(spec):
     assert source["source_sha256"] == spec.source_sha256
     assert source["source_path"] == spec.source_path
     assert len(render_agency_enrichment(asset.config)) < 1800
-    assert [r["connectorType"] for r in asset.required_connectors] == [spec.connector_type]
+    # Paid Media explicitly adds a paid-query Google Ads prerequisite to SEO;
+    # the original Analytics prerequisite and all grant assertions are preserved.
+    expected = [spec.connector_type, "google_ads"] if spec.target_slug == "seo-analyst" else [spec.connector_type]
+    assert [r["connectorType"] for r in asset.required_connectors] == expected
     assert all(r["required"] for r in asset.required_connectors)
     for mutation in (
         lambda c: c["agency_enrichment"].update(version=999),

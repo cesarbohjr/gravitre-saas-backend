@@ -96,7 +96,9 @@ def map_marketplace_targets(path: Path = INVENTORY) -> list[dict]:
 
     catalog = {asset.slug: asset for asset in list_catalog_assets()}
     from app.capabilities.agency_enrichment import APPROVED_ENRICHMENTS
-    approved = {spec.source_slug: spec for spec in APPROVED_ENRICHMENTS}
+    from app.capabilities.paid_media import ROLES
+
+    approved = {spec.source_slug: spec for spec in (*APPROVED_ENRICHMENTS, *ROLES)}
     result = []
     for agent in load_agency_inventory(path)["agents"]:
         department, pack, manifest = DIVISION_TARGETS[agent["division"]]
@@ -122,7 +124,10 @@ def map_marketplace_targets(path: Path = INVENTORY) -> list[dict]:
             "comparison_scope": "repository_seed_catalog_only",
             "live_catalog_review_required": True,
             "product_approval_required": agent["slug"] not in approved,
-            "approval_scope": "existing_agent_enrichment" if agent["slug"] in approved else None,
+            "approval_scope": (
+                "new_agent_package" if agent["slug"] in approved and getattr(approved[agent["slug"]], "new_agent", False)
+                else "existing_agent_enrichment" if agent["slug"] in approved else None
+            ),
         })
     return result
 
@@ -168,7 +173,7 @@ def preview_marketplace_candidates(path: Path = INVENTORY) -> list[CatalogAsset]
 
 
 def approved_marketplace_candidates() -> list[CatalogAsset]:
-    """Return only the approved existing assets, never new Agency SKUs.
+    """Return approved enrichments and the three approved Paid Media specialists.
 
     Product approval for enrichment does not publish or install any asset.
     The remaining source roster stays review-only.
@@ -176,5 +181,7 @@ def approved_marketplace_candidates() -> list[CatalogAsset]:
     from app.capabilities.agency_enrichment import APPROVED_ENRICHMENTS
     from app.marketplace.seed_catalog import list_catalog_assets
 
-    approved = {spec.target_slug for spec in APPROVED_ENRICHMENTS}
+    from app.capabilities.paid_media import ROLES
+
+    approved = {spec.target_slug for spec in (*APPROVED_ENRICHMENTS, *ROLES)}
     return [asset for asset in list_catalog_assets() if asset.slug in approved]

@@ -55,7 +55,7 @@ def test_every_division_maps_to_explicit_review_targets():
     for row in mappings:
         assert row["live_catalog_review_required"]
         if not row["product_approval_required"]:
-            assert row["approval_scope"] == "existing_agent_enrichment"
+            assert row["approval_scope"] in {"existing_agent_enrichment", "new_agent_package"}
         assert row["comparison_scope"] == "repository_seed_catalog_only"
         assert not row["catalog_slug_collision"]
         if row["candidate_pack_slug"]:
@@ -91,7 +91,7 @@ def test_initial_orgscript_exclusion_is_preserved():
 
 def test_approval_is_fail_closed():
     approved = approved_marketplace_candidates()
-    assert {asset.slug for asset in approved} == {"content-writer", "seo-analyst", "sdr-coach", "ticket-triage", "revenue-operations-agent", "competitor-research-agent"}
+    assert {asset.slug for asset in approved} == {"content-writer", "seo-analyst", "sdr-coach", "ticket-triage", "revenue-operations-agent", "competitor-research-agent", "marketing-analyst", "marketing-ops-coordinator", "marketing-designer", "ppc-campaign-strategist", "programmatic-display-buyer", "paid-social-strategist"}
     assert not any(asset.slug.startswith("agency-") for asset in approved)
 
 

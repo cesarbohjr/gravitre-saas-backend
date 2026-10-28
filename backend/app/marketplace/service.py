@@ -382,7 +382,7 @@ def _assert_enrichment_snapshot_published(client: Any, asset: dict[str, Any]) ->
     """An interrupted seed cannot activate an unpublished enrichment snapshot."""
     config = safe_normalize_stored_dict(asset.get("config"))
     nested = safe_normalize_stored_dict(config.get("config"))
-    if asset.get("asset_type") != "ai_agent" or "agency_enrichment" not in nested:
+    if asset.get("asset_type") != "ai_agent" or not ({"agency_enrichment", "paid_media_guidance"} & nested.keys()):
         return
     rows = (
         client.table("marketplace_asset_versions").select("*")

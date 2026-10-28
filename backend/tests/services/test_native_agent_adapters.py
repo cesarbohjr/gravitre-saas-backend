@@ -105,3 +105,23 @@ def test_telemetry_failure_has_no_provider_error_or_false_delivery_claim():
     client.start_as_current_observation.side_effect = RuntimeError("SECRET provider response")
     assert export_langfuse_run({"id": "run-a", "org_id": "tenant-a", "status": {}}, scope=SCOPE,
         permit=TelemetryPermit(SCOPE, True), correlation_key=b"x" * 32, langfuse_client=client) == "export_failed"
+
+
+def test_feedback_export_uses_only_scoped_receipts_and_sanitized_metrics():
+    from unittest.mock import MagicMock
+    from app.services.native_agent_adapters import export_langfuse_feedback
+    from tests.support.fake_supabase import FakeSupabase
+    db=FakeSupabase()
+    db.tables["intelligence_outcome_events"]=[{
+        "id":"receipt-a","org_id":SCOPE.org_id,"entity_id":SCOPE.run_id,"outcome_event":"dialogue_evaluated",
+        "metadata":{"evaluator_version":"dialogue-metrics-v1","channel":"voice","stage_count":6,
+                    "failed_stage_count":0,"duration_ms":12,"prompt":"SECRET","provider_error":"SECRET"}}]
+    client=MagicMock()
+    kwargs={"scope":SCOPE,"permit":TelemetryPermit(SCOPE,True),"correlation_key":b"x"*32,"langfuse_client":client}
+    assert export_langfuse_feedback(db,"receipt-a",**kwargs)=="submitted"
+    sent=client.start_as_current_observation.return_value.__enter__.return_value.update.call_args.kwargs
+    assert "SECRET" not in repr(sent) and SCOPE.org_id not in repr(sent)
+    assert sent["metadata"]["channel"]=="voice"
+    assert export_langfuse_feedback(db,"foreign-receipt",**kwargs)=="receipt_missing"
+    kwargs["permit"]=TelemetryPermit(SCOPE,False)
+    assert export_langfuse_feedback(None,"receipt-a",**kwargs)=="disabled"

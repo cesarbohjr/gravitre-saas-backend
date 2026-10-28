@@ -1,7 +1,7 @@
 """Gravitre starter marketplace catalog (MKT-4.1 – MKT-4.4)."""
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import Any
 
 from app.workflows.constants import SCHEMA_VERSION
@@ -183,10 +183,15 @@ def _agent(
 ) -> dict[str, Any]:
     from app.capabilities.agency_enrichment import enrichment_for_slug
 
+    from app.capabilities.paid_media import role_for_slug
+
+    paid_role = role_for_slug(slug)
     spec = enrichment_for_slug(slug)
     agent_config = {"marketplaceSlug": slug}
     if spec is not None:
         agent_config["agency_enrichment"] = spec.reference()
+    if paid_role is not None:
+        agent_config["paid_media_guidance"] = paid_role.reference()
     return {
         "seed_label": _agent_seed(slug),
         "name": name,
@@ -315,6 +320,9 @@ def _ai_agents() -> list[CatalogAsset]:
             ["enrichment", "list_sync", "apollo_lists", "hubspot_lists"],
         ),
     ]
+    from app.capabilities.paid_media import ROLES
+
+    specs.extend((r.target_slug, r.name, "Marketing", "MARKETING", [], []) for r in ROLES if r.new_agent)
     assets: list[CatalogAsset] = []
     for slug, name, department, persona, systems, capabilities in specs:
         assets.append(
@@ -347,6 +355,14 @@ def _ai_agents() -> list[CatalogAsset]:
                 ),
             )
         )
+    # Prerequisites are readiness checks, never default connector/tool grants.
+    for index, asset in enumerate(assets):
+        paid = next((r for r in ROLES if r.target_slug == asset.slug), None)
+        if paid:
+            required = {r["connectorType"]: dict(r) for r in asset.required_connectors}
+            required[paid.connector] = {"connectorType": paid.connector, "label": paid.connector.replace("_", " ").title(),
+                                        "required": True, "connectPath": f"/connectors?type={paid.connector}"}
+            assets[index] = replace(asset, required_connectors=list(required.values()))
     return assets
 
 
