@@ -220,7 +220,7 @@ export default function NotificationsPage() {
 
   return (
     <AppShell title="Notifications">
-      <div className="flex h-full min-h-0 flex-col" data-composition="operate">
+      <div className="flex min-h-0 flex-col md:h-full" data-composition="operate">
         <GravitrePageHeader
           title="Notifications"
           description="Review updates, open the work, and resolve what needs your attention."
@@ -244,7 +244,7 @@ export default function NotificationsPage() {
           </section>
         </GravitrePageHeader>
 
-        <div className="flex min-h-0 flex-1 flex-col px-4 pb-4 sm:px-6">
+        <div className="flex flex-col px-4 pb-4 sm:px-6 md:min-h-0 md:flex-1">
           <div className="flex flex-wrap items-center gap-3 py-3">
             <div role="group" aria-label="Read status" className="flex rounded-lg border border-border bg-card p-1">
               {(["all", "unread", "read"] as const).map((f) => (
@@ -274,7 +274,7 @@ export default function NotificationsPage() {
             <p className="flex-1 text-sm">Could not load notifications. {data ? "Showing previously loaded updates." : "Try again to see your inbox."}</p>
             <Button variant="outline" className="min-h-11" onClick={() => void mutate()} disabled={pending}>Retry</Button>
           </div>}
-          <div aria-label="Notifications" aria-busy={isLoading || pending} className="min-h-0 flex-1 overflow-y-auto rounded-xl border border-border bg-card">
+          <div aria-label="Notifications" aria-busy={isLoading || pending} className="rounded-xl border border-border bg-card md:min-h-0 md:flex-1 md:overflow-y-auto">
             {isLoading ? <p role="status" className="p-6 text-sm text-muted-foreground">Loading notifications...</p>
               : filteredNotifications.length === 0 ? (!error && <div className="px-4 py-16 text-center">
                 <Illustration name={filter !== "all" || typeFilter ? "moment-focus-time" : "moment-all-clear"} width={170} className="mx-auto mb-4" />

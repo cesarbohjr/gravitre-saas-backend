@@ -452,13 +452,13 @@ export function SystemsTable({
                 <span className="cn-td" role="cell">
                   <StatusPill status={row.status} label={row.statusLabel} />
                 </span>
-                <span className="cn-td cn-ellip" role="cell" style={{ color: "var(--gv-text-2)" }}>
+                <span className="cn-td cn-ellip" role="cell" data-label="Access" style={{ color: "var(--gv-text-2)" }}>
                   {row.access || "–"}
                 </span>
-                <span className="cn-td cn-ellip" role="cell" style={{ color: "var(--gv-text-2)" }}>
+                <span className="cn-td cn-ellip" role="cell" data-label="Used by" style={{ color: "var(--gv-text-2)" }}>
                   {row.usedBy || "Not used yet"}
                 </span>
-                <span className="cn-td cn-mono" role="cell" style={{ color: "var(--gv-muted)", fontSize: 12.5 }}>
+                <span className="cn-td cn-mono" role="cell" data-label="Last sync" style={{ color: "var(--gv-muted)", fontSize: 12.5 }}>
                   {c.lastSyncAt ? relativeTime(c.lastSyncAt) : c.lastSync}
                 </span>
                 <span className="cn-td" role="cell" data-row-menu style={{ padding: "0 6px" }}>

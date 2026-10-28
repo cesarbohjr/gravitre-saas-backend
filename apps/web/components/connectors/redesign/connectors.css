@@ -141,6 +141,19 @@ button.cn-tile { cursor: pointer; }
 .gv-ws .cn-td { min-width: 0; padding: 14px 12px; font-size: 13px; }
 .gv-ws .cn-th { padding: 10px 12px; font-weight: 500; font-size: 12px; color: var(--gv-muted); text-transform: uppercase; letter-spacing: 0.06em; white-space: nowrap; }
 .gv-ws .cn-ellip { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* Phones: each system becomes a stacked card (name and menu, then status and the
+   labelled details) instead of a 780px table scrolled sideways behind its edge. */
+@media (max-width: 640px) {
+  .gv-ws .cn-tbl { min-width: 0; }
+  .gv-ws .cn-tr.head { display: none; }
+  .gv-ws .cn-tr.body { grid-template-columns: minmax(0, 1fr) auto; padding: 6px 0; }
+  .gv-ws .cn-tr.body > .cn-td { grid-column: 1 / -1; padding: 4px 16px; }
+  .gv-ws .cn-tr.body > .cn-td:first-child { grid-column: 1; padding-top: 10px; }
+  .gv-ws .cn-tr.body > .cn-td[data-row-menu] { grid-column: 2; grid-row: 1; padding: 6px 8px 0 0 !important; align-self: start; }
+  .gv-ws .cn-tr.body > .cn-td[data-label] { display: flex; gap: 8px; white-space: normal; }
+  .gv-ws .cn-tr.body > .cn-td[data-label]::before { content: attr(data-label); flex: 0 0 76px; color: var(--gv-muted); font-family: var(--font-sans, inherit); font-size: 12px; }
+  .gv-ws .cn-tr.body > .cn-td[data-label="Last sync"] { padding-bottom: 10px; }
+}
 .gv-ws .cn-iconbtn { width: 36px; height: 36px; border-radius: 9px; border: 0; background: transparent; color: var(--gv-muted); display: grid; place-items: center; cursor: pointer; }
 .gv-ws .cn-iconbtn:hover { background: var(--gv-subtle); color: var(--gv-text); }
 

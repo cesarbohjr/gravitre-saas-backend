@@ -215,7 +215,7 @@ function RelationshipGraphCanvasInner({ workspace }: { workspace: RelationshipsW
   }
 
   return (
-    <div className="relative h-full min-h-[420px] w-full">
+    <div className="relative h-[420px] w-full lg:h-full lg:min-h-[420px]">
       <ReactFlow
         nodes={flowNodes}
         edges={flowEdges}
