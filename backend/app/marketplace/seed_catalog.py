@@ -181,6 +181,12 @@ def _agent(
     capabilities: list[str] | None = None,
     model: str = "gpt-4.1",
 ) -> dict[str, Any]:
+    from app.capabilities.agency_enrichment import enrichment_for_slug
+
+    spec = enrichment_for_slug(slug)
+    agent_config = {"marketplaceSlug": slug}
+    if spec is not None:
+        agent_config["agency_enrichment"] = spec.reference()
     return {
         "seed_label": _agent_seed(slug),
         "name": name,
@@ -192,7 +198,7 @@ def _agent(
         "capabilities": capabilities or [],
         "systems": systems,
         "guardrails": [],
-        "config": {"marketplaceSlug": slug},
+        "config": agent_config,
     }
 
 
@@ -335,6 +341,8 @@ def _ai_agents() -> list[CatalogAsset]:
                     if "hubspot" in systems
                     else [ZENDESK]
                     if "zendesk" in systems
+                    else [{**GOOGLE_ANALYTICS, "required": True}]
+                    if slug == "seo-analyst"
                     else []
                 ),
             )

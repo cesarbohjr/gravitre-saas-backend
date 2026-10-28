@@ -53,7 +53,9 @@ def test_every_division_maps_to_explicit_review_targets():
     mappings = map_marketplace_targets()
     assert {a["slug"] for a in mappings} == {a["slug"] for a in data["agents"]}
     for row in mappings:
-        assert row["product_approval_required"] and row["live_catalog_review_required"]
+        assert row["live_catalog_review_required"]
+        if not row["product_approval_required"]:
+            assert row["approval_scope"] == "existing_agent_enrichment"
         assert row["comparison_scope"] == "repository_seed_catalog_only"
         assert not row["catalog_slug_collision"]
         if row["candidate_pack_slug"]:
@@ -88,8 +90,9 @@ def test_initial_orgscript_exclusion_is_preserved():
 
 
 def test_approval_is_fail_closed():
-    with pytest.raises(PermissionError):
-        approved_marketplace_candidates()
+    approved = approved_marketplace_candidates()
+    assert {asset.slug for asset in approved} == {"content-writer", "seo-analyst", "sdr-coach", "ticket-triage"}
+    assert not any(asset.slug.startswith("agency-") for asset in approved)
 
 
 def test_review_preview_cannot_be_published_by_seed_service():

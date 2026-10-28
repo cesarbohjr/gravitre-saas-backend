@@ -366,6 +366,18 @@ def _assert_asset_installable(asset: dict[str, Any]) -> None:
         raise MarketplaceError("Asset visibility is invalid", code="VALIDATION_ERROR")
 
 
+def _assert_asset_org_scope(asset: dict[str, Any], org_id: str) -> None:
+    """The service client bypasses RLS; enforce tenant scope before any probes.
+
+    Public catalog assets are shared. Internal/private assets may only be
+    previewed or installed by their owning organization, including force paths.
+    """
+    if asset.get("visibility") == "public":
+        return
+    if not org_id or str(asset.get("org_id") or "") != org_id:
+        raise MarketplaceError("Marketplace asset not found", code="NOT_FOUND")
+
+
 def _resolve_asset_payload(
     asset: dict[str, Any],
     install_values: dict[str, str] | None,
@@ -386,13 +398,18 @@ def _resolve_asset_payload(
     }
 
 
-def _check_plan_limits(client: Any, org_id: str, asset_type: str) -> None:
+def _check_plan_limits(
+    client: Any, org_id: str, asset_type: str, *, replacing_operator_id: str | None = None,
+) -> None:
     from app.billing.entitlement_service import PlanLimitExceededError
 
     plan = get_plan_for_org(client, org_id)
     if asset_type in {"ai_agent", "department_pack", "outcome_pack"}:
         limit = plan.get("agents_limit")
-        current = len(list_operators(client, org_id))
+        operators = list_operators(client, org_id)
+        current = len(operators)
+        if replacing_operator_id and any(str(item.get("id")) == replacing_operator_id for item in operators):
+            current -= 1
         if limit is not None and current >= int(limit):
             raise PlanLimitExceededError(
                 limit_type="agent_count",
@@ -505,6 +522,12 @@ def _install_ai_agent(
 ) -> dict[str, Any]:
     seed = config.seed_label or "agent"
     entity_id = marketplace_entity_id(org_id, str(asset["id"]), seed)
+    # Reinstall/upgrade/rollback replaces the same agent. Preserve any admin
+    # reductions or revocations rather than re-granting demo connector scopes.
+    existing = (
+        client.table("operators").select("id").eq("id", entity_id)
+        .eq("org_id", org_id).limit(1).execute()
+    )
     operator = create_operator(
         client,
         org_id,
@@ -521,7 +544,7 @@ def _install_ai_agent(
         created_by=actor_id,
     )
     _mirror_agent_row(client, org_id, agent_id=entity_id, config=config, asset_id=str(asset["id"]))
-    for system in config.systems:
+    for system in (() if existing.data else config.systems):
         upsert_agent_tool_permission(
             client,
             org_id,
@@ -1844,6 +1867,7 @@ def install_asset(
     """
     asset = fetch_marketplace_asset(client, asset_id)
     _assert_asset_installable(asset)
+    _assert_asset_org_scope(asset, org_id)
 
     from app.marketplace.entitlements import assert_install_entitlement
 
@@ -1899,7 +1923,6 @@ def install_asset(
             },
         )
 
-    _check_plan_limits(client, org_id, str(asset["asset_type"]))
     resolved = _resolve_asset_payload(asset, install_variables)
     try:
         parsed = parse_asset_config(str(asset["asset_type"]), resolved["config"], publish=True)
@@ -1909,6 +1932,10 @@ def install_asset(
             code="VALIDATION_ERROR",
             details={"errors": exc.errors},
         ) from exc
+    replacement_id = None
+    if asset["asset_type"] == "ai_agent":
+        replacement_id = marketplace_entity_id(org_id, str(asset["id"]), parsed.seed_label or "agent")
+    _check_plan_limits(client, org_id, str(asset["asset_type"]), replacing_operator_id=replacement_id)
     connector_ids = {
         item["connectorType"]: _find_active_connector_id(
             client,
@@ -2092,6 +2119,7 @@ def preview_install(
     settings: Any | None = None,
 ) -> dict[str, Any]:
     asset = fetch_marketplace_asset(client, asset_id)
+    _assert_asset_org_scope(asset, org_id)
     if settings is None:
         try:
             from app.config import get_settings

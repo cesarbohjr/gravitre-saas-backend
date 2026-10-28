@@ -1,5 +1,7 @@
 # PR #581 — Full Agency Agents division inventory and staged Marketplace mapping
 
+Current approval: [four existing-agent enrichments](PR581_APPROVED_FIRST_TRANCHE.md) supersede the earlier no-approval status for those four roles only. Other candidates remain staged.
+
 **Status: inventory and review-only adapter implemented; packages not approved, published, installed or live-tested.** Upstream pinned at [b37b5bb](https://github.com/msitarzewski/agency-agents/commit/b37b5bb33b78f2c1d6567d98e25ca818e3259219).
 
 ## Coverage

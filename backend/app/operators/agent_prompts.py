@@ -4,6 +4,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
+from app.capabilities.agency_enrichment import render_agency_enrichment
+
 DEFAULT_HANDOFF_FORMAT = (
     "Handoff JSON fields: summary, decision (object), recommended_actions (string[]), confidence (0-100)."
 )
@@ -574,6 +576,9 @@ def build_agent_instructions_section(agent: dict[str, Any] | None, *, max_custom
     custom = str(config.get("system_prompt") or config.get("systemPrompt") or "").strip()
     if custom:
         lines.append(f"Agent-specific instructions:\n{custom[:max_custom_chars]}")
+    enrichment = render_agency_enrichment(agent)
+    if enrichment:
+        lines.append(enrichment)
     if not lines:
         return ""
     return "## Agent instructions\n" + "\n".join(lines)
@@ -657,6 +662,9 @@ def build_agent_system_prompt(
         custom = (config.get("system_prompt") or config.get("systemPrompt") or "").strip()
         if custom:
             lines.append(f"Agent-specific instructions:\n{custom}")
+    enrichment = render_agency_enrichment(agent)
+    if enrichment:
+        lines.append(enrichment)
     return "\n".join(lines)
 
 

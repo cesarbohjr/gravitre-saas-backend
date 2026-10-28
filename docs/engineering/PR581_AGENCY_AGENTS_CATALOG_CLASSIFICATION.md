@@ -1,5 +1,7 @@
 # Agency Agents → Gravitre catalog classification (PR #581)
 
+Current approval: [four existing-agent enrichments](PR581_APPROVED_FIRST_TRANCHE.md) supersede the earlier no-approval status for those four roles only. Other candidates remain staged.
+
 Current follow-up: [pinned source audit and Marketplace targets](PR581_AGENCY_AGENTS_SOURCE_AUDIT.md) covers all 283 profiles across 18 divisions. The initial engineering table below remains a proposal; packages are not product-approved or published.
 
 Status: **initial sourced inventory and proposed tiers, not installed agents**. Source: https://github.com/msitarzewski/agency-agents (README roster, reviewed 2026-10-27; upstream is MIT-licensed). Pin a commit and audit individual files before importing. Classification is provisional until product approval and automated collision checks against the current marketplace catalog.

@@ -1,5 +1,7 @@
 # PR581 pinned source audit and Marketplace targets
 
+Current approval: [four existing-agent enrichments](PR581_APPROVED_FIRST_TRANCHE.md) supersede the earlier no-approval status for those four roles only. Other candidates remain staged.
+
 Status: source census verified locally; package definitions remain review-only. No product-approved Agency Agents release list exists on this branch. No publication, installation, merge or deployment is performed.
 
 Pinned upstream: `msitarzewski/agency-agents@b37b5bb33b78f2c1d6567d98e25ca818e3259219`. All 283 frontmatter profiles in all 18 declared divisions match the README inventory. Each profile records SHA-255 and MIT provenance. `strategy/` contains playbooks rather than a role division; generated integrations, examples and scripts are excluded.

@@ -95,6 +95,8 @@ def map_marketplace_targets(path: Path = INVENTORY) -> list[dict]:
     from app.marketplace.seed_catalog import list_catalog_assets
 
     catalog = {asset.slug: asset for asset in list_catalog_assets()}
+    from app.capabilities.agency_enrichment import APPROVED_ENRICHMENTS
+    approved = {spec.source_slug: spec for spec in APPROVED_ENRICHMENTS}
     result = []
     for agent in load_agency_inventory(path)["agents"]:
         department, pack, manifest = DIVISION_TARGETS[agent["division"]]
@@ -119,7 +121,8 @@ def map_marketplace_targets(path: Path = INVENTORY) -> list[dict]:
             "catalog_slug_collision": agent["slug"] in catalog,
             "comparison_scope": "repository_seed_catalog_only",
             "live_catalog_review_required": True,
-            "product_approval_required": True,
+            "product_approval_required": agent["slug"] not in approved,
+            "approval_scope": "existing_agent_enrichment" if agent["slug"] in approved else None,
         })
     return result
 
@@ -164,6 +167,14 @@ def preview_marketplace_candidates(path: Path = INVENTORY) -> list[CatalogAsset]
     return result
 
 
-def approved_marketplace_candidates(*args, **kwargs):
-    """Deliberately fail closed until product review and explicit release gating."""
-    raise PermissionError("Agency Agents Marketplace packages are not approved for publication")
+def approved_marketplace_candidates() -> list[CatalogAsset]:
+    """Return only the four approved existing assets, never new Agency SKUs.
+
+    Product approval for enrichment does not publish or install any asset.
+    The remaining source roster stays review-only.
+    """
+    from app.capabilities.agency_enrichment import APPROVED_ENRICHMENTS
+    from app.marketplace.seed_catalog import list_catalog_assets
+
+    approved = {spec.target_slug for spec in APPROVED_ENRICHMENTS}
+    return [asset for asset in list_catalog_assets() if asset.slug in approved]

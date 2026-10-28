@@ -11,6 +11,54 @@ from app.services.department_pack_catalog import pack_seed_id
 
 logger = logging.getLogger(__name__)
 
+_VERSIONED_FIELDS = ("config", "required_connectors", "required_permissions", "install_variables")
+
+
+def _update_approved_enrichment(
+    client: Any, existing: dict[str, Any], row: dict[str, Any], *, slug: str,
+) -> dict[str, Any]:
+    """Version the approved tranche without overwriting its baseline snapshot.
+
+    Insert snapshots before advancing the live pointer. A concurrent update
+    fails closed; a pending snapshot can remain inert and is never installed.
+    No other catalog seeding behavior changes in this checkpoint.
+    """
+    if existing.get("org_id") or existing.get("publisher_id") != row["publisher_id"]:
+        raise PermissionError("Approved catalog enrichment cannot replace another publisher or tenant asset")
+    if all(existing.get(key) == row[key] for key in _VERSIONED_FIELDS):
+        return {"id": str(existing["id"]), "slug": slug}
+    if not isinstance(existing.get("config"), dict):
+        raise ValueError("Cannot version enrichment without the prior asset config")
+    asset_id = str(existing["id"])
+    current = int(existing.get("current_version") or 1)
+    baseline = {
+        "asset_id": asset_id, "version_number": current,
+        **{key: existing.get(key) or ({} if key == "config" else []) for key in _VERSIONED_FIELDS},
+        "change_summary": "Snapshot before approved Agency Agents enrichment",
+        "published_at": existing.get("published_at") or row["published_at"],
+    }
+    client.table("marketplace_asset_versions").upsert(
+        baseline, on_conflict="asset_id,version_number", ignore_duplicates=True,
+    ).execute()
+    latest = (
+        client.table("marketplace_asset_versions").select("version_number")
+        .eq("asset_id", asset_id).order("version_number", desc=True).limit(1).execute()
+    )
+    next_version = max(current, int((latest.data or [{"version_number": current}])[0]["version_number"])) + 1
+    client.table("marketplace_asset_versions").insert({
+        "asset_id": asset_id, "version_number": next_version,
+        **{key: row[key] for key in _VERSIONED_FIELDS},
+        "change_summary": "PR581 approved existing-agent enrichment",
+        "published_at": row["published_at"],
+    }).execute()
+    updated = (
+        client.table("marketplace_assets").update({**row, "current_version": next_version})
+        .eq("id", asset_id).eq("current_version", current).execute()
+    )
+    if not updated.data:
+        raise RuntimeError("Catalog asset changed during enrichment; retry from its current version")
+    return {"id": asset_id, "slug": slug}
+
 
 def _now() -> str:
     return datetime.now(timezone.utc).isoformat()
@@ -85,12 +133,16 @@ def upsert_catalog_asset(
     row = _asset_row(publisher_id, asset, validated=validated)
     existing = (
         client.table("marketplace_assets")
-        .select("id, current_version")
+        .select("*")
         .eq("slug", asset.slug)
         .limit(1)
         .execute()
     )
     if existing.data:
+        from app.capabilities.agency_enrichment import enrichment_for_slug
+
+        if enrichment_for_slug(asset.slug) is not None:
+            return _update_approved_enrichment(client, existing.data[0], row, slug=asset.slug)
         asset_id = str(existing.data[0]["id"])
         client.table("marketplace_assets").update(row).eq("id", asset_id).execute()
     else:
