@@ -378,6 +378,37 @@ def _assert_asset_org_scope(asset: dict[str, Any], org_id: str) -> None:
         raise MarketplaceError("Marketplace asset not found", code="NOT_FOUND")
 
 
+def _resolve_agent_install_version(client: Any, asset: dict[str, Any], version_number: int | None) -> dict[str, Any]:
+    """Select a published prior agent snapshot without changing the shared listing.
+
+    Entitlement is checked on the current listing before calling this helper;
+    snapshot config can never downgrade pricing or change tenant visibility.
+    """
+    if version_number is None:
+        return asset
+    current = int(asset.get("current_version") or 1)
+    if type(version_number) is not int or version_number < 1 or version_number > current:
+        raise MarketplaceError("Invalid or unpublished asset version", code="VALIDATION_ERROR")
+    if asset.get("asset_type") != "ai_agent":
+        raise MarketplaceError("Version selection is supported for agent installs only", code="VALIDATION_ERROR")
+    if version_number == current:
+        return asset
+    rows = (
+        client.table("marketplace_asset_versions").select("*")
+        .eq("asset_id", asset["id"]).eq("version_number", version_number).limit(1).execute()
+    ).data
+    if not rows or not rows[0].get("published_at"):
+        raise MarketplaceError("Published asset version not found", code="NOT_FOUND")
+    snapshot = rows[0]
+    return {
+        **asset, "current_version": version_number,
+        "config": snapshot.get("config") or {},
+        "required_connectors": snapshot.get("required_connectors") or [],
+        "required_permissions": snapshot.get("required_permissions") or [],
+        "install_variables": snapshot.get("install_variables") or [],
+    }
+
+
 def _resolve_asset_payload(
     asset: dict[str, Any],
     install_values: dict[str, str] | None,
@@ -1859,6 +1890,7 @@ def install_asset(
     environment_name: str = "production",
     install_variables: dict[str, str] | None = None,
     force: bool = False,
+    version_number: int | None = None,
 ) -> dict[str, Any]:
     """
     Install a published marketplace asset into an org via existing creation paths.
@@ -1872,6 +1904,7 @@ def install_asset(
     from app.marketplace.entitlements import assert_install_entitlement
 
     assert_install_entitlement(client, org_id, asset)
+    asset = _resolve_agent_install_version(client, asset, version_number)
 
     legacy_pack = get_pack_spec(str(asset.get("slug") or ""))
     config_payload = asset.get("config") or {}
@@ -2077,6 +2110,7 @@ def install_asset(
             "entityType": installed["entityType"],
             "entityId": installed["entityId"],
             "installId": install_row.get("id"),
+            "assetVersion": asset.get("current_version") or 1,
         },
     )
     from app.marketplace.support import build_install_deep_links

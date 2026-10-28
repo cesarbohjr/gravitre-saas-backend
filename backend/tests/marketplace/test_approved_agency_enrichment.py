@@ -93,11 +93,15 @@ def baseline(db, slug, *, owner=None, visibility="public"):
         **asdict(asset), "id": str(uuid5(NAMESPACE_URL, slug)), "org_id": owner,
         "publisher_id": "gravitre-publisher", "visibility": visibility,
         "status": "published", "current_version": 1, "required_permissions": [],
+        "published_at": "2026-10-27T00:00:00Z",
         "config": config,
     }
+    if slug == "seo-analyst":
+        row["required_connectors"] = []  # The pre-tranche catalog made Analytics optional.
     db.tables["marketplace_assets"] = [row]
     db.tables["marketplace_asset_versions"] = [{
         "asset_id": row["id"], "version_number": 1,
+        "published_at": row["published_at"],
         **{k: deepcopy(row[k]) for k in ("config", "required_connectors", "required_permissions", "install_variables")},
     }]
     return row
@@ -143,6 +147,14 @@ def test_install_upgrade_and_rollback_preserve_identity_permissions_and_other_te
     # assets remain protected. Exercise rollback on an org-owned copy.
     with pytest.raises(MarketplaceVersionError):
         rollback_asset_version(db, "org-a", row["id"], version_number=1, actor_id="admin-a")
+    public_rollback = install_asset(
+        db, "org-a", row["id"], actor_id="admin-a", environment_name="test", version_number=1,
+    )
+    assert public_rollback["entities"]["agentId"] == entity_id
+    assert public_rollback["install"]["asset_version"] == 1
+    assert row["current_version"] == 2  # The shared listing is unchanged.
+    assert render_agency_enrichment(db.rows("agents", id=entity_id)[0]) == ""
+    assert db.permissions.call_count == 1
     row.update(org_id="org-a", visibility="internal")
     rollback_asset_version(db, "org-a", row["id"], version_number=1, actor_id="admin-a")
     rolled_back = install_asset(db, "org-a", row["id"], actor_id="admin-a", environment_name="test")
@@ -158,6 +170,7 @@ def test_install_upgrade_and_rollback_preserve_identity_permissions_and_other_te
 def test_connector_and_entitlement_gates_apply_before_agent_creation(db, slug):
     row = baseline(db, slug)
     row["config"] = deepcopy(ASSETS[slug].config)
+    row["required_connectors"] = deepcopy(ASSETS[slug].required_connectors)
     with pytest.raises(MarketplaceError) as exc:
         install_asset(db, "org-a", row["id"], actor_id="admin-a", environment_name="test")
     assert exc.value.code == "CONNECTORS_NOT_READY"
@@ -226,3 +239,27 @@ def test_concurrent_catalog_update_never_overwrites_live_pointer(db):
         upsert_catalog_asset(db, "gravitre-publisher", ASSETS["content-writer"])
     assert row["current_version"] == 9
     assert "agency_enrichment" not in row["config"]["config"]
+    assert db.rows("marketplace_asset_versions", version_number=2)[0]["published_at"] is None
+
+
+@pytest.mark.parametrize("version", [0, True, 99])
+def test_install_cannot_select_invalid_or_future_versions(db, version):
+    row = baseline(db, "content-writer")
+    with pytest.raises(MarketplaceError, match="unpublished"):
+        install_asset(db, "org-a", row["id"], actor_id="admin-a", version_number=version)
+    assert db.rows("operators") == []
+
+
+def test_version_selection_keeps_current_entitlement_and_rejects_unpublished_snapshots(db):
+    row = baseline(db, "content-writer")
+    upsert_catalog_asset(db, "gravitre-publisher", ASSETS["content-writer"])
+    ready_connector(db, "content-writer")
+    row.update(pricing_type="paid", price_cents=100)  # Test-only fixture.
+    with pytest.raises(MarketplaceError) as exc:
+        install_asset(db, "org-a", row["id"], actor_id="admin-a", version_number=1)
+    assert exc.value.code == "PAYMENT_REQUIRED"
+    row.update(pricing_type="free", price_cents=0)
+    db.tables["marketplace_asset_versions"][0]["published_at"] = None
+    with pytest.raises(MarketplaceError, match="Published asset version not found"):
+        install_asset(db, "org-a", row["id"], actor_id="admin-a", version_number=1)
+    assert db.rows("operators") == []

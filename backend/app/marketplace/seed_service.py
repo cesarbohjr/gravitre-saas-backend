@@ -49,7 +49,7 @@ def _update_approved_enrichment(
         "asset_id": asset_id, "version_number": next_version,
         **{key: row[key] for key in _VERSIONED_FIELDS},
         "change_summary": "PR581 approved existing-agent enrichment",
-        "published_at": row["published_at"],
+        "published_at": None,
     }).execute()
     updated = (
         client.table("marketplace_assets").update({**row, "current_version": next_version})
@@ -57,6 +57,9 @@ def _update_approved_enrichment(
     )
     if not updated.data:
         raise RuntimeError("Catalog asset changed during enrichment; retry from its current version")
+    client.table("marketplace_asset_versions").update({"published_at": row["published_at"]}).eq(
+        "asset_id", asset_id,
+    ).eq("version_number", next_version).execute()
     return {"id": asset_id, "slug": slug}
 
 

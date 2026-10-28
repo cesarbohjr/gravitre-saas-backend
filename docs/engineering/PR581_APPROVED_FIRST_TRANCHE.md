@@ -21,7 +21,7 @@ Only these four existing catalog slugs receive an `agency_enrichment` reference.
 
 The approved catalog refresh preserves the previous snapshot, inserts a monotonically numbered version, then advances the live pointer with an expected-version check. Repeated identical refreshes are inert. A concurrent pointer change fails closed; a pending snapshot never becomes the active config by itself. Foreign publisher or tenant-owned slug collisions are rejected. This version-preserving behavior is limited to the four approved assets; unrelated seed behavior is unchanged.
 
-Installation continues through `install_asset()` and the canonical operator/agent/install tables. Reinstalls keep stable per-org IDs, preserve admin-reduced or revoked tool grants, and count an existing operator as a replacement rather than a new quota slot. Internal/private assets are now rejected for foreign organizations before preview probes, connector checks or writes, including force installs. Public assets remain shared. Org-owned asset rollback uses the existing version API; global publisher assets remain protected from tenant rollback.
+Installation continues through `install_asset()` and the canonical operator/agent/install tables. Reinstalls keep stable per-org IDs, preserve admin-reduced or revoked tool grants, and count an existing operator as a replacement rather than a new quota slot. Internal/private assets are now rejected for foreign organizations before preview probes, connector checks or writes, including force installs. Public assets remain shared. Org-owned listing rollback uses the existing version API. Public-agent rollback uses the existing install endpoint with an optional positive integer `versionNumber`: it restores that organization’s agent from a published historical snapshot without changing the shared listing. Current listing entitlement/visibility remains authoritative, snapshot connector prerequisites are checked, future or unpublished versions are denied, and connector grants are preserved. Pending snapshots remain unpublished until the live catalog pointer advances. Global publisher assets remain protected from tenant mutation.
 
 ## Offline regression boundary
 
@@ -31,8 +31,8 @@ The previous SSE test mocked the final ReAct answer but left perception, classif
 
 ## Validation
 
-- Affected Marketplace, router, manifest, tenant and governance suite under the offline guard: **643 passed**.
-- Approved tranche lifecycle tests: **22 passed**, including install/upgrade/rollback, idempotency, quota replacement, entitlement denial, connector denial, foreign-org denial, permissions preservation, forged guidance and concurrent version changes.
-- Dedicated offline CI gate: **46 passed**, including the unchanged SSE assertions and transport guard self-tests, with zero accidental external network attempts.
+- Affected Marketplace, router, manifest, tenant and governance suite under the offline guard: **653 passed**.
+- Approved tranche lifecycle tests: **26 passed**, including install/upgrade/rollback, idempotency, quota replacement, entitlement denial, connector denial, foreign-org denial, permissions preservation, forged guidance and concurrent version changes.
+- Dedicated offline CI gate: **56 passed**, including the unchanged SSE assertions and transport guard self-tests, with zero accidental external network attempts.
 - Complete final-SHA CI: pending at this checkpoint. See PR581 for exact-SHA results.
 - Production acceptance: not run, per explicit no-deployment instruction.

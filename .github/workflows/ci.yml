@@ -382,6 +382,7 @@ jobs:
           tests/test_offline_network_guard.py
           tests/marketplace/test_approved_agency_enrichment.py
           tests/marketplace/test_agency_agents_catalog.py
+          tests/routers/test_marketplace_install_pack_routes.py
           tests/operators/test_agent_intelligence.py::test_streaming_emits_text_events_when_react_returns_answer_only
         env:
           APP_ENV: dev
