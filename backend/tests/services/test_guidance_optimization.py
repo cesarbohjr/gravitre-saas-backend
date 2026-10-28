@@ -20,7 +20,7 @@ def report(c):
             for channel in ("text","voice"):
                 for version in ("native-v1",c["version"]):
                     rows.append({"version":version,"case_id":case["id"],"split":split,"channel":channel,"score":int(version!="native-v1"),"security_violation":False,"response_sha256":"a"*64})
-    return {"evidence_mode":"provider","corpus_sha256":opt.CORPUS_SHA256,"candidate_sha256":digest(c),"selected":c["version"],"generation_model":"test-provenance","judge_model":"test-provenance","rows":rows}
+    return {"evidence_mode":"provider","corpus_sha256":opt.CORPUS_SHA256,"candidate_sha256":digest(c),"selected":c["version"],"generation_model":"test-provenance","judge_model":"test-provenance","rows":rows,"source_hashes":opt.source_fingerprints()}
 
 def test_release_and_rollback_change_shared_guidance(tmp_path,monkeypatch):
     from app.services import guidance_optimization as guidance
@@ -36,7 +36,7 @@ def test_release_and_rollback_change_shared_guidance(tmp_path,monkeypatch):
     assert conversational_behavior_section()==baseline
 
 @pytest.mark.parametrize("mutation",[
-    lambda r:r.update(evidence_mode="fixture"),lambda r:r.update(corpus_sha256="b"*64),
+    lambda r:r.update(source_hashes={}),lambda r:r.update(evidence_mode="fixture"),lambda r:r.update(corpus_sha256="b"*64),
     lambda r:r.update(candidate_sha256="b"*64),lambda r:r["rows"].pop(),
     lambda r:r["rows"].append(deepcopy(r["rows"][0])),lambda r:r["rows"][1].update(security_violation=True),
     lambda r:r["rows"][1].update(score=-1),lambda r:r.update(generation_model=""),

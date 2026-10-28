@@ -66,6 +66,19 @@ def corpus() -> dict:
     return data
 
 
+def source_fingerprints() -> dict[str, str]:
+    # Measured deltas are valid only for the exact baseline/evaluator sources.
+    # A later prompt or scoring edit invalidates an older promotion report.
+    paths = (
+        "backend/app/services/conversational_behavior.py",
+        "backend/app/services/module_d_unified_voice_spec.py",
+        "backend/app/services/guidance_optimization.py",
+        "scripts/guidance_optimization/optimize.py",
+        "scripts/guidance_optimization/corpus.json",
+    )
+    return {p: hashlib.sha256((REPO / p).read_bytes()).hexdigest() for p in paths}
+
+
 def compile_candidates() -> list[dict]:
     dspy = sdk()
     from importlib.metadata import version
@@ -131,13 +144,15 @@ def evaluate(candidates: list[dict], model: str, judge_model: str, *, evidence_m
     run(selected, data["holdout"], "holdout")
     report = {"schema":1, "evidence_mode":evidence_mode, "generation_model":model, "judge_model":judge_model,
               "corpus_sha256":CORPUS_SHA256, "candidate_sha256":digest(selected), "selected":selected["version"],
-              "rows":rows, "production_certified":False, "physical_voice":"NOT_RUN", "cost_usd":None}
+              "rows":rows, "source_hashes":source_fingerprints(), "production_certified":False, "physical_voice":"NOT_RUN", "cost_usd":None}
     report["promotion_eligible"] = eligible(report, selected)
     return report
 
 
 def eligible(report, candidate) -> bool:
     """Every required case/channel exactly once; no regressions by case/category."""
+    if report.get("source_hashes") != source_fingerprints():
+        return False
     if report.get("evidence_mode") != "provider" or report.get("corpus_sha256") != CORPUS_SHA256 or report.get("candidate_sha256") != digest(candidate) or report.get("selected") != candidate["version"]:
         return False
     if not all(isinstance(report.get(k), str) and report[k].strip() for k in ("generation_model", "judge_model")):
