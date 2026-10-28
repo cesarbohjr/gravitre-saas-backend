@@ -105,18 +105,18 @@ export default function SecurityPage() {
       >
         <div className="mt-10 grid w-full gap-4 md:grid-cols-3">
           <MarketingScene
-            name="ops-approvals"
-            width={320}
-            height={230}
+            name="market-compliance"
+            width={300}
+            height={190}
             aspect="aspect-[4/3]"
             priority
             status="Writes wait for approval"
             tone="amber"
           />
           <MarketingScene
-            name="roster-security"
-            width={320}
-            height={260}
+            name="market-security"
+            width={300}
+            height={190}
             aspect="aspect-[4/3]"
             status="Roles and SSO control access"
           />

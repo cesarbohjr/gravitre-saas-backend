@@ -132,9 +132,9 @@ export default function ContactPage() {
 
           <div className="flex flex-col gap-4">
             <MarketingScene
-              name="dept-support"
-              width={320}
-              height={230}
+              name="market-support"
+              width={300}
+              height={190}
               aspect="aspect-[16/10]"
               priority
               status="We reply from support@gravitre.app"

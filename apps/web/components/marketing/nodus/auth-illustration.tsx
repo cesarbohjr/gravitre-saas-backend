@@ -3,21 +3,21 @@ import Image from "next/image"
 
 /**
  * Auth side panel — Gravitre copy only (no invented testimonials). Uses the
- * workspace's own home illustration so sign-in looks like the app it opens.
+ * workspace's own revenue illustration so sign-in looks like the app it opens.
  */
 export function AuthIllustration() {
   return (
     <div className="flex flex-col overflow-hidden rounded-2xl border border-divide bg-[#e7ece3]">
       <Image
-        src="/illustrations/home-hero.svg"
+        src="/illustrations/market-revenue.svg"
         alt=""
         aria-hidden
-        width={520}
-        height={340}
+        width={300}
+        height={190}
         priority
         unoptimized
         draggable={false}
-        className="block h-auto w-full"
+        className="mk-scene-drift block h-auto w-full"
       />
       <div className="relative -mt-10 px-4 pb-4 md:px-8 md:pb-8">
         <div className="mb-2 flex flex-wrap items-center gap-2">

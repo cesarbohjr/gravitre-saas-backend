@@ -88,9 +88,9 @@ export default function CareersPage() {
           </div>
           <div className="flex flex-col justify-center gap-4 px-4 py-10 md:px-8">
             <MarketingScene
-              name="dept-marketing"
-              width={420}
-              height={260}
+              name="market-product"
+              width={300}
+              height={190}
               aspect="aspect-[16/10]"
               priority
               status="Planning the next release together"
@@ -139,9 +139,9 @@ export default function CareersPage() {
             We are not listing invented openings. Reach out if you want to build with us.
           </SubHeading>
           <MarketingScene
-            name="moment-welcome"
-            width={320}
-            height={230}
+            name="market-onboarding"
+            width={300}
+            height={190}
             aspect="aspect-[16/9]"
             status="Your desk is ready"
             className="mx-4 mt-10 w-[calc(100%-2rem)] max-w-xl"

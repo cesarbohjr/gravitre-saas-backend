@@ -171,9 +171,9 @@ export default function SupportPage() {
       <MarketingRails>
         <div className="mx-auto grid max-w-5xl items-start gap-10 md:grid-cols-[1fr_1.4fr]">
           <MarketingScene
-            name="goal-template-support"
-            width={420}
-            height={260}
+            name="market-prospecting"
+            width={300}
+            height={190}
             aspect="aspect-[4/3]"
             status="Most answers are a guide away"
             tone="green"
@@ -236,7 +236,7 @@ export default function SupportPage() {
         <div className="grid gap-6 sm:grid-cols-3">
           <GravitreFlow className="group rounded-xl border border-border bg-card p-3 pb-6 text-center transition-all hover:border-primary/30 hover:shadow-md">
             <Link href="/docs" className="block">
-              <MarketingScene name="spot-knowledge" width={300} height={190} aspect="aspect-[16/10]" className="mb-4" />
+              <MarketingScene name="spot-report-easel" width={300} height={190} aspect="aspect-[16/10]" className="mb-4" />
               <h3 className="font-medium text-foreground mb-1">Documentation</h3>
               <p className="text-sm text-muted-foreground">Guides, concepts, and API reference</p>
             </Link>
@@ -246,7 +246,7 @@ export default function SupportPage() {
             className="group rounded-xl border border-border bg-card p-3 pb-6 text-center transition-all hover:border-primary/30 hover:shadow-md"
           >
             <a href="mailto:support@gravitre.app" className="block">
-              <MarketingScene name="market-support" width={300} height={190} aspect="aspect-[16/10]" className="mb-4" />
+              <MarketingScene name="market-tickets" width={300} height={190} aspect="aspect-[16/10]" className="mb-4" />
               <h3 className="font-medium text-foreground mb-1">Email support</h3>
               <p className="text-sm text-muted-foreground">support@gravitre.app</p>
             </a>
@@ -256,7 +256,7 @@ export default function SupportPage() {
             className="group rounded-xl border border-border bg-card p-3 pb-6 text-center transition-all hover:border-primary/30 hover:shadow-md"
           >
             <Link href="/contact" className="block">
-              <MarketingScene name="dept-support" width={320} height={230} aspect="aspect-[16/10]" className="mb-4" />
+              <MarketingScene name="ws-approvals-inbox-tray" width={320} height={190} aspect="aspect-[16/10]" className="mb-4" />
               <h3 className="font-medium text-foreground mb-1">Contact</h3>
               <p className="text-sm text-muted-foreground">Send a message through our contact form</p>
             </Link>

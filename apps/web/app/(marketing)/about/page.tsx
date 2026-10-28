@@ -44,9 +44,10 @@ export default function AboutPage() {
           </div>
           <div className="flex flex-col gap-4">
             <MarketingScene
-              name="home-hero"
-              width={520}
-              height={340}
+              name="market-pipeline"
+              width={300}
+              height={190}
+              aspect="aspect-[16/10]"
               priority
               status="Sales, Support and Finance working from one brain"
             />
@@ -109,11 +110,11 @@ export default function AboutPage() {
 
       <Container className="border-divide grid grid-cols-1 items-center gap-10 border-x px-4 py-16 md:grid-cols-2 md:px-8 md:py-20">
         <MarketingScene
-          name="settings-team"
-          width={320}
-          height={260}
+          name="market-new-customers"
+          width={300}
+          height={190}
           aspect="aspect-[16/10]"
-          status="New teammate invited"
+          status="Room for one more on the team"
           className="md:order-2"
         />
         <div className="md:order-1">

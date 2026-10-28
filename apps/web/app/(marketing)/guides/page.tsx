@@ -32,18 +32,18 @@ import {
 
 /** App illustrations used as guide thumbnails (public/illustrations). */
 const GUIDE_ART: Record<string, string> = {
-  "Install the Chrome browser extension": "ws-assignments-to-workflow",
-  "Create Your First AI Agent": "spot-agents",
-  "Understanding Agent Capabilities": "agents-guardrails",
-  "Building Multi-Step Workflows": "hero-workflows",
+  "Install the Chrome browser extension": "market-site-health",
+  "Create Your First AI Agent": "market-leads",
+  "Understanding Agent Capabilities": "market-campaigns",
+  "Building Multi-Step Workflows": "spot-workflows",
 }
 
 const CATEGORY_ART: Record<string, string> = {
   "getting-started": "market-onboarding",
-  agents: "spot-agents",
+  agents: "market-leads",
   workflows: "spot-workflows",
-  integrations: "spot-connectors",
-  "best-practices": "agents-playbook",
+  integrations: "market-deals",
+  "best-practices": "spot-reports",
 }
 
 const categories = [
@@ -292,7 +292,7 @@ export default function GuidesPage() {
                 className="group relative block overflow-hidden rounded-2xl border border-border bg-card transition-all hover:border-primary/30 hover:shadow-lg"
               >
                 <MarketingScene
-                  name={GUIDE_ART[guide.title] ?? CATEGORY_ART[guide.category] ?? "spot-knowledge"}
+                  name={GUIDE_ART[guide.title] ?? CATEGORY_ART[guide.category] ?? "spot-reports"}
                   width={320}
                   height={230}
                   aspect="aspect-video"
@@ -414,7 +414,7 @@ export default function GuidesPage() {
           <GravitreReveal className="rounded-2xl border border-border bg-[color:var(--g-marketing-surface)] p-8 lg:p-12">
             <div className="flex items-center gap-4 mb-6">
               <MarketingScene
-                name="spot-knowledge"
+                name="spot-schedules"
                 width={300}
                 height={190}
                 aspect="aspect-[4/3]"
