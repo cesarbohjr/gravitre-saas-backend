@@ -70,6 +70,11 @@ def upsert_catalog_asset(
     publisher_id: str,
     asset: CatalogAsset,
 ) -> dict[str, Any]:
+    # Review previews use the install schema but are never publication-ready.
+    # Fail before any DB access if a caller accidentally feeds them to seeding.
+    metadata = asset.config.get("config")
+    if isinstance(metadata, dict) and metadata.get("source") == "agency_agents":
+        raise PermissionError("Agency Agents packages require explicit product approval before seeding")
     validated = validate_asset_payload(
         asset_type=asset.asset_type,
         config=asset.config,

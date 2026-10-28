@@ -3,7 +3,7 @@
 **Status: inventory and review-only adapter implemented; packages not approved, published, installed or live-tested.** Upstream pinned at [b37b5bb](https://github.com/msitarzewski/agency-agents/commit/b37b5bb33b78f2c1d6567d98e25ca818e3259219).
 
 ## Coverage
-The upstream README at the pinned revision yields **283 linked role entries across all 18 divisions**. This is a README-linked roster inventory, **not a filesystem audit of every upstream Markdown file**. Counts:
+The upstream README at the pinned revision yields **283 linked role entries across all 18 divisions**. The follow-up [source audit](PR581_AGENCY_AGENTS_SOURCE_AUDIT.md) verified that these exactly match all frontmatter profiles in the declared division directories, including individual SHA-256 hashes and MIT provenance. Strategy playbooks and generated integrations are not role divisions. Counts:
 
 | Division | Entries |
 |---|---:|
@@ -39,7 +39,7 @@ PR #581 owns role/Marketplace packaging and catalog review. PR #587 owns One Bra
 Existing Gravitre `marketplace_assets` remains the canonical install/entitlement/rollback mechanism. Do not create a parallel Marketplace or bypass existing tenant isolation. This inventory's collision hints are **not** a complete comparison with live Marketplace rows, installed operators or every existing seed asset; reconcile those before publication.
 
 ## Remaining blocking work
-1. Audit actual upstream source files and license at pinned commit; verify each README link and frontmatter. Inventory any unlisted upstream files.
+1. Source file census, frontmatter-name presence and license/hash verification are implemented and reproduced by `scripts/audit-agency-agents.py`; behavioral review of upstream role instructions is still required before importing any prompt text.
 2. Compare normalized functions against the complete current Gravitre Marketplace, operators, department packs, installed assets and existing slugs. Resolve collisions and default shortlist with product approval.
 3. Create reviewed package definitions with bounded role prompts, explicit connector prerequisites, pricing/entitlements and permission-safe workflows. Use existing install/upgrade/rollback and public listing flows.
 4. Add tenant isolation, cross-tenant denial, connector readiness, entitlement, idempotent install, rollback and prompt-injection regressions. Run full PR CI and resolve all failures.
