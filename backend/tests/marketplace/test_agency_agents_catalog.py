@@ -77,6 +77,16 @@ def test_profiles_have_pinned_source_audit():
     assert all(re.fullmatch(r"[a-f0-9]{64}", a["source_sha256"]) for a in data["agents"])
 
 
+def test_initial_orgscript_exclusion_is_preserved():
+    excluded = "agency-engineering-orgscript-engineer"
+    row = next(a for a in map_marketplace_targets() if a["slug"] == excluded)
+    assert row["proposed_disposition"] == "exclude"
+    assert row["conflict_disposition"] == "exclude_pending_review"
+    assert row["manifest_role"] is None
+    assert row["candidate_agent_slug"] is None
+    assert excluded not in {a.slug for a in preview_marketplace_candidates()}
+
+
 def test_approval_is_fail_closed():
     with pytest.raises(PermissionError):
         approved_marketplace_candidates()

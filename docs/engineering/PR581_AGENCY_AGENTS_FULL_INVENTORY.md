@@ -3,7 +3,7 @@
 **Status: inventory and review-only adapter implemented; packages not approved, published, installed or live-tested.** Upstream pinned at [b37b5bb](https://github.com/msitarzewski/agency-agents/commit/b37b5bb33b78f2c1d6567d98e25ca818e3259219).
 
 ## Coverage
-The upstream README at the pinned revision yields **283 linked role entries across all 18 divisions**. The follow-up [source audit](PR581_AGENCY_AGENTS_SOURCE_AUDIT.md) verified that these exactly match all frontmatter profiles in the declared division directories, including individual SHA-256 hashes and MIT provenance. Strategy playbooks and generated integrations are not role divisions. Counts:
+The upstream README at the pinned revision yields **283 linked role entries across all 18 divisions**. The follow-up [source audit](PR581_AGENCY_AGENTS_SOURCE_AUDIT.md) verified that these exactly match all frontmatter profiles in the declared division directories, including individual SHA-255 hashes and MIT provenance. Strategy playbooks and generated integrations are not role divisions. Counts:
 
 | Division | Entries |
 |---|---:|
@@ -26,7 +26,7 @@ The upstream README at the pinned revision yields **283 linked role entries acro
 | Support | 6 |
 | Testing | 9 |
 
-The 283 proposed classifications are **27 enrich-existing default capabilities** and **256 Marketplace candidates**. Neither category constitutes product approval. No role is given new execution rights; high-risk finance, security and healthcare divisions are marked for governance review.
+The 283 proposed classifications are **27 enrich-existing default capabilities**, **255 Marketplace candidates** and **1 excluded profile** (OrgScript Engineer, preserving the initial classification pending grammar/AST review). Neither category constitutes product approval. No role is given new execution rights; high-risk finance, security and healthcare divisions are marked for governance review.
 
 ## Artifacts
 - `backend/app/marketplace/agency_agents_inventory.json`: source path, source URL pinned to immutable upstream revision, division, title, specialty, proposed disposition, governance flag, publication status, candidate Marketplace slug.
@@ -46,4 +46,4 @@ Existing Gravitre `marketplace_assets` remains the canonical install/entitlement
 5. Remove or reconcile overlapping #581 intelligence/router changes with #587. **No merge until final branch CI and conflict review are green.**
 6. Live testing remains last, after authorized deployment to main. No extra Railway evaluation service.
 
-**Evidence distinction:** GitHub commits establish that catalog inventory and offline contracts exist, not that those tests have run or passed, nor that 256 packages are published.
+**Evidence distinction:** GitHub commits establish that catalog inventory and offline contracts exist, not that those tests have run or passed, nor that 255 packages are published.

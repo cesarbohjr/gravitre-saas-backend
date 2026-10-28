@@ -438,13 +438,14 @@
       "division": "engineering",
       "specialty": "OrgScript grammar & AST validation",
       "slug": "agency-engineering-orgscript-engineer",
-      "proposed_disposition": "marketplace_agent",
+      "proposed_disposition": "exclude",
       "publication_status": "draft_unapproved",
       "requires_governance_review": false,
       "potential_existing_slugs": [],
       "source_url": "https://github.com/msitarzewski/agency-agents/blob/b37b5bb33b78f2c1d6567d98e25ca818e3259219/engineering/engineering-orgscript-engineer.md",
       "source_sha256": "f8426369743ff0086e32cb9facfc3935488d99a1c2de92961917f9b27d401427",
-      "source_license": "MIT"
+      "source_license": "MIT",
+      "exclusion_reason": "OrgScript grammar and AST integration remain unverified; preserve initial PR581 exclusion."
     },
     {
       "name": "Prompt Engineer",

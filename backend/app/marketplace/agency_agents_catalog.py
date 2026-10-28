@@ -100,6 +100,9 @@ def map_marketplace_targets(path: Path = INVENTORY) -> list[dict]:
         department, pack, manifest = DIVISION_TARGETS[agent["division"]]
         source_key = Path(agent["source_path"]).stem
         existing = FUNCTION_TARGETS.get(source_key)
+        excluded = agent["proposed_disposition"] == "exclude"
+        if excluded:
+            pack, manifest, existing = None, None, None
         if pack and (pack not in catalog or catalog[pack].asset_type != "department_pack"):
             raise ValueError("missing_target_pack")
         if existing and (existing not in catalog or catalog[existing].asset_type != "ai_agent"):
@@ -109,7 +112,10 @@ def map_marketplace_targets(path: Path = INVENTORY) -> list[dict]:
             "candidate_pack_slug": pack, "candidate_agent_slug": existing,
             "manifest_role": manifest,
             "proposed_disposition": agent["proposed_disposition"],
-            "conflict_disposition": "review_enrichment" if existing else "review_specialist_scope",
+            "conflict_disposition": (
+                "exclude_pending_review" if excluded
+                else "review_enrichment" if existing else "review_specialist_scope"
+            ),
             "catalog_slug_collision": agent["slug"] in catalog,
             "comparison_scope": "repository_seed_catalog_only",
             "live_catalog_review_required": True,
