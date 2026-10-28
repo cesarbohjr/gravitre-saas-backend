@@ -8,14 +8,13 @@ import { Container } from "@/components/marketing/nodus/container"
 import { DivideX } from "@/components/marketing/nodus/divide"
 import { Heading } from "@/components/marketing/nodus/heading"
 import { LogoSVG } from "@/components/marketing/nodus/logo"
+import { MarketingScene } from "@/components/marketing/nodus/scene"
 import { SubHeading } from "@/components/marketing/nodus/subheading"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import {
-  GravitreAmbientMotion,
   GravitreResolve,
-  SignalFieldVisual,
 } from "@/components/marketing/system"
 
 const contactOptions = [
@@ -132,9 +131,15 @@ export default function ContactPage() {
           </div>
 
           <div className="flex flex-col gap-4">
-            <GravitreAmbientMotion className="mb-2 flex justify-center md:justify-end">
-              <SignalFieldVisual />
-            </GravitreAmbientMotion>
+            <MarketingScene
+              name="dept-support"
+              width={320}
+              height={230}
+              aspect="aspect-[16/10]"
+              priority
+              status="We reply from support@gravitre.app"
+              className="mb-2"
+            />
             <p className="font-mono text-xs tracking-tight text-muted-foreground uppercase">
               Direct lines
             </p>

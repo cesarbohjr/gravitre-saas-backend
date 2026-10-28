@@ -4,6 +4,7 @@ import { Button } from "@/components/marketing/nodus/button"
 import { Container } from "@/components/marketing/nodus/container"
 import { CTA } from "@/components/marketing/nodus/cta"
 import { DivideX } from "@/components/marketing/nodus/divide"
+import { MarketingScene } from "@/components/marketing/nodus/scene"
 import { SectionHeading } from "@/components/marketing/nodus/seciton-heading"
 import { SubHeading } from "@/components/marketing/nodus/subheading"
 import {
@@ -86,6 +87,15 @@ export default function CareersPage() {
             </Button>
           </div>
           <div className="flex flex-col justify-center gap-4 px-4 py-10 md:px-8">
+            <MarketingScene
+              name="dept-marketing"
+              width={420}
+              height={260}
+              aspect="aspect-[16/10]"
+              priority
+              status="Planning the next release together"
+              className="mb-4"
+            />
             <p className="font-mono text-xs tracking-tight text-muted-foreground uppercase">
               How we work
             </p>
@@ -128,6 +138,14 @@ export default function CareersPage() {
           <SubHeading className="mx-auto mt-4 max-w-lg px-4 text-center">
             We are not listing invented openings. Reach out if you want to build with us.
           </SubHeading>
+          <MarketingScene
+            name="moment-welcome"
+            width={320}
+            height={230}
+            aspect="aspect-[16/9]"
+            status="Your desk is ready"
+            className="mx-4 mt-10 w-[calc(100%-2rem)] max-w-xl"
+          />
           <Button as={Link} href="/contact" className="mt-8">
             Contact careers
           </Button>

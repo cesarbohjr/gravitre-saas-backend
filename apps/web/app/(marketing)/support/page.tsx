@@ -4,8 +4,6 @@ import Link from "next/link"
 import {
   Search,
   BookOpen,
-  MessageSquare,
-  Mail,
   HelpCircle,
   Zap,
   Shield,
@@ -15,6 +13,7 @@ import {
 } from "lucide-react"
 import { SUPPORT_CATEGORY_LINKS, SUPPORT_POPULAR_ARTICLES } from "@/lib/marketing-guide-links"
 import { DivideX } from "@/components/marketing/nodus/divide"
+import { MarketingScene } from "@/components/marketing/nodus/scene"
 import {
   MarketingPageEndCta,
   MarketingPageHero,
@@ -170,7 +169,17 @@ export default function SupportPage() {
       <DivideX />
 
       <MarketingRails>
-        <div className="mx-auto max-w-3xl">
+        <div className="mx-auto grid max-w-5xl items-start gap-10 md:grid-cols-[1fr_1.4fr]">
+          <MarketingScene
+            name="goal-template-support"
+            width={420}
+            height={260}
+            aspect="aspect-[4/3]"
+            status="Most answers are a guide away"
+            tone="green"
+            className="md:sticky md:top-28"
+          />
+          <div>
           <GravitreReveal className="mb-8">
             <h2 className="text-2xl font-semibold text-foreground">Popular articles</h2>
           </GravitreReveal>
@@ -187,6 +196,7 @@ export default function SupportPage() {
                 </a>
               </GravitreFlow>
             ))}
+          </div>
           </div>
         </div>
       </MarketingRails>
@@ -224,35 +234,29 @@ export default function SupportPage() {
           className="mb-8"
         />
         <div className="grid gap-6 sm:grid-cols-3">
-          <GravitreFlow className="group rounded-xl border border-border bg-card p-6 text-center transition-all hover:border-primary/30 hover:shadow-md">
+          <GravitreFlow className="group rounded-xl border border-border bg-card p-3 pb-6 text-center transition-all hover:border-primary/30 hover:shadow-md">
             <Link href="/docs" className="block">
-              <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-primary/15 mb-4">
-                <BookOpen className="h-5 w-5 text-primary" />
-              </div>
+              <MarketingScene name="spot-knowledge" width={300} height={190} aspect="aspect-[16/10]" className="mb-4" />
               <h3 className="font-medium text-foreground mb-1">Documentation</h3>
               <p className="text-sm text-muted-foreground">Guides, concepts, and API reference</p>
             </Link>
           </GravitreFlow>
           <GravitreFlow
             delay={0.1}
-            className="group rounded-xl border border-border bg-card p-6 text-center transition-all hover:border-primary/30 hover:shadow-md"
+            className="group rounded-xl border border-border bg-card p-3 pb-6 text-center transition-all hover:border-primary/30 hover:shadow-md"
           >
             <a href="mailto:support@gravitre.app" className="block">
-              <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-primary/15 mb-4">
-                <Mail className="h-5 w-5 text-primary" />
-              </div>
+              <MarketingScene name="market-support" width={300} height={190} aspect="aspect-[16/10]" className="mb-4" />
               <h3 className="font-medium text-foreground mb-1">Email support</h3>
               <p className="text-sm text-muted-foreground">support@gravitre.app</p>
             </a>
           </GravitreFlow>
           <GravitreResolve
             delay={0.2}
-            className="group rounded-xl border border-border bg-card p-6 text-center transition-all hover:border-primary/30 hover:shadow-md"
+            className="group rounded-xl border border-border bg-card p-3 pb-6 text-center transition-all hover:border-primary/30 hover:shadow-md"
           >
             <Link href="/contact" className="block">
-              <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-primary/15 mb-4">
-                <MessageSquare className="h-5 w-5 text-primary" />
-              </div>
+              <MarketingScene name="dept-support" width={320} height={230} aspect="aspect-[16/10]" className="mb-4" />
               <h3 className="font-medium text-foreground mb-1">Contact</h3>
               <p className="text-sm text-muted-foreground">Send a message through our contact form</p>
             </Link>

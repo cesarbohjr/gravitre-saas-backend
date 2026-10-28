@@ -10,11 +10,11 @@ import {
   Workflow,
   Database,
   Lightbulb,
-  Play,
 } from "lucide-react"
 import { useState } from "react"
 import { guideHref } from "@/lib/marketing-guide-links"
 import { DivideX } from "@/components/marketing/nodus/divide"
+import { MarketingScene } from "@/components/marketing/nodus/scene"
 import {
   MarketingPageEndCta,
   MarketingPageHero,
@@ -29,6 +29,22 @@ import {
   GravitreTrace,
   StageTraceVisual,
 } from "@/components/marketing/system"
+
+/** App illustrations used as guide thumbnails (public/illustrations). */
+const GUIDE_ART: Record<string, string> = {
+  "Install the Chrome browser extension": "ws-assignments-to-workflow",
+  "Create Your First AI Agent": "spot-agents",
+  "Understanding Agent Capabilities": "agents-guardrails",
+  "Building Multi-Step Workflows": "hero-workflows",
+}
+
+const CATEGORY_ART: Record<string, string> = {
+  "getting-started": "market-onboarding",
+  agents: "spot-agents",
+  workflows: "spot-workflows",
+  integrations: "spot-connectors",
+  "best-practices": "agents-playbook",
+}
 
 const categories = [
   { id: "all", label: "All Guides", icon: BookOpen },
@@ -275,11 +291,13 @@ export default function GuidesPage() {
                 href={guideHref(guide.title)}
                 className="group relative block overflow-hidden rounded-2xl border border-border bg-card transition-all hover:border-primary/30 hover:shadow-lg"
               >
-                <div className="aspect-video bg-gradient-to-br from-primary/10 via-card to-muted/50 p-6 flex items-center justify-center">
-                  <div className="h-16 w-16 rounded-2xl bg-muted flex items-center justify-center group-hover:scale-110 transition-transform">
-                    <Play className="h-8 w-8 text-muted-foreground" />
-                  </div>
-                </div>
+                <MarketingScene
+                  name={GUIDE_ART[guide.title] ?? CATEGORY_ART[guide.category] ?? "spot-knowledge"}
+                  width={320}
+                  height={230}
+                  aspect="aspect-video"
+                  className="rounded-none border-0 border-b transition-transform"
+                />
                 <div className="p-6">
                   <div className="flex items-center gap-3 mb-3">
                     <span
@@ -395,9 +413,13 @@ export default function GuidesPage() {
         <div className="mx-auto max-w-4xl">
           <GravitreReveal className="rounded-2xl border border-border bg-[color:var(--g-marketing-surface)] p-8 lg:p-12">
             <div className="flex items-center gap-4 mb-6">
-              <div className="h-14 w-14 rounded-xl bg-muted flex items-center justify-center">
-                <BookOpen className="h-7 w-7 text-muted-foreground" />
-              </div>
+              <MarketingScene
+                name="spot-knowledge"
+                width={300}
+                height={190}
+                aspect="aspect-[4/3]"
+                className="w-24 shrink-0 rounded-xl"
+              />
               <div>
                 <h2 className="text-2xl font-bold text-foreground">Prefer docs?</h2>
                 <p className="text-muted-foreground">Written guides live in the documentation hub</p>

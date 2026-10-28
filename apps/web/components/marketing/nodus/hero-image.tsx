@@ -26,17 +26,17 @@ export const HeroImage = ({
   height = 1863,
 }: HeroImageProps = {}) => {
   return (
-    <Container className="border-divide relative flex items-start justify-start md:border-x bg-gray-100 p-2 perspective-distant md:p-4 lg:p-8">
+    <Container className="border-divide relative flex items-start justify-start md:border-x bg-[#efefea] p-2 perspective-distant md:p-6 lg:p-12">
       <Dot top left />
       <Dot top right />
       <Dot bottom left />
       <Dot bottom right />
-      <div className="relative w-full">
+      <div className="relative isolate w-full">
         <div className="relative z-10 h-full w-full">
           <Image
             src={src}
             alt={alt}
-            className="w-full"
+            className="w-full rounded-lg shadow-[0_24px_60px_-24px_rgba(20,21,19,0.35)] ring-1 ring-[#141513]/10 md:rounded-xl"
             priority
             fetchPriority="high"
             quality={75}
@@ -46,7 +46,11 @@ export const HeroImage = ({
             draggable={false}
           />
         </div>
-        <div className="absolute inset-0 z-0 m-auto h-[90%] w-[95%] rounded-lg border border-(--pattern-fg) bg-[image:repeating-linear-gradient(315deg,_var(--pattern-fg)_0,_var(--pattern-fg)_1px,_transparent_0,_transparent_50%)] bg-[size:10px_10px] bg-fixed" />
+        {/* Soft colour wash — the same mint / sand blobs the app's illustrations sit on. */}
+        <div
+          aria-hidden
+          className="absolute -inset-2 z-0 md:-inset-6 lg:-inset-12 bg-[radial-gradient(55%_65%_at_18%_30%,#ddf3e8_0,transparent_70%),radial-gradient(45%_55%_at_88%_78%,#f2e4d0_0,transparent_70%),radial-gradient(35%_45%_at_70%_10%,#e3e3f3_0,transparent_70%)]"
+        />
       </div>
     </Container>
   )

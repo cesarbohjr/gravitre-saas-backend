@@ -9,6 +9,7 @@ import {
 } from "@/components/icons/nucleo/semantic"
 import { GovernedExecutionField } from "@/components/marketing/creative"
 import { DivideX } from "@/components/marketing/nodus/divide"
+import { MarketingScene } from "@/components/marketing/nodus/scene"
 import {
   MarketingPageHero,
   MarketingRails,
@@ -101,7 +102,33 @@ export default function SecurityPage() {
         badge="Security"
         title="Enterprise-grade security"
         description="Your data security is our priority. Gravitre is built with security-first architecture, human approval on writes, and audit trails you can review — with plan-specific details available on request."
-      />
+      >
+        <div className="mt-10 grid w-full gap-4 md:grid-cols-3">
+          <MarketingScene
+            name="ops-approvals"
+            width={320}
+            height={230}
+            aspect="aspect-[4/3]"
+            priority
+            status="Writes wait for approval"
+            tone="amber"
+          />
+          <MarketingScene
+            name="roster-security"
+            width={320}
+            height={260}
+            aspect="aspect-[4/3]"
+            status="Roles and SSO control access"
+          />
+          <MarketingScene
+            name="settings-audit"
+            width={320}
+            height={260}
+            aspect="aspect-[4/3]"
+            status="Every connector write logged"
+          />
+        </div>
+      </MarketingPageHero>
 
       <DivideX />
 

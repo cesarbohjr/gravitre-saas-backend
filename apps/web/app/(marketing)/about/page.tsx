@@ -5,6 +5,7 @@ import { Container } from "@/components/marketing/nodus/container"
 import { CTA } from "@/components/marketing/nodus/cta"
 import { DivideX } from "@/components/marketing/nodus/divide"
 import { Heading } from "@/components/marketing/nodus/heading"
+import { MarketingScene } from "@/components/marketing/nodus/scene"
 import { SectionHeading } from "@/components/marketing/nodus/seciton-heading"
 import { SubHeading } from "@/components/marketing/nodus/subheading"
 import {
@@ -41,7 +42,15 @@ export default function AboutPage() {
               Put Gravitre to work
             </Button>
           </div>
-          <div className="border-divide flex flex-col justify-center rounded-3xl border bg-[color:var(--g-marketing-surface)] p-8 md:p-10">
+          <div className="flex flex-col gap-4">
+            <MarketingScene
+              name="home-hero"
+              width={520}
+              height={340}
+              priority
+              status="Sales, Support and Finance working from one brain"
+            />
+            <div className="border-divide rounded-3xl border bg-[color:var(--g-marketing-surface)] p-6 md:p-8">
             <p className="font-mono text-xs tracking-tight text-muted-foreground uppercase">
               What we believe
             </p>
@@ -51,6 +60,7 @@ export default function AboutPage() {
             <p className="mt-6 text-sm text-gray-600">
               {MARKETING_COPY.homeNarrative.categoryLine}
             </p>
+            </div>
           </div>
         </div>
       </Container>
@@ -97,8 +107,16 @@ export default function AboutPage() {
 
       <DivideX />
 
-      <Container className="border-divide flex flex-col items-start border-x px-4 py-16 md:flex-row md:items-center md:justify-between md:px-8 md:py-20">
-        <div>
+      <Container className="border-divide grid grid-cols-1 items-center gap-10 border-x px-4 py-16 md:grid-cols-2 md:px-8 md:py-20">
+        <MarketingScene
+          name="settings-team"
+          width={320}
+          height={260}
+          aspect="aspect-[16/10]"
+          status="New teammate invited"
+          className="md:order-2"
+        />
+        <div className="md:order-1">
           <Badge text="Careers" />
           <SectionHeading className="mt-4 text-left">
             Build with us
@@ -106,10 +124,10 @@ export default function AboutPage() {
           <SubHeading className="mt-4 max-w-md text-left">
             Join the team working on one AI brain for business.
           </SubHeading>
+          <Button as={Link} href="/careers" className="mt-8">
+            View careers
+          </Button>
         </div>
-        <Button as={Link} href="/careers" className="mt-8 md:mt-0">
-          View careers
-        </Button>
       </Container>
 
       <CTA />
