@@ -183,6 +183,32 @@ export function ExtensionPage() {
 
       <MarketingRails>
           <h2 className="text-center text-2xl font-medium text-charcoal-700 sm:text-3xl">
+            Steps 1 and 2, in the toolbar
+          </h2>
+          <p className="mx-auto mt-3 max-w-2xl text-center text-gray-600">
+            Click the Gravitre icon on any supported page. The popup shows who
+            is on the page, where they already live in your connected apps, and
+            what is waiting for your approval.
+          </p>
+          <GravitreReveal className="mx-auto mt-12 max-w-3xl">
+            <BrowserFrame
+              url="linkedin.com/in/…"
+              tabTitle="LinkedIn"
+              placement="popup"
+              panel={{
+                src: "/product/extension-popup.png",
+                alt: "Gravitre extension popup on a LinkedIn profile: the person on the page, matches in HubSpot and Salesforce, and three approvals waiting.",
+                width: 680,
+                height: 864,
+              }}
+            />
+          </GravitreReveal>
+      </MarketingRails>
+
+      <DivideX />
+
+      <MarketingRails>
+          <h2 className="text-center text-2xl font-medium text-charcoal-700 sm:text-3xl">
             Steps 3 and 4, on the page
           </h2>
           <p className="mx-auto mt-3 max-w-2xl text-center text-gray-600">
@@ -204,9 +230,9 @@ export function ExtensionPage() {
                 tabTitle="LinkedIn"
                 panel={{
                   src: "/product/extension-overlay-enrich.png",
-                  alt: "Gravitre overlay panel open on a LinkedIn profile, showing enriched company and contact fields pulled from catalog reads.",
-                  width: 760,
-                  height: 1802,
+                  alt: "Gravitre side panel open on a LinkedIn profile, showing the person on the page, matches in HubSpot and Salesforce, and suggested plays.",
+                  width: 800,
+                  height: 1520,
                 }}
               />
             </GravitreReveal>
@@ -222,14 +248,11 @@ export function ExtensionPage() {
                 className="mt-5"
                 url="linkedin.com/in/…"
                 tabTitle="LinkedIn"
-                // The confirm block is at the end of this panel — anchor to
-                // the bottom so the actual approval is what you see.
-                panelAlign="bottom"
                 panel={{
                   src: "/product/extension-approval.png",
-                  alt: "Gravitre overlay panel showing a staged HubSpot contact create awaiting confirmation, with the catalog action and target fields listed.",
-                  width: 760,
-                  height: 2358,
+                  alt: "Gravitre side panel Approvals tab: a staged HubSpot contact create with Approve and Reject, and two more requests waiting.",
+                  width: 800,
+                  height: 1520,
                 }}
               />
             </GravitreReveal>
@@ -266,7 +289,7 @@ export function ExtensionPage() {
               <ProductScreenshot
                 className="mt-5"
                 src="/product/app-approvals.png"
-                alt="Approvals queue showing three pending requests, with a HubSpot contact create selected and its recommendation, SLA, and impact detail open."
+                alt="Decision queue showing three requests waiting, with a Zendesk scope grant selected and what will happen, why it paused, and its activity open."
               />
             </GravitreResolve>
             <GravitreResolve delay={0.05}>
@@ -284,7 +307,7 @@ export function ExtensionPage() {
               <ProductScreenshot
                 className="mt-5"
                 src="/product/app-activity.png"
-                alt="Activity feed listing runs with lifecycle state and source, including a created HubSpot contact run sourced from the browser extension."
+                alt="Activity showing outcomes tagged browser_extension, with a failed HubSpot step open on its run trace: plan, authorize, create, verify."
               />
             </GravitreResolve>
           </div>
