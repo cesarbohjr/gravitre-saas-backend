@@ -45,7 +45,7 @@ export function AgentDetailHeader({
       className="overflow-hidden rounded-[14px] border border-[#e4e4df] bg-white text-[#141513] dark:border-[#2a2c29] dark:bg-[#171917] dark:text-[#ededE8]"
     >
       <DepartmentCover department={agent.department} roleLabel={agent.role} className="h-[120px] sm:h-[150px]" />
-      <div className="flex flex-col gap-4 px-5 pb-5 sm:flex-row sm:items-end sm:gap-6 sm:px-7">
+      <div className="flex flex-col gap-4 px-5 pb-5 sm:px-7 lg:flex-row lg:items-end lg:gap-6">
         <div className="relative -mt-12 shrink-0 self-start sm:-mt-14">
           {agent.avatarUrl ? (
             // eslint-disable-next-line @next/next/no-img-element -- agent avatars may be data URLs
@@ -63,7 +63,7 @@ export function AgentDetailHeader({
             style={{ background: dot }}
           />
         </div>
-        <div className="min-w-0 flex-1 sm:pt-4">
+        <div className="min-w-0 flex-1 lg:pt-4">
           <div className="flex items-center gap-2">
             <h1 className="min-w-0 truncate text-[28px] font-semibold leading-tight tracking-[-0.02em] sm:text-[32px]">{agent.name}</h1>
             <AgentIdentityEditor agent={agent} trigger="icon" />
@@ -81,7 +81,7 @@ export function AgentDetailHeader({
             {chips}
           </div>
         </div>
-        {actions ? <div className="flex flex-wrap items-center gap-2 sm:justify-end sm:self-end">{actions}</div> : null}
+        {actions ? <div className="flex flex-wrap items-center gap-2 lg:shrink-0 lg:justify-end lg:self-end">{actions}</div> : null}
       </div>
       {children ? <div className="border-t border-[#efefea] dark:border-[#232522]">{children}</div> : null}
     </section>

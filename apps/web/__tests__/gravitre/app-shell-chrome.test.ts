@@ -13,11 +13,13 @@ function block(name: string): string {
 describe("AppShell chrome by route", () => {
   it("keeps the standard top bar (org + environment context) on Connectors", () => {
     expect(block("isImmersiveChat")).not.toContain("/connectors")
-    expect(block("useCompactTopBar")).not.toContain("isFullHeightHub")
+    expect(block("useCompactTopBar")).not.toContain("/connectors")
   })
 
-  it("still gives Connectors its full-height scroll region", () => {
-    expect(block("isFullHeightHub")).toContain('"/connectors"')
-    expect(block("locksDocumentScroll")).toContain("isFullHeightHub")
+  it("lets the Connectors hub scroll like any document page", () => {
+    // The redesigned hub has no inner scroll region; locking the main column
+    // left everything below the first screen unreachable, on phones most of all.
+    expect(src).not.toContain("isFullHeightHub")
+    expect(block("locksDocumentScroll")).not.toContain("/connectors")
   })
 })
