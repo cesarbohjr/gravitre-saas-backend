@@ -26,6 +26,19 @@ def _update_approved_enrichment(
     if existing.get("org_id") or existing.get("publisher_id") != row["publisher_id"]:
         raise PermissionError("Approved catalog enrichment cannot replace another publisher or tenant asset")
     if all(existing.get(key) == row[key] for key in _VERSIONED_FIELDS):
+        # Resume an interrupted final publication without minting another
+        # version or claiming that an unrelated/missing snapshot was released.
+        snapshots = (
+            client.table("marketplace_asset_versions").select("*")
+            .eq("asset_id", existing["id"]).eq("version_number", int(existing.get("current_version") or 1))
+            .limit(1).execute()
+        ).data
+        if not snapshots or any(snapshots[0].get(key) != row[key] for key in _VERSIONED_FIELDS):
+            raise RuntimeError("Active enrichment snapshot is missing or inconsistent")
+        if not snapshots[0].get("published_at"):
+            client.table("marketplace_asset_versions").update({"published_at": row["published_at"]}).eq(
+                "asset_id", existing["id"],
+            ).eq("version_number", int(existing.get("current_version") or 1)).execute()
         return {"id": str(existing["id"]), "slug": slug}
     if not isinstance(existing.get("config"), dict):
         raise ValueError("Cannot version enrichment without the prior asset config")

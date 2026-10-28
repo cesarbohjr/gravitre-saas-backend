@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from app.capabilities.agency_enrichment import render_agency_enrichment
+from app.capabilities.agent_manifest import render_agent_guidance
 
 DEFAULT_HANDOFF_FORMAT = (
     "Handoff JSON fields: summary, decision (object), recommended_actions (string[]), confidence (0-100)."
@@ -576,6 +577,9 @@ def build_agent_instructions_section(agent: dict[str, Any] | None, *, max_custom
     custom = str(config.get("system_prompt") or config.get("systemPrompt") or "").strip()
     if custom:
         lines.append(f"Agent-specific instructions:\n{custom[:max_custom_chars]}")
+    role_guidance = render_agent_guidance(agent.get("role"))
+    if role_guidance:
+        lines.append(role_guidance)
     enrichment = render_agency_enrichment(agent)
     if enrichment:
         lines.append(enrichment)
@@ -662,6 +666,9 @@ def build_agent_system_prompt(
         custom = (config.get("system_prompt") or config.get("systemPrompt") or "").strip()
         if custom:
             lines.append(f"Agent-specific instructions:\n{custom}")
+    role_guidance = render_agent_guidance(agent.get("role"))
+    if role_guidance:
+        lines.append(role_guidance)
     enrichment = render_agency_enrichment(agent)
     if enrichment:
         lines.append(enrichment)

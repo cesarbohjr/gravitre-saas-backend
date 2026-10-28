@@ -125,7 +125,7 @@ def test_install_upgrade_and_rollback_preserve_identity_permissions_and_other_te
     installed = install_asset(db, "org-a", row["id"], actor_id="admin-a", environment_name="test")
     entity_id = installed["entities"]["agentId"]
     install_id = installed["install"]["id"]
-    assert db.permissions.call_count == 1
+    assert db.permissions.call_count == len(ASSETS[slug].config["systems"])
     old_snapshot = deepcopy(db.tables["marketplace_asset_versions"][0])
     assert render_agency_enrichment(db.rows("agents", id=entity_id)[0]) == ""
 
@@ -141,7 +141,7 @@ def test_install_upgrade_and_rollback_preserve_identity_permissions_and_other_te
     enriched = db.rows("agents", id=entity_id)[0]
     assert "Approved specialist workflow guidance" in build_agent_system_prompt(enriched)
     assert "Approved specialist workflow guidance" in build_agent_instructions_section(enriched)
-    assert db.permissions.call_count == 1  # Revoked/admin-reduced grants are not recreated.
+    assert db.permissions.call_count == len(ASSETS[slug].config["systems"])  # Revoked/admin-reduced grants are not recreated.
 
     # Existing version API only permits org-owned assets; public publisher
     # assets remain protected. Exercise rollback on an org-owned copy.
@@ -154,14 +154,14 @@ def test_install_upgrade_and_rollback_preserve_identity_permissions_and_other_te
     assert public_rollback["install"]["asset_version"] == 1
     assert row["current_version"] == 2  # The shared listing is unchanged.
     assert render_agency_enrichment(db.rows("agents", id=entity_id)[0]) == ""
-    assert db.permissions.call_count == 1
+    assert db.permissions.call_count == len(ASSETS[slug].config["systems"])
     row.update(org_id="org-a", visibility="internal")
     rollback_asset_version(db, "org-a", row["id"], version_number=1, actor_id="admin-a")
     rolled_back = install_asset(db, "org-a", row["id"], actor_id="admin-a", environment_name="test")
     assert rolled_back["entities"]["agentId"] == entity_id
     assert rolled_back["install"]["asset_version"] == 1
     assert render_agency_enrichment(db.rows("agents", id=entity_id)[0]) == ""
-    assert db.permissions.call_count == 1
+    assert db.permissions.call_count == len(ASSETS[slug].config["systems"])
     assert len(db.rows("operators", org_id="org-a")) == 1
     assert db.rows("operators", org_id="org-b")[0] == foreign
 
@@ -169,8 +169,7 @@ def test_install_upgrade_and_rollback_preserve_identity_permissions_and_other_te
 @pytest.mark.parametrize("slug", SLUGS)
 def test_connector_and_entitlement_gates_apply_before_agent_creation(db, slug):
     row = baseline(db, slug)
-    row["config"] = deepcopy(ASSETS[slug].config)
-    row["required_connectors"] = deepcopy(ASSETS[slug].required_connectors)
+    upsert_catalog_asset(db, "gravitre-publisher", ASSETS[slug])
     with pytest.raises(MarketplaceError) as exc:
         install_asset(db, "org-a", row["id"], actor_id="admin-a", environment_name="test")
     assert exc.value.code == "CONNECTORS_NOT_READY"
@@ -262,4 +261,39 @@ def test_version_selection_keeps_current_entitlement_and_rejects_unpublished_sna
     db.tables["marketplace_asset_versions"][0]["published_at"] = None
     with pytest.raises(MarketplaceError, match="Published asset version not found"):
         install_asset(db, "org-a", row["id"], actor_id="admin-a", version_number=1)
+    assert db.rows("operators") == []
+
+
+@pytest.mark.parametrize("version", [None, 2])
+def test_interrupted_snapshot_publication_blocks_install_and_preview_then_recovers(db, version):
+    row = baseline(db, "content-writer")
+    ready_connector(db, "content-writer")
+
+    def fail_final_publication(query):
+        if query.table == "marketplace_asset_versions" and query.op == "update":
+            raise RuntimeError("simulated final publication failure")
+
+    db.hooks.append(fail_final_publication)
+    with pytest.raises(RuntimeError, match="publication failure"):
+        upsert_catalog_asset(db, "gravitre-publisher", ASSETS["content-writer"])
+    assert row["current_version"] == 2
+    assert db.rows("marketplace_asset_versions", version_number=2)[0]["published_at"] is None
+    with pytest.raises(MarketplaceError, match="publication is incomplete"):
+        install_asset(db, "org-a", row["id"], actor_id="admin-a", version_number=version, force=True)
+    with pytest.raises(MarketplaceError, match="publication is incomplete"):
+        preview_install(db, "org-a", row["id"])
+    assert db.rows("operators") == []
+    db.hooks.remove(fail_final_publication)
+    upsert_catalog_asset(db, "gravitre-publisher", ASSETS["content-writer"])
+    assert row["current_version"] == 2  # Recovery is idempotent, with no new version.
+    assert db.rows("marketplace_asset_versions", version_number=2)[0]["published_at"]
+    assert install_asset(db, "org-a", row["id"], actor_id="admin-a")["install"]["asset_version"] == 2
+
+
+def test_current_snapshot_must_match_listing_before_enriched_install(db):
+    row = baseline(db, "content-writer")
+    upsert_catalog_asset(db, "gravitre-publisher", ASSETS["content-writer"])
+    db.rows("marketplace_asset_versions", version_number=2)[0]["required_connectors"] = []
+    with pytest.raises(MarketplaceError, match="publication is incomplete"):
+        install_asset(db, "org-a", row["id"], actor_id="admin-a")
     assert db.rows("operators") == []

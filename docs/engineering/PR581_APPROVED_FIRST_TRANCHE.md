@@ -1,5 +1,7 @@
 # PR581 approved first tranche — existing-agent enrichments
 
+Historical four-agent approval record. The subsequent two-agent authorization and checkpoint review are recorded in [the continuation](PR581_NEXT_TRANCHE_AND_PR587_RECONCILIATION.md); only its named existing-agent enrichments supersede the staged status below.
+
 The user approved these four enrichments in the PR581 continuation. This approval covers code and certification on the existing feature branch. PR581 remains open; no merge, publication, install into a live organization, migration or deployment is performed.
 
 | Upstream role | Existing Marketplace agent | Required existing connector |

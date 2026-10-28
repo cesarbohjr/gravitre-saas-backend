@@ -168,7 +168,7 @@ def preview_marketplace_candidates(path: Path = INVENTORY) -> list[CatalogAsset]
 
 
 def approved_marketplace_candidates() -> list[CatalogAsset]:
-    """Return only the four approved existing assets, never new Agency SKUs.
+    """Return only the approved existing assets, never new Agency SKUs.
 
     Product approval for enrichment does not publish or install any asset.
     The remaining source roster stays review-only.

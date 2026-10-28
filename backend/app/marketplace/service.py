@@ -378,6 +378,22 @@ def _assert_asset_org_scope(asset: dict[str, Any], org_id: str) -> None:
         raise MarketplaceError("Marketplace asset not found", code="NOT_FOUND")
 
 
+def _assert_enrichment_snapshot_published(client: Any, asset: dict[str, Any]) -> None:
+    """An interrupted seed cannot activate an unpublished enrichment snapshot."""
+    config = safe_normalize_stored_dict(asset.get("config"))
+    nested = safe_normalize_stored_dict(config.get("config"))
+    if asset.get("asset_type") != "ai_agent" or "agency_enrichment" not in nested:
+        return
+    rows = (
+        client.table("marketplace_asset_versions").select("*")
+        .eq("asset_id", asset["id"]).eq("version_number", int(asset.get("current_version") or 1))
+        .limit(1).execute()
+    ).data
+    fields = ("config", "required_connectors", "required_permissions", "install_variables")
+    if not rows or not rows[0].get("published_at") or any(rows[0].get(k) != asset.get(k) for k in fields):
+        raise MarketplaceError("Enrichment snapshot publication is incomplete", code="NOT_PUBLISHED")
+
+
 def _resolve_agent_install_version(client: Any, asset: dict[str, Any], version_number: int | None) -> dict[str, Any]:
     """Select a published prior agent snapshot without changing the shared listing.
 
@@ -385,6 +401,7 @@ def _resolve_agent_install_version(client: Any, asset: dict[str, Any], version_n
     snapshot config can never downgrade pricing or change tenant visibility.
     """
     if version_number is None:
+        _assert_enrichment_snapshot_published(client, asset)
         return asset
     current = int(asset.get("current_version") or 1)
     if type(version_number) is not int or version_number < 1 or version_number > current:
@@ -392,6 +409,7 @@ def _resolve_agent_install_version(client: Any, asset: dict[str, Any], version_n
     if asset.get("asset_type") != "ai_agent":
         raise MarketplaceError("Version selection is supported for agent installs only", code="VALIDATION_ERROR")
     if version_number == current:
+        _assert_enrichment_snapshot_published(client, asset)
         return asset
     rows = (
         client.table("marketplace_asset_versions").select("*")
@@ -2154,6 +2172,7 @@ def preview_install(
 ) -> dict[str, Any]:
     asset = fetch_marketplace_asset(client, asset_id)
     _assert_asset_org_scope(asset, org_id)
+    _assert_enrichment_snapshot_published(client, asset)
     if settings is None:
         try:
             from app.config import get_settings

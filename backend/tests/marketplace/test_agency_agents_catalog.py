@@ -91,7 +91,7 @@ def test_initial_orgscript_exclusion_is_preserved():
 
 def test_approval_is_fail_closed():
     approved = approved_marketplace_candidates()
-    assert {asset.slug for asset in approved} == {"content-writer", "seo-analyst", "sdr-coach", "ticket-triage"}
+    assert {asset.slug for asset in approved} == {"content-writer", "seo-analyst", "sdr-coach", "ticket-triage", "revenue-operations-agent", "competitor-research-agent"}
     assert not any(asset.slug.startswith("agency-") for asset in approved)
 
 
