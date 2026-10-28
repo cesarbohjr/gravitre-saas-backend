@@ -1,4 +1,64 @@
-# Governed memory research checkpoint
+# Governed memory engineering
+
+The actual pinned Mem0 OSS SDK is now implemented in `sdk_worker.py`, with a
+bounded host client, executable canonical-kernel integration and a required CI
+gate. This supersedes the earlier installation restriction for this engineering
+increment following the user's instruction to proceed with full implementation.
+No application dependency, production memory store, model provider, telemetry,
+Marketplace package, policy, merge or deployment is changed by SDK evaluation.
+
+The worker runs real Mem0 Memory, local Qdrant and SQLite lifecycle code. It uses
+an explicit fixed CPU token-hash embedder and a forbidden-inference provider via
+Mem0's factory extension points. **SDK add/search/update/delete/persistence are
+real; neural embedding quality, model extraction and provider SLA are not tested.**
+No provider credentials enter the child process. Network guards are installed
+before SDK import; telemetry is off; `add(infer=False)` is mandatory. A failed
+protocol, source mismatch, timeout, inference attempt or network attempt fails
+the engineering gate. Source hashes and the SDK version are verified at startup.
+
+`run_engine.py` executes all 26 canonical cases with the SDK, including canonical
+learning, plus local lifecycle checks for namespace filters, cross-scope mutation
+denial, update/readback, deletion/readback, restart and authorized local snapshot
+restoration. The host's canonical memory gates remain authoritative. Fixture
+storage is still used for Gravitre's database; no deployed acceptance is claimed.
+The worker dependency lock is separate from all application requirements and is
+audited in CI, preserving the existing OpenAI/provider dependency graph.
+
+## Executing the actual SDK path
+
+Use Python 3.12. In a disposable SDK environment install
+`engine-requirements.lock`, then install the repository/revision in
+`engine_source.json` with `pip install --no-deps /path/to/pinned/mem0-source`.
+The host interpreter uses existing backend dev requirements. From clean committed
+source, with synthetic backend environment values:
+
+```
+python scripts/memory_benchmark/run_engine.py --engine-python /absolute/disposable/venv/bin/python --output /absolute/scratch/mem0-sdk-report.json
+```
+
+The runner deletes all temporary SDK stores, snapshots and logs at exit. Only a
+sanitized source/data-bound report is retained; CI uploads that report as an
+artifact. No raw memory, identity or vendor exception body appears in it.
+
+## Decision gates
+
+A successful SDK engineering run is **not approval to adopt Mem0**. The observed
+SDK deletion removes vectors but retains text in SQLite history; this is recorded
+as `complete_erasure_gate=FAIL`, separately from engineering correctness. Snapshot
+restoration also intentionally restores that disposable history. It is not a
+production erasure or rollback contract. Gravitre-native memory remains selected;
+no semantic-quality improvement has been measured with the controlled embedder.
+
+Letta Code remains an architectural reference, with its actual runtime NOT_RUN.
+The current agent harness is not a drop-in retrieval implementation and its
+self-editing/cross-agent behavior conflicts with the existing One Brain boundary.
+No legacy Letta endpoint is fabricated and no duplicate agent runtime is adopted.
+
+## Prior canonical and fixture replay evidence
+
+The following v1/v2 descriptions are historical boundaries for their own runners.
+Their NOT_RUN candidate labels remain correct: those runners do not execute SDKs.
+The new SDK runner above has its own execution status and evidence.
 
 This increment exercises **Gravitre's current governance implementation** and
 defines candidate comparison boundaries. Mem0 and Letta SDK/runtime retrieval

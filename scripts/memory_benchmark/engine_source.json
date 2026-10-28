@@ -1,0 +1,12 @@
+{
+  "repository": "mem0ai/mem0",
+  "revision": "26cdefb46600c0fa5953c4b5ee5003c125539fc4",
+  "version": "2.2.1",
+  "license": "Apache-2.0",
+  "files": {
+    "mem0/memory/main.py": "f329ca4a17af1fbefb32ac10d4cc7ae7ddbdb7435a87eb74c30915cff98b8b7c",
+    "mem0/utils/factory.py": "b7883d7c48264eeac449e3696ad90d96db4ae6d3404e886c8dfc930d0843d02d",
+    "mem0/vector_stores/qdrant.py": "da570579d5cad69e6f123fdfe32b725235a25604e70047666bec763ba6e2bf43",
+    "mem0/memory/storage.py": "5f5ecdadd2b260fd14f36a0f338336eb760275465dd1056a99a47e1ef07702bd"
+  }
+}

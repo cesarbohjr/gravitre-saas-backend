@@ -36,7 +36,7 @@ class DB(FakeSupabase):
         return Query(self, name)
 
 
-async def execute_case(case, *, retrieval="canonical_fixture"):
+async def execute_case(case, *, retrieval="canonical_fixture", candidate_backend=None):
     if retrieval not in ("canonical_fixture", "mem0_contract_replay"):
         raise ValueError("Unknown research retrieval mode")
     if retrieval == "mem0_contract_replay" and case.get("operation") == "learn":
@@ -83,6 +83,8 @@ async def execute_case(case, *, retrieval="canonical_fixture"):
                 if query.table == "agent_memories" and query.op == "select":
                     raise RuntimeError("synthetic metadata unavailable")
             db.hooks.append(unavailable)
+        if candidate_backend is not None:
+            return await candidate_backend.recall(request, deepcopy(db.tables["agent_memories"]))
         if retrieval == "mem0_contract_replay":
             # Import pure research contracts only; no vendor constructor/SDK.
             import importlib.util
@@ -130,7 +132,8 @@ async def execute_case(case, *, retrieval="canonical_fixture"):
             context = await kernel.run_learn(request, CognitiveTurnContext(turn_id="synthetic-turn"),
                                              act_result={"confirmed": True, "typed_memories": [candidate]})
             written = [r for r in db.tables["agent_memories"] if r["id"] == "new-memory"]
-            matched = (context.learn["ok"] and len(written) == case["expected_writes"]
+            indexed = await candidate_backend.learn(request, written) if candidate_backend is not None else len(written)
+            matched = (indexed == case["expected_writes"] and context.learn["ok"] and len(written) == case["expected_writes"]
                        and embedding.call_count == case["expected_embeddings"]
                        and (not case.get("expected_class") or bool(written) and written[0]["source_class"] == case["expected_class"]))
             return {"id": case["id"], "passed": bool(matched), "writes": len(written), "embedding_calls": embedding.call_count}

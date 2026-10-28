@@ -1,6 +1,57 @@
-# PR587 governed-memory research checkpoint
+# PR587 memory engine engineering
 
-The next authorized increment is memory/evaluation infrastructure under the
+## Current scope and implementation
+
+The user's follow-up instructs full engineering implementation and CI rather than
+stopping at fixture contracts. It supersedes the planning-only package-install
+restriction for this isolated memory increment. Production acceptance follows
+release; existing open/draft/no-merge/no-deploy instructions remain in force.
+
+The pinned Mem0 2.2.1 SDK now runs in a disposable process with real local Qdrant
+and SQLite, source-hash verification, opaque scope/bindings, bounded protocol and
+deadlines, readback, restart and local snapshot restoration. The child receives
+no service/provider credentials, disables telemetry before import, blocks network
+IO and inference, and always adds with infer=False. An explicit controlled CPU
+embedding provider keeps this an SDK/lifecycle comparison, not a neural-quality
+or model benchmark. Application requirements and provider clients are untouched.
+
+All 26 canonical governance cases use the actual SDK retrieval/indexing path;
+canonical LEARN indexes only rows the existing writer actually accepted. The
+host database remains a filter-honoring fixture. Host scope, consent, final
+rehydration, liveness and contamination decisions remain real. Default-off gates
+prevent SDK construction/calls. Separate cases exercise persistence, scoped
+mutations and snapshot restoration. CI executes the actual SDK runner and uploads
+a sanitized source/data-bound report; the isolated dependency lock is audited.
+
+## Measured adoption decision
+
+The actual SDK removes a deleted vector from recall but retains memory text in
+SQLite history (three history rows after add/update/delete in the lifecycle run).
+Complete erasure therefore remains **FAIL**, not a generic deletion PASS. Local
+snapshot restoration deliberately restores disposable state and cannot certify
+production erasure. The engineering runner reports this failure separately from
+successful execution of its scoped lifecycle contracts. No gate is weakened to
+permit adoption. The decision is to retain Gravitre-native memory; no measurable
+semantic-quality gain has been established with the controlled embedder.
+
+Letta's pinned current source remains an architectural reference. Its current
+agent harness/self-editing/cross-agent model is not a drop-in governed retrieval
+adapter. The actual Letta runtime remains NOT_RUN, with no invented endpoint,
+autonomous import or duplicate brain. This is an explicit compatibility decision,
+not a fabricated engine comparison or product-quality ranking.
+
+## Evidence and release limits
+
+Exact-head SDK execution, dependency audit, combined compatibility and final CI
+are recorded in the PR description after execution. Engineering evidence does not
+certify deployed user behavior. Production/provider/physical-voice acceptance
+remains NOT_RUN until the authorized release stage. No merge, deployment,
+production migration, live installation, campaign or telemetry activation occurs.
+Paid Media's separate later scope and the existing six enrichments are unchanged.
+
+## Historical canonical and fixture-only checkpoints
+
+The earlier reference-only increment was memory/evaluation infrastructure under the
 existing phased roadmap. No framework is adopted. Paid Media's separate tranche
 approval is retained for later scoped implementation; no catalog, campaign,
 spending permission, price or agent installation changes here.
