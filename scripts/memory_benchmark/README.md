@@ -62,3 +62,29 @@ Offline contracts (from `backend`):
 ```
 python -m pytest -p tests.offline_network -q tests/services/test_governed_memory_benchmark.py tests/services/test_memory_quarantine_boundaries.py
 ```
+
+## Candidate result replay (v2)
+
+The next increment adds **31 Mem0-shaped fixture replays** through the real
+canonical kernel: the 20 existing recall cases plus 11 response-boundary cases.
+The latter cover missing/malformed/oversized results, unknown and spoofed IDs,
+duplicates, empty results, claimed foreign-row authority, injected vendor text,
+and a simulated timeout. Learning is deliberately excluded: a search replay
+cannot certify a candidate's write, deletion or retention implementation.
+
+The fixture builds the pinned request shape only after the real consent gate
+allows recall. Host-owned bindings reduce fixture results to canonical IDs;
+final authoritative rehydration decides scope, current content, liveness and
+quarantine. Returned memory text and authority metadata never enter the prompt.
+Malformed responses/timeouts produce the kernel's existing degraded hybrid
+signal, rather than a successful empty-memory claim. This is an injection of
+fixture responses at the hybrid retrieval seam, not application wiring or an
+implemented network/SDK adapter.
+
+Reports keep the original 26 reference outcomes separate from
+`contract_replay.status=FIXTURE_CONTRACT_PASS`. Both arms must pass for the CLI
+to succeed. Replay evidence includes source/data hashes and safe counts only;
+no vendor quality score, latency comparison, cost estimate or winner is emitted.
+Both actual engine statuses remain **NOT_RUN**. No Mem0/Letta install or runtime
+is implied. The actual isolated engine comparison remains an outstanding step;
+this replay closes the contract-to-canonical-gate gap, not the whole benchmark.

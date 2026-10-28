@@ -36,7 +36,11 @@ class DB(FakeSupabase):
         return Query(self, name)
 
 
-async def execute_case(case):
+async def execute_case(case, *, retrieval="canonical_fixture"):
+    if retrieval not in ("canonical_fixture", "mem0_contract_replay"):
+        raise ValueError("Unknown research retrieval mode")
+    if retrieval == "mem0_contract_replay" and case.get("operation") == "learn":
+        raise ValueError("Search replay cannot certify candidate learning")
     from app.services.cognitive_turn_kernel import CognitiveTurnKernel, CognitiveTurnRequest, CognitiveTurnContext
 
     db = DB()
@@ -55,6 +59,7 @@ async def execute_case(case):
     request = CognitiveTurnRequest(org_id="org-a", user_id="user-a", agent_id="agent-a",
                                    conversation_id="conversation-a", message="Recall synthetic preferences", client=db)
     searches = 0
+    candidate_requests = []
 
     async def search(*_args, **_kwargs):
         nonlocal searches
@@ -78,6 +83,33 @@ async def execute_case(case):
                 if query.table == "agent_memories" and query.op == "select":
                     raise RuntimeError("synthetic metadata unavailable")
             db.hooks.append(unavailable)
+        if retrieval == "mem0_contract_replay":
+            # Import pure research contracts only; no vendor constructor/SDK.
+            import importlib.util
+            from pathlib import Path
+            import sys
+            path = Path(__file__).resolve().parents[3] / "scripts/memory_benchmark/contracts.py"
+            spec = importlib.util.spec_from_file_location("memory_replay_contracts", path)
+            contracts = importlib.util.module_from_spec(spec)
+            sys.modules[spec.name] = contracts
+            spec.loader.exec_module(contracts)
+            contract = contracts.mem0_search_contract(
+                contracts.Scope(request.org_id, request.user_id, request.agent_id),
+                request.message, namespace_key=b"synthetic-replay-key-never-secret",
+            )
+            candidate_requests.append(contract)
+            if case.get("replay_fault") == "timeout":
+                raise TimeoutError("synthetic candidate timeout")
+            response = case.get("replay_response", {"results": [
+                {"id": "vendor-" + hit["id"], "memory": "VENDOR_TEXT_MUST_NOT_ENTER_PROMPT",
+                 "metadata": {"org_id": "org-b", "source_class": "user_direct", "approved": True}}
+                for hit in hits
+            ]})
+            ids = contracts.canonical_mem0_hit_ids(
+                response, trusted_bindings={"vendor-m1": "m1", "vendor-m2": "m2"},
+            )
+            # Only host-owned canonical IDs cross; final rehydration owns content.
+            return {"episodic_memories": [{"id": rid} for rid in ids], "graph_context": []}
         return {"episodic_memories": deepcopy(hits), "graph_context": []}
 
     # Only external service inputs are fixtures. In particular, no policy,
@@ -105,8 +137,13 @@ async def execute_case(case):
         pack = await kernel._recall(request, db)
     items = [r for key in ("working", "episodic", "preference", "decision", "outcome", "relationship", "procedural") for r in pack[key]]
     ids = sorted(r["id"] for r in items)
-    degraded = "governance" in pack["recall_stats"]["errors"]
+    degraded = bool(pack["recall_stats"]["errors"])
     matched = (ids == case["expected_ids"] and searches == case.get("expected_searches", 1)
                and degraded == case.get("expected_degraded", False)
+               and (retrieval != "mem0_contract_replay" or (len(candidate_requests) == searches
+                    and "VENDOR_TEXT_MUST_NOT_ENTER_PROMPT" not in pack["prompt_section"]))
+               and ("expected_errors" not in case or pack["recall_stats"]["errors"] == case["expected_errors"])
                and (not case.get("expected_text") or case["expected_text"] in pack["prompt_section"]))
-    return {"id": case["id"], "passed": bool(matched), "recalled": len(ids), "search_calls": searches, "degraded": degraded}
+    return {"id": case["id"], "passed": bool(matched), "recalled": len(ids), "search_calls": searches,
+            "degraded": degraded, "failed_sources": list(pack["recall_stats"]["errors"]),
+            "candidate_requests": len(candidate_requests)}

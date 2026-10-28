@@ -69,3 +69,25 @@ uses the existing offline network guard before loading the kernel. Full CI and
 combined PR581 compatibility remain required. No provider call, external memory
 transfer, live installation, rollout, merge or deployment is performed. Existing
 live provider/voice/production gates remain NOT_RUN under that boundary.
+
+## Candidate replay continuation
+
+The follow-up exercises the existing Mem0 request/ID contracts through the real
+kernel, using fixture results at the hybrid retrieval seam. It reuses the 20
+recall reference cases and adds 11 malformed/adversarial/timeout result cases.
+Canonical learning remains in the separate 26-case reference. Search replay
+cannot certify any vendor's learning, durable deletion, retention or rollback.
+
+Default-off consent prevents candidate requests; revocation and final scope
+checks remain real. Returned text and claimed authority cannot replace canonical
+rows. Unknown/spoofed IDs are dropped, duplicates deduplicated, and malformed or
+timed-out responses retain the existing degraded-recall signal. Report tests
+force a failure in each arm and prove neither can produce a successful aggregate
+or leak exception bodies. Source/data hashes and separate reference/replay states
+remain explicit; vendor engines stay NOT_RUN. No production application, database,
+policy, Marketplace package, SDK dependency or telemetry change is included.
+
+Exact-head CI and combined regression evidence for this continuation are recorded
+in the PR description after execution. The existing no-merge/no-deploy and
+no-vendor-install boundary remains in force; the full engine comparison is still
+outstanding.

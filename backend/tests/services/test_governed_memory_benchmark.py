@@ -69,3 +69,48 @@ def test_upstream_audit_contains_immutable_pins_and_no_claimed_vendor_runs():
         assert row["runtime_status"] == "NOT_RUN"
         assert row["license"] == "Apache-2.0"
         assert all(re.fullmatch(r"[0-9a-f]{64}", h) for h in row["files"].values())
+
+
+RECALL_CASES = [case for case in CASES if case.get("operation") != "learn"]
+REPLAY_CASES = json.loads((ROOT / "scripts/memory_benchmark/replay_cases.json").read_text())
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("case", RECALL_CASES + REPLAY_CASES, ids=lambda case: case["id"])
+async def test_mem0_shaped_fixture_results_cross_real_canonical_gates(case):
+    result = await execute_case(case, retrieval="mem0_contract_replay")
+    assert result["passed"], result
+
+
+@pytest.mark.asyncio
+async def test_candidate_search_replay_cannot_be_mislabeled_as_learning():
+    with pytest.raises(ValueError, match="cannot certify candidate learning"):
+        await execute_case({"operation": "learn"}, retrieval="mem0_contract_replay")
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("failed_mode", ["canonical_fixture", "mem0_contract_replay"])
+async def test_report_fails_if_either_arm_fails_and_keeps_vendor_status_honest(failed_mode):
+    from unittest.mock import patch
+
+    spec = importlib.util.spec_from_file_location("memory_replay_runner", ROOT / "scripts/memory_benchmark/run.py")
+    runner = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(runner)
+
+    async def result(case, *, retrieval="canonical_fixture"):
+        if retrieval == failed_mode and case["id"] == "authorized_fact":
+            # Exception bodies must never leak into evidence reports.
+            raise RuntimeError("PRIVATE_VENDOR_PAYLOAD")
+        return {"id": case["id"], "passed": True}
+
+    with patch("tests.support.governed_memory_benchmark.execute_case", side_effect=result):
+        report = await runner.run_reference()
+    assert report["status"] == "FAIL"
+    assert (report["reference_status"] == "FAIL") == (failed_mode == "canonical_fixture")
+    assert (report["contract_replay"]["status"] == "FAIL") == (failed_mode == "mem0_contract_replay")
+    assert report["contract_replay"]["case_count"] == 31
+    assert report["contract_replay"]["candidate_engine_status"] == "NOT_RUN"
+    assert not report["contract_replay"]["sdk_imported"]
+    assert all(row["status"] == "NOT_RUN" for row in report["candidate_results"])
+    assert not report["production_certified"] and report["adoption_decision"] == "none"
+    assert "PRIVATE_VENDOR_PAYLOAD" not in json.dumps(report)
