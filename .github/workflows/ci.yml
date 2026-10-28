@@ -391,6 +391,33 @@ jobs:
           GRAVITRE_CONVERSATION_SMOKE: ""
           GRAVITREE_CONVERSATION_SMOKE: ""
 
+      - name: Scripted voice external-source isolation (offline)
+        run: >-
+          python -m pytest -p tests.offline_network -q
+          tests/services/pipecat_voice/test_cognitive_llm_barge_in_and_seed.py
+          tests/services/pipecat_voice/test_cognitive_llm_speculative_adoption.py
+          tests/services/pipecat_voice/test_cognitive_llm_text_streaming.py
+          tests/services/pipecat_voice/test_cognitive_llm_tool_latency.py
+          tests/services/pipecat_voice/test_cognitive_llm_tool_narration.py
+          tests/services/pipecat_voice/test_cognitive_llm_tts_word_boundary_regression.py
+          tests/services/pipecat_voice/test_cognitive_llm_turn_trace.py
+          tests/services/pipecat_voice/test_conversation_tier_speculative_parity.py
+          tests/services/pipecat_voice/test_speculative_bounds_and_revisions.py
+          tests/services/pipecat_voice/test_spoken_formatting.py
+          tests/services/pipecat_voice/test_scripted_voice_external_sources.py
+          tests/services/pipecat_voice/test_voice_shared_turn_guardrails.py
+          tests/services/test_ai_guardrails.py
+          tests/services/test_model_policy_service.py
+        env:
+          APP_ENV: dev
+          SUPABASE_URL: https://test.supabase.co
+          SUPABASE_ANON_KEY: anon-test
+          SUPABASE_SERVICE_ROLE_KEY: service-role-test
+          SUPABASE_JWT_SECRET: jwt-secret-test
+          OPENAI_API_KEY: sk-test-openai
+          GOOGLE_API_KEY: test-google-key
+          ANTHROPIC_API_KEY: sk-test-anthropic
+
       # Unified cognitive eval gate: structural suite + pending-reply + council + kernel.
       - name: Cognitive regression suite (structural + targeted pytest)
         working-directory: .
