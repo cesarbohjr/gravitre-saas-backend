@@ -33,7 +33,7 @@ def metrics_for_turn(request: Any, context: Any) -> dict[str, Any]:
 
 
 def _read(client: Any, org_id: str, event_id: str) -> list:
-    return (client.table(TABLE).select("id,org_id,outcome_event,metadata")
+    return (client.table(TABLE).select("id,org_id,agent_id,outcome_event,metadata")
             .eq("org_id", org_id).eq("id", event_id).eq("outcome_event", EVENT).limit(1).execute().data or [])
 
 
@@ -70,11 +70,11 @@ async def record_turn_feedback(request: Any, context: Any, settings: Any) -> dic
         now = datetime.now(timezone.utc)
         await run_io(lambda: purge_feedback(request.client, request.org_id, before=now-timedelta(days=days)))
         # Tenant and user are part of the deterministic receipt identity.
-        event_id = str(uuid5(NAMESPACE_URL, repr((request.org_id, request.user_id, context.turn_id, VERSION))))
+        event_id = str(uuid5(NAMESPACE_URL, repr((request.org_id, request.user_id, request.agent_id, context.turn_id, VERSION))))
         metrics = metrics_for_turn(request, context)
         existing = await run_io(lambda: _read(request.client, request.org_id, event_id))
         if not existing:
-            payload = {"id": event_id, "org_id": request.org_id, "outcome_event": EVENT,
+            payload = {"id": event_id, "org_id": request.org_id, "agent_id": request.agent_id, "outcome_event": EVENT,
                        "entity_type": "dialogue_turn", "entity_id": context.turn_id,
                        "metadata": metrics, "created_at": now.isoformat()}
             try:
@@ -85,7 +85,7 @@ async def record_turn_feedback(request: Any, context: Any, settings: Any) -> dic
         receipt = await run_io(lambda: _read(request.client, request.org_id, event_id))
         if len(receipt) != 1 or receipt[0].get("org_id") != request.org_id or receipt[0].get("outcome_event") != EVENT:
             return {"status": "unverified"}
-        if safe_normalize_stored_dict(receipt[0].get("metadata")) != metrics:
+        if receipt[0].get("agent_id") != request.agent_id or safe_normalize_stored_dict(receipt[0].get("metadata")) != metrics:
             return {"status": "receipt_mismatch"}
         return {"status": "recorded", "receipt_id": event_id, "evaluator_version": VERSION}
     except Exception:

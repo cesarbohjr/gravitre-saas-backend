@@ -65,3 +65,11 @@ No outbound telemetry is activated or SDK installed in the application.
   dependency audit is changed.
 
 Current exact-head CI and combined PR581 compatibility are recorded on the PR.
+
+The expanded combined offline run exposed two legacy agent-creation tests that
+attempted optional provider calls with fixture credentials before falling back.
+Their model-router boundary now supplies an explicit empty response; the native
+planning/template assertions are unchanged, and both are added to the required
+offline CI gate. This is provider isolation, not a quality PASS or a relaxed
+network guard. Feedback receipt identity and telemetry readback also bind the
+agent, preventing same-tenant cross-agent reuse.

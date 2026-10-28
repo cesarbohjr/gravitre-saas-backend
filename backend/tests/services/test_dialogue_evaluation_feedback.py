@@ -159,3 +159,14 @@ def test_erasure_without_readback_cannot_be_reported_complete(db,monkeypatch):
     db.tables["intelligence_outcome_events"]=[{"id":"retained","org_id":"org-a","outcome_event":EVENT}]
     with pytest.raises(ValueError,match="erasure_unverified"):
         purge_feedback(db,"org-a")
+
+
+@pytest.mark.asyncio
+async def test_same_turn_id_in_two_agents_cannot_reuse_each_others_receipt(db):
+    a=request(db);a.agent_id="agent-a"
+    b=request(db);b.agent_id="agent-b"
+    first=await record_turn_feedback(a,context(),object())
+    second=await record_turn_feedback(b,context(),object())
+    assert first["status"]==second["status"]=="recorded"
+    assert first["receipt_id"]!=second["receipt_id"]
+    assert {r["agent_id"] for r in db.tables["intelligence_outcome_events"]}=={"agent-a","agent-b"}
