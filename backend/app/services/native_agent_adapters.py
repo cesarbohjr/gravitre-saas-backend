@@ -167,16 +167,16 @@ def export_langfuse_feedback(
         return "disabled"
     if not isinstance(correlation_key, bytes) or len(correlation_key) < 32:
         raise ValueError("A dedicated correlation key of at least 32 bytes is required")
-    rows = (client.table("intelligence_outcome_events").select("id,org_id,entity_id,outcome_event,metadata")
-            .eq("org_id", scope.org_id).eq("id", receipt_id).eq("outcome_event", "dialogue_evaluated")
+    rows = (client.table("intelligence_outcome_events").select("id,org_id,agent_id,entity_id,outcome_event,metadata")
+            .eq("org_id", scope.org_id).eq("agent_id", scope.agent_id).eq("id", receipt_id).eq("outcome_event", "dialogue_evaluated")
             .limit(1).execute().data or [])
     if len(rows) != 1:
         return "receipt_missing"
     row = rows[0]
-    if row.get("org_id") != scope.org_id or row.get("entity_id") != scope.run_id or row.get("outcome_event") != "dialogue_evaluated":
+    if row.get("org_id") != scope.org_id or row.get("agent_id") != scope.agent_id or row.get("entity_id") != scope.run_id or row.get("outcome_event") != "dialogue_evaluated":
         raise ValueError("Feedback receipt scope mismatch")
     metrics = safe_normalize_stored_dict(row.get("metadata"))
-    if metrics.get("evaluator_version") != "dialogue-metrics-v1" or metrics.get("channel") not in {"text", "voice"}:
+    if metrics.get("evaluator_version") != "dialogue-metrics-v1" or (not isinstance(metrics.get("channel"), str) or metrics.get("channel") not in {"text", "voice"}):
         raise ValueError("Invalid feedback metrics")
     values = {}
     for key, maximum in (("stage_count",20),("failed_stage_count",20),("duration_ms",604800000)):
