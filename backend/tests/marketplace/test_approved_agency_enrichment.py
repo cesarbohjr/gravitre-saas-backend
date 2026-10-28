@@ -167,12 +167,12 @@ def test_install_upgrade_and_rollback_preserve_identity_permissions_and_other_te
 
 
 @pytest.mark.parametrize("slug", SLUGS)
-def test_connector_and_entitlement_gates_apply_before_agent_creation(db, slug):
+def test_disconnected_preview_preserves_entitlement_gate(db, slug):
     row = baseline(db, slug)
     upsert_catalog_asset(db, "gravitre-publisher", ASSETS[slug])
-    with pytest.raises(MarketplaceError) as exc:
-        install_asset(db, "org-a", row["id"], actor_id="admin-a", environment_name="test")
-    assert exc.value.code == "CONNECTORS_NOT_READY"
+    preview = preview_install(db, "org-a", row["id"], environment_name="test")
+    assert preview["canInstall"] and not preview["blockers"]
+    assert preview["capabilityBlockers"]
     ready_connector(db, slug)
     # Test-only commercial fixture; no real catalog pricing is introduced.
     row.update(pricing_type="paid", price_cents=100)

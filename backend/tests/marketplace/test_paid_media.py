@@ -28,9 +28,12 @@ def ready(db,role,org="org-a"):
     for index,r in enumerate(ASSETS[role.target_slug].required_connectors):
         db.tables.setdefault("connectors",[]).append({"id":f"{org}-{index}","org_id":org,"type":r["connectorType"],"status":"active","environment_name":"test"})
 
+@pytest.mark.parametrize("connected", [False, True], ids=["disconnected", "connected"])
 @pytest.mark.parametrize("role",ROLES,ids=lambda r:r.target_slug)
-def test_install_upgrade_rollback_and_identical_shared_guidance(db,role):
-    row=baseline(db,role);ready(db,role)
+def test_install_upgrade_rollback_and_identical_shared_guidance(db,role,connected):
+    row=baseline(db,role)
+    if connected:
+        ready(db,role)
     db.tables["operators"]=[{"id":"foreign","org_id":"org-b","config":{"untouched":True}}]
     foreign=deepcopy(db.tables["operators"][0])
     old=install_asset(db,"org-a",row["id"],actor_id="admin",environment_name="test")
@@ -55,9 +58,10 @@ def test_install_upgrade_rollback_and_identical_shared_guidance(db,role):
 @pytest.mark.parametrize("role",ROLES,ids=lambda r:r.target_slug)
 def test_connector_entitlement_tenant_and_publication_gates(db,role):
     row=baseline(db,role);upsert_catalog_asset(db,"publisher",ASSETS[role.target_slug]);ready(db,role,org="org-b")
-    with pytest.raises(MarketplaceError) as missing:
-        install_asset(db,"org-a",row["id"],actor_id="admin",environment_name="test")
-    assert missing.value.code=="CONNECTORS_NOT_READY"
+    preview = preview_install(db,"org-a",row["id"],environment_name="test")
+    assert preview["canInstall"] and not preview["blockers"]
+    assert preview["capabilityBlockers"]
+    assert not any(item["connected"] for item in preview["connectorChecklist"])
     ready(db,role)
     row.update(pricing_type="paid",price_cents=100)  # Test-only billing denial fixture.
     db.tables["marketplace_asset_entitlements"]=[{"org_id":"org-b","asset_id":row["id"],"status":"active"}]

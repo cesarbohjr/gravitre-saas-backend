@@ -1913,7 +1913,8 @@ def install_asset(
     """
     Install a published marketplace asset into an org via existing creation paths.
 
-    Raises ``MarketplaceError`` with ``blockers`` when connectors are missing.
+    AI agents install without connectors; connector-dependent execution stays gated.
+    Non-agent assets retain their connector installation prerequisites.
     """
     asset = fetch_marketplace_asset(client, asset_id)
     _assert_asset_installable(asset)
@@ -1955,14 +1956,14 @@ def install_asset(
         connector_can_install=bool(connector_validation["can_install"]),
         asset=asset,
     )
-    if not connector_validation["can_install"] and not force:
+    if asset.get("asset_type") != "ai_agent" and not connector_validation["can_install"] and not force:
         raise MarketplaceError(
             "Connect required apps before installing this asset",
             code="CONNECTORS_NOT_READY",
             blockers=connector_validation["blockers"],
             details={"checklist": connector_validation["checklist"]},
         )
-    if not ready["installReady"] and ready["installReadyErrors"] and not force:
+    if not ready["installReady"] and ready["installReadyErrors"] and (asset.get("asset_type") == "ai_agent" or not force):
         raise MarketplaceError(
             "This asset has broken or ambiguous workflow bindings and is not install-ready",
             code="BINDINGS_NOT_READY",
@@ -2222,7 +2223,8 @@ def preview_install(
         "requiresReviewAfterInstall": capability_requires_review,
         "installReadyErrors": ready["installReadyErrors"],
         "manualSetupRequired": ready["manualSetupRequired"],
-        "blockers": validation["blockers"] + payment_blockers + ready["bindingBlockers"],
+        "blockers": ([] if asset.get("asset_type") == "ai_agent" else validation["blockers"]) + payment_blockers + ready["bindingBlockers"],
+        "capabilityBlockers": validation["blockers"],
         "connectorChecklist": validation["checklist"],
         **entitlement,
     }
