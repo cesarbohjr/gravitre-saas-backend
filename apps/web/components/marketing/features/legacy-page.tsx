@@ -1106,12 +1106,24 @@ export function FeaturesLegacyContent({
                   ))}
                 </ul>
               </div>
-              <ProductScreenshot
-                src="/product/app-ai.png"
-                alt="Gravitre AI workspace with the conversation history panel open, showing three past threads and the ask box with org-specific suggestion chips."
-                chromeLabel="Gravitre AI"
-                glowClassName="bg-gradient-to-r from-brand/10 to-brand/10"
-              />
+              <div className="relative">
+                <ProductScreenshot
+                  src="/product/app-ai.png"
+                  alt="Gravitre AI workspace with the conversation history panel open, showing three past threads and the ask box with org-specific suggestion chips."
+                  chromeLabel="Gravitre AI"
+                  glowClassName="bg-gradient-to-r from-brand/10 to-brand/10"
+                />
+                {/* Floating badge: live session indicator */}
+                <div className="absolute -top-3 -right-3 flex items-center gap-1.5 rounded-full bg-card border border-border shadow-md px-3 py-1.5 text-xs font-medium text-foreground">
+                  <span className="h-2 w-2 rounded-full bg-brand animate-pulse" />
+                  AI responding
+                </div>
+                {/* Floating chip: suggestion count */}
+                <div className="absolute -bottom-3 left-4 flex items-center gap-2 rounded-xl bg-card border border-border shadow-md px-3 py-2">
+                  <Sparkles className="h-3.5 w-3.5 text-primary" />
+                  <span className="text-xs font-medium text-foreground">6 suggested actions ready</span>
+                </div>
+              </div>
             </motion.div>
             ) : null}
 
@@ -1144,13 +1156,24 @@ export function FeaturesLegacyContent({
                   ))}
                 </ul>
               </div>
-              <ProductScreenshot
-                src="/product/app-agents.png"
-                alt="Agents roster showing four configured agents with their department, status, tasks today, and success rate."
-                chromeLabel="Agents"
-                glowClassName="bg-gradient-to-r from-info/10 to-info/10"
-                className="lg:order-1"
-              />
+              <div className="relative lg:order-1">
+                <ProductScreenshot
+                  src="/product/app-agents.png"
+                  alt="Agents roster showing four configured agents with their department, status, tasks today, and success rate."
+                  chromeLabel="Agents"
+                  glowClassName="bg-gradient-to-r from-info/10 to-info/10"
+                />
+                {/* Floating badge: active agent count */}
+                <div className="absolute -top-3 -left-3 flex items-center gap-1.5 rounded-full bg-card border border-border shadow-md px-3 py-1.5 text-xs font-medium text-foreground">
+                  <span className="h-2 w-2 rounded-full bg-info animate-pulse" />
+                  4 agents active
+                </div>
+                {/* Floating stat: success rate */}
+                <div className="absolute -bottom-3 right-4 flex items-center gap-2 rounded-xl bg-card border border-border shadow-md px-3 py-2">
+                  <Bot className="h-3.5 w-3.5 text-info" />
+                  <span className="text-xs font-medium text-foreground">98.2% task success rate</span>
+                </div>
+              </div>
             </motion.div>
             ) : null}
 
@@ -1183,12 +1206,25 @@ export function FeaturesLegacyContent({
                   ))}
                 </ul>
               </div>
-              <ProductScreenshot
-                src="/product/app-workflows.png"
-                alt="Workflows list showing five workflows with their environment, last run, success rate, and run count, including a paused and a draft workflow."
-                chromeLabel="Workflows"
-                glowClassName="bg-gradient-to-r from-[color:var(--g-electric)]/10 to-[color:var(--g-emerald)]/10"
-              />
+              <div className="relative">
+                <ProductScreenshot
+                  src="/product/app-workflows.png"
+                  alt="Workflows list showing five workflows with their environment, last run, success rate, and run count, including a paused and a draft workflow."
+                  chromeLabel="Workflows"
+                  glowClassName="bg-gradient-to-r from-[color:var(--g-electric)]/10 to-[color:var(--g-emerald)]/10"
+                />
+                {/* Floating stat: workflow runs */}
+                <div className="absolute -top-3 -right-3 flex items-center gap-2 rounded-xl bg-card border border-border shadow-md px-3 py-2">
+                  <Workflow className="h-3.5 w-3.5 text-[color:var(--g-electric)]" />
+                  <span className="text-xs font-medium text-foreground">5 workflows</span>
+                  <span className="text-xs text-muted-foreground">· 3 active</span>
+                </div>
+                {/* Floating badge: last run success */}
+                <div className="absolute -bottom-3 left-4 flex items-center gap-1.5 rounded-full bg-card border border-border shadow-md px-3 py-1.5 text-xs font-medium text-foreground">
+                  <span className="h-2 w-2 rounded-full bg-brand" />
+                  Last run successful
+                </div>
+              </div>
             </motion.div>
             ) : null}
 
@@ -1221,13 +1257,24 @@ export function FeaturesLegacyContent({
                   ))}
                 </ul>
               </div>
-              <ProductScreenshot
-                src="/product/app-connectors.png"
-                alt="Connectors page showing connected and available integrations with their sync status."
-                chromeLabel="Connectors"
-                glowClassName="bg-gradient-to-r from-warning/10 to-warning/10"
-                className="lg:order-1"
-              />
+              <div className="relative lg:order-1">
+                <ProductScreenshot
+                  src="/product/app-connectors.png"
+                  alt="Connectors page showing connected and available integrations with their sync status."
+                  chromeLabel="Connectors"
+                  glowClassName="bg-gradient-to-r from-warning/10 to-warning/10"
+                />
+                {/* Floating badge: connected count */}
+                <div className="absolute -top-3 -left-3 flex items-center gap-1.5 rounded-full bg-card border border-border shadow-md px-3 py-1.5 text-xs font-medium text-foreground">
+                  <Zap className="h-3 w-3 text-warning-text" />
+                  12 connected
+                </div>
+                {/* Floating chip: sync status */}
+                <div className="absolute -bottom-3 right-4 flex items-center gap-2 rounded-xl bg-card border border-border shadow-md px-3 py-2">
+                  <span className="h-2 w-2 rounded-full bg-brand animate-pulse" />
+                  <span className="text-xs font-medium text-foreground">All integrations synced</span>
+                </div>
+              </div>
             </motion.div>
             ) : null}
 
@@ -1264,12 +1311,25 @@ export function FeaturesLegacyContent({
                   old mockup restated the four bullets on the left verbatim, so it
                   carried no information. This shows the human-in-the-loop gate
                   actually holding a pending write. */}
-              <ProductScreenshot
-                src="/product/app-approvals.png"
-                alt="Approvals queue with a pending write request awaiting human review, showing the requesting agent, target system, and the diff to be applied."
-                chromeLabel="Approvals"
-                glowClassName="bg-gradient-to-r from-destructive/10 to-destructive/10"
-              />
+              <div className="relative">
+                <ProductScreenshot
+                  src="/product/app-approvals.png"
+                  alt="Approvals queue with a pending write request awaiting human review, showing the requesting agent, target system, and the diff to be applied."
+                  chromeLabel="Approvals"
+                  glowClassName="bg-gradient-to-r from-destructive/10 to-destructive/10"
+                />
+                {/* Floating badge: pending approvals */}
+                <div className="absolute -top-3 -right-3 flex items-center gap-1.5 rounded-full bg-card border border-border shadow-md px-3 py-1.5 text-xs font-medium text-foreground">
+                  <Shield className="h-3 w-3 text-danger-text" />
+                  3 pending review
+                </div>
+                {/* Floating chip: AI recommendation */}
+                <div className="absolute -bottom-3 left-4 flex items-center gap-2 rounded-xl bg-card border border-border shadow-md px-3 py-2">
+                  <span className="h-2 w-2 rounded-full bg-brand" />
+                  <span className="text-xs font-medium text-foreground">AI Recommendation:</span>
+                  <span className="text-xs font-semibold text-brand">Approve · 94%</span>
+                </div>
+              </div>
             </motion.div>
             ) : null}
 
