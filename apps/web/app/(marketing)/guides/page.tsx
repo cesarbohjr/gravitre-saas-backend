@@ -35,7 +35,7 @@ const GUIDE_ART: Record<string, string> = {
   "Install the Chrome browser extension": "market-site-health",
   "Create Your First AI Agent": "market-leads",
   "Understanding Agent Capabilities": "market-campaigns",
-  "Building Multi-Step Workflows": "spot-workflows",
+  "Building Multi-Step Workflows": "market-pipeline",
 }
 
 const categories = [
