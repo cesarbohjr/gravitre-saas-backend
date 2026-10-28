@@ -115,3 +115,47 @@ async def test_invalid_admin_settings_fail_before_write(db,update):
     with pytest.raises(ValueError):
         await save_chat_dialogue_settings("org-a",update,settings=object(),client=db)
     assert not db.log
+
+
+@pytest.mark.parametrize("value",["true",1,[],{}])
+def test_admin_api_does_not_coerce_feedback_consent(value):
+    from app.routers.admin_chat import DialogueSettingsUpdate
+    with pytest.raises(ValueError):
+        DialogueSettingsUpdate(evaluation_feedback_enabled=value)
+
+@pytest.mark.asyncio
+async def test_metrics_review_route_requires_admin_and_keeps_tenant_scope(db,monkeypatch,mock_settings):
+    from fastapi import FastAPI,HTTPException
+    from httpx import ASGITransport,AsyncClient
+    from app.routers import admin_chat
+    from app.auth.dependencies import require_admin,get_org_context
+    from app.config import get_settings
+    async def load(org_id,settings):
+        return {"evaluation_feedback_enabled":True,"evaluation_feedback_retention_days":30}
+    monkeypatch.setattr(admin_chat,"load_chat_dialogue_settings",load)
+    monkeypatch.setattr(admin_chat,"get_supabase_client",lambda settings:db)
+    assert (await record_turn_feedback(request(db),context(),mock_settings))["status"]=="recorded"
+    app=FastAPI();app.include_router(admin_chat.router)
+    app.dependency_overrides[get_org_context]=lambda:"org-a"
+    app.dependency_overrides[get_settings]=lambda:mock_settings
+    def denied():raise HTTPException(status_code=403,detail="admin_required")
+    app.dependency_overrides[require_admin]=denied
+    async with AsyncClient(transport=ASGITransport(app=app),base_url="http://local") as client:
+        assert (await client.get("/api/admin/chat/evaluation-feedback")).status_code==403
+        app.dependency_overrides[require_admin]=lambda:("org-a","admin")
+        result=await client.get("/api/admin/chat/evaluation-feedback")
+        assert result.status_code==200 and result.json()["status"]=="available"
+        assert result.json()["channels"]["text"]["turns"]==1
+        assert result.json()["automatic_promotion"] is False
+        app.dependency_overrides[get_org_context]=lambda:"org-b"
+        assert (await client.get("/api/admin/chat/evaluation-feedback")).json()["channels"]["text"]["turns"]==0
+
+
+def test_erasure_without_readback_cannot_be_reported_complete(db,monkeypatch):
+    original=Query.execute
+    def ignore_delete(self):
+        return FakeResponse([]) if self.op=="delete" else original(self)
+    monkeypatch.setattr(Query,"execute",ignore_delete)
+    db.tables["intelligence_outcome_events"]=[{"id":"retained","org_id":"org-a","outcome_event":EVENT}]
+    with pytest.raises(ValueError,match="erasure_unverified"):
+        purge_feedback(db,"org-a")

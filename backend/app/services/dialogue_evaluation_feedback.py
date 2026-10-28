@@ -43,6 +43,11 @@ def purge_feedback(client: Any, org_id: str, *, before: datetime | None = None) 
     if before is not None:
         query = query.lt("created_at", before.isoformat())
     query.execute()
+    verify = client.table(TABLE).select("id").eq("org_id", org_id).eq("outcome_event", EVENT)
+    if before is not None:
+        verify = verify.lt("created_at", before.isoformat())
+    if verify.limit(1).execute().data:
+        raise ValueError("evaluation_feedback_erasure_unverified")
 
 
 async def record_turn_feedback(request: Any, context: Any, settings: Any) -> dict:

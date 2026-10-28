@@ -32,7 +32,9 @@ no provider or physical session is simulated into a live PASS.
 `run_learn` now integrates structural evaluation feedback after speculative
 adoption. Consent comes from authenticated tenant settings, default off; payload
 values never enable it. Explicit opt-out erases evaluation rows. Retention is
-1–90 days, default 30, with tenant/event-filtered purging. No schema migration is
+1–90 days, default 30, with tenant/event-filtered purging. The existing admin API accepts strict consent/retention fields and exposes a
+tenant-only metrics review endpoint under the existing admin authorization.
+Opt-out/retention deletion is read back before reporting erasure. No schema migration is
 needed: the existing outcome ledger holds `dialogue_evaluated` observations.
 A deterministic tenant/user/turn/evaluator ID makes retries idempotent. Receipt
 readback compares scope/event/metrics before reporting `recorded`; missing or
