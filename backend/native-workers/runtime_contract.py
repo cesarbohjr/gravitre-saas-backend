@@ -135,7 +135,7 @@ def run():
                 for line in stream.read(262144).decode(errors='replace').splitlines():
                     try:
                         entry=json.loads(line)
-                        if isinstance(entry,dict) and set(entry) in ({'gateway_failure_stage','gateway_failure_class','known_parameter_flags'},{'browser_error_codes','browser_error_classes'},{'browser_failure_stage','browser_failure_class','frames'}):
+                        if isinstance(entry,dict) and set(entry) in ({'gateway_failure_stage','gateway_failure_class','known_parameter_flags'},{'browser_error_codes','browser_error_classes'},{'browser_failure_stage','browser_failure_class','frames'},{'browser_evidence_changed','url_changed','screenshot_bytes_changed','dom_changed','title_changed','targets_changed'}):
                             print(json.dumps(entry))
                     except (ValueError,TypeError):pass
                     match=re.match(r'\s*File "([^"]+)", line (\d+), in ([A-Za-z0-9_<>]+)',line)

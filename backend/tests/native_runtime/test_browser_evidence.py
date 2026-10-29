@@ -111,3 +111,12 @@ async def test_blank_page_capture_must_be_bounded_actual_png(image):
     browser=SimpleNamespace(get_browser_state_summary=AsyncMock(return_value=blank_page()),take_screenshot=AsyncMock(return_value=image))
     with pytest.raises(PermissionError,match='actual blank-page screenshot'):await fresh_browser_evidence(browser,{'navigate':{'url':'https://example.com/'}},'before_approval')
     assert browser.get_browser_state_summary.await_count==1
+
+
+@pytest.mark.asyncio
+async def test_newer_sdk_screenshot_is_preserved_after_initial_blank_capture():
+    from app.services.native_runtime.engine import fresh_browser_evidence
+    first,second=blank_page(),blank_page();second.screenshot='newer-sdk-capture'
+    browser=SimpleNamespace(get_browser_state_summary=AsyncMock(side_effect=[first,second]),take_screenshot=AsyncMock(return_value=b'\x89PNG\r\n\x1a\nolder-fixture-capture'))
+    observed,_=await fresh_browser_evidence(browser,{'navigate':{'url':'https://example.com/'}},'before_approval')
+    assert observed.screenshot=='newer-sdk-capture' and second.screenshot=='newer-sdk-capture'

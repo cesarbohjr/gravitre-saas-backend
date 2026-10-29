@@ -112,7 +112,8 @@ async def fresh_browser_evidence(browser_session,requested,phase):
             if refreshed.url!='about:blank' or refreshed.dom_state.selector_map or getattr(refreshed,'state_error',None) or refreshed.dom_state.llm_representation()!=dom:
                 raise PermissionError('Browser changed during blank-page evidence capture')
             state=copy.copy(refreshed)
-            state.screenshot=base64.b64encode(image).decode('ascii')
+            if not state.screenshot:
+                state.screenshot=base64.b64encode(image).decode('ascii')
         return state,browser_evidence(state,requested)
     except Exception as error:
         frames=[{'file':Path(frame.filename).name,'line':frame.lineno,'function':frame.name} for frame in traceback.extract_tb(error.__traceback__) if '/browser_use/' in frame.filename or frame.filename.endswith('/engine.py')][-16:]
@@ -133,6 +134,9 @@ async def browse(config):
             if set(requested)<={'done','extract','search_page','find_elements','scroll','find_text','screenshot','dropdown_options','wait'}:
                 return await super().act(action,browser_session,**kwargs)
             before,evidence=await fresh_browser_evidence(browser_session,requested,'before_approval')
+            before_url=before.url
+            before_pixels=hashlib.sha256(before.screenshot.encode()).hexdigest()
+            before_dom=hashlib.sha256(before.dom_state.llm_representation().encode()).hexdigest()
             details={'actions':requested,'url':before.url,**evidence}
             sequence=self.sequence
             deadline=time.monotonic()+config['max_seconds']
@@ -143,6 +147,7 @@ async def browse(config):
                 await asyncio.sleep(0.5)
             after,refreshed=await fresh_browser_evidence(browser_session,requested,'after_approval')
             if refreshed!=evidence:
+                print(json.dumps({'browser_evidence_changed':True,'url_changed':after.url!=before_url,'screenshot_bytes_changed':hashlib.sha256(after.screenshot.encode()).hexdigest()!=before_pixels,'dom_changed':hashlib.sha256(after.dom_state.llm_representation().encode()).hexdigest()!=before_dom,'title_changed':refreshed['page_title']!=evidence['page_title'],'targets_changed':refreshed['targets']!=evidence['targets']}),file=sys.stderr,flush=True)
                 raise PermissionError('Browser context changed after approval; a new review is required')
             self.sequence+=1
             return await super().act(action,browser_session,**kwargs)
