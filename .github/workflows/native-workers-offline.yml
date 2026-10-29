@@ -96,6 +96,9 @@ jobs:
       - name: Build actual gateway runtime image
         timeout-minutes: 3
         run: docker build -f backend/native-workers/Dockerfile.gateway -t native-gateway backend
+      - name: Build isolated Playwright candidate for real gVisor negative controls
+        timeout-minutes: 12
+        run: docker build -f backend/native-workers/Dockerfile.playwright-comparison -t native-playwright-comparison backend
       - name: Start immutable local certification registry
         timeout-minutes: 3
         run: docker run -d --name native-cert-registry -p 127.0.0.1:5050:5000 mirror.gcr.io/library/registry@sha256:a3d8aaa63ed8681a604f1dea0aa03f100d5895b6a58ace528858a7b332415373
