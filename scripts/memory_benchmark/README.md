@@ -42,6 +42,21 @@ artifact. No raw memory, identity or vendor exception body appears in it.
 
 ## Decision gates
 
+`audit_erasure.py` independently verifies the pinned `Memory` deletion call
+chain and executes upstream `SQLiteManager` with disposable synthetic records.
+It needs only Python's standard library and the exact source tree:
+
+```
+python scripts/memory_benchmark/audit_erasure.py --package-root /path/to/pinned/mem0-source --output /absolute/scratch/mem0-erasure-audit.json
+```
+
+CI runs it alongside the existing full SDK lifecycle runner. Exit zero certifies
+that the investigation reproduced its assertions; the report still records
+`complete_erasure_gate=FAIL`. This storage probe does not run Qdrant, embeddings,
+inference, a native-quality comparison, or production erasure. It confirms that
+restart retains history, global reset also removes another scope's history, and
+a pre-reset SQLite backup still contains the original history.
+
 A successful SDK engineering run is **not approval to adopt Mem0**. The observed
 SDK deletion removes vectors but retains text in SQLite history; this is recorded
 as `complete_erasure_gate=FAIL`, separately from engineering correctness. Snapshot

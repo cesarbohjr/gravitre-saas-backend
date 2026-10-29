@@ -25,6 +25,44 @@ a sanitized source/data-bound report; the isolated dependency lock is audited.
 
 ## Measured adoption decision
 
+### Pinned deletion root cause, reproduced 2026-10-29
+
+`scripts/memory_benchmark/audit_erasure.py` verifies the existing source manifest
+for Mem0 2.2.1, revision `26cdefb46600c0fa5953c4b5ee5003c125539fc4`.
+The separately downloaded 2.2.1 wheel's `main.py` and `storage.py` hashes match
+that manifest exactly. In `mem0/memory/main.py`, `Memory.delete` (1883–1902)
+calls `_delete_memory` (2114–2142), which deletes the vector and appends a history
+event containing the previous text with `is_deleted=1`. `delete_all` also calls
+that helper. `history` reads the retained history through `SQLiteManager`.
+This is deliberate history-recording code, not evidence of a failed vector
+delete. The source's delete docstring promises deletion by ID; it does not
+promise erasure of the history database. No supported per-memory history-erasure
+method was identified in these pinned `Memory`/`SQLiteManager` implementations.
+
+The new probe executes the actual upstream storage module using only synthetic
+records. The matching add/update/delete history writes leave **three rows** with
+text; closing and reopening SQLite retains all three. A second record is still
+present before reset. `Memory.reset` calls `SQLiteManager.reset`, which drops
+the entire history and messages tables; the real storage reset removes both
+records. It therefore cannot be substituted for scoped deletion in a shared
+store. A SQLite backup created before reset still returns the three rows after
+the active database is reset. Logical reset does not prove physical free-page,
+snapshot, replica or backup erasure.
+
+Local result: investigation **PASS**, complete erasure **FAIL**. This is a
+storage/root-cause probe, not a replacement for the existing real SDK/vector
+lifecycle run and not a semantic-quality benchmark. CI now reruns the probe
+against its pinned checkout and uploads the sanitized report beside the SDK
+report. Unknown/new source hashes fail before upstream code is loaded.
+
+Potential remedies remain unproven: an upstream supported scoped-erasure API,
+or an independently reviewed adapter/storage design with separate scope stores
+and full lifecycle deletion. Direct private-table edits, global reset and
+disappearing vector hits are not accepted as complete erasure. No such remedy
+is enabled by this change. Native memory remains selected while the matched
+quality/efficiency comparison remains **NOT RUN**; the pre-merge framework gate
+in `pr581-pr587-release-sequence.md` remains open.
+
 The actual SDK removes a deleted vector from recall but retains memory text in
 SQLite history (three history rows after add/update/delete in the lifecycle run).
 Complete erasure therefore remains **FAIL**, not a generic deletion PASS. Local

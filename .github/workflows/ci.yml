@@ -220,6 +220,7 @@ jobs:
           git -C "$RUNNER_TEMP/mem0-engine-source" checkout --detach FETCH_HEAD
           test "$(git -C "$RUNNER_TEMP/mem0-engine-source" rev-parse HEAD)" = 26cdefb46600c0fa5953c4b5ee5003c125539fc4
           "$RUNNER_TEMP/mem0-engine-venv/bin/pip" install --no-deps --no-build-isolation "$RUNNER_TEMP/mem0-engine-source"
+          timeout 30s python ../scripts/memory_benchmark/audit_erasure.py --package-root "$RUNNER_TEMP/mem0-engine-source" --output "$RUNNER_TEMP/mem0-erasure-audit.json"
           timeout 300s python ../scripts/memory_benchmark/run_engine.py --engine-python "$RUNNER_TEMP/mem0-engine-venv/bin/python" --output "$RUNNER_TEMP/mem0-sdk-report.json"
         env:
           APP_ENV: dev
@@ -233,7 +234,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: mem0-sdk-engineering-evidence
-          path: ${{ runner.temp }}/mem0-sdk-report.json
+          path: |
+            ${{ runner.temp }}/mem0-sdk-report.json
+            ${{ runner.temp }}/mem0-erasure-audit.json
           if-no-files-found: warn
 
       - name: Verify bounded media decoder
