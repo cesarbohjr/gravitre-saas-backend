@@ -250,3 +250,25 @@ async def test_unavailable_page_diagnostic_does_not_log_exception_text(capsys):
     from app.services.native_runtime.engine import browser_page_diagnostic
     await browser_page_diagnostic(SimpleNamespace(get_or_create_cdp_session=AsyncMock(side_effect=RuntimeError('PRIVATE-EXCEPTION'))))
     assert capsys.readouterr().err.strip()=='{"browser_page_diagnostic": {"unavailable": true}}'
+
+
+@pytest.mark.asyncio
+async def test_snapshot_refresh_reads_current_target_before_updating_sdk_cache():
+    from app.services.native_runtime.engine import refresh_browser_target
+    info={'targetId':'active','url':'https://allowed.example/','title':'Fresh title'}
+    lookup=AsyncMock(return_value={'targetInfo':info})
+    update=AsyncMock()
+    browser=SimpleNamespace(agent_focus_target_id='active',cdp_client=SimpleNamespace(send=SimpleNamespace(Target=SimpleNamespace(getTargetInfo=lookup))),session_manager=SimpleNamespace(_handle_target_info_changed=update))
+    await refresh_browser_target(browser)
+    lookup.assert_awaited_once_with(params={'targetId':'active'})
+    update.assert_awaited_once_with({'targetInfo':info})
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize('info',[{}, {'targetId':'other','url':'https://allowed.example/','title':'Wrong target'}, {'targetId':'active','url':'https://allowed.example/','title':None}])
+async def test_invalid_or_wrong_target_metadata_cannot_refresh_approval_cache(info):
+    from app.services.native_runtime.engine import refresh_browser_target
+    update=AsyncMock()
+    browser=SimpleNamespace(agent_focus_target_id='active',cdp_client=SimpleNamespace(send=SimpleNamespace(Target=SimpleNamespace(getTargetInfo=AsyncMock(return_value={'targetInfo':info})))),session_manager=SimpleNamespace(_handle_target_info_changed=update))
+    with pytest.raises(PermissionError):await refresh_browser_target(browser)
+    update.assert_not_awaited()

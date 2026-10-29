@@ -170,7 +170,18 @@ async def install_rejecting_dialog_handler(watchdog,event):
     watchdog._dialog_listeners_registered.add(event.target_id)
 
 
+async def refresh_browser_target(browser):
+    target_id=browser.agent_focus_target_id
+    if target_id is None:return
+    result=await asyncio.wait_for(browser.cdp_client.send.Target.getTargetInfo(params={'targetId':target_id}),timeout=5)
+    info=result.get('targetInfo',{})
+    if not isinstance(info,dict) or info.get('targetId')!=target_id or not isinstance(info.get('url'),str) or not isinstance(info.get('title'),str):
+        raise PermissionError('Fresh browser target metadata required')
+    await browser.session_manager._handle_target_info_changed({'targetInfo':info})
+
+
 def configure_browser_sdk():
+    from browser_use import Browser
     from browser_use.browser.watchdogs.aboutblank_watchdog import AboutBlankWatchdog
     from browser_use.browser.watchdogs.popups_watchdog import PopupsWatchdog
     # The pinned SDK injects an animated remote logo into about:blank even with
@@ -183,6 +194,13 @@ def configure_browser_sdk():
     install_rejecting_dialog_handler.__name__='on_TabCreatedEvent'
     install_rejecting_dialog_handler.__annotations__=PopupsWatchdog.on_TabCreatedEvent.__annotations__
     PopupsWatchdog.on_TabCreatedEvent=install_rejecting_dialog_handler
+    original_summary=Browser.get_browser_state_summary
+    async def current_summary(self,include_screenshot=True,cached=False,include_recent_events=False):
+        # The pinned SDK's tab/title accessors use asynchronous cached target
+        # metadata. Refresh it from Chromium before constructing a DOM snapshot.
+        await refresh_browser_target(self)
+        return await original_summary(self,include_screenshot=include_screenshot,cached=cached,include_recent_events=include_recent_events)
+    Browser.get_browser_state_summary=current_summary
 
 
 async def browser_page_diagnostic(browser):
@@ -237,7 +255,9 @@ async def browse(config):
                 raise PermissionError('Browser context changed after approval; a new review is required')
             self.sequence+=1
             return await super().act(action,browser_session,**kwargs)
-    browser=Browser(headless=True,chromium_sandbox=True,use_cloud=False,enable_default_extensions=False,highlight_elements=False,dom_highlight_elements=False,browser_profile=BrowserProfile(demo_mode=False),permissions=[],keep_alive=False,executable_path="/usr/bin/chromium",allowed_domains=['https://'+h for h in config['allowed_hosts']],
+    # This disposable worker owns cleanup in finally, including failure probes.
+    # SDK auto-close must not destroy the page before verification can read it.
+    browser=Browser(headless=True,chromium_sandbox=True,use_cloud=False,enable_default_extensions=False,highlight_elements=False,dom_highlight_elements=False,browser_profile=BrowserProfile(demo_mode=False),permissions=[],keep_alive=True,executable_path="/usr/bin/chromium",allowed_domains=['https://'+h for h in config['allowed_hosts']],
                     proxy={'server':'http://gateway:8080','bypass':'gateway,localhost,127.0.0.1'},user_data_dir='/workspace/profile',downloads_path='/workspace/downloads')
     model=ChatOpenAI(model=config['model'],api_key=config['engine_token'],base_url='http://gateway:8080/v1',frequency_penalty=None,max_retries=0,timeout=35)
     agent=Agent(task=config['task'],llm=model,browser=browser,tools=GovernedTools(),use_vision=False,use_judge=False,calculate_cost=False,directly_open_url=False,max_actions_per_step=1,max_failures=1,enable_planning=False,file_system_path="/workspace/browser-files")

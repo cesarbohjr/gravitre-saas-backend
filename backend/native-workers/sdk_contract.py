@@ -28,6 +28,8 @@ elif sys.argv[1]=='browser_use':
     configure_browser_sdk()
     from browser_use.browser.events import TabCreatedEvent
     from browser_use.browser.watchdogs.popups_watchdog import PopupsWatchdog
+    from browser_use.browser.session_manager import SessionManager
+    assert hasattr(SessionManager,'_handle_target_info_changed')
     assert PopupsWatchdog.on_TabCreatedEvent.__name__=='on_TabCreatedEvent'
     assert PopupsWatchdog.on_TabCreatedEvent.__annotations__['event'] is TabCreatedEvent
     assert AboutBlankWatchdog.on_TabClosedEvent is original_recovery
