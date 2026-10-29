@@ -7,6 +7,7 @@ from __future__ import annotations
 from datetime import datetime,timezone
 from http.server import BaseHTTPRequestHandler,ThreadingHTTPServer
 import http.client
+import ipaddress
 import json
 import os
 from pathlib import Path
@@ -29,11 +30,15 @@ from tests.support.fake_supabase import FakeSupabase
 
 def run():
     statuses=[]
+    host=os.environ.get('LANGFUSE_CERT_HTTP_HOST','127.0.0.1')
+    address=ipaddress.ip_address(host)
+    assert address.version==4 and address.is_private and not address.is_unspecified and not address.is_link_local
     class Proxy(BaseHTTPRequestHandler):
         def log_message(self,*_):pass
         def relay(self):
-            # The actual Langfuse server is localhost-only on this CI host.
-            connection=http.client.HTTPConnection('127.0.0.1',3000,timeout=30)
+            # The actual server stays on its isolated bridge; only this CI
+            # host accesses its private interface, through the local TLS proxy.
+            connection=http.client.HTTPConnection(host,3000,timeout=30)
             try:
                 length=int(self.headers.get('Content-Length','0'));assert 0<=length<=262144
                 connection.request(self.command,self.path,body=self.rfile.read(length) if length else None,headers={k:v for k,v in self.headers.items() if k.lower() in {'authorization','content-type','x-langfuse-ingestion-version'}})

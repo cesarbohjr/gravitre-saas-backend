@@ -41,6 +41,7 @@ def test_exact_sandbox_policy_secret_isolation_and_cleanup(monkeypatch):
         if op=='rm':containers.clear()
         if op in ('run','create'):containers.append(args[args.index('--name')+1])
         if op=='network':
+            if args[2]=='inspect':return SimpleNamespace(stdout=b'172.17.0.1')
             if args[2]=='ls':return SimpleNamespace(stdout='\n'.join(networks).encode())
             if args[2]=='create':networks.append(args[-1])
             if args[2]=='rm':networks.clear()
@@ -62,6 +63,7 @@ def test_exact_sandbox_policy_secret_isolation_and_cleanup(monkeypatch):
     assert '--read-only' in flat and '--cap-drop=ALL' in flat and 'no-new-privileges' in flat
     assert '--dns' in flat and '127.0.0.1' in flat
     assert 'gateway:172.28.0.2' in flat
+    assert 'host.docker.internal:172.17.0.1' in flat and 'host-gateway' not in flat
     assert '--signal=KILL' in flat and '--pids-limit' in flat and '--memory' in flat
     engine=next(c for c in commands if c[1]=='run' and c[c.index('--name')+1]=='native-engine-'+jobid)
     assert engine[engine.index('--network')+1]=='native-'+jobid
@@ -117,6 +119,7 @@ def test_gateway_must_be_ready_before_an_engine_can_start(monkeypatch):
     def command(*args,**kwargs):
         calls.append(args)
         if args[0]=='info':return b'{"runsc":{}}'
+        if args[:2]==('network','inspect'):return b'172.17.0.1'
         if args[0]=='inspect':return b'172.28.0.2'
         if args[0]=='exec':raise subprocess.CalledProcessError(1,['docker','exec'])
         return b''
@@ -128,3 +131,8 @@ def test_gateway_must_be_ready_before_an_engine_can_start(monkeypatch):
     # The trusted gateway must start first; the SDK engine still must not.
     starts=[args[args.index('--name')+1] for args in calls if args[0]=='run']
     assert starts==['native-gateway-'+job['id']]
+
+
+@pytest.mark.parametrize('address',['127.0.0.1','0.0.0.0','169.254.169.254','8.8.8.8','224.0.0.1','::1','invalid IP'])
+def test_sandbox_gateway_address_must_be_private_ipv4(address):
+    with pytest.raises(ValueError):DockerRunner.private_ipv4(address)

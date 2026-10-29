@@ -51,14 +51,26 @@ jobs:
           (source.parent/'langfuse-cert.yml').write_text(yaml.safe_dump(config))
           PY
           docker compose -p native-langfuse-cert -f "$RUNNER_TEMP/langfuse-cert.yml" up -d
+          python - <<'PYHOST'
+          import ipaddress,json,os,pathlib,subprocess
+          config=pathlib.Path(os.environ['RUNNER_TEMP'])/'langfuse-cert.yml'
+          container=subprocess.check_output(['docker','compose','-p','native-langfuse-cert','-f',str(config),'ps','-q','langfuse-web'],text=True).strip()
+          networks=json.loads(subprocess.check_output(['docker','inspect','--format','{{json .NetworkSettings.Networks}}',container],text=True))
+          address=ipaddress.ip_address(networks['native-langfuse-cert_default']['IPAddress'])
+          assert address.version==4 and address.is_private and not address.is_loopback
+          # Internal-only bridges have no published ports. On Linux the host
+          # can reach this private interface without granting server egress.
+          with open(os.environ['GITHUB_ENV'],'a') as env:env.write(f'LANGFUSE_CERT_HTTP_HOST={address}\n')
+          PYHOST
       - name: Wait for the actual application
         run: |
           python - <<'PY'
-          import time,urllib.request
+          import os,time,urllib.request
+          opener=urllib.request.build_opener(urllib.request.ProxyHandler({}))
           deadline=time.monotonic()+420
           while time.monotonic()<deadline:
               try:
-                  with urllib.request.urlopen('http://127.0.0.1:3000/api/public/health',timeout=5) as r:
+                  with opener.open('http://'+os.environ['LANGFUSE_CERT_HTTP_HOST']+':3000/api/public/health',timeout=5) as r:
                       if r.status==200:break
               except Exception:pass
               time.sleep(3)
