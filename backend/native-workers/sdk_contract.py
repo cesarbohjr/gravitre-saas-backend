@@ -26,6 +26,9 @@ elif sys.argv[1]=='browser_use':
     import asyncio
     from engine import configure_browser_sdk
     configure_browser_sdk()
+    configured_summary=Browser.get_browser_state_summary
+    configure_browser_sdk()
+    assert Browser.get_browser_state_summary is configured_summary
     from browser_use.browser.events import TabCreatedEvent
     from browser_use.browser.watchdogs.popups_watchdog import PopupsWatchdog
     from browser_use.browser.session_manager import SessionManager

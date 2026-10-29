@@ -99,9 +99,12 @@ jobs:
           path: native-runtime-evidence.json
           if-no-files-found: error
       - name: Build paired browser adapter comparison image
+        id: browser-comparison-image
+        if: ${{ !cancelled() }}
         timeout-minutes: 4
         run: docker build -f backend/native-workers/Dockerfile.browser-benchmark -t native-browser-benchmark backend
       - name: Compare real browser adapters in the same isolated Chromium image
+        if: ${{ !cancelled() && steps.browser-comparison-image.outcome == 'success' }}
         timeout-minutes: 17
         run: |
           docker image inspect native-browser-benchmark --format '{{.Id}}' > browser-adapter-image.id

@@ -122,6 +122,7 @@ def browser_result(history):
 
 async def fresh_browser_evidence(browser_session,requested,phase):
     try:
+        await ensure_rejecting_dialog_handlers(browser_session)
         # SDK screenshots are model previews and can vary in format/resolution.
         # Approval always uses actual viewport PNG pixels from the same CDP API.
         before=await browser_session.get_browser_state_summary(include_screenshot=False,cached=False)
@@ -157,17 +158,41 @@ async def stable_browser_evidence(browser_session,requested):
     raise PermissionError('Browser viewport did not stabilize before approval')
 
 
+_DIALOG_SETUP: dict[int,dict[str,asyncio.Task]] = {}
+
+
+async def ensure_rejecting_dialog_handlers(browser):
+    # TabCreated is dispatched during the SDK's CDP connection handshake.
+    # Waiting for Page.enable inside that event can deadlock the handshake.
+    # Setup is deferred, but must succeed before model execution or review.
+    while True:
+        tasks=tuple(_DIALOG_SETUP.get(id(browser),{}).values())
+        if not tasks:return
+        await asyncio.gather(*tasks)
+        if tasks==tuple(_DIALOG_SETUP.get(id(browser),{}).values()):return
+
+
+async def close_dialog_handlers(browser):
+    tasks=tuple(_DIALOG_SETUP.pop(id(browser),{}).values())
+    for task in tasks:
+        if not task.done():task.cancel()
+    if tasks:await asyncio.gather(*tasks,return_exceptions=True)
+
+
 async def install_rejecting_dialog_handler(watchdog,event):
     # A click approval is not approval for an additional JS confirmation.
     # Enable Page only on its target session, never on the browser root.
-    if event.target_id in watchdog._dialog_listeners_registered:return
+    pending=_DIALOG_SETUP.setdefault(id(watchdog.browser_session),{})
+    if event.target_id in watchdog._dialog_listeners_registered or event.target_id in pending:return
     session=await watchdog.browser_session.get_or_create_cdp_session(event.target_id,focus=False)
     async def dismiss_dialog(event_data,session_id=None):
         if session_id is not None and session_id!=session.session_id:return
         await session.cdp_client.send.Page.handleJavaScriptDialog(params={'accept':False},session_id=session.session_id)
     session.cdp_client.register.Page.javascriptDialogOpening(dismiss_dialog)
-    await session.cdp_client.send.Page.enable(session_id=session.session_id)
-    watchdog._dialog_listeners_registered.add(event.target_id)
+    async def enable():
+        await asyncio.wait_for(session.cdp_client.send.Page.enable(session_id=session.session_id),timeout=5)
+        watchdog._dialog_listeners_registered.add(event.target_id)
+    pending[event.target_id]=asyncio.create_task(enable())
 
 
 async def refresh_browser_target(browser):
@@ -184,6 +209,7 @@ def configure_browser_sdk():
     from browser_use import Browser
     from browser_use.browser.watchdogs.aboutblank_watchdog import AboutBlankWatchdog
     from browser_use.browser.watchdogs.popups_watchdog import PopupsWatchdog
+    if getattr(Browser.get_browser_state_summary,'_gravitre_native_refresh',False):return
     # The pinned SDK injects an animated remote logo into about:blank even with
     # demo_mode=False. Disable only that cosmetic hook in this one-job process;
     # leave the watchdog's tab creation/recovery and all security hooks intact.
@@ -200,6 +226,7 @@ def configure_browser_sdk():
         # metadata. Refresh it from Chromium before constructing a DOM snapshot.
         await refresh_browser_target(self)
         return await original_summary(self,include_screenshot=include_screenshot,cached=cached,include_recent_events=include_recent_events)
+    current_summary._gravitre_native_refresh=True
     Browser.get_browser_state_summary=current_summary
 
 
@@ -262,12 +289,17 @@ async def browse(config):
     model=ChatOpenAI(model=config['model'],api_key=config['engine_token'],base_url='http://gateway:8080/v1',frequency_penalty=None,max_retries=0,timeout=35)
     agent=Agent(task=config['task'],llm=model,browser=browser,tools=GovernedTools(),use_vision=False,use_judge=False,calculate_cost=False,directly_open_url=False,max_actions_per_step=1,max_failures=1,enable_planning=False,file_system_path="/workspace/browser-files")
     try:
+        await browser.start()
+        await ensure_rejecting_dialog_handlers(browser)
         history=await asyncio.wait_for(agent.run(max_steps=config['max_steps']),timeout=config['max_seconds'])
+        await ensure_rejecting_dialog_handlers(browser)
         return browser_result(history)
     except Exception:
         await browser_page_diagnostic(browser)
         raise
-    finally:await browser.kill()
+    finally:
+        await close_dialog_handlers(browser)
+        await browser.kill()
 
 
 if __name__=='__main__':

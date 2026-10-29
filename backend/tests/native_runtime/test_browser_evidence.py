@@ -204,7 +204,7 @@ async def test_animated_or_changing_page_has_bounded_review_failure(monkeypatch)
 
 @pytest.mark.asyncio
 async def test_dialogs_are_dismissed_without_root_enable_or_implicit_confirmation():
-    from app.services.native_runtime.engine import install_rejecting_dialog_handler
+    from app.services.native_runtime.engine import install_rejecting_dialog_handler,ensure_rejecting_dialog_handlers,close_dialog_handlers
     page_api=SimpleNamespace(enable=AsyncMock(),handleJavaScriptDialog=AsyncMock())
     register=Mock()
     session=SimpleNamespace(session_id='target-session',cdp_client=SimpleNamespace(send=SimpleNamespace(Page=page_api),register=SimpleNamespace(Page=SimpleNamespace(javascriptDialogOpening=register))))
@@ -212,6 +212,7 @@ async def test_dialogs_are_dismissed_without_root_enable_or_implicit_confirmatio
     watchdog=SimpleNamespace(_dialog_listeners_registered=set(),browser_session=browser)
     event=SimpleNamespace(target_id='target')
     await install_rejecting_dialog_handler(watchdog,event)
+    await ensure_rejecting_dialog_handlers(browser)
     page_api.enable.assert_awaited_once_with(session_id='target-session')
     callback=register.call_args.args[0]
     for kind in ('alert','confirm','prompt','beforeunload'):
@@ -222,15 +223,39 @@ async def test_dialogs_are_dismissed_without_root_enable_or_implicit_confirmatio
     assert page_api.handleJavaScriptDialog.await_count==4
     await install_rejecting_dialog_handler(watchdog,event)
     assert register.call_count==1
+    await close_dialog_handlers(browser)
 
 
 @pytest.mark.asyncio
 async def test_dialog_domain_enable_failure_cannot_report_success():
-    from app.services.native_runtime.engine import install_rejecting_dialog_handler
+    from app.services.native_runtime.engine import install_rejecting_dialog_handler,ensure_rejecting_dialog_handlers,close_dialog_handlers
     session=SimpleNamespace(session_id='target-session',cdp_client=SimpleNamespace(send=SimpleNamespace(Page=SimpleNamespace(enable=AsyncMock(side_effect=TimeoutError()))),register=SimpleNamespace(Page=SimpleNamespace(javascriptDialogOpening=Mock()))))
     watchdog=SimpleNamespace(_dialog_listeners_registered=set(),browser_session=SimpleNamespace(get_or_create_cdp_session=AsyncMock(return_value=session)))
-    with pytest.raises(TimeoutError):await install_rejecting_dialog_handler(watchdog,SimpleNamespace(target_id='target'))
+    await install_rejecting_dialog_handler(watchdog,SimpleNamespace(target_id='target'))
+    with pytest.raises(TimeoutError):await ensure_rejecting_dialog_handlers(watchdog.browser_session)
     assert not watchdog._dialog_listeners_registered
+    await close_dialog_handlers(watchdog.browser_session)
+
+
+@pytest.mark.asyncio
+async def test_dialog_readiness_cannot_deadlock_tab_created_handshake_or_bypass_action_gate():
+    import asyncio
+    from app.services.native_runtime import engine
+    released=asyncio.Event()
+    async def enable(**_):await released.wait()
+    session=SimpleNamespace(session_id='target-session',cdp_client=SimpleNamespace(send=SimpleNamespace(Page=SimpleNamespace(enable=enable)),register=SimpleNamespace(Page=SimpleNamespace(javascriptDialogOpening=Mock()))))
+    browser=SimpleNamespace(get_or_create_cdp_session=AsyncMock(return_value=session))
+    watchdog=SimpleNamespace(_dialog_listeners_registered=set(),browser_session=browser)
+    # The event can return while Page.enable waits for the handshake to finish.
+    await asyncio.wait_for(engine.install_rejecting_dialog_handler(watchdog,SimpleNamespace(target_id='target')),timeout=.2)
+    readiness=asyncio.create_task(engine.ensure_rejecting_dialog_handlers(browser))
+    await asyncio.sleep(0)
+    assert not readiness.done() and not watchdog._dialog_listeners_registered
+    released.set()
+    await readiness
+    assert watchdog._dialog_listeners_registered=={'target'}
+    await engine.close_dialog_handlers(browser)
+    assert id(browser) not in engine._DIALOG_SETUP
 
 
 @pytest.mark.asyncio

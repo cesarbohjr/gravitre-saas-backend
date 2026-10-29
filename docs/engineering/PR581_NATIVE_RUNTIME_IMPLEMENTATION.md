@@ -84,3 +84,23 @@ The observed-page readback failure is not evidence that Chromium itself is broke
 4. Select **retain Browser Use**, **integrate direct Playwright**, or **replicate only needed adapter behavior** based on measured results. Complete the selected path, maintain canonical authorization/tenant isolation and no unsafe fallback, then rerun real sandbox certification, final exact-head CI and PR587 combined compatibility. An unexecuted benchmark is BLOCKED, never PASS.
 
 This section defines required execution and acceptance evidence; it does **not** claim the fix or comparative benchmark has run.
+
+### Executed adapter microbenchmark and startup follow-up
+
+The paired real gVisor experiment and its exact source/image/artifact provenance
+are recorded in `PR581_BROWSER_ADAPTER_COMPARISON.md`. Ten actual adapter trials
+passed on the combined checkpoint. This is limited local-fixture evidence, not
+the full production adapter-selection gate.
+
+A parallel PR581 run exposed intermittent startup blocking at dialog-handler
+`Page.enable`, before any browser model request or approval. The candidate
+correction defers that activation out of the tab-created event and explicitly
+awaits its success before starting model execution, capturing review evidence,
+or returning completion. Pending tasks are cancelled and collected at cleanup.
+The handler remains target scoped and always rejects confirmation dialogs;
+activation failure still fails closed. The new handshake regression, existing
+dialog-rejection contracts and affected evidence fixtures pass locally (**48
+tests**); real exact-head certification remains pending. Configuration is also
+idempotent so repeated benchmark trials do not accumulate snapshot wrappers.
+The comparison now runs diagnostically even when baseline certification fails;
+the failed baseline step still fails the job. No baseline assertion is relaxed.

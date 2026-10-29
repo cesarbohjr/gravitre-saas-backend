@@ -4,6 +4,45 @@ The first experiment is a real Chromium **microbenchmark**, not a replacement
 production adapter or a completed selection gate. Browser Use remains the runtime
 implementation while the required comparison is incomplete.
 
+## First measured checkpoint (2026-10-29)
+
+[Run 40901461342](https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/40901461342)
+passed the original real native runtime certification and all ten adapter trials.
+PR587 head `a1b0b76aed29854ca6d3e380d3f8dfa8c922d9a1` was tested as merge
+commit `70fa2ca2c5b37bc832ec7df665372fd2fc0be390` against main
+`147da7f0c6a17f1964aa828f9c1ac88dc9b99bc1`.
+The checked artifact ZIP SHA-256 is
+`d6e921e83f71cd275b7303955e3eb2ec54d12ffb4b1eec994fc497b640c3518e`;
+the derived image ID is
+`sha256:01df64d311afebc3dde1f00d594d4423a7fa9c3a00e02720b9992180c9bf73ef`.
+The original sanitized report is preserved at
+`docs/delivery/pr581-browser-adapter-experiment-2026-10-29.json`.
+
+| Median, milliseconds | Browser Use 0.13.14 | Playwright 1.64.1 |
+| --- | ---: | ---: |
+| Setup | 1160.09 | 1712.42 |
+| Redirect navigation and DOM readiness | 369.15 | 261.65 |
+| Stable snapshot | 728.79 | 534.92 |
+| Approved click and independent readback | 1412.71 | 625.18 |
+
+Both adapters completed 5/5 trials. This first capture also exposed a harness
+confound: repeatedly configuring the SDK could wrap the snapshot method more
+than once across trials. The follow-up makes configuration idempotent and adds
+an actual SDK contract assertion. These numbers remain a historical diagnostic
+checkpoint and **must be rerun after that correction before comparative
+selection**. They do not establish statistical reliability or production parity.
+
+Separately, the same-checkpoint PR581 run
+[40901421117](https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/40901421117)
+failed before any browser model request or approval. The sanitized stack reached
+the rejecting dialog handler's `Page.enable` while the SDK connection handshake
+was awaiting tab-created handlers. A follow-up defers Page-domain activation out
+of that event, then requires successful activation before model execution,
+approval snapshots and completion. Failure still denies execution; dialogs are
+never implicitly accepted. A blocked-handshake regression proves setup can
+return while the readiness gate remains blocked. Exact-head real certification
+after this candidate correction remains required.
+
 ## Declared workload and thresholds
 
 Five fresh-browser trials per adapter, alternating the starting adapter. Each
