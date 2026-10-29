@@ -53,3 +53,18 @@ def test_broker_comparison_opt_in_requires_pinned_image_and_https():
         playwright_comparison="registry/playwright@sha256:"+digest)
     assert DockerRunner(candidate_image,comparison_url="https://www.selenium.dev/page").comparison_url == "https://www.selenium.dev/page"
     assert DockerRunner(candidate_image).comparison_url is None
+
+
+@pytest.mark.asyncio
+async def test_navigation_denial_never_dispatches(monkeypatch):
+    page = SimpleNamespace(goto=AsyncMock())
+    session = SimpleNamespace()
+    monkeypatch.setitem(candidate["approved_navigation"].__globals__, "stable_browser_evidence",
+        AsyncMock(return_value=(SimpleNamespace(url="about:blank"), {"page_fingerprint":"a"*64})))
+    async def deny(*args, **kwargs):
+        raise PermissionError("review denied")
+    monkeypatch.setitem(candidate["approved_navigation"].__globals__, "request_exact_approval", deny)
+    with pytest.raises(PermissionError):
+        await candidate["approved_navigation"]({"allowed_hosts":["www.selenium.dev"]},
+            session, page, "https://www.selenium.dev/selenium/web/web-form.html")
+    page.goto.assert_not_awaited()
