@@ -8,6 +8,9 @@ default native worker executable.
 from __future__ import annotations
 import asyncio
 import json
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 from urllib.parse import urlsplit
 
 from engine import fresh_browser_evidence, stable_browser_evidence, gateway
