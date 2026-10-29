@@ -55,3 +55,35 @@ def test_comparison_gateway_rejects_unapproved_connect_destination(monkeypatch, 
     handler.send_error.assert_called_once_with(403, "Native destination blocked")
     callback.assert_not_called()
     resolver.assert_not_called()
+
+
+
+@pytest.mark.parametrize("adapter", ["browser_use", "playwright"])
+def test_dispatch_reauthorization_requires_current_lease_and_correct_engine_token(monkeypatch, adapter):
+    from unittest.mock import Mock
+    control = Mock(return_value={"authorized": True})
+    monkeypatch.setattr(gateway, "CONFIG", {"engine_token": "approved-fixture-token"})
+    monkeypatch.setattr(gateway, "control", control)
+    server = ThreadingHTTPServer(("127.0.0.1", 0), gateway.Handler)
+    thread = threading.Thread(target=server.serve_forever, daemon=True)
+    thread.start()
+    try:
+        url = f"http://127.0.0.1:{server.server_port}/authorize"
+        def post(token):
+            return Request(url, data=b"{}", method="POST",
+                headers={"Authorization": "Bearer " + token, "Content-Type": "application/json"})
+        with pytest.raises(HTTPError) as blocked:
+            urlopen(post("wrong-token"), timeout=3)
+        assert blocked.value.code == 403
+        control.assert_not_called()
+        with urlopen(post("approved-fixture-token"), timeout=3) as response:
+            assert json.load(response)["authorized"] is True
+        control.assert_called_once_with("authorize", {})
+        control.side_effect = PermissionError("revoked")
+        with pytest.raises(HTTPError) as revoked:
+            urlopen(post("approved-fixture-token"), timeout=3)
+        assert revoked.value.code == 403
+    finally:
+        server.shutdown()
+        server.server_close()
+        thread.join(timeout=3)
