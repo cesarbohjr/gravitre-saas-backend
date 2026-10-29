@@ -36,6 +36,18 @@ async def request_exact_approval(config, action, evidence, sequence):
         await asyncio.sleep(0.5)
 
 
+async def approved_navigation(config, session, page, url, sequence=0):
+    url = validate_url(url, config["allowed_hosts"])
+    action = {"navigate": {"url": url}}
+    before, fingerprint = await stable_browser_evidence(session, action)
+    await request_exact_approval(config, action, {"url": before.url, "snapshot": fingerprint}, sequence)
+    after, updated = await fresh_browser_evidence(session, action, "after_navigation_approval")
+    if updated != fingerprint or after.url != before.url:
+        raise PermissionError("Approved navigation context became stale")
+    await page.goto(url, timeout=20000)
+    return sequence + 1
+
+
 async def approved_click(config, session, page, sequence=0):
     state = await session.get_browser_state_summary(include_screenshot=False)
     action = action_for(state)
@@ -72,9 +84,9 @@ async def run(config, *, browser=None):
             page.on("dialog", lambda dialog: asyncio.create_task(dialog.dismiss()))
             # Destination is a trusted benchmark input, not an LLM-supplied URL.
             url = validate_url(config["comparison_url"], config["allowed_hosts"])
-            await page.goto(url, timeout=20000)
             session = PlaywrightSession(page)
-            result = await approved_click(config, session, page)
+            next_sequence = await approved_navigation(config, session, page, url)
+            result = await approved_click(config, session, page, sequence=next_sequence)
             return {"observations": [{"summary": "Comparison candidate completed one reviewed fixture click."}], **result}
         finally:
             await instance.close()
