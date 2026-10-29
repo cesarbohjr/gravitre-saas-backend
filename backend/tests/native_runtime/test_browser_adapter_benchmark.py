@@ -68,3 +68,15 @@ async def test_playwright_readback_uses_rendered_text_not_script_literals():
     assert 'document.body.innerText' in page.evaluate.call_args.args[0]
     assert 'outerHTML' not in page.evaluate.call_args.args[0]
     assert benchmark['action_for'](state) == {'click': {'index': 1}}
+
+
+def test_benchmark_cost_and_reliability_evidence_is_explicitly_bounded():
+    import inspect
+    source = inspect.getsource(benchmark['run'])
+    assert 'representative_reliability' in source
+    assert 'production_gateway_parity' in source
+    assert 'tenant_authorization' in source
+    assert 'crash_recovery' in source
+    assert 'child_cpu_ms' in source
+    assert 'total_elapsed_ms' in source
+    assert 'monetary cost unmeasured' in source
