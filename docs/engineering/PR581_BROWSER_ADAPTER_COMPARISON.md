@@ -45,6 +45,32 @@ after this candidate correction remains required.
 
 ## Declared workload and thresholds
 
+### Follow-up to failed readiness certification
+
+Both full-CI runs for PR581 `8a29c2d` and PR587 `2e2d775` passed, including
+Langfuse and the isolated DeepEval job. Their native-runtime jobs failed before
+any browser model request, in the deferred dialog `Page.enable` activation.
+That candidate correction is therefore **not certified**. The paired PR587
+diagnostic completed Browser Use 4/5 and Playwright 5/5; the Browser Use failure
+was a `PermissionError`, and the aggregate job correctly failed. No retry or
+relaxed correctness threshold is used to turn it green.
+
+Pinned SDK source shows that `connect()` can stop and replace an existing CDP
+client and that cdp-use's event registry has one slot per event method. The
+next candidate avoids retaining a session from `TabCreated`: the event records
+ownership only, and the readiness gate resolves all currently live page targets
+through the current manager after startup. Readiness is bound to both client
+identity and session ID; reconnect cannot reuse an earlier success. One
+dispatcher per connection rejects dialogs by exact session ID, including across
+multiple tabs. Detached startup tabs do not retain stale session references;
+errors for any live target still fail closed.
+
+Fifty focused contracts pass locally, including the new reconnect/multiple-tab
+cases and sanitized fixed-code activation diagnostics. Benchmark failures now
+include a fixed stage label, without exception bodies or page payloads. Real
+exact-head native certification and the corrected paired experiment remain
+required before this candidate can be marked resolved.
+
 Five fresh-browser trials per adapter, alternating the starting adapter. Each
 uses the same Chromium executable, 1280×720 viewport, unprivileged user, gVisor,
 read-only root, dropped capabilities, no-new-privileges, CPU/memory/process bounds

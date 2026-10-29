@@ -158,41 +158,64 @@ async def stable_browser_evidence(browser_session,requested):
     raise PermissionError('Browser viewport did not stabilize before approval')
 
 
-_DIALOG_SETUP: dict[int,dict[str,asyncio.Task]] = {}
+_DIALOG_SETUP: dict[int,dict] = {}
 
 
 async def ensure_rejecting_dialog_handlers(browser):
-    # TabCreated is dispatched during the SDK's CDP connection handshake.
-    # Waiting for Page.enable inside that event can deadlock the handshake.
-    # Setup is deferred, but must succeed before model execution or review.
-    while True:
-        tasks=tuple(_DIALOG_SETUP.get(id(browser),{}).values())
-        if not tasks:return
-        await asyncio.gather(*tasks)
-        if tasks==tuple(_DIALOG_SETUP.get(id(browser),{}).values()):return
+    state=_DIALOG_SETUP.get(id(browser))
+    if state is None:return
+    # Resolve sessions only after startup, from the current SDK manager. A
+    # session captured inside TabCreated can belong to a replaced CDP client.
+    manager=browser.session_manager
+    live={target.target_id for target in manager.get_all_page_targets()}
+    if browser.agent_focus_target_id not in live:
+        raise PermissionError('A current focused browser target is required')
+    for target in live:
+        session=await browser.get_or_create_cdp_session(target,focus=False)
+        client=session.cdp_client
+        binding=(client,session.session_id)
+        previous=state['ready'].get(target)
+        if previous is not None and previous[0] is client and previous[1]==session.session_id:continue
+        # cdp-use's event registry has one slot per method, not one per target.
+        # Install one dispatcher per connection and route by exact session ID.
+        state['sessions'][session.session_id]=session
+        if id(client) not in state['clients']:
+            async def dismiss_dialog(event_data,session_id=None,*,connection=client):
+                current=state['sessions'].get(session_id)
+                if current is None or current.cdp_client is not connection:return
+                await connection.send.Page.handleJavaScriptDialog(params={'accept':False},session_id=session_id)
+            client.register.Page.javascriptDialogOpening(dismiss_dialog)
+            state['clients'][id(client)]=client
+        try:
+            await asyncio.wait_for(client.send.Page.enable(session_id=session.session_id),timeout=5)
+        except Exception as error:
+            codes={'client is not started':'client_not_started','different loop':'wrong_event_loop',
+                   'session with given id not found':'session_detached','websocket connection closed':'connection_closed'}
+            code=next((code for phrase,code in codes.items() if phrase in str(error).lower()),'activation_failed')
+            print(json.dumps({'browser_failure_stage':'dialog_'+code,
+                'browser_failure_class':type(error).__name__ if type(error).__name__ in {'RuntimeError','TimeoutError','ConnectionError'} else 'InternalError',
+                'frames':[]}),file=sys.stderr,flush=True)
+            raise
+        state['ready'][target]=binding
+        state['watchdog']._dialog_listeners_registered.add(target)
+    # Detached startup tabs must not keep a dead connection alive. Errors for
+    # any live target still fail; no failed live activation is ignored.
+    state['ready']={target:binding for target,binding in state['ready'].items() if target in live}
+    active={binding[1] for binding in state['ready'].values()}
+    state['sessions']={sid:session for sid,session in state['sessions'].items() if sid in active}
 
 
 async def close_dialog_handlers(browser):
-    tasks=tuple(_DIALOG_SETUP.pop(id(browser),{}).values())
-    for task in tasks:
-        if not task.done():task.cancel()
-    if tasks:await asyncio.gather(*tasks,return_exceptions=True)
+    _DIALOG_SETUP.pop(id(browser),None)
 
 
 async def install_rejecting_dialog_handler(watchdog,event):
     # A click approval is not approval for an additional JS confirmation.
     # Enable Page only on its target session, never on the browser root.
-    pending=_DIALOG_SETUP.setdefault(id(watchdog.browser_session),{})
-    if event.target_id in watchdog._dialog_listeners_registered or event.target_id in pending:return
-    session=await watchdog.browser_session.get_or_create_cdp_session(event.target_id,focus=False)
-    async def dismiss_dialog(event_data,session_id=None):
-        if session_id is not None and session_id!=session.session_id:return
-        await session.cdp_client.send.Page.handleJavaScriptDialog(params={'accept':False},session_id=session.session_id)
-    session.cdp_client.register.Page.javascriptDialogOpening(dismiss_dialog)
-    async def enable():
-        await asyncio.wait_for(session.cdp_client.send.Page.enable(session_id=session.session_id),timeout=5)
-        watchdog._dialog_listeners_registered.add(event.target_id)
-    pending[event.target_id]=asyncio.create_task(enable())
+    # Only record ownership here. No session lookup, CDP call or detached task
+    # may escape the bootstrap event with a stale connection reference.
+    _DIALOG_SETUP.setdefault(id(watchdog.browser_session),
+        {'watchdog':watchdog,'ready':{},'sessions':{},'clients':{}})
 
 
 async def refresh_browser_target(browser):

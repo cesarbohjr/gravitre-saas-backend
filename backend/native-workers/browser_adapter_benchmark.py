@@ -142,6 +142,7 @@ async def trial(adapter, number):
     session = None
     driver = None
     connection = None
+    stage = 'chromium_start'
     started = time.monotonic()
     with tempfile.TemporaryDirectory(prefix='adapter-', dir='/workspace') as profile:
         try:
@@ -164,6 +165,7 @@ async def trial(adapter, number):
                         raise TimeoutError('Chromium readiness deadline')
                     await asyncio.sleep(.1)
             if adapter == 'browser_use':
+                stage = 'adapter_connect'
                 from browser_use import Browser, Tools
                 configure_browser_sdk()
                 session = Browser(cdp_url='http://127.0.0.1:9222', use_cloud=False,
@@ -171,6 +173,7 @@ async def trial(adapter, number):
                     viewport={'width': 1280, 'height': 720},
                     highlight_elements=False, dom_highlight_elements=False)
                 await session.start()
+                stage = 'dialog_readiness'
                 await ensure_rejecting_dialog_handlers(session)
                 tools = Tools(exclude_actions=['evaluate', 'write_file', 'replace_file', 'read_file',
                     'upload_file', 'save_as_pdf', 'search'])
@@ -181,6 +184,7 @@ async def trial(adapter, number):
                     if result.error:
                         raise RuntimeError('SDK action failed')
             else:
+                stage = 'adapter_connect'
                 from playwright.async_api import async_playwright
                 driver = await async_playwright().start()
                 connection = await driver.chromium.connect_over_cdp('http://127.0.0.1:9222')
@@ -196,22 +200,27 @@ async def trial(adapter, number):
 
             setup_ms = (time.monotonic() - started) * 1000
             before_navigation = time.monotonic()
+            stage = 'navigation'
             await execute({'navigate': {'url': fixture.origin + '/redirect'}})
+            stage = 'page_readback'
             state = await wait_state(session, 'Ready')
             assert state.url == fixture.origin + '/page' and state.title == 'Adapter fixture'
             navigation_ms = (time.monotonic() - before_navigation) * 1000
             action = action_for(state)
             snapshot_started = time.monotonic()
+            stage = 'stable_snapshot'
             _, evidence = await stable_browser_evidence(session, action)
             assert len(evidence['page_fingerprint']) == 64
             snapshot_ms = (time.monotonic() - snapshot_started) * 1000
             click_started = time.monotonic()
+            stage = 'approved_click'
             await reviewed_click(session, action, execute, approved=True)
             await wait_state(session, 'Written')
             assert fixture.writes == 1
             click_ms = (time.monotonic() - click_started) * 1000
             for options in ({'approved': False}, {'approved': True, 'cancelled': True},
                             {'approved': True, 'mutate': lambda: setattr(fixture, 'mutated', True)}):
+                stage = 'stale_no_write' if 'mutate' in options else 'cancelled_no_write' if options.get('cancelled') else 'denied_no_write'
                 try:
                     await reviewed_click(session, action, execute, **options)
                 except PermissionError:
@@ -223,6 +232,9 @@ async def trial(adapter, number):
                 'navigation_ms': navigation_ms, 'snapshot_ms': snapshot_ms, 'approved_click_ms': click_ms,
                 'checks': ['redirect', 'dynamic_dom', 'url_title_readback', 'actual_screenshot',
                            'approved_click_readback', 'denial_no_write', 'cancelled_no_write', 'stale_no_write']}
+        except Exception as error:
+            error.benchmark_stage = stage
+            raise
         finally:
             try:
                 if adapter == 'browser_use' and session is not None:
@@ -263,7 +275,8 @@ async def run():
             except Exception as error:
                 # No SDK exception body, page content or process log is exported.
                 rows.append({'adapter': adapter, 'trial': number, 'passed': False,
-                             'failure_class': type(error).__name__})
+                             'failure_class': type(error).__name__,
+                             'failure_stage': getattr(error, 'benchmark_stage', 'trial_timeout')})
     summary = {}
     for adapter in ('browser_use', 'playwright'):
         successful = [row for row in rows if row['adapter'] == adapter and row['passed']]
