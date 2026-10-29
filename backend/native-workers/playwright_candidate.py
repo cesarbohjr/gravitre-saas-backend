@@ -78,3 +78,11 @@ async def run(config, *, browser=None):
             return {"observations": [{"summary": "Comparison candidate completed one reviewed fixture click."}], **result}
         finally:
             await instance.close()
+
+
+if __name__ == "__main__":
+    import sys
+    from pathlib import Path
+    config = json.loads(sys.stdin.buffer.read(262145))
+    result = asyncio.run(run(config))
+    Path("/out/result.json").write_text(json.dumps(result))
