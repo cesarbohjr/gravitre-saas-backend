@@ -13,7 +13,12 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from urllib.parse import urlsplit
 
-from engine import fresh_browser_evidence, stable_browser_evidence, gateway
+try:
+    from engine import fresh_browser_evidence, stable_browser_evidence, gateway
+except ModuleNotFoundError as error:
+    if error.name != 'engine':
+        raise
+    from app.services.native_runtime.engine import fresh_browser_evidence, stable_browser_evidence, gateway
 from browser_adapter_benchmark import PlaywrightSession, action_for
 
 
