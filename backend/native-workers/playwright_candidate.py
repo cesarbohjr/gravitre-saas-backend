@@ -56,7 +56,17 @@ async def approved_navigation(config, session, page, url, sequence=0):
 
 async def approved_click(config, session, page, sequence=0):
     state = await session.get_browser_state_summary(include_screenshot=False)
-    action = action_for(state)
+    # The real public web-form fixture has one submit button and no button ID.
+    # Keep that fallback scoped to this exact fixture; the benchmark uses #commit.
+    fixture_submit = state.url == "https://www.selenium.dev/selenium/web/web-form.html"
+    if fixture_submit:
+        targets = [index for index, node in state.dom_state.selector_map.items()
+                   if node.node_name == "BUTTON" and (node.attributes or {}).get("type") == "submit"]
+        if len(targets) != 1:
+            raise PermissionError("Fixture requires exactly one observed submit button")
+        action = {"click": {"index": targets[0]}}
+    else:
+        action = action_for(state)
     before, fingerprint = await stable_browser_evidence(session, action)
     validate_url(before.url, config["allowed_hosts"])
     await request_exact_approval(config, action, {"url": before.url, "snapshot": fingerprint}, sequence)
@@ -67,10 +77,16 @@ async def approved_click(config, session, page, sequence=0):
     index = action["click"]["index"]
     node = after.dom_state.selector_map[index]
     identifier = (node.attributes or {}).get("id")
-    if not isinstance(identifier, str) or not identifier.isascii() or not identifier.replace("-", "").replace("_", "").isalnum():
+    if fixture_submit:
+        if node.node_name != "BUTTON" or (node.attributes or {}).get("type") != "submit":
+            raise PermissionError("Approved submit target changed")
+        selector = 'button[type="submit"]'
+    elif not isinstance(identifier, str) or not identifier.isascii() or not identifier.replace("-", "").replace("_", "").isalnum():
         raise PermissionError("Candidate requires one bounded exact-id target")
+    else:
+        selector = "#" + identifier
     await asyncio.to_thread(gateway, config, "/authorize", {})
-    await page.locator("#" + identifier).click(timeout=10000)
+    await page.locator(selector).click(timeout=10000)
     return {"approved_action": True, "verified_execution": False}
 
 
@@ -94,6 +110,10 @@ async def run(config, *, browser=None):
             session = PlaywrightSession(page)
             next_sequence = await approved_navigation(config, session, page, url)
             result = await approved_click(config, session, page, sequence=next_sequence)
+            if url == "https://www.selenium.dev/selenium/web/web-form.html":
+                await page.wait_for_url("https://www.selenium.dev/selenium/web/submitted-form.html*", timeout=10000)
+                if await page.locator("#message").inner_text(timeout=10000) != "Received!":
+                    raise AssertionError("Fixture submission readback failed")
             return {"observations": [{"summary": "Comparison candidate completed one reviewed fixture click.", "url": url}], **result}
         finally:
             await instance.close()

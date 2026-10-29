@@ -26,7 +26,7 @@ def test_accepts_exact_https_host():
 async def test_action_gateway_denial_never_clicks(monkeypatch):
     page = SimpleNamespace(locator=AsyncMock())
     session = SimpleNamespace(get_browser_state_summary=AsyncMock(return_value=SimpleNamespace(
-        dom_state=SimpleNamespace(selector_map={1:SimpleNamespace(attributes={"id":"commit"})}))))
+        url="https://www.selenium.dev/page", dom_state=SimpleNamespace(selector_map={1:SimpleNamespace(attributes={"id":"commit"})}))))
     monkeypatch.setitem(candidate["approved_click"].__globals__, "action_for", lambda state: {"click":{"index":1}})
     monkeypatch.setitem(candidate["approved_click"].__globals__, "stable_browser_evidence", AsyncMock(return_value=(
         SimpleNamespace(url="https://www.selenium.dev/page"), {"page_fingerprint":"a"*64})))
@@ -188,3 +188,41 @@ async def test_approved_click_stale_fingerprint_blocks_dispatch_even_with_prior_
         await candidate["approved_click"]({"allowed_hosts": ["www.selenium.dev"]}, session, page)
     page.locator.assert_not_called()
     authorize.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("mode", ["approved", "denied", "stale", "ambiguous"])
+async def test_real_form_submit_remains_exactly_reviewed(monkeypatch, mode):
+    url = "https://www.selenium.dev/selenium/web/web-form.html"
+    node = SimpleNamespace(node_name="BUTTON", attributes={"id":"", "type":"submit"})
+    state = SimpleNamespace(url=url, dom_state=SimpleNamespace(selector_map={7:node}))
+    if mode == "ambiguous":
+        state.dom_state.selector_map[8] = node
+    session = SimpleNamespace(get_browser_state_summary=AsyncMock(return_value=state))
+    click = AsyncMock()
+    selectors = []
+    page = SimpleNamespace(locator=lambda selector: (selectors.append(selector), SimpleNamespace(click=click))[1])
+    fingerprint = {"page_fingerprint":"a"*64}
+    globals_ = candidate["approved_click"].__globals__
+    monkeypatch.setitem(globals_, "stable_browser_evidence", AsyncMock(return_value=(state,fingerprint)))
+    monkeypatch.setitem(globals_, "fresh_browser_evidence", AsyncMock(return_value=(state,
+        {"page_fingerprint":"b"*64} if mode=="stale" else fingerprint)))
+    async def approval(config, action, evidence, sequence):
+        assert action == {"click":{"index":7}}
+        assert sequence == 1
+        if mode == "denied":
+            raise PermissionError("denied")
+    monkeypatch.setitem(globals_, "request_exact_approval", approval)
+    authorize = []
+    monkeypatch.setitem(globals_, "gateway", lambda config,path,body: authorize.append(path))
+    if mode == "approved":
+        result = await candidate["approved_click"]({"allowed_hosts":["www.selenium.dev"]},session,page,sequence=1)
+        assert result["approved_action"] is True
+        assert selectors == ['button[type="submit"]']
+        assert authorize == ["/authorize"]
+        click.assert_awaited_once_with(timeout=10000)
+    else:
+        with pytest.raises(PermissionError):
+            await candidate["approved_click"]({"allowed_hosts":["www.selenium.dev"]},session,page,sequence=1)
+        assert not selectors and not authorize
+        click.assert_not_awaited()

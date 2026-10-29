@@ -1,4 +1,4 @@
-"""Persistent native action journal restart and replay regression, both browser adapters."""
+"""Shared browser job journal restart and replay regression."""
 import tempfile
 import time
 from pathlib import Path
@@ -8,10 +8,9 @@ from app.services.native_agent_adapters import AdapterScope
 from app.services.native_runtime.store import Journal, LeaseLost
 
 
-@pytest.mark.parametrize("adapter", ["browser_use", "playwright"])
-def test_crash_restart_fences_native_replay_without_duplicate_action(adapter):
-    # Playwright is an opt-in implementation of browser_use jobs; both adapters
-    # must retain the same journal, lease, and exactly-one submission semantics.
+def test_shared_browser_job_journal_fences_replay_without_duplicate_action():
+    # Both implementations use the browser_use queue. This is one shared store
+    # contract; distinct adapter execution is certified by runtime_contract.py.
     with tempfile.TemporaryDirectory() as temp:
         root = Path(temp) / "private"
         root.mkdir(mode=0o700)

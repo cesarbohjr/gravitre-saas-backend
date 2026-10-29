@@ -24,6 +24,9 @@ from uuid import uuid4
 
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
 from app.services.native_runtime.docker_runner import DockerRunner,SandboxImages
+from app.services.native_agent_adapters import AdapterScope
+from app.services.native_runtime.store import Journal, LeaseLost
+from cryptography.fernet import Fernet
 
 
 def docker(*args):
@@ -80,7 +83,10 @@ def browser_fixture_observation(messages):
     return {'state_present':bool(observed) and '<browser_state_error>' not in observed,
             'title_observed':bool(tab) and tab.group(2).strip()=='Web form',
             'host_observed':bool(url) and url.scheme=='https' and url.hostname=='www.selenium.dev' and url.port in (None,443) and not url.username and not url.password and url.path=='/selenium/web/web-form.html',
-            'body_observed':'Text input' in body}
+            'body_observed':'Text input' in body,
+            'submitted':bool(url) and '<browser_state_error>' not in observed and url.scheme=='https' and url.port in (None,443) and not url.username and not url.password and url.hostname=='www.selenium.dev' and url.path=='/selenium/web/submitted-form.html' and 'Received!' in body,
+            'submit_index':next((int(match.group(1)) for line in body.splitlines() if 'Submit' in line
+                                 for match in [re.search(r'(?:\[|^\s*)(\d+)\]?',line)] if match),None)}
 
 
 def run():
@@ -102,12 +108,17 @@ def run():
             if kind=='browser_use':
                 if number>1:
                     observed=browser_fixture_observation(body.get('messages',[]))
-                    state['browser_page_observed']=all(observed.values())
+                    state['browser_page_observed']=all(observed[k] for k in ('state_present','title_observed','host_observed','body_observed'))
+                    state['browser_submitted']=observed['submitted']
+                    state['submit_index']=observed['submit_index']
                     state['browser_context_checks'].append(observed)
                 # Page rendering can follow successful navigation. Spend only
                 # the existing bounded step budget waiting for actual readback;
                 # never emit done based on the scripted navigation request.
-                action=([{'navigate':{'url':'https://www.selenium.dev/selenium/web/web-form.html'}}] if number==1 else [{'done':{'text':'Fixture browser session completed','success':True}}] if state['browser_page_observed'] else [{'wait':{'seconds':1}}])
+                action=([{'navigate':{'url':'https://www.selenium.dev/selenium/web/web-form.html'}}] if number==1
+                        else [{'done':{'text':'Fixture browser session completed','success':True}}] if state.get('browser_submitted')
+                        else [{'click':{'index':state['submit_index']}}] if state['browser_page_observed'] and state.get('submit_index') is not None
+                        else [{'wait':{'seconds':1}}])
                 output={'evaluation_previous_goal':'Fixture browser is running','memory':'Only the approved public fixture page may be read','next_goal':'Observe the fixture page','action':action}
                 message['content']=json.dumps(output)
             elif kind=='openhands':
@@ -188,13 +199,16 @@ def run():
             print(json.dumps({'completed_runtime_checks':evidence},sort_keys=True))
             state.update(kind='browser_use',calls=0,browser_page_observed=False,browser_context_checks=[]);approved=[]
             def action_gate(sequence,action):
-                assert action['actions']=={'navigate':{'url':'https://www.selenium.dev/selenium/web/web-form.html'}}
+                if sequence==0:
+                    assert action['actions']=={'navigate':{'url':'https://www.selenium.dev/selenium/web/web-form.html'}}
+                else:
+                    assert sequence==1 and set(action['actions'])=={'click'}
                 assert len(action['page_fingerprint'])==64
                 approved.append(sequence);return {'state':'approved'}
             browser=job('browser_use')
             try:result=runner.execute(browser,guard=lambda:route,action_gate=action_gate)
             finally:print(json.dumps({'fixture_browser_model_requests':state['calls'],'fixture_browser_approvals':len(approved),'fixture_browser_page_observed':state['browser_page_observed'],'fixture_browser_context_checks':state['browser_context_checks']}))
-            assert approved and state['browser_page_observed'] and result.get('observations')
+            assert approved==[0,1] and state.get('browser_submitted') and result.get('observations')
             clean(browser['id']);evidence['browser_real_sdk_chromium_exact_approval']='PASS'
             print(json.dumps({'completed_runtime_checks':evidence},sort_keys=True))
             # This is a real runsc/DockerRunner candidate execution, intentionally
@@ -206,6 +220,14 @@ def run():
                 images.gateway,playwright_comparison=candidate_image)
             candidate_runner=ObservedRunner(candidate_images,process_factory=process_factory,
                 comparison_url='https://www.selenium.dev/selenium/web/web-form.html')
+            candidate_approved=job('browser_use')
+            approved.clear()
+            result=candidate_runner.execute(candidate_approved,guard=lambda:route,action_gate=action_gate)
+            assert approved==[0,1] and result.get('approved_action') is True and result.get('observations')
+            clean(candidate_approved['id'])
+            evidence['playwright_real_gvisor_approved_navigation_click_readback']='PASS'
+            evidence['browser_use_real_gvisor_approved_navigation_click_readback']='PASS'
+            print(json.dumps({'completed_runtime_checks':evidence},sort_keys=True))
             candidate=job('browser_use')
             denied=[]
             def deny_candidate(sequence,action):
@@ -259,17 +281,32 @@ def run():
             # or approvals survive a fenced retry with the same job identity.
             for adapter_name, tested_runner in (('browser_use',runner),('playwright',candidate_runner)):
                 state.update(kind='browser_use',calls=0,browser_page_observed=False,browser_context_checks=[])
-                crashed_job=job('browser_use')
+                journal_root=root/('journal-'+adapter_name)
+                journal_root.mkdir(mode=0o700)
+                key=Fernet.generate_key()
+                journal=Journal(str(journal_root/'journal.sqlite3'),key)
+                scope=AdapterScope('fixture-org','fixture-agent','fixture-'+adapter_name)
+                payload=job('browser_use')['payload']
+                job_id=journal.enqueue(scope,'browser_use','crash-intent',payload,ttl=3600,max_attempts=1)
+                crashed_job=journal.claim('browser_use',lease_seconds=600)
+                assert crashed_job['id']==job_id
                 approvals=[]
                 def crash_on_approval(sequence,action):
                     assert sequence==0
                     assert action['actions']=={'navigate':{'url':'https://www.selenium.dev/selenium/web/web-form.html'}}
+                    request=journal.request_action(crashed_job,sequence,action)
+                    journal.approve(scope,job_id,request['id'],request['digest'],True)
+                    assert journal.request_action(crashed_job,sequence,action)['state']=='approved'
                     approvals.append(sequence)
                     docker('kill',tested_runner.names(crashed_job['id'])[1])
                     return {'state':'approved'}
                 try:
                     try:
-                        tested_runner.execute(crashed_job,guard=lambda:route,action_gate=crash_on_approval)
+                        def crash_guard():
+                            if not journal.active(crashed_job):
+                                raise LeaseLost('crashed_job_lease_lost')
+                            return route
+                        tested_runner.execute(crashed_job,guard=crash_guard,action_gate=crash_on_approval)
                     except (PermissionError,RuntimeError,subprocess.CalledProcessError):
                         assert approvals==[0], 'Engine crash did not reach the approval boundary'
                     else:
@@ -277,17 +314,30 @@ def run():
                 finally:
                     tested_runner.cleanup(crashed_job['id'])
                     clean(crashed_job['id'])
+                # Reopen durable storage as a restarted broker, then advance the
+                # claim clock beyond the lease. No real-time sleep or stale grant.
+                recovered=Journal(str(journal_root/'journal.sqlite3'),key)
+                assert recovered.claim('browser_use',now=time.time()+601) is None
+                assert recovered.get(scope,job_id)['state']=='uncertain'
+                assert len(recovered.actions(scope,job_id))==1
+                assert recovered.enqueue(scope,'browser_use','crash-intent',payload,ttl=3600,max_attempts=1)==job_id
                 def reject_replay():
-                    raise PermissionError('crashed_job_replay_requires_new_authorization')
+                    if not recovered.active(crashed_job):
+                        raise LeaseLost('crashed_job_replay_requires_new_authorization')
+                    raise AssertionError('Expired journal unexpectedly granted execution')
                 try:
                     tested_runner.execute(crashed_job,guard=reject_replay,
                         action_gate=lambda *_:(_ for _ in ()).throw(AssertionError('Replay dispatched an action')))
-                except PermissionError:
+                except LeaseLost:
                     pass
                 else:
                     raise AssertionError(adapter_name+' permitted unapproved replay')
                 clean(crashed_job['id'])
+                recovered.reconciled(job_id)
+                assert recovered.claim('browser_use',now=time.time()+602) is None
+                assert len(recovered.actions(scope,job_id))==1
                 evidence[adapter_name+'_real_gvisor_crash_and_fenced_retry']='PASS'
+                evidence[adapter_name+'_real_gvisor_durable_journal_no_replay']='PASS'
                 print(json.dumps({'completed_runtime_checks':evidence},sort_keys=True))
             state.update(kind='cancel',calls=0);entered.clear();cancel.clear();cancelled=job('openhands')
             def guard():

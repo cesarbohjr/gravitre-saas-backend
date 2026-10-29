@@ -97,8 +97,8 @@ class PlaywrightSession:
 
     async def get_browser_state_summary(self, **_):
         value = await self.page.evaluate('''() => ({url:location.href,title:document.title,
-            dom:document.body.innerText,buttons:[...document.querySelectorAll('button')].map(b=>({id:b.id,label:b.textContent}))})''')
-        nodes = {i + 1: SimpleNamespace(node_name='BUTTON', attributes={'id': b['id'], 'aria-label': b['label']})
+            dom:document.body.innerText,buttons:[...document.querySelectorAll('button')].map(b=>({id:b.id,label:b.textContent,type:b.getAttribute('type')}))})''')
+        nodes = {i + 1: SimpleNamespace(node_name='BUTTON', attributes={'id': b['id'], 'aria-label': b['label'], 'type': b.get('type')})
                  for i, b in enumerate(value['buttons'])}
         return SimpleNamespace(url=value['url'], title=value['title'], screenshot=None,
                                dom_state=SimpleNamespace(selector_map=nodes, llm_representation=lambda: value['dom']))
