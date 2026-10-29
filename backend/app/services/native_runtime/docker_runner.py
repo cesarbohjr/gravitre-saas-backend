@@ -99,11 +99,19 @@ class DockerRunner:
             self.docker('network','connect','--alias','gateway',network,gateway)
             # Bind the internal gateway through /etc/hosts. A sandbox's isolated
             # loopback DNS must not depend on Docker's host-side DNS listener.
-            gateway_address=self.docker('inspect','--format','{{(index .NetworkSettings.Networks "'+network+'").IPAddress}}',gateway).decode().strip()
+            ready_by=time.monotonic()+30
+            while True:
+                guard()
+                gateway_address=self.docker('inspect','--format','{{(index .NetworkSettings.Networks "'+network+'").IPAddress}}',gateway).decode().strip()
+                if gateway_address:break
+                # Docker start runs attached in another process. A network
+                # connected while that process starts has no IP until running.
+                if gateway_process.poll() is not None or time.monotonic()>=ready_by:
+                    raise RuntimeError('Native gateway interface did not become ready')
+                time.sleep(0.1)
             address=ipaddress.ip_address(gateway_address)
             if address.version!=4 or address.is_loopback or address.is_unspecified or address.is_multicast:
                 raise ValueError('Invalid private gateway interface')
-            ready_by=time.monotonic()+30
             while True:
                 guard()
                 try:

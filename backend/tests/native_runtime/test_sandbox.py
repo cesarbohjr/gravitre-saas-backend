@@ -24,7 +24,7 @@ class Process:
 
 def test_exact_sandbox_policy_secret_isolation_and_cleanup(monkeypatch):
     monkeypatch.setattr('socket.getfqdn',lambda *_:'localhost')
-    commands=[];processes=[];containers=[];networks=[]
+    commands=[];processes=[];containers=[];networks=[];inspections=[]
     jobid=str(uuid4())
     output=io.BytesIO()
     with tarfile.open(fileobj=output,mode='w') as archive:
@@ -34,7 +34,9 @@ def test_exact_sandbox_policy_secret_isolation_and_cleanup(monkeypatch):
         commands.append(args)
         op=args[1]
         if op=='info':return SimpleNamespace(stdout=b'{"runsc":{}}')
-        if op=='inspect':return SimpleNamespace(stdout=b'172.28.0.2')
+        if op=='inspect':
+            inspections.append(True)
+            return SimpleNamespace(stdout=b'' if len(inspections)==1 else b'172.28.0.2')
         if op=='ps':return SimpleNamespace(stdout='\n'.join(containers).encode())
         if op=='rm':containers.clear()
         if op in ('run','create'):containers.append(args[args.index('--name')+1])
@@ -51,6 +53,7 @@ def test_exact_sandbox_policy_secret_isolation_and_cleanup(monkeypatch):
     job={'id':jobid,'kind':'openhands','payload':{'task':{'task':'bounded','files':{},'allowed_hosts':[],'max_seconds':5,'max_steps':2}}}
     result=runner.execute(job,guard=lambda:model,action_gate=Mock())
     assert result['patch']=='example' and not containers and not networks
+    assert len(inspections)==2
     flat=repr(commands)
     assert 'PROVIDER-SECRET' not in flat and 'PROVIDER-SECRET' not in repr(processes[1][1].stdin.data)
     assert b'PROVIDER-SECRET' in processes[0][1].stdin.data
