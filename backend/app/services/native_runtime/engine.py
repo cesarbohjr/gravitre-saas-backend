@@ -5,6 +5,7 @@ import base64
 import copy
 import difflib
 import hashlib
+import io
 import json
 import os
 import re
@@ -70,6 +71,22 @@ def _browser_targets(state,requested):
     return targets
 
 
+def screenshot_pixel_hash(encoded):
+    # Pillow is pinned by the Browser Use SDK. Bound decoding before allocating
+    # pixels; image-container metadata is not visible browser context.
+    from PIL import Image
+    try:
+        if not isinstance(encoded,str) or not 0<len(encoded)<=4194304:raise ValueError('bounds')
+        raw=base64.b64decode(encoded,validate=True)
+        with Image.open(io.BytesIO(raw),formats=('PNG','JPEG')) as image:
+            width,height=image.size
+            if not 0<width<=8192 or not 0<height<=8192 or width*height>16777216:raise ValueError('bounds')
+            pixels=image.convert('RGBA').tobytes()
+        return hashlib.sha256(f'{width}x{height}\nRGBA\n'.encode()+pixels).hexdigest()
+    except Exception:
+        raise PermissionError('Bounded decoded browser pixels required') from None
+
+
 def browser_evidence(state,requested):
     # The same direct viewport capture path supplies both approval snapshots.
     # A visually identical page with a changed indexed target still invalidates it.
@@ -77,7 +94,7 @@ def browser_evidence(state,requested):
     if not state.screenshot or len(state.screenshot)>4194304 or len(dom)>2097152:
         raise PermissionError('Bounded fresh browser evidence required')
     targets=_browser_targets(state,requested)
-    fingerprint=hashlib.sha256((state.url+'\n'+state.screenshot+'\n'+dom).encode()).hexdigest()
+    fingerprint=hashlib.sha256((state.url+'\n'+screenshot_pixel_hash(state.screenshot)+'\n'+dom).encode()).hexdigest()
     return {'page_fingerprint':fingerprint,'page_title':str(state.title)[:300],'targets':targets}
 
 
@@ -91,7 +108,7 @@ def browser_error_diagnostic(history):
 
 
 def browser_result(history):
-    if history.is_done() is not True or history.is_successful() is not True:
+    if history.is_done() is not True or history.is_successful() is not True or any(history.errors()):
         browser_error_diagnostic(history)
         raise RuntimeError('Browser session did not finish successfully')
     summary=history.final_result()
@@ -140,6 +157,7 @@ async def browse(config):
             if set(requested)<={'done','extract','search_page','find_elements','scroll','find_text','screenshot','dropdown_options','wait'}:
                 return await super().act(action,browser_session,**kwargs)
             before,evidence=await fresh_browser_evidence(browser_session,requested,'before_approval')
+            before_decoded=screenshot_pixel_hash(before.screenshot)
             before_url=before.url
             before_pixels=hashlib.sha256(before.screenshot.encode()).hexdigest()
             before_dom=hashlib.sha256(before.dom_state.llm_representation().encode()).hexdigest()
@@ -153,11 +171,11 @@ async def browse(config):
                 await asyncio.sleep(0.5)
             after,refreshed=await fresh_browser_evidence(browser_session,requested,'after_approval')
             if refreshed!=evidence:
-                print(json.dumps({'browser_evidence_changed':True,'url_changed':after.url!=before_url,'screenshot_bytes_changed':hashlib.sha256(after.screenshot.encode()).hexdigest()!=before_pixels,'dom_changed':hashlib.sha256(after.dom_state.llm_representation().encode()).hexdigest()!=before_dom,'title_changed':refreshed['page_title']!=evidence['page_title'],'targets_changed':refreshed['targets']!=evidence['targets']}),file=sys.stderr,flush=True)
+                print(json.dumps({'browser_evidence_changed':True,'url_changed':after.url!=before_url,'decoded_pixels_changed':screenshot_pixel_hash(after.screenshot)!=before_decoded,'screenshot_bytes_changed':hashlib.sha256(after.screenshot.encode()).hexdigest()!=before_pixels,'dom_changed':hashlib.sha256(after.dom_state.llm_representation().encode()).hexdigest()!=before_dom,'title_changed':refreshed['page_title']!=evidence['page_title'],'targets_changed':refreshed['targets']!=evidence['targets']}),file=sys.stderr,flush=True)
                 raise PermissionError('Browser context changed after approval; a new review is required')
             self.sequence+=1
             return await super().act(action,browser_session,**kwargs)
-    browser=Browser(headless=True,chromium_sandbox=True,use_cloud=False,enable_default_extensions=False,permissions=[],keep_alive=False,executable_path="/usr/bin/chromium",allowed_domains=['https://'+h for h in config['allowed_hosts']],
+    browser=Browser(headless=True,chromium_sandbox=True,use_cloud=False,enable_default_extensions=False,highlight_elements=False,dom_highlight_elements=False,demo_mode=False,permissions=[],keep_alive=False,executable_path="/usr/bin/chromium",allowed_domains=['https://'+h for h in config['allowed_hosts']],
                     proxy={'server':'http://gateway:8080','bypass':'gateway,localhost,127.0.0.1'},user_data_dir='/workspace/profile',downloads_path='/workspace/downloads')
     model=ChatOpenAI(model=config['model'],api_key=config['engine_token'],base_url='http://gateway:8080/v1',frequency_penalty=None,max_retries=0,timeout=35)
     agent=Agent(task=config['task'],llm=model,browser=browser,tools=GovernedTools(),use_vision=False,use_judge=False,calculate_cost=False,directly_open_url=False,max_actions_per_step=1,max_failures=1,enable_planning=False,file_system_path="/workspace/browser-files")

@@ -78,6 +78,12 @@ def run():
                 time.sleep(2)
             message={'role':'assistant','content':'Fixture task finished.'};finish='stop'
             if kind=='browser_use':
+                if number>1:
+                    latest_user=next((m for m in reversed(body.get('messages',[])) if m.get('role')=='user'),{})
+                    observed=json.dumps(latest_user.get('content',''))
+                    state['browser_page_observed']='Example Domain' in observed and 'example.com' in observed
+                    if not state['browser_page_observed']:
+                        self.send_response(422);self.send_header('Content-Length','0');self.end_headers();return
                 output={'evaluation_previous_goal':'Fixture browser is running','memory':'Only the approved public fixture page may be read','next_goal':'Finish the fixture','action':([{'navigate':{'url':'https://example.com/'}}] if number==1 else [{'done':{'text':'Fixture browser session completed','success':True}}])}
                 message['content']=json.dumps(output)
             elif kind=='openhands':
@@ -135,7 +141,7 @@ def run():
                 for line in stream.read(262144).decode(errors='replace').splitlines():
                     try:
                         entry=json.loads(line)
-                        if isinstance(entry,dict) and set(entry) in ({'gateway_failure_stage','gateway_failure_class','known_parameter_flags'},{'browser_error_codes','browser_error_classes'},{'browser_failure_stage','browser_failure_class','frames'},{'browser_evidence_changed','url_changed','screenshot_bytes_changed','dom_changed','title_changed','targets_changed'}):
+                        if isinstance(entry,dict) and set(entry) in ({'gateway_failure_stage','gateway_failure_class','known_parameter_flags'},{'browser_error_codes','browser_error_classes'},{'browser_failure_stage','browser_failure_class','frames'},{'browser_evidence_changed','url_changed','decoded_pixels_changed','screenshot_bytes_changed','dom_changed','title_changed','targets_changed'}):
                             print(json.dumps(entry))
                     except (ValueError,TypeError):pass
                     match=re.match(r'\s*File "([^"]+)", line (\d+), in ([A-Za-z0-9_<>]+)',line)
@@ -156,15 +162,15 @@ def run():
             for key in ['direct_egress','metadata','host_bridge','readonly_root','no_docker_socket','no_provider_key']:assert f'"{key}": true' in patch,key
             clean(software['id']);evidence['openhands_real_sdk_patch_and_isolation']='PASS'
             print(json.dumps({'completed_runtime_checks':evidence},sort_keys=True))
-            state.update(kind='browser_use',calls=0);approved=[]
+            state.update(kind='browser_use',calls=0,browser_page_observed=False);approved=[]
             def action_gate(sequence,action):
                 assert action['actions']=={'navigate':{'url':'https://example.com/'}}
                 assert len(action['page_fingerprint'])==64
                 approved.append(sequence);return {'state':'approved'}
             browser=job('browser_use')
             try:result=runner.execute(browser,guard=lambda:route,action_gate=action_gate)
-            finally:print(json.dumps({'fixture_browser_model_requests':state['calls'],'fixture_browser_approvals':len(approved)}))
-            assert approved and result.get('observations')
+            finally:print(json.dumps({'fixture_browser_model_requests':state['calls'],'fixture_browser_approvals':len(approved),'fixture_browser_page_observed':state['browser_page_observed']}))
+            assert approved and state['browser_page_observed'] and result.get('observations')
             clean(browser['id']);evidence['browser_real_sdk_chromium_exact_approval']='PASS'
             print(json.dumps({'completed_runtime_checks':evidence},sort_keys=True))
             state.update(kind='cancel',calls=0);entered.clear();cancel.clear();cancelled=job('openhands')

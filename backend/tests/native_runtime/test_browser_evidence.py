@@ -1,12 +1,20 @@
 from types import SimpleNamespace
 from unittest.mock import Mock, AsyncMock
 import pytest
+import base64,io
+from PIL import Image
 from app.services.native_runtime.engine import browser_evidence
+
+
+def encoded_pixels(*,color='white',compression=6,size=(4,4)):
+    buffer=io.BytesIO()
+    Image.new('RGB',size,color).save(buffer,format='PNG',compress_level=compression)
+    return base64.b64encode(buffer.getvalue()).decode('ascii')
 
 
 def page(*,dom='indexed DOM',label='Submit'):
     node=SimpleNamespace(attributes={'aria-label':label,'value':'DO-NOT-READ-VALUE'},node_name='BUTTON',get_all_children_text=Mock(return_value='Submit'))
-    state=SimpleNamespace(url='https://allowed.example',title='Review page',screenshot='fresh-pixels',dom_state=SimpleNamespace(llm_representation=lambda:dom,selector_map={12:node}))
+    state=SimpleNamespace(url='https://allowed.example',title='Review page',screenshot=encoded_pixels(),dom_state=SimpleNamespace(llm_representation=lambda:dom,selector_map={12:node}))
     return state
 
 
@@ -41,14 +49,14 @@ def test_incomplete_browser_history_cannot_become_a_completed_observation(done,s
 
 def test_browser_result_uses_actual_observed_page_without_fallback():
     from app.services.native_runtime.engine import browser_result
-    history=SimpleNamespace(is_done=lambda:True,is_successful=lambda:True,urls=lambda:['about:blank','https://example.com/observed'],final_result=lambda:'Observed fixture result')
+    history=SimpleNamespace(is_done=lambda:True,is_successful=lambda:True,errors=lambda:[],urls=lambda:['about:blank','https://example.com/observed'],final_result=lambda:'Observed fixture result')
     assert browser_result(history)=={'observations':[{'summary':'Observed fixture result','url':'https://example.com/observed'}]}
 
 
 @pytest.mark.asyncio
 async def test_approval_collects_uncached_dom_and_actual_viewport_pixels():
     from app.services.native_runtime.engine import fresh_browser_evidence
-    state=page();browser=SimpleNamespace(get_browser_state_summary=AsyncMock(return_value=state),take_screenshot=AsyncMock(return_value=b'\x89PNG\r\n\x1a\nactual-fixture-capture'))
+    state=page();browser=SimpleNamespace(get_browser_state_summary=AsyncMock(return_value=state),take_screenshot=AsyncMock(return_value=base64.b64decode(encoded_pixels())))
     observed,evidence=await fresh_browser_evidence(browser,{'navigate':{'url':'https://example.com/'}},'before_approval')
     assert observed is not state and len(evidence['page_fingerprint'])==64
     assert browser.get_browser_state_summary.await_count==2
@@ -75,7 +83,7 @@ def blank_page():
 async def test_initial_navigation_approval_uses_real_capture_without_mutating_sdk_cache():
     import base64
     from app.services.native_runtime.engine import fresh_browser_evidence
-    first,second=blank_page(),blank_page();image=b'\x89PNG\r\n\x1a\nfixture-pixels'
+    first,second=blank_page(),blank_page();image=base64.b64decode(encoded_pixels())
     browser=SimpleNamespace(get_browser_state_summary=AsyncMock(side_effect=[first,second]),take_screenshot=AsyncMock(return_value=image))
     observed,evidence=await fresh_browser_evidence(browser,{'navigate':{'url':'https://example.com/'}},'before_approval')
     assert first.screenshot is None and second.screenshot is None
@@ -109,7 +117,7 @@ async def test_unavailable_dom_cannot_be_replaced_by_viewport_capture():
 async def test_initial_page_change_during_screenshot_capture_invalidates_evidence():
     from app.services.native_runtime.engine import fresh_browser_evidence
     first,second=blank_page(),blank_page();second.url='https://example.com/changed'
-    browser=SimpleNamespace(get_browser_state_summary=AsyncMock(side_effect=[first,second]),take_screenshot=AsyncMock(return_value=b'\x89PNG\r\n\x1a\nfixture-pixels'))
+    browser=SimpleNamespace(get_browser_state_summary=AsyncMock(side_effect=[first,second]),take_screenshot=AsyncMock(return_value=base64.b64decode(encoded_pixels())))
     with pytest.raises(PermissionError,match='changed during'):await fresh_browser_evidence(browser,{'navigate':{'url':'https://example.com/'}},'before_approval')
     assert second.screenshot is None
 
@@ -126,12 +134,12 @@ async def test_viewport_capture_must_be_bounded_actual_png(image):
 @pytest.mark.asyncio
 async def test_sdk_preview_is_not_mixed_with_approval_viewport_capture():
     from app.services.native_runtime.engine import fresh_browser_evidence
-    first,second=blank_page(),blank_page();second.screenshot='newer-sdk-capture'
-    browser=SimpleNamespace(get_browser_state_summary=AsyncMock(side_effect=[first,second]),take_screenshot=AsyncMock(return_value=b'\x89PNG\r\n\x1a\nolder-fixture-capture'))
+    first,second=blank_page(),blank_page();second.screenshot=encoded_pixels(compression=9)
+    browser=SimpleNamespace(get_browser_state_summary=AsyncMock(side_effect=[first,second]),take_screenshot=AsyncMock(return_value=base64.b64decode(encoded_pixels(compression=0))))
     observed,_=await fresh_browser_evidence(browser,{'navigate':{'url':'https://example.com/'}},'before_approval')
     import base64
-    assert base64.b64decode(observed.screenshot)==b'\x89PNG\r\n\x1a\nolder-fixture-capture'
-    assert second.screenshot=='newer-sdk-capture'
+    assert base64.b64decode(observed.screenshot)==base64.b64decode(encoded_pixels(compression=0))
+    assert second.screenshot==encoded_pixels(compression=9)
 
 
 @pytest.mark.asyncio
@@ -142,5 +150,29 @@ async def test_same_pixels_cannot_mask_context_or_target_changes_during_capture(
     if change=='dom':after.dom_state.llm_representation=lambda:'changed DOM'
     if change=='title':after.title='changed page title'
     if change=='target':after.dom_state.selector_map[12].attributes['aria-label']='Delete all'
-    browser=SimpleNamespace(get_browser_state_summary=AsyncMock(side_effect=[before,after]),take_screenshot=AsyncMock(return_value=b'\x89PNG\r\n\x1a\nfixture-pixels'))
+    browser=SimpleNamespace(get_browser_state_summary=AsyncMock(side_effect=[before,after]),take_screenshot=AsyncMock(return_value=base64.b64decode(encoded_pixels())))
     with pytest.raises(PermissionError,match='changed during'):await fresh_browser_evidence(browser,{'click':{'index':12}},'after_approval')
+
+
+def test_pixel_fingerprint_ignores_encoding_metadata_but_keeps_pixels_dimensions_and_dom():
+    first,second=page(),page();first.screenshot=encoded_pixels(compression=0);second.screenshot=encoded_pixels(compression=9)
+    assert first.screenshot!=second.screenshot
+    assert browser_evidence(first,{})==browser_evidence(second,{})
+    changed=page();changed.screenshot=encoded_pixels(color='black')
+    assert browser_evidence(first,{})!=browser_evidence(changed,{})
+    changed.screenshot=encoded_pixels(size=(2,8))
+    assert browser_evidence(first,{})!=browser_evidence(changed,{})
+    assert browser_evidence(first,{})!=browser_evidence(page(dom='changed DOM'),{})
+
+
+@pytest.mark.parametrize('encoded',['not-base64',base64.b64encode(b'not-an-image').decode()])
+def test_invalid_pixel_evidence_cannot_be_approved(encoded):
+    state=page();state.screenshot=encoded
+    with pytest.raises(PermissionError):browser_evidence(state,{})
+
+
+def test_self_reported_done_cannot_hide_browser_action_errors(capsys):
+    from app.services.native_runtime.engine import browser_result
+    history=SimpleNamespace(is_done=lambda:True,is_successful=lambda:True,errors=lambda:['PermissionError: PRIVATE-PAGE'],urls=lambda:['https://example.com/'],final_result=lambda:'claimed success')
+    with pytest.raises(RuntimeError):browser_result(history)
+    assert 'PRIVATE-PAGE' not in capsys.readouterr().err
