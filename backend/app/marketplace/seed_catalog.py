@@ -331,6 +331,9 @@ def _ai_agents() -> list[CatalogAsset]:
     from app.capabilities.operations_roles import ROLES as OPERATIONS_ROLES
 
     specs.extend((r["target_slug"], r["name"], "Operations", "DEFAULT", [], []) for r in OPERATIONS_ROLES)
+    from app.capabilities.software_roles import ROLES as SOFTWARE_ROLES
+
+    specs.extend((r["target_slug"], r["name"], r["department"], "DEFAULT", [], []) for r in SOFTWARE_ROLES if r["new_agent"])
     assets: list[CatalogAsset] = []
     for slug, name, department, persona, systems, capabilities in specs:
         assets.append(
@@ -532,6 +535,14 @@ def _workflows() -> list[CatalogAsset]:
             role["target_slug"] + "-review", role["name"] + " Review", "Operations", [],
             [_agent_step("review", role["name"] + " evidence review", role["target_slug"],
                          "Using the supplied project or meeting evidence, " + " ".join(role["guidance"]) + " Return a draft deliverable with sources, uncertainties and approval needs; do not publish or mutate external systems.")],
+        ))
+    from app.capabilities.software_roles import ROLES as SOFTWARE_ROLES
+
+    for role in SOFTWARE_ROLES:
+        definitions.append((
+            role["target_slug"] + "-software-review", role["name"] + " Software Review", role["department"], [],
+            [_agent_step("review", role["name"] + " evidence review", role["target_slug"],
+                         "Using supplied authorized software evidence, " + " ".join(role["guidance"]) + " Return a draft with exact sources, uncertainty, tests actually run and approval needs; never publish or execute external changes from this review.")],
         ))
     ticket_id_install_var = {
         "key": "TICKET_ID",
@@ -1165,6 +1176,15 @@ def list_catalog_assets() -> list[CatalogAsset]:
         + msp_service_desk_marketplace3_assets()
         + _department_packs()
     )
+    from copy import deepcopy
+    from app.capabilities.software_roles import role_for_slug as software_role_for_slug, reference as software_reference
+
+    for index, asset in enumerate(assets):
+        role = software_role_for_slug(asset.slug) if asset.asset_type == "ai_agent" else None
+        if role:
+            config = deepcopy(asset.config)
+            config.setdefault("config", {})["software_guidance"] = software_reference(role)
+            assets[index] = replace(asset, config=config)
     slugs = [asset.slug for asset in assets]
     if len(slugs) != len(set(slugs)):
         duplicates = sorted({slug for slug in slugs if slugs.count(slug) > 1})

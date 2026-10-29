@@ -6,6 +6,7 @@ from typing import Any
 
 from app.capabilities.agency_enrichment import render_agency_enrichment
 from app.capabilities.operations_roles import render_operations_role
+from app.capabilities.software_roles import render_software_role
 from app.capabilities.paid_media import render_paid_media
 from app.services.agent_connector_profile import prompt_section as agent_connector_prompt
 from app.capabilities.agent_manifest import render_agent_guidance
@@ -584,6 +585,9 @@ def build_agent_instructions_section(agent: dict[str, Any] | None, *, max_custom
     if role_guidance:
         lines.append(role_guidance)
     lines.append(agent_connector_prompt(agent))
+    software_guidance = render_software_role(agent)
+    if software_guidance:
+        lines.append(software_guidance)
     operations_guidance = render_operations_role(agent)
     if operations_guidance:
         lines.append(operations_guidance)
@@ -680,6 +684,9 @@ def build_agent_system_prompt(
     if role_guidance:
         lines.append(role_guidance)
     lines.append(agent_connector_prompt(agent))
+    software_guidance = render_software_role(agent)
+    if software_guidance:
+        lines.append(software_guidance)
     operations_guidance = render_operations_role(agent)
     if operations_guidance:
         lines.append(operations_guidance)

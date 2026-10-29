@@ -92,7 +92,8 @@ def test_initial_orgscript_exclusion_is_preserved():
 def test_approval_is_fail_closed():
     approved = approved_marketplace_candidates()
     from app.capabilities.operations_roles import ROLES as OPERATIONS_ROLES
-    assert {asset.slug for asset in approved} == {r["target_slug"] for r in OPERATIONS_ROLES} | {"content-writer", "seo-analyst", "sdr-coach", "ticket-triage", "revenue-operations-agent", "competitor-research-agent", "marketing-analyst", "marketing-ops-coordinator", "marketing-designer", "ppc-campaign-strategist", "programmatic-display-buyer", "paid-social-strategist"}
+    from app.capabilities.software_roles import ROLES as SOFTWARE_ROLES
+    assert {asset.slug for asset in approved} == {r["target_slug"] for r in SOFTWARE_ROLES} | {r["target_slug"] for r in OPERATIONS_ROLES} | {"content-writer", "seo-analyst", "sdr-coach", "ticket-triage", "revenue-operations-agent", "competitor-research-agent", "marketing-analyst", "marketing-ops-coordinator", "marketing-designer", "ppc-campaign-strategist", "programmatic-display-buyer", "paid-social-strategist"}
     assert not any(asset.slug.startswith("agency-") for asset in approved)
 
 

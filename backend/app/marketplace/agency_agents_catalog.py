@@ -102,6 +102,10 @@ def map_marketplace_targets(path: Path = INVENTORY) -> list[dict]:
     from app.capabilities.operations_roles import ROLES as OPERATIONS_ROLES
     from types import SimpleNamespace
 
+    from app.capabilities.software_roles import ROLES as SOFTWARE_ROLES
+
+    software = {source["slug"]: r for r in SOFTWARE_ROLES for source in r["sources"]}
+    approved.update({slug: SimpleNamespace(new_agent=role["new_agent"]) for slug, role in software.items()})
     operations = {r["slug"]: r for r in OPERATIONS_ROLES}
     approved.update({slug: SimpleNamespace(new_agent=True) for slug in operations})
     result = []
@@ -111,6 +115,10 @@ def map_marketplace_targets(path: Path = INVENTORY) -> list[dict]:
         existing = FUNCTION_TARGETS.get(source_key)
         if agent["slug"] in operations:
             existing = operations[agent["slug"]]["target_slug"]
+        if agent["slug"] in software:
+            existing = software[agent["slug"]]["target_slug"]
+            department = software[agent["slug"]]["department"]
+            manifest = software[agent["slug"]]["manifest_role"]
         excluded = agent["proposed_disposition"] == "exclude"
         if excluded:
             pack, manifest, existing = None, None, None
@@ -192,5 +200,7 @@ def approved_marketplace_candidates() -> list[CatalogAsset]:
 
     from app.capabilities.operations_roles import ROLES as OPERATIONS_ROLES
 
-    approved = {spec.target_slug for spec in (*APPROVED_ENRICHMENTS, *ROLES)} | {r["target_slug"] for r in OPERATIONS_ROLES}
+    from app.capabilities.software_roles import ROLES as SOFTWARE_ROLES
+
+    approved = {spec.target_slug for spec in (*APPROVED_ENRICHMENTS, *ROLES)} | {r["target_slug"] for r in OPERATIONS_ROLES} | {r["target_slug"] for r in SOFTWARE_ROLES}
     return [asset for asset in list_catalog_assets() if asset.slug in approved]

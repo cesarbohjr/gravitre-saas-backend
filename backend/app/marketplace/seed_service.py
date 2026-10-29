@@ -161,7 +161,9 @@ def upsert_catalog_asset(
 
         from app.capabilities.operations_roles import role_for_slug as operations_role_for_slug
 
-        if enrichment_for_slug(asset.slug) is not None or role_for_slug(asset.slug) is not None or operations_role_for_slug(asset.slug) is not None:
+        from app.capabilities.software_roles import role_for_slug as software_role_for_slug
+
+        if enrichment_for_slug(asset.slug) is not None or role_for_slug(asset.slug) is not None or operations_role_for_slug(asset.slug) is not None or software_role_for_slug(asset.slug) is not None:
             return _update_approved_enrichment(client, existing.data[0], row, slug=asset.slug)
         asset_id = str(existing.data[0]["id"])
         client.table("marketplace_assets").update(row).eq("id", asset_id).execute()
