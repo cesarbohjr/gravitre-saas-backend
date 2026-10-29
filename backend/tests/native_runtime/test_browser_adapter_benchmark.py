@@ -80,3 +80,12 @@ def test_benchmark_cost_and_reliability_evidence_is_explicitly_bounded():
     assert 'child_cpu_ms' in source
     assert 'total_elapsed_ms' in source
     assert 'monetary cost unmeasured' in source
+
+
+def test_strict_snapshot_gate_remains_active_after_fixture_paint_delay():
+    import inspect
+    source = inspect.getsource(benchmark["trial"])
+    assert "await asyncio.sleep(0.5)" in source
+    assert "await stable_browser_evidence(session, action)" in source
+    assert source.index("await asyncio.sleep(0.5)") < source.index("await stable_browser_evidence(session, action)")
+    assert "approved=True" in source
