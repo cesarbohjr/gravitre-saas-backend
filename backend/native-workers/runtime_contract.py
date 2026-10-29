@@ -11,6 +11,7 @@ import concurrent.futures
 import hashlib
 import json
 import os
+import re
 from pathlib import Path
 import socket
 import ssl
@@ -109,7 +110,25 @@ def run():
             assert '@sha256:' in digest
             return digest
         images=SandboxImages(publish('native-openhands'),publish('native-browser'),publish('native-gateway-fixture'))
-        runner=DockerRunner(images)
+        captures=[]
+        def process_factory(args,**kwargs):
+            stream=tempfile.TemporaryFile(mode='w+b')
+            captures.append(stream)
+            kwargs['stderr']=stream
+            return subprocess.Popen(args,**kwargs)
+        runner=DockerRunner(images,process_factory=process_factory)
+        def diagnostic():
+            # Fixture-only diagnostics: no task, model response, exception body,
+            # token or credential is printed. Keep only public stack locations
+            # and exception class names, then close the private capture.
+            for stream in captures:
+                stream.flush();stream.seek(0)
+                for line in stream.read(262144).decode(errors='replace').splitlines():
+                    match=re.match(r'\s*File "([^"]+)", line (\d+), in ([A-Za-z0-9_<>]+)',line)
+                    if match:print(json.dumps({'sdk_frame':Path(match[1]).name,'line':int(match[2]),'function':match[3]}))
+                    match=re.match(r'^([A-Za-z_][A-Za-z0-9_]*(?:Error|Exception)):',line)
+                    if match:print(json.dumps({'sdk_exception':match[1]}))
+                stream.close()
         def job(kind):
             return {'id':str(uuid4()),'kind':kind,'payload':{'task':{'task':'Execute only this fixed certification fixture. Make no external changes.','files':{'review.py':''} if kind=='openhands' else {},'allowed_hosts':['example.com'] if kind=='browser_use' else [],'max_seconds':180,'max_steps':5}}}
         def clean(id):
@@ -143,8 +162,8 @@ def run():
             # Cleanup is idempotent and cannot resurrect a lost worker.
             runner.cleanup(cancelled['id']);clean(cancelled['id']);evidence['recovery_cleanup_idempotent']='PASS'
         finally:
-            cancel.set();server.shutdown();server.server_close();thread.join(timeout=5)
-        evidence.update(schema_version=1,runtime='runsc',runsc_version=subprocess.check_output(['runsc','--version'],text=True).splitlines()[0],git_sha=os.environ.get('GITHUB_SHA','local'),provider_requests=False,live_tenant_data=False)
+            cancel.set();server.shutdown();server.server_close();thread.join(timeout=5);diagnostic()
+        evidence.update(schema_version=1,runtime='runsc',runsc_version=subprocess.check_output(['runsc','--version'],text=True).splitlines()[0],git_sha=os.environ.get('GITHUB_SHA','local'),external_provider_requests=False,live_tenant_data=False)
         target=Path(os.environ.get('NATIVE_CERT_EVIDENCE','native-runtime-evidence.json'));target.write_text(json.dumps(evidence,indent=2)+'\n')
         print(json.dumps(evidence,sort_keys=True))
 
