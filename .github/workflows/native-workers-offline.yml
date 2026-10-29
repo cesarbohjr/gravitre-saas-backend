@@ -1,0 +1,35 @@
+name: Native worker image contracts
+on:
+  pull_request:
+    paths:
+      - 'backend/app/services/native_runtime/**'
+      - 'backend/native-workers/**'
+      - 'backend/tests/native_runtime/**'
+      - '.github/workflows/native-workers-offline.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  pinned-sdk-imports:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        engine: [openhands, browser]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build isolated pinned SDK image
+        run: docker build -f backend/native-workers/Dockerfile.${{ matrix.engine }} -t native-sdk:${{ matrix.engine }} backend
+      - name: Verify real SDK call surfaces without network or credentials
+        env:
+          ENGINE: ${{ matrix.engine }}
+        run: |
+          if [ "$ENGINE" = browser ]; then contract=browser_use; else contract=openhands; fi
+          docker run --rm --network none --read-only --cap-drop ALL --security-opt no-new-privileges --pids-limit 128 --memory 2g --tmpfs /tmp:rw,noexec,nosuid,size=128m --tmpfs /workspace:rw,nosuid,size=128m,uid=10001,gid=10001 -e OTEL_SDK_DISABLED=true -e ANONYMIZED_TELEMETRY=false -e DO_NOT_TRACK=1 native-sdk:$ENGINE python /runner/sdk_contract.py "$contract"
+  gateway-image:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -f backend/native-workers/Dockerfile.gateway -t native-gateway backend

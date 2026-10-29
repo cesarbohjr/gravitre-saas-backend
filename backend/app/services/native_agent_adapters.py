@@ -167,11 +167,26 @@ def export_langfuse_feedback(
         return "disabled"
     if not isinstance(correlation_key, bytes) or len(correlation_key) < 32:
         raise ValueError("A dedicated correlation key of at least 32 bytes is required")
+    metadata = load_langfuse_feedback_metrics(client, receipt_id, scope=scope, correlation_key=correlation_key)
+    if metadata is None:
+        return "receipt_missing"
+    try:
+        with langfuse_client.start_as_current_observation(as_type="span",name="gravitre.dialogue_evaluation") as span:
+            span.update(metadata=metadata)
+    except Exception:
+        return "export_failed"
+    return "submitted"
+
+
+def load_langfuse_feedback_metrics(client: Any, receipt_id: str, *, scope: AdapterScope, correlation_key: bytes) -> dict[str, Any] | None:
+    """Read one exact-scope receipt; return only the export allowlist."""
+    if not isinstance(correlation_key, bytes) or len(correlation_key) < 32:
+        raise ValueError("A dedicated correlation key of at least 32 bytes is required")
     rows = (client.table("intelligence_outcome_events").select("id,org_id,agent_id,entity_id,outcome_event,metadata")
             .eq("org_id", scope.org_id).eq("agent_id", scope.agent_id).eq("id", receipt_id).eq("outcome_event", "dialogue_evaluated")
             .limit(1).execute().data or [])
     if len(rows) != 1:
-        return "receipt_missing"
+        return None
     row = rows[0]
     if row.get("org_id") != scope.org_id or row.get("agent_id") != scope.agent_id or row.get("entity_id") != scope.run_id or row.get("outcome_event") != "dialogue_evaluated":
         raise ValueError("Feedback receipt scope mismatch")
@@ -187,9 +202,4 @@ def export_langfuse_feedback(
     scoped_id = json.dumps([scope.org_id, scope.agent_id, scope.run_id], separators=(",", ":"))
     metadata = {"schema_version":1, "run_ref":hmac.new(correlation_key,scoped_id.encode(),hashlib.sha256).hexdigest(),
                 "channel":metrics["channel"], "evaluator_version":"dialogue-metrics-v1", **values}
-    try:
-        with langfuse_client.start_as_current_observation(as_type="span",name="gravitre.dialogue_evaluation") as span:
-            span.update(metadata=metadata)
-    except Exception:
-        return "export_failed"
-    return "submitted"
+    return metadata

@@ -1,6 +1,12 @@
 # PR581 native activation readiness
 
-## Verified checkpoint
+## Current source checkpoint
+
+The private durable broker, pinned SDK engine images, constrained model/network gateway, canonical approved tool operations and acknowledged Langfuse outbox are now implemented in source. See [implementation and release-stage configuration](PR581_NATIVE_RUNTIME_IMPLEMENTATION.md). Offline authorization, queue, delivery and failure contracts pass; real image/runtime certification, exact-head full CI and combined compatibility remain required. No worker or telemetry has been activated.
+
+The remainder below records the earlier environment inventory and historical missing-code checkpoint; its NOT IMPLEMENTED labels are superseded by the source checkpoint above.
+
+## Historical verified checkpoint
 
 The Operations and software Engineering/IT implementations are source changes, not native worker activation. The existing `native_agent_adapters.py` still creates review-only plans and performs explicit-per-run, metrics-only Langfuse submission. It must not be reported as an operational sandbox worker, browser runtime or acknowledged delivery queue.
 

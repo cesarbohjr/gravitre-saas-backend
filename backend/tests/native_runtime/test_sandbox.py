@@ -1,0 +1,104 @@
+from dataclasses import asdict
+import io
+import json
+from types import SimpleNamespace
+import tarfile
+from unittest.mock import Mock
+from uuid import uuid4
+import pytest
+from app.services.native_runtime.docker_runner import DockerRunner,SandboxImages
+from app.services.native_runtime.runtime import ModelRoute
+from app.services.native_runtime import gateway,network
+
+IMAGES=SandboxImages('registry/oh@sha256:'+'1'*64,'registry/browser@sha256:'+'2'*64,'registry/gateway@sha256:'+'3'*64)
+
+class Input:
+    def __init__(self):self.data=b''
+    def write(self,data):self.data+=data
+    def close(self):pass
+class Process:
+    def __init__(self,done):self.stdin=Input();self.returncode=0 if done else None
+    def poll(self):return self.returncode
+    def kill(self):self.returncode=-9
+    def wait(self,**_):return self.returncode
+
+def test_exact_sandbox_policy_secret_isolation_and_cleanup(monkeypatch):
+    monkeypatch.setattr('socket.getfqdn',lambda *_:'localhost')
+    commands=[];processes=[];containers=[];networks=[]
+    jobid=str(uuid4())
+    output=io.BytesIO()
+    with tarfile.open(fileobj=output,mode='w') as archive:
+        data=b'{"observations":[{"summary":"draft"}],"patch":"example"}'
+        info=tarfile.TarInfo('result.json');info.size=len(data);archive.addfile(info,io.BytesIO(data))
+    def docker(args,**kwargs):
+        commands.append(args)
+        op=args[1]
+        if op=='info':return SimpleNamespace(stdout=b'{"runsc":{}}')
+        if op=='ps':return SimpleNamespace(stdout='\n'.join(containers).encode())
+        if op=='rm':containers.clear()
+        if op in ('run','create'):containers.append(args[args.index('--name')+1])
+        if op=='network':
+            if args[2]=='ls':return SimpleNamespace(stdout='\n'.join(networks).encode())
+            if args[2]=='create':networks.append(args[-1])
+            if args[2]=='rm':networks.clear()
+        if op=='cp':return SimpleNamespace(stdout=output.getvalue())
+        return SimpleNamespace(stdout=b'')
+    def process(args,**kwargs):
+        result=Process('exec' in args);processes.append((args,result));return result
+    runner=DockerRunner(IMAGES,command=docker,process_factory=process)
+    model=ModelRoute('openai','configured','https://model.example/v1','PROVIDER-SECRET',1,1,1)
+    job={'id':jobid,'kind':'openhands','payload':{'task':{'task':'bounded','files':{},'allowed_hosts':[],'max_seconds':5,'max_steps':2}}}
+    result=runner.execute(job,guard=lambda:model,action_gate=Mock())
+    assert result['patch']=='example' and not containers and not networks
+    flat=repr(commands)
+    assert 'PROVIDER-SECRET' not in flat and 'PROVIDER-SECRET' not in repr(processes[1][1].stdin.data)
+    assert b'PROVIDER-SECRET' in processes[0][1].stdin.data
+    assert '--privileged' not in flat and 'docker.sock' not in flat
+    assert 'com.docker.network.bridge.gateway_mode_ipv4=isolated' in flat
+    assert '--read-only' in flat and '--cap-drop=ALL' in flat and 'no-new-privileges' in flat
+    assert '--dns' in flat and '127.0.0.1' in flat
+    assert '--signal=KILL' in flat and '--pids-limit' in flat and '--memory' in flat
+    engine=next(c for c in commands if c[1]=='run')
+    assert engine[engine.index('--network')+1]=='native-'+jobid
+    assert engine[engine.index('--runtime')+1]=='runsc'
+
+def test_no_unpinned_image_or_insecure_runtime():
+    with pytest.raises(ValueError):SandboxImages('latest','latest','latest').validate()
+    with pytest.raises(ValueError):SandboxImages(IMAGES.openhands,IMAGES.browser_use,IMAGES.gateway,'runc').validate()
+
+@pytest.mark.parametrize('address',['127.0.0.1','10.1.2.3','169.254.169.254','::1','fc00::1','192.0.2.1'])
+def test_dns_escape_rebinding_and_private_routes_are_denied(monkeypatch,address):
+    monkeypatch.setattr(network.socket,'getaddrinfo',lambda *_args,**_kwargs:[(None,None,None,None,(address,443))])
+    with pytest.raises(ValueError):network.public_addresses('allowed.example')
+
+def test_mixed_public_private_dns_and_url_creds_are_denied(monkeypatch):
+    monkeypatch.setattr(network.socket,'getaddrinfo',lambda *_args,**_kwargs:[(None,None,None,None,('8.8.8.8',443)),(None,None,None,None,('10.0.0.1',443))])
+    with pytest.raises(ValueError):network.public_addresses('allowed.example')
+    for url in ['https://user:secret@allowed.example','https://allowed.example:8443','http://allowed.example','https://other.example','https://allowed.example\\evil']:
+        with pytest.raises(ValueError):network.approved_url(url,['allowed.example'])
+
+@pytest.mark.parametrize('token_field',['max_tokens','max_completion_tokens'])
+def test_gateway_fixed_route_budget_no_redirect_and_no_exception_leak(monkeypatch,token_field):
+    config={'engine_token':'job-token','model':'approved','max_output_tokens':20,'max_calls':1,'budget_usd':1,'input_usd_per_million':1,'output_usd_per_million':1,'base_url':'https://fixed.example/v1','api_key':'PRIVATE-KEY'}
+    monkeypatch.setattr(gateway,'CONFIG',config);monkeypatch.setattr(gateway,'CALLS',0);monkeypatch.setattr(gateway,'SPENT',0)
+    monkeypatch.setattr(gateway,'control',lambda *_:{'authorized':True})
+    upstream=Mock();upstream.getresponse.return_value=SimpleNamespace(status=200,read=lambda _:b'{"choices":[]}')
+    connection=Mock(return_value=upstream);monkeypatch.setattr(gateway.http.client,'HTTPSConnection',connection)
+    def send(body):
+        handler=object.__new__(gateway.Handler);raw=json.dumps(body).encode()
+        handler.headers={'Authorization':'Bearer job-token','Content-Length':str(len(raw))};handler.rfile=io.BytesIO(raw);handler.wfile=io.BytesIO();handler.path='/v1/chat/completions'
+        handler.send_response=Mock();handler.send_header=Mock();handler.end_headers=Mock()
+        handler.do_POST();return handler
+    first=send({'model':'model-chosen-by-attacker','messages':[{'role':'user','content':'hello'}],token_field:100,'reasoning_effort':'low'})
+    assert first.send_response.call_args.args[0]==200
+    forwarded=json.loads(upstream.request.call_args.kwargs['body'])
+    assert forwarded['model']=='approved'
+    assert forwarded[token_field]==20 and forwarded['reasoning_effort']=='low'
+    assert ('max_tokens' if token_field=='max_completion_tokens' else 'max_completion_tokens') not in forwarded
+    assert connection.call_args.args==('fixed.example',443)
+    second=send({'messages':[{'role':'user','content':'hello'}]})
+    assert second.send_response.call_args.args[0]==429
+    assert connection.call_count==1
+    invalid=send({'messages':[],'base_url':'https://evil.example'})
+    assert invalid.send_response.call_args.args[0]==403
+    assert b'PRIVATE-KEY' not in invalid.wfile.getvalue()

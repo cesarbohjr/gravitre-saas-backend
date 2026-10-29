@@ -1,0 +1,54 @@
+# PR581 native runtime and durable metrics implementation
+
+This checkpoint adds deployable broker, SDK engine and model gateway code. It does not activate a service, grant an agent a tool, connect a provider, or certify production. PR581 remains draft, unmerged and undeployed. Shared intelligence and evaluation remain owned by PR587; engine results return through the existing bounded review adapters.
+
+## Execution and authority
+
+Seven canonical `assistant.*` operations share planner schemas with the action catalog: `run_openhands`, `run_browser_use`, `native_job_status`, `cancel_native_job`, `approve_native_action`, `export_evaluation_metrics`, and `withdraw_evaluation_metrics`. Planner names use `platform_` to avoid the separate assistant chat-handler path. Missing `native_worker_url` hides these planner tools. Missing or invalid configuration fails intake closed. Installation never provisions workers or grants permissions.
+
+Every request uses a short-lived signed envelope bound to operation, request digest, authenticated actor, organization, persisted agent, and run. Current membership and exact explicit `platform:native:execute`, `platform:native:read`, or `platform:telemetry:export` grants are checked. Legacy wildcard grants do not activate workers. Execution and export require existing human/run write authority; individual browser actions require new human authority bound to the request and digest. Approval references cannot authorize a second operation. Native status never uses the organization-wide read cache. Queue acceptance is explicitly unverified execution.
+
+The broker renews durable leases and checks cancellation, membership, grants, model policy and the unchanged configured model route at execution boundaries. Native execution with a lost lease becomes uncertain and is not automatically replayed. Cleanup reconciles only labeled resources for that job. Cancellation fences further requests; already sent remote requests can have an uncertain outcome.
+
+## Isolated engines
+
+`backend/native-workers/` contains separate gateway, OpenHands and Browser Use images. SDK source dependencies are pinned to immutable upstream commits. Transitive packages still need build-time supply-chain review; deployment requires the resulting images by SHA-256 digest. Production must use a dedicated Docker host with gVisor (`runsc`) or Kata (`kata-runtime`); ordinary runc is refused. Docker must support isolated internal bridge gateway mode. There is no Docker executable in this development environment, so actual image builds, SDK import contracts, Chromium startup and gVisor/Kata network enforcement are **NOT RUN** locally. The added credential-free Actions workflow builds the real images and checks actual SDK call surfaces; that workflow is not proof of provider execution or sandbox escape resistance.
+
+Engine containers have no host workspace, Docker socket, host browser profile or provider credential. They use bounded CPU, memory, process count, tmpfs, a read-only root and a private job network. The trusted gateway alone has provider credentials and external routing. It receives configuration over stdin, holds it in memory and disables container logs. Engines receive only a random job token. Independent process deadlines limit execution after a broker crash.
+
+The model gateway fixes provider origin and model, rejects streaming/multimodal calls and undeclared parameters, limits response sizes, call counts and conservative reservations using administrator-reviewed prices. No price is invented. These engines currently require a compatible OpenAI chat-completions endpoint. Software tasks have no external browser destinations; supplied bounded files stay in ephemeral storage and produce a draft patch for review, never a host apply or publication.
+
+Browser sessions start with an empty private guest profile. Existing signed-in browser sessions, connector credentials and cookie imports are not supported. Only exact HTTPS destinations are allowed; the proxy validates every resolved address as public and connects to the validated numeric address. Direct engine egress is blocked by the private internal network. Browser code/file/upload actions are excluded. Consequential navigation/interactions wait for a pending action whose digest includes the exact action, URL and screenshot fingerprint. A fresh fingerprint must match after approval. Dynamic pages may invalidate an approval and stop the task. This is deliberately conservative. Browser observations are untrusted review evidence, never tool grants or external outcome certification.
+
+## Durable Langfuse delivery
+
+The private encrypted SQLite journal uses WAL, FULL synchronization, atomic claims, bounded retries, stable identifiers, sanitized failure categories and tenant/agent/run/actor status checks. It requires a private persistent directory (0700) and file (0600); there is no memory fallback. Separate native execution and telemetry threads operate the journal. Credentials and correlation/encryption keys are administrator configuration, never model arguments.
+
+Export reads an existing tenant/agent/run-bound durable evaluation receipt. Only the seven validated schema/correlation/channel/evaluator/count/duration fields are emitted. No prompts, transcripts, responses, raw tenant/user IDs, credential material or provider error bodies are exported. HMAC-derived trace/span IDs remain unchanged across retries. OTLP HTTP acceptance alone is insufficient: the exact observation ID, trace ID, name and complete metric allowlist must be read back from Langfuse before `delivered` is stored. Partial rejection and delayed acknowledgement stay pending or become explicit finite failures.
+
+Consent is per run, time limited and required before submission and after network completion. Membership/grant revocation schedules deletion. Withdrawal erases unsent submissions and converts potentially sent items to a deletion queue. Deletion is confirmed with a remote readback; an empty query following an unacknowledged in-flight write is not falsely accepted as erasure. Ambiguous deletion can end in an explicit unresolved failure. Deletion credentials must remain available until reconciliation completes. Re-enqueue cannot bypass an existing receipt's deletion identity.
+
+Local erasure clears encrypted payload/results and action records. This does not certify physical erasure from SQLite WAL, storage snapshots or backups. Operators must implement checkpoint/backup retention and key destruction under the environment's retention policy. Preserve tombstones and approval-use records while replay prevention is required; review metadata retention separately. Do not delete a queue volume or rotate away its decrypting key while remote deletion is unresolved.
+
+## Configuration and startup (release stage only)
+
+Use separate application and private broker deployments. Do not expose `/v1/invoke` publicly; restrict ingress to the application plus normal authenticated infrastructure. The application requires `NATIVE_WORKER_URL` (private HTTPS origin) and `NATIVE_WORKER_SIGNING_KEY` (at least 32 random characters). The broker uses the same signing key, existing authorized Supabase settings and:
+
+- `NATIVE_JOURNAL_PATH`: absolute path on the private persistent volume.
+- `NATIVE_JOURNAL_KEY`: Fernet key from the environment's secret manager.
+- `NATIVE_CORRELATION_KEY`: at least 32 random bytes encoded as hex; distinct from all other keys.
+- `NATIVE_OPENHANDS_IMAGE`, `NATIVE_BROWSER_IMAGE`, `NATIVE_GATEWAY_IMAGE`: reviewed images with `@sha256:` digests.
+- `NATIVE_SANDBOX_RUNTIME`: `runsc` or `kata-runtime`.
+- `NATIVE_TENANTS_JSON`: organization UUID keyed object, injected as a secret. Each entry contains `processing_permission` (`owner` current admin/owner UUID, `reference` approved record, `expires_at` timezone-aware and no more than 31 days away), `model` (`provider`, `model`, `base_url`, `api_key`, positive reviewed `budget_usd`, `input_usd_per_million`, `output_usd_per_million`, bounded `max_output_tokens`), and optional `langfuse` (`base_url`, `public_key`, `secret_key`). Separate tenant Langfuse projects are required; duplicate public keys are rejected.
+
+Build images using each Dockerfile with `backend` as context. Run the broker using `uvicorn app.services.native_runtime.worker:build_app --factory` from the backend environment. This document supplies no live tenant, permission record, pricing, credential or grant. Missing tenant routes remain unavailable. Journal errors must alert operators through infrastructure monitoring; job failure categories are visible via status, but there is no public health/activation claim from thread existence alone.
+
+## Validation and remaining release gates
+
+Offline tests cover journal restart/claims/fencing, no replay, scope and explicit authority, actual API signatures and tampering, catalog/planner contracts, draft results, cancellation/revocation, network validation, mocked Docker lifecycle and isolation arguments, gateway budget/routing, exact OTLP serialization, acknowledgement, consent and deletion ambiguity. Mock Docker tests are not actual sandbox certification. Test commands must load `tests.offline_network_guard`; no provider call is authorized by this checkpoint.
+
+Before engineering closeout: green exact-head full CI; successful real pinned-image builds/import contracts; isolated runtime certification for Chromium/OpenHands, gVisor/Kata and direct/redirect/DNS escape attempts; failure/crash/cleanup/backup recovery; shared text/voice authorization parity; and combined PR581/PR587 regression. The two known PR587 failures remain the streaming-audio chunk and interruption-during-early-ack tests. Neither is waived or weakened here. Live/provider and production acceptance follow the separately authorized coordinated release. No merge/deployment or production telemetry activation occurred.
+
+### Local checkpoint evidence
+
+Final affected run: **987 passed** under `tests.offline_network_guard`, covering `tests/native_runtime`, existing native-adapter and tool-registry contracts, write-authority matrix/spine, shared text/voice prompt compatibility and the complete Marketplace suite. Python compilation and `git diff --check` pass. A broader full-backend diagnostic was started during implementation; it must not be substituted for final exact-head CI. Earlier web validation is unchanged by this backend-only checkpoint. The image workflow and real runtime/provider acceptance have not run locally.

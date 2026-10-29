@@ -1,0 +1,1 @@
+browser-use @ git+https://github.com/browser-use/browser-use.git@2cc71890e65056b67fdb29d98bb407749c15bb08
