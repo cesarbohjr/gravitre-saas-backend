@@ -1,0 +1,31 @@
+name: Isolated LiveKit candidate contracts
+on:
+  pull_request:
+    paths:
+      - 'backend/app/services/pipecat_voice/livekit_candidate.py'
+      - 'backend/tests/unit/test_livekit_candidate.py'
+      - 'backend/requirements-voice-comparison.txt'
+      - '.github/workflows/voice-livekit-candidate.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  sdk-contracts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install isolated RTC test dependencies
+        run: python -m pip install 'livekit==1.2.0' 'starlette>=0.40,<1' 'pytest>=8,<10' 'pytest-asyncio>=0.24,<2'
+      - name: Require real SDK imports
+        run: python -c 'from livekit import rtc; from starlette.websockets import WebSocketState'
+      - name: Test candidate SDK and boundary contracts (not real-audio certification)
+        working-directory: backend
+        run: python -m pytest -q --confcutdir=tests/unit tests/unit/test_livekit_candidate.py --junitxml=livekit-contracts.xml
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: livekit-candidate-contracts
+          path: backend/livekit-contracts.xml
