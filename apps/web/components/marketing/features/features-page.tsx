@@ -1,25 +1,25 @@
-"use client"
+"use client";
 
-import Link from "next/link"
-import { useState } from "react"
-import { motion } from "framer-motion"
-import { Button } from "@/components/marketing/nodus/button"
+import Link from "next/link";
+import { useState } from "react";
+import { motion, useReducedMotion } from "framer-motion";
+import { Button } from "@/components/marketing/nodus/button";
 import {
   Card,
   CardDescription,
   CardTitle,
-} from "@/components/marketing/nodus/agentic-intelligence/card"
-import { Container } from "@/components/marketing/nodus/container"
-import { DivideX } from "@/components/marketing/nodus/divide"
-import { HeroImage } from "@/components/marketing/nodus/hero-image"
+} from "@/components/marketing/nodus/agentic-intelligence/card";
+import { Container } from "@/components/marketing/nodus/container";
+import { DivideX } from "@/components/marketing/nodus/divide";
+import { HeroImage } from "@/components/marketing/nodus/hero-image";
 import {
   MarketingPageEndCta,
   MarketingPageHero,
-} from "@/components/marketing/nodus/page-shell"
-import { Badge } from "@/components/marketing/nodus/badge"
-import { Scale } from "@/components/marketing/nodus/scale"
-import { SectionHeading } from "@/components/marketing/nodus/seciton-heading"
-import { SubHeading } from "@/components/marketing/nodus/subheading"
+} from "@/components/marketing/nodus/page-shell";
+import { Badge } from "@/components/marketing/nodus/badge";
+import { Scale } from "@/components/marketing/nodus/scale";
+import { SectionHeading } from "@/components/marketing/nodus/seciton-heading";
+import { SubHeading } from "@/components/marketing/nodus/subheading";
 import {
   BrainIcon,
   FingerprintIcon,
@@ -27,7 +27,7 @@ import {
   NativeIcon,
   RealtimeSyncIcon,
   SDKIcon,
-} from "@/components/marketing/nodus-icons/bento-icons"
+} from "@/components/marketing/nodus-icons/bento-icons";
 import {
   FEATURES_TRACE_STAGES,
   GravitreFlow,
@@ -36,9 +36,9 @@ import {
   GravitreSectionHeader,
   GravitreTrace,
   StageTraceVisual,
-} from "@/components/marketing/system"
-import { VoiceIntentField } from "@/components/marketing/creative"
-import { MARKETING_COPY } from "@/lib/marketing-copy"
+} from "@/components/marketing/system";
+import { VoiceIntentField } from "@/components/marketing/creative";
+import { MARKETING_COPY } from "@/lib/marketing-copy";
 
 /** Hero pill → the real app screen it names (captures from /e2e/shots). */
 const HERO_SHOTS: Record<
@@ -87,7 +87,7 @@ const HERO_SHOTS: Record<
     height: 1800,
     title: "Knowledge",
   },
-}
+};
 
 const surfaceIcons = [
   BrainIcon,
@@ -97,16 +97,25 @@ const surfaceIcons = [
   RealtimeSyncIcon,
   SDKIcon,
   BrainIcon,
-] as const
+] as const;
 
 /**
  * Features page — Marketing System 4.0.
  * Distinct from home: Coordinate → Act → Approve → Resolve TRACE, not a homepage clone.
  */
 export function FeaturesPage() {
-  const hero = MARKETING_COPY.featuresHero
-  const [activePill, setActivePill] = useState<string>("Agents")
-  const shot = HERO_SHOTS[activePill] ?? HERO_SHOTS.Agents
+  const hero = MARKETING_COPY.featuresHero;
+  const [activePill, setActivePill] = useState<string>("Agents");
+  const shot = HERO_SHOTS[activePill] ?? HERO_SHOTS.Agents;
+  // Auto-tour the screens; hovering the pills or the window pauses it.
+  const reduceMotion = useReducedMotion();
+  const [paused, setPaused] = useState(false);
+  const autoplay = !reduceMotion && !paused;
+  const nextPill = () => {
+    const pills: readonly string[] = hero.pills;
+    const i = pills.indexOf(activePill);
+    setActivePill(pills[(i + 1) % pills.length]);
+  };
 
   return (
     <main className="bg-[color:var(--g-marketing-canvas)]">
@@ -120,7 +129,11 @@ export function FeaturesPage() {
         }
         description={hero.subtitle}
       >
-        <div className="mt-8 flex flex-wrap items-center justify-center gap-2.5">
+        <div
+          className="mt-8 flex flex-wrap items-center justify-center gap-2.5"
+          onMouseEnter={() => setPaused(true)}
+          onMouseLeave={() => setPaused(false)}
+        >
           {hero.pills.map((pill) => (
             <button
               key={pill}
@@ -129,11 +142,22 @@ export function FeaturesPage() {
               aria-pressed={activePill === pill}
               className={
                 activePill === pill
-                  ? "rounded-full border border-charcoal-900 bg-charcoal-900 px-3.5 py-2 text-sm font-medium text-background"
-                  : "rounded-full border border-divide bg-[color:var(--g-marketing-surface)] px-3.5 py-2 text-sm font-medium text-charcoal-700 hover:text-charcoal-900"
+                  ? "relative overflow-hidden rounded-full border border-charcoal-900 bg-charcoal-900 px-3.5 py-2 text-sm font-medium text-background transition-colors"
+                  : "relative overflow-hidden rounded-full border border-divide bg-[color:var(--g-marketing-surface)] px-3.5 py-2 text-sm font-medium text-charcoal-700 transition-colors hover:text-charcoal-900"
               }
             >
               {pill}
+              {activePill === pill && autoplay ? (
+                <motion.span
+                  key={pill}
+                  aria-hidden
+                  className="absolute inset-x-0 bottom-0 h-[2px] origin-left bg-brand"
+                  initial={{ scaleX: 0 }}
+                  animate={{ scaleX: 1 }}
+                  transition={{ duration: 5, ease: "linear" }}
+                  onAnimationComplete={nextPill}
+                />
+              ) : null}
             </button>
           ))}
         </div>
@@ -148,15 +172,26 @@ export function FeaturesPage() {
       </MarketingPageHero>
 
       <DivideX />
-      <HeroImage
-        key={shot.src}
-        src={shot.src}
-        alt={shot.alt}
-        width={shot.width}
-        height={shot.height}
-        title={shot.title}
-        chips={[{ label: "Human approval on writes", at: "bottom-right", tone: "amber" }]}
-      />
+      <div
+        onMouseEnter={() => setPaused(true)}
+        onMouseLeave={() => setPaused(false)}
+      >
+        <HeroImage
+          animateKey={shot.src}
+          src={shot.src}
+          alt={shot.alt}
+          width={shot.width}
+          height={shot.height}
+          title={shot.title}
+          chips={[
+            {
+              label: "Human approval on writes",
+              at: "bottom-right",
+              tone: "amber",
+            },
+          ]}
+        />
+      </div>
       <DivideX />
 
       <GravitreSection>
@@ -200,11 +235,11 @@ export function FeaturesPage() {
       <HonestReporting />
       <MarketingPageEndCta />
     </main>
-  )
+  );
 }
 
 function ProductSurfaces() {
-  const surfaces = MARKETING_COPY.homeFeatures
+  const surfaces = MARKETING_COPY.homeFeatures;
 
   return (
     <Container className="border-divide md:border-x">
@@ -215,13 +250,13 @@ function ProductSurfaces() {
             Everything in the <span className="text-brand">same brain</span>
           </SectionHeading>
           <SubHeading as="p" className="mx-auto mt-6 max-w-lg px-2">
-            Real Gravitre surfaces — chat, agents, workflows, connectors, approvals, and GIBE —
-            not another disconnected AI silo.
+            Real Gravitre surfaces — chat, agents, workflows, connectors,
+            approvals, and GIBE — not another disconnected AI silo.
           </SubHeading>
         </GravitreReveal>
         <div className="border-divide divide-divide mt-16 grid w-full grid-cols-1 divide-y border-y md:grid-cols-2 md:divide-x lg:grid-cols-3">
           {surfaces.map((surface, index) => {
-            const Icon = surfaceIcons[index % surfaceIcons.length]
+            const Icon = surfaceIcons[index % surfaceIcons.length];
             return (
               <GravitreFlow key={surface.title} delay={index * 0.05}>
                 <Card className="min-h-[180px]">
@@ -232,17 +267,17 @@ function ProductSurfaces() {
                   <CardDescription>{surface.description}</CardDescription>
                 </Card>
               </GravitreFlow>
-            )
+            );
           })}
         </div>
       </div>
     </Container>
-  )
+  );
 }
 
 function AuthorizedUseCases() {
-  const copy = MARKETING_COPY.useCases
-  const [active, setActive] = useState<number | null>(null)
+  const copy = MARKETING_COPY.useCases;
+  const [active, setActive] = useState<number | null>(null);
 
   return (
     <Container className="border-divide relative overflow-hidden md:border-x px-4 md:px-8">
@@ -279,8 +314,12 @@ function AuthorizedUseCases() {
                 <p className="text-brand text-xs font-medium tracking-wide uppercase">
                   {useCase.department}
                 </p>
-                <h3 className="text-charcoal-700 mt-2 text-lg font-medium">{useCase.title}</h3>
-                <p className="mt-2 text-sm text-gray-600 md:text-base">{useCase.description}</p>
+                <h3 className="text-charcoal-700 mt-2 text-lg font-medium">
+                  {useCase.title}
+                </h3>
+                <p className="mt-2 text-sm text-gray-600 md:text-base">
+                  {useCase.description}
+                </p>
                 <div className="mt-4 flex flex-wrap gap-2">
                   {useCase.surfaces.map((surface) => (
                     <span
@@ -297,18 +336,20 @@ function AuthorizedUseCases() {
         </div>
       </div>
     </Container>
-  )
+  );
 }
 
 function HonestReporting() {
-  const copy = MARKETING_COPY.transparencyMetrics
+  const copy = MARKETING_COPY.transparencyMetrics;
 
   return (
     <Container className="border-divide md:border-x">
       <div className="flex flex-col items-center px-4 py-16 md:px-8">
         <GravitreReveal>
           <Badge text={copy.badge} />
-          <SectionHeading className="mt-4 text-center">{copy.title}</SectionHeading>
+          <SectionHeading className="mt-4 text-center">
+            {copy.title}
+          </SectionHeading>
           <SubHeading as="p" className="mx-auto mt-6 max-w-lg">
             {copy.subtitle}
           </SubHeading>
@@ -342,5 +383,5 @@ function HonestReporting() {
         </GravitreReveal>
       </div>
     </Container>
-  )
+  );
 }
