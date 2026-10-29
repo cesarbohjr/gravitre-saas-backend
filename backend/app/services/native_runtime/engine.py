@@ -102,6 +102,7 @@ def browser_error_diagnostic(history):
     errors=[str(error)[:16384] for error in history.errors()[:10] if error]
     phrases={'sandbox':'sandbox','namespace':'namespace','permission denied':'permission_denied','operation not permitted':'operation_not_permitted','executable':'executable','browser closed':'browser_closed','cdp':'cdp','websocket':'websocket','parse':'parse','json':'json','validation':'validation','schema':'schema','navigation':'navigation','domain':'domain','screenshot':'screenshot'}
     codes=sorted({code for phrase,code in phrases.items() if any(phrase in error.lower() for error in errors)})
+    codes+=sorted({code.lower() for code in ('ERR_TUNNEL_CONNECTION_FAILED','ERR_NAME_NOT_RESOLVED','ERR_CERT_AUTHORITY_INVALID','ERR_PROXY_CONNECTION_FAILED','ERR_CONNECTION_REFUSED','ERR_CONNECTION_CLOSED','ERR_CONNECTION_RESET','ERR_CONNECTION_TIMED_OUT') if any(code in error for error in errors)})
     known_classes={'ValueError','ValidationError','RuntimeError','TimeoutError','PermissionError','ConnectionError','BrowserError','BrowserClosedError','CancelledError','HTTPStatusError'}
     classes=sorted({match.group(1) for error in errors for match in re.finditer(r'\b([A-Za-z_][A-Za-z0-9_]*(?:Error|Exception)):',error) if match.group(1) in known_classes})
     print(json.dumps({'browser_error_codes':codes,'browser_error_classes':classes}),file=sys.stderr,flush=True)
