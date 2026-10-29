@@ -30,6 +30,22 @@ jobs:
         run: |
           if [ "$ENGINE" = browser ]; then contract=browser_use; else contract=openhands; fi
           docker run --rm --network none --read-only --cap-drop ALL --security-opt no-new-privileges --pids-limit 128 --memory 2g --tmpfs /tmp:rw,noexec,nosuid,size=128m --tmpfs /workspace:rw,nosuid,size=128m,uid=10001,gid=10001 -e HOME=/workspace -e OTEL_SDK_DISABLED=true -e ANONYMIZED_TELEMETRY=false -e DO_NOT_TRACK=1 native-sdk:$ENGINE python /runner/sdk_contract.py "$contract"
+      - name: Export the verified SDK image for execution certification
+        env:
+          ENGINE: ${{ matrix.engine }}
+        run: |
+          set -euo pipefail
+          docker image inspect native-sdk:$ENGINE --format '{{.Id}}' > "$RUNNER_TEMP/$ENGINE-image.id"
+          docker save native-sdk:$ENGINE | zstd -T0 -1 -o "$RUNNER_TEMP/$ENGINE-image.tar.zst"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: native-sdk-image-${{ matrix.engine }}
+          path: |
+            ${{ runner.temp }}/${{ matrix.engine }}-image.tar.zst
+            ${{ runner.temp }}/${{ matrix.engine }}-image.id
+          compression-level: 0
+          retention-days: 1
+          if-no-files-found: error
   gateway-image:
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -37,6 +53,7 @@ jobs:
       - uses: actions/checkout@v4
       - run: docker build -f backend/native-workers/Dockerfile.gateway -t native-gateway backend
   runtime-certification:
+    needs: pinned-sdk-imports
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:
@@ -52,12 +69,20 @@ jobs:
           sudo /usr/local/bin/runsc install
           sudo systemctl reload docker
           runsc --version
-      - name: Build actual OpenHands runtime image
-        timeout-minutes: 8
-        run: docker build -f backend/native-workers/Dockerfile.openhands -t native-openhands backend
-      - name: Build actual Browser Use runtime image
-        timeout-minutes: 8
-        run: docker build -f backend/native-workers/Dockerfile.browser -t native-browser backend
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: native-sdk-image-*
+          merge-multiple: true
+          path: ${{ runner.temp }}/native-images
+      - name: Load exactly the images that passed SDK contracts
+        timeout-minutes: 5
+        run: |
+          set -euo pipefail
+          for engine in openhands browser; do
+            zstd --decompress --stdout "$RUNNER_TEMP/native-images/$engine-image.tar.zst" | docker load
+            test "$(docker image inspect native-sdk:$engine --format '{{.Id}}')" = "$(cat "$RUNNER_TEMP/native-images/$engine-image.id")"
+            docker tag native-sdk:$engine native-$engine
+          done
       - name: Build actual gateway runtime image
         timeout-minutes: 3
         run: docker build -f backend/native-workers/Dockerfile.gateway -t native-gateway backend

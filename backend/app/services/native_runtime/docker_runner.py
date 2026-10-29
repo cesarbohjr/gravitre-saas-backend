@@ -92,11 +92,14 @@ class DockerRunner:
             config={**asdict(route),'max_calls':job['payload']['task']['max_steps'],
                     'control_url':f'http://host.docker.internal:{server.server_port}/control','control_token':control_token,
                     'engine_token':engine_token,'allowed_hosts':job['payload']['task']['allowed_hosts']}
-            self.docker('create','-i','--name',gateway,'--network','bridge','--add-host','host.docker.internal:host-gateway',*common,
-                self.images.gateway,'timeout','--signal=KILL',str(job['payload']['task']['max_seconds']+60),'python','/runner/gateway.py')
-            gateway_process=self.process_factory(['docker','start','-a','-i',gateway],stdin=subprocess.PIPE,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
-            gateway_process.stdin.write(json.dumps(config).encode());gateway_process.stdin.close()
+            # Start the bounded gateway container synchronously before attaching
+            # its second interface. Credentials go only to the subsequent exec
+            # stream; Docker's start/attach input cannot hold up IP allocation.
+            self.docker('run','-d','-i','--name',gateway,'--network','bridge','--add-host','host.docker.internal:host-gateway',*common,
+                self.images.gateway,'timeout','--signal=KILL',str(job['payload']['task']['max_seconds']+60),'sleep','infinity')
             self.docker('network','connect','--alias','gateway',network,gateway)
+            gateway_process=self.process_factory(['docker','exec','-i',gateway,'python','/runner/gateway.py'],stdin=subprocess.PIPE,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
+            gateway_process.stdin.write(json.dumps(config).encode());gateway_process.stdin.close()
             # Bind the internal gateway through /etc/hosts. A sandbox's isolated
             # loopback DNS must not depend on Docker's host-side DNS listener.
             ready_by=time.monotonic()+30

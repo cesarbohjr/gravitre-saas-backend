@@ -4,7 +4,7 @@ on:
     paths:
       - 'backend/app/services/native_runtime/**'
       - 'backend/app/services/native_agent_adapters.py'
-      - 'backend/native-workers/langfuse_contract.py'
+      - 'backend/native-workers/langfuse*.py'
       - '.github/workflows/native-langfuse-certification.yml'
   workflow_dispatch:
 permissions:
@@ -71,6 +71,9 @@ jobs:
           name: langfuse-delivery-certification
           path: langfuse-runtime-evidence.json
           if-no-files-found: error
+      - name: Diagnose isolated startup or delivery failure without payloads
+        if: failure()
+        run: python backend/native-workers/langfuse_diagnostics.py
       - name: Remove only this job's disposable services and volumes
         if: always()
         run: docker compose -p native-langfuse-cert -f "$RUNNER_TEMP/langfuse-cert.yml" down --volumes --remove-orphans

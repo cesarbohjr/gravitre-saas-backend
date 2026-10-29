@@ -116,7 +116,16 @@ def run():
             captures.append(stream)
             kwargs['stderr']=stream
             return subprocess.Popen(args,**kwargs)
-        runner=DockerRunner(images,process_factory=process_factory)
+        class ObservedRunner(DockerRunner):
+            def cleanup(self,id):
+                for container in self.names(id)[1:]:
+                    try:
+                        state=json.loads(docker('inspect','--format','{{json .State}}',container))
+                        networks=json.loads(docker('inspect','--format','{{json .NetworkSettings.Networks}}',container))
+                        print(json.dumps({'fixture_container':'gateway' if 'gateway' in container else 'engine','state':state.get('Status'),'exit_code':state.get('ExitCode'),'network_addresses':[n.get('IPAddress') for n in networks.values()]}))
+                    except subprocess.CalledProcessError:pass
+                return super().cleanup(id)
+        runner=ObservedRunner(images,process_factory=process_factory)
         def diagnostic():
             # Fixture-only diagnostics: no task, model response, exception body,
             # token or credential is printed. Keep only public stack locations

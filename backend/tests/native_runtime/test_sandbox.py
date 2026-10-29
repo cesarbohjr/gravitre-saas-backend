@@ -47,7 +47,7 @@ def test_exact_sandbox_policy_secret_isolation_and_cleanup(monkeypatch):
         if op=='cp':return SimpleNamespace(stdout=output.getvalue())
         return SimpleNamespace(stdout=b'')
     def process(args,**kwargs):
-        result=Process('exec' in args);processes.append((args,result));return result
+        result=Process(args[-1]=='/runner/engine.py');processes.append((args,result));return result
     runner=DockerRunner(IMAGES,command=docker,process_factory=process)
     model=ModelRoute('openai','configured','https://model.example/v1','PROVIDER-SECRET',1,1,1)
     job={'id':jobid,'kind':'openhands','payload':{'task':{'task':'bounded','files':{},'allowed_hosts':[],'max_seconds':5,'max_steps':2}}}
@@ -63,7 +63,7 @@ def test_exact_sandbox_policy_secret_isolation_and_cleanup(monkeypatch):
     assert '--dns' in flat and '127.0.0.1' in flat
     assert 'gateway:172.28.0.2' in flat
     assert '--signal=KILL' in flat and '--pids-limit' in flat and '--memory' in flat
-    engine=next(c for c in commands if c[1]=='run')
+    engine=next(c for c in commands if c[1]=='run' and c[c.index('--name')+1]=='native-engine-'+jobid)
     assert engine[engine.index('--network')+1]=='native-'+jobid
     assert engine[engine.index('--runtime')+1]=='runsc'
 
@@ -125,4 +125,6 @@ def test_gateway_must_be_ready_before_an_engine_can_start(monkeypatch):
     job={'id':str(uuid4()),'kind':'openhands','payload':{'task':{'task':'fixture','files':{},'allowed_hosts':[],'max_seconds':5,'max_steps':2}}}
     with pytest.raises(RuntimeError,match='gateway did not become ready'):
         runner.execute(job,guard=lambda:route,action_gate=Mock())
-    assert not any(args[0]=='run' for args in calls)
+    # The trusted gateway must start first; the SDK engine still must not.
+    starts=[args[args.index('--name')+1] for args in calls if args[0]=='run']
+    assert starts==['native-gateway-'+job['id']]
