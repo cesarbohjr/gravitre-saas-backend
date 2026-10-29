@@ -46,6 +46,16 @@ jobs:
           compression-level: 0
           retention-days: 1
           if-no-files-found: error
+  playwright-comparison-image:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build isolated comparison image (not production)
+        run: docker build -f backend/native-workers/Dockerfile.playwright-comparison -t native-playwright-comparison backend
+      - name: Verify pinned candidate dependencies and fail-closed imports
+        run: |
+          docker run --rm --network none --read-only --cap-drop ALL --security-opt no-new-privileges --pids-limit 128 --memory 2g --tmpfs /tmp:rw,noexec,nosuid,size=128m --tmpfs /workspace:rw,nosuid,size=128m,uid=10001,gid=10001 native-playwright-comparison python -c "import playwright.async_api, playwright_candidate; from playwright_candidate import validate_url; assert validate_url('https://www.selenium.dev/selenium/web/web-form.html', ['www.selenium.dev'])"
   gateway-image:
     runs-on: ubuntu-latest
     timeout-minutes: 10
