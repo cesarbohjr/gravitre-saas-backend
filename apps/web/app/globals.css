@@ -1690,3 +1690,47 @@ details[open] > .g-disclosure > :first-child::after {
 @media (prefers-reduced-motion: reduce) {
   .mk-scene-drift, .mk-scene-pulse { animation: none; }
 }
+
+/* Home scenes (components/marketing/nodus/home-scenes.tsx) */
+.mk-hs-blob, .mk-hs-bob, .mk-hs-ring, .mk-hs-swing, .mk-hs-knob, .mk-hs-logline {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+@keyframes mk-hs-blob { 0%, 100% { transform: translate(0, 0); } 50% { transform: translate(18px, 10px); } }
+.mk-hs-blob { animation: mk-hs-blob 16s ease-in-out infinite; }
+@keyframes mk-hs-bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
+.mk-hs-bob { animation: mk-hs-bob 6.5s ease-in-out infinite; }
+@keyframes mk-hs-signal { from { stroke-dashoffset: 10; } to { stroke-dashoffset: -100; } }
+.mk-hs-signal { stroke-dasharray: 10 200; animation: mk-hs-signal 3.3s cubic-bezier(.45, 0, .55, 1) infinite; }
+.mk-hs-signal-in { animation-direction: reverse; }
+@keyframes mk-hs-ring { 0% { transform: scale(0.8); opacity: 0.55; } 100% { transform: scale(1.35); opacity: 0; } }
+.mk-hs-ring { animation: mk-hs-ring 3.2s ease-out infinite; }
+@keyframes mk-hs-blink { 0%, 70%, 100% { opacity: 0.25; } 80% { opacity: 1; } }
+.mk-hs-blink { animation: mk-hs-blink 3.3s ease-in-out infinite; }
+@keyframes mk-hs-task {
+  0% { transform: translateX(-80px); }
+  36%, 52% { transform: translateX(208px); }
+  70%, 100% { transform: translateX(500px); }
+}
+.mk-hs-task { animation: mk-hs-task 9s cubic-bezier(.45, 0, .4, 1) infinite; }
+@keyframes mk-hs-stamp { 0%, 42% { opacity: 0; transform: scale(0.4); } 45%, 70% { opacity: 1; transform: scale(1); } 71%, 100% { opacity: 0; } }
+.mk-hs-stamp { transform-box: fill-box; transform-origin: center; animation: mk-hs-stamp 9s ease-out infinite; }
+@keyframes mk-hs-go { 0%, 30%, 58%, 100% { opacity: 0; } 34%, 54% { opacity: 1; } }
+.mk-hs-go { animation: mk-hs-go 3s linear infinite; }
+@keyframes mk-hs-logline { 0%, 100% { transform: scaleX(1); } 50% { transform: scaleX(0.55); } }
+.mk-hs-logline { transform-origin: left center; animation: mk-hs-logline 3s ease-in-out infinite; }
+@keyframes mk-hs-print { 0% { transform: translateY(-175px); } 45%, 88% { transform: translateY(0); } 100% { transform: translateY(0); opacity: 0; } }
+.mk-hs-print { animation: mk-hs-print 8s cubic-bezier(.4, 0, .3, 1) infinite; }
+@keyframes mk-hs-paid { 0%, 46% { opacity: 0; transform: scale(0.4); } 52%, 100% { opacity: 1; transform: scale(1); } }
+.mk-hs-paid { transform-box: fill-box; transform-origin: center; animation: mk-hs-paid 8s ease-out infinite; }
+@keyframes mk-hs-knob { 0%, 40% { transform: translateX(0); } 50%, 90% { transform: translateX(24px); } 100% { transform: translateX(0); } }
+.mk-hs-knob { animation: mk-hs-knob 8s ease-in-out infinite; }
+@keyframes mk-hs-swing { 0%, 100% { transform: rotate(-5deg); } 50% { transform: rotate(5deg); } }
+.mk-hs-swing { transform-origin: 50% 0; animation: mk-hs-swing 5s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) {
+  .mk-hs-blob, .mk-hs-bob, .mk-hs-signal, .mk-hs-ring, .mk-hs-blink, .mk-hs-go,
+  .mk-hs-logline, .mk-hs-print, .mk-hs-paid, .mk-hs-knob, .mk-hs-swing { animation: none; }
+  .mk-hs-ring, .mk-hs-signal { opacity: 0; }
+  .mk-hs-task { animation: none; transform: translateX(var(--rest)); }
+  .mk-hs-stamp { animation: none; opacity: var(--rest-o); }
+}

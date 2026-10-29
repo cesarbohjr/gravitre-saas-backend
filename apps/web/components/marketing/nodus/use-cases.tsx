@@ -14,6 +14,7 @@ import {
 } from "@/components/marketing/nodus-icons/card-icons";
 import { Scale } from "./scale";
 import { motion } from "framer-motion";
+import { OneBrainScene } from "./home-scenes";
 
 export const UseCases = () => {
   const useCases = [
@@ -67,6 +68,8 @@ export const UseCases = () => {
           One shared brain coordinates agents, workflows, and people across
           departments, with governance and audit trails on every action.
         </SubHeading>
+
+        <OneBrainScene className="mt-12 w-full" />
 
         <div className="mt-12 grid grid-cols-1 gap-10 md:grid-cols-2 lg:grid-cols-3">
           {useCases.map((useCase, index) => (
