@@ -32,7 +32,9 @@ class LiveKitCandidateSocket:
         self.room = room
         self.participant_identity = participant_identity
         self.headers: dict[str, str] = {}
-        self.query_params = {"audio_origin": "recorded_replay"}
+        # Replay exercises the real user-speech path; provenance is recorded by
+        # the test controller, not an unsupported pipeline origin value.
+        self.query_params = {"audio_origin": "user_mic"}
         self.client_state = WebSocketState.CONNECTED
         self.application_state = WebSocketState.CONNECTED
         self._incoming: asyncio.Queue[dict[str, Any]] = asyncio.Queue(maxsize=100)

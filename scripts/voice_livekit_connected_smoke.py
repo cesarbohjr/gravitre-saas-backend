@@ -55,6 +55,7 @@ async def publish(source: rtc.AudioSource, pcm: bytes, rate: int) -> None:
 async def connected_trial(url: str, input_pcm: bytes, output_pcm: bytes, out: Path) -> dict:
     room_name = "gravitre-isolated-" + uuid.uuid4().hex
     worker, peer, foreign = rtc.Room(), rtc.Room(), rtc.Room()
+    rejoining = None
     socket = None
     source = None
     streams = []
@@ -88,6 +89,7 @@ async def connected_trial(url: str, input_pcm: bytes, output_pcm: bytes, out: Pa
         await socket.start()
         await peer.connect(url, token(room_name, "recorded-peer"))
         await asyncio.wait_for(response_track_ready.wait(), 15)
+        print("RTC checkpoint: isolated participants connected", flush=True)
         joined_ms = (time.monotonic_ns() - started_ns) / 1e6
 
         # A genuinely connected third participant cannot inject tenant/action
@@ -122,6 +124,7 @@ async def connected_trial(url: str, input_pcm: bytes, output_pcm: bytes, out: Pa
         draining = asyncio.create_task(drain())
         tasks.append(draining)
         await sending
+        print("RTC checkpoint: recorded speech ingress completed", flush=True)
         draining.cancel()
         await asyncio.gather(draining, return_exceptions=True)
 
@@ -146,6 +149,7 @@ async def connected_trial(url: str, input_pcm: bytes, output_pcm: bytes, out: Pa
         # Signal identity/integrity, not conversational or perceptual quality.
         if normalized_correlation < 0.2:
             raise AssertionError("received audio does not correlate with recorded speech")
+        print("RTC checkpoint: recorded speech egress and correlation passed", flush=True)
         with wave.open(str(out), "wb") as audio:
             audio.setparams((1, 2, 24000, 0, "NONE", "not compressed"))
             audio.writeframes(received)
@@ -161,6 +165,7 @@ async def connected_trial(url: str, input_pcm: bytes, output_pcm: bytes, out: Pa
                 raise TimeoutError("interrupt did not reach candidate")
             await asyncio.sleep(0.005)
         stop_delivery_ms = (time.monotonic_ns() - stop_started_ns) / 1e6
+        print("RTC checkpoint: pinned participant interrupt received", flush=True)
         await peer.disconnect()
         deadline = asyncio.get_running_loop().time() + 5
         while socket.client_state.name != "DISCONNECTED":
@@ -173,10 +178,14 @@ async def connected_trial(url: str, input_pcm: bytes, output_pcm: bytes, out: Pa
         # Rejoin as a fresh peer; old socket must remain ended. This is RTC
         # rejoin latency only, not restored cognitive-session recovery.
         reconnect_started_ns = time.monotonic_ns()
-        await peer.connect(url, token(room_name, "recorded-peer"))
+        # A disconnected SDK Room owns disposed FFI resources. Use a fresh
+        # instance instead of reconnecting that already-disposed object.
+        rejoining = rtc.Room()
+        await rejoining.connect(url, token(room_name, "recorded-peer"))
         rejoin_ms = (time.monotonic_ns() - reconnect_started_ns) / 1e6
         if socket.client_state.name != "DISCONNECTED":
             raise AssertionError("old session reactivated after peer rejoin")
+        print("RTC checkpoint: fresh peer rejoined; old session remains closed", flush=True)
         return {"scope": "connected_livekit_rtc_transport_only",
             "join_ms": joined_ms, "input_first_frame_ms": input_first_ms,
             "output_first_frame_ms": (output_first_ns - output_started_ns) / 1e6,
@@ -201,6 +210,8 @@ async def connected_trial(url: str, input_pcm: bytes, output_pcm: bytes, out: Pa
         if source is not None:
             await source.aclose()
         await asyncio.gather(peer.disconnect(), foreign.disconnect(), worker.disconnect())
+        if rejoining is not None:
+            await rejoining.disconnect()
 
 
 async def main():
@@ -219,9 +230,15 @@ async def main():
             input_sha256=hashlib.sha256(args.input_wav.read_bytes()).hexdigest())
     except Exception as exc:
         manifest["failure_category"] = type(exc).__name__
+        import traceback
+        manifest["failure_locations"] = [
+            {"file": Path(frame.filename).name, "line": frame.lineno, "function": frame.name}
+            for frame in traceback.extract_tb(exc.__traceback__)
+        ]
         raise
     finally:
         (args.artifacts / "transport-manifest.json").write_text(json.dumps(manifest, indent=2))
+        print(json.dumps(manifest, sort_keys=True), flush=True)
 
 
 if __name__ == "__main__":
