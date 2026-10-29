@@ -21,10 +21,10 @@ const TONE: Record<NonNullable<AppWindowChip["tone"]>, string> = {
 }
 
 const AT: Record<AppWindowChip["at"], string> = {
-  "top-left": "-top-3.5 left-4 md:-left-4",
-  "top-right": "-top-3.5 right-4 md:-right-4",
-  "bottom-left": "-bottom-3.5 left-4 md:-left-4",
-  "bottom-right": "-bottom-3.5 right-4 md:-right-4",
+  "top-left": "-top-3 left-4 md:-left-3",
+  "top-right": "-top-3 right-4 md:-right-4",
+  "bottom-left": "-bottom-3 left-4 md:-left-3",
+  "bottom-right": "-bottom-3 right-4 md:-right-4",
 }
 
 export function AppWindow({
@@ -40,14 +40,14 @@ export function AppWindow({
 }) {
   return (
     <div className={cn("relative", className)}>
-      <div className="overflow-hidden rounded-lg border border-[#e2e5ea] bg-white shadow-[0_24px_60px_-24px_rgba(20,21,19,0.35),0_1px_4px_rgba(0,0,0,0.06)] md:rounded-xl">
-        <div className="relative flex h-7 items-center border-b border-[#e2e5ea] bg-white px-3 md:h-9 md:px-4">
-          <div aria-hidden className="flex gap-1.5">
-            <span className="size-2 rounded-full bg-[#ff5f57] md:size-3" />
-            <span className="size-2 rounded-full bg-[#febc2e] md:size-3" />
-            <span className="size-2 rounded-full bg-[#28c840] md:size-3" />
+      <div className="overflow-hidden rounded-xl border border-[#e2e5ea] bg-white shadow-[0_4px_16px_rgba(0,0,0,0.10),0_1px_4px_rgba(0,0,0,0.06)]">
+        <div className="relative flex items-center border-b border-[#e2e5ea] bg-[#f8f9fa] px-3.5 py-2.5">
+          <div aria-hidden className="flex gap-[5px]">
+            <span className="size-[11px] rounded-full bg-[rgba(239,68,68,0.5)]" />
+            <span className="size-[11px] rounded-full bg-[rgba(234,179,8,0.5)]" />
+            <span className="size-[11px] rounded-full bg-[rgba(34,181,90,0.55)]" />
           </div>
-          <span className="absolute left-1/2 -translate-x-1/2 rounded-md bg-[#f1f2f4] px-2.5 py-0.5 text-[9px] font-medium text-[#6b7280] md:px-3 md:text-[11px]">
+          <span className="absolute left-1/2 -translate-x-1/2 rounded-md bg-[#e2e5ea] px-2.5 py-[3px] text-[10px] text-[#6b7280]">
             {title}
           </span>
         </div>
@@ -57,11 +57,11 @@ export function AppWindow({
         <div
           key={chip.label}
           className={cn(
-            "absolute z-10 hidden items-center gap-2 rounded-full border border-[#e2e5ea] bg-white px-3 py-1.5 text-xs font-medium text-[#0f1117] shadow-[0_4px_16px_rgba(0,0,0,0.10),0_1px_4px_rgba(0,0,0,0.06)] sm:flex",
+            "absolute z-10 hidden items-center gap-1.5 whitespace-nowrap rounded-full border border-[#e2e5ea] bg-white px-3 py-1.5 text-[11px] font-medium text-[#0f1117] shadow-[0_4px_16px_rgba(0,0,0,0.10),0_1px_4px_rgba(0,0,0,0.06)] sm:flex",
             AT[chip.at],
           )}
         >
-          <i aria-hidden className={cn("mk-scene-pulse size-2 rounded-full", TONE[chip.tone ?? "green"])} />
+          <i aria-hidden className={cn("mk-scene-pulse size-[7px] rounded-full", TONE[chip.tone ?? "green"])} />
           {chip.label}
         </div>
       ))}

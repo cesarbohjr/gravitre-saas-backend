@@ -108,9 +108,9 @@ export function BrowserFrame({
         {/* Tab strip */}
         <div className="flex items-end gap-2 px-3 pt-3">
           <div className="flex items-center gap-1.5 pb-2.5 pr-1">
-            <span className="h-2.5 w-2.5 rounded-full bg-[#ff5f57]" />
-            <span className="h-2.5 w-2.5 rounded-full bg-[#febc2e]" />
-            <span className="h-2.5 w-2.5 rounded-full bg-[#28c840]" />
+            <span className="h-2.5 w-2.5 rounded-full bg-[rgba(239,68,68,0.5)]" />
+            <span className="h-2.5 w-2.5 rounded-full bg-[rgba(234,179,8,0.5)]" />
+            <span className="h-2.5 w-2.5 rounded-full bg-[rgba(34,181,90,0.55)]" />
           </div>
           <div className="flex min-w-0 max-w-[240px] flex-1 items-center gap-2 rounded-t-lg bg-card px-3 py-2">
             <span className="h-3 w-3 shrink-0 rounded-sm bg-muted" />

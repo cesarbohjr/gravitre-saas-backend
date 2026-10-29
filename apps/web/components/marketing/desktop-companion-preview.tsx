@@ -52,9 +52,9 @@ export function DesktopCompanionPreview() {
         {/* Title bar — macOS window outline, matching the other product shots */}
         <div className="flex items-center gap-2 rounded-t-[1.05rem] border-b border-border bg-card px-4 py-3">
           <div className="flex gap-1.5">
-            <span className="h-3 w-3 rounded-full bg-[#ff5f57]" />
-            <span className="h-3 w-3 rounded-full bg-[#febc2e]" />
-            <span className="h-3 w-3 rounded-full bg-[#28c840]" />
+            <span className="h-3 w-3 rounded-full bg-[rgba(239,68,68,0.5)]" />
+            <span className="h-3 w-3 rounded-full bg-[rgba(234,179,8,0.5)]" />
+            <span className="h-3 w-3 rounded-full bg-[rgba(34,181,90,0.55)]" />
           </div>
           <div className="flex-1 text-center">
             <span className="text-xs font-medium text-muted-foreground">Gravitre Desktop</span>

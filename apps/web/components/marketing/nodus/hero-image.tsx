@@ -35,7 +35,7 @@ export const HeroImage = ({
   ],
 }: HeroImageProps = {}) => {
   return (
-    <Container className="border-divide relative flex items-start justify-start md:border-x bg-[#efefea] p-2 perspective-distant md:p-6 lg:p-12">
+    <Container className="border-divide relative flex items-start justify-start md:border-x bg-white p-4 perspective-distant md:p-8 lg:p-12">
       <Dot top left />
       <Dot top right />
       <Dot bottom left />
@@ -55,11 +55,6 @@ export const HeroImage = ({
             draggable={false}
           />
         </AppWindow>
-        {/* Soft colour wash — the same mint / sand blobs the app's illustrations sit on. */}
-        <div
-          aria-hidden
-          className="absolute -inset-2 z-0 md:-inset-6 lg:-inset-12 bg-[radial-gradient(55%_65%_at_18%_30%,#ddf3e8_0,transparent_70%),radial-gradient(45%_55%_at_88%_78%,#f2e4d0_0,transparent_70%),radial-gradient(35%_45%_at_70%_10%,#e3e3f3_0,transparent_70%)]"
-        />
       </div>
     </Container>
   )

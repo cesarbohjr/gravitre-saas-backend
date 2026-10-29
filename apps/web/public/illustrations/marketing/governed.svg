@@ -28,7 +28,7 @@
 <ellipse cx="80" cy="200" rx="100" ry="80" fill="url(#b3b)" />
 
 
-<g transform="translate(285,2)">
+<g transform="translate(285,14)">
   
   <g style="animation:gi-bob 10s ease-in-out infinite 0s"><path d="M30,0 L60,10 L60,36 Q60,58 30,70 Q0,58 0,36 L0,10 Z" fill="#2A2B28" />
   <path d="M30,6 L54,14 L54,36 Q54,54 30,64 Q6,54 6,36 L6,14 Z" fill="none" stroke="#19C37D" stroke-width="1.5" opacity="0.5" />
@@ -98,7 +98,7 @@
 </g>
 
 
-<g transform="translate(250,75)">
+<g transform="translate(250,96)">
   <g style="animation:gi-bob 12s ease-in-out infinite 1s"><rect x="0" y="0" width="130" height="100" rx="8" fill="#FBF8F2" stroke="#D9D1C2" stroke-width="1.2" />
   
   <rect x="0" y="0" width="130" height="20" rx="8" fill="#2A2B28" opacity="0.06" />
