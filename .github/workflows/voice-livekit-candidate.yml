@@ -5,6 +5,7 @@ on:
       - 'backend/app/services/pipecat_voice/livekit_candidate.py'
       - 'backend/tests/unit/test_livekit_candidate.py'
       - 'backend/requirements-voice-comparison.txt'
+      - 'scripts/voice_livekit_connected_smoke.py'
       - '.github/workflows/voice-livekit-candidate.yml'
   workflow_dispatch:
 permissions:
@@ -29,3 +30,39 @@ jobs:
         with:
           name: livekit-candidate-contracts
           path: backend/livekit-contracts.xml
+  connected-rtc:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install isolated RTC dependencies
+        run: python -m pip install 'livekit==1.2.0' 'livekit-api==1.2.2' 'starlette>=0.40,<1'
+      - name: Fetch hash-verified server and public recorded-speech fixture
+        run: |
+          mkdir -p /tmp/gravitre-rtc artifacts/livekit-connected
+          curl -fsSL --retry 2 https://github.com/livekit/livekit/releases/download/v1.13.11/livekit_1.13.11_linux_amd64.tar.gz -o /tmp/gravitre-rtc/server.tar.gz
+          echo '1e9ee90ca301e1842b2887fc77cb122759756a9c8aeb4334ee91de3325ec43fb  /tmp/gravitre-rtc/server.tar.gz' | sha256sum -c -
+          tar -xzf /tmp/gravitre-rtc/server.tar.gz -C /tmp/gravitre-rtc
+          curl -fsSL --retry 2 https://raw.githubusercontent.com/openai/whisper/main/tests/jfk.flac -o /tmp/gravitre-rtc/speech.flac
+          echo '63a4b1e4c1dc655ac70961ffbf518acd249df237e5a0152faae9a4a836949715  /tmp/gravitre-rtc/speech.flac' | sha256sum -c -
+          ffmpeg -v error -y -i /tmp/gravitre-rtc/speech.flac -ar 16000 -ac 1 -c:a pcm_s16le /tmp/gravitre-rtc/speech16.wav
+          ffmpeg -v error -y -i /tmp/gravitre-rtc/speech.flac -ar 24000 -ac 1 -c:a pcm_s16le /tmp/gravitre-rtc/speech24.wav
+      - name: Run connected-room recorded-speech transport test (no inference)
+        run: |
+          /tmp/gravitre-rtc/livekit-server --dev --bind 127.0.0.1 --node-ip 127.0.0.1 --rtc.enable_loopback_candidate > artifacts/livekit-connected/server.log 2>&1 &
+          server_pid=$!
+          trap 'kill "$server_pid" 2>/dev/null || true' EXIT
+          for attempt in $(seq 1 40); do
+            if curl -fsS http://127.0.0.1:7880 >/dev/null; then break; fi
+            if ! kill -0 "$server_pid" 2>/dev/null; then cat artifacts/livekit-connected/server.log; exit 1; fi
+            sleep 0.25
+          done
+          python scripts/voice_livekit_connected_smoke.py --input-wav /tmp/gravitre-rtc/speech16.wav --output-source-wav /tmp/gravitre-rtc/speech24.wav --artifacts artifacts/livekit-connected
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: livekit-connected-transport-only
+          path: artifacts/livekit-connected
