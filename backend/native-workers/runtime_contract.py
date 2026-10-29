@@ -197,6 +197,32 @@ def run():
             assert approved and state['browser_page_observed'] and result.get('observations')
             clean(browser['id']);evidence['browser_real_sdk_chromium_exact_approval']='PASS'
             print(json.dumps({'completed_runtime_checks':evidence},sort_keys=True))
+            # This is a real runsc/DockerRunner candidate execution, intentionally
+            # denied at the canonical action callback before any navigation.
+            # It proves the separate engine image reaches the shared review gate,
+            # not approved navigation/click parity or crash-recovery parity.
+            candidate_image=publish('native-playwright-comparison')
+            candidate_images=SandboxImages(images.openhands,images.browser_use,
+                images.gateway,playwright_comparison=candidate_image)
+            candidate_runner=ObservedRunner(candidate_images,process_factory=process_factory,
+                comparison_url='https://www.selenium.dev/selenium/web/web-form.html')
+            candidate=job('browser_use')
+            denied=[]
+            def deny_candidate(sequence,action):
+                assert sequence==0
+                assert action['actions']=={'navigate':{'url':'https://www.selenium.dev/selenium/web/web-form.html'}}
+                assert len(action['page_fingerprint'])==64
+                denied.append(sequence)
+                return {'state':'denied'}
+            try:
+                candidate_runner.execute(candidate,guard=lambda:route,action_gate=deny_candidate)
+            except (PermissionError,RuntimeError):
+                assert denied,'Candidate failed without reaching canonical review gate'
+            else:
+                raise AssertionError('Denied Playwright navigation returned success')
+            clean(candidate['id'])
+            evidence['playwright_real_gvisor_denied_navigation_no_dispatch']='PASS'
+            print(json.dumps({'completed_runtime_checks':evidence},sort_keys=True))
             state.update(kind='cancel',calls=0);entered.clear();cancel.clear();cancelled=job('openhands')
             def guard():
                 if cancel.is_set():raise PermissionError('fixture_cancelled')
