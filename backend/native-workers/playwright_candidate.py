@@ -49,6 +49,7 @@ async def approved_navigation(config, session, page, url, sequence=0):
     after, updated = await fresh_browser_evidence(session, action, "after_navigation_approval")
     if updated != fingerprint or after.url != before.url:
         raise PermissionError("Approved navigation context became stale")
+    await asyncio.to_thread(gateway, config, "/authorize", {})
     await page.goto(url, timeout=20000)
     return sequence + 1
 
@@ -68,6 +69,7 @@ async def approved_click(config, session, page, sequence=0):
     identifier = (node.attributes or {}).get("id")
     if not isinstance(identifier, str) or not identifier.isascii() or not identifier.replace("-", "").replace("_", "").isalnum():
         raise PermissionError("Candidate requires one bounded exact-id target")
+    await asyncio.to_thread(gateway, config, "/authorize", {})
     await page.locator("#" + identifier).click(timeout=10000)
     return {"approved_action": True, "verified_execution": False}
 
