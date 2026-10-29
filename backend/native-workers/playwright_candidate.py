@@ -87,7 +87,7 @@ async def run(config, *, browser=None):
             session = PlaywrightSession(page)
             next_sequence = await approved_navigation(config, session, page, url)
             result = await approved_click(config, session, page, sequence=next_sequence)
-            return {"observations": [{"summary": "Comparison candidate completed one reviewed fixture click."}], **result}
+            return {"observations": [{"summary": "Comparison candidate completed one reviewed fixture click.", "url": url}], **result}
         finally:
             await instance.close()
 
