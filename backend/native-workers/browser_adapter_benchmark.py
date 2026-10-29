@@ -12,6 +12,7 @@ import contextlib
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import json
 import os
+import resource
 from pathlib import Path
 from statistics import median
 import subprocess
@@ -144,6 +145,7 @@ async def trial(adapter, number):
     connection = None
     stage = 'chromium_start'
     started = time.monotonic()
+    initial_usage = resource.getrusage(resource.RUSAGE_CHILDREN)
     with tempfile.TemporaryDirectory(prefix='adapter-', dir='/workspace') as profile:
         try:
             # Both adapters attach to Chromium started with exactly these flags.
@@ -228,7 +230,12 @@ async def trial(adapter, number):
                 else:
                     raise AssertionError('Unapproved, cancelled or stale action executed')
                 assert fixture.writes == 1
-            return {'adapter': adapter, 'trial': number, 'passed': True, 'setup_ms': setup_ms,
+            final_usage = resource.getrusage(resource.RUSAGE_CHILDREN)
+            return {'adapter': adapter, 'trial': number, 'passed': True,
+                'total_elapsed_ms': (time.monotonic() - started) * 1000,
+                'child_cpu_ms': max(0.0, (final_usage.ru_utime + final_usage.ru_stime - initial_usage.ru_utime - initial_usage.ru_stime) * 1000),
+                'child_peak_rss_kib': final_usage.ru_maxrss,
+                'setup_ms': setup_ms,
                 'navigation_ms': navigation_ms, 'snapshot_ms': snapshot_ms, 'approved_click_ms': click_ms,
                 'checks': ['redirect', 'dynamic_dom', 'url_title_readback', 'actual_screenshot',
                            'approved_click_readback', 'denial_no_write', 'cancelled_no_write', 'stale_no_write']}
@@ -282,7 +289,7 @@ async def run():
         successful = [row for row in rows if row['adapter'] == adapter and row['passed']]
         summary[adapter] = {'completed': len(successful), 'attempted': TRIALS,
             **{key: median(row[key] for row in successful) if successful else None
-               for key in ('setup_ms', 'navigation_ms', 'snapshot_ms', 'approved_click_ms')}}
+               for key in ('setup_ms', 'navigation_ms', 'snapshot_ms', 'approved_click_ms', 'total_elapsed_ms', 'child_cpu_ms')}}
     import hashlib
     import importlib.metadata
     return {'schema_version': 1, 'evidence_kind': 'real_chromium_adapter_microbenchmark',
@@ -292,12 +299,16 @@ async def run():
         'harness_sha256': hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
         'engine_sha256': hashlib.sha256(Path(__file__).with_name('engine.py').read_bytes()).hexdigest(),
         'fixture_sha256': __import__('hashlib').sha256(PAGE).hexdigest(),
+        'measurement_limits': {'cpu': 'RUSAGE_CHILDREN cumulative differential; excludes parent and fixture server',
+            'peak_rss': 'RUSAGE_CHILDREN process-high-water mark is cumulative across trials; not an attributable per-trial memory delta',
+            'cost': 'No pricing or infrastructure utilization data supplied; monetary cost unmeasured',
+            'reliability': 'Five fixture trials per adapter are diagnostic, not a statistically representative reliability estimate'},
         'thresholds': {'trials_per_adapter': TRIALS, 'required_correctness_rate': 1.0,
                        'allowed_unauthorized_writes': 0, 'per_trial_timeout_seconds': 90},
         'rows': rows, 'summary': summary, 'microbenchmark_passed': all(r['passed'] for r in rows),
         'production_adapter_selection': 'BLOCKED_PENDING_FULL_GATEWAY_AND_RUNTIME_COMPARISON',
         'unmeasured': ['production_gateway_parity', 'tenant_authorization', 'crash_recovery',
-                       'provider_quality', 'operating_cost', 'maintenance_cost'],
+                       'provider_quality', 'operating_cost', 'maintenance_cost', 'representative_reliability'],
         'production_certified': False}
 
 
