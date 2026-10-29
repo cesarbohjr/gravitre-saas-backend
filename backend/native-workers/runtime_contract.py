@@ -135,14 +135,14 @@ def run():
                 for line in stream.read(262144).decode(errors='replace').splitlines():
                     try:
                         entry=json.loads(line)
-                        if isinstance(entry,dict) and set(entry)=={'gateway_failure_stage','gateway_failure_class','known_parameter_flags'}:
+                        if isinstance(entry,dict) and set(entry) in ({'gateway_failure_stage','gateway_failure_class','known_parameter_flags'},{'browser_error_codes','browser_error_classes'}):
                             print(json.dumps(entry))
                     except (ValueError,TypeError):pass
                     match=re.match(r'\s*File "([^"]+)", line (\d+), in ([A-Za-z0-9_<>]+)',line)
                     if match:print(json.dumps({'sdk_frame':Path(match[1]).name,'line':int(match[2]),'function':match[3]}))
                     match=re.match(r'^(?:[A-Za-z_][A-Za-z0-9_]*\.)*([A-Za-z_][A-Za-z0-9_]*(?:Error|Exception)):',line)
                     if match:print(json.dumps({'sdk_exception':match[1]}))
-                    for phrase,code in [('name or service not known','dns_unavailable'),('temporary failure in name resolution','dns_unavailable'),('connection refused','connection_refused'),('network is unreachable','network_unreachable'),('timed out','connection_timeout')]:
+                    for phrase,code in [('name or service not known','dns_unavailable'),('temporary failure in name resolution','dns_unavailable'),('connection refused','connection_refused'),('network is unreachable','network_unreachable'),('timed out','connection_timeout'),('no usable sandbox','chromium_sandbox_unavailable'),('failed to move to new namespace','chromium_namespace_denied'),('operation not permitted','operation_not_permitted'),('browser is not connected','browser_not_connected'),('executable doesn\'t exist','chromium_executable_missing')]:
                         if phrase in line.lower():print(json.dumps({'sdk_transport':code}))
                 stream.close()
         def job(kind):
@@ -160,7 +160,9 @@ def run():
                 assert action['actions']=={'navigate':{'url':'https://example.com/'}}
                 assert len(action['page_fingerprint'])==64
                 approved.append(sequence);return {'state':'approved'}
-            browser=job('browser_use');result=runner.execute(browser,guard=lambda:route,action_gate=action_gate)
+            browser=job('browser_use')
+            try:result=runner.execute(browser,guard=lambda:route,action_gate=action_gate)
+            finally:print(json.dumps({'fixture_browser_model_requests':state['calls'],'fixture_browser_approvals':len(approved)}))
             assert approved and result.get('observations')
             clean(browser['id']);evidence['browser_real_sdk_chromium_exact_approval']='PASS'
             state.update(kind='cancel',calls=0);entered.clear();cancel.clear();cancelled=job('openhands')

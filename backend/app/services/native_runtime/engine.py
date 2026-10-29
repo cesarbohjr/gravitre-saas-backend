@@ -5,6 +5,7 @@ import difflib
 import hashlib
 import json
 import os
+import re
 from pathlib import Path
 import sys
 import time
@@ -72,6 +73,21 @@ def browser_evidence(state,requested):
     return {'page_fingerprint':fingerprint,'page_title':str(state.title)[:300],'targets':targets}
 
 
+def browser_result(history):
+    if history.is_done() is not True or history.is_successful() is not True:
+        errors=[str(error)[:16384] for error in history.errors()[:10] if error]
+        phrases={'sandbox':'sandbox','namespace':'namespace','permission denied':'permission_denied','operation not permitted':'operation_not_permitted','executable':'executable','browser closed':'browser_closed','cdp':'cdp','websocket':'websocket','parse':'parse','json':'json','validation':'validation','schema':'schema','navigation':'navigation','domain':'domain','screenshot':'screenshot'}
+        codes=sorted({code for phrase,code in phrases.items() if any(phrase in error.lower() for error in errors)})
+        classes=sorted({match.group(1) for error in errors for match in re.finditer(r'\b([A-Za-z_][A-Za-z0-9_]*(?:Error|Exception)):',error)})
+        print(json.dumps({'browser_error_codes':codes,'browser_error_classes':classes}),file=sys.stderr,flush=True)
+        raise RuntimeError('Browser session did not finish successfully')
+    summary=history.final_result()
+    url=next((u for u in reversed(history.urls()) if isinstance(u,str) and u.startswith('https://')),None)
+    if not isinstance(summary,str) or not summary.strip() or url is None:
+        raise ValueError('Completed browser session requires a result and an observed page')
+    return {'observations':[{'summary':summary[:2000],'url':url}]}
+
+
 async def browse(config):
     from browser_use import Agent,Browser,ChatOpenAI,Tools
     # Explicitly remove code execution, file access and upload surfaces. Every
@@ -105,10 +121,7 @@ async def browse(config):
     agent=Agent(task=config['task'],llm=model,browser=browser,tools=GovernedTools(),use_vision=False,use_judge=False,calculate_cost=False,directly_open_url=False,max_actions_per_step=1,max_failures=1,enable_planning=False,file_system_path="/workspace/browser-files")
     try:
         history=await asyncio.wait_for(agent.run(max_steps=config['max_steps']),timeout=config['max_seconds'])
-        summary=str(history.final_result() or 'No final browser result was supplied.')[:2000]
-        urls=history.urls()
-        url=next((u for u in reversed(urls) if isinstance(u,str) and u.startswith('https://')),'https://'+config['allowed_hosts'][0])
-        return {'observations':[{'summary':summary,'url':url}]}
+        return browser_result(history)
     finally:await browser.kill()
 
 

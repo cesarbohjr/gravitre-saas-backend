@@ -11,6 +11,8 @@ if sys.argv[1]=='openhands':
     assert FileEditorTool.name and TerminalTool.name
 elif sys.argv[1]=='browser_use':
     from browser_use import Agent,Browser,ChatOpenAI,Tools
+    from browser_use.agent.views import AgentHistoryList
+    assert all(hasattr(AgentHistoryList,name) for name in ('is_done','is_successful','errors','urls','final_result'))
     assert {'browser','tools','directly_open_url','use_judge','use_vision','max_actions_per_step'} <= set(inspect.signature(Agent).parameters)
     assert {'include_screenshot','cached'} <= set(inspect.signature(Browser.get_browser_state_summary).parameters)
     assert hasattr(Browser,'kill') and hasattr(Tools,'act')
