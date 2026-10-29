@@ -122,3 +122,11 @@ Browser Use runtime still requires its own real gateway certification. A future
 direct Playwright runtime candidate must meet the same gates before selection.
 Stagehand remains optional. No production selection, merge or activation is
 authorized by a passing microbenchmark.
+
+## Cost and reliability instrumentation added after the corrected runtime checkpoint
+
+The adapter harness now records elapsed wall time and subprocess user/system CPU time for every successful paired trial, alongside phase latencies. It explicitly labels cumulative child-process peak RSS as *non-attributable* (not a per-adapter memory measurement). These are resource-use proxies, not representative dollars-per-task or production efficiency. No hourly host price, provider token use, production egress charges, fleet utilization or maintenance burden is assumed.
+
+**Selection decision: retain Browser Use provisionally; full production selection BLOCKED.** Playwright is a diagnostic comparison adapter, not a production executor. Five trials cannot certify representative reliability. Both fixture review paths reject denied, cancelled and stale actions, but they do not call the canonical tenant/action authorization service; no tenant-authorization parity is claimed. The fixture does not exercise both adapters as equivalent production gateway clients or crash/recovery workers, so those comparisons remain unmeasured. The standalone native runtime certification covers the existing production Browser Use path, not a Playwright production path.
+
+Before changing the runtime selection, implement a Playwright candidate behind the same DockerRunner/journal/control-service and model gateway without a bypass or alternate authorization authority. Run controlled equivalent gateway token rejection, disallowed CONNECT, budget exhaustion, revoked membership, stale approval fingerprint, worker kill/restart, idempotent replay and no-write-after-cancel cases, plus a larger representative reliability and cost workload. Require zero unauthorized writes and all safety scenarios passing for both; report scenario-level evidence and verified production-equivalent resource pricing. Until then the comparison remains diagnostic and the existing adapter stays selected.
