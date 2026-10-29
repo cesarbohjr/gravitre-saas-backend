@@ -149,6 +149,8 @@ def load_profile(client: Any, org_id: str, agent: dict[str, Any], *, environment
 
 def prompt_section(agent: dict[str, Any]) -> str:
     """Identical guidance in full/classical and compact/unified/voice prompts."""
+    if not any(agent.get(key) for key in ("config", "purpose", "description", "role", "systems", "capabilities")):
+        return ""
     profile = recommendations(agent)
     lines = ["Progressive connector guidance: this agent is useful without connected apps.",
              "No connectors needed: " + "; ".join(profile["offlineCapabilities"]) + ".", profile["authorityNote"],

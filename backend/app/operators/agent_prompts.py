@@ -584,7 +584,9 @@ def build_agent_instructions_section(agent: dict[str, Any] | None, *, max_custom
     role_guidance = render_agent_guidance(agent.get("role"))
     if role_guidance:
         lines.append(role_guidance)
-    lines.append(agent_connector_prompt(agent))
+    connector_guidance = agent_connector_prompt(agent)
+    if connector_guidance:
+        lines.append(connector_guidance)
     software_guidance = render_software_role(agent)
     if software_guidance:
         lines.append(software_guidance)
@@ -683,7 +685,9 @@ def build_agent_system_prompt(
     role_guidance = render_agent_guidance(agent.get("role"))
     if role_guidance:
         lines.append(role_guidance)
-    lines.append(agent_connector_prompt(agent))
+    connector_guidance = agent_connector_prompt(agent)
+    if connector_guidance:
+        lines.append(connector_guidance)
     software_guidance = render_software_role(agent)
     if software_guidance:
         lines.append(software_guidance)

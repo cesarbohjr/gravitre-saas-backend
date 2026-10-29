@@ -59,9 +59,9 @@ export function AgentCapabilitiesCard({
         />
         <CapabilityBlock
           icon={Plug}
-          title="Execution grants"
+          title="Configured apps"
           items={systems}
-          empty="No execution grants configured; advisory work is available"
+          empty="No apps configured; advisory work is available"
         />
         <CapabilityBlock
           icon={Brain}
