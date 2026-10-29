@@ -303,6 +303,8 @@ async def browse(config):
             if refreshed!=evidence:
                 print(json.dumps({'browser_evidence_changed':True,'url_changed':after.url!=before_url,'decoded_pixels_changed':screenshot_pixel_hash(after.screenshot)!=before_decoded,'screenshot_bytes_changed':hashlib.sha256(after.screenshot.encode()).hexdigest()!=before_pixels,'dom_changed':hashlib.sha256(after.dom_state.llm_representation().encode()).hexdigest()!=before_dom,'title_changed':refreshed['page_title']!=evidence['page_title'],'targets_changed':refreshed['targets']!=evidence['targets']}),file=sys.stderr,flush=True)
                 raise PermissionError('Browser context changed after approval; a new review is required')
+            # Recheck current authorization after approval and viewport refresh.
+            await asyncio.to_thread(gateway,config,'/authorize',{})
             self.sequence+=1
             return await super().act(action,browser_session,**kwargs)
     # This disposable worker owns cleanup in finally, including failure probes.
