@@ -33,3 +33,34 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: docker build -f backend/native-workers/Dockerfile.gateway -t native-gateway backend
+  runtime-certification:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install pinned verified gVisor runtime
+        run: |
+          curl --fail --location --silent --show-error https://github.com/google/gvisor/releases/download/release-20261026.0/gvisor-x86_64.tar.zstd -o /tmp/gvisor.tar.zstd
+          echo '708afc62f2ee82d19930c703e85f9dab4f27a78c0aec40c0f55eb1040107f1a7  /tmp/gvisor.tar.zstd' | sha256sum --check
+          sudo tar --zstd -xf /tmp/gvisor.tar.zstd -C /usr/local/bin
+          sudo /usr/local/bin/runsc install
+          sudo systemctl reload docker
+          runsc --version
+      - name: Build actual native images
+        run: |
+          docker build -q -f backend/native-workers/Dockerfile.openhands -t native-openhands backend
+          docker build -q -f backend/native-workers/Dockerfile.browser -t native-browser backend
+          docker build -q -f backend/native-workers/Dockerfile.gateway -t native-gateway backend
+          docker run -d --name native-cert-registry -p 127.0.0.1:5050:5000 registry:2
+      - name: Certify real isolated SDK execution and failure controls
+        env:
+          NATIVE_CERT_EVIDENCE: native-runtime-evidence.json
+        run: python backend/native-workers/runtime_contract.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: native-runtime-certification
+          path: native-runtime-evidence.json
+          if-no-files-found: error
