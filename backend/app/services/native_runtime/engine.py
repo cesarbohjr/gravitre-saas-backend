@@ -185,6 +185,25 @@ def configure_browser_sdk():
     PopupsWatchdog.on_TabCreatedEvent=install_rejecting_dialog_handler
 
 
+async def browser_page_diagnostic(browser):
+    # Read-only diagnostics contain fixed transport codes/booleans, never page
+    # text, titles, URLs, model content or credentials.
+    known=('ERR_EMPTY_RESPONSE','ERR_CERT_AUTHORITY_INVALID','ERR_TUNNEL_CONNECTION_FAILED','ERR_NAME_NOT_RESOLVED','ERR_CONNECTION_REFUSED','ERR_CONNECTION_CLOSED','ERR_CONNECTION_RESET','ERR_CONNECTION_TIMED_OUT','ERR_TIMED_OUT','ERR_HTTP2_PROTOCOL_ERROR','ERR_BLOCKED_BY_CLIENT')
+    try:
+        session=await asyncio.wait_for(browser.get_or_create_cdp_session(),timeout=5)
+        expression="(()=>{const t=document.body?.innerText||'';return {codes:"+json.dumps(known)+".filter(c=>t.includes(c)),body_present:!!t.trim(),title_empty:!document.title,ready:document.readyState,is_html:document.contentType==='text/html'}})()"
+        result=await asyncio.wait_for(session.cdp_client.send.Runtime.evaluate(params={'expression':expression,'returnByValue':True},session_id=session.session_id),timeout=5)
+        value=result.get('result',{}).get('value',{})
+        if not isinstance(value,dict):return
+        codes=value.get('codes',[])
+        ready=value.get('ready')
+        print(json.dumps({'browser_page_diagnostic':{'codes':[code for code in known if isinstance(codes,list) and code in codes],
+            'body_present':value.get('body_present') is True,'title_empty':value.get('title_empty') is True,
+            'is_html':value.get('is_html') is True,'ready':ready if ready in ('loading','interactive','complete') else 'unknown'}}),file=sys.stderr,flush=True)
+    except Exception:
+        print(json.dumps({'browser_page_diagnostic':{'unavailable':True}}),file=sys.stderr,flush=True)
+
+
 async def browse(config):
     from browser_use import Agent,Browser,ChatOpenAI,Tools
     from browser_use.browser.profile import BrowserProfile
@@ -225,6 +244,9 @@ async def browse(config):
     try:
         history=await asyncio.wait_for(agent.run(max_steps=config['max_steps']),timeout=config['max_seconds'])
         return browser_result(history)
+    except Exception:
+        await browser_page_diagnostic(browser)
+        raise
     finally:await browser.kill()
 
 

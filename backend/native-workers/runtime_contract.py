@@ -1,7 +1,7 @@
 """Real gVisor + DockerRunner certification with a local scripted HTTPS model.
 
 No provider credential, tenant record or external write is used. The browser
-may read example.com after the fixture explicitly approves that exact action.
+may read Selenium's public browser-test page after the fixture explicitly approves that exact action.
 Only assertion names and sanitized outcomes are written as evidence.
 """
 from __future__ import annotations
@@ -78,9 +78,9 @@ def browser_fixture_observation(messages):
     url=urlsplit(tab.group(1)) if tab else None
     body=observed.partition('Interactive elements')[2]
     return {'state_present':bool(observed) and '<browser_state_error>' not in observed,
-            'title_observed':bool(tab) and tab.group(2).strip()=='Example Domain',
-            'host_observed':bool(url) and url.scheme=='https' and url.hostname=='example.com' and url.path in ('','/'),
-            'body_observed':'Example Domain' in body}
+            'title_observed':bool(tab) and tab.group(2).strip()=='Web form',
+            'host_observed':bool(url) and url.scheme=='https' and url.hostname=='www.selenium.dev' and url.port in (None,443) and not url.username and not url.password and url.path=='/selenium/web/web-form.html',
+            'body_observed':'Text input' in body}
 
 
 def run():
@@ -107,7 +107,7 @@ def run():
                 # Page rendering can follow successful navigation. Spend only
                 # the existing bounded step budget waiting for actual readback;
                 # never emit done based on the scripted navigation request.
-                action=([{'navigate':{'url':'https://example.com/'}}] if number==1 else [{'done':{'text':'Fixture browser session completed','success':True}}] if state['browser_page_observed'] else [{'wait':{'seconds':1}}])
+                action=([{'navigate':{'url':'https://www.selenium.dev/selenium/web/web-form.html'}}] if number==1 else [{'done':{'text':'Fixture browser session completed','success':True}}] if state['browser_page_observed'] else [{'wait':{'seconds':1}}])
                 output={'evaluation_previous_goal':'Fixture browser is running','memory':'Only the approved public fixture page may be read','next_goal':'Observe the fixture page','action':action}
                 message['content']=json.dumps(output)
             elif kind=='openhands':
@@ -165,7 +165,7 @@ def run():
                 for line in stream.read(262144).decode(errors='replace').splitlines():
                     try:
                         entry=json.loads(line)
-                        if isinstance(entry,dict) and set(entry) in ({'gateway_failure_stage','gateway_failure_class','known_parameter_flags'},{'browser_error_codes','browser_error_classes'},{'browser_failure_stage','browser_failure_class','frames'},{'browser_evidence_changed','url_changed','decoded_pixels_changed','screenshot_bytes_changed','dom_changed','title_changed','targets_changed'}):
+                        if isinstance(entry,dict) and set(entry) in ({'browser_page_diagnostic'},{'gateway_failure_stage','gateway_failure_class','known_parameter_flags'},{'browser_error_codes','browser_error_classes'},{'browser_failure_stage','browser_failure_class','frames'},{'browser_evidence_changed','url_changed','decoded_pixels_changed','screenshot_bytes_changed','dom_changed','title_changed','targets_changed'}):
                             print(json.dumps(entry))
                     except (ValueError,TypeError):pass
                     match=re.match(r'\s*File "([^"]+)", line (\d+), in ([A-Za-z0-9_<>]+)',line)
@@ -176,7 +176,7 @@ def run():
                         if phrase in line.lower():print(json.dumps({'sdk_transport':code}))
                 stream.close()
         def job(kind):
-            return {'id':str(uuid4()),'kind':kind,'payload':{'task':{'task':'Execute only this fixed certification fixture. Make no external changes.','files':{'review.py':''} if kind=='openhands' else {},'allowed_hosts':['example.com'] if kind=='browser_use' else [],'max_seconds':180,'max_steps':5}}}
+            return {'id':str(uuid4()),'kind':kind,'payload':{'task':{'task':'Execute only this fixed certification fixture. Make no external changes.','files':{'review.py':''} if kind=='openhands' else {},'allowed_hosts':['www.selenium.dev'] if kind=='browser_use' else [],'max_seconds':180,'max_steps':5}}}
         def clean(id):
             assert not docker('ps','-aq','--filter','label=gravitre.native.job='+id)
             assert not docker('network','ls','-q','--filter','label=gravitre.native.job='+id)
@@ -188,7 +188,7 @@ def run():
             print(json.dumps({'completed_runtime_checks':evidence},sort_keys=True))
             state.update(kind='browser_use',calls=0,browser_page_observed=False,browser_context_checks=[]);approved=[]
             def action_gate(sequence,action):
-                assert action['actions']=={'navigate':{'url':'https://example.com/'}}
+                assert action['actions']=={'navigate':{'url':'https://www.selenium.dev/selenium/web/web-form.html'}}
                 assert len(action['page_fingerprint'])==64
                 approved.append(sequence);return {'state':'approved'}
             browser=job('browser_use')

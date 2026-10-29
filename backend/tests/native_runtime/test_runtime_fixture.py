@@ -5,7 +5,7 @@ import runpy
 observe=runpy.run_path(str(Path(__file__).resolve().parents[2]/'native-workers/runtime_contract.py'))['browser_fixture_observation']
 
 
-def state(title='Example Domain',body='Example Domain',url='https://example.com/',active='ABCD'):
+def state(title='Web form',body='Text input',url='https://www.selenium.dev/selenium/web/web-form.html',active='ABCD'):
     return '<browser_state>\nCurrent tab: '+active+'\nAvailable tabs:\nTab ABCD: '+url+' - '+title+'\nInteractive elements:\n'+body+'\n</browser_state>'
 
 
@@ -15,8 +15,8 @@ def test_browser_readback_uses_state_before_trailing_sdk_warning():
 
 
 def test_task_and_history_markers_cannot_certify_a_page():
-    assert not any(observe([{'role':'user','content':'Example Domain https://example.com/'}]).values())
-    result=observe([{'role':'user','content':state(title='Loading',body='empty page')+'\n<agent_history>Example Domain</agent_history>'}])
+    assert not any(observe([{'role':'user','content':'Web form Text input https://www.selenium.dev/selenium/web/web-form.html'}]).values())
+    result=observe([{'role':'user','content':state(title='Loading',body='empty page')+'\n<agent_history>Web form Text input</agent_history>'}])
     assert not result['title_observed'] and not result['body_observed']
 
 
@@ -25,7 +25,7 @@ def test_latest_empty_state_replaces_older_successful_page():
 
 
 def test_inactive_tab_wrong_origin_and_state_errors_cannot_pass():
-    for content in (state(active='EEEE'),state(url='https://other.example/'),state().replace('Interactive elements:','<browser_state_error>unavailable</browser_state_error>\nInteractive elements:')):
+    for content in (state(active='EEEE'),state(url='https://other.example/'),state(url='https://www.selenium.dev:8443/selenium/web/web-form.html'),state(url='https://user@www.selenium.dev/selenium/web/web-form.html'),state().replace('Interactive elements:','<browser_state_error>unavailable</browser_state_error>\nInteractive elements:')):
         assert not all(observe([{'role':'user','content':content}]).values())
 
 

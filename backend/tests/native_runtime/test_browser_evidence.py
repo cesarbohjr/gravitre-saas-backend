@@ -231,3 +231,22 @@ async def test_dialog_domain_enable_failure_cannot_report_success():
     watchdog=SimpleNamespace(_dialog_listeners_registered=set(),browser_session=SimpleNamespace(get_or_create_cdp_session=AsyncMock(return_value=session)))
     with pytest.raises(TimeoutError):await install_rejecting_dialog_handler(watchdog,SimpleNamespace(target_id='target'))
     assert not watchdog._dialog_listeners_registered
+
+
+@pytest.mark.asyncio
+async def test_page_diagnostic_logs_only_fixed_transport_codes_and_flags(capsys):
+    from app.services.native_runtime.engine import browser_page_diagnostic
+    evaluate=AsyncMock(return_value={'result':{'value':{'codes':['ERR_EMPTY_RESPONSE','PRIVATE-PAGE'],'body_present':True,'title_empty':False,'ready':'PRIVATE-PAGE','is_html':True}}})
+    session=SimpleNamespace(session_id='private-session',cdp_client=SimpleNamespace(send=SimpleNamespace(Runtime=SimpleNamespace(evaluate=evaluate))))
+    await browser_page_diagnostic(SimpleNamespace(get_or_create_cdp_session=AsyncMock(return_value=session)))
+    output=capsys.readouterr().err
+    import json
+    assert json.loads(output)=={'browser_page_diagnostic':{'codes':['ERR_EMPTY_RESPONSE'],'body_present':True,'title_empty':False,'is_html':True,'ready':'unknown'}}
+    assert 'PRIVATE-PAGE' not in output and 'private-session' not in output
+
+
+@pytest.mark.asyncio
+async def test_unavailable_page_diagnostic_does_not_log_exception_text(capsys):
+    from app.services.native_runtime.engine import browser_page_diagnostic
+    await browser_page_diagnostic(SimpleNamespace(get_or_create_cdp_session=AsyncMock(side_effect=RuntimeError('PRIVATE-EXCEPTION'))))
+    assert capsys.readouterr().err.strip()=='{"browser_page_diagnostic": {"unavailable": true}}'
