@@ -26,7 +26,7 @@ jobs:
           ENGINE: ${{ matrix.engine }}
         run: |
           if [ "$ENGINE" = browser ]; then contract=browser_use; else contract=openhands; fi
-          docker run --rm --network none --read-only --cap-drop ALL --security-opt no-new-privileges --pids-limit 128 --memory 2g --tmpfs /tmp:rw,noexec,nosuid,size=128m --tmpfs /workspace:rw,nosuid,size=128m,uid=10001,gid=10001 -e OTEL_SDK_DISABLED=true -e ANONYMIZED_TELEMETRY=false -e DO_NOT_TRACK=1 native-sdk:$ENGINE python /runner/sdk_contract.py "$contract"
+          docker run --rm --network none --read-only --cap-drop ALL --security-opt no-new-privileges --pids-limit 128 --memory 2g --tmpfs /tmp:rw,noexec,nosuid,size=128m --tmpfs /workspace:rw,nosuid,size=128m,uid=10001,gid=10001 -e HOME=/workspace -e OTEL_SDK_DISABLED=true -e ANONYMIZED_TELEMETRY=false -e DO_NOT_TRACK=1 native-sdk:$ENGINE python /runner/sdk_contract.py "$contract"
   gateway-image:
     runs-on: ubuntu-latest
     timeout-minutes: 10
