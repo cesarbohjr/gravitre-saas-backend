@@ -28,16 +28,23 @@ class SandboxImages:
     browser_use: str
     gateway: str
     runtime: str='runsc'
+    playwright_comparison: str | None=None
 
     def validate(self):
         if self.runtime not in ('runsc','kata-runtime'):raise ValueError('A reviewed isolating container runtime is required')
-        for image in (self.openhands,self.browser_use,self.gateway):
+        for image in (self.openhands,self.browser_use,self.gateway,*([self.playwright_comparison] if self.playwright_comparison else [])):
             if not re.fullmatch(r'[a-zA-Z0-9./:_-]+@sha256:[0-9a-f]{64}',image):raise ValueError('All native images must be pinned by digest')
 
 
 class DockerRunner:
-    def __init__(self,images: SandboxImages,*,command=None,process_factory=None):
-        images.validate();self.images=images;self.command=command or subprocess.run;self.process_factory=process_factory or subprocess.Popen
+    def __init__(self,images: SandboxImages,*,command=None,process_factory=None,comparison_url: str | None=None):
+        images.validate()
+        if comparison_url is not None:
+            from urllib.parse import urlsplit
+            url=urlsplit(comparison_url)
+            if not images.playwright_comparison or url.scheme!='https' or not url.hostname or url.username or url.password or url.port not in (None,443):
+                raise ValueError('Isolated Playwright comparison requires a pinned image and exact HTTPS URL')
+        self.images=images;self.comparison_url=comparison_url;self.command=command or subprocess.run;self.process_factory=process_factory or subprocess.Popen
 
     def docker(self,*args,input: bytes | None=None):
         r=self.command(['docker',*args],input=input,stdout=subprocess.PIPE,stderr=subprocess.DEVNULL,timeout=20,check=True)
@@ -158,7 +165,10 @@ class DockerRunner:
             gateway_process=self.process_factory(['docker','exec','-i',gateway,'python','/runner/gateway.py'],stdin=subprocess.PIPE,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
             gateway_process.stdin.write(json.dumps(config).encode());gateway_process.stdin.close()
             gateway_address=self.wait_for_gateway(gateway,network,gateway_process,guard)
-            image=self.images.openhands if job['kind']=='openhands' else self.images.browser_use
+            comparison=self.comparison_url is not None and job['kind']=='browser_use'
+            if comparison and urlsplit(self.comparison_url).hostname not in job['payload']['task']['allowed_hosts']:
+                raise PermissionError('Comparison URL not present in approved job scope')
+            image=self.images.openhands if job['kind']=='openhands' else self.images.playwright_comparison if comparison else self.images.browser_use
             self.docker('run','-d','-i','--name',engine,'--network',network,'--dns','127.0.0.1','--add-host','gateway:'+gateway_address,*common,
                 '--tmpfs','/workspace:rw,nosuid,size=128m,uid=10001,gid=10001',
                 '--tmpfs','/out:rw,noexec,nosuid,size=4m,uid=10001,gid=10001',
@@ -168,8 +178,9 @@ class DockerRunner:
             # Verify the actual guest-to-gateway path before invoking an SDK.
             self.docker('exec',engine,'python','-c','import socket; s=socket.create_connection(("gateway",8080),timeout=2); s.close()')
             payload={**job['payload']['task'],'engine':job['kind'],'model':route.model,'engine_token':engine_token}
+            if comparison:payload['comparison_url']=self.comparison_url
             # No task/credential enters process arguments, logs or a host mount.
-            process=self.process_factory(['docker','exec','-i',engine,'python','/runner/engine.py'],stdin=subprocess.PIPE,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
+            process=self.process_factory(['docker','exec','-i',engine,'python','/runner/playwright_candidate.py' if comparison else '/runner/engine.py'],stdin=subprocess.PIPE,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
             process.stdin.write(json.dumps(payload).encode());process.stdin.close()
             deadline=time.monotonic()+job['payload']['task']['max_seconds']
             while process.poll() is None:
