@@ -223,6 +223,37 @@ def run():
             clean(candidate['id'])
             evidence['playwright_real_gvisor_denied_navigation_no_dispatch']='PASS'
             print(json.dumps({'completed_runtime_checks':evidence},sort_keys=True))
+            # Matched real-runsc revocation boundary for both browser engines.
+            # The approval callback revokes the host-owned lease before the
+            # candidate or Browser Use may send its final /authorize request.
+            for adapter_name, tested_runner in (('browser_use',runner),('playwright',candidate_runner)):
+                state.update(kind='browser_use',calls=0,browser_page_observed=False,browser_context_checks=[])
+                revoked=threading.Event()
+                action_calls=[]
+                revoked_job=job('browser_use')
+                def revoked_guard():
+                    if revoked.is_set():
+                        raise PermissionError('certification_lease_revoked')
+                    return route
+                def revoke_on_approval(sequence,action):
+                    assert sequence==0, 'unexpected approval sequence'
+                    assert action['actions']=={'navigate':{'url':'https://www.selenium.dev/selenium/web/web-form.html'}}
+                    assert len(action['page_fingerprint'])==64
+                    action_calls.append(sequence)
+                    revoked.set()
+                    return {'state':'approved'}
+                try:
+                    try:
+                        tested_runner.execute(revoked_job,guard=revoked_guard,action_gate=revoke_on_approval)
+                    except (PermissionError,RuntimeError):
+                        assert action_calls==[0], 'Revocation did not pass through the shared review gate'
+                    else:
+                        raise AssertionError(adapter_name+' executed after revocation')
+                finally:
+                    tested_runner.cleanup(revoked_job['id'])
+                    clean(revoked_job['id'])
+                evidence[adapter_name+'_real_gvisor_revocation_fenced']='PASS'
+                print(json.dumps({'completed_runtime_checks':evidence},sort_keys=True))
             state.update(kind='cancel',calls=0);entered.clear();cancel.clear();cancelled=job('openhands')
             def guard():
                 if cancel.is_set():raise PermissionError('fixture_cancelled')
