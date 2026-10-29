@@ -1,5 +1,5 @@
 from types import SimpleNamespace
-from unittest.mock import Mock
+from unittest.mock import Mock, AsyncMock
 import pytest
 from app.services.native_runtime.engine import browser_evidence
 
@@ -33,12 +33,32 @@ def test_ambiguous_coordinate_or_missing_target_cannot_be_approved():
 ])
 def test_incomplete_browser_history_cannot_become_a_completed_observation(done,success,urls,summary,capsys):
     from app.services.native_runtime.engine import browser_result
-    history=SimpleNamespace(is_done=lambda:done,is_successful=lambda:success,urls=lambda:urls,final_result=lambda:summary,errors=lambda:['ValueError: operation not permitted PRIVATE-PAYLOAD'])
+    history=SimpleNamespace(is_done=lambda:done,is_successful=lambda:success,urls=lambda:urls,final_result=lambda:summary,errors=lambda:['ValueError: operation not permitted PRIVATE-PAYLOAD TenantSecretError: hidden'])
     with pytest.raises((RuntimeError,ValueError)):browser_result(history)
-    assert 'PRIVATE-PAYLOAD' not in capsys.readouterr().err
+    diagnostic=capsys.readouterr().err
+    assert 'PRIVATE-PAYLOAD' not in diagnostic and 'TenantSecretError' not in diagnostic
 
 
 def test_browser_result_uses_actual_observed_page_without_fallback():
     from app.services.native_runtime.engine import browser_result
     history=SimpleNamespace(is_done=lambda:True,is_successful=lambda:True,urls=lambda:['about:blank','https://example.com/observed'],final_result=lambda:'Observed fixture result')
     assert browser_result(history)=={'observations':[{'summary':'Observed fixture result','url':'https://example.com/observed'}]}
+
+
+@pytest.mark.asyncio
+async def test_fresh_browser_evidence_requests_uncached_screenshot():
+    from app.services.native_runtime.engine import fresh_browser_evidence
+    state=page();browser=SimpleNamespace(get_browser_state_summary=AsyncMock(return_value=state))
+    observed,evidence=await fresh_browser_evidence(browser,{'navigate':{'url':'https://example.com/'}},'before_approval')
+    assert observed is state and len(evidence['page_fingerprint'])==64
+    browser.get_browser_state_summary.assert_awaited_once_with(include_screenshot=True,cached=False)
+
+
+@pytest.mark.asyncio
+async def test_browser_evidence_failure_exposes_only_safe_stage_and_source(capsys):
+    from app.services.native_runtime.engine import fresh_browser_evidence
+    browser=SimpleNamespace(get_browser_state_summary=AsyncMock(side_effect=ValueError('PRIVATE-PAGE-CONTENT')))
+    with pytest.raises(ValueError):await fresh_browser_evidence(browser,{},'before_approval')
+    diagnostic=capsys.readouterr().err
+    assert 'before_approval' in diagnostic and 'ValueError' in diagnostic
+    assert 'PRIVATE-PAGE-CONTENT' not in diagnostic

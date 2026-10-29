@@ -9,6 +9,7 @@ import re
 from pathlib import Path
 import sys
 import time
+import traceback
 import urllib.request
 
 
@@ -73,19 +74,35 @@ def browser_evidence(state,requested):
     return {'page_fingerprint':fingerprint,'page_title':str(state.title)[:300],'targets':targets}
 
 
+def browser_error_diagnostic(history):
+    errors=[str(error)[:16384] for error in history.errors()[:10] if error]
+    phrases={'sandbox':'sandbox','namespace':'namespace','permission denied':'permission_denied','operation not permitted':'operation_not_permitted','executable':'executable','browser closed':'browser_closed','cdp':'cdp','websocket':'websocket','parse':'parse','json':'json','validation':'validation','schema':'schema','navigation':'navigation','domain':'domain','screenshot':'screenshot'}
+    codes=sorted({code for phrase,code in phrases.items() if any(phrase in error.lower() for error in errors)})
+    known_classes={'ValueError','ValidationError','RuntimeError','TimeoutError','PermissionError','ConnectionError','BrowserError','BrowserClosedError','CancelledError','HTTPStatusError'}
+    classes=sorted({match.group(1) for error in errors for match in re.finditer(r'\b([A-Za-z_][A-Za-z0-9_]*(?:Error|Exception)):',error) if match.group(1) in known_classes})
+    print(json.dumps({'browser_error_codes':codes,'browser_error_classes':classes}),file=sys.stderr,flush=True)
+
+
 def browser_result(history):
     if history.is_done() is not True or history.is_successful() is not True:
-        errors=[str(error)[:16384] for error in history.errors()[:10] if error]
-        phrases={'sandbox':'sandbox','namespace':'namespace','permission denied':'permission_denied','operation not permitted':'operation_not_permitted','executable':'executable','browser closed':'browser_closed','cdp':'cdp','websocket':'websocket','parse':'parse','json':'json','validation':'validation','schema':'schema','navigation':'navigation','domain':'domain','screenshot':'screenshot'}
-        codes=sorted({code for phrase,code in phrases.items() if any(phrase in error.lower() for error in errors)})
-        classes=sorted({match.group(1) for error in errors for match in re.finditer(r'\b([A-Za-z_][A-Za-z0-9_]*(?:Error|Exception)):',error)})
-        print(json.dumps({'browser_error_codes':codes,'browser_error_classes':classes}),file=sys.stderr,flush=True)
+        browser_error_diagnostic(history)
         raise RuntimeError('Browser session did not finish successfully')
     summary=history.final_result()
     url=next((u for u in reversed(history.urls()) if isinstance(u,str) and u.startswith('https://')),None)
     if not isinstance(summary,str) or not summary.strip() or url is None:
+        browser_error_diagnostic(history)
         raise ValueError('Completed browser session requires a result and an observed page')
     return {'observations':[{'summary':summary[:2000],'url':url}]}
+
+
+async def fresh_browser_evidence(browser_session,requested,phase):
+    try:
+        state=await browser_session.get_browser_state_summary(include_screenshot=True,cached=False)
+        return state,browser_evidence(state,requested)
+    except Exception as error:
+        frames=[{'file':Path(frame.filename).name,'line':frame.lineno,'function':frame.name} for frame in traceback.extract_tb(error.__traceback__) if '/browser_use/' in frame.filename or frame.filename.endswith('/engine.py')][-16:]
+        print(json.dumps({'browser_failure_stage':phase,'browser_failure_class':type(error).__name__ if type(error).__name__ in {'ValueError','PermissionError','RuntimeError','TimeoutError','AttributeError'} else 'InternalError','frames':frames}),file=sys.stderr,flush=True)
+        raise
 
 
 async def browse(config):
@@ -100,8 +117,7 @@ async def browse(config):
             requested=action.model_dump(exclude_unset=True)
             if set(requested)<={'done','extract','search_page','find_elements','scroll','find_text','screenshot','dropdown_options','wait'}:
                 return await super().act(action,browser_session,**kwargs)
-            before=await browser_session.get_browser_state_summary(include_screenshot=True,cached=False)
-            evidence=browser_evidence(before,requested)
+            before,evidence=await fresh_browser_evidence(browser_session,requested,'before_approval')
             details={'actions':requested,'url':before.url,**evidence}
             sequence=self.sequence
             deadline=time.monotonic()+config['max_seconds']
@@ -110,8 +126,8 @@ async def browse(config):
                 if status['state']=='approved':break
                 if status['state']=='denied' or time.monotonic()>=deadline:raise PermissionError('Browser action not approved')
                 await asyncio.sleep(0.5)
-            after=await browser_session.get_browser_state_summary(include_screenshot=True,cached=False)
-            if browser_evidence(after,requested)!=evidence:
+            after,refreshed=await fresh_browser_evidence(browser_session,requested,'after_approval')
+            if refreshed!=evidence:
                 raise PermissionError('Browser context changed after approval; a new review is required')
             self.sequence+=1
             return await super().act(action,browser_session,**kwargs)
