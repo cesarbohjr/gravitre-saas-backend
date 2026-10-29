@@ -33,7 +33,7 @@
 <rect x="300" y="224" width="10" height="60" rx="3" fill="#C98F5B" />
 
 
-<g transform="translate(120,80)">
+<g transform="translate(142,80)">
   <g style="animation:gi-bob 12s ease-in-out infinite 0s"><rect x="0" y="0" width="120" height="80" rx="8" fill="#2A2B28" />
   <rect x="4" y="4" width="112" height="72" rx="5" fill="#1A2020" />
   
@@ -64,7 +64,7 @@
 </g></g>
 
 
-<g transform="translate(60,138)">
+<g transform="translate(44,138)">
   <g style="animation:gi-bob 10s ease-in-out infinite 2s"><rect x="0" y="0" width="90" height="64" rx="6" fill="#FBF8F2" stroke="#D9D1C2" stroke-width="1.2" />
   <rect x="10" y="10" width="70" height="4" rx="2" fill="#CFDCCB" />
   
@@ -74,7 +74,7 @@
 </g></g>
 
 
-<g transform="translate(250,170)">
+<g transform="translate(226,170)">
   <g style="animation:gi-bob 9s ease-in-out infinite 0.5s"><path d="M0,30 L0,10 Q0,0 10,0 L60,0 Q70,0 70,10 L70,30 Z" fill="#FBF8F2" stroke="#D9D1C2" stroke-width="1.2" />
   <line x1="0" y1="18" x2="70" y2="18" stroke="#D9D1C2" stroke-width="1" />
   <text x="35" y="12" font-family="DM Sans,system-ui" font-size="8" fill="#C4C0B5" text-anchor="middle">Inbox</text>
@@ -83,7 +83,7 @@
 </g></g>
 
 
-<g transform="translate(20,40)" opacity="0.5">
+<g transform="translate(4,40)" opacity="0.5">
   <rect x="0" y="0" width="36" height="160" rx="4" fill="#DCE3D3" />
   <rect x="2" y="2" width="32" height="158" rx="3" fill="#E7ECE3" />
   <circle cx="28" cy="80" r="3" fill="#C98F5B" />

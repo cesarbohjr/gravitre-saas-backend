@@ -28,7 +28,7 @@
 <ellipse cx="80" cy="200" rx="100" ry="80" fill="url(#b3b)" />
 
 
-<g transform="translate(170,28)">
+<g transform="translate(285,2)">
   
   <g style="animation:gi-bob 10s ease-in-out infinite 0s"><path d="M30,0 L60,10 L60,36 Q60,58 30,70 Q0,58 0,36 L0,10 Z" fill="#2A2B28" />
   <path d="M30,6 L54,14 L54,36 Q54,54 30,64 Q6,54 6,36 L6,14 Z" fill="none" stroke="#19C37D" stroke-width="1.5" opacity="0.5" />
@@ -62,15 +62,15 @@
 <g style="animation:gi-drift-x 9s ease-in-out infinite 0.8s">
   <circle cx="68" cy="98" r="10" fill="#C98F5B" />
   <text x="68" y="102" font-family="DM Sans,system-ui" font-size="8" fill="#FBF8F2" font-weight="700" text-anchor="middle">2</text>
-  <rect x="88" y="84" width="145" height="28" rx="6" fill="#FBF8F2" stroke="#D9D1C2" stroke-width="1.2" />
+  <rect x="88" y="84" width="155" height="28" rx="6" fill="#FBF8F2" stroke="#D9D1C2" stroke-width="1.2" />
   <text x="98" y="96" font-family="DM Sans,system-ui" font-size="7.5" fill="#2A2B28" font-weight="600">Auto-route to reviewers</text>
   
-  <circle cx="194" cy="98" r="6" fill="#7E9A7B" />
-  <text x="194" y="101" font-family="DM Sans,system-ui" font-size="5.5" fill="#FBF8F2" font-weight="700" text-anchor="middle">SR</text>
-  <circle cx="205" cy="98" r="6" fill="#5B6E7A" />
-  <text x="205" y="101" font-family="DM Sans,system-ui" font-size="5.5" fill="#FBF8F2" font-weight="700" text-anchor="middle">MK</text>
-  <circle cx="216" cy="98" r="6" fill="#C98F5B" />
-  <text x="216" y="101" font-family="DM Sans,system-ui" font-size="5.5" fill="#FBF8F2" font-weight="700" text-anchor="middle">AL</text>
+  <circle cx="206" cy="98" r="6" fill="#7E9A7B" />
+  <text x="206" y="101" font-family="DM Sans,system-ui" font-size="5.5" fill="#FBF8F2" font-weight="700" text-anchor="middle">SR</text>
+  <circle cx="217" cy="98" r="6" fill="#5B6E7A" />
+  <text x="217" y="101" font-family="DM Sans,system-ui" font-size="5.5" fill="#FBF8F2" font-weight="700" text-anchor="middle">MK</text>
+  <circle cx="228" cy="98" r="6" fill="#C98F5B" />
+  <text x="228" y="101" font-family="DM Sans,system-ui" font-size="5.5" fill="#FBF8F2" font-weight="700" text-anchor="middle">AL</text>
 </g>
 
 
