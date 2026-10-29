@@ -36,3 +36,20 @@ async def test_action_gateway_denial_never_clicks(monkeypatch):
     with pytest.raises(PermissionError):
         await candidate["approved_click"]({"allowed_hosts":["www.selenium.dev"]},session,page)
     assert page.locator.call_count == 0
+
+
+def test_broker_comparison_opt_in_requires_pinned_image_and_https():
+    from app.services.native_runtime.docker_runner import DockerRunner, SandboxImages
+    digest = "a" * 64
+    images = SandboxImages("registry/openhands@sha256:"+digest,
+        "registry/browser@sha256:"+digest,"registry/gateway@sha256:"+digest)
+    with pytest.raises(ValueError):
+        DockerRunner(images, comparison_url="https://www.selenium.dev/page")
+    with pytest.raises(ValueError):
+        DockerRunner(SandboxImages(images.openhands,images.browser_use,images.gateway,
+            playwright_comparison="registry/playwright@sha256:"+digest),
+            comparison_url="http://www.selenium.dev/page")
+    candidate_image = SandboxImages(images.openhands,images.browser_use,images.gateway,
+        playwright_comparison="registry/playwright@sha256:"+digest)
+    assert DockerRunner(candidate_image,comparison_url="https://www.selenium.dev/page").comparison_url == "https://www.selenium.dev/page"
+    assert DockerRunner(candidate_image).comparison_url is None
