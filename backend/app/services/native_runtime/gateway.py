@@ -47,6 +47,10 @@ class Handler(BaseHTTPRequestHandler):
             length=int(self.headers.get('Content-Length','0'))
             if not 0<length<=262144:raise ValueError('bounds')
             body=json.loads(self.rfile.read(length))
+            if self.path=='/authorize':
+                stage='dispatch_authority'
+                control('authorize',{})
+                return self.reply(200,{'authorized':True})
             if self.path=='/action':
                 stage='action_authority'
                 return self.reply(200,control('action',body))
