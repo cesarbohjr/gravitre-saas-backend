@@ -144,6 +144,18 @@ async def fresh_browser_evidence(browser_session,requested,phase):
         raise
 
 
+async def stable_browser_evidence(browser_session,requested):
+    # Initial paint can lag the DOM. Obtain two identical fresh captures before
+    # presenting a review; never retry or refresh an already approved action.
+    previous=None
+    for _ in range(6):
+        state,evidence=await fresh_browser_evidence(browser_session,requested,'before_approval')
+        if evidence==previous:return state,evidence
+        previous=evidence
+        await asyncio.sleep(0.25)
+    raise PermissionError('Browser viewport did not stabilize before approval')
+
+
 async def browse(config):
     from browser_use import Agent,Browser,ChatOpenAI,Tools
     from browser_use.browser.profile import BrowserProfile
@@ -157,7 +169,7 @@ async def browse(config):
             requested=action.model_dump(exclude_unset=True)
             if set(requested)<={'done','extract','search_page','find_elements','scroll','find_text','screenshot','dropdown_options','wait'}:
                 return await super().act(action,browser_session,**kwargs)
-            before,evidence=await fresh_browser_evidence(browser_session,requested,'before_approval')
+            before,evidence=await stable_browser_evidence(browser_session,requested)
             before_decoded=screenshot_pixel_hash(before.screenshot)
             before_url=before.url
             before_pixels=hashlib.sha256(before.screenshot.encode()).hexdigest()

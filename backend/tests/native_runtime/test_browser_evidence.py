@@ -137,7 +137,6 @@ async def test_sdk_preview_is_not_mixed_with_approval_viewport_capture():
     first,second=blank_page(),blank_page();second.screenshot=encoded_pixels(compression=9)
     browser=SimpleNamespace(get_browser_state_summary=AsyncMock(side_effect=[first,second]),take_screenshot=AsyncMock(return_value=base64.b64decode(encoded_pixels(compression=0))))
     observed,_=await fresh_browser_evidence(browser,{'navigate':{'url':'https://example.com/'}},'before_approval')
-    import base64
     assert base64.b64decode(observed.screenshot)==base64.b64decode(encoded_pixels(compression=0))
     assert second.screenshot==encoded_pixels(compression=9)
 
@@ -176,3 +175,28 @@ def test_self_reported_done_cannot_hide_browser_action_errors(capsys):
     history=SimpleNamespace(is_done=lambda:True,is_successful=lambda:True,errors=lambda:['PermissionError: PRIVATE-PAGE'],urls=lambda:['https://example.com/'],final_result=lambda:'claimed success')
     with pytest.raises(RuntimeError):browser_result(history)
     assert 'PRIVATE-PAGE' not in capsys.readouterr().err
+
+
+@pytest.mark.asyncio
+async def test_initial_paint_must_stabilize_before_review(monkeypatch):
+    from app.services.native_runtime import engine
+    first,settled=page(),page()
+    first.screenshot=encoded_pixels(color='black')
+    captures=AsyncMock(side_effect=[(first,browser_evidence(first,{})),(settled,browser_evidence(settled,{})),(settled,browser_evidence(settled,{}))])
+    monkeypatch.setattr(engine,'fresh_browser_evidence',captures)
+    monkeypatch.setattr(engine.asyncio,'sleep',AsyncMock())
+    state,evidence=await engine.stable_browser_evidence(object(),{})
+    assert state is settled and evidence==browser_evidence(settled,{})
+    assert captures.await_count==3
+    assert all(call.args[2]=='before_approval' for call in captures.await_args_list)
+
+
+@pytest.mark.asyncio
+async def test_animated_or_changing_page_has_bounded_review_failure(monkeypatch):
+    from app.services.native_runtime import engine
+    captures=AsyncMock(side_effect=[(page(),{'page_fingerprint':str(i)}) for i in range(6)])
+    monkeypatch.setattr(engine,'fresh_browser_evidence',captures)
+    monkeypatch.setattr(engine.asyncio,'sleep',AsyncMock())
+    with pytest.raises(PermissionError,match='did not stabilize'):
+        await engine.stable_browser_evidence(object(),{})
+    assert captures.await_count==6
