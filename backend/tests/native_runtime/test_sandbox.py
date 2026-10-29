@@ -99,10 +99,12 @@ def test_gateway_fixed_route_budget_no_redirect_and_no_exception_leak(monkeypatc
         handler.headers={'Authorization':'Bearer job-token','Content-Length':str(len(raw))};handler.rfile=io.BytesIO(raw);handler.wfile=io.BytesIO();handler.path='/v1/chat/completions'
         handler.send_response=Mock();handler.send_header=Mock();handler.end_headers=Mock()
         handler.do_POST();return handler
-    first=send({'model':'model-chosen-by-attacker','messages':[{'role':'user','content':'hello'}],token_field:100,'reasoning_effort':'low'})
+    first=send({'model':'model-chosen-by-attacker','messages':[{'role':'user','content':'hello'}],token_field:100,'reasoning_effort':'low','prompt_cache_key':'PRIVATE-CACHE-CONTEXT','prompt_cache_retention':'24h'})
     assert first.send_response.call_args.args[0]==200
     forwarded=json.loads(upstream.request.call_args.kwargs['body'])
     assert forwarded['model']=='approved'
+    assert 'prompt_cache_key' not in forwarded and 'prompt_cache_retention' not in forwarded
+    assert b'PRIVATE-CACHE-CONTEXT' not in upstream.request.call_args.kwargs['body']
     assert forwarded[token_field]==20 and forwarded['reasoning_effort']=='low'
     assert ('max_tokens' if token_field=='max_completion_tokens' else 'max_completion_tokens') not in forwarded
     assert connection.call_args.args==('fixed.example',443)

@@ -5,6 +5,7 @@ on:
       - 'backend/app/services/native_runtime/**'
       - 'backend/app/services/native_agent_adapters.py'
       - 'backend/native-workers/langfuse*.py'
+      - 'backend/native-workers/requirements-langfuse.txt'
       - '.github/workflows/native-langfuse-certification.yml'
   workflow_dispatch:
 permissions:
@@ -34,9 +35,9 @@ jobs:
         with:
           python-version: '3.12'
           cache: pip
-          cache-dependency-path: backend/requirements.txt
+          cache-dependency-path: backend/native-workers/requirements-langfuse.txt
       - name: Install application transport dependencies
-        run: pip install -r backend/requirements-dev.txt
+        run: pip install -r backend/native-workers/requirements-langfuse.txt
       - name: Prepare pinned isolated actual Langfuse server
         run: |
           curl --fail --location --silent --show-error https://raw.githubusercontent.com/langfuse/langfuse/d89f49b82620dc9a773bd2f97449289f4f6c199e/docker-compose.yml -o "$RUNNER_TEMP/langfuse-upstream.yml"

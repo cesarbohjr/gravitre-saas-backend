@@ -1,0 +1,7 @@
+# Real OTLP transport/journal certification; no application, voice or AI SDK.
+# Versions exercised by the application contract suite.
+cryptography==50.0.2
+httpx==0.28.1
+opentelemetry-proto==1.45.1
+protobuf==5.29.6
+PyYAML==6.0.3
