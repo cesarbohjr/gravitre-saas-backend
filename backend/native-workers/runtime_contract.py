@@ -254,6 +254,41 @@ def run():
                     clean(revoked_job['id'])
                 evidence[adapter_name+'_real_gvisor_revocation_fenced']='PASS'
                 print(json.dumps({'completed_runtime_checks':evidence},sort_keys=True))
+            # Matched engine-crash boundary. Terminate the isolated engine
+            # during the canonical approval callback, then verify no resources
+            # or approvals survive a fenced retry with the same job identity.
+            for adapter_name, tested_runner in (('browser_use',runner),('playwright',candidate_runner)):
+                state.update(kind='browser_use',calls=0,browser_page_observed=False,browser_context_checks=[])
+                crashed_job=job('browser_use')
+                approvals=[]
+                def crash_on_approval(sequence,action):
+                    assert sequence==0
+                    assert action['actions']=={'navigate':{'url':'https://www.selenium.dev/selenium/web/web-form.html'}}
+                    approvals.append(sequence)
+                    docker('kill',tested_runner.names(crashed_job['id'])[1])
+                    return {'state':'approved'}
+                try:
+                    try:
+                        tested_runner.execute(crashed_job,guard=lambda:route,action_gate=crash_on_approval)
+                    except (PermissionError,RuntimeError,subprocess.CalledProcessError):
+                        assert approvals==[0], 'Engine crash did not reach the approval boundary'
+                    else:
+                        raise AssertionError(adapter_name+' returned a result despite engine termination')
+                finally:
+                    tested_runner.cleanup(crashed_job['id'])
+                    clean(crashed_job['id'])
+                def reject_replay():
+                    raise PermissionError('crashed_job_replay_requires_new_authorization')
+                try:
+                    tested_runner.execute(crashed_job,guard=reject_replay,
+                        action_gate=lambda *_:(_ for _ in ()).throw(AssertionError('Replay dispatched an action')))
+                except PermissionError:
+                    pass
+                else:
+                    raise AssertionError(adapter_name+' permitted unapproved replay')
+                clean(crashed_job['id'])
+                evidence[adapter_name+'_real_gvisor_crash_and_fenced_retry']='PASS'
+                print(json.dumps({'completed_runtime_checks':evidence},sort_keys=True))
             state.update(kind='cancel',calls=0);entered.clear();cancel.clear();cancelled=job('openhands')
             def guard():
                 if cancel.is_set():raise PermissionError('fixture_cancelled')
