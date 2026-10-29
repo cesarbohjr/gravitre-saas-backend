@@ -86,3 +86,16 @@ The interruption fixture also provides a filter-honoring, revision-aware local
 database for real connection-recovery bookkeeping, so background marker writes
 cannot escape to a configured Supabase host. This keeps the actual state service
 and tenant/revision filters in the test instead of suppressing persistence.
+
+## Gate 1 — baseline freeze and evidence contract (2026-10-29)
+
+Gate status: **OPEN / NOT CERTIFIED**. This section is an execution contract, not a quality result. Existing green contract CI is not sufficient to close the gate.
+
+1. Pin the exact PR587 commit, evaluator implementation/version, 520-pair corpus digest, generated-history 720-turn digest, persona/channel distribution, runtime configuration and provider/model identifiers in one sanitized machine-readable manifest. Fail closed when any input is absent or differs between comparison arms.
+2. Re-run canonical paired text/voice and multi-turn correction/continuity cases with source-bound reports. Distinguish synthetic/fixture, recorded-provider, live-provider and human-reviewed evidence; never aggregate them into one PASS.
+3. Report per-category correctness, repetition, naturalness, uncertainty, factuality, role consistency, tool choice, permission-denial correctness, memory consent/deletion, interruption/cancelled writes, latency distribution, provider errors and cost. Unknown cost/latency must remain UNKNOWN rather than zero.
+4. Before changing a candidate or default, record baseline thresholds and paired comparison criteria, holdout separation, regression budget, sample counts, evaluator calibration and named review. No post-hoc threshold changes to manufacture PASS.
+5. Run offline tests and relevant GitHub workflows at the exact candidate head; preserve artifacts and links. A successful job is only evidence for the scenarios actually executed; skipped physical voice and post-deploy quality jobs remain NOT_RUN.
+6. Gate 1 closes only with reproducible manifests, reviewed thresholds, no tenant/authorization regressions and verified exact-head CI. Gate 5 real-audio candidate development may proceed independently but cannot be certified from this baseline.
+
+Gate 2/3/4 evidence may be collected in parallel after baseline freeze. Mem0 remains excluded from adoption while complete erasure is FAIL. Prospecting Play is owned by PR590, not this PR. Neither PR581 nor PR587 may merge/deploy based on this checklist alone.
