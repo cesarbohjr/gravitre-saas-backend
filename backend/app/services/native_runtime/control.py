@@ -67,7 +67,7 @@ def validate_task(engine: str, params: dict, *, max_seconds: int=300, max_steps:
     files=params.get('files') or {}
     if not isinstance(files,dict) or len(files)>20:raise ValueError('At most twenty supplied software files are supported')
     for path,value in files.items():
-        if not isinstance(path,str) or len(path)>160 or not re.fullmatch(r'[a-zA-Z0-9_-]+(?:/[a-zA-Z0-9_.-]+)*\.[a-zA-Z0-9]+',path) or any(p in {'..','.git','.env','node_modules'} or p.startswith('.') for p in path.split('/')):
+        if not isinstance(path,str) or len(path)>160 or not re.fullmatch(r'[a-zA-Z0-9_-][a-zA-Z0-9_.-]*(?:/[a-zA-Z0-9_-][a-zA-Z0-9_.-]*)*',path) or any(p in {'..','.git','.env','node_modules'} or p.startswith('.') for p in path.split('/')):
             raise ValueError('Only bounded relative source-file paths are accepted')
         if not isinstance(value,str) or len(value)>16000:raise ValueError('Oversized source file')
         if re.search(r'-----BEGIN .*PRIVATE KEY-----|\bsk-[A-Za-z0-9_-]{20,}|\bAKIA[A-Z0-9]{16}\b',value):raise ValueError('Remove credentials from supplied code')

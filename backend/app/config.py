@@ -1182,6 +1182,12 @@ class Settings(BaseSettings):
     # Voice 3.0 Phase 5 — spoken register and played-audio reconciliation are
     # production defaults; adaptive length remains opt-in because prior live
     # measurements showed prompt-only ceilings were not reliably obeyed.
+    # Expressive TTS enabled by default for development testing. Set
+    # VOICE_EXPRESSIVE_TTS_V1=false to opt out in a given environment.
+    voice_expressive_tts_v1: bool = Field(
+        default=True,
+        validation_alias=AliasChoices("VOICE_EXPRESSIVE_TTS_V1", "voice_expressive_tts_v1"),
+    )
     voice_spoken_prompt_v2: bool = Field(
         default=True,
         validation_alias=AliasChoices(
@@ -1234,6 +1240,15 @@ class Settings(BaseSettings):
     # restore it (speech.unduck) when the overlap turns out not to be an
     # interruption. A real interruption still cuts via speech.interrupted.
     # Off: nothing is sent and the reply plays at full level until resolved.
+    # Experimental unified turn policy: bounded semantic hold for incomplete
+    # interim speech while the assistant is speaking. Disabled until certified.
+    voice_conversational_turn_v2: bool = Field(
+        default=False,
+        validation_alias=AliasChoices(
+            "VOICE_CONVERSATIONAL_TURN_V2",
+            "voice_conversational_turn_v2",
+        ),
+    )
     voice_overlap_duck_v1: bool = Field(
         default=False,
         validation_alias=AliasChoices(

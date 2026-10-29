@@ -81,6 +81,9 @@ def _isolated(monkeypatch: pytest.MonkeyPatch):
     ("text", "intent"),
     [
         ("mm-hmm", InterruptIntent.BACKCHANNEL),
+        ("uh-huh", InterruptIntent.BACKCHANNEL),
+        ("yeah", InterruptIntent.BACKCHANNEL),
+        ("stop speaking, keep working", InterruptIntent.SPEECH_STOP),
         ("right", InterruptIntent.BACKCHANNEL),
         ("ok", InterruptIntent.BACKCHANNEL),
         ("explain that number", InterruptIntent.EXPLAIN),

@@ -114,3 +114,16 @@ def test_canonical_ledger_metadata_does_not_become_worker_task_input(setup,monke
     result=tools.invoke_native(ctx,'run_openhands',{'task':'draft','_gravitre_idempotency_key':'canonical-ledger-key'})
     assert result.success
     assert client.post.call_args.kwargs['json']['payload']=={'task':'draft'}
+
+
+def test_native_completion_mapper_and_declared_verification_never_promote_acceptance():
+    from app.services.connector_output_mappers.generic import summarize_write_action
+    from app.services.write_success_verification import resolve_success_verification
+    for operation in ('run_openhands','run_browser_use','approve_native_action','export_evaluation_metrics'):
+        action='assistant.'+operation
+        text=summarize_write_action(action=action,result_data={'job_id':AGENT,'state':'queued','task':'PRIVATE-TASK'})
+        assert 'queued' in text and 'PRIVATE-TASK' not in text
+        assert 'unverified' in text or 'only by' in text
+        assert resolve_success_verification(action).mode=='accepted_async'
+    text=summarize_write_action(action='assistant.run_openhands',result_data={'job_id':'<script>','state':'arbitrary-secret'})
+    assert '<script>' not in text and 'arbitrary-secret' not in text and 'unconfirmed' in text

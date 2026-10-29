@@ -61,10 +61,11 @@ async def test_stream_voice_turn_emits_audio_chunks_as_they_arrive(monkeypatch, 
         )
     ]
 
+    # Provider transport pieces are arbitrary MP3 byte ranges; each spoken
+    # phrase is emitted once, assembled, so the browser can decode it.
     audio_events = [e for e in events if e.get("type") == "voice.audio.delta"]
     assert [base64.b64decode(str(e["audio_base64"])) for e in audio_events] == [
-        b"chunk-1-",
-        b"chunk-2",
+        b"chunk-1-chunk-2",
     ]
     ttfa = next((e for e in events if e.get("type") == "voice.ttfa"), None)
     assert ttfa is not None and ttfa.get("metric") == "A"

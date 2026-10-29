@@ -30,5 +30,9 @@ for _name in ('run_openhands','run_browser_use','native_job_status','cancel_nati
     _id='assistant.'+_name
     NATIVE_ACTION_SPECS[_id]=ActionSpec(id=_id,name=_name.replace('_',' '),tier='v2',kind='write' if _name in _NATIVE_WRITES else 'read',
         description=_NATIVE_DEFINITIONS[_name][0],input_schema=_NATIVE_DEFINITIONS[_name][1],
+        workflow_schema=ActionWorkflowSchema(intent_label=_name,required_fields=tuple(WorkflowFieldSpec(label=key.replace('_',' '),arg_keys=(key,),inferrable=False) for key in _NATIVE_DEFINITIONS[_name][1]['required'])),
+        required_parameters=tuple(_NATIVE_DEFINITIONS[_name][1]['required']),
+        parameter_source_rules=tuple(ParameterSourceRule(parameter=key,sources=('USER_EXPLICIT','PREVIOUS_OBSERVATION'),required_by_api=True) for key in _NATIVE_DEFINITIONS[_name][1]['required']),
+        availability_requirements=('configured_private_native_worker','explicit_current_native_or_telemetry_grant'),
         scopes=(_scope,),destructive=_name in _NATIVE_WRITES,requires_approval=_name in _NATIVE_WRITES,
         risk_class=_NATIVE_WRITES.get(_name,'read'),execution_adapter=_id,spec_revision='native-workers-v1')

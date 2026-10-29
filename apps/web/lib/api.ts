@@ -2008,6 +2008,11 @@ export const connectorsApi = {
     postJson<{ status: string }>(apiUrl(`/api/connectors/${id}/sync`), { fullSync }),
   testConnection: (id: string) =>
     postJson<{ success: boolean; message?: string }>(apiUrl(`/api/connectors/${id}/test`), {}),
+  activity: (id: string, limit = 50) =>
+    fetcher<{
+      events: Array<{ id: string; action: string; actorId?: string | null; metadata: Record<string, unknown>; createdAt: string | null }>
+      total: number
+    }>(apiUrl(`/api/connectors/${id}/activity?limit=${limit}`)),
   managedCatalog: () => fetcher<{ configured: boolean; inventoryChecked?: boolean; connectors: Array<{ vendor: string; available: boolean; setupReason?: string | null; nativeFallback?: boolean; authMode?: string; inputFields?: import("./managed-oauth-dialog").OAuthInputField[]; actions: string[]; support: string }> }>(apiUrl("/api/connectors/managed-auth/catalog")),
   startManagedAuth: (vendor: string, data: { name: string; connectorId?: string; connectionConfig?: Record<string, string> }) =>
     postJson<{ connectorId: string; sessionToken: string; attemptId: string; integrationId: string; reconnect: boolean; connectionConfig: Record<string, string>; expiresAt?: string }>(

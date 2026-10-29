@@ -70,7 +70,8 @@ export type OverlapDuckState = {
 /**
  * Which reply is ducked. A duck for a reply older than the newest audio heard
  * is stale (that reply is over) and is ignored; an unduck for another reply
- * than the ducked one still restores, since full gain is the safe state.
+ * than the ducked one must not restore gain: delayed events from an older
+ * reply must not make a newer overlapping reply suddenly loud.
  */
 export function createOverlapDuckState(): OverlapDuckState {
   let ducked = false
@@ -80,13 +81,16 @@ export function createOverlapDuckState(): OverlapDuckState {
     duck(replyId) {
       const rid = typeof replyId === "number" ? replyId : null
       if (rid !== null && newestAudioReply !== null && rid < newestAudioReply) return false
+      if (ducked && rid !== null && duckedReply !== null && rid < duckedReply) return false
       duckedReply = rid
       if (ducked) return false
       ducked = true
       return true
     },
-    unduck() {
+    unduck(replyId) {
       if (!ducked) return false
+      const rid = typeof replyId === "number" ? replyId : null
+      if (rid !== null && duckedReply !== null && rid !== duckedReply) return false
       ducked = false
       duckedReply = null
       return true

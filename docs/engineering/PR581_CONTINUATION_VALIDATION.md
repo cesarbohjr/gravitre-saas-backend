@@ -1,3 +1,11 @@
+# Native runtime continuation and main reconciliation
+
+The worker/runtime and durable metrics source checkpoint supersedes the earlier missing-code label below. See [native runtime implementation and limits](PR581_NATIVE_RUNTIME_IMPLEMENTATION.md). Native canonical catalog contracts and browser target/DOM approval binding are implemented. The final affected catalog/Marketplace suite passed 1,403 tests; reconciled native/catalog/settings/connector activity/voice/Pipecat checks passed 2,107 tests. Full web Vitest passed 1,960 tests and TypeScript passed after reconciling main 147da7f0c6a17f1964aa828f9c1ac88dc9b99bc1. Counts overlap.
+
+The two earlier voice failures pass on this reconciled PR581 tree with upstream main's voice code and tests; PR587 itself is unchanged and a new combined compatibility run remains required. Full exact-head CI and real Docker/SDK sandbox certification are unverified. No merge, deployment or telemetry activation. The historical diagnostic results below are not final-head certification.
+
+---
+
 # PR581 continuation validation
 
 ## Implemented checkpoints

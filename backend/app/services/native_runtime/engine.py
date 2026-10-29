@@ -50,6 +50,28 @@ def software(config):
     return {'observations':[{'summary':'The software sandbox produced a draft artifact. Review the patch and independently verify any claimed tests before applying changes.'}],'patch':''.join(patch)[:120000]}
 
 
+def browser_evidence(state,requested):
+    # Bind approval to both visible pixels and the current indexed DOM. A
+    # visually identical page with a changed target must invalidate approval.
+    dom=state.dom_state.llm_representation()
+    if not state.screenshot or len(state.screenshot)>4194304 or len(dom)>2097152:
+        raise PermissionError('Bounded fresh browser evidence required')
+    targets=[]
+    for name,parameters in requested.items():
+        if not isinstance(parameters,dict):continue
+        index=parameters.get('index')
+        if name=='click' and (index is None or parameters.get('coordinate_x') is not None or parameters.get('coordinate_y') is not None):
+            raise PermissionError('Coordinate clicks require a separate visual review path')
+        if index is not None:
+            node=state.dom_state.selector_map.get(index)
+            if node is None:raise PermissionError('Browser target no longer exists')
+            attrs=node.attributes or {}
+            targets.append({'index':index,'tag':str(node.node_name)[:40],
+                'label':str(attrs.get('aria-label') or attrs.get('title') or node.get_all_children_text(max_depth=2))[:300]})
+    fingerprint=hashlib.sha256((state.url+'\n'+state.screenshot+'\n'+dom).encode()).hexdigest()
+    return {'page_fingerprint':fingerprint,'page_title':str(state.title)[:300],'targets':targets}
+
+
 async def browse(config):
     from browser_use import Agent,Browser,ChatOpenAI,Tools
     # Explicitly remove code execution, file access and upload surfaces. Every
@@ -63,9 +85,8 @@ async def browse(config):
             if set(requested)<={'done','extract','search_page','find_elements','scroll','find_text','screenshot','dropdown_options','wait'}:
                 return await super().act(action,browser_session,**kwargs)
             before=await browser_session.get_browser_state_summary(include_screenshot=True,cached=False)
-            if not before.screenshot:raise PermissionError('Fresh browser evidence required')
-            fingerprint=hashlib.sha256((before.url+'\n'+before.screenshot).encode()).hexdigest()
-            details={'actions':requested,'url':before.url,'page_fingerprint':fingerprint}
+            evidence=browser_evidence(before,requested)
+            details={'actions':requested,'url':before.url,**evidence}
             sequence=self.sequence
             deadline=time.monotonic()+config['max_seconds']
             while True:
@@ -74,7 +95,7 @@ async def browse(config):
                 if status['state']=='denied' or time.monotonic()>=deadline:raise PermissionError('Browser action not approved')
                 await asyncio.sleep(0.5)
             after=await browser_session.get_browser_state_summary(include_screenshot=True,cached=False)
-            if not after.screenshot or hashlib.sha256((after.url+'\n'+after.screenshot).encode()).hexdigest()!=fingerprint:
+            if browser_evidence(after,requested)!=evidence:
                 raise PermissionError('Browser context changed after approval; a new review is required')
             self.sequence+=1
             return await super().act(action,browser_session,**kwargs)

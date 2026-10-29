@@ -173,9 +173,10 @@ function AppShellFrame({ children, title, fillViewport, persistent = false }: Ap
     pathname === "/ai" ||
     (pathname.startsWith("/ai/") && !isAiHelpRoute(pathname)) ||
     (pathname.startsWith("/agents/") && pathname.endsWith("/chat"))
-  /** Full-height hub with its own scroll region; keeps the standard top bar. */
-  const isFullHeightHub = pathname === "/connectors"
-  const locksDocumentScroll = isImmersiveChat || isFullHeightHub
+  // The Connectors hub used to be listed here as a full-height hub with its own
+  // scroll region. The redesigned hub is a normal document page, so locking it
+  // left everything below the first screen unreachable.
+  const locksDocumentScroll = isImmersiveChat
   useEffect(() => {
     if (!locksDocumentScroll) return
     document.documentElement.classList.add("chat-immersive")
@@ -452,7 +453,7 @@ function AppShellFrame({ children, title, fillViewport, persistent = false }: Ap
   return (
     <MesonToolbarProvider>
     <div
-      className="flex h-screen overflow-hidden bg-[color:var(--g-frame)] text-foreground"
+      className="flex h-screen supports-[height:100dvh]:h-dvh overflow-hidden bg-[color:var(--g-frame)] text-foreground"
       data-page-family={pageFamily}
     >
         <Sidebar

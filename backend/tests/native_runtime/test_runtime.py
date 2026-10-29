@@ -105,3 +105,8 @@ def test_changed_route_fences_an_already_bound_worker(setup):
     runner.execute=execute
     assert runtime.tick('openhands')=='failed'
     assert runtime.journal.get(S,id)['error_code']=='native_execution_failed'
+
+
+def test_bounded_source_paths_accept_common_software_config_names():
+    result=validate_task('openhands',{'task':'review','files':{'vite.config.ts':'export default {}','Dockerfile':'FROM scratch'}})
+    assert set(result['files'])=={'vite.config.ts','Dockerfile'}

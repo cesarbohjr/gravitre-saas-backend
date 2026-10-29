@@ -271,9 +271,22 @@ def build_pipecat_voice_task(
     )
     from app.services.pipecat_voice.tts_factory import build_live_tts_service
 
+    # Opt-in per-agent expressiveness; defaults retain the established
+    # provider baseline. Only known tiers are accepted, not arbitrary values.
+    voice_profile = (agent or {}).get("voice_profile") or {}
+    if not isinstance(voice_profile, dict):
+        voice_profile = {}
+    delivery_tier = str(voice_profile.get("delivery_tier") or "").lower()
+    if delivery_tier not in {"light", "medium", "deep"}:
+        delivery_tier = ""
     tts = tts_service if tts_service is not None else build_live_tts_service(
         api_key=el_key, voice_id=voice_id, model=str(model),
         sample_rate=LIVE_VOICE_OUTPUT_SAMPLE_RATE,
+        delivery_tier=(
+            delivery_tier or "light"
+            if getattr(settings, "voice_expressive_tts_v1", False)
+            else None
+        ),
     )
     # Runtime updates must use the selected protocol's own settings type.
     llm._voice_tts_settings_type = getattr(tts, "Settings", ElevenLabsTTSService.Settings)

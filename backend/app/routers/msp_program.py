@@ -256,5 +256,12 @@ def sync_wholesale_billing(
     msp_org_id = _require_org(org_id)
     msp_program.require_msp_manager(client, msp_org_id, user["user_id"])
     result = msp_billing.sync_wholesale_quantities(client, settings, msp_org_id)
+    # Never mirror client entitlements after a failed or unconfigured Stripe sync.
+    # The caller may retry safely once the upstream billing state is healthy.
+    if result.get("status") in {"error", "not_configured"}:
+        raise HTTPException(
+            status_code=503,
+            detail={"code": "wholesale_sync_unavailable", "message": "Wholesale billing sync did not complete; client entitlements were not changed."},
+        )
     msp_billing.propagate_to_clients(client, msp_org_id)
     return result

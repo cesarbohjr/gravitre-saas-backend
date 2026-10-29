@@ -15,7 +15,7 @@ import { useAgentsSurface } from '@/components/agents/overlays/surface-context'
 export const AGENTS_SCRIM =
   'data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 motion-reduce:animate-none fixed inset-0 z-50 bg-[rgba(11,12,12,0.48)]'
 export const AGENTS_CARD =
-  'ag-dialog bg-white text-[#141513] dark:bg-[#171917] dark:text-[#ededE8] data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 fixed top-[50%] left-[50%] z-50 grid w-full max-w-[calc(100%-2rem)] translate-x-[-50%] translate-y-[-50%] gap-3.5 rounded-[14px] border-0 px-[22px] py-5 shadow-[0_24px_60px_rgba(0,0,0,0.25)] duration-200 motion-reduce:animate-none motion-reduce:transition-none sm:max-w-[440px]'
+  'ag-dialog bg-white text-[#141513] dark:bg-[#171917] dark:text-[#ededE8] data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 fixed top-[50%] left-[50%] z-50 grid w-full max-w-[calc(100%-2rem)] translate-x-[-50%] translate-y-[-50%] max-h-[calc(100dvh-2rem)] overflow-y-auto gap-3.5 rounded-[14px] border-0 px-[22px] py-5 shadow-[0_24px_60px_rgba(0,0,0,0.25)] duration-200 motion-reduce:animate-none motion-reduce:transition-none sm:max-w-[440px]'
 export const AGENTS_CLOSE =
   "absolute top-4 right-4 grid size-8 place-items-center rounded-lg bg-[#EFEFEA] text-[#33342F] transition-colors hover:bg-[#E4E4DF] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#19C37D] disabled:pointer-events-none dark:bg-[#262825] dark:text-[#d6d6d0] [&_svg]:pointer-events-none [&_svg]:size-3.5"
 export const AGENTS_TITLE = 'break-words text-[19px] leading-snug font-semibold'
@@ -80,7 +80,7 @@ function DialogContent({
       <DialogPrimitive.Content
         data-slot="dialog-content"
         className={cn(
-          agents ? AGENTS_CARD : 'bg-[color:var(--g-surface-1)] text-[color:var(--g-text-primary)] data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 fixed top-[50%] left-[50%] z-50 grid w-full max-w-[calc(100%-2rem)] translate-x-[-50%] translate-y-[-50%] gap-4 rounded-[var(--np-radius-lg)] border border-divide p-6 shadow-[var(--np-shadow)] duration-200 motion-reduce:animate-none motion-reduce:transition-none sm:max-w-lg',
+          agents ? AGENTS_CARD : 'bg-[color:var(--g-surface-1)] text-[color:var(--g-text-primary)] data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 fixed top-[50%] left-[50%] z-50 grid w-full max-w-[calc(100%-2rem)] translate-x-[-50%] translate-y-[-50%] max-h-[calc(100dvh-2rem)] overflow-y-auto gap-4 rounded-[var(--np-radius-lg)] border border-divide p-6 shadow-[var(--np-shadow)] duration-200 motion-reduce:animate-none motion-reduce:transition-none sm:max-w-lg',
           className,
         )}
         {...props}

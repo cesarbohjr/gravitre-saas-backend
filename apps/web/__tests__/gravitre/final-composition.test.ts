@@ -63,8 +63,8 @@ describe("3.0 Plus final composition", () => {
 
   it("connectors inspector column shows the operating summary when nothing is selected", () => {
     const src = read("app/(app)/connectors/page.tsx")
-    expect(src).toMatch(/\) : \(\s*<ConnectorOperatingSummary/)
-    expect(src).toMatch(/className="hidden xl:flex"/)
+    expect(src).toMatch(/\) : \(\s*<HubSideSummary/)
+    expect(src).toMatch(/className="cn-side"/)
   })
 
   it("onboarding does not auto-complete connect without an active connector", () => {

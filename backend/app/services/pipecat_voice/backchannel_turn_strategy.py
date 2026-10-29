@@ -59,6 +59,7 @@ from pipecat.turns.user_start.external_user_turn_start_strategy import (
     ExternalUserTurnStartStrategy,
 )
 
+from app.services.pipecat_voice.conversational_turn_controller_v2 import ConversationalTurnControllerV2, TurnAction
 from app.core.logging import get_logger
 from app.services.pipecat_voice.backchannel_classifier import (
     BackchannelClassification,
@@ -188,6 +189,7 @@ class BackchannelAwareUserTurnStartStrategy(ExternalUserTurnStartStrategy):
         self._gravitre_conversation_id = gravitre_conversation_id
         self._voice_session = voice_session
 
+        self._turn_controller_v2 = ConversationalTurnControllerV2() if getattr(gravitre_settings, 'voice_conversational_turn_v2', False) else None
         self._bot_speaking = False
         self._pending = False
         self._buffer_text = ""
@@ -416,14 +418,45 @@ class BackchannelAwareUserTurnStartStrategy(ExternalUserTurnStartStrategy):
             # of turn, so waiting for the final kept the bot talking over a
             # new request for the whole grace window.
             interim = f"{self._buffer_text} {frame.text}".strip()
-            interim_class = classify_user_utterance(interim)
+            # V2 is the single classification authority when enabled.
+            # With the flag off, retain the existing legacy decision path.
+            decision = (
+                self._turn_controller_v2.decide(
+                    interim,
+                    bot_speaking=self._bot_speaking,
+                    assistant_thinking=self._pending_thinking,
+                    final=False,
+                    expects_answer=bool(
+                        self._voice_session is not None
+                        and self._voice_session.expects_answer()
+                    ),
+                )
+                if self._turn_controller_v2 is not None and interim
+                else None
+            )
+            interim_class = (
+                decision.classification
+                if decision is not None
+                else classify_user_utterance(interim)
+            )
+            if decision is not None and decision.action is TurnAction.WAIT:
+                # Only new words extend the semantic continuation window.
+                # Repeated STT interim frames must not keep an unfinished
+                # utterance waiting forever or delay interruption handling.
+                if interim != self._interim_text:
+                    self._interim_at = time.monotonic()
+                self._interim_text = interim
+                return ProcessFrameResult.CONTINUE
             if self._is_bot_echo(interim):
                 return ProcessFrameResult.CONTINUE
             if self._intents_enabled() and interim:
                 if interim != self._interim_text:
                     self._interim_at = time.monotonic()
                 self._interim_text = interim
-                if classify_interrupt_intent(interim) is InterruptIntent.SPEECH_STOP:
+                if (
+                    (decision is not None and decision.action is TurnAction.SPEECH_ONLY_STOP)
+                    or (decision is None and classify_interrupt_intent(interim) is InterruptIntent.SPEECH_STOP)
+                ):
                     # "stop talking" is unambiguous: silence now, keep the work.
                     self._buffer_text = interim
                     await self._resolve(interim_class, resolved_by_timeout=False)
@@ -445,7 +478,7 @@ class BackchannelAwareUserTurnStartStrategy(ExternalUserTurnStartStrategy):
             # whatever transcript we have rather than waiting out the full
             # grace window - short backchannel utterances end fast, and this
             # keeps the common case snappy.
-            classification = classify_user_utterance(self._buffer_text)
+            classification = self._classify_pending_turn(self._buffer_text, final=True)
             await self._resolve(classification, resolved_by_timeout=False)
             return ProcessFrameResult.CONTINUE
 
@@ -754,6 +787,21 @@ class BackchannelAwareUserTurnStartStrategy(ExternalUserTurnStartStrategy):
             self._grace_timeout_handler(), f"{self}::backchannel_grace_window"
         )
 
+    def _classify_pending_turn(self, text: str, *, final: bool = False) -> BackchannelClassification:
+        """Use V2 consistently at turn-end and timeout; legacy stays flag-gated."""
+        if self._turn_controller_v2 is None or not text:
+            return classify_user_utterance(text)
+        return self._turn_controller_v2.decide(
+            text,
+            bot_speaking=self._bot_speaking,
+            assistant_thinking=self._pending_thinking,
+            final=final,
+            expects_answer=bool(
+                self._voice_session is not None
+                and self._voice_session.expects_answer()
+            ),
+        ).classification
+
     async def _grace_timeout_handler(self):
         try:
             await asyncio.sleep(self._grace_period_s)
@@ -767,6 +815,19 @@ class BackchannelAwareUserTurnStartStrategy(ExternalUserTurnStartStrategy):
                         and not self._buffer_text
                         and could_become_speech_stop(self._interim_text)
                     )
+                    or (
+                        self._turn_controller_v2 is not None
+                        and self._turn_controller_v2.hold_incomplete_interim(
+                            self._interim_text,
+                            elapsed_s=time.monotonic() - self._pending_started_at,
+                            max_wait_s=self._max_wordless_wait_s,
+                            since_last_word_s=(
+                                time.monotonic() - self._interim_at
+                                if self._interim_at > 0
+                                else None
+                            ),
+                        )
+                    )
                 )
                 and not self._bare_stop_settled()
                 and time.monotonic() - self._pending_started_at < self._max_wordless_wait_s
@@ -777,10 +838,16 @@ class BackchannelAwareUserTurnStartStrategy(ExternalUserTurnStartStrategy):
         if self._pending:
             # Timed out without a confident classification. Safe default:
             # treat as a real interruption, never suppress on ambiguity.
-            if self._intents_enabled() and not self._buffer_text and self._interim_text:
-                # Decide on the words heard so far: a bare "stop" stays a stop.
+            if (
+                (self._intents_enabled() or self._turn_controller_v2 is not None)
+                and not self._buffer_text
+                and self._interim_text
+            ):
+                # Preserve the partial transcript after a bounded semantic
+                # wait. Without this, V2's WAIT decision could expire into
+                # an empty interruption, losing the user's actual words.
                 self._buffer_text = self._interim_text
-            classification = classify_user_utterance(self._buffer_text)
+            classification = self._classify_pending_turn(self._buffer_text, final=False)
             await self._resolve(classification, resolved_by_timeout=True)
 
     def _bare_stop_settled(self) -> bool:
