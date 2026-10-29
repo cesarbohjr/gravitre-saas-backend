@@ -54,12 +54,7 @@ def software(config):
     return {'observations':[{'summary':'The software sandbox produced a draft artifact. Review the patch and independently verify any claimed tests before applying changes.'}],'patch':''.join(patch)[:120000]}
 
 
-def browser_evidence(state,requested):
-    # Bind approval to both visible pixels and the current indexed DOM. A
-    # visually identical page with a changed target must invalidate approval.
-    dom=state.dom_state.llm_representation()
-    if not state.screenshot or len(state.screenshot)>4194304 or len(dom)>2097152:
-        raise PermissionError('Bounded fresh browser evidence required')
+def _browser_targets(state,requested):
     targets=[]
     for name,parameters in requested.items():
         if not isinstance(parameters,dict):continue
@@ -72,6 +67,16 @@ def browser_evidence(state,requested):
             attrs=node.attributes or {}
             targets.append({'index':index,'tag':str(node.node_name)[:40],
                 'label':str(attrs.get('aria-label') or attrs.get('title') or node.get_all_children_text(max_depth=2))[:300]})
+    return targets
+
+
+def browser_evidence(state,requested):
+    # The same direct viewport capture path supplies both approval snapshots.
+    # A visually identical page with a changed indexed target still invalidates it.
+    dom=state.dom_state.llm_representation()
+    if not state.screenshot or len(state.screenshot)>4194304 or len(dom)>2097152:
+        raise PermissionError('Bounded fresh browser evidence required')
+    targets=_browser_targets(state,requested)
     fingerprint=hashlib.sha256((state.url+'\n'+state.screenshot+'\n'+dom).encode()).hexdigest()
     return {'page_fingerprint':fingerprint,'page_title':str(state.title)[:300],'targets':targets}
 
@@ -99,21 +104,22 @@ def browser_result(history):
 
 async def fresh_browser_evidence(browser_session,requested,phase):
     try:
-        state=await browser_session.get_browser_state_summary(include_screenshot=True,cached=False)
-        # The SDK intentionally omits screenshots on its initial empty page.
-        # Capture real pixels for navigation approval; never fabricate evidence
-        # or use this recovery on a populated, failed or ordinary web page.
-        if not state.screenshot and state.url=='about:blank' and set(requested)=={'navigate'} and not state.dom_state.selector_map and not getattr(state,'state_error',None):
-            dom=state.dom_state.llm_representation()
-            image=await browser_session.take_screenshot(full_page=False,format='png')
-            if not isinstance(image,bytes) or not image.startswith(b'\x89PNG\r\n\x1a\n') or len(image)>3145728:
-                raise PermissionError('Bounded actual blank-page screenshot required')
-            refreshed=await browser_session.get_browser_state_summary(include_screenshot=True,cached=False)
-            if refreshed.url!='about:blank' or refreshed.dom_state.selector_map or getattr(refreshed,'state_error',None) or refreshed.dom_state.llm_representation()!=dom:
-                raise PermissionError('Browser changed during blank-page evidence capture')
-            state=copy.copy(refreshed)
-            if not state.screenshot:
-                state.screenshot=base64.b64encode(image).decode('ascii')
+        # SDK screenshots are model previews and can vary in format/resolution.
+        # Approval always uses actual viewport PNG pixels from the same CDP API.
+        before=await browser_session.get_browser_state_summary(include_screenshot=False,cached=False)
+        if getattr(before,'state_error',None):raise PermissionError('Fresh browser DOM required')
+        before_url,before_title=before.url,before.title
+        dom=before.dom_state.llm_representation()
+        if len(dom)>2097152:raise PermissionError('Bounded fresh browser DOM required')
+        targets=_browser_targets(before,requested)
+        image=await browser_session.take_screenshot(full_page=False,format='png')
+        if not isinstance(image,bytes) or not image.startswith(b'\x89PNG\r\n\x1a\n') or len(image)>3145728:
+            raise PermissionError('Bounded actual viewport screenshot required')
+        after=await browser_session.get_browser_state_summary(include_screenshot=False,cached=False)
+        if getattr(after,'state_error',None) or (after.url,after.title)!=(before_url,before_title) or after.dom_state.llm_representation()!=dom or _browser_targets(after,requested)!=targets:
+            raise PermissionError('Browser changed during viewport evidence capture')
+        state=copy.copy(after)
+        state.screenshot=base64.b64encode(image).decode('ascii')
         return state,browser_evidence(state,requested)
     except Exception as error:
         frames=[{'file':Path(frame.filename).name,'line':frame.lineno,'function':frame.name} for frame in traceback.extract_tb(error.__traceback__) if '/browser_use/' in frame.filename or frame.filename.endswith('/engine.py')][-16:]
