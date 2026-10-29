@@ -49,3 +49,10 @@ def test_submit_index_and_completion_require_actual_latest_browser_state():
                 'http://www.selenium.dev/selenium/web/submitted-form.html',
                 'https://www.selenium.dev:8443/selenium/web/submitted-form.html'):
         assert not observe([{'role':'user','content':state(url=url,body='Received!')}])['submitted']
+
+
+def test_submit_index_uses_pinned_sdk_multiline_serialization():
+    content=state(body='Text input\n\t*[17]<button type=submit />\n\t\tSubmit\n[18]<input type=checkbox />')
+    result=observe([{'role':'user','content':content}])
+    assert page_ok(result) and result['submit_index']==17
+    assert observe([{'role':'user','content':state(body='Text input\nSubmit\n[18]<input type=checkbox />')}])['submit_index'] is None

@@ -85,8 +85,8 @@ def browser_fixture_observation(messages):
             'host_observed':bool(url) and url.scheme=='https' and url.hostname=='www.selenium.dev' and url.port in (None,443) and not url.username and not url.password and url.path=='/selenium/web/web-form.html',
             'body_observed':'Text input' in body,
             'submitted':bool(url) and '<browser_state_error>' not in observed and url.scheme=='https' and url.port in (None,443) and not url.username and not url.password and url.hostname=='www.selenium.dev' and url.path=='/selenium/web/submitted-form.html' and 'Received!' in body,
-            'submit_index':next((int(match.group(1)) for line in body.splitlines() if 'Submit' in line
-                                 for match in [re.search(r'(?:\[|^\s*)(\d+)\]?',line)] if match),None)}
+            'submit_index':next((int(match.group(1)) for match in re.finditer(
+                r'\[(\d+)\]<button\b[^\n]*(?:\btype=submit\b|>Submit</button>)',body)),None)}
 
 
 def run():

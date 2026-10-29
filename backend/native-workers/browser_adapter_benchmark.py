@@ -125,15 +125,24 @@ def action_for(state):
 
 
 async def reviewed_click(session, action, execute, *, approved, cancelled=False, mutate=None):
-    _, before = await stable_browser_evidence(session, action)
+    before_state, before = await stable_browser_evidence(session, action)
     if mutate is not None:
         mutate()
         await wait_state(session, 'Changed')
     if not approved or cancelled:
         raise PermissionError('Fixture authority denied')
-    _, after = await fresh_browser_evidence(session, action, 'after_approval')
+    after_state, after = await fresh_browser_evidence(session, action, 'after_approval')
     if before != after:
-        raise PermissionError('Fixture context changed after review')
+        error = PermissionError('Fixture context changed after review')
+        # Fixed boolean diagnostics only: no DOM, URL, pixels or exception text.
+        error.evidence_changes = {
+            'url': before_state.url != after_state.url,
+            'dom': before_state.dom_state.llm_representation() != after_state.dom_state.llm_representation(),
+            'title': before.get('page_title') != after.get('page_title'),
+            'targets': before.get('targets') != after.get('targets'),
+            'fingerprint': before.get('page_fingerprint') != after.get('page_fingerprint'),
+        }
+        raise error
     await execute(action)
 
 
@@ -288,6 +297,7 @@ async def run():
                 # No SDK exception body, page content or process log is exported.
                 rows.append({'adapter': adapter, 'trial': number, 'passed': False,
                              'failure_class': type(error).__name__,
+                             'evidence_changes': getattr(error, 'evidence_changes', {}),
                              'failure_stage': getattr(error, 'benchmark_stage', 'trial_timeout')})
     summary = {}
     for adapter in ('browser_use', 'playwright'):
