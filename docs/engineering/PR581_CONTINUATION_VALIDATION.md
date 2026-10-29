@@ -41,3 +41,9 @@ The bare-agent correction was also copied into the detached combined tree: its f
 ## Remaining gates
 
 Native worker/session and durable Langfuse delivery implementation remains open; see `PR581_NATIVE_ACTIVATION_READINESS.md`. Exact-final-head full CI has not yet been verified. Refreshing the draft PR's closed/open state was used to request fresh checks without merging or deploying; no success is inferred from that request. Keep PR581 open/draft and unmerged. Complete its engineering before proceeding to PR587 and the coordinated release.
+
+## Native runtime follow-through
+
+Actual pinned native SDK image/import and credential-free Browser Use wire contracts passed in [run 40800803798](https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/40800803798). Detached PR581/current-main + PR587 e170472 combined suite: **10,762 passed, three skipped**; both earlier voice failures pass. A temporary MCP fixture vendor was restored after its test to prevent order-dependent catalog pollution. Final destination-binding/native/catalog/adapter regressions pass **112 checks, one skipped**, including the final Langfuse destination-change deletion safeguard. These counts overlap. Actual gVisor/Kata/Chromium provider-task certification and final exact-head full Actions remain separate gates. Both PRs stay draft and unmerged.
+
+Reproducibility trees: broad combined run `8bc7a77167fb96b63b774696f96bd9ed9b3364a7`; final destination-binding delta checkout `9e45aca5cdbe32591b862bff4279051bd0ac72b0`. These are detached local test trees; no combined remote merge was created.

@@ -14,7 +14,7 @@ def db():
 
 @pytest.fixture
 def setup(journal):
-    transport=Mock();transport.acknowledged.return_value=False
+    transport=Mock();transport.destination_ref='d'*64;transport.acknowledged.return_value=False
     return LangfuseOutbox(journal,b'x'*32,lambda scope:transport,export_allowed=lambda scope:True),transport
 
 def ready(journal,id):
@@ -90,3 +90,19 @@ def test_transport_uses_stable_otlp_ids_safe_fields_and_strict_ack():
 def test_redirect_does_not_leak_credentials():
     t=LangfuseTransport('https://metrics.example','p','s',client=httpx.Client(transport=httpx.MockTransport(lambda _:httpx.Response(302,headers={'Location':'https://evil.example'}))))
     with pytest.raises(ValueError):t.observations({'trace_id':'1'*32})
+
+
+def test_destination_change_never_exports_or_falsely_confirms_deletion(setup,db,journal):
+    out,transport=setup
+    id=out.enqueue(db,'receipt',scope=S,permit=TelemetryPermit(S,True))
+    transport.destination_ref='e'*64
+    assert out.tick()=='destination_changed'
+    transport.submit.assert_not_called()
+    assert journal.get(S,id)['error_code']=='delivery_destination_changed'
+    transport.destination_ref='d'*64;transport.acknowledged.return_value=True
+    ready(journal,id);assert out.tick()=='delivered'
+    out.withdraw(S);ready(journal,id)
+    transport.destination_ref='e'*64;transport.delete.return_value=True
+    assert out.tick('langfuse_delete')=='destination_changed'
+    transport.delete.assert_not_called()
+    assert journal.get(S,id)['state']!='deleted'

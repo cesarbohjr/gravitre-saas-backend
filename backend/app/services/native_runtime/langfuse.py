@@ -37,6 +37,7 @@ class LangfuseTransport:
             raise ValueError('A configured HTTPS Langfuse origin is required')
         if not public_key or not secret_key:raise ValueError('Tenant Langfuse credentials required')
         self.origin=base_url.rstrip('/')
+        self.destination_ref=hashlib.sha256((self.origin+'\n'+public_key).encode()).hexdigest()
         self.auth=httpx.BasicAuth(public_key,secret_key)
         self.owns_client=client is None
         self.http=client or httpx.Client(timeout=10,follow_redirects=False,trust_env=False)
@@ -107,7 +108,13 @@ class LangfuseOutbox:
         parsed=datetime.fromisoformat(stamp.replace('Z','+00:00'))
         if parsed.tzinfo is None or parsed.timestamp()<=0:raise ValueError('Receipt date must be timezone-aware')
         start_ns=int(parsed.timestamp()*1000000000)
-        payload={'trace_id':digest[:32],'span_id':digest[32:48],'start_ns':start_ns,'metrics':metrics}
+        configured=self.transport_for(scope)
+        try:
+            destination=configured.destination_ref
+            if not isinstance(destination,str) or not re.fullmatch('[0-9a-f]{64}',destination):raise ValueError('Bound telemetry destination required')
+        finally:
+            if isinstance(configured,LangfuseTransport):configured.close()
+        payload={'trace_id':digest[:32],'span_id':digest[32:48],'start_ns':start_ns,'metrics':metrics,'destination_ref':destination}
         self.journal.set_consent(scope,True,ttl=ttl)
         return self.journal.enqueue(scope,'langfuse',digest,payload,ttl=ttl,actor=actor)
 
@@ -124,6 +131,9 @@ class LangfuseOutbox:
                 self.journal.set_consent(scope,False)
                 return 'consent_revoked'
             transport=self.transport_for(scope)
+            if transport.destination_ref!=payload.get('destination_ref'):
+                self.journal.update(job,'queued',error='delivery_destination_changed',retry_delay=min(300,2**job['attempts']))
+                return 'destination_changed'
             if kind=='langfuse_delete':
                 # An empty query cannot prove deletion after an unacknowledged
                 # in-flight POST. Wait for source evidence, or leave an explicit
