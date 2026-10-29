@@ -222,7 +222,8 @@ export function ExtensionPage() {
               </h3>
               <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
                 Catalog reads run against the tab you are on. Nothing is read
-                until you open the overlay.
+                until you open the overlay, and matches come straight from the
+                apps you already connected.
               </p>
               <BrowserFrame
                 className="mt-5"

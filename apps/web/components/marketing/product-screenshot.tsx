@@ -17,6 +17,9 @@ export interface ProductScreenshotProps {
   alt: string
   /** Optional provenance note under the frame. */
   caption?: string
+  /** Intrinsic size of the capture; defaults to the 2880x1800 web shots. */
+  width?: number
+  height?: number
   /** Set on the first shot above the fold only. */
   priority?: boolean
   /** Title pill in the macOS window outline every shot is framed in. */
@@ -30,6 +33,8 @@ export function ProductScreenshot({
   src,
   alt,
   caption,
+  width = 2880,
+  height = 1800,
   priority = false,
   chromeLabel,
   glowClassName,
@@ -39,8 +44,8 @@ export function ProductScreenshot({
     <Image
       src={src}
       alt={alt}
-      width={2880}
-      height={1800}
+      width={width}
+      height={height}
       priority={priority}
       sizes="(min-width: 1024px) 960px, 100vw"
       className="h-auto w-full"

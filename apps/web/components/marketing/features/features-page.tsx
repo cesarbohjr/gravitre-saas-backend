@@ -12,6 +12,7 @@ import {
 import { Container } from "@/components/marketing/nodus/container";
 import { DivideX } from "@/components/marketing/nodus/divide";
 import { HeroImage } from "@/components/marketing/nodus/hero-image";
+import { ProductScreenshot } from "@/components/marketing/product-screenshot";
 import {
   MarketingPageEndCta,
   MarketingPageHero,
@@ -37,7 +38,6 @@ import {
   GravitreTrace,
   StageTraceVisual,
 } from "@/components/marketing/system";
-import { VoiceIntentField } from "@/components/marketing/creative";
 import { MARKETING_COPY } from "@/lib/marketing-copy";
 
 /** Hero pill → the real app screen it names (captures from /e2e/shots). */
@@ -219,12 +219,17 @@ export function FeaturesPage() {
           align="center"
           badge="Voice path"
           title="Waveform to response — same brain as chat"
-          description="An illustrative Voice Intent Field — structure, intent, context, action, response. No listening orb. Not proven duplex parity."
+          description="Talk to Gravitre from the desktop app: tap the orb or use the push-to-talk shortcut from any app, and it answers out loud with a live transcript saved to the conversation."
           className="mb-6"
         />
-        <GravitreTrace>
-          <VoiceIntentField />
-        </GravitreTrace>
+        <ProductScreenshot
+          src="/product/desktop-voice.png"
+          alt="Gravitre desktop voice mode: the orb speaking an answer, with the live transcript beside it"
+          width={2360}
+          height={1280}
+          chromeLabel="Gravitre Desktop · Voice"
+          className="mx-auto max-w-4xl"
+        />
       </GravitreSection>
 
       <DivideX />

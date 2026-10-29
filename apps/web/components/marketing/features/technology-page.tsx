@@ -14,8 +14,8 @@ import { MarketingPageEndCta, MarketingPageHero } from "@/components/marketing/n
 import {
   AgentOrchestrationField,
   EntityConvergenceWorkbenchField,
-  GibeLearningField,
 } from "@/components/marketing/creative"
+import { ProductScreenshot } from "@/components/marketing/product-screenshot"
 import { GravitreReveal, GravitreTrace } from "@/components/marketing/system/motion"
 import { GravitreSection, GravitreSectionHeader } from "@/components/marketing/system/section"
 
@@ -83,14 +83,17 @@ export function TechnologyPage() {
       <GravitreSection>
         <GravitreSectionHeader
           align="center"
-          badge="GIBE path"
+          badge="Intelligence layer"
           title="Observe, recommend, then human approve"
-          description="An illustrative GIBE learning loop — action, observe, evaluate, advisory recommend, approve, retain. Not auto policy rewrite."
+          description="GIBE watches real work across your stack, explains what it found step by step, and traces every number back to its source. Recommendations stay advisory until a person approves them."
           className="mb-6"
         />
-        <GravitreTrace>
-          <GibeLearningField />
-        </GravitreTrace>
+        <ProductScreenshot
+          src="/product/app-intelligence-reports.png"
+          alt="Gravitre Intelligence reports: measured outcomes and a step-by-step evidence trail behind a prediction"
+          chromeLabel="Intelligence"
+          className="mx-auto max-w-5xl"
+        />
         <p className="mt-4 text-center text-[11px] text-[color:var(--g-text-muted)]">
           <Link className="underline underline-offset-2" href="/docs/guides/how-to/org-learning">
             How org learning works
