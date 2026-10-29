@@ -82,9 +82,12 @@ def run():
                     latest_user=next((m for m in reversed(body.get('messages',[])) if m.get('role')=='user'),{})
                     observed=json.dumps(latest_user.get('content',''))
                     state['browser_page_observed']='Example Domain' in observed and 'example.com' in observed
-                    if not state['browser_page_observed']:
-                        self.send_response(422);self.send_header('Content-Length','0');self.end_headers();return
-                output={'evaluation_previous_goal':'Fixture browser is running','memory':'Only the approved public fixture page may be read','next_goal':'Finish the fixture','action':([{'navigate':{'url':'https://example.com/'}}] if number==1 else [{'done':{'text':'Fixture browser session completed','success':True}}])}
+                    state['browser_context_checks'].append({'title_observed':'Example Domain' in observed,'host_observed':'example.com' in observed})
+                # Page rendering can follow successful navigation. Spend only
+                # the existing bounded step budget waiting for actual readback;
+                # never emit done based on the scripted navigation request.
+                action=([{'navigate':{'url':'https://example.com/'}}] if number==1 else [{'done':{'text':'Fixture browser session completed','success':True}}] if state['browser_page_observed'] else [{'wait':{'seconds':1}}])
+                output={'evaluation_previous_goal':'Fixture browser is running','memory':'Only the approved public fixture page may be read','next_goal':'Observe the fixture page','action':action}
                 message['content']=json.dumps(output)
             elif kind=='openhands':
                 tools=[x['function'] for x in body.get('tools',[]) if x.get('type')=='function']
@@ -162,14 +165,14 @@ def run():
             for key in ['direct_egress','metadata','host_bridge','readonly_root','no_docker_socket','no_provider_key']:assert f'"{key}": true' in patch,key
             clean(software['id']);evidence['openhands_real_sdk_patch_and_isolation']='PASS'
             print(json.dumps({'completed_runtime_checks':evidence},sort_keys=True))
-            state.update(kind='browser_use',calls=0,browser_page_observed=False);approved=[]
+            state.update(kind='browser_use',calls=0,browser_page_observed=False,browser_context_checks=[]);approved=[]
             def action_gate(sequence,action):
                 assert action['actions']=={'navigate':{'url':'https://example.com/'}}
                 assert len(action['page_fingerprint'])==64
                 approved.append(sequence);return {'state':'approved'}
             browser=job('browser_use')
             try:result=runner.execute(browser,guard=lambda:route,action_gate=action_gate)
-            finally:print(json.dumps({'fixture_browser_model_requests':state['calls'],'fixture_browser_approvals':len(approved),'fixture_browser_page_observed':state['browser_page_observed']}))
+            finally:print(json.dumps({'fixture_browser_model_requests':state['calls'],'fixture_browser_approvals':len(approved),'fixture_browser_page_observed':state['browser_page_observed'],'fixture_browser_context_checks':state['browser_context_checks']}))
             assert approved and state['browser_page_observed'] and result.get('observations')
             clean(browser['id']);evidence['browser_real_sdk_chromium_exact_approval']='PASS'
             print(json.dumps({'completed_runtime_checks':evidence},sort_keys=True))
