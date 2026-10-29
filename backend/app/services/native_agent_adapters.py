@@ -10,11 +10,12 @@ import hashlib
 import hmac
 import json
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, TYPE_CHECKING
 from urllib.parse import urlsplit, urlunsplit
 
 from app.core.safe_dict import safe_normalize_stored_dict
-from app.services.execution_plan_service import ExecutionPlan, ExecutionStep
+if TYPE_CHECKING:
+    from app.services.execution_plan_service import ExecutionPlan
 
 
 @dataclass(frozen=True)
@@ -45,6 +46,8 @@ def _evidence_text(value: Any) -> str:
 
 
 def _review_plan(scope: AdapterScope, source: str, evidence: list[dict[str, Any]]) -> ExecutionPlan:
+    # Telemetry intake and journal startup do not need the planner/application.
+    from app.services.execution_plan_service import ExecutionPlan, ExecutionStep
     return ExecutionPlan(
         plan_id=f"{scope.run_id}:{source}:review", source=source,
         summary="Review external observations before planning any action",

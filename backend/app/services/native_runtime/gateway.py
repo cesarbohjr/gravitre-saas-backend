@@ -55,6 +55,9 @@ class Handler(BaseHTTPRequestHandler):
             stage='authority';control('authorize',{})
             stage='content'
             body.pop('stream',None)
+            # OpenHands supplies conversation cache affinity automatically.
+            # It is not execution input and must not reach the model provider.
+            body.pop('prompt_cache_key',None);body.pop('prompt_cache_retention',None)
             # Byte count is a conservative upper bound on text token count;
             # images/audio and provider-specific URL fetches are not accepted.
             for message in body.get('messages',[]):
@@ -90,7 +93,7 @@ class Handler(BaseHTTPRequestHandler):
         except Exception as error:
             # Only fixed stages/classes/known parameter names enter the private
             # diagnostic pipe. Never include request values or exception text.
-            print(json.dumps({'gateway_failure_stage':stage,'gateway_failure_class':type(error).__name__,'known_parameter_flags':[key for key in ('n','store','stream_options','service_tier','metadata','user') if isinstance(body,dict) and key in body]}),file=sys.stderr,flush=True)
+            print(json.dumps({'gateway_failure_stage':stage,'gateway_failure_class':type(error).__name__,'known_parameter_flags':[key for key in ('n','store','stream_options','service_tier','metadata','user','top_k','prompt_cache_key','prompt_cache_retention') if isinstance(body,dict) and key in body]}),file=sys.stderr,flush=True)
             self.reply(403,{'error':'native_request_blocked'})
     def do_CONNECT(self):
         remote=None
