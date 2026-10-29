@@ -185,9 +185,14 @@ def _agent(
 
     from app.capabilities.paid_media import role_for_slug
 
+    from app.capabilities.operations_roles import role_for_slug as operations_role_for_slug, reference as operations_reference
+
+    operations_role = operations_role_for_slug(slug)
     paid_role = role_for_slug(slug)
     spec = enrichment_for_slug(slug)
     agent_config = {"marketplaceSlug": slug}
+    if operations_role is not None:
+        agent_config["operations_guidance"] = operations_reference(operations_role)
     if spec is not None:
         agent_config["agency_enrichment"] = spec.reference()
     if paid_role is not None:
@@ -323,6 +328,9 @@ def _ai_agents() -> list[CatalogAsset]:
     from app.capabilities.paid_media import ROLES
 
     specs.extend((r.target_slug, r.name, "Marketing", "MARKETING", [], []) for r in ROLES if r.new_agent)
+    from app.capabilities.operations_roles import ROLES as OPERATIONS_ROLES
+
+    specs.extend((r["target_slug"], r["name"], "Operations", "DEFAULT", [], []) for r in OPERATIONS_ROLES)
     assets: list[CatalogAsset] = []
     for slug, name, department, persona, systems, capabilities in specs:
         assets.append(
@@ -517,6 +525,14 @@ def _workflows() -> list[CatalogAsset]:
             build_msp_enrichment_workflow_steps(),
         ),
     ]
+    from app.capabilities.operations_roles import ROLES as OPERATIONS_ROLES
+
+    for role in OPERATIONS_ROLES:
+        definitions.append((
+            role["target_slug"] + "-review", role["name"] + " Review", "Operations", [],
+            [_agent_step("review", role["name"] + " evidence review", role["target_slug"],
+                         "Using the supplied project or meeting evidence, " + " ".join(role["guidance"]) + " Return a draft deliverable with sources, uncertainties and approval needs; do not publish or mutate external systems.")],
+        ))
     ticket_id_install_var = {
         "key": "TICKET_ID",
         "label": "Zendesk ticket ID",

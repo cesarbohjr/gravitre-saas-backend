@@ -99,11 +99,18 @@ def map_marketplace_targets(path: Path = INVENTORY) -> list[dict]:
     from app.capabilities.paid_media import ROLES
 
     approved = {spec.source_slug: spec for spec in (*APPROVED_ENRICHMENTS, *ROLES)}
+    from app.capabilities.operations_roles import ROLES as OPERATIONS_ROLES
+    from types import SimpleNamespace
+
+    operations = {r["slug"]: r for r in OPERATIONS_ROLES}
+    approved.update({slug: SimpleNamespace(new_agent=True) for slug in operations})
     result = []
     for agent in load_agency_inventory(path)["agents"]:
         department, pack, manifest = DIVISION_TARGETS[agent["division"]]
         source_key = Path(agent["source_path"]).stem
         existing = FUNCTION_TARGETS.get(source_key)
+        if agent["slug"] in operations:
+            existing = operations[agent["slug"]]["target_slug"]
         excluded = agent["proposed_disposition"] == "exclude"
         if excluded:
             pack, manifest, existing = None, None, None
@@ -183,5 +190,7 @@ def approved_marketplace_candidates() -> list[CatalogAsset]:
 
     from app.capabilities.paid_media import ROLES
 
-    approved = {spec.target_slug for spec in (*APPROVED_ENRICHMENTS, *ROLES)}
+    from app.capabilities.operations_roles import ROLES as OPERATIONS_ROLES
+
+    approved = {spec.target_slug for spec in (*APPROVED_ENRICHMENTS, *ROLES)} | {r["target_slug"] for r in OPERATIONS_ROLES}
     return [asset for asset in list_catalog_assets() if asset.slug in approved]

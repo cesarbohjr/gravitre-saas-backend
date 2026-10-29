@@ -76,7 +76,12 @@ def recommendations(agent: dict[str, Any]) -> dict[str, Any]:
     config = safe_normalize_stored_dict(definition.get("config"))
     slug = str(config.get("marketplaceSlug") or agent.get("slug") or "")
     systems = definition.get("systems")
+    from app.capabilities.operations_roles import role_for_slug as operations_role_for_slug
+
+    operations_role = operations_role_for_slug(slug)
     types = list(PRIORITIES.get(slug, ()))
+    if operations_role:
+        types.extend(operations_role["connectors"])
     if isinstance(systems, list):
         types.extend(str(s).strip().lower() for s in systems if isinstance(s, str))
     for ref in agent.get("required_connectors", []) if isinstance(agent.get("required_connectors"), list) else []:
