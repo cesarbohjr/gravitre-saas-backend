@@ -9,6 +9,7 @@ from dataclasses import asdict,dataclass
 from http.server import BaseHTTPRequestHandler
 import hmac
 import io
+import ipaddress
 import json
 import re
 import secrets
@@ -96,8 +97,23 @@ class DockerRunner:
             gateway_process=self.process_factory(['docker','start','-a','-i',gateway],stdin=subprocess.PIPE,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
             gateway_process.stdin.write(json.dumps(config).encode());gateway_process.stdin.close()
             self.docker('network','connect','--alias','gateway',network,gateway)
+            # Bind the internal gateway through /etc/hosts. A sandbox's isolated
+            # loopback DNS must not depend on Docker's host-side DNS listener.
+            gateway_address=self.docker('inspect','--format','{{(index .NetworkSettings.Networks "'+network+'").IPAddress}}',gateway).decode().strip()
+            address=ipaddress.ip_address(gateway_address)
+            if address.version!=4 or address.is_loopback or address.is_unspecified or address.is_multicast:
+                raise ValueError('Invalid private gateway interface')
+            ready_by=time.monotonic()+30
+            while True:
+                guard()
+                try:
+                    self.docker('exec',gateway,'python','-c','import socket; s=socket.create_connection(("127.0.0.1",8080),timeout=1); s.close()')
+                    break
+                except subprocess.CalledProcessError:
+                    if gateway_process.poll() is not None or time.monotonic()>=ready_by:raise RuntimeError('Native gateway did not become ready') from None
+                    time.sleep(0.25)
             image=self.images.openhands if job['kind']=='openhands' else self.images.browser_use
-            self.docker('run','-d','-i','--name',engine,'--network',network,'--dns','127.0.0.1',*common,
+            self.docker('run','-d','-i','--name',engine,'--network',network,'--dns','127.0.0.1','--add-host','gateway:'+gateway_address,*common,
                 '--tmpfs','/workspace:rw,nosuid,size=128m,uid=10001,gid=10001',
                 '--tmpfs','/out:rw,noexec,nosuid,size=4m,uid=10001,gid=10001',
                 '-e','HOME=/workspace','-e','HTTP_PROXY=http://gateway:8080','-e','HTTPS_PROXY=http://gateway:8080','-e','NO_PROXY=gateway,localhost,127.0.0.1',

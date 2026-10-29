@@ -126,8 +126,10 @@ def run():
                 for line in stream.read(262144).decode(errors='replace').splitlines():
                     match=re.match(r'\s*File "([^"]+)", line (\d+), in ([A-Za-z0-9_<>]+)',line)
                     if match:print(json.dumps({'sdk_frame':Path(match[1]).name,'line':int(match[2]),'function':match[3]}))
-                    match=re.match(r'^([A-Za-z_][A-Za-z0-9_]*(?:Error|Exception)):',line)
+                    match=re.match(r'^(?:[A-Za-z_][A-Za-z0-9_]*\.)*([A-Za-z_][A-Za-z0-9_]*(?:Error|Exception)):',line)
                     if match:print(json.dumps({'sdk_exception':match[1]}))
+                    for phrase,code in [('name or service not known','dns_unavailable'),('temporary failure in name resolution','dns_unavailable'),('connection refused','connection_refused'),('network is unreachable','network_unreachable'),('timed out','connection_timeout')]:
+                        if phrase in line.lower():print(json.dumps({'sdk_transport':code}))
                 stream.close()
         def job(kind):
             return {'id':str(uuid4()),'kind':kind,'payload':{'task':{'task':'Execute only this fixed certification fixture. Make no external changes.','files':{'review.py':''} if kind=='openhands' else {},'allowed_hosts':['example.com'] if kind=='browser_use' else [],'max_seconds':180,'max_steps':5}}}

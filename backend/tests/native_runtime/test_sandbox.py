@@ -34,6 +34,7 @@ def test_exact_sandbox_policy_secret_isolation_and_cleanup(monkeypatch):
         commands.append(args)
         op=args[1]
         if op=='info':return SimpleNamespace(stdout=b'{"runsc":{}}')
+        if op=='inspect':return SimpleNamespace(stdout=b'172.28.0.2')
         if op=='ps':return SimpleNamespace(stdout='\n'.join(containers).encode())
         if op=='rm':containers.clear()
         if op in ('run','create'):containers.append(args[args.index('--name')+1])
@@ -57,6 +58,7 @@ def test_exact_sandbox_policy_secret_isolation_and_cleanup(monkeypatch):
     assert 'com.docker.network.bridge.gateway_mode_ipv4=isolated' in flat
     assert '--read-only' in flat and '--cap-drop=ALL' in flat and 'no-new-privileges' in flat
     assert '--dns' in flat and '127.0.0.1' in flat
+    assert 'gateway:172.28.0.2' in flat
     assert '--signal=KILL' in flat and '--pids-limit' in flat and '--memory' in flat
     engine=next(c for c in commands if c[1]=='run')
     assert engine[engine.index('--network')+1]=='native-'+jobid
@@ -102,3 +104,22 @@ def test_gateway_fixed_route_budget_no_redirect_and_no_exception_leak(monkeypatc
     invalid=send({'messages':[],'base_url':'https://evil.example'})
     assert invalid.send_response.call_args.args[0]==403
     assert b'PRIVATE-KEY' not in invalid.wfile.getvalue()
+
+
+def test_gateway_must_be_ready_before_an_engine_can_start(monkeypatch):
+    import subprocess
+    monkeypatch.setattr('socket.getfqdn',lambda *_:'localhost')
+    runner=DockerRunner(IMAGES,process_factory=lambda *_args,**_kwargs:Process(True))
+    calls=[]
+    def command(*args,**kwargs):
+        calls.append(args)
+        if args[0]=='info':return b'{"runsc":{}}'
+        if args[0]=='inspect':return b'172.28.0.2'
+        if args[0]=='exec':raise subprocess.CalledProcessError(1,['docker','exec'])
+        return b''
+    runner.docker=command
+    route=ModelRoute('openai','configured','https://model.example/v1','PRIVATE',1,1,1)
+    job={'id':str(uuid4()),'kind':'openhands','payload':{'task':{'task':'fixture','files':{},'allowed_hosts':[],'max_seconds':5,'max_steps':2}}}
+    with pytest.raises(RuntimeError,match='gateway did not become ready'):
+        runner.execute(job,guard=lambda:route,action_gate=Mock())
+    assert not any(args[0]=='run' for args in calls)
