@@ -25,11 +25,11 @@ import urllib.request
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 try:
-    from engine import configure_browser_sdk, fresh_browser_evidence, stable_browser_evidence
+    from engine import configure_browser_sdk, fresh_browser_evidence, stable_browser_evidence,ensure_rejecting_dialog_handlers,close_dialog_handlers
 except ModuleNotFoundError as error:
     if error.name != 'engine':
         raise
-    from app.services.native_runtime.engine import configure_browser_sdk, fresh_browser_evidence, stable_browser_evidence
+    from app.services.native_runtime.engine import configure_browser_sdk, fresh_browser_evidence, stable_browser_evidence,ensure_rejecting_dialog_handlers,close_dialog_handlers
 
 TRIALS = 5
 ACTION_TIMEOUT = 10
@@ -171,6 +171,7 @@ async def trial(adapter, number):
                     viewport={'width': 1280, 'height': 720},
                     highlight_elements=False, dom_highlight_elements=False)
                 await session.start()
+                await ensure_rejecting_dialog_handlers(session)
                 tools = Tools(exclude_actions=['evaluate', 'write_file', 'replace_file', 'read_file',
                     'upload_file', 'save_as_pdf', 'search'])
                 model = tools.registry.create_action_model()
@@ -225,6 +226,7 @@ async def trial(adapter, number):
         finally:
             try:
                 if adapter == 'browser_use' and session is not None:
+                    await close_dialog_handlers(session)
                     await asyncio.wait_for(session.kill(), timeout=10)
                 if connection is not None:
                     await connection.close()

@@ -6,6 +6,33 @@ on:
 permissions:
   contents: read
 jobs:
+  deepeval-tool-experiment:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install isolated exact-tool evaluator experiment
+        run: |
+          python -m venv "$RUNNER_TEMP/deepeval-venv"
+          "$RUNNER_TEMP/deepeval-venv/bin/pip" install --require-hashes -r scripts/framework_benchmarks/requirements-deepeval.lock
+          "$RUNNER_TEMP/deepeval-venv/bin/pip" check
+      - name: Compare real SDK metric with a strict trace reference
+        run: timeout 90s "$RUNNER_TEMP/deepeval-venv/bin/python" scripts/framework_benchmarks/deepeval_tools.py --output "$RUNNER_TEMP/deepeval-tool-report.json"
+      - name: Audit every isolated candidate dependency
+        run: |
+          python -m pip install pip-audit
+          python -m pip_audit --no-deps --disable-pip -r scripts/framework_benchmarks/requirements-deepeval.lock --format json --output "$RUNNER_TEMP/deepeval-audit.json"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: deepeval-tool-experiment
+          path: |
+            ${{ runner.temp }}/deepeval-tool-report.json
+            ${{ runner.temp }}/deepeval-audit.json
+          if-no-files-found: error
   dspy:
     runs-on: ubuntu-latest
     timeout-minutes: 15

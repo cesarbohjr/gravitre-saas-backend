@@ -11,6 +11,46 @@ The user's current release instruction authorizes the six-stage sequence below. 
 | 5. Final combined validation | Frozen combined source, full regression and exact-head CI, no unresolved compatibility failures | Focused combined regression passed; broad local run: 16,022 passed / 281 skipped / 9 Redis setup errors under the all-socket offline guard; real Redis must pass in CI |
 | 6. Controlled release | Merge through protections, deploy one combined main build, verify both deployed SHAs and production acceptance | Not started; gated on stages 1–5 |
 
+## Current executed framework checkpoint (2026-10-29)
+
+This checkpoint supersedes historical pending/failure descriptions above only
+for the exact sources and measured scopes named here. Every subsequent source
+change still requires its own full CI and real-service certification.
+
+- PR581 `3b4bb68c89c47d840680612ae902463232ed81c8` completed full CI and
+  native/Langfuse certification. That is historical evidence after later edits.
+- The first paired adapter experiment on PR587 head
+  `a1b0b76aed29854ca6d3e380d3f8dfa8c922d9a1` passed original runtime
+  certification and **10/10** real gVisor trials. See
+  `../engineering/PR581_BROWSER_ADAPTER_COMPARISON.md` and its saved report for
+  merge SHA, image/artifact hashes, measured timings and limitations. Repeated
+  SDK-configuration wrapping was a harness confound and is corrected in this
+  increment; rerun before selection.
+- A parallel PR581 run failed intermittently before any browser model request
+  at the dialog handler's CDP `Page.enable`. The follow-up defers activation out
+  of the bootstrap event and requires readiness before model execution, review
+  and completion. The **48** affected local native tests pass. Exact-head real
+  certification after this candidate correction remains required.
+- DeepEval's actual SDK detected **12/12** synthetic exact-tool trace labels,
+  matching a strict trace reference, with zero inference/network calls. Its
+  complete isolated 66-package audit found no known vulnerabilities at this
+  checkpoint. This is **not** the existing fixed conversational judge or an
+  independently human-reviewed quality comparison; overall selection is open.
+- Voice aggregate validation has **19** passing local contracts and now covers
+  native duplex, Pipecat and LiveKit descriptively. Favorable raw aggregate rows
+  cannot select an engine. Functional candidate adapters and equivalent real
+  audio interruption/turn-taking/reconnect/authorization scenarios remain open;
+  no measured framework voice result is claimed.
+- Mem0's retained SQLite history remains a complete-erasure **FAIL**. A supported
+  scoped remedy and matched native/Mem0 semantic extraction/retrieval/correction
+  quality and efficiency comparison remain open. Native memory stays selected.
+
+Final combined certification is **BLOCKED** by unfinished comparative and audio
+evidence, plus fresh exact-head CI after these changes. No merge, deployment,
+production migration, tenant action or native activation occurs at this checkpoint.
+Physical voice and independent review require an actual controlled device/session
+and reviewers; SDK/fixture success cannot substitute for them.
+
 ## Mandatory PR587 pre-merge framework selection gates (approved 2026-10-29)
 
 These gates are required **before PR587 merges**, not optional post-release research. Keep PR587 draft until the comparative evidence, selected implementation, and exact-head CI are complete. The existing PR581 dependencies and authorization/security boundaries remain in force.
