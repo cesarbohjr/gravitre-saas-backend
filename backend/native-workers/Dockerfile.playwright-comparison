@@ -1,8 +1,10 @@
 FROM python:3.12.12-slim
 ENV ANONYMIZED_TELEMETRY=false DO_NOT_TRACK=1 OTEL_SDK_DISABLED=true
 RUN apt-get update && apt-get install -y --no-install-recommends chromium ca-certificates fonts-liberation && rm -rf /var/lib/apt/lists/* && useradd --uid 10001 --create-home runner
+COPY native-workers/requirements-browser.txt /runner/browser-requirements.txt
+RUN pip install --no-cache-dir -r /runner/browser-requirements.txt
 COPY native-workers/requirements-browser-benchmark.lock /runner/requirements.txt
-RUN pip install --no-cache-dir --require-hashes -r /runner/requirements.txt
+RUN pip install --no-cache-dir --require-hashes -r /runner/requirements.txt && pip check
 COPY app/services/native_runtime/engine.py /runner/engine.py
 COPY native-workers/browser_adapter_benchmark.py /runner/browser_adapter_benchmark.py
 COPY native-workers/playwright_candidate.py /runner/playwright_candidate.py
