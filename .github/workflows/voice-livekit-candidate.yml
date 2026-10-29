@@ -39,7 +39,7 @@ jobs:
         with:
           python-version: '3.12'
       - name: Install isolated RTC dependencies
-        run: python -m pip install 'livekit==1.2.0' 'livekit-api==1.2.2' 'starlette>=0.40,<1'
+        run: python -m pip install 'livekit==1.2.0' 'livekit-api==1.2.2' 'starlette>=0.40,<1' 'imageio-ffmpeg==0.6.0'
       - name: Fetch hash-verified server and public recorded-speech fixture
         run: |
           mkdir -p /tmp/gravitre-rtc artifacts/livekit-connected
@@ -48,8 +48,13 @@ jobs:
           tar -xzf /tmp/gravitre-rtc/server.tar.gz -C /tmp/gravitre-rtc
           curl -fsSL --retry 2 https://raw.githubusercontent.com/openai/whisper/main/tests/jfk.flac -o /tmp/gravitre-rtc/speech.flac
           echo '63a4b1e4c1dc655ac70961ffbf518acd249df237e5a0152faae9a4a836949715  /tmp/gravitre-rtc/speech.flac' | sha256sum -c -
-          ffmpeg -v error -y -i /tmp/gravitre-rtc/speech.flac -ar 16000 -ac 1 -c:a pcm_s16le /tmp/gravitre-rtc/speech16.wav
-          ffmpeg -v error -y -i /tmp/gravitre-rtc/speech.flac -ar 24000 -ac 1 -c:a pcm_s16le /tmp/gravitre-rtc/speech24.wav
+          python - <<'PY'
+          import imageio_ffmpeg, subprocess
+          for rate, filename in ((16000, 'speech16.wav'), (24000, 'speech24.wav')):
+              subprocess.run([imageio_ffmpeg.get_ffmpeg_exe(), '-v', 'error', '-y',
+                  '-i', '/tmp/gravitre-rtc/speech.flac', '-ar', str(rate), '-ac', '1',
+                  '-c:a', 'pcm_s16le', '/tmp/gravitre-rtc/' + filename], check=True)
+          PY
       - name: Run connected-room recorded-speech transport test (no inference)
         run: |
           /tmp/gravitre-rtc/livekit-server --dev --bind 127.0.0.1 --node-ip 127.0.0.1 --rtc.enable_loopback_candidate > artifacts/livekit-connected/server.log 2>&1 &
