@@ -122,7 +122,7 @@ def run():
                     try:
                         state=json.loads(docker('inspect','--format','{{json .State}}',container))
                         networks=json.loads(docker('inspect','--format','{{json .NetworkSettings.Networks}}',container))
-                        print(json.dumps({'fixture_container':'gateway' if 'gateway' in container else 'engine','state':state.get('Status'),'exit_code':state.get('ExitCode'),'network_addresses':[n.get('IPAddress') for n in networks.values()]}))
+                        print(json.dumps({'fixture_container':'gateway' if 'gateway' in container else 'engine','state':state.get('Status'),'exit_code':state.get('ExitCode'),'runtime_error':str(state.get('Error',''))[:1600],'network_addresses':[n.get('IPAddress') for n in networks.values()]}))
                     except subprocess.CalledProcessError:pass
                 return super().cleanup(id)
         runner=ObservedRunner(images,process_factory=process_factory)
