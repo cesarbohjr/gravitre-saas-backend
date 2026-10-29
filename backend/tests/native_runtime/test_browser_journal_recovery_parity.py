@@ -1,5 +1,6 @@
 """Persistent native action journal restart and replay regression, both browser adapters."""
 import tempfile
+import time
 from pathlib import Path
 import pytest
 from cryptography.fernet import Fernet
@@ -18,12 +19,13 @@ def test_crash_restart_fences_native_replay_without_duplicate_action(adapter):
         key = Fernet.generate_key()
         scope = AdapterScope("fixture-org", "fixture-agent", "fixture-run")
         first = Journal(path, key)
+        stamp = time.time()
         payload = {"task": {"task": "fixture", "allowed_hosts": ["www.selenium.dev"]}}
         job_id = first.enqueue(scope, "browser_use", "same-approved-intent", payload,
-                               now=1000, ttl=10000, max_attempts=1)
+                               now=stamp, ttl=10000, max_attempts=1)
         assert first.enqueue(scope, "browser_use", "same-approved-intent", payload,
-                             now=1000, ttl=10000, max_attempts=1) == job_id
-        active = first.claim("browser_use", now=1001, lease_seconds=60)
+                             now=stamp, ttl=10000, max_attempts=1) == job_id
+        active = first.claim("browser_use", now=stamp + 1, lease_seconds=60)
         assert active["id"] == job_id
         action = {"actions": {"navigate": {"url": "https://www.selenium.dev/selenium/web/web-form.html"}},
                   "page_fingerprint": "a" * 64}
@@ -33,7 +35,7 @@ def test_crash_restart_fences_native_replay_without_duplicate_action(adapter):
 
         # Simulate a fresh process after the engine and broker have died.
         recovered = Journal(path, key)
-        assert recovered.claim("browser_use", now=1062) is None
+        assert recovered.claim("browser_use", now=stamp + 62) is None
         current = recovered.get(scope, job_id)
         assert current["state"] == "uncertain"
         assert job_id in recovered.uncertain_jobs()
@@ -41,12 +43,12 @@ def test_crash_restart_fences_native_replay_without_duplicate_action(adapter):
         with pytest.raises(LeaseLost):
             recovered.request_action(active, 1, action)
         with pytest.raises(LeaseLost):
-            recovered.update(active, "completed", now=1063)
-        assert recovered.claim("browser_use", now=1064) is None
+            recovered.update(active, "completed", now=stamp + 63)
+        assert recovered.claim("browser_use", now=stamp + 64) is None
         recovered.reconciled(job_id)
         assert job_id not in recovered.uncertain_jobs()
         # A stale idempotency key cannot grant another execution.
         assert recovered.enqueue(scope, "browser_use", "same-approved-intent", payload,
-                                 now=1065, ttl=10000, max_attempts=1) == job_id
-        assert recovered.claim("browser_use", now=1066) is None
+                                 now=stamp + 65, ttl=10000, max_attempts=1) == job_id
+        assert recovered.claim("browser_use", now=stamp + 66) is None
         assert len(recovered.actions(scope, job_id)) == 1
