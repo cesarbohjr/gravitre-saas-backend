@@ -1,7 +1,7 @@
 """Real gVisor + DockerRunner certification with a local scripted HTTPS model.
 
 No provider credential, tenant record or external write is used. The browser
-may read example.com after the fixture explicitly approves that exact action.
+may read Selenium's public browser-test page after the fixture explicitly approves that exact action.
 Only assertion names and sanitized outcomes are written as evidence.
 """
 from __future__ import annotations
@@ -61,6 +61,28 @@ Path('/workspace/review.py').write_text(json.dumps(proof,sort_keys=True))
 PYCODE"""
 
 
+def browser_fixture_observation(messages):
+    # SDK context warnings may follow the actual state message. Read only the
+    # latest browser-state section, never task/history text or a budget nudge.
+    observed=''
+    for message in reversed(messages):
+        if message.get('role')!='user':continue
+        content=message.get('content','')
+        text=content if isinstance(content,str) else '\n'.join(part.get('text','') for part in content if isinstance(part,dict) and part.get('type')=='text') if isinstance(content,list) else ''
+        sections=re.findall(r'<browser_state>\n(.*?)\n</browser_state>',text,re.S)
+        if sections:
+            observed=sections[-1];break
+    current=re.search(r'^Current tab: ([A-Za-z0-9_-]+)\s*$',observed,re.M)
+    tab=re.search(r'^Tab '+re.escape(current.group(1))+r': (\S+) - (.*)$',observed,re.M) if current else None
+    from urllib.parse import urlsplit
+    url=urlsplit(tab.group(1)) if tab else None
+    body=observed.partition('Interactive elements')[2]
+    return {'state_present':bool(observed) and '<browser_state_error>' not in observed,
+            'title_observed':bool(tab) and tab.group(2).strip()=='Web form',
+            'host_observed':bool(url) and url.scheme=='https' and url.hostname=='www.selenium.dev' and url.port in (None,443) and not url.username and not url.password and url.path=='/selenium/web/web-form.html',
+            'body_observed':'Text input' in body}
+
+
 def run():
     evidence={};state={'kind':'openhands','calls':0};lock=threading.Lock();entered=threading.Event();cancel=threading.Event()
     class Provider(BaseHTTPRequestHandler):
@@ -78,7 +100,15 @@ def run():
                 time.sleep(2)
             message={'role':'assistant','content':'Fixture task finished.'};finish='stop'
             if kind=='browser_use':
-                output={'evaluation_previous_goal':'Fixture browser is running','memory':'Only the approved public fixture page may be read','next_goal':'Finish the fixture','action':([{'navigate':{'url':'https://example.com/'}}] if number==1 else [{'done':{'text':'Fixture browser session completed','success':True}}])}
+                if number>1:
+                    observed=browser_fixture_observation(body.get('messages',[]))
+                    state['browser_page_observed']=all(observed.values())
+                    state['browser_context_checks'].append(observed)
+                # Page rendering can follow successful navigation. Spend only
+                # the existing bounded step budget waiting for actual readback;
+                # never emit done based on the scripted navigation request.
+                action=([{'navigate':{'url':'https://www.selenium.dev/selenium/web/web-form.html'}}] if number==1 else [{'done':{'text':'Fixture browser session completed','success':True}}] if state['browser_page_observed'] else [{'wait':{'seconds':1}}])
+                output={'evaluation_previous_goal':'Fixture browser is running','memory':'Only the approved public fixture page may be read','next_goal':'Observe the fixture page','action':action}
                 message['content']=json.dumps(output)
             elif kind=='openhands':
                 tools=[x['function'] for x in body.get('tools',[]) if x.get('type')=='function']
@@ -135,18 +165,18 @@ def run():
                 for line in stream.read(262144).decode(errors='replace').splitlines():
                     try:
                         entry=json.loads(line)
-                        if isinstance(entry,dict) and set(entry)=={'gateway_failure_stage','gateway_failure_class','known_parameter_flags'}:
+                        if isinstance(entry,dict) and set(entry) in ({'browser_page_diagnostic'},{'gateway_failure_stage','gateway_failure_class','known_parameter_flags'},{'browser_error_codes','browser_error_classes'},{'browser_failure_stage','browser_failure_class','frames'},{'browser_evidence_changed','url_changed','decoded_pixels_changed','screenshot_bytes_changed','dom_changed','title_changed','targets_changed'}):
                             print(json.dumps(entry))
                     except (ValueError,TypeError):pass
                     match=re.match(r'\s*File "([^"]+)", line (\d+), in ([A-Za-z0-9_<>]+)',line)
                     if match:print(json.dumps({'sdk_frame':Path(match[1]).name,'line':int(match[2]),'function':match[3]}))
                     match=re.match(r'^(?:[A-Za-z_][A-Za-z0-9_]*\.)*([A-Za-z_][A-Za-z0-9_]*(?:Error|Exception)):',line)
                     if match:print(json.dumps({'sdk_exception':match[1]}))
-                    for phrase,code in [('name or service not known','dns_unavailable'),('temporary failure in name resolution','dns_unavailable'),('connection refused','connection_refused'),('network is unreachable','network_unreachable'),('timed out','connection_timeout')]:
+                    for phrase,code in [('name or service not known','dns_unavailable'),('temporary failure in name resolution','dns_unavailable'),('connection refused','connection_refused'),('network is unreachable','network_unreachable'),('timed out','connection_timeout'),('no usable sandbox','chromium_sandbox_unavailable'),('failed to move to new namespace','chromium_namespace_denied'),('operation not permitted','operation_not_permitted'),('browser is not connected','browser_not_connected'),('executable doesn\'t exist','chromium_executable_missing')]:
                         if phrase in line.lower():print(json.dumps({'sdk_transport':code}))
                 stream.close()
         def job(kind):
-            return {'id':str(uuid4()),'kind':kind,'payload':{'task':{'task':'Execute only this fixed certification fixture. Make no external changes.','files':{'review.py':''} if kind=='openhands' else {},'allowed_hosts':['example.com'] if kind=='browser_use' else [],'max_seconds':180,'max_steps':5}}}
+            return {'id':str(uuid4()),'kind':kind,'payload':{'task':{'task':'Execute only this fixed certification fixture. Make no external changes.','files':{'review.py':''} if kind=='openhands' else {},'allowed_hosts':['www.selenium.dev'] if kind=='browser_use' else [],'max_seconds':180,'max_steps':5}}}
         def clean(id):
             assert not docker('ps','-aq','--filter','label=gravitre.native.job='+id)
             assert not docker('network','ls','-q','--filter','label=gravitre.native.job='+id)
@@ -155,14 +185,18 @@ def run():
             patch=result.get('patch','')
             for key in ['direct_egress','metadata','host_bridge','readonly_root','no_docker_socket','no_provider_key']:assert f'"{key}": true' in patch,key
             clean(software['id']);evidence['openhands_real_sdk_patch_and_isolation']='PASS'
-            state.update(kind='browser_use',calls=0);approved=[]
+            print(json.dumps({'completed_runtime_checks':evidence},sort_keys=True))
+            state.update(kind='browser_use',calls=0,browser_page_observed=False,browser_context_checks=[]);approved=[]
             def action_gate(sequence,action):
-                assert action['actions']=={'navigate':{'url':'https://example.com/'}}
+                assert action['actions']=={'navigate':{'url':'https://www.selenium.dev/selenium/web/web-form.html'}}
                 assert len(action['page_fingerprint'])==64
                 approved.append(sequence);return {'state':'approved'}
-            browser=job('browser_use');result=runner.execute(browser,guard=lambda:route,action_gate=action_gate)
-            assert approved and result.get('observations')
+            browser=job('browser_use')
+            try:result=runner.execute(browser,guard=lambda:route,action_gate=action_gate)
+            finally:print(json.dumps({'fixture_browser_model_requests':state['calls'],'fixture_browser_approvals':len(approved),'fixture_browser_page_observed':state['browser_page_observed'],'fixture_browser_context_checks':state['browser_context_checks']}))
+            assert approved and state['browser_page_observed'] and result.get('observations')
             clean(browser['id']);evidence['browser_real_sdk_chromium_exact_approval']='PASS'
+            print(json.dumps({'completed_runtime_checks':evidence},sort_keys=True))
             state.update(kind='cancel',calls=0);entered.clear();cancel.clear();cancelled=job('openhands')
             def guard():
                 if cancel.is_set():raise PermissionError('fixture_cancelled')

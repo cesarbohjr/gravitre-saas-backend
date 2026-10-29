@@ -27,6 +27,7 @@ class Process:
 ])
 def test_exact_sandbox_policy_secret_isolation_and_cleanup(monkeypatch,result_body,invalid):
     monkeypatch.setattr('socket.getfqdn',lambda *_:'localhost')
+    monkeypatch.setattr('socket.getaddrinfo',lambda *_args,**_kwargs:[(None,None,None,None,('8.8.8.8',443))])
     commands=[];processes=[];containers=[];networks=[];inspections=[]
     jobid=str(uuid4())
     def docker(args,**kwargs):
@@ -124,6 +125,7 @@ def test_gateway_fixed_route_budget_no_redirect_and_no_exception_leak(monkeypatc
 def test_gateway_must_be_ready_before_an_engine_can_start(monkeypatch):
     import subprocess
     monkeypatch.setattr('socket.getfqdn',lambda *_:'localhost')
+    monkeypatch.setattr('socket.getaddrinfo',lambda *_args,**_kwargs:[(None,None,None,None,('8.8.8.8',443))])
     runner=DockerRunner(IMAGES,process_factory=lambda *_args,**_kwargs:Process(True))
     calls=[]
     def command(*args,**kwargs):
@@ -146,3 +148,23 @@ def test_gateway_must_be_ready_before_an_engine_can_start(monkeypatch):
 @pytest.mark.parametrize('address',['127.0.0.1','0.0.0.0','169.254.169.254','8.8.8.8','224.0.0.1','::1','invalid IP'])
 def test_sandbox_gateway_address_must_be_private_ipv4(address):
     with pytest.raises(ValueError):DockerRunner.private_ipv4(address)
+
+
+def test_gateway_pins_public_browser_and_fixed_private_model_routes(monkeypatch):
+    def resolve(host,*_args,**_kwargs):
+        addresses=['2606:4700:4700::1111','1.1.1.1'] if host=='allowed.example' else ['10.20.0.5']
+        return [(None,None,None,None,(address,443)) for address in addresses]
+    monkeypatch.setattr('socket.getaddrinfo',resolve)
+    entries=DockerRunner.gateway_host_entries(['allowed.example'],'https://model.example/v1','172.17.0.1')
+    assert entries==['--add-host','host.docker.internal:172.17.0.1','--add-host','allowed.example:1.1.1.1','--add-host','model.example:10.20.0.5']
+
+
+@pytest.mark.parametrize('address',['127.0.0.1','169.254.169.254','::1','0.0.0.0','224.0.0.1'])
+def test_gateway_model_route_cannot_pin_loopback_or_metadata(monkeypatch,address):
+    monkeypatch.setattr('socket.getaddrinfo',lambda *_args,**_kwargs:[(None,None,None,None,(address,443))])
+    with pytest.raises(ValueError):DockerRunner.gateway_host_entries([],'https://model.example/v1','172.17.0.1')
+
+
+def test_gateway_browser_pin_rejects_mixed_public_private_resolution(monkeypatch):
+    monkeypatch.setattr('socket.getaddrinfo',lambda *_args,**_kwargs:[(None,None,None,None,('8.8.8.8',443)),(None,None,None,None,('10.0.0.1',443))])
+    with pytest.raises(ValueError):DockerRunner.gateway_host_entries(['allowed.example'],'https://host.docker.internal/v1','172.17.0.1')

@@ -96,16 +96,18 @@ class Handler(BaseHTTPRequestHandler):
             print(json.dumps({'gateway_failure_stage':stage,'gateway_failure_class':type(error).__name__,'known_parameter_flags':[key for key in ('n','store','stream_options','service_tier','metadata','user','top_k','prompt_cache_key','prompt_cache_retention') if isinstance(body,dict) and key in body]}),file=sys.stderr,flush=True)
             self.reply(403,{'error':'native_request_blocked'})
     def do_CONNECT(self):
-        remote=None
+        remote=None;stage='connect_destination'
         try:
             u=urlsplit('//'+self.path)
             if u.hostname not in CONFIG['allowed_hosts'] or u.port!=443 or u.username or u.password:raise ValueError('scope')
-            control('authorize',{})
+            stage='connect_authority';control('authorize',{})
+            stage='connect_dns'
             addresses=public_addresses(u.hostname)
             # Connect to the validated numeric address, never re-resolve a host.
-            remote=socket.create_connection((addresses[0],443),timeout=10)
+            stage='connect_socket';remote=socket.create_connection((addresses[0],443),timeout=10)
             self.send_response(200,'Connection established');self.end_headers()
             peers=[self.connection,remote]
+            stage='connect_relay'
             while True:
                 control('authorize',{})
                 readable,_,_=select.select(peers,[],[],2)
@@ -113,7 +115,10 @@ class Handler(BaseHTTPRequestHandler):
                     data=source.recv(65536)
                     if not data:return
                     (remote if source is self.connection else self.connection).sendall(data)
-        except Exception:
+        except Exception as error:
+            kind=type(error).__name__
+            if kind not in {'ValueError','PermissionError','TimeoutError','ConnectionError','ConnectionRefusedError','ConnectionResetError','BrokenPipeError','OSError','gaierror','HTTPError','URLError'}:kind='InternalError'
+            print(json.dumps({'gateway_failure_stage':stage,'gateway_failure_class':kind,'known_parameter_flags':[]}),file=sys.stderr,flush=True)
             try:self.send_error(403,'Native destination blocked')
             except Exception:pass
         finally:
