@@ -55,6 +55,9 @@ def test_exact_sandbox_policy_secret_isolation_and_cleanup(monkeypatch):
     result=runner.execute(job,guard=lambda:model,action_gate=Mock())
     assert result['patch']=='example' and not containers and not networks
     assert len(inspections)==2
+    connect=next(i for i,c in enumerate(commands) if c[1:3]==['network','connect'])
+    start=next(i for i,c in enumerate(commands) if c[1]=='start')
+    assert connect<start
     flat=repr(commands)
     assert 'PROVIDER-SECRET' not in flat and 'PROVIDER-SECRET' not in repr(processes[1][1].stdin.data)
     assert b'PROVIDER-SECRET' in processes[0][1].stdin.data
@@ -129,7 +132,7 @@ def test_gateway_must_be_ready_before_an_engine_can_start(monkeypatch):
     with pytest.raises(RuntimeError,match='gateway did not become ready'):
         runner.execute(job,guard=lambda:route,action_gate=Mock())
     # The trusted gateway must start first; the SDK engine still must not.
-    starts=[args[args.index('--name')+1] for args in calls if args[0]=='run']
+    starts=[args[args.index('--name')+1] for args in calls if args[0] in ('run','create')]
     assert starts==['native-gateway-'+job['id']]
 
 
