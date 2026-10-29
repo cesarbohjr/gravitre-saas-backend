@@ -23,7 +23,7 @@ from cryptography.fernet import Fernet
 
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
 from app.services.native_agent_adapters import AdapterScope,TelemetryPermit
-from app.services.native_runtime.langfuse import LangfuseOutbox,LangfuseTransport,METRIC_KEYS
+from app.services.native_runtime.langfuse import LangfuseOutbox,LangfuseTransport,METRIC_KEYS,READBACK_PROVENANCE
 from app.services.native_runtime.store import Journal
 from tests.support.fake_supabase import FakeSupabase
 
@@ -70,7 +70,7 @@ def run():
                     print(json.dumps({'fixture_http_status_counts':{str(code):sum(s['status']==code for s in statuses) for code in sorted({s['status'] for s in statuses})},'journal_phase':row['phase'],'journal_error':row['error_code']}))
                     try:
                         observations=transport.observations(delivered_payload)
-                        print(json.dumps({'fixture_observation_shapes':[{'exact_id':o.get('id')==delivered_payload['span_id'],'metadata_keys':sorted(o.get('metadata',{})),'metric_types':{k:type(o.get('metadata',{}).get(k)).__name__ for k in sorted(METRIC_KEYS)},'exact_metrics':o.get('metadata')==delivered_payload['metrics']} for o in observations]}))
+                        print(json.dumps({'fixture_observation_shapes':[{'exact_id':o.get('id')==delivered_payload['span_id'],'metadata_keys':sorted(o.get('metadata',{})),'metric_types':{k:type(o.get('metadata',{}).get(k)).__name__ for k in sorted(METRIC_KEYS)},'exact_metadata':o.get('metadata')=={**delivered_payload['metrics'],**READBACK_PROVENANCE}} for o in observations]}))
                     except Exception as error:
                         print(json.dumps({'fixture_readback_error_class':type(error).__name__}))
                 def settle(kind,target):

@@ -3,7 +3,7 @@ import json
 import pytest
 import httpx
 from app.services.native_agent_adapters import AdapterScope,TelemetryPermit
-from app.services.native_runtime.langfuse import LangfuseOutbox,LangfuseTransport,validate_metrics
+from app.services.native_runtime.langfuse import LangfuseOutbox,LangfuseTransport,validate_metrics,READBACK_PROVENANCE
 from tests.native_runtime.test_journal import journal,S
 from tests.support.fake_supabase import FakeSupabase
 
@@ -72,7 +72,7 @@ def test_transport_uses_stable_otlp_ids_safe_fields_and_strict_ack():
     def handle(request):
         requests.append(request)
         if request.method=='POST':return httpx.Response(200,content=b'')
-        return httpx.Response(200,json={'data':[{'id':payload['span_id'],'traceId':payload['trace_id'],'name':'gravitre.dialogue_evaluation','metadata':payload['metrics']}]})
+        return httpx.Response(200,json={'data':[{'id':payload['span_id'],'traceId':payload['trace_id'],'name':'gravitre.dialogue_evaluation','metadata':{**payload['metrics'],**READBACK_PROVENANCE}}]})
     t=LangfuseTransport('https://metrics.example','public','private',client=httpx.Client(transport=httpx.MockTransport(handle)))
     t.submit(payload);t.submit(payload)
     assert requests[0].content==requests[1].content
@@ -87,6 +87,7 @@ def test_transport_uses_stable_otlp_ids_safe_fields_and_strict_ack():
     assert set(json.loads(attrs['langfuse.observation.metadata']))==set(payload['metrics'])
     assert 'fields=core%2Cbasic%2Cmetadata' in str(requests[-1].url)
     assert 'io' not in requests[-1].url.params['fields']
+    assert 'expandMetadata' not in requests[-1].url.params
     payload['metrics']['prompt']='forbidden'
     with pytest.raises(ValueError):t.submit(payload)
 
@@ -117,10 +118,11 @@ def test_destination_change_never_exports_or_falsely_confirms_deletion(setup,db,
     lambda m:m.update(channel='"text"'),
     lambda m:m.update(prompt='forbidden'),
     lambda m:m.pop('duration_ms'),
+    lambda m:m.update({'scope.name':'untrusted-scope'}),
 ])
 def test_remote_ack_requires_exact_metric_schema_and_types(mutation):
     payload={'trace_id':'1'*32,'span_id':'2'*16,'metrics':{'schema_version':1,'run_ref':'a'*64,'channel':'text','evaluator_version':'dialogue-metrics-v1','stage_count':2,'failed_stage_count':0,'duration_ms':1}}
-    metadata=dict(payload['metrics']);mutation(metadata)
+    metadata={**payload['metrics'],**READBACK_PROVENANCE};mutation(metadata)
     client=httpx.Client(transport=httpx.MockTransport(lambda _:httpx.Response(200,json={'data':[{'id':payload['span_id'],'traceId':payload['trace_id'],'name':'gravitre.dialogue_evaluation','metadata':metadata}]})))
     transport=LangfuseTransport('https://metrics.example','public','private',client=client)
     assert transport.acknowledged(payload) is False

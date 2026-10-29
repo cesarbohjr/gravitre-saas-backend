@@ -2,7 +2,6 @@ from dataclasses import asdict
 import io
 import json
 from types import SimpleNamespace
-import tarfile
 from unittest.mock import Mock
 from uuid import uuid4
 import pytest
@@ -22,14 +21,14 @@ class Process:
     def kill(self):self.returncode=-9
     def wait(self,**_):return self.returncode
 
-def test_exact_sandbox_policy_secret_isolation_and_cleanup(monkeypatch):
+@pytest.mark.parametrize('result_body,invalid',[
+    (b'{"observations":[{"summary":"draft"}],"patch":"example"}',False),
+    (b'',True),(b'[]',True),(b'not-json',True),(b'x'*240001,True),
+])
+def test_exact_sandbox_policy_secret_isolation_and_cleanup(monkeypatch,result_body,invalid):
     monkeypatch.setattr('socket.getfqdn',lambda *_:'localhost')
     commands=[];processes=[];containers=[];networks=[];inspections=[]
     jobid=str(uuid4())
-    output=io.BytesIO()
-    with tarfile.open(fileobj=output,mode='w') as archive:
-        data=b'{"observations":[{"summary":"draft"}],"patch":"example"}'
-        info=tarfile.TarInfo('result.json');info.size=len(data);archive.addfile(info,io.BytesIO(data))
     def docker(args,**kwargs):
         commands.append(args)
         op=args[1]
@@ -45,15 +44,19 @@ def test_exact_sandbox_policy_secret_isolation_and_cleanup(monkeypatch):
             if args[2]=='ls':return SimpleNamespace(stdout='\n'.join(networks).encode())
             if args[2]=='create':networks.append(args[-1])
             if args[2]=='rm':networks.clear()
-        if op=='cp':return SimpleNamespace(stdout=output.getvalue())
+        if op=='exec' and '/out/result.json' in args[-1]:return SimpleNamespace(stdout=result_body)
         return SimpleNamespace(stdout=b'')
     def process(args,**kwargs):
         result=Process(args[-1]=='/runner/engine.py');processes.append((args,result));return result
     runner=DockerRunner(IMAGES,command=docker,process_factory=process)
     model=ModelRoute('openai','configured','https://model.example/v1','PROVIDER-SECRET',1,1,1)
     job={'id':jobid,'kind':'openhands','payload':{'task':{'task':'bounded','files':{},'allowed_hosts':[],'max_seconds':5,'max_steps':2}}}
-    result=runner.execute(job,guard=lambda:model,action_gate=Mock())
-    assert result['patch']=='example' and not containers and not networks
+    if invalid:
+        with pytest.raises(ValueError):runner.execute(job,guard=lambda:model,action_gate=Mock())
+    else:
+        result=runner.execute(job,guard=lambda:model,action_gate=Mock())
+        assert result['patch']=='example'
+    assert not containers and not networks
     assert len(inspections)==2
     connect=next(i for i,c in enumerate(commands) if c[1:3]==['network','connect'])
     start=next(i for i,c in enumerate(commands) if c[1]=='start')
@@ -61,6 +64,8 @@ def test_exact_sandbox_policy_secret_isolation_and_cleanup(monkeypatch):
     flat=repr(commands)
     assert 'PROVIDER-SECRET' not in flat and 'PROVIDER-SECRET' not in repr(processes[1][1].stdin.data)
     assert b'PROVIDER-SECRET' in processes[0][1].stdin.data
+    assert not any(command[1]=='cp' for command in commands)
+    assert 'f.read(240001)' in flat
     assert '--privileged' not in flat and 'docker.sock' not in flat
     assert 'com.docker.network.bridge.gateway_mode_ipv4=isolated' in flat
     assert '--read-only' in flat and '--cap-drop=ALL' in flat and 'no-new-privileges' in flat

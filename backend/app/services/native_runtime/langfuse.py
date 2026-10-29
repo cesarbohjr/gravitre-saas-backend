@@ -18,6 +18,8 @@ from app.services.native_runtime.store import Journal, LeaseLost
 
 NAME='gravitre.dialogue_evaluation'
 METRIC_KEYS=frozenset({'schema_version','run_ref','channel','evaluator_version','stage_count','failed_stage_count','duration_ms'})
+# Langfuse derives these static fields from our OTLP envelope, not tenant data.
+READBACK_PROVENANCE={'attributes.langfuse.observation.type':'span','resourceAttributes.service.name':'gravitre.metrics','scope.name':'gravitre.metrics.v1'}
 
 
 def validate_metrics(m: dict) -> None:
@@ -74,7 +76,9 @@ class LangfuseTransport:
             if ack.partial_success.rejected_spans:raise ValueError('Telemetry ingestion rejected a span')
 
     def observations(self, payload: dict) -> list[dict]:
-        r=self._request('GET','/api/public/v2/observations',params={'traceId':payload['trace_id'],'fields':'core,basic,metadata','expandMetadata':','.join(sorted(METRIC_KEYS)),'limit':10})
+        # Every value is <=64 characters. Compact metadata avoids an expanded
+        # events_full join while retaining exact, non-truncated metric values.
+        r=self._request('GET','/api/public/v2/observations',params={'traceId':payload['trace_id'],'fields':'core,basic,metadata','limit':10})
         data=r.json().get('data')
         if not isinstance(data,list):raise ValueError('Malformed observation acknowledgement')
         return data
@@ -85,9 +89,10 @@ class LangfuseTransport:
                 continue
             metadata=row.get('metadata')
             if not isinstance(metadata,dict):continue
-            try:validate_metrics(metadata)
+            if set(metadata)!=METRIC_KEYS|READBACK_PROVENANCE.keys():continue
+            try:validate_metrics({key:metadata[key] for key in METRIC_KEYS})
             except ValueError:continue
-            if metadata==payload['metrics']:return True
+            if metadata=={**payload['metrics'],**READBACK_PROVENANCE}:return True
         return False
 
     def delete(self, payload: dict) -> bool:
