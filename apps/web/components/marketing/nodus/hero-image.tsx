@@ -2,9 +2,10 @@ import React from "react"
 import Image from "next/image"
 import { Container } from "./container"
 import { Dot } from "./common/dots"
+import { AppWindow, type AppWindowChip } from "./app-window"
 
 /**
- * Hero product screenshot — server-rendered for crisp marketing display.
+ * Hero product screenshot in a macOS window outline — server-rendered for crisp marketing display.
  * Defaults to the full-resolution dashboard capture in public/nodus/; other
  * pages pass their own capture (scripts/capture-product-shots.mjs).
  *
@@ -17,6 +18,9 @@ type HeroImageProps = {
   alt?: string
   width?: number
   height?: number
+  /** Title pill in the window bar. */
+  title?: string
+  chips?: AppWindowChip[]
 }
 
 export const HeroImage = ({
@@ -24,6 +28,11 @@ export const HeroImage = ({
   alt = "Gravitre product preview",
   width = 3312,
   height = 1863,
+  title = "Dashboard",
+  chips = [
+    { label: "Live · updated just now", at: "top-right" },
+    { label: "Human approval on every write", at: "bottom-left", tone: "amber" },
+  ],
 }: HeroImageProps = {}) => {
   return (
     <Container className="border-divide relative flex items-start justify-start md:border-x bg-[#efefea] p-2 perspective-distant md:p-6 lg:p-12">
@@ -32,11 +41,11 @@ export const HeroImage = ({
       <Dot bottom left />
       <Dot bottom right />
       <div className="relative isolate w-full">
-        <div className="relative z-10 h-full w-full">
+        <AppWindow title={title} chips={chips} className="z-10 h-full w-full">
           <Image
             src={src}
             alt={alt}
-            className="w-full rounded-lg shadow-[0_24px_60px_-24px_rgba(20,21,19,0.35)] ring-1 ring-[#141513]/10 md:rounded-xl"
+            className="block w-full"
             priority
             fetchPriority="high"
             quality={75}
@@ -45,7 +54,7 @@ export const HeroImage = ({
             height={height}
             draggable={false}
           />
-        </div>
+        </AppWindow>
         {/* Soft colour wash — the same mint / sand blobs the app's illustrations sit on. */}
         <div
           aria-hidden

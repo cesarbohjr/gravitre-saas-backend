@@ -69,6 +69,11 @@ export function TechnologyPage() {
       <DivideX />
       <HeroImage
         src="/product/app-connectors-hub.png"
+        title="Connectors"
+        chips={[
+          { label: "Live auth and health checks", at: "top-right" },
+          { label: "Executability checked before runs", at: "bottom-left", tone: "slate" },
+        ]}
         alt="Gravitre Connectors: each system from connected to ready for agents"
         width={2880}
         height={1620}

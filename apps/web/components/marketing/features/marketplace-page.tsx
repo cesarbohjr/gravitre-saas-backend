@@ -21,6 +21,7 @@ import {
 } from "@/components/icons/nucleo/semantic"
 import { MARKETING_COPY } from "@/lib/marketing-copy"
 import { DivideX } from "@/components/marketing/nodus/divide"
+import { MarketingScene } from "@/components/marketing/nodus/scene"
 import {
   MarketingPageEndCta,
   MarketingPageHero,
@@ -284,6 +285,13 @@ export function MarketplacePage() {
       <DivideX />
 
       <MarketingRails>
+          <MarketingScene
+            name="marketing/marketplace"
+            alt="A shelf of agent and workflow templates, one being installed"
+            width={400}
+            height={300}
+            className="mx-auto mb-10 max-w-xl"
+          />
           <div className="grid gap-4 sm:grid-cols-3">
             {WHY_STATS.map((stat, i) => (
               <GravitreReveal

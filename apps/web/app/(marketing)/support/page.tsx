@@ -173,11 +173,10 @@ export default function SupportPage() {
       <MarketingRails>
         <div className="mx-auto grid max-w-5xl items-start gap-10 md:grid-cols-[1fr_1.4fr]">
           <MarketingScene
-            name="market-prospecting"
-            width={300}
-            height={190}
-            aspect="aspect-[4/3]"
-            status="Most answers are a guide away"
+            name="marketing/support"
+            alt="Guides and a support ticket coming together into one answer"
+            width={400}
+            height={300}
             className="md:sticky md:top-28"
           />
           <div>

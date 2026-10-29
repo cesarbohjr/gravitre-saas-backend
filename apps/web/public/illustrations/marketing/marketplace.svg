@@ -1,0 +1,117 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300" width="400" height="300">
+<style>@keyframes gi-drift-y { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-6px)} }
+@keyframes gi-drift-x { 0%,100%{transform:translateX(0)} 50%{transform:translateX(5px)} }
+@keyframes gi-pulse-op { 0%,100%{opacity:1} 50%{opacity:0.55} }
+@keyframes gi-stamp-in { 0%{transform:scale(1.4);opacity:0} 15%{transform:scale(0.9);opacity:1} 25%{transform:scale(1)} 100%{transform:scale(1)} }
+@keyframes gi-slide-right { 0%{transform:translateX(-18px);opacity:0} 20%{transform:translateX(0);opacity:1} 80%{transform:translateX(0);opacity:1} 100%{transform:translateX(18px);opacity:0} }
+@keyframes gi-travel-line { 0%{stroke-dashoffset:60} 100%{stroke-dashoffset:0} }
+@keyframes gi-bob { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-4px)} }
+@keyframes gi-fade-cycle { 0%,15%{opacity:0} 25%,75%{opacity:1} 85%,100%{opacity:0} }
+@keyframes gi-grow-bar { from{transform:scaleY(0)} to{transform:scaleY(1)} }
+@keyframes gi-rise-bar { 0%,100%{transform:scaleY(0.4)} 50%{transform:scaleY(1)} }
+@keyframes gi-spin-slow { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
+@keyframes gi-blink { 0%,90%,100%{opacity:1} 95%{opacity:0} }
+
+
+[style*="gi-stamp-in"],[style*="gi-grow-bar"],[style*="gi-rise-bar"]{transform-box:fill-box;transform-origin:center}
+[style*="gi-grow-bar"],[style*="gi-rise-bar"]{transform-origin:center bottom}
+@media (prefers-reduced-motion: reduce){*{animation:none!important}}
+</style><defs>
+  <filter id="grain12"><feTurbulence type="fractalNoise" baseFrequency="0.65" numOctaves="3" stitchTiles="stitch" /><feColorMatrix type="saturate" values="0" /><feBlend in="SourceGraphic" mode="overlay" /><feComposite in2="SourceGraphic" operator="in" /></filter>
+  <radialGradient id="b12a" cx="50%" cy="40%" r="55%"><stop offset="0%" stop-color="#CFDCCB" stop-opacity="0.7" /><stop offset="100%" stop-color="#CFDCCB" stop-opacity="0" /></radialGradient>
+  <radialGradient id="b12b" cx="70%" cy="70%" r="40%"><stop offset="0%" stop-color="#EBDCC0" stop-opacity="0.5" /><stop offset="100%" stop-color="#EBDCC0" stop-opacity="0" /></radialGradient>
+  <pattern id="d12" width="14" height="14" patternUnits="userSpaceOnUse"><circle cx="7" cy="7" r="0.7" fill="#2A2B28" opacity="0.13" /></pattern>
+</defs>
+<rect width="400" height="300" fill="#E7ECE3" />
+<ellipse cx="200" cy="120" rx="180" ry="130" fill="url(#b12a)" />
+<ellipse cx="300" cy="220" rx="130" ry="90" fill="url(#b12b)" />
+<rect x="280" y="0" width="120" height="300" fill="url(#d12)" opacity="0.5" />
+<rect width="400" height="300" filter="url(#grain12)" opacity="0.04" fill="#2A2B28" />
+
+
+<rect x="24" y="108" width="352" height="10" rx="4" fill="#C98F5B" />
+<rect x="24" y="192" width="352" height="10" rx="4" fill="#C98F5B" />
+
+<rect x="24" y="108" width="10" height="94" rx="3" fill="#B5654A" />
+<rect x="366" y="108" width="10" height="94" rx="3" fill="#B5654A" />
+
+
+
+<g transform="translate(40,42)">
+  <g style="animation:gi-bob 10s ease-in-out infinite 0s"><rect x="0" y="0" width="68" height="60" rx="6" fill="#FBF8F2" stroke="#D9D1C2" stroke-width="1.2" />
+  <rect x="8" y="8" width="52" height="8" rx="3" fill="#C98F5B" />
+  <rect x="8" y="22" width="52" height="4" rx="2" fill="#DDD9D0" />
+  <rect x="8" y="30" width="36" height="4" rx="2" fill="#DDD9D0" />
+  
+  <circle cx="50" cy="50" r="8" fill="#19C37D" style="animation:gi-stamp-in 10s ease-in-out infinite 0s" />
+  <path d="M46,50 L49,53 L55,46" stroke="#FBF8F2" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round" />
+</g></g>
+
+<g transform="translate(124,42)">
+  <g style="animation:gi-bob 11s ease-in-out infinite 0.5s"><rect x="0" y="0" width="68" height="60" rx="6" fill="#FBF8F2" stroke="#D9D1C2" stroke-width="1.2" />
+  <rect x="8" y="8" width="52" height="8" rx="3" fill="#7E9A7B" />
+  <rect x="8" y="22" width="52" height="4" rx="2" fill="#DDD9D0" />
+  <rect x="8" y="30" width="36" height="4" rx="2" fill="#DDD9D0" />
+  <circle cx="50" cy="50" r="8" fill="#CFDCCB" />
+</g></g>
+
+<g style="animation:gi-drift-y 8s ease-in-out infinite 1s">
+  <rect x="208" y="42" width="68" height="60" rx="6" fill="#FBF8F2" stroke="#19C37D" stroke-width="2" />
+  <rect x="216" y="50" width="52" height="8" rx="3" fill="#5B6E7A" />
+  <rect x="216" y="64" width="52" height="4" rx="2" fill="#DDD9D0" />
+  <rect x="216" y="72" width="36" height="4" rx="2" fill="#DDD9D0" />
+  
+  <circle cx="258" cy="92" r="8" fill="#19C37D" style="animation:gi-pulse-op 2s ease-in-out infinite" />
+  <path d="M255,89 L258,86 L261,89 M258,86 L258,96" stroke="#FBF8F2" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" />
+</g>
+
+<g transform="translate(290,42)">
+  <g style="animation:gi-bob 9s ease-in-out infinite 1.5s"><rect x="0" y="0" width="68" height="60" rx="6" fill="#FBF8F2" stroke="#D9D1C2" stroke-width="1.2" />
+  <rect x="8" y="8" width="52" height="8" rx="3" fill="#B5654A" />
+  <rect x="8" y="22" width="52" height="4" rx="2" fill="#DDD9D0" />
+  <rect x="8" y="30" width="36" height="4" rx="2" fill="#DDD9D0" />
+  <circle cx="50" cy="50" r="8" fill="#CFDCCB" />
+</g></g>
+
+
+<g transform="translate(40,124)">
+  <g style="animation:gi-bob 12s ease-in-out infinite 2s"><rect x="0" y="0" width="68" height="60" rx="6" fill="#FBF8F2" stroke="#D9D1C2" stroke-width="1.2" />
+  <rect x="8" y="8" width="52" height="8" rx="3" fill="#E2A33A" />
+  <rect x="8" y="22" width="52" height="4" rx="2" fill="#DDD9D0" />
+  <rect x="8" y="30" width="36" height="4" rx="2" fill="#DDD9D0" />
+  <circle cx="50" cy="50" r="8" fill="#CFDCCB" />
+</g></g>
+<g transform="translate(124,124)">
+  <g style="animation:gi-bob 10s ease-in-out infinite 0.8s"><rect x="0" y="0" width="68" height="60" rx="6" fill="#FBF8F2" stroke="#D9D1C2" stroke-width="1.2" />
+  <rect x="8" y="8" width="52" height="8" rx="3" fill="#5B6E7A" />
+  <rect x="8" y="22" width="52" height="4" rx="2" fill="#DDD9D0" />
+  <rect x="8" y="30" width="36" height="4" rx="2" fill="#DDD9D0" />
+  <circle cx="50" cy="50" r="8" fill="#19C37D" style="animation:gi-stamp-in 10s ease-in-out infinite 2s" />
+  <path d="M46,50 L49,53 L55,46" stroke="#FBF8F2" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-linejoin="round" />
+</g></g>
+<g transform="translate(208,124)">
+  <g style="animation:gi-bob 11s ease-in-out infinite 1.2s"><rect x="0" y="0" width="68" height="60" rx="6" fill="#FBF8F2" stroke="#D9D1C2" stroke-width="1.2" />
+  <rect x="8" y="8" width="52" height="8" rx="3" fill="#7E9A7B" />
+  <rect x="8" y="22" width="52" height="4" rx="2" fill="#DDD9D0" />
+  <rect x="8" y="30" width="36" height="4" rx="2" fill="#DDD9D0" />
+  <circle cx="50" cy="50" r="8" fill="#CFDCCB" />
+</g></g>
+<g transform="translate(290,124)">
+  <g style="animation:gi-bob 9s ease-in-out infinite 0.3s"><rect x="0" y="0" width="68" height="60" rx="6" fill="#FBF8F2" stroke="#D9D1C2" stroke-width="1.2" />
+  <rect x="8" y="8" width="52" height="8" rx="3" fill="#C98F5B" />
+  <rect x="8" y="22" width="52" height="4" rx="2" fill="#DDD9D0" />
+  <rect x="8" y="30" width="36" height="4" rx="2" fill="#DDD9D0" />
+  <circle cx="50" cy="50" r="8" fill="#CFDCCB" />
+</g></g>
+
+
+<g transform="translate(70,214)">
+  <g style="animation:gi-drift-y 10s ease-in-out infinite 1s"><rect x="0" y="0" width="260" height="58" rx="8" fill="#FBF8F2" stroke="#D9D1C2" stroke-width="1.2" />
+  <rect x="12" y="10" width="120" height="6" rx="2" fill="#C4C0B5" />
+  <rect x="12" y="22" width="80" height="4" rx="2" fill="#DDD9D0" />
+  <rect x="12" y="32" width="100" height="4" rx="2" fill="#DDD9D0" />
+  
+  <rect x="172" y="14" width="76" height="28" rx="6" fill="#19C37D" />
+  <text x="210" y="31" font-family="DM Sans,system-ui" font-size="9" fill="#FBF8F2" font-weight="700" text-anchor="middle">Install</text>
+</g></g>
+</svg>

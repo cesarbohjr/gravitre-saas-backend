@@ -1,5 +1,6 @@
 import Image from "next/image"
 import { cn } from "@/lib/utils"
+import { AppWindow } from "@/components/marketing/nodus/app-window"
 
 /**
  * Real UI captures from scripts/capture-product-shots.mjs (2880x1800 @2x).
@@ -18,12 +19,7 @@ export interface ProductScreenshotProps {
   caption?: string
   /** Set on the first shot above the fold only. */
   priority?: boolean
-  /**
-   * Window-chrome label. When provided, the shot is framed as an app window
-   * with a title pill — the treatment the hand-built mockups on /features used
-   * before real captures replaced them, kept so those sections still read as
-   * "a screen" rather than a bare inline image.
-   */
+  /** Title pill in the macOS window outline every shot is framed in. */
   chromeLabel?: string
   /** Soft colour wash behind the frame. Matches each section's accent. */
   glowClassName?: string
@@ -61,27 +57,9 @@ export function ProductScreenshot({
           />
         ) : null}
 
-        {chromeLabel ? (
-          <div className="relative overflow-hidden rounded-xl border border-border bg-card shadow-2xl">
-            <div className="flex items-center gap-2 border-b border-border bg-muted/50 px-4 py-3">
-              <div className="flex gap-1.5">
-                <span className="h-3 w-3 rounded-full bg-muted-foreground/35" />
-                <span className="h-3 w-3 rounded-full bg-muted-foreground/25" />
-                <span className="h-3 w-3 rounded-full bg-[color:var(--g-emerald)]/55" />
-              </div>
-              <div className="flex flex-1 justify-center">
-                <div className="rounded-md bg-muted px-3 py-1 text-[10px] text-muted-foreground">
-                  {chromeLabel}
-                </div>
-              </div>
-            </div>
-            {image}
-          </div>
-        ) : (
-          <div className="relative overflow-hidden rounded-2xl border border-border bg-card shadow-sm">
-            {image}
-          </div>
-        )}
+        <AppWindow title={chromeLabel ?? "Gravitre"} className="relative">
+          {image}
+        </AppWindow>
       </div>
       {caption ? (
         <figcaption className="text-[10px] uppercase tracking-wide text-muted-foreground">

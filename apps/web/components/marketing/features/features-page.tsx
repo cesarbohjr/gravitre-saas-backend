@@ -92,6 +92,11 @@ export function FeaturesPage() {
       <DivideX />
       <HeroImage
         src="/product/app-agents-team.png"
+        title="Agents"
+        chips={[
+          { label: "Agents by department", at: "top-left", tone: "slate" },
+          { label: "Human approval on writes", at: "bottom-right", tone: "amber" },
+        ]}
         alt="Gravitre Agents: your AI workforce by department"
         width={2880}
         height={1620}

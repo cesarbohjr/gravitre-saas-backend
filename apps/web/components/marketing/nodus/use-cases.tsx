@@ -14,7 +14,7 @@ import {
 } from "@/components/marketing/nodus-icons/card-icons";
 import { Scale } from "./scale";
 import { motion } from "framer-motion";
-import { OneBrainScene } from "./home-scenes";
+import { MarketingScene } from "./scene";
 
 export const UseCases = () => {
   const useCases = [
@@ -69,7 +69,13 @@ export const UseCases = () => {
           departments, with governance and audit trails on every action.
         </SubHeading>
 
-        <OneBrainScene className="mt-12 w-full" />
+        <MarketingScene
+          name="marketing/use-cases"
+          alt="Engineering, Sales, Marketing, Support, Finance and Operations wired to one Gravitre hub"
+          width={960}
+          height={300}
+          className="mt-12 w-full"
+        />
 
         <div className="mt-12 grid grid-cols-1 gap-10 md:grid-cols-2 lg:grid-cols-3">
           {useCases.map((useCase, index) => (

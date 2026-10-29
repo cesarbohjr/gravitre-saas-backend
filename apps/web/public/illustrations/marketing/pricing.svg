@@ -1,0 +1,73 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 250" width="400" height="250">
+<style>@keyframes gi-drift-y { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-6px)} }
+@keyframes gi-drift-x { 0%,100%{transform:translateX(0)} 50%{transform:translateX(5px)} }
+@keyframes gi-pulse-op { 0%,100%{opacity:1} 50%{opacity:0.55} }
+@keyframes gi-stamp-in { 0%{transform:scale(1.4);opacity:0} 15%{transform:scale(0.9);opacity:1} 25%{transform:scale(1)} 100%{transform:scale(1)} }
+@keyframes gi-slide-right { 0%{transform:translateX(-18px);opacity:0} 20%{transform:translateX(0);opacity:1} 80%{transform:translateX(0);opacity:1} 100%{transform:translateX(18px);opacity:0} }
+@keyframes gi-travel-line { 0%{stroke-dashoffset:60} 100%{stroke-dashoffset:0} }
+@keyframes gi-bob { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-4px)} }
+@keyframes gi-fade-cycle { 0%,15%{opacity:0} 25%,75%{opacity:1} 85%,100%{opacity:0} }
+@keyframes gi-grow-bar { from{transform:scaleY(0)} to{transform:scaleY(1)} }
+@keyframes gi-rise-bar { 0%,100%{transform:scaleY(0.4)} 50%{transform:scaleY(1)} }
+@keyframes gi-spin-slow { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
+@keyframes gi-blink { 0%,90%,100%{opacity:1} 95%{opacity:0} }
+
+
+[style*="gi-stamp-in"],[style*="gi-grow-bar"],[style*="gi-rise-bar"]{transform-box:fill-box;transform-origin:center}
+[style*="gi-grow-bar"],[style*="gi-rise-bar"]{transform-origin:center bottom}
+@media (prefers-reduced-motion: reduce){*{animation:none!important}}
+</style><defs>
+  <filter id="grain4"><feTurbulence type="fractalNoise" baseFrequency="0.65" numOctaves="3" stitchTiles="stitch" /><feColorMatrix type="saturate" values="0" /><feBlend in="SourceGraphic" mode="overlay" /><feComposite in2="SourceGraphic" operator="in" /></filter>
+  <radialGradient id="b4a" cx="40%" cy="50%" r="50%"><stop offset="0%" stop-color="#EBDCC0" stop-opacity="0.7" /><stop offset="100%" stop-color="#EBDCC0" stop-opacity="0" /></radialGradient>
+  <pattern id="d4" width="14" height="14" patternUnits="userSpaceOnUse"><circle cx="7" cy="7" r="0.7" fill="#2A2B28" opacity="0.13" /></pattern>
+</defs>
+<rect width="400" height="250" fill="#E7ECE3" />
+<ellipse cx="160" cy="120" rx="160" ry="120" fill="url(#b4a)" />
+<rect x="280" y="0" width="120" height="250" fill="url(#d4)" opacity="0.5" />
+<rect width="400" height="250" filter="url(#grain4)" opacity="0.04" fill="#2A2B28" />
+
+
+<g style="animation:gi-bob 10s ease-in-out infinite 0s; filter:drop-shadow(0 4px 16px rgba(42,43,40,0.10))">
+  <rect x="80" y="30" width="180" height="200" rx="10" fill="#FBF8F2" stroke="#D9D1C2" stroke-width="1.5" />
+  
+  <path d="M80,58 Q90,52 100,58 Q110,52 120,58 Q130,52 140,58 Q150,52 160,58 Q170,52 180,58 Q190,52 200,58 Q210,52 220,58 Q230,52 240,58 Q250,52 260,58 L260,30 L80,30 Z" fill="#E7ECE3" />
+  
+  <text x="170" y="75" font-family="DM Sans,system-ui" font-size="10" fill="#2A2B28" font-weight="700" text-anchor="middle">Receipt</text>
+  
+  <line x1="96" y1="84" x2="244" y2="84" stroke="#D9D1C2" stroke-width="1" stroke-dasharray="4,3" />
+  
+  <text x="96" y="98" font-family="DM Sans,system-ui" font-size="8.5" fill="#5B6E7A">AI Agents</text>
+  <text x="244" y="98" font-family="DM Sans,system-ui" font-size="8.5" fill="#2A2B28" text-anchor="end">$49</text>
+  <text x="96" y="114" font-family="DM Sans,system-ui" font-size="8.5" fill="#5B6E7A">Connectors (8)</text>
+  <text x="244" y="114" font-family="DM Sans,system-ui" font-size="8.5" fill="#2A2B28" text-anchor="end">$0</text>
+  <text x="96" y="130" font-family="DM Sans,system-ui" font-size="8.5" fill="#5B6E7A">Seats (5)</text>
+  <text x="244" y="130" font-family="DM Sans,system-ui" font-size="8.5" fill="#2A2B28" text-anchor="end">$0</text>
+  <text x="96" y="146" font-family="DM Sans,system-ui" font-size="8.5" fill="#5B6E7A">Audit &amp; Governance</text>
+  <text x="244" y="146" font-family="DM Sans,system-ui" font-size="8.5" fill="#2A2B28" text-anchor="end">included</text>
+  
+  <rect x="96" y="155" width="148" height="16" rx="4" fill="#E7ECE3" />
+  <text x="170" y="166" font-family="DM Sans,system-ui" font-size="7.5" fill="#7E9A7B" font-weight="600" text-anchor="middle">No hidden fees</text>
+  
+  <line x1="96" y1="178" x2="244" y2="178" stroke="#D9D1C2" stroke-width="1" stroke-dasharray="4,3" />
+  
+  <text x="96" y="194" font-family="DM Sans,system-ui" font-size="10" fill="#2A2B28" font-weight="700">Total</text>
+  <text x="244" y="194" font-family="DM Sans,system-ui" font-size="10" fill="#19C37D" font-weight="700" text-anchor="end">$49/mo</text>
+  
+  <circle cx="170" cy="215" r="10" fill="#19C37D" style="animation:gi-stamp-in 8s ease-in-out infinite 2s" />
+  <path d="M164,215 L168,220 L177,209" stroke="#FBF8F2" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round" />
+  
+  <rect x="96" y="200" width="56" height="12" rx="6" fill="#E7ECE3" />
+  <circle cx="106" cy="206" r="3" fill="#19C37D" style="animation:gi-pulse-op 1.8s ease-in-out infinite" />
+  <rect x="113" y="204" width="32" height="4" rx="2" fill="#7E9A7B" opacity="0.7" />
+</g>
+
+
+<g transform="translate(295,130)">
+  <g style="animation:gi-bob 9s ease-in-out infinite 1s"><ellipse cx="20" cy="58" rx="20" ry="6" fill="#C98F5B" />
+  <rect x="0" y="30" width="40" height="28" fill="#C98F5B" rx="2" />
+  <ellipse cx="20" cy="30" rx="20" ry="6" fill="#E2A33A" />
+  <ellipse cx="20" cy="16" rx="20" ry="6" fill="#C98F5B" />
+  <rect x="0" y="0" width="40" height="16" fill="#C98F5B" rx="2" />
+  <ellipse cx="20" cy="0" rx="20" ry="6" fill="#E2A33A" />
+</g></g>
+</svg>

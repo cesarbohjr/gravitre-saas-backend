@@ -49,12 +49,12 @@ export function DesktopCompanionPreview() {
             "linear-gradient(to bottom, black 0%, black 90%, transparent 100%)",
         }}
       >
-        {/* Title bar — graphite chrome, no yellow traffic light */}
-        <div className="flex items-center gap-2 rounded-t-[1.05rem] border-b border-border bg-muted/50 px-4 py-3">
+        {/* Title bar — macOS window outline, matching the other product shots */}
+        <div className="flex items-center gap-2 rounded-t-[1.05rem] border-b border-border bg-card px-4 py-3">
           <div className="flex gap-1.5">
-            <span className="h-3 w-3 rounded-full bg-muted-foreground/40" />
-            <span className="h-3 w-3 rounded-full bg-muted-foreground/28" />
-            <span className="h-3 w-3 rounded-full bg-primary/55" />
+            <span className="h-3 w-3 rounded-full bg-[#ff5f57]" />
+            <span className="h-3 w-3 rounded-full bg-[#febc2e]" />
+            <span className="h-3 w-3 rounded-full bg-[#28c840]" />
           </div>
           <div className="flex-1 text-center">
             <span className="text-xs font-medium text-muted-foreground">Gravitre Desktop</span>

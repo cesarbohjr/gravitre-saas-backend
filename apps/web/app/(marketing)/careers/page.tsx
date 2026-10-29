@@ -130,11 +130,10 @@ export default function CareersPage() {
             We are not listing invented openings. Reach out if you want to build with us.
           </SubHeading>
           <MarketingScene
-            name="market-onboarding"
-            width={300}
-            height={190}
-            aspect="aspect-[16/9]"
-            status="Your desk is ready"
+            name="marketing/open-roles"
+            alt="An empty desk with a monitor, a plant and a welcome card"
+            width={400}
+            height={300}
             className="mx-4 mt-10 w-[calc(100%-2rem)] max-w-xl"
           />
           <Button as={Link} href="/contact" className="mt-8">

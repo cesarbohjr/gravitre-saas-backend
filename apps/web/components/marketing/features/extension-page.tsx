@@ -289,6 +289,7 @@ export function ExtensionPage() {
               <ProductScreenshot
                 className="mt-5"
                 src="/product/app-approvals.png"
+                chromeLabel="Approvals"
                 alt="Decision queue showing three requests waiting, with a Zendesk scope grant selected and what will happen, why it paused, and its activity open."
               />
             </GravitreResolve>
@@ -307,6 +308,7 @@ export function ExtensionPage() {
               <ProductScreenshot
                 className="mt-5"
                 src="/product/app-activity.png"
+                chromeLabel="Activity"
                 alt="Activity showing outcomes tagged browser_extension, with a failed HubSpot step open on its run trace: plan, authorize, create, verify."
               />
             </GravitreResolve>

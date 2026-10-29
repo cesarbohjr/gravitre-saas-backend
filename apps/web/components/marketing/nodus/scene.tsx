@@ -34,7 +34,7 @@ export function MarketingScene({
   priority = false,
   className,
 }: {
-  /** File name in public/illustrations, without extension. */
+  /** Path under public/illustrations, without extension, e.g. "marketing/support". */
   name: string
   alt?: string
   width?: number
@@ -47,6 +47,7 @@ export function MarketingScene({
   priority?: boolean
   className?: string
 }) {
+  const animated = name.startsWith("marketing/")
   return (
     <figure
       className={cn(
@@ -64,8 +65,8 @@ export function MarketingScene({
         priority={priority}
         unoptimized
         draggable={false}
-        style={{ animationDelay: `${-(hash(name) % 14)}s` }}
-        className={cn("mk-scene-drift block w-full", aspect ? "h-full object-cover" : "h-auto")}
+        style={animated ? undefined : { animationDelay: `${-(hash(name) % 14)}s` }}
+        className={cn(!animated && "mk-scene-drift", "block w-full", aspect ? "h-full object-cover" : "h-auto")}
       />
       {status ? (
         <figcaption className="absolute right-3 bottom-3 left-3 flex items-center gap-2 rounded-xl border border-[#e4e4df] bg-white/95 px-3 py-2 text-[13px] text-[#262826] shadow-[0_6px_16px_rgba(20,20,20,0.08)]">
