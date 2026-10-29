@@ -27,6 +27,12 @@ These gates are required **before PR587 merges**, not optional post-release rese
 - Benchmark Mem0 against Gravitre-native memory using matched consented/synthetic corpora for extraction precision/recall, semantic retrieval relevance, correction/consolidation, false-memory resistance, latency and cost. Include cross-tenant, revoked-source and prompt-injection negative cases.
 - Record an explicit adopt/reject decision based on both a hard complete-erasure PASS and meaningful measured quality/efficiency improvement. If either fails or evidence is unavailable, retain Gravitre-native memory; do not install Mem0 in the application runtime or claim it is certified.
 
+### Capability parity: integrate or replicate, then benchmark
+- The decision target is measurable capability parity or superiority, **not mandatory third-party adoption**. For each candidate (Pipecat, LiveKit Agents, DeepEval, Mem0), identify gaps against Gravitre-native behavior, and evaluate three paths: retain native unchanged, engineer the missing capability natively, or integrate a narrowly scoped library.
+- Before selecting a path, compare measured quality, latency, reliability, privacy/security, tenant isolation, cancellation, maintenance burden, licensing and total engineering/operating cost. No option receives an automatic preference or PASS merely because it is native or popular.
+- Implement the chosen path fully and rerun the same representative fixed-baseline and real-audio tests against the final result. A replicated capability must pass the same acceptance thresholds as an integrated library. Preserve the canonical Gravitre intelligence, authorization, memory consent/deletion and action-execution boundaries.
+- Document evidence, alternatives, and an explicit integrate/replicate/retain/reject decision per capability in PR587. Unmeasured or unavailable evidence blocks the gate. Complete all gates before merge; production acceptance remains after deployment.
+
 ### Release enforcement
 - Attach evidence and decisions to PR587, update its engineering checklist and CI where automatable, then certify the final combined PR581/PR587 tree. Do not merge PR587 while any required gate is unmeasured, failed or blocked. Production acceptance still follows the approved merge/deployment sequence.
 
