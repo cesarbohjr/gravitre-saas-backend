@@ -1,5 +1,34 @@
 # Isolated LiveKit candidate checkpoint — 2026-10-29
 
+## Network failure investigation and continuation
+
+The execution host permits ordinary loopback TCP/UDP bind/listen, but creating
+an AF_NETLINK route socket returns EPERM. LiveKit's RTC configuration calls
+`stdnet.NewNet()` unconditionally; explicit node IP or ForceTCP does not remove
+the interface-enumeration requirement. No host security policy was changed.
+
+Connected testing moved to a loopback-only LiveKit 1.13.11 server on an isolated
+GitHub-hosted Ubuntu runner. Server and public Whisper JFK speech fixture are
+SHA256 verified. The first connected run after provisioning FFmpeg started
+LiveKit successfully and captured actual received speech:
+
+- Run: https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/40975666106
+- Head: `55c4172c30a93a2137f8aa15e549d186779f906a`
+- Artifact: `livekit-connected-transport-only`, ID `12941913420`.
+- Captured WAV: 22.65 seconds including the ingress phase's leading silence.
+- Independently calculated normalized waveform correlation to the source: 0.9772.
+- Received signal RMS: 3231.88 in PCM16 sample units.
+
+That run **FAILED** during SDK reconnect/cleanup; it does not pass the complete
+transport gate. The follow-up uses a fresh Room for peer rejoin, ends the
+PipelineRunner on disconnect, and makes terminal callbacks idempotent so they
+cannot clear a disposed AudioSource FFI handle. Nine local boundary/lifecycle
+tests pass. Final connected CI must pass with those fixes before a transport
+PASS is recorded. No inference, write authorization, or conversational quality
+certification is implied by the waveform measurements.
+
+The earlier checkpoint below remains a historical record of the initial work.
+
 Status: PARTIAL. No recorded-speech comparison or production certification.
 
 Implemented `backend/app/services/pipecat_voice/livekit_candidate.py`: a native

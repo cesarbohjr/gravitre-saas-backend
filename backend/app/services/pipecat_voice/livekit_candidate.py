@@ -129,6 +129,8 @@ class LiveKitCandidateSocket:
         self._end_session()
 
     def _end_session(self) -> None:
+        if self.disconnected.is_set():
+            return
         self.client_state = WebSocketState.DISCONNECTED
         self.application_state = WebSocketState.DISCONNECTED
         self._source.clear_queue()

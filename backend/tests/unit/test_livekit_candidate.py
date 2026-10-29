@@ -45,6 +45,10 @@ async def test_real_sdk_audio_source_accepts_pcm_and_closes(candidate_module):
         await socket.close()
     assert (await socket.receive())["type"] == "websocket.disconnect"
     await socket.close()
+    # Room disconnect callbacks may arrive after the source has been disposed.
+    # An ended session must not send another FFI clear-buffer request.
+    socket._source = SimpleNamespace(clear_queue=lambda: pytest.fail("disposed source accessed"))
+    socket._disconnected()
 
 
 @pytest.mark.asyncio
