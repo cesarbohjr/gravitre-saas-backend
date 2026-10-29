@@ -12,11 +12,17 @@
 
 - Full automatic-build shutdown of `web`: automatic approval review rejected an unconditional skip because it could stop production updates. The narrower preview-only change was accepted.
 - Disabling elastic concurrency / restricting the build queue: Vercel returned a role/permission error; no successful change is claimed.
-- Deployment-retention policy and v0 subscription review: the connector lacks the needed controls, and the dashboard browser is signed out.
-- Shrinking the dev-only static-preview route's traced bundle needs a separate verified source change; no bundle-size reduction is claimed.
+- Dashboard inspection later succeeded. `web` preview retention was reduced from 30 days to two weeks. Its production retention stays 30 days. The production-serving project already had one-day canceled/errored/preview retention and one-week production retention; these were left unchanged.
+- v0 Business was $100/user/month, with no usage events in the Oct 11–Nov 11 cycle. Auto-renewal was turned off: Business remains through Nov 11, then Free. Automatic credit recharge was also turned off; no new $40 top-ups. Current credits were not spent or deleted.
+
+## Production bundle optimization
+
+Normal production builds now compile out the development-only static-preview filesystem handler. Explicit E2E builds retain it via a build-time boolean, without exposing credentials. The wrapper preserves the production 404 response.
+
+Local verification: production build completed successfully; route trace changed from 4,077 files / 41,144,251 bytes to 176 files / 1,934,836 bytes (traced inputs, not compressed deployment bytes). Three Vitest checks passed: normal-production 404, explicit E2E extension manifest delivery, and directory traversal rejection. Targeted ESLint passed. Production deployment verification is required separately; this local comparison does not claim an invoice saving.
 
 ## Verification and rollback
 
-This documentation-only commit also exercises the live ignored-build setting. Check its Vercel build log for `Skipping web build: no frontend build inputs changed.` before claiming the live skip was verified. Its intended behavior is to leave the previous successful production deployment serving.
+Live skip verification succeeded for documentation commit 2ebe60d75f07b52768039bb9b999d9d47872b0a0: both Vercel logs report `Skipping web build: no frontend build inputs changed.` and cancellation by ignored-step exit code 0. Evidence: production-serving project https://vercel.com/gravitre-ai/gravitre-saas-backend/5raBDWJc3ov4UPpe5zSut1Daa7zS and duplicate https://vercel.com/gravitre-ai/web/GNAQ2mHPxtUjJ2AB8FjGzqExHxiB. The previous successful production deployment continued serving (home and login HTTP 200; dev-only route HTTP 404).
 
 To resume all frontend Git builds, clear the project's Ignored Build Step command. To restore duplicate preview builds, set `previewDeploymentsDisabled` to false on `web`. Production hosting, auth protection, runtime limits, and monitoring were not intentionally changed.
