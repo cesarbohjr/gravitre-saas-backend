@@ -6,6 +6,7 @@ import { CTA } from "@/components/marketing/nodus/cta"
 import { MarketingScene } from "@/components/marketing/nodus/scene"
 import { DivideX } from "@/components/marketing/nodus/divide"
 import { Heading } from "@/components/marketing/nodus/heading"
+import { HeroImage } from "@/components/marketing/nodus/hero-image"
 import { SectionHeading } from "@/components/marketing/nodus/seciton-heading"
 import { SubHeading } from "@/components/marketing/nodus/subheading"
 import {
@@ -56,6 +57,18 @@ export default function AboutPage() {
         </div>
       </Container>
 
+      <DivideX />
+      <HeroImage
+        src="/product/app-workflow-builder.png"
+        alt="Gravitre workflow builder: Salesforce, a validation agent and PostgreSQL wired into one workflow, with a decision step and a quality gate before the write"
+        width={2880}
+        height={1800}
+        title="Workflows · Editor"
+        chips={[
+          { label: "Connectors wired into one workflow", at: "top-right" },
+          { label: "Approval gate before every write", at: "bottom-left", tone: "amber" },
+        ]}
+      />
       <DivideX />
 
       <GravitreSection>

@@ -2,6 +2,7 @@
 
 import { useState, type ComponentType } from "react"
 import Link from "next/link"
+import Image from "next/image"
 import { motion, AnimatePresence } from "framer-motion"
 import {
   Headphones,
@@ -20,6 +21,7 @@ import {
   NucleoWorkflow,
 } from "@/components/icons/nucleo/semantic"
 import { MARKETING_COPY } from "@/lib/marketing-copy"
+import { marketArtFor, type MarketArtName } from "@/lib/marketplace-category-art"
 import { DivideX } from "@/components/marketing/nodus/divide"
 import { MarketingScene } from "@/components/marketing/nodus/scene"
 import {
@@ -62,11 +64,14 @@ type Asset = {
   availability: "Included"
   icon: AssetIcon
   tone: string
+  /** Cover from the app's Marketplace card library, one per card. */
+  art: MarketArtName
 }
 
 const ASSETS: Asset[] = [
   {
     name: "Customer Success Pack",
+    art: "market-new-customers",
     category: "Department packs",
     subtitle: "3 workflows · CS agent",
     description: "Health monitoring, QBR prep, and account-risk workflows bundled for CSM teams.",
@@ -76,6 +81,7 @@ const ASSETS: Asset[] = [
   },
   {
     name: "Revenue Operations Pack",
+    art: "market-revenue",
     category: "Department packs",
     subtitle: "RevOps + Sales agents",
     description: "Pipeline review, executive summaries, and CRM-connected RevOps rituals.",
@@ -85,6 +91,7 @@ const ASSETS: Asset[] = [
   },
   {
     name: "Support Operations Pack",
+    art: "market-tickets",
     category: "Department packs",
     subtitle: "Zendesk triage agent",
     description: "Ticket triage, support knowledge, and an optional SLA escalation workflow.",
@@ -94,6 +101,7 @@ const ASSETS: Asset[] = [
   },
   {
     name: "Marketing Operations Pack",
+    art: "market-campaigns",
     category: "Department packs",
     subtitle: "Campaign production",
     description: "Multi-agent marketing production, attribution analysis, and campaign digests.",
@@ -103,6 +111,7 @@ const ASSETS: Asset[] = [
   },
   {
     name: "Ticket Triage Agent",
+    art: "market-support",
     category: "Agents",
     subtitle: "Support operations",
     description: "Categorize and route inbound tickets, then hand off to humans with full context.",
@@ -112,6 +121,7 @@ const ASSETS: Asset[] = [
   },
   {
     name: "RevOps Copilot",
+    art: "market-pipeline",
     category: "Agents",
     subtitle: "Sales operations",
     description: "Enrich records, summarize pipeline, and draft follow-ups from connected CRM data.",
@@ -121,6 +131,7 @@ const ASSETS: Asset[] = [
   },
   {
     name: "Deal Desk Workflow",
+    art: "market-deals",
     category: "Workflows",
     subtitle: "Approval-gated",
     description: "Route quotes and discounts through the right approvers with a full audit trail.",
@@ -130,6 +141,7 @@ const ASSETS: Asset[] = [
   },
   {
     name: "Invoice Processing",
+    art: "market-finance",
     category: "Workflows",
     subtitle: "Finance operations",
     description: "Parse invoices, match POs, and queue exceptions for human review before writes.",
@@ -139,6 +151,7 @@ const ASSETS: Asset[] = [
   },
   {
     name: "Security Knowledge Base",
+    art: "market-security",
     category: "Knowledge",
     subtitle: "RAG source",
     description: "Curated threat-intel and policy docs, ready for agents with routing traces.",
@@ -148,6 +161,7 @@ const ASSETS: Asset[] = [
   },
   {
     name: "Onboarding Playbook",
+    art: "market-onboarding",
     category: "Knowledge",
     subtitle: "HR operations",
     description: "Structured onboarding checklists and request routing for new hires.",
@@ -165,6 +179,7 @@ const STEPS = [
 
 function CatalogCard({ asset, index }: { asset: Asset; index: number }) {
   const Icon = asset.icon
+  const art = marketArtFor(asset.art)
   return (
     <motion.div
       layout
@@ -172,22 +187,38 @@ function CatalogCard({ asset, index }: { asset: Asset; index: number }) {
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -8 }}
       transition={{ duration: 0.3, delay: Math.min(index * 0.04, 0.24) }}
-      className="flex flex-col rounded-2xl border border-divide bg-[color:var(--g-marketing-surface)] p-6 shadow-sm transition-all hover:-translate-y-1 hover:border-primary/20 hover:bg-card hover:shadow-md"
+      className="group flex flex-col overflow-hidden rounded-2xl border border-divide bg-[color:var(--g-marketing-surface)] shadow-sm transition-all hover:-translate-y-1 hover:border-primary/20 hover:bg-card hover:shadow-md"
     >
-      <div className={`flex h-12 w-12 items-center justify-center rounded-xl ${asset.tone}`}>
-        <Icon className="h-6 w-6" />
+      <div className="relative aspect-[16/9] overflow-hidden bg-[#E7ECE3]">
+        <Image
+          src={art.src}
+          alt={art.alt}
+          fill
+          unoptimized
+          sizes="(min-width: 1024px) 25vw, (min-width: 640px) 50vw, 100vw"
+          className="object-cover transition-transform duration-500 group-hover:scale-[1.04]"
+        />
+        <span className="absolute left-3 top-3 inline-flex items-center gap-1.5 rounded-full bg-white/90 px-2.5 py-1 text-[11px] font-medium text-charcoal-700 shadow-sm">
+          <span className="size-1.5 rounded-full bg-brand" />
+          {art.label}
+        </span>
       </div>
-      <h3 className="mt-4 text-lg font-semibold text-foreground">{asset.name}</h3>
-      <p className="mt-0.5 text-sm text-muted-foreground">{asset.subtitle}</p>
-      <p className="mt-3 flex-1 text-sm leading-relaxed text-muted-foreground">{asset.description}</p>
-      <div className="mt-6 flex items-center justify-between">
-        <span className="text-sm font-semibold text-primary">{asset.availability}</span>
-        <Link
-          href="/get-started"
-          className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/100"
-        >
-          Install
-        </Link>
+      <div className="flex flex-1 flex-col p-6 pt-5">
+        <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${asset.tone}`}>
+          <Icon className="h-5 w-5" />
+        </div>
+        <h3 className="mt-4 text-lg font-semibold text-foreground">{asset.name}</h3>
+        <p className="mt-0.5 text-sm text-muted-foreground">{asset.subtitle}</p>
+        <p className="mt-3 flex-1 text-sm leading-relaxed text-muted-foreground">{asset.description}</p>
+        <div className="mt-6 flex items-center justify-between">
+          <span className="text-sm font-semibold text-primary">{asset.availability}</span>
+          <Link
+            href="/get-started"
+            className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/100"
+          >
+            Install
+          </Link>
+        </div>
       </div>
     </motion.div>
   )
@@ -241,6 +272,7 @@ export function MarketplacePage() {
           <StageTraceVisual
             stages={MARKETPLACE_TRACE_STAGES}
             gradientId="marketplace-trace"
+            payloads={["Deal Desk Workflow", "RevOps Copilot", "Onboarding Playbook", "Ticket Triage Agent"]}
             ariaLabel="Marketplace path from browse through readiness and approval gate to live"
             caption="Browse → readiness → approval gate → live — same governance as chat and workflows."
           />

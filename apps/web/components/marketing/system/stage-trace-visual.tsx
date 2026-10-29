@@ -5,6 +5,7 @@
  * No TRAINED badges, prices, or entitlement claims.
  */
 
+import { useEffect, useState } from "react"
 import { motion, useReducedMotion } from "framer-motion"
 import { cn } from "@/lib/utils"
 
@@ -20,6 +21,8 @@ type Props = {
   className?: string
   /** Kept for callers; the trace no longer uses an SVG gradient. */
   gradientId?: string
+  /** Optional item names; one rides the signal per loop as a small card. */
+  payloads?: readonly string[]
 }
 
 /** One signal loop: TRAVEL is the share of the loop spent moving, the rest is the fade. */
@@ -31,8 +34,15 @@ export function StageTraceVisual({
   caption,
   ariaLabel,
   className,
+  payloads,
 }: Props) {
   const reduce = useReducedMotion()
+  const [payloadIndex, setPayloadIndex] = useState(0)
+  useEffect(() => {
+    if (reduce || !payloads?.length) return
+    const id = window.setInterval(() => setPayloadIndex((i) => (i + 1) % payloads.length), LOOP * 1000)
+    return () => window.clearInterval(id)
+  }, [reduce, payloads])
   const count = stages.length
   const width = 880
   const y = 120
@@ -102,6 +112,35 @@ export function StageTraceVisual({
           </>
         )}
 
+        {!reduce && payloads?.length ? (
+          <motion.g
+            initial={{ x: xs[0], opacity: 0 }}
+            animate={{ x: [xs[0], xs[count - 1], xs[count - 1]], opacity: [1, 1, 0] }}
+            transition={{ duration: LOOP, times: [0, TRAVEL, 1], ease: "easeInOut", repeat: Infinity }}
+          >
+            <rect
+              x={-76}
+              y={y - 58}
+              width={152}
+              height={30}
+              rx={8}
+              fill="var(--card)"
+              stroke="var(--color-line, #e4e4df)"
+              style={{ filter: "drop-shadow(0 2px 6px rgba(0,0,0,0.08))" }}
+            />
+            <circle cx={-62} cy={y - 43} r={3.5} fill="var(--color-brand, #0b8a5c)" />
+            <text
+              x={-52}
+              y={y - 39}
+              className="fill-[color:var(--g-text-primary,#1f2421)]"
+              style={{ fontSize: 11, fontWeight: 500 }}
+            >
+              {payloads[payloadIndex]}
+            </text>
+            <line x1={0} y1={y - 28} x2={0} y2={y - 6} stroke="var(--color-line, #e4e4df)" strokeDasharray="2 3" />
+          </motion.g>
+        ) : null}
+
         {stages.map((stage, index) => {
           const at = count === 1 ? 0 : (TRAVEL * index) / (count - 1)
           const last = index === count - 1
@@ -135,12 +174,35 @@ export function StageTraceVisual({
                 viewport={{ once: true }}
                 transition={{ delay: 0.12 + index * 0.1, duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
               />
-              <circle
-                cx={xs[index]}
-                cy={y}
-                r={5}
-                fill={last ? "var(--color-brand, #0b8a5c)" : "var(--color-charcoal-700, #3f4b45)"}
-              />
+              {reduce || last ? (
+                <circle
+                  cx={xs[index]}
+                  cy={y}
+                  r={5}
+                  fill={last ? "var(--color-brand, #0b8a5c)" : "var(--color-charcoal-700, #3f4b45)"}
+                />
+              ) : (
+                <motion.circle
+                  cx={xs[index]}
+                  cy={y}
+                  r={5}
+                  initial={{ fill: "var(--color-charcoal-700, #3f4b45)" }}
+                  animate={{
+                    fill: [
+                      "var(--color-charcoal-700, #3f4b45)",
+                      "var(--color-charcoal-700, #3f4b45)",
+                      "var(--color-brand, #0b8a5c)",
+                      "var(--color-brand, #0b8a5c)",
+                      "var(--color-charcoal-700, #3f4b45)",
+                    ],
+                  }}
+                  transition={{
+                    duration: LOOP,
+                    times: [0, at, Math.min(at + 0.03, 1), 0.92, 1],
+                    repeat: Infinity,
+                  }}
+                />
+              )}
               <text
                 x={xs[index]}
                 y={y + 42}

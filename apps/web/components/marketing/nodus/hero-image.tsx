@@ -1,9 +1,9 @@
-import React from "react";
-import Image from "next/image";
-import { motion } from "framer-motion";
-import { Container } from "./container";
-import { Dot } from "./common/dots";
-import { AppWindow, type AppWindowChip } from "./app-window";
+import React from "react"
+import Image from "next/image"
+import { motion } from "framer-motion"
+import { Container } from "./container"
+import { Dot } from "./common/dots"
+import { AppWindow, type AppWindowChip } from "./app-window"
 
 /**
  * Hero product screenshot in a macOS window outline — server-rendered for crisp marketing display.
@@ -15,16 +15,16 @@ import { AppWindow, type AppWindowChip } from "./app-window";
  * plain server-rendered element with `priority`, so this doesn't touch LCP.
  */
 type HeroImageProps = {
-  src?: string;
-  alt?: string;
-  width?: number;
-  height?: number;
+  src?: string
+  alt?: string
+  width?: number
+  height?: number
   /** Title pill in the window bar. */
-  title?: string;
-  chips?: AppWindowChip[];
+  title?: string
+  chips?: AppWindowChip[]
   /** When set, the screenshot fades/rises in each time this key changes. */
-  animateKey?: string;
-};
+  animateKey?: string
+}
 
 export const HeroImage = ({
   src = "/nodus/dashboard@3x.png",
@@ -34,11 +34,7 @@ export const HeroImage = ({
   title = "Dashboard",
   chips = [
     { label: "Live · updated just now", at: "top-right" },
-    {
-      label: "Human approval on every write",
-      at: "bottom-left",
-      tone: "amber",
-    },
+    { label: "Human approval on every write", at: "bottom-left", tone: "amber" },
   ],
   animateKey,
 }: HeroImageProps = {}) => {
@@ -55,7 +51,7 @@ export const HeroImage = ({
       height={height}
       draggable={false}
     />
-  );
+  )
   return (
     <Container className="border-divide relative flex items-start justify-start md:border-x bg-white p-4 perspective-distant md:p-8 lg:p-12">
       <Dot top left />
@@ -79,5 +75,5 @@ export const HeroImage = ({
         </AppWindow>
       </div>
     </Container>
-  );
-};
+  )
+}
