@@ -11,7 +11,7 @@
 
 - Focused Marketplace/catalog/recommendation/shared-prompt suite on the software checkpoint: **918 passed** with `tests.offline_network_guard`.
 - Full web Vitest suite: **1,960 passed**, 312 files. Final copy-focused rerun: **15 passed** (overlap).
-- The default local Turbopack build could not resolve Next.js through the reused external dependency directory. This is an environment-layout limitation, not a build PASS; the standard CI install/build remains required.
+- The default local Turbopack build could not resolve Next.js through the reused external dependency directory. A local Webpack production build with CI-equivalent public placeholder settings completed successfully; this does not replace the standard CI install/Turbopack build gate.
 - TypeScript: passed. Touched-file ESLint: zero errors; six existing warnings in connector settings.
 - Full backend offline attempt: **12,674 passed, 281 skipped, 1 failed, 9 errors**. The failure was the new connector prompt breaking the existing bare-agent empty-section contract; fixed by omitting connector instructions for an unconfigured identity-only record. The nine Redis integration setup errors require a reachable local Redis service and are incompatible with the all-network guard. This run is **not full-suite PASS**.
 - After that correction, affected profile/runtime-wiring/shared-prompt/native-adapter tests: **132 passed** under the network guard. No assertion was weakened for the bare-agent fix.
