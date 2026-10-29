@@ -40,6 +40,7 @@ class LiveKitCandidateSocket:
         self._audio_task: asyncio.Task | None = None
         self._stream: rtc.AudioStream | None = None
         self._closed = False
+        self.disconnected = asyncio.Event()
         self._audio_sid: str | None = None
         self._pending_control: dict[str, str] | None = None
         self._pending_audio: dict[str, Any] | None = None
@@ -130,6 +131,7 @@ class LiveKitCandidateSocket:
         self.application_state = WebSocketState.DISCONNECTED
         self._source.clear_queue()
         self._control_ready.set()
+        self.disconnected.set()
 
     async def receive(self) -> dict[str, Any]:
         while self.client_state == WebSocketState.CONNECTED:
@@ -233,13 +235,35 @@ async def run_livekit_candidate(*, url: str, token: str, participant_identity: s
             websocket=socket, settings=settings, org_id=org_id, user_id=user_id,
             conversation_id=conversation_id,
         )
-        await PipelineRunner(handle_sigint=False).run(task)
+        await _run_until_disconnect(PipelineRunner(handle_sigint=False).run(task),
+                                    socket.disconnected, task.cancel)
     finally:
         if task is not None:
             await task.cancel()
         if socket is not None:
             await socket.close()
         await room.disconnect()
+
+
+async def _run_until_disconnect(run, disconnected: asyncio.Event, cancel) -> None:
+    """Transport disconnect alone doesn't stop PipelineRunner; cancel explicitly."""
+    running = asyncio.create_task(run)
+    lost = asyncio.create_task(disconnected.wait())
+    try:
+        done, _ = await asyncio.wait({running, lost}, return_when=asyncio.FIRST_COMPLETED)
+        if lost in done and not running.done():
+            await asyncio.wait_for(cancel(), timeout=5)
+            try:
+                await asyncio.wait_for(running, timeout=5)
+            except asyncio.TimeoutError:
+                pass
+        else:
+            await running
+    finally:
+        for pending in (running, lost):
+            if not pending.done():
+                pending.cancel()
+        await asyncio.gather(running, lost, return_exceptions=True)
 
 
 def main() -> None:

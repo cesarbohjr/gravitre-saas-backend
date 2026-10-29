@@ -137,3 +137,25 @@ async def test_native_audio_stream_encodes_real_pcm_without_altering_samples(can
         assert (await socket.receive())["type"] == "websocket.disconnect"
     finally:
         await socket.close()
+
+
+@pytest.mark.asyncio
+async def test_disconnect_cancels_pipeline_runner_instead_of_only_media(candidate_module):
+    disconnected, stopped = asyncio.Event(), asyncio.Event()
+    cancel = AsyncMock(side_effect=stopped.set)
+    async def run():
+        await stopped.wait()
+    session = asyncio.create_task(candidate_module._run_until_disconnect(run(), disconnected, cancel))
+    disconnected.set()
+    await asyncio.wait_for(session, 1)
+    cancel.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_pipeline_failure_is_not_hidden_by_disconnect_monitor(candidate_module):
+    async def run():
+        raise RuntimeError("pipeline failed")
+    cancel = AsyncMock()
+    with pytest.raises(RuntimeError, match="pipeline failed"):
+        await candidate_module._run_until_disconnect(run(), asyncio.Event(), cancel)
+    cancel.assert_not_awaited()

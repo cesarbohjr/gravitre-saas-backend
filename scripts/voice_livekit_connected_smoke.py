@@ -18,6 +18,7 @@ import uuid
 import wave
 
 from livekit import api, rtc
+import numpy as np
 
 
 def load_socket():
@@ -135,6 +136,16 @@ async def connected_trial(url: str, input_pcm: bytes, output_pcm: bytes, out: Pa
         await asyncio.sleep(0.3)
         if len(received) < 24000:
             raise AssertionError("less than half a second of output audio received")
+        expected = np.frombuffer(output_pcm, dtype="<i2").astype(np.float64)
+        actual = np.frombuffer(received, dtype="<i2").astype(np.float64)
+        fft_size = 1 << (len(expected) + len(actual) - 1).bit_length()
+        correlation = np.fft.irfft(np.fft.rfft(actual, fft_size) *
+                                  np.conj(np.fft.rfft(expected, fft_size)), fft_size)
+        energy = float(np.linalg.norm(expected) * np.linalg.norm(actual))
+        normalized_correlation = float(np.max(correlation) / energy) if energy else 0.0
+        # Signal identity/integrity, not conversational or perceptual quality.
+        if normalized_correlation < 0.2:
+            raise AssertionError("received audio does not correlate with recorded speech")
         with wave.open(str(out), "wb") as audio:
             audio.setparams((1, 2, 24000, 0, "NONE", "not compressed"))
             audio.writeframes(received)
@@ -172,6 +183,9 @@ async def connected_trial(url: str, input_pcm: bytes, output_pcm: bytes, out: Pa
             "interrupt_control_delivery_ms": stop_delivery_ms, "rtc_rejoin_ms": rejoin_ms,
             "foreign_control_rejected": True, "old_session_stays_closed": True,
             "output_duration_s": len(received) / 48000,
+            "waveform_correlation": normalized_correlation,
+            "output_rms_pcm16": float(np.sqrt(np.mean(actual * actual))),
+            "output_clipped_fraction": float(np.mean(np.abs(actual) >= 32767)),
             "output_sha256": hashlib.sha256(out.read_bytes()).hexdigest(),
             "provider_inference": "NOT_RUN", "cancelled_write_audit": "NOT_RUN",
             "acoustic_interruption": "NOT_RUN", "conversational_audio_quality": "NOT_RUN",
