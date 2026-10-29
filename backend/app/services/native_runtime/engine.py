@@ -156,9 +156,20 @@ async def stable_browser_evidence(browser_session,requested):
     raise PermissionError('Browser viewport did not stabilize before approval')
 
 
+def configure_browser_sdk():
+    from browser_use.browser.watchdogs.aboutblank_watchdog import AboutBlankWatchdog
+    # The pinned SDK injects an animated remote logo into about:blank even with
+    # demo_mode=False. Disable only that cosmetic hook in this one-job process;
+    # leave the watchdog's tab creation/recovery and all security hooks intact.
+    async def no_blank_animation(self):
+        return None
+    AboutBlankWatchdog._show_dvd_screensaver_on_about_blank_tabs=no_blank_animation
+
+
 async def browse(config):
     from browser_use import Agent,Browser,ChatOpenAI,Tools
     from browser_use.browser.profile import BrowserProfile
+    configure_browser_sdk()
     # Explicitly remove code execution, file access and upload surfaces. Every
     # remaining model-chosen action passes the host's exact per-action approval.
     class GovernedTools(Tools):

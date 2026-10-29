@@ -20,6 +20,15 @@ elif sys.argv[1]=='browser_use':
     assert session.browser_profile.demo_mode is False
     assert session.browser_profile.highlight_elements is False
     assert session.browser_profile.dom_highlight_elements is False
+    from browser_use.browser.watchdogs.aboutblank_watchdog import AboutBlankWatchdog
+    original_recovery=AboutBlankWatchdog.on_TabClosedEvent
+    assert hasattr(AboutBlankWatchdog,'_show_dvd_screensaver_on_about_blank_tabs')
+    import asyncio
+    from engine import configure_browser_sdk
+    configure_browser_sdk()
+    assert AboutBlankWatchdog.on_TabClosedEvent is original_recovery
+    # The replacement needs no CDP/session/network access, even on an opaque object.
+    assert asyncio.run(AboutBlankWatchdog._show_dvd_screensaver_on_about_blank_tabs(object())) is None
     assert all(hasattr(AgentHistoryList,name) for name in ('is_done','is_successful','errors','urls','final_result'))
     assert {'browser','tools','directly_open_url','use_judge','use_vision','max_actions_per_step'} <= set(inspect.signature(Agent).parameters)
     assert {'include_screenshot','cached'} <= set(inspect.signature(Browser.get_browser_state_summary).parameters)
