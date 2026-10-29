@@ -69,8 +69,7 @@
   <rect x="170" y="115" width="136" height="100" rx="10" fill="#FBF8F2" stroke="#19C37D" stroke-width="2" />
   
   <rect x="182" y="128" width="18" height="18" rx="4" fill="#2A2B28" />
-  <rect x="186" y="132" width="4" height="10" rx="1" fill="#19C37D" transform="rotate(-10 188 137)" />
-  <rect x="192" y="130" width="4" height="10" rx="1" fill="#19C37D" transform="rotate(-10 194 135)" />
+  <g><svg x="185.5" y="130.5" width="11" height="11" viewBox="0 0 24 24" fill="#19C37D"><g transform="translate(12 12) skewX(-14) translate(-12 -12)"><rect x="1.5" y="3.2" width="21" height="7" rx="2.4" /><rect x="1.5" y="13.8" width="21" height="7" rx="2.4" /></g></svg></g>
   <rect x="206" y="130" width="88" height="5" rx="2" fill="#C4C0B5" />
   <rect x="182" y="154" width="112" height="4" rx="2" fill="#DDD9D0" />
   <rect x="182" y="163" width="90" height="4" rx="2" fill="#DDD9D0" />

@@ -40,6 +40,55 @@ import {
 import { VoiceIntentField } from "@/components/marketing/creative"
 import { MARKETING_COPY } from "@/lib/marketing-copy"
 
+/** Hero pill → the real app screen it names (captures from /e2e/shots). */
+const HERO_SHOTS: Record<
+  string,
+  { src: string; alt: string; width: number; height: number; title: string }
+> = {
+  "Gravitre AI": {
+    src: "/product/app-ai.png",
+    alt: "Gravitre AI chat: ask, delegate, or search across your connected stack",
+    width: 2880,
+    height: 1800,
+    title: "Gravitre AI",
+  },
+  Agents: {
+    src: "/product/app-agents-team.png",
+    alt: "Gravitre Agents: your AI workforce by department",
+    width: 2880,
+    height: 1620,
+    title: "Agents",
+  },
+  Workflows: {
+    src: "/product/app-workflows.png",
+    alt: "Gravitre Workflows: status, runs and failure signals across connectors",
+    width: 2880,
+    height: 1800,
+    title: "Workflows",
+  },
+  Connectors: {
+    src: "/product/app-connectors-hub.png",
+    alt: "Gravitre Connectors: each system from connected to ready for agents",
+    width: 2880,
+    height: 1620,
+    title: "Connectors",
+  },
+  Approvals: {
+    src: "/product/app-approvals.png",
+    alt: "Gravitre decision queue with a paused write waiting for approval",
+    width: 2880,
+    height: 1800,
+    title: "Approvals",
+  },
+  GIBE: {
+    src: "/product/app-knowledge.png",
+    alt: "Gravitre Knowledge: what GIBE has learned about how your business connects",
+    width: 2880,
+    height: 1800,
+    title: "Knowledge",
+  },
+}
+
 const surfaceIcons = [
   BrainIcon,
   MouseBoxIcon,
@@ -56,6 +105,8 @@ const surfaceIcons = [
  */
 export function FeaturesPage() {
   const hero = MARKETING_COPY.featuresHero
+  const [activePill, setActivePill] = useState<string>("Agents")
+  const shot = HERO_SHOTS[activePill] ?? HERO_SHOTS.Agents
 
   return (
     <main className="bg-[color:var(--g-marketing-canvas)]">
@@ -71,12 +122,19 @@ export function FeaturesPage() {
       >
         <div className="mt-8 flex flex-wrap items-center justify-center gap-2.5">
           {hero.pills.map((pill) => (
-            <span
+            <button
               key={pill}
-              className="rounded-full border border-divide bg-[color:var(--g-marketing-surface)] px-3.5 py-2 text-sm font-medium text-charcoal-700"
+              type="button"
+              onClick={() => setActivePill(pill)}
+              aria-pressed={activePill === pill}
+              className={
+                activePill === pill
+                  ? "rounded-full border border-charcoal-900 bg-charcoal-900 px-3.5 py-2 text-sm font-medium text-background"
+                  : "rounded-full border border-divide bg-[color:var(--g-marketing-surface)] px-3.5 py-2 text-sm font-medium text-charcoal-700 hover:text-charcoal-900"
+              }
             >
               {pill}
-            </span>
+            </button>
           ))}
         </div>
         <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
@@ -91,15 +149,13 @@ export function FeaturesPage() {
 
       <DivideX />
       <HeroImage
-        src="/product/app-agents-team.png"
-        title="Agents"
-        chips={[
-          { label: "Agents by department", at: "top-left", tone: "slate" },
-          { label: "Human approval on writes", at: "bottom-right", tone: "amber" },
-        ]}
-        alt="Gravitre Agents: your AI workforce by department"
-        width={2880}
-        height={1620}
+        key={shot.src}
+        src={shot.src}
+        alt={shot.alt}
+        width={shot.width}
+        height={shot.height}
+        title={shot.title}
+        chips={[{ label: "Human approval on writes", at: "bottom-right", tone: "amber" }]}
       />
       <DivideX />
 

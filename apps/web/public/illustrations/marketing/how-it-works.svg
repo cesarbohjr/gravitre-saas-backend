@@ -49,8 +49,7 @@
   <rect x="28" y="136" width="160" height="66" rx="8" fill="#FBF8F2" stroke="#19C37D" stroke-width="1.5" />
   
   <rect x="42" y="148" width="18" height="18" rx="4" fill="#2A2B28" />
-  <rect x="46" y="152" width="4" height="10" rx="1" fill="#19C37D" transform="rotate(-10 48 157)" />
-  <rect x="52" y="150" width="4" height="10" rx="1" fill="#19C37D" transform="rotate(-10 54 155)" />
+  <g><svg x="45.5" y="150.5" width="11" height="11" viewBox="0 0 24 24" fill="#19C37D"><g transform="translate(12 12) skewX(-14) translate(-12 -12)"><rect x="1.5" y="3.2" width="21" height="7" rx="2.4" /><rect x="1.5" y="13.8" width="21" height="7" rx="2.4" /></g></svg></g>
   
   <circle cx="74" cy="157" r="3" fill="#CFDCCB" style="animation:gi-fade-cycle 6s ease-in-out infinite 0s" />
   <line x1="77" y1="157" x2="84" y2="157" stroke="#C4C0B5" stroke-width="1" />

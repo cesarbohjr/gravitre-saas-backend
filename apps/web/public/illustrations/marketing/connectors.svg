@@ -49,8 +49,7 @@
   
   <rect x="176" y="126" width="48" height="48" rx="12" fill="#2A2B28" style="animation:gi-pulse-op 6s ease-in-out infinite 1s" />
   
-  <rect x="190" y="138" width="10" height="26" rx="2" fill="#19C37D" transform="rotate(-12 195 151)" />
-  <rect x="204" y="132" width="10" height="26" rx="2" fill="#19C37D" transform="rotate(-12 209 145)" />
+  <g><svg x="187.0" y="133.0" width="30" height="30" viewBox="0 0 24 24" fill="#19C37D"><g transform="translate(12 12) skewX(-14) translate(-12 -12)"><rect x="1.5" y="3.2" width="21" height="7" rx="2.4" /><rect x="1.5" y="13.8" width="21" height="7" rx="2.4" /></g></svg></g>
 </g>
 
 

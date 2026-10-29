@@ -34,9 +34,7 @@
 <g transform="translate(480,150)">
   <rect x="-32" y="-32" width="64" height="64" rx="14" fill="#2A2B28" style="animation:gi-bob 8s ease-in-out infinite" />
   
-  <g transform="rotate(-12)"><rect x="-14" y="-10" width="10" height="26" rx="2" fill="#19C37D" style="animation:gi-bob 8s ease-in-out infinite" />
-  </g><g transform="rotate(-12)"><rect x="4" y="-14" width="10" height="26" rx="2" fill="#19C37D" style="animation:gi-bob 8s ease-in-out infinite" />
-</g></g>
+  <g style="animation:gi-bob 8s ease-in-out infinite"><svg x="-20.0" y="-20.0" width="40" height="40" viewBox="0 0 24 24" fill="#19C37D"><g transform="translate(12 12) skewX(-14) translate(-12 -12)"><rect x="1.5" y="3.2" width="21" height="7" rx="2.4" /><rect x="1.5" y="13.8" width="21" height="7" rx="2.4" /></g></svg></g></g>
 
 
 
