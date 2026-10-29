@@ -65,14 +65,25 @@ def run():
                 assert outbox.enqueue(database,receipt,scope=scope,permit=TelemetryPermit(scope,True))==job
                 # Reconstruct the durable client/journal before processing.
                 journal=Journal(path,key);outbox=LangfuseOutbox(journal,b'isolated-fixture-correlation-key-32',lambda _:transport,export_allowed=lambda _:True)
+                delivered_payload=journal.get(scope,job,material=True)['payload']
+                def diagnose(row):
+                    print(json.dumps({'fixture_http_status_counts':{str(code):sum(s['status']==code for s in statuses) for code in sorted({s['status'] for s in statuses})},'journal_phase':row['phase'],'journal_error':row['error_code']}))
+                    try:
+                        observations=transport.observations(delivered_payload)
+                        print(json.dumps({'fixture_observation_shapes':[{'exact_id':o.get('id')==delivered_payload['span_id'],'metadata_keys':sorted(o.get('metadata',{})),'metric_types':{k:type(o.get('metadata',{}).get(k)).__name__ for k in sorted(METRIC_KEYS)},'exact_metrics':o.get('metadata')==delivered_payload['metrics']} for o in observations]}))
+                    except Exception as error:
+                        print(json.dumps({'fixture_readback_error_class':type(error).__name__}))
                 def settle(kind,target):
                     deadline=time.monotonic()+600
                     while time.monotonic()<deadline:
                         outbox.tick(kind)
                         row=journal.get(scope,job,material=True)
                         if row['state']==target:return row
-                        if row['state']=='failed':raise AssertionError('Durable Langfuse job failed: '+str(row['error_code']))
+                        if row['state']=='failed':
+                            diagnose(row)
+                            raise AssertionError('Durable Langfuse job failed: '+str(row['error_code']))
                         time.sleep(2)
+                    diagnose(row)
                     raise AssertionError('Durable Langfuse acknowledgement deadline exceeded')
                 delivered=settle('langfuse','delivered');payload=delivered['payload']
                 assert set(payload['metrics'])==METRIC_KEYS and transport.acknowledged(payload)

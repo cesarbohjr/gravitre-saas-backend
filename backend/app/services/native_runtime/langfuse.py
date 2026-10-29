@@ -61,8 +61,10 @@ class LangfuseTransport:
         span=scope.spans.add();span.trace_id=bytes.fromhex(payload['trace_id']);span.span_id=bytes.fromhex(payload['span_id'])
         span.name=NAME;span.kind=1
         span.start_time_unix_nano=payload['start_ns'];span.end_time_unix_nano=payload['start_ns']+max(1,payload['metrics']['duration_ms']*1000000)
-        for key,value in payload['metrics'].items():
-            attr=span.attributes.add();attr.key='langfuse.observation.metadata.'+key;attr.value.string_value=json.dumps(value,separators=(',',':'))
+        # A JSON object preserves the seven allowlisted metric types without
+        # claiming a Langfuse SDK/version to enable SDK-specific value decoding.
+        attr=span.attributes.add();attr.key='langfuse.observation.metadata'
+        attr.value.string_value=json.dumps(payload['metrics'],sort_keys=True,separators=(',',':'))
         attr=span.attributes.add();attr.key='langfuse.observation.type';attr.value.string_value='span'
         result=self._request('POST','/api/public/otel/v1/traces',content=request.SerializeToString(),headers={'Content-Type':'application/x-protobuf','x-langfuse-ingestion-version':'4'})
         # OTLP may report partial rejection under HTTP 200.
@@ -78,7 +80,15 @@ class LangfuseTransport:
         return data
 
     def acknowledged(self, payload: dict) -> bool:
-        return any(isinstance(r,dict) and r.get('id')==payload['span_id'] and r.get('traceId')==payload['trace_id'] and r.get('name')==NAME and r.get('metadata')==payload['metrics'] for r in self.observations(payload))
+        for row in self.observations(payload):
+            if not isinstance(row,dict) or row.get('id')!=payload['span_id'] or row.get('traceId')!=payload['trace_id'] or row.get('name')!=NAME:
+                continue
+            metadata=row.get('metadata')
+            if not isinstance(metadata,dict):continue
+            try:validate_metrics(metadata)
+            except ValueError:continue
+            if metadata==payload['metrics']:return True
+        return False
 
     def delete(self, payload: dict) -> bool:
         try:self._request('DELETE','/api/public/traces/'+payload['trace_id'])

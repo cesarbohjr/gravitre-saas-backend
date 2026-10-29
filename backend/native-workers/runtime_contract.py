@@ -133,6 +133,11 @@ def run():
             for stream in captures:
                 stream.flush();stream.seek(0)
                 for line in stream.read(262144).decode(errors='replace').splitlines():
+                    try:
+                        entry=json.loads(line)
+                        if isinstance(entry,dict) and set(entry)=={'gateway_failure_stage','gateway_failure_class','known_parameter_flags'}:
+                            print(json.dumps(entry))
+                    except (ValueError,TypeError):pass
                     match=re.match(r'\s*File "([^"]+)", line (\d+), in ([A-Za-z0-9_<>]+)',line)
                     if match:print(json.dumps({'sdk_frame':Path(match[1]).name,'line':int(match[2]),'function':match[3]}))
                     match=re.match(r'^(?:[A-Za-z_][A-Za-z0-9_]*\.)*([A-Za-z_][A-Za-z0-9_]*(?:Error|Exception)):',line)
