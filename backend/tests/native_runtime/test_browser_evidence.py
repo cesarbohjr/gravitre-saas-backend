@@ -62,3 +62,52 @@ async def test_browser_evidence_failure_exposes_only_safe_stage_and_source(capsy
     diagnostic=capsys.readouterr().err
     assert 'before_approval' in diagnostic and 'ValueError' in diagnostic
     assert 'PRIVATE-PAGE-CONTENT' not in diagnostic
+
+
+def blank_page():
+    state=page(dom='empty current page DOM');state.url='about:blank';state.screenshot=None;state.dom_state.selector_map={}
+    return state
+
+
+@pytest.mark.asyncio
+async def test_initial_navigation_approval_uses_real_capture_without_mutating_sdk_cache():
+    import base64
+    from app.services.native_runtime.engine import fresh_browser_evidence
+    first,second=blank_page(),blank_page();image=b'\x89PNG\r\n\x1a\nfixture-pixels'
+    browser=SimpleNamespace(get_browser_state_summary=AsyncMock(side_effect=[first,second]),take_screenshot=AsyncMock(return_value=image))
+    observed,evidence=await fresh_browser_evidence(browser,{'navigate':{'url':'https://example.com/'}},'before_approval')
+    assert first.screenshot is None and second.screenshot is None
+    assert base64.b64decode(observed.screenshot)==image and len(evidence['page_fingerprint'])==64
+    browser.take_screenshot.assert_awaited_once_with(full_page=False,format='png')
+    assert browser.get_browser_state_summary.await_count==2
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize('change',['page','target','capture_error'])
+async def test_missing_ordinary_page_or_indexed_evidence_cannot_use_blank_page_recovery(change):
+    from app.services.native_runtime.engine import fresh_browser_evidence
+    state=blank_page()
+    if change=='page':state.url='https://example.com/'
+    if change=='target':state.dom_state.selector_map={1:object()}
+    if change=='capture_error':state.state_error='capture failed'
+    browser=SimpleNamespace(get_browser_state_summary=AsyncMock(return_value=state),take_screenshot=AsyncMock())
+    with pytest.raises(PermissionError):await fresh_browser_evidence(browser,{'navigate':{'url':'https://example.com/'}},'before_approval')
+    browser.take_screenshot.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_initial_page_change_during_screenshot_capture_invalidates_evidence():
+    from app.services.native_runtime.engine import fresh_browser_evidence
+    first,second=blank_page(),blank_page();second.url='https://example.com/changed'
+    browser=SimpleNamespace(get_browser_state_summary=AsyncMock(side_effect=[first,second]),take_screenshot=AsyncMock(return_value=b'\x89PNG\r\n\x1a\nfixture-pixels'))
+    with pytest.raises(PermissionError,match='changed during'):await fresh_browser_evidence(browser,{'navigate':{'url':'https://example.com/'}},'before_approval')
+    assert second.screenshot is None
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize('image',[b'',b'not-png',b'\x89PNG\r\n\x1a\n'+bytes(3145721)])
+async def test_blank_page_capture_must_be_bounded_actual_png(image):
+    from app.services.native_runtime.engine import fresh_browser_evidence
+    browser=SimpleNamespace(get_browser_state_summary=AsyncMock(return_value=blank_page()),take_screenshot=AsyncMock(return_value=image))
+    with pytest.raises(PermissionError,match='actual blank-page screenshot'):await fresh_browser_evidence(browser,{'navigate':{'url':'https://example.com/'}},'before_approval')
+    assert browser.get_browser_state_summary.await_count==1

@@ -16,6 +16,7 @@ elif sys.argv[1]=='browser_use':
     assert {'browser','tools','directly_open_url','use_judge','use_vision','max_actions_per_step'} <= set(inspect.signature(Agent).parameters)
     assert {'include_screenshot','cached'} <= set(inspect.signature(Browser.get_browser_state_summary).parameters)
     assert hasattr(Browser,'kill') and hasattr(Tools,'act')
+    assert {'full_page','format'} <= set(inspect.signature(Browser.take_screenshot).parameters)
     # Exercise the real SDK serialization/response path using an in-process
     # HTTP transport. This cannot reach a model provider or open a browser.
     import asyncio,json,httpx

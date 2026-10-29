@@ -1,6 +1,8 @@
 """Disposable SDK entrypoint. Never run directly on a backend/worker host."""
 from __future__ import annotations
 import asyncio
+import base64
+import copy
 import difflib
 import hashlib
 import json
@@ -98,6 +100,19 @@ def browser_result(history):
 async def fresh_browser_evidence(browser_session,requested,phase):
     try:
         state=await browser_session.get_browser_state_summary(include_screenshot=True,cached=False)
+        # The SDK intentionally omits screenshots on its initial empty page.
+        # Capture real pixels for navigation approval; never fabricate evidence
+        # or use this recovery on a populated, failed or ordinary web page.
+        if not state.screenshot and state.url=='about:blank' and set(requested)=={'navigate'} and not state.dom_state.selector_map and not getattr(state,'state_error',None):
+            dom=state.dom_state.llm_representation()
+            image=await browser_session.take_screenshot(full_page=False,format='png')
+            if not isinstance(image,bytes) or not image.startswith(b'\x89PNG\r\n\x1a\n') or len(image)>3145728:
+                raise PermissionError('Bounded actual blank-page screenshot required')
+            refreshed=await browser_session.get_browser_state_summary(include_screenshot=True,cached=False)
+            if refreshed.url!='about:blank' or refreshed.dom_state.selector_map or getattr(refreshed,'state_error',None) or refreshed.dom_state.llm_representation()!=dom:
+                raise PermissionError('Browser changed during blank-page evidence capture')
+            state=copy.copy(refreshed)
+            state.screenshot=base64.b64encode(image).decode('ascii')
         return state,browser_evidence(state,requested)
     except Exception as error:
         frames=[{'file':Path(frame.filename).name,'line':frame.lineno,'function':frame.name} for frame in traceback.extract_tb(error.__traceback__) if '/browser_use/' in frame.filename or frame.filename.endswith('/engine.py')][-16:]

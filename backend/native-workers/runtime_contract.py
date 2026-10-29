@@ -155,6 +155,7 @@ def run():
             patch=result.get('patch','')
             for key in ['direct_egress','metadata','host_bridge','readonly_root','no_docker_socket','no_provider_key']:assert f'"{key}": true' in patch,key
             clean(software['id']);evidence['openhands_real_sdk_patch_and_isolation']='PASS'
+            print(json.dumps({'completed_runtime_checks':evidence},sort_keys=True))
             state.update(kind='browser_use',calls=0);approved=[]
             def action_gate(sequence,action):
                 assert action['actions']=={'navigate':{'url':'https://example.com/'}}
@@ -165,6 +166,7 @@ def run():
             finally:print(json.dumps({'fixture_browser_model_requests':state['calls'],'fixture_browser_approvals':len(approved)}))
             assert approved and result.get('observations')
             clean(browser['id']);evidence['browser_real_sdk_chromium_exact_approval']='PASS'
+            print(json.dumps({'completed_runtime_checks':evidence},sort_keys=True))
             state.update(kind='cancel',calls=0);entered.clear();cancel.clear();cancelled=job('openhands')
             def guard():
                 if cancel.is_set():raise PermissionError('fixture_cancelled')
