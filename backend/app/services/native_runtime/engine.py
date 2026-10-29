@@ -146,6 +146,7 @@ async def fresh_browser_evidence(browser_session,requested,phase):
 
 async def browse(config):
     from browser_use import Agent,Browser,ChatOpenAI,Tools
+    from browser_use.browser.profile import BrowserProfile
     # Explicitly remove code execution, file access and upload surfaces. Every
     # remaining model-chosen action passes the host's exact per-action approval.
     class GovernedTools(Tools):
@@ -175,7 +176,7 @@ async def browse(config):
                 raise PermissionError('Browser context changed after approval; a new review is required')
             self.sequence+=1
             return await super().act(action,browser_session,**kwargs)
-    browser=Browser(headless=True,chromium_sandbox=True,use_cloud=False,enable_default_extensions=False,highlight_elements=False,dom_highlight_elements=False,demo_mode=False,permissions=[],keep_alive=False,executable_path="/usr/bin/chromium",allowed_domains=['https://'+h for h in config['allowed_hosts']],
+    browser=Browser(headless=True,chromium_sandbox=True,use_cloud=False,enable_default_extensions=False,highlight_elements=False,dom_highlight_elements=False,browser_profile=BrowserProfile(demo_mode=False),permissions=[],keep_alive=False,executable_path="/usr/bin/chromium",allowed_domains=['https://'+h for h in config['allowed_hosts']],
                     proxy={'server':'http://gateway:8080','bypass':'gateway,localhost,127.0.0.1'},user_data_dir='/workspace/profile',downloads_path='/workspace/downloads')
     model=ChatOpenAI(model=config['model'],api_key=config['engine_token'],base_url='http://gateway:8080/v1',frequency_penalty=None,max_retries=0,timeout=35)
     agent=Agent(task=config['task'],llm=model,browser=browser,tools=GovernedTools(),use_vision=False,use_judge=False,calculate_cost=False,directly_open_url=False,max_actions_per_step=1,max_failures=1,enable_planning=False,file_system_path="/workspace/browser-files")

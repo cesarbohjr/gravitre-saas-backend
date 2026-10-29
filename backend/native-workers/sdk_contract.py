@@ -15,6 +15,11 @@ elif sys.argv[1]=='browser_use':
     from browser_use.browser.profile import BrowserProfile
     from PIL import Image
     assert {'highlight_elements','dom_highlight_elements','demo_mode'} <= set(BrowserProfile.model_fields)
+    # Construct without starting Chromium to verify the pinned session call surface.
+    session=Browser(headless=True,highlight_elements=False,dom_highlight_elements=False,browser_profile=BrowserProfile(demo_mode=False))
+    assert session.browser_profile.demo_mode is False
+    assert session.browser_profile.highlight_elements is False
+    assert session.browser_profile.dom_highlight_elements is False
     assert all(hasattr(AgentHistoryList,name) for name in ('is_done','is_successful','errors','urls','final_result'))
     assert {'browser','tools','directly_open_url','use_judge','use_vision','max_actions_per_step'} <= set(inspect.signature(Agent).parameters)
     assert {'include_screenshot','cached'} <= set(inspect.signature(Browser.get_browser_state_summary).parameters)
