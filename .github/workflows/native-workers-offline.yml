@@ -1,0 +1,100 @@
+name: Native worker image contracts
+on:
+  pull_request:
+    paths:
+      - 'backend/app/services/native_runtime/**'
+      - 'backend/native-workers/**'
+      - 'backend/tests/native_runtime/**'
+      - '.github/workflows/native-workers-offline.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: native-workers-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  pinned-sdk-imports:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        engine: [openhands, browser]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build isolated pinned SDK image
+        run: docker build -f backend/native-workers/Dockerfile.${{ matrix.engine }} -t native-sdk:${{ matrix.engine }} backend
+      - name: Verify real SDK call surfaces without network or credentials
+        env:
+          ENGINE: ${{ matrix.engine }}
+        run: |
+          if [ "$ENGINE" = browser ]; then contract=browser_use; else contract=openhands; fi
+          docker run --rm --network none --read-only --cap-drop ALL --security-opt no-new-privileges --pids-limit 128 --memory 2g --tmpfs /tmp:rw,noexec,nosuid,size=128m --tmpfs /workspace:rw,nosuid,size=128m,uid=10001,gid=10001 -e HOME=/workspace -e OTEL_SDK_DISABLED=true -e ANONYMIZED_TELEMETRY=false -e DO_NOT_TRACK=1 native-sdk:$ENGINE python /runner/sdk_contract.py "$contract"
+      - name: Export the verified SDK image for execution certification
+        env:
+          ENGINE: ${{ matrix.engine }}
+        run: |
+          set -euo pipefail
+          docker image inspect native-sdk:$ENGINE --format '{{.Id}}' > "$RUNNER_TEMP/$ENGINE-image.id"
+          docker save native-sdk:$ENGINE | zstd -T0 -1 -o "$RUNNER_TEMP/$ENGINE-image.tar.zst"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: native-sdk-image-${{ matrix.engine }}
+          path: |
+            ${{ runner.temp }}/${{ matrix.engine }}-image.tar.zst
+            ${{ runner.temp }}/${{ matrix.engine }}-image.id
+          compression-level: 0
+          retention-days: 1
+          if-no-files-found: error
+  gateway-image:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -f backend/native-workers/Dockerfile.gateway -t native-gateway backend
+  runtime-certification:
+    needs: pinned-sdk-imports
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install pinned verified gVisor runtime
+        run: |
+          curl --fail --location --silent --show-error https://github.com/google/gvisor/releases/download/release-20261026.0/gvisor-x86_64.tar.zstd -o /tmp/gvisor.tar.zstd
+          echo '708afc62f2ee82d19930c703e85f9dab4f27a78c0aec40c0f55eb1040107f1a7  /tmp/gvisor.tar.zstd' | sha256sum --check
+          sudo tar --zstd -xf /tmp/gvisor.tar.zstd -C /usr/local/bin
+          sudo /usr/local/bin/runsc install
+          sudo systemctl reload docker
+          runsc --version
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: native-sdk-image-*
+          merge-multiple: true
+          path: ${{ runner.temp }}/native-images
+      - name: Load exactly the images that passed SDK contracts
+        timeout-minutes: 5
+        run: |
+          set -euo pipefail
+          for engine in openhands browser; do
+            zstd --decompress --stdout "$RUNNER_TEMP/native-images/$engine-image.tar.zst" | docker load
+            test "$(docker image inspect native-sdk:$engine --format '{{.Id}}')" = "$(cat "$RUNNER_TEMP/native-images/$engine-image.id")"
+            docker tag native-sdk:$engine native-$engine
+          done
+      - name: Build actual gateway runtime image
+        timeout-minutes: 3
+        run: docker build -f backend/native-workers/Dockerfile.gateway -t native-gateway backend
+      - name: Start immutable local certification registry
+        timeout-minutes: 3
+        run: docker run -d --name native-cert-registry -p 127.0.0.1:5050:5000 mirror.gcr.io/library/registry@sha256:a3d8aaa63ed8681a604f1dea0aa03f100d5895b6a58ace528858a7b332415373
+      - name: Certify real isolated SDK execution and failure controls
+        env:
+          NATIVE_CERT_EVIDENCE: native-runtime-evidence.json
+        run: python backend/native-workers/runtime_contract.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: native-runtime-certification
+          path: native-runtime-evidence.json
+          if-no-files-found: error

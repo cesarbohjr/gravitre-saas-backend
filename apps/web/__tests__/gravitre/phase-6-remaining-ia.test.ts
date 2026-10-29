@@ -35,7 +35,7 @@ describe("UX Reset Phase 6 — remaining hub IA flatten", () => {
     const connector = readFileSync(resolve(webRoot, "app/(app)/connectors/[id]/page.tsx"), "utf8")
     const workflow = readFileSync(resolve(webRoot, "app/(app)/workflows/[id]/page.tsx"), "utf8")
     expect(connector).not.toMatch(/from \"@\/components\/ui\/card\"/)
-    expect(connector).toMatch(/Usage metrics and activity logs are not recorded/)
+    expect(connector).toMatch(/Audit trail/)
     expect(workflow).not.toMatch(/from \"@\/components\/ui\/card\"/)
     expect(workflow).toMatch(/Run now/)
     expect(workflow).toMatch(/Edit in builder/)

@@ -266,7 +266,7 @@ export default function NewAgentPage() {
                 </div>
                 {index < steps.length - 1 && (
                   <div className={cn(
-                    "mx-4 h-px w-12 transition-colors",
+                    "mx-1.5 h-px w-5 transition-colors sm:mx-4 sm:w-12",
                     currentStep > step.id ? "bg-[color:var(--g-brand)]" : "bg-divide"
                   )} />
                 )}

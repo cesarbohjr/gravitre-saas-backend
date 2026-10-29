@@ -2,6 +2,8 @@
 from __future__ import annotations
 
 from app.marketplace.install_ready import evaluate_binding_install_ready, merge_install_ready
+import pytest
+
 from app.marketplace.seed_catalog import catalog_assets_by_slug
 from app.marketplace.workflows.msp_enrichment_workflow import WORKFLOW_SLUG
 
@@ -52,3 +54,26 @@ def test_sta337_honesty_gates_cleared_after_live_pass():
     assert "google_ads" not in connectors
     assert "google_analytics" not in connectors
     assert merged["manualSetupRequired"] == []
+
+
+@pytest.mark.parametrize("asset", [a for a in catalog_assets_by_slug().values() if a.asset_type == "ai_agent"], ids=lambda a: a.slug)
+def test_entire_agent_catalog_install_readiness_independent_of_connectors(asset):
+    from dataclasses import asdict
+
+    row = asdict(asset)
+    disconnected = merge_install_ready(connector_can_install=False, asset=row)
+    connected = merge_install_ready(connector_can_install=True, asset=row)
+    assert disconnected["installReady"] == connected["installReady"]
+    assert not merge_install_ready(connector_can_install=False, asset=row, entitlement_blocks=True)["installReady"]
+
+
+def test_non_agent_connector_requirements_still_block_install():
+    for asset_type in ("workflow", "play", "department_pack", "outcome_pack", "intelligence_pack"):
+        assert not merge_install_ready(connector_can_install=False, asset={"asset_type": asset_type, "config": {}})["installReady"]
+
+
+def test_agent_binding_errors_still_block_without_connectors():
+    asset = {"asset_type": "ai_agent", "config": {"steps": [{"id": "broken", "type": "action", "config": {"action": "hubspot.contacts.list", "param_sources": {"records": {"from_step": "missing", "path": ["records"]}}}}]}}
+    result = merge_install_ready(connector_can_install=False, asset=asset)
+    assert not result["installReady"]
+    assert result["bindingBlockers"]

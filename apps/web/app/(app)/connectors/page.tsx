@@ -1,5 +1,7 @@
 "use client"
 
+import { InstalledAgentConnectorRecommendations } from "@/components/connectors/agent-connector-recommendations"
+
 // Connectors Page - Integration Hub with Network Topology View
 import { Suspense, startTransition, useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
@@ -7,43 +9,54 @@ import useSWR, { mutate as globalMutate } from "swr"
 import { motion, AnimatePresence } from "framer-motion"
 import Link from "next/link"
 import { AppShell } from "@/components/gravitre/app-shell"
-import { GravitrePageHeader } from "@/components/gravitre/nodus-product"
 import { Illustration } from "@/components/gravitre/illustration"
-import {
-  OperatingEmpty,
-  PhaseBand,
-  type OperatingPhase,
-} from "@/components/gravitre/operating/operating-primitives"
-import { AskGravitreSummonButton } from "@/components/intelligence/ask-gravitre-summon-button"
 import { usePublishGravitreAISelection } from "@/components/gravitre/ai-workspace-provider"
-import { ConnectorIcon, ConnectorIconGrid } from "@/components/gravitre/connector-icon"
-import { DataFreshness } from "@/components/gravitre/data-freshness"
+import { ConnectorIcon } from "@/components/gravitre/connector-icon"
 import { ConnectorRecommendations } from "@/components/connectors/connector-recommendations"
 import { AvailableConnectorsStrip } from "@/components/connectors/available-connectors-strip"
 import { OutboundProviderCards } from "@/components/connectors/outbound-provider-cards"
-import { DATA_REMOVAL_KEY, DataRemovalReceipts, DisconnectImpact, useDataRemoval } from "@/components/connectors/data-removal"
+import { DATA_REMOVAL_KEY, DataRemovalReceipts } from "@/components/connectors/data-removal"
 import { EnterpriseKnowledgeSync } from "@/components/settings/enterprise-knowledge-sync"
 import "@/components/settings/settings-kit.css"
 import "@/components/settings/enterprise-sections.css"
 import {
-  ConnectorAttentionList,
-  ResponsiveConnectorInspector,
-  ConnectorOperatingRow,
-  ConnectorOperatingSummary,
-  ConnectorRowHeader,
   deriveConnectorAttention,
   useAgentsByVendor,
   useVendorCapabilities,
+  type ConnectorAgentRef,
   type ConnectorAttention,
+  type VendorCapability,
 } from "@/components/connectors/connector-operating"
 import { Button } from "@/components/ui/button"
 import { Spinner } from "@/components/ui/spinner"
 import { Input } from "@/components/ui/input"
-import { toast } from "@/components/agents/overlays/toast"
+import { toast } from "@/components/connectors/overlays/toast"
+import { ConnectorsOverlaysProvider } from "@/components/connectors/overlays/connectors-overlays"
+import { ConfigureConnectorDialog, RemoveConnectorDialog, type ConfigurePatch, type DialogConnector } from "@/components/connectors/redesign/connector-dialogs"
+import { usageSentence, usePlays, useWorkflows } from "@/components/connectors/redesign/connector-usage"
+import {
+  AttentionCard,
+  CapabilityFabric,
+  FirstRun,
+  HubFilters,
+  HubHero,
+  HubInspector,
+  HubSideSummary,
+  KnowledgeCard,
+  SystemsTable,
+  accessLabel,
+  exportRowsCsv,
+  hubStatusOf,
+  useStarterSets,
+  type FabricPhase,
+  type HubRow,
+  type HubStatusFilter,
+} from "@/components/connectors/redesign/hub"
+import "@/components/workspace/workspace.css"
+import "@/components/connectors/redesign/connectors.css"
+import * as DialogPrimitive from "@radix-ui/react-dialog"
+import { coverTypeFor, vendorLook, type CoverType } from "@/components/connectors/redesign/vendor-look"
 import { 
-  ChevronUp,
-  ChevronDown,
-  Plus, 
   Search,
   RefreshCw,
   Settings,
@@ -57,23 +70,16 @@ import {
   MoreVertical,
   Eye,
   EyeOff,
-  AlertTriangle,
   Wifi,
   WifiOff,
   Cable,
-  Filter,
-  LayoutGrid,
-  List,
   Globe,
   Key,
   Link2,
   Copy,
   Check,
-  Receipt,
-  Code2,
-  ShieldCheck,
+  X as XIcon,
 } from "lucide-react"
-import { NucleoConnector } from "@/components/icons/nucleo/semantic"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -90,7 +96,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { cn } from "@/lib/utils"
-import { TYPE } from "@/lib/design-system"
 import { SURFACE_COPY } from "@/lib/surface-copy"
 import { fetcher as apiFetcher, formatUnknownError } from "@/lib/fetcher"
 import { useAuth } from "@/lib/auth-context"
@@ -105,7 +110,6 @@ import { connectorsApi, ApiRequestError } from "@/lib/api"
 import { publicApiUrl } from "@/lib/public-urls"
 import {
   CONNECTOR_CATEGORIES,
-  OAUTH_CONNECTOR_TYPE_SET,
   OAUTH_VENDOR_KEYS,
   PKCE_OAUTH_VENDOR_KEYS,
   connectorVendorKey,
@@ -120,19 +124,15 @@ import {
   supportsDualPatAuth,
 } from "@/lib/connectors"
 import { openManagedConnector, managedProviderAvailable } from "@/lib/managed-connector-auth"
+import { reconnectConnector, type ReconnectTarget } from "@/components/connectors/redesign/reconnect"
 import { isManagedConnectorVendor, MANAGED_OAUTH_FALLBACK_VENDOR_KEYS } from "@/lib/connectors"
 import { openPlaidLink } from "@/lib/plaid-link"
 import {
-  CONNECTOR_DEPARTMENTS,
-  ConnectorDepartmentBar,
-  ConnectorDepartmentCards,
-  ConnectorsViewToggle,
   connectorDepartment,
   connectorInDepartment,
   type ConnectorDepartmentId,
-  type ConnectorsViewMode,
 } from "@/components/connectors/department-filter"
-import type { Connector as ApiConnector, ConnectorStatus } from "@/types/api"
+import type { Connector as ApiConnector } from "@/types/api"
 
 interface ConnectorAvailability {
   configured: boolean
@@ -160,6 +160,10 @@ interface Connector {
   displayStatus?: string
   environment: "production" | "staging"
   lastSync: string
+  lastSyncAt?: string | null
+  createdAt?: string | null
+  syncFrequency?: string | null
+  recordsSynced?: number | null
   description: string
   category?: string
   authType?: "oauth" | "apiKey" | "webhook"
@@ -322,6 +326,10 @@ function normalizeConnector(input: Record<string, unknown> | ApiConnector): Conn
     displayStatus: displayStatus || undefined,
     environment: environment === "production" ? "production" : "staging",
     lastSync: formatLastSync(model.lastSync ?? model.last_sync ?? model.last_sync_at),
+    lastSyncAt: String(model.lastSync ?? model.last_sync ?? model.last_sync_at ?? "") || null,
+    createdAt: String(model.createdAt ?? model.created_at ?? "") || null,
+    syncFrequency: String(model.syncFrequency ?? model.sync_frequency ?? "") || null,
+    recordsSynced: typeof model.recordsSynced === "number" ? model.recordsSynced : null,
     description: String(model.description ?? ""),
     category: String(model.category ?? lookupConnectorCategory(vendor) ?? ""),
     authType: authType === "oauth" || authType === "webhook" ? authType : "apiKey",
@@ -799,182 +807,6 @@ function ConnectorTopologyCard({
   )
 }
 
-// Configure Modal
-function ConfigureModal({
-  connector,
-  open,
-  onClose,
-  onSave,
-  onReconnectOAuth,
-}: {
-  connector: Connector
-  open: boolean
-  onClose: () => void
-  onSave: (connectorId: string, config: Connector["config"]) => Promise<void>
-  onReconnectOAuth?: (connector: Connector) => Promise<void>
-}) {
-  const [config, setConfig] = useState(connector.config || {})
-  const [showApiKey, setShowApiKey] = useState(false)
-  const [isSaving, setIsSaving] = useState(false)
-  const isOAuth = connector.authType === "oauth"
-
-  const handleSave = async () => {
-    setIsSaving(true)
-    try {
-      await onSave(connector.id, config)
-      onClose()
-    } finally {
-      setIsSaving(false)
-    }
-  }
-
-  return (
-    <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-md bg-card border-border">
-        <DialogHeader>
-          <div className="flex items-center gap-3">
-            <ConnectorIcon vendor={connector.type} size="md" />
-            <div>
-              <DialogTitle>{connector.name}</DialogTitle>
-              <DialogDescription>{connector.type} Configuration</DialogDescription>
-            </div>
-          </div>
-        </DialogHeader>
-        <div className="space-y-4 py-4">
-          {isOAuth ? (
-            <div className="rounded-lg border border-border bg-secondary/40 p-4 space-y-3">
-              <p className="text-sm text-muted-foreground">
-                {connector.authStatus === "auth_expired"
-                  ? `${connector.type} authorization expired or was revoked in the provider. Re-authorize to restore the connection.`
-                  : isManagedConnectorVendor(connector.type) || connector.config?.auth_provider === "managed"
-                    ? `${connector.type} uses secure account authorization. Reconnect to update its credentials.`
-                  : `${connector.type} uses OAuth. API keys are not used for this connector — authorize with the provider to connect.`}
-              </p>
-              {onReconnectOAuth && (
-                <Button
-                  type="button"
-                  className="w-full gap-2"
-                  onClick={() => void onReconnectOAuth(connector)}
-                >
-                  <ExternalLink className="h-4 w-4" />
-                  {connector.authStatus === "auth_expired" ? `Reconnect ${connector.type}` : isManagedConnectorVendor(connector.type) || connector.config?.auth_provider === "managed" ? "Complete authorization" : "Complete OAuth"}
-                </Button>
-              )}
-            </div>
-          ) : (
-          <div className="space-y-2">
-            <label className="text-xs font-medium text-muted-foreground">API key</label>
-            <div className="relative">
-              <Input
-                type={showApiKey ? "text" : "password"}
-                value={config.apiKey || ""}
-                onChange={(e) => setConfig({ ...config, apiKey: e.target.value })}
-                className="pr-10 bg-secondary"
-                placeholder="Enter API key or secret"
-              />
-              <button
-                type="button"
-                onClick={() => setShowApiKey(!showApiKey)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-              >
-                {showApiKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-              </button>
-            </div>
-          </div>
-          )}
-          {!isOAuth && (
-          <div className="space-y-2">
-            <label className="text-xs font-medium text-muted-foreground">Sync interval</label>
-            <select
-              value={config.syncInterval || "5m"}
-              onChange={(e) => setConfig({ ...config, syncInterval: e.target.value })}
-              className="w-full h-9 rounded-md border border-border bg-secondary px-3 text-sm"
-            >
-              <option value="1m">Every 1 minute</option>
-              <option value="5m">Every 5 minutes</option>
-              <option value="15m">Every 15 minutes</option>
-              <option value="30m">Every 30 minutes</option>
-              <option value="1h">Every 1 hour</option>
-            </select>
-          </div>
-          )}
-        </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={onClose}>{isOAuth ? "Close" : "Cancel"}</Button>
-          {!isOAuth && (
-          <Button onClick={handleSave} disabled={isSaving || !config.apiKey?.trim()}>
-            {isSaving ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Saving...</> : "Save Changes"}
-          </Button>
-          )}
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  )
-}
-
-// Delete Modal
-function DeleteModal({
-  connector,
-  open,
-  onClose,
-  onConfirm,
-}: {
-  connector: Connector
-  open: boolean
-  onClose: () => void
-  onConfirm: (connectorId: string, confirmName: string) => Promise<void>
-}) {
-  const [confirmText, setConfirmText] = useState("")
-  const [isDeleting, setIsDeleting] = useState(false)
-  const { data: removal } = useDataRemoval(open)
-
-  const handleDelete = async () => {
-    setIsDeleting(true)
-    try {
-      await onConfirm(connector.id, confirmText)
-      onClose()
-    } finally {
-      setIsDeleting(false)
-    }
-  }
-
-  return (
-    <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-md bg-card border-border">
-        <DialogHeader>
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-destructive/10">
-              <AlertTriangle className="h-5 w-5 text-destructive" />
-            </div>
-            <div>
-              <DialogTitle>Remove connector</DialogTitle>
-              <DialogDescription>Disconnecting {connector.name} cannot be undone</DialogDescription>
-            </div>
-          </div>
-        </DialogHeader>
-        <div className="py-4 space-y-4">
-          <DisconnectImpact policy={removal?.policy} vendorLabel={connector.type} vendor={connector.vendorKey || connector.type} />
-          <p className="text-sm text-muted-foreground">
-            Type <span className="font-mono text-foreground">{connector.name}</span> to confirm removal.
-          </p>
-          <Input
-            value={confirmText}
-            onChange={(e) => setConfirmText(e.target.value)}
-            placeholder={connector.name}
-            className="bg-secondary"
-          />
-        </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={onClose}>Cancel</Button>
-          <Button variant="destructive" onClick={handleDelete} disabled={confirmText !== connector.name || isDeleting}>
-            {isDeleting ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Removing...</> : "Remove"}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  )
-}
-
 const connectorCategories = CONNECTOR_CATEGORIES
 
 // Flatten for search
@@ -994,6 +826,39 @@ type CatalogConnector = (typeof availableConnectors)[number] & {
   certified?: boolean
 }
 
+type PickChipId = "suggested" | "all" | "crm" | "helpdesk" | "finance" | "marketing" | "docs"
+
+/** The add flow's kind-of-system chips, matched on the same cover types as the detail page. */
+const PICK_CHIPS: Array<{ id: PickChipId; label: string; covers?: CoverType[] }> = [
+  { id: "suggested", label: "Suggested" },
+  { id: "all", label: "All" },
+  { id: "crm", label: "CRM", covers: ["crm", "data"] },
+  { id: "helpdesk", label: "Helpdesk", covers: ["helpdesk", "chat"] },
+  { id: "finance", label: "Finance", covers: ["accounting", "erp"] },
+  { id: "marketing", label: "Marketing", covers: ["marketing", "email"] },
+  { id: "docs", label: "Docs", covers: ["docs", "projects"] },
+]
+
+function getSelectedConnectorKey(catalog: CatalogConnector[], type: string): string {
+  const entry = catalog.find((c) => c.type === type)
+  return entry?.vendorKey || type
+}
+
+function PickCard({ entry, note, disabled, onPick }: { entry: CatalogConnector; note: string; disabled?: boolean; onPick: () => void }) {
+  const look = vendorLook(entry.vendorKey || entry.type, entry.category)
+  return (
+    <button type="button" className="cno-pick" aria-disabled={disabled ? "true" : undefined} onClick={onPick} title={entry.description}>
+      <span className="cno-tile mono" style={{ background: look.bg, color: look.fg }} aria-hidden>
+        {look.mono}
+      </span>
+      <span style={{ display: "flex", flexDirection: "column", minWidth: 0 }}>
+        <span className="t">{entry.type}</span>
+        <span className="s">{note}</span>
+      </span>
+    </button>
+  )
+}
+
 // Add Connector Modal
 function AddConnectorModal({
   open,
@@ -1002,11 +867,15 @@ function AddConnectorModal({
   existingConnectors,
   publishedConnectors = [],
   initialConnectorType = null,
+  capabilities,
+  agentsByVendor,
 }: {
   open: boolean
   onClose: () => void
   onCreated: () => Promise<void>
   existingConnectors: Connector[]
+  capabilities?: Map<string, VendorCapability>
+  agentsByVendor?: Map<string, ConnectorAgentRef[]>
   publishedConnectors?: Array<{
     name: string
     vendor: string
@@ -1016,6 +885,7 @@ function AddConnectorModal({
   }>
   initialConnectorType?: string | null
 }) {
+  const router = useRouter()
   const { data: managedCatalog } = useSWR(open ? "managed-connector-catalog" : null, connectorsApi.managedCatalog)
   const [step, setStep] = useState<"select" | "configure" | "oauth" | "webhook">("select")
   const [selectedType, setSelectedType] = useState<string | null>(null)
@@ -1057,6 +927,60 @@ function AddConnectorModal({
     return [...availableConnectors, ...partnerEntries]
   }, [publishedConnectors])
 
+  const [pickChip, setPickChip] = useState<PickChipId>("all")
+  const connectedKeys = useMemo(
+    () => new Set(existingConnectors.map((c) => connectorVendorKey(c.vendorKey || c.type))),
+    [existingConnectors],
+  )
+  // Systems your agents already name in their setup but nothing is connected for yet, most used first.
+  const suggestedConnectors = useMemo(() => {
+    const out: Array<{ entry: CatalogConnector; agents: number }> = []
+    for (const entry of catalogConnectors) {
+      if (entry.partner || !isShippedConnector(entry)) continue
+      const key = connectorVendorKey(entry.vendorKey || entry.type)
+      if (connectedKeys.has(key)) continue
+      const agents = agentsByVendor?.get(key)?.length ?? 0
+      if (agents > 0) out.push({ entry, agents })
+    }
+    return out.sort((a, b) => b.agents - a.agents).slice(0, 6)
+  }, [catalogConnectors, connectedKeys, agentsByVendor])
+  useEffect(() => {
+    if (open) setPickChip(suggestedConnectors.length > 0 ? "suggested" : "all")
+    // Only when the dialog opens; the person's own chip choice stays after that.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open])
+
+  const managedLabel = (connector: CatalogConnector): string => {
+    const key = connector.vendorKey || connector.type
+    if (!managedProviderAvailable(managedCatalog, key)) {
+      return managedCatalog?.connectors.find((entry) => entry.vendor === key)?.setupReason === "interactive_oauth_unavailable"
+        ? "Sign-in unavailable"
+        : "Setup required"
+    }
+    return connector.shipped ? "Actions supported" : "Connect account"
+  }
+  const pickAvailable = (connector: CatalogConnector): boolean =>
+    !connector.partner && !isPartnerGatedConnector(connector) && isShippedConnector(connector)
+  const pickNote = (connector: CatalogConnector): string => {
+    if (connector.partner) return connector.certified ? "Partner · Certified" : "Partner connector"
+    if (isPartnerGatedConnector(connector)) return "Request access"
+    if (!isShippedConnector(connector)) return "Coming soon"
+    const auth =
+      connector.authType === "oauth"
+        ? isManagedConnectorVendor(connector.vendorKey || connector.type)
+          ? "Secure sign in"
+          : "OAuth"
+        : connector.authType === "webhook"
+          ? "Webhook"
+          : "API key"
+    const state = isManagedConnectorVendor(connector.vendorKey || connector.type) ? managedLabel(connector) : "Available"
+    const linked = connectedKeys.has(connectorVendorKey(connector.vendorKey || connector.type)) ? " · connected" : ""
+    return `${auth} · ${state}${linked}`
+  }
+  const selectedCapability = selectedType
+    ? capabilities?.get(connectorVendorKey(getSelectedConnectorKey(catalogConnectors, selectedType)))
+    : undefined
+
   const resolveVendor = (connector: CatalogConnector | undefined, type: string) =>
     connector?.vendorKey || connectorVendorKey(type)
 
@@ -1068,7 +992,9 @@ function AddConnectorModal({
       c.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
       c.category.toLowerCase().includes(searchQuery.toLowerCase())
     const matchesCategory = modalCategoryFilter === "all" || c.category === modalCategoryFilter
-    return matchesSearch && matchesCategory
+    const chip = PICK_CHIPS.find((x) => x.id === pickChip)
+    const matchesChip = !chip?.covers || chip.covers.includes(coverTypeFor(c.vendorKey || c.type, c.category))
+    return matchesSearch && matchesCategory && matchesChip
   })
 
   const groupedConnectors = filteredModalConnectors.reduce((acc, c) => {
@@ -1269,7 +1195,7 @@ function AddConnectorModal({
         name,
         vendor,
         description: getSelectedConnector()?.description,
-        sync_frequency: "5m",
+        sync_frequency: "1h",
       }
       if (selectedType === "Zendesk") {
         payload.config = { subdomain: zendeskSubdomain.trim() }
@@ -1309,8 +1235,35 @@ function AddConnectorModal({
         payload.api_key = apiKey
         ;(payload as { apiKey?: string }).apiKey = apiKey
       }
-      await connectorsApi.create(payload)
-      toast.success("Connector added", { description: `${selectedType} has been connected successfully` })
+      const created = await connectorsApi.create(payload)
+      const createdId = created && typeof created === "object" ? String((created as { id?: unknown }).id ?? "") : ""
+      // Run the real connection test straight away so the toast says whether agents can use it.
+      let test: { success: boolean; message?: string } | null = null
+      if (createdId) {
+        try {
+          test = await connectorsApi.testConnection(createdId)
+        } catch (err) {
+          test = { success: false, message: err instanceof Error ? err.message : undefined }
+        }
+      }
+      const openIt = createdId
+        ? { label: "Open connector", onClick: () => router.push(`/connectors/${createdId}`) }
+        : undefined
+      if (!test || test.success) {
+        toast.success(`${selectedType} is ready for agents`, {
+          vendor: vendor,
+          topic: "Connected",
+          description: test ? "Saved, and the connection test passed." : "Saved. Run a test from the connector to confirm access.",
+          action: openIt,
+        })
+      } else {
+        toast.warning(`${selectedType} was saved, but the test failed`, {
+          vendor: vendor,
+          topic: "Connection test",
+          description: test.message || "Check the credentials, then test again from the connector.",
+          action: openIt,
+        })
+      }
       await onCreated()
       handleClose()
     } catch (err) {
@@ -1341,6 +1294,7 @@ function AddConnectorModal({
     setSelectedEnvironmentInStorage("production")
     setSearchQuery("")
     setModalCategoryFilter("all")
+    setPickChip("all")
     setOauthStatus("idle")
     setCopied(false)
     setShowApiKey(false)
@@ -1416,28 +1370,35 @@ function AddConnectorModal({
   }, [open, initialConnectorType, catalogConnectors, managedCatalog])
 
   return (
-    <Dialog open={open} onOpenChange={handleClose} modal={oauthStatus !== "redirecting"}>
-      <DialogContent className="sm:max-w-2xl bg-card border-border max-h-[min(85vh,900px)] min-h-0 overflow-hidden flex flex-col gap-0 p-0">
-        <DialogHeader className="shrink-0 px-6 pt-6 pb-4">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-[color:var(--g-signal-surface)] ring-1 ring-[color:var(--g-signal)]/20">
-              <Plus className="h-5 w-5 text-[color:var(--g-signal)]" />
+    <DialogPrimitive.Root open={open} onOpenChange={(next) => (next ? null : handleClose())} modal={oauthStatus !== "redirecting"}>
+      <DialogPrimitive.Portal>
+        <DialogPrimitive.Overlay className="cno-scrim" />
+        <DialogPrimitive.Content className="cno-dialog wide" aria-describedby={undefined}>
+          <div className="cno-dialog-head">
+            {selectedType && step !== "select" ? (
+              <span className="cno-tile mono" style={{ background: vendorLook(selectedType).bg, color: vendorLook(selectedType).fg }} aria-hidden>
+                {vendorLook(selectedType).mono}
+              </span>
+            ) : null}
+            <div className="cno-dialog-heading">
+              <DialogPrimitive.Title className="cno-dialog-title">
+                {step === "select" ? "Add a connector" : `Connect ${selectedType}`}
+              </DialogPrimitive.Title>
+              <div className="cno-steps" aria-label="Steps">
+                <span data-on={step === "select" ? "" : undefined}>1 Choose a system</span>
+                <i aria-hidden />
+                <span data-on={step !== "select" ? "" : undefined}>
+                  2 {step === "oauth" ? "Sign in" : step === "webhook" ? "Point the webhook" : "Add credentials"}
+                </span>
+                <i aria-hidden />
+                <span>3 Ready for agents</span>
+              </div>
             </div>
-            <div>
-              <DialogTitle>
-                {step === "select" ? "Add Connector" : `Configure ${selectedType}`}
-              </DialogTitle>
-              <DialogDescription>
-                {step === "select" 
-                  ? "Choose a connector type to integrate with your workflows" 
-                  : "Enter the credentials and settings for this connector"
-                }
-              </DialogDescription>
-            </div>
+            <DialogPrimitive.Close className="cno-x filled" aria-label="Close">
+              <XIcon size={14} strokeWidth={2.4} aria-hidden />
+            </DialogPrimitive.Close>
           </div>
-        </DialogHeader>
-
-        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-6">
+        <div className="cno-dialog-body" style={{ paddingTop: 12 }}>
         <AnimatePresence mode="wait">
           {step === "select" ? (
             <motion.div
@@ -1445,138 +1406,60 @@ function AddConnectorModal({
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -20 }}
-              className="flex flex-col pb-2"
+              style={{ display: "flex", flexDirection: "column", gap: 14 }}
             >
-              {/* Search */}
-              <div className="relative mb-3">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Search connectors..."
+              <label className="cno-stored" style={{ background: "transparent", padding: "0 12px" }}>
+                <Search size={16} aria-hidden />
+                <input
+                  aria-label="Search systems"
+                  placeholder={`Search ${catalogConnectors.length}+ systems`}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-9 bg-secondary"
+                  style={{ flex: 1, minWidth: 0, border: 0, outline: "none", background: "transparent", font: "inherit", fontSize: 15, color: "inherit" }}
                 />
-              </div>
-
-              {/* Category Filter Tabs */}
-              <div className="flex flex-wrap gap-1.5 mb-4 pb-3 border-b border-border">
-                <button
-                  onClick={() => setModalCategoryFilter("all")}
-                  className={cn(
-                    "px-3 py-1.5 rounded-full text-xs font-medium transition-all",
-                    modalCategoryFilter === "all"
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-secondary text-muted-foreground hover:text-foreground hover:bg-secondary/80"
-                  )}
-                >
-                  All ({availableConnectors.length})
-                </button>
-                {Object.entries(connectorCategories).map(([cat, data]) => {
-                  // One brand treatment for every category pill (matches "All"), instead of
-                  // a per-category palette hue.
-                  const colors = {
-                    active: "bg-primary text-primary-foreground",
-                    inactive: "hover:bg-primary/10 hover:text-primary",
-                  }
-                  return (
-                    <button
-                      key={cat}
-                      onClick={() => setModalCategoryFilter(cat)}
-                      className={cn(
-                        "px-3 py-1.5 rounded-full text-xs font-medium transition-all",
-                        modalCategoryFilter === cat
-                          ? colors.active
-                          : `bg-secondary text-muted-foreground ${colors.inactive}`
-                      )}
-                    >
-                      {cat.split(" / ")[0]} ({data.connectors.length})
-                    </button>
-                  )
-                })}
-              </div>
-
-              {/* Connector Grid */}
-              <div className="space-y-4">
-                {Object.keys(groupedConnectors).length === 0 && (
-                  <div className="text-center py-8">
-                    <Illustration name="moment-focus-time" width={130} className="mx-auto mb-3" />
-                    <p className="text-sm text-muted-foreground">No connectors found</p>
-                    <button 
-                      onClick={() => { setSearchQuery(""); setModalCategoryFilter("all"); }}
-                      className="text-xs text-[color:var(--g-emerald-deep)] hover:text-primary mt-1"
-                    >
-                      Clear filters
-                    </button>
-                  </div>
-                )}
-                {Object.entries(groupedConnectors).map(([category, connectors]) => (
-                  <div key={category}>
-                    <h4 className="text-xs font-medium text-muted-foreground mb-2">
-                      {category}
-                    </h4>
-                    <div className="grid grid-cols-2 gap-2">
-                      {connectors.map((connector) => (
-                        <button
-                          key={connector.type}
-                          onClick={() => handleSelectConnector(connector)}
-                          className={cn(
-                            "group flex items-center gap-3 rounded-lg border border-border bg-secondary/30 p-3 text-left transition-all hover:border-primary/30 hover:bg-primary/5",
-                            selectedType === connector.type && "border-primary bg-primary/10"
-                          )}
-                        >
-<ConnectorIcon vendor={connector.type} size="sm" />
-                          <div className="min-w-0 flex-1">
-                            <div className="flex items-center gap-2">
-                              <span className="text-sm font-medium text-foreground">{connector.type}</span>
-                              {connector.certified && (
-                                <span className="text-xs px-1.5 py-0.5 rounded font-medium bg-success/10 text-success">
-                                  Certified
-                                </span>
-                              )}
-                              {!connector.partner && isPartnerGatedConnector(connector) && (
-                                <span className="text-xs px-1.5 py-0.5 rounded font-medium bg-warning/10 text-warning">
-                                  Partner
-                                </span>
-                              )}
-                              {!connector.partner && isShippedConnector(connector) && (
-                                <span className="text-xs px-1.5 py-0.5 rounded font-medium bg-success/10 text-success">
-                                  {isManagedConnectorVendor(connector.vendorKey || connector.type)
-                                    ? !managedProviderAvailable(managedCatalog, connector.vendorKey || connector.type) ? (managedCatalog?.connectors.find((entry) => entry.vendor === (connector.vendorKey || connector.type))?.setupReason === "interactive_oauth_unavailable" ? "Sign-in unavailable" : "Setup required") : connector.shipped ? "Actions supported" : "Connect account"
-                                    : "Available"}
-                                </span>
-                              )}
-                              <span className={cn(
-                                "text-xs px-1.5 py-0.5 rounded font-medium",
-                                isPartnerGatedConnector(connector)
-                                  ? "bg-warning/10 text-warning"
-                                  : !connector.partner && !isShippedConnector(connector)
-                                  ? "bg-muted text-muted-foreground"
-                                  : connector.authType === "oauth"
-                                    ? "bg-primary/10 text-[color:var(--g-emerald-deep)]"
-                                    : connector.authType === "webhook"
-                                      ? "bg-[color:var(--g-signal-surface)] text-[color:var(--g-signal)]"
-                                      : "bg-warning/10 text-warning"
-                              )}>
-                                {isPartnerGatedConnector(connector)
-                                  ? "Request access"
-                                  : !connector.partner && !isShippedConnector(connector)
-                                  ? "Coming soon"
-                                  : connector.authType === "oauth"
-                                    ? isManagedConnectorVendor(connector.vendorKey || connector.type) ? "Secure authorization" : "OAuth"
-                                    : connector.authType === "webhook"
-                                      ? "Webhook"
-                                      : "API Key"}
-                              </span>
-                            </div>
-                            <div className="text-xs text-muted-foreground truncate">{connector.description}</div>
-                          </div>
-                          <ArrowRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
-                        </button>
-                      ))}
-                    </div>
-                  </div>
+              </label>
+              <div className="cno-chips" role="group" aria-label="Kind of system">
+                {PICK_CHIPS.filter((chip) => chip.id !== "suggested" || suggestedConnectors.length > 0).map((chip) => (
+                  <button key={chip.id} type="button" className="cno-chip" aria-pressed={pickChip === chip.id} onClick={() => setPickChip(chip.id)}>
+                    {chip.label}
+                  </button>
                 ))}
               </div>
+              {pickChip === "suggested" && !searchQuery.trim() ? (
+                <>
+                  <span className="cno-label">Suggested for your agents</span>
+                  <div className="cno-picks">
+                    {suggestedConnectors.map(({ entry, agents }) => (
+                      <PickCard key={entry.type} entry={entry} note={`${agents} ${agents === 1 ? "agent uses" : "agents use"} it`} onPick={() => handleSelectConnector(entry)} />
+                    ))}
+                  </div>
+                </>
+              ) : (
+                <div className="cno-scroll" style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+                  {Object.keys(groupedConnectors).length === 0 ? (
+                    <div className="cno-note info">
+                      <span style={{ flex: 1 }}>No systems match. Try another name, or browse partner connectors.</span>
+                      <button type="button" className="cno-btn ghost xs" onClick={() => { setSearchQuery(""); setPickChip("all") }}>
+                        Clear
+                      </button>
+                    </div>
+                  ) : (
+                    Object.entries(groupedConnectors).map(([category, connectors]) => (
+                      <div key={category} style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                        <span className="cno-label">{category}</span>
+                        <div className="cno-picks">
+                          {connectors.map((connector) => (
+                            <PickCard key={connector.type} entry={connector} note={pickNote(connector)} disabled={!pickAvailable(connector)} onPick={() => handleSelectConnector(connector)} />
+                          ))}
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              )}
+              <Link href="/marketplace/connectors" className="cno-btn line sm" style={{ alignSelf: "flex-start" }} onClick={() => handleClose()}>
+                Browse partner connectors <ArrowRight size={14} aria-hidden />
+              </Link>
             </motion.div>
           ) : step === "oauth" ? (
             // OAuth Connection Flow
@@ -1708,12 +1591,29 @@ function AddConnectorModal({
                         </>
                       )}
                     </div>
-                    <Button onClick={() => void handleOAuthConnect()} className="gap-2" disabled={!canStartOAuth()}>
-                      <ExternalLink className="h-4 w-4" />
-                      {isPlaidLinkConnector(getSelectedConnector())
-                        ? "Connect with Plaid Link"
-                        : `Connect with ${selectedType}`}
-                    </Button>
+                    {selectedCapability && selectedCapability.actions.length > 0 ? (
+                      <div className="text-left max-w-sm mx-auto" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                        <span className="cno-label">What Gravitre will be able to do</span>
+                        <ul className="cno-can">
+                          {selectedCapability.actions.slice(0, 5).map((action) => (
+                            <li key={action.id}>
+                              <Check size={15} aria-hidden />
+                              <span>
+                                {action.name}
+                                {action.requiresApproval ? " · asks first" : ""}
+                              </span>
+                            </li>
+                          ))}
+                        </ul>
+                        {selectedCapability.actions.length > 5 ? (
+                          <span className="cno-hint">
+                            and {selectedCapability.actions.length - 5} more. Writes stay off until you turn on actions.
+                          </span>
+                        ) : (
+                          <span className="cno-hint">Writes stay off until you turn on actions.</span>
+                        )}
+                      </div>
+                    ) : null}
                     {selectedSupportsDualPat() && (
                       <button
                         type="button"
@@ -2248,53 +2148,36 @@ function AddConnectorModal({
         </AnimatePresence>
         </div>
 
-        <DialogFooter className="shrink-0 mt-0 px-6 py-4 border-t border-border bg-card">
-          <Button variant="outline" onClick={handleClose}>Cancel</Button>
+        <div className="cno-dialog-foot">
+          {step !== "select" ? (
+            <button type="button" className="cno-btn ghost" style={{ marginRight: "auto" }} onClick={() => setStep("select")} disabled={oauthStatus === "redirecting" || isCreating}>
+              Back
+            </button>
+          ) : (
+            <span className="cno-foot-note">Nothing writes to your apps until you turn on actions.</span>
+          )}
+          <button type="button" className="cno-btn ghost" onClick={handleClose}>Cancel</button>
           {step === "configure" && (
-            <Button 
-              onClick={handleConnect} 
-              disabled={!canSubmitApiKey() || isCreating}
-              className="gap-2"
-            >
-              {isCreating ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  Connecting...
-                </>
-              ) : (
-                <>
-                  <Key className="h-4 w-4" />
-                  {selectedType === "GitHub"
-                    ? "Connect with personal access token"
-                    : selectedType === "Zendesk"
-                      ? "Connect with API token"
-                      : "Connect with API Key"}
-                </>
-              )}
-            </Button>
+            <button type="button" className="cno-btn dark" onClick={handleConnect} disabled={!canSubmitApiKey() || isCreating}>
+              {isCreating ? <Loader2 size={16} className="cno-spin" aria-hidden /> : null}
+              {isCreating ? "Saving and testing" : "Save connector"}
+            </button>
           )}
           {step === "webhook" && (
-            <Button 
-              onClick={handleConnect} 
-              disabled={!name || isCreating}
-              className="gap-2"
-            >
-              {isCreating ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  Verifying...
-                </>
-              ) : (
-                <>
-                  <Check className="h-4 w-4" />
-                  Verify connection
-                </>
-              )}
-            </Button>
+            <button type="button" className="cno-btn dark" onClick={handleConnect} disabled={!name || isCreating}>
+              {isCreating ? <Loader2 size={16} className="cno-spin" aria-hidden /> : null}
+              {isCreating ? "Verifying" : "Verify connection"}
+            </button>
           )}
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+          {step === "oauth" && oauthStatus === "idle" && (
+            <button type="button" className="cno-btn dark" onClick={() => void handleOAuthConnect()} disabled={!canStartOAuth()}>
+              {isPlaidLinkConnector(getSelectedConnector()) ? "Continue to Plaid" : `Continue to ${selectedType}`}
+            </button>
+          )}
+        </div>
+        </DialogPrimitive.Content>
+      </DialogPrimitive.Portal>
+    </DialogPrimitive.Root>
   )
 }
 
@@ -2622,40 +2505,18 @@ function ConnectorsPageContent() {
   const [deleteModal, setDeleteModal] = useState<Connector | null>(null)
   const [addModal, setAddModal] = useState(false)
   const [addModalPreset, setAddModalPreset] = useState<string | null>(null)
-  const [viewMode, setViewMode] = useState<"topology" | "grid">("grid")
-  const [statusFilter, setStatusFilter] = useState<string>("all")
-  const [categoryFilter, setCategoryFilter] = useState<string>("all")
-  const [browseMode, setBrowseMode] = useState<ConnectorsViewMode>("all")
+  const [viewMode, setViewMode] = useState<"list" | "topology">("list")
+  const [statusFilter, setStatusFilter] = useState<HubStatusFilter>("all")
   const [departmentFilter, setDepartmentFilter] = useState<ConnectorDepartmentId | null>(null)
   const [isLiveRefreshing, setIsLiveRefreshing] = useState(false)
-  const [chromeCollapsed, setChromeCollapsed] = useState(false)
-  const inspectorReturnFocus = useRef<HTMLElement | null>(null)
+  const [checkedAt, setCheckedAt] = useState<number | null>(null)
+  const inspectorRef = useRef<HTMLElement | null>(null)
   const [focusedConnector, setFocusedConnector] = useState<Connector | null>(null)
   usePublishGravitreAISelection(
     focusedConnector
       ? { kind: "connector", id: focusedConnector.id, label: focusedConnector.name }
       : null,
   )
-
-  useEffect(() => {
-    try {
-      setChromeCollapsed(localStorage.getItem("gravitre-connectors-chrome-collapsed") === "true")
-    } catch {
-      /* ignore */
-    }
-  }, [])
-
-  function toggleChromeCollapsed() {
-    setChromeCollapsed((prev) => {
-      const next = !prev
-      try {
-        localStorage.setItem("gravitre-connectors-chrome-collapsed", String(next))
-      } catch {
-        /* ignore */
-      }
-      return next
-    })
-  }
 
   const connectorsKey = user && orgId ? `/api/connectors?org=${orgId}` : null
 
@@ -2666,12 +2527,22 @@ function ConnectorsPageContent() {
     { revalidateOnFocus: true, revalidateOnReconnect: true, refreshInterval: 30_000, dedupingInterval: 10_000, onError: (err) => console.error("[connectors] fetch error:", err) }
   )
 
+  useEffect(() => {
+    if (!data) return
+    // The newest availability check the API reports; the fetch time when none reports one.
+    const stamps = normalizeConnectorsResponse(data)
+      .map((c) => (c.availability?.lastCheckedAt ? new Date(c.availability.lastCheckedAt).getTime() : NaN))
+      .filter((t) => Number.isFinite(t))
+    setCheckedAt(stamps.length ? Math.max(...stamps) : Date.now())
+  }, [data])
+
   const refreshLiveStatus = async () => {
     if (!orgId) return
     setIsLiveRefreshing(true)
     try {
       const live = await apiFetcher<{ connectors: Connector[] }>(`/api/connectors?org=${orgId}&live=1`)
       await mutate(live, { revalidate: false })
+      setCheckedAt(Date.now())
     } catch (err) {
       console.error("[connectors] live status refresh failed:", err)
       toast.error("Live status check failed", {
@@ -2819,88 +2690,8 @@ function ConnectorsPageContent() {
     }
   }
 
-  const handleSaveConfig = async (connectorId: string, config: Connector["config"]) => {
-    const previousConnectors = connectors
-    await mutate(
-      {
-        connectors: previousConnectors.map((c) => (c.id === connectorId ? { ...c, config } : c)),
-      },
-      false
-    )
-
-    try {
-      const updatePayload: Record<string, unknown> = {}
-      if (config?.apiKey?.trim()) updatePayload.apiKey = config.apiKey.trim()
-      if (config?.webhookUrl) updatePayload.webhookUrl = config.webhookUrl
-      if (config?.syncInterval) updatePayload.syncFrequency = config.syncInterval
-      const { apiKey: _omitKey, syncInterval: _omitSync, ...configRest } = config || {}
-      if (Object.keys(configRest).length > 0) updatePayload.config = configRest
-      await connectorsApi.update(connectorId, updatePayload)
-      toast.success("Configuration saved")
-      await mutate()
-    } catch (err) {
-      console.error("[v0] Failed to save connector config:", err)
-      await mutate({ connectors: previousConnectors }, false)
-      toast.error("Failed to save configuration", {
-        description: err instanceof Error ? err.message : "Please try again",
-      })
-    }
-  }
-
-  const handleDeleteConnector = async (connectorId: string, confirmName: string) => {
-    const previousConnectors = connectors
-    await mutate({ connectors: previousConnectors.filter((c) => c.id !== connectorId) }, false)
-
-    try {
-      await connectorsApi.delete(connectorId, confirmName)
-      toast.success("Connector removed")
-      await mutate()
-      void globalMutate(DATA_REMOVAL_KEY)
-    } catch (err) {
-      console.error("[connectors] Failed to delete connector:", err)
-      await mutate({ connectors: previousConnectors }, false)
-      toast.error("Failed to remove connector", {
-        description: err instanceof Error ? err.message : "Please try again",
-      })
-    }
-  }
-
-  const handleReconnectOAuth = async (connector: Connector) => {
-    const provider = connectorVendorKey(connector.type)
-    let useManaged = isManagedConnectorVendor(provider) || connector.config?.auth_provider === "managed"
-    if (!useManaged && MANAGED_OAUTH_FALLBACK_VENDOR_KEYS.has(provider) && connector.authStatus === "auth_expired") {
-      try { useManaged = managedProviderAvailable(await connectorsApi.managedCatalog(), provider) } catch { /* Native reconnect remains available. */ }
-    }
-    if (useManaged) {
-      try {
-        const connected = await openManagedConnector(provider, { name: connector.name, connectorId: connector.id })
-        if (connected) { toast.success(`${connector.type} reconnected`); await mutate() }
-      } catch (err) {
-        toast.error("Failed to reconnect", { description: formatUnknownError(err) })
-      }
-      return
-    }
-    const cfg = connector.config ?? {}
-    const extra: { subdomain?: string; instanceUrl?: string; owner?: string; repo?: string } = {}
-    if (cfg.subdomain) extra.subdomain = String(cfg.subdomain)
-    if (cfg.instance_url) extra.instanceUrl = String(cfg.instance_url)
-    if (cfg.owner) extra.owner = String(cfg.owner)
-    if (cfg.repo) extra.repo = String(cfg.repo)
-    try {
-      const { authorizationUrl } = await connectorsApi.reconnectOAuth(
-        provider,
-        connector.id,
-        connector.name,
-        extra
-      )
-      window.location.assign(authorizationUrl)
-    } catch (err) {
-      console.error("[connectors] OAuth reconnect failed:", err)
-      toast.error("Failed to start OAuth", {
-        description: err instanceof Error ? err.message : `${connector.type} OAuth may not be configured`,
-      })
-    }
-  }
+  const handleReconnectOAuth = (connector: Connector) =>
+    reconnectConnector(connector as ReconnectTarget, () => mutate())
 
   const handleTestConnection = async (connectorId: string) => {
     try {
@@ -2917,77 +2708,136 @@ function ConnectorsPageContent() {
     }
   }
 
-  const activeDepartment = browseMode === "departments" ? departmentFilter : null
-  // By department starts on its own page of department cards; the list shows once one is picked.
-  const showDepartmentPicker = browseMode === "departments" && departmentFilter === null && connectors.length > 0
-  const departmentCounts = useMemo(
-    () =>
-      Object.fromEntries(
-        CONNECTOR_DEPARTMENTS.map((d) => [d.id, connectors.filter((c) => connectorInDepartment(c.category, d.id)).length]),
-      ) as Record<ConnectorDepartmentId, number>,
-    [connectors],
-  )
-
-  function showAllConnectors() {
-    setBrowseMode("all")
-    setDepartmentFilter(null)
+  const handleConfigure = async (connector: Connector, patch: ConfigurePatch): Promise<boolean> => {
+    try {
+      await connectorsApi.update(connector.id, patch as Record<string, unknown>)
+      toast.success(`${connector.name} settings saved`, {
+        vendor: connector.vendorKey || connector.type,
+        topic: "Configuration",
+        description: patch.apiKey ? "The new key is stored encrypted. Run a test to confirm it works." : undefined,
+        action: patch.apiKey ? { label: "Test now", onClick: () => void handleTestConnection(connector.id) } : undefined,
+      })
+      await mutate()
+      return true
+    } catch (err) {
+      toast.error(`Could not save ${connector.name}`, {
+        vendor: connector.vendorKey || connector.type,
+        topic: "Configuration",
+        description: connectorErrorMessage(err),
+      })
+      return false
+    }
   }
 
-  const filteredConnectors = connectors.filter((c) => {
-    const matchesSearch = c.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      c.type.toLowerCase().includes(searchQuery.toLowerCase())
-    const matchesStatus = statusFilter === "all" || c.status === statusFilter
-    const matchesCategory = categoryFilter === "all" || c.category === categoryFilter
-    return matchesSearch && matchesStatus && matchesCategory && connectorInDepartment(c.category, activeDepartment)
-  })
-
-  const leftConnectors = filteredConnectors.filter((_, i) => i % 2 === 0)
-  const rightConnectors = filteredConnectors.filter((_, i) => i % 2 === 1)
+  const handleRemove = async (connector: Connector, confirmName: string): Promise<boolean> => {
+    const previous = connectors
+    try {
+      await connectorsApi.delete(connector.id, confirmName)
+      await mutate({ connectors: previous.filter((c) => c.id !== connector.id) }, false)
+      setFocusedConnector((current) => (current?.id === connector.id ? null : current))
+      toast.success(`${connector.name} removed`, {
+        vendor: connector.vendorKey || connector.type,
+        topic: "Removed",
+        description: "Agents and workflows no longer use it. A removal receipt is listed below when data removal runs.",
+      })
+      void globalMutate(DATA_REMOVAL_KEY)
+      await mutate()
+      return true
+    } catch (err) {
+      toast.error(`Could not remove ${connector.name}`, {
+        vendor: connector.vendorKey || connector.type,
+        topic: "Remove",
+        description: connectorErrorMessage(err),
+      })
+      return false
+    }
+  }
 
   const vendorCapabilities = useVendorCapabilities(Boolean(user && orgId))
   const agentsByVendor = useAgentsByVendor(Boolean(user && orgId))
-  const departmentConnectors = useMemo(
-    () => connectors.filter((c) => connectorInDepartment(c.category, activeDepartment)),
-    [connectors, activeDepartment],
-  )
-  const attentionItems = useMemo(
-    () =>
-      departmentConnectors
-        .map((c) => deriveConnectorAttention(c))
-        .filter((x): x is ConnectorAttention => x !== null),
-    [departmentConnectors],
-  )
-  const attentionIds = useMemo(() => new Set(attentionItems.map((x) => x.connector.id)), [attentionItems])
-  const selectedConnector = focusedConnector
-    ? connectors.find((c) => c.id === focusedConnector.id) ?? null
-    : null
+  const plays = usePlays(Boolean(user && orgId))
+  const workflowUsage = useWorkflows(Boolean(user && orgId))
+  const starterSets = useStarterSets(agentsByVendor)
 
-  const connectedCount = connectors.filter((c) => connectorIsExecutable(c)).length
-  const connectedVendorKeys = useMemo(
-    () => new Set(connectors.map((c) => connectorVendorKey(c.type))),
+  const attentionAll = useMemo(
+    () => connectors.map((c) => deriveConnectorAttention(c)).filter((x): x is ConnectorAttention => x !== null),
     [connectors],
   )
+  const attentionIds = useMemo(() => new Set(attentionAll.map((x) => x.connector.id)), [attentionAll])
+  const statusOf = (c: Connector) => hubStatusOf(c, attentionIds.has(c.id))
+
+  const departmentConnectors = useMemo(
+    () => connectors.filter((c) => connectorInDepartment(c.category, departmentFilter)),
+    [connectors, departmentFilter],
+  )
+  const searched = departmentConnectors.filter((c) => {
+    const q = searchQuery.trim().toLowerCase()
+    return !q || c.name.toLowerCase().includes(q) || c.type.toLowerCase().includes(q)
+  })
+  const statusCounts: Record<HubStatusFilter, number> = { all: searched.length, connected: 0, syncing: 0, attention: 0, offline: 0 }
+  for (const c of searched) statusCounts[statusOf(c)] += 1
+  const filteredConnectors = searched.filter((c) => statusFilter === "all" || statusOf(c) === statusFilter)
+  const attentionItems = attentionAll.filter((item) => filteredConnectors.some((c) => c.id === item.connector.id))
+
+  const selectedConnector = focusedConnector ? connectors.find((c) => c.id === focusedConnector.id) ?? null : null
+  const connectedCount = connectors.filter((c) => connectorIsExecutable(c)).length
+  const syncingCount = connectors.filter((c) => c.status === "syncing").length
+  const connectedVendorKeys = useMemo(() => new Set(connectors.map((c) => connectorVendorKey(c.type))), [connectors])
   const availableToConnect = useMemo(
-    () =>
-      listAvailableConnectors().filter(
-        (entry) => !connectedVendorKeys.has(entry.vendorKey),
-      ),
+    () => listAvailableConnectors().filter((entry) => !connectedVendorKeys.has(entry.vendorKey)),
     [connectedVendorKeys],
   )
-  // Search, status and category are "filters" the Clear button resets; a picked department is a view
-  // (left via its Departments / Show all controls), but it still narrows the hub counts.
-  const hasActiveFilters = Boolean(searchQuery.trim() || statusFilter !== "all" || categoryFilter !== "all")
-  const listIsNarrowed = hasActiveFilters || activeDepartment !== null
-  const hubConnectedCount = listIsNarrowed
-    ? filteredConnectors.filter((c) => connectorIsExecutable(c)).length
-    : connectedCount
-  const hubTotalCount = listIsNarrowed ? filteredConnectors.length : connectors.length
 
-  function clearFilters() {
-    setSearchQuery("")
-    setStatusFilter("all")
-    setCategoryFilter("all")
+  // Plays that only wait on one of the systems in the attention list.
+  const playsUnlocked = useMemo(() => {
+    const keys = new Set<string>()
+    for (const item of attentionItems) for (const key of plays.waitingOn.get(item.connector.vendorKey) ?? []) keys.add(key)
+    return keys.size
+  }, [attentionItems, plays.waitingOn])
+  const blockedCount = attentionItems.filter((item) => !connectorIsExecutable(item.connector as Connector)).length
+  const unlockLine = [
+    blockedCount > 0 ? `Fix ${attentionItems.length === 1 ? "this" : "these"} and ${blockedCount} more ${blockedCount === 1 ? "system" : "systems"} can take actions` : `${attentionItems.length} ${attentionItems.length === 1 ? "system needs" : "systems need"} a person`,
+    playsUnlocked > 0 ? `${playsUnlocked} ${playsUnlocked === 1 ? "play unlocks" : "plays unlock"}` : "",
+  ]
+    .filter(Boolean)
+    .join(", and ")
+
+  const usageFor = (c: Connector) => {
+    const agents = agentsByVendor.get(c.vendorKey) ?? []
+    const workflows = workflowUsage.forVendor(c.vendorKey)
+    const vendorPlays = plays.byVendor.get(c.vendorKey) ?? []
+    return { agents, workflows, plays: vendorPlays }
   }
+
+  const rows: HubRow[] = filteredConnectors.map((c) => {
+    const use = usageFor(c)
+    const status = statusOf(c)
+    return {
+      connector: c,
+      status,
+      statusLabel: status === "attention" ? connectorStatusLabel(c) : status === "syncing" ? "Syncing" : status === "connected" ? "Connected" : "Offline",
+      access: accessLabel(vendorCapabilities.get(c.vendorKey)),
+      usedBy: usageSentence(use.agents.length, use.workflows.length, use.plays.length),
+    }
+  })
+
+  const withAvailability = connectors.filter((c) => c.availability)
+  const availabilityCount = (pick: (a: ConnectorAvailability) => boolean): number | null =>
+    withAvailability.length === 0 ? null : withAvailability.filter((c) => pick(c.availability!)).length
+  const fabric: FabricPhase[] = [
+    { id: "systems", label: "Systems added", hint: "In this workspace", count: connectors.length, tone: "neutral" },
+    { id: "authorized", label: "Authorized", hint: "Credentials valid", count: availabilityCount((a) => a.authenticated && a.tokenValid), tone: "done" },
+    { id: "scoped", label: "Permissions granted", hint: "Required scopes", count: availabilityCount((a) => a.scopesValid), tone: "done" },
+    { id: "healthy", label: "Healthy", hint: "Last check passed", count: availabilityCount((a) => a.healthy), tone: "done" },
+    { id: "executable", label: "Can take actions", hint: "Agents and workflows can act", count: connectedCount, tone: "live" },
+    {
+      id: "blocked",
+      label: "Blocked",
+      hint: "Needs a person",
+      count: withAvailability.length === 0 ? null : withAvailability.filter((c) => c.availability!.blockingReason).length,
+      tone: "risk",
+    },
+  ]
 
   function openAddModal(preset?: string | null) {
     setAddModalPreset(preset ?? null)
@@ -2999,594 +2849,335 @@ function ConnectorsPageContent() {
     setAddModalPreset(null)
   }
 
-  const statusFilterOptions = [
-    { value: "all", label: "All", color: "text-foreground" },
-    { value: "connected", label: "Connected", color: "text-success", dot: "bg-success" },
-    { value: "syncing", label: "Syncing", color: "text-info", dot: "bg-info" },
-    { value: "error", label: "Error", color: "text-destructive", dot: "bg-destructive" },
-    { value: "disconnected", label: "Offline", color: "text-muted-foreground", dot: "bg-muted-foreground" },
-  ] as const
-  const withAvailability = connectors.filter((c) => c.availability)
-  const availabilityCount = (pick: (a: ConnectorAvailability) => boolean): number | null =>
-    withAvailability.length === 0 ? null : withAvailability.filter((c) => pick(c.availability!)).length
-  const capabilityPhases: OperatingPhase[] = [
-    { id: "systems", label: "Systems added", count: connectors.length, tone: "neutral" },
-    {
-      id: "authorized",
-      label: "Authorized",
-      count: availabilityCount((a) => a.authenticated && a.tokenValid),
-      tone: "done",
-      hint: "Credentials valid",
-    },
-    { id: "scoped", label: "Permissions granted", count: availabilityCount((a) => a.scopesValid), tone: "done", hint: "Required scopes" },
-    { id: "healthy", label: "Healthy", count: availabilityCount((a) => a.healthy), tone: "done" },
-    { id: "executable", label: "Can take actions", count: connectedCount, tone: "live", hint: "Agents and workflows can act" },
-    {
-      id: "blocked",
-      label: "Blocked",
-      count: withAvailability.length === 0 ? null : withAvailability.filter((c) => c.availability!.blockingReason).length,
-      tone: "risk",
-    },
-  ]
+  function pickFilter(filter: HubStatusFilter) {
+    setStatusFilter(filter)
+    setViewMode("list")
+    if (typeof document !== "undefined") document.getElementById("cn-filters")?.scrollIntoView({ behavior: "smooth", block: "start" })
+  }
+
+  function inspect(connector: Connector | null) {
+    setFocusedConnector(connector)
+    if (connector && typeof window !== "undefined" && window.matchMedia("(max-width: 1023px)").matches) {
+      window.setTimeout(() => inspectorRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 50)
+    }
+  }
+
+  const runAttention = (item: ConnectorAttention) => {
+    const target = connectors.find((c) => c.id === item.connector.id)
+    if (!target) return
+    inspect(target)
+    if (item.action === "reconnect") void handleReconnectOAuth(target)
+    else if (item.action === "configure") setConfigureModal(target)
+    else void handleTestConnection(target.id)
+  }
+
+  const dialogConnector = (c: Connector): DialogConnector => ({
+    id: c.id,
+    name: c.name,
+    type: c.type,
+    vendorKey: c.vendorKey,
+    environment: c.environment,
+    authType: c.authType,
+    authStatus: c.authStatus,
+    maskedApiKey: c.config?.apiKey ?? null,
+    authProvider: c.config?.auth_provider ?? null,
+    syncFrequency: c.syncFrequency ?? c.config?.syncInterval ?? null,
+    blockingReason: c.blockingReason ?? null,
+    recordsSynced: c.recordsSynced ?? null,
+  })
+
+  const deptLabel = departmentFilter ? connectorDepartment(departmentFilter)?.label : null
+  const firstRun = !isLoading && !error && connectors.length === 0
+  const removeUsage = deleteModal ? usageFor(deleteModal) : null
 
   return (
     <AppShell title={SURFACE_COPY.pages.connectors.title}>
-      <div className="flex h-full min-h-0 w-full min-w-0 flex-col" data-testid="connectors-hub-b" data-composition="manage">
-        <GravitrePageHeader
-          title={SURFACE_COPY.pages.connectors.headline}
-          description={chromeCollapsed ? undefined : SURFACE_COPY.pages.connectors.description}
-          icon={<NucleoConnector className="h-5 w-5" />}
-          className={cn("w-full min-w-0", chromeCollapsed && "py-2 sm:py-2")}
-          actions={
-            <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
-              <AskGravitreSummonButton />
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                className="h-9 w-9 shrink-0 p-0 text-muted-foreground"
-                onClick={toggleChromeCollapsed}
-                aria-pressed={chromeCollapsed}
-                aria-label={chromeCollapsed ? "Expand connectors header" : "Minimize connectors header"}
-                title={chromeCollapsed ? "Show filters" : "Minimize header"}
-              >
-                {chromeCollapsed ? (
-                  <ChevronDown className="h-4 w-4" />
-                ) : (
-                  <ChevronUp className="h-4 w-4" />
-                )}
-              </Button>
-              {!chromeCollapsed ? (
-                <>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="outline" size="sm" className="h-9 w-9 p-0 shrink-0" aria-label="More options">
-                        <MoreVertical className="h-4 w-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-48">
-                      <DropdownMenuItem
-                        className="gap-2"
-                        disabled={isLiveRefreshing || isValidating || !orgId}
-                        onSelect={() => void refreshLiveStatus()}
-                      >
-                        <RefreshCw className={cn("h-4 w-4 text-muted-foreground", (isLiveRefreshing || isValidating) && "animate-spin")} />
-                        Check live status
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem asChild>
-                        <Link href="/marketplace/billing" className="gap-2">
-                          <Receipt className="h-4 w-4 text-muted-foreground" />
-                          Partner billing
-                        </Link>
-                      </DropdownMenuItem>
-                      <DropdownMenuItem asChild>
-                        <Link href="/marketplace/submit" className="gap-2">
-                          <Code2 className="h-4 w-4 text-muted-foreground" />
-                          Partner SDK
-                        </Link>
-                      </DropdownMenuItem>
-                      {isAdmin && (
-                        <>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem asChild>
-                            <Link href="/marketplace/admin" className="gap-2">
-                              <ShieldCheck className="h-4 w-4 text-muted-foreground" />
-                              Review submissions
-                            </Link>
-                          </DropdownMenuItem>
-                        </>
-                      )}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </>
-              ) : null}
-              <Button onClick={() => openAddModal()} className="min-h-11 gap-2 shrink-0 sm:min-h-9">
-                <Plus className="h-4 w-4" />
-                Add connector
-              </Button>
-            </div>
-          }
-        >
-          {/* Toolbar row — search/filters never share the title flex line (avoids overlap) */}
-          <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
-            <ConnectorsViewToggle
-              value={browseMode}
-              onChange={(mode) => (mode === "all" ? showAllConnectors() : setBrowseMode(mode))}
-            />
-            <div className="relative w-full min-w-0 sm:max-w-xs sm:flex-1">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                placeholder="Search connectors..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full bg-secondary pl-9"
-                aria-label="Search connectors"
-              />
-            </div>
-            {!chromeCollapsed ? (
+      <ConnectorsOverlaysProvider>
+        <div className="gv-ws" data-testid="connectors-hub-b" data-composition="manage" style={{ minHeight: "100%", background: "var(--gv-canvas)" }}>
+          <div className="cn-page">
+            {searchParams.get("agentId") ? <InstalledAgentConnectorRecommendations agentId={searchParams.get("agentId")!} /> : null}
+            {isLoading && connectors.length === 0 ? (
+              <div className="cn-card cn-pad" style={{ alignItems: "center", padding: "72px 18px" }}>
+                <Spinner size="lg" />
+                <p className="cn-sub">Loading connectors</p>
+              </div>
+            ) : error && connectors.length === 0 ? (
+              <div className="cn-card cn-pad" style={{ alignItems: "center", textAlign: "center", padding: "56px 18px" }}>
+                <Illustration name="moment-error" width={170} />
+                <h2 className="cn-h2">Unable to load connectors</h2>
+                <p className="cn-sub">{formatUnknownError(error, "Check backend connectivity and try again.")}</p>
+                <button type="button" className="gv-btn outline" onClick={() => void mutate()}>
+                  Try again
+                </button>
+              </div>
+            ) : firstRun ? (
+              <FirstRun sets={starterSets} onAdd={(preset) => openAddModal(preset ?? null)} />
+            ) : (
               <>
-                <div className="flex w-full items-center gap-1 overflow-x-auto sm:w-auto lg:hidden">
-                  {statusFilterOptions.map((status) => (
-                    <button
-                      key={status.value}
-                      type="button"
-                      onClick={() => setStatusFilter(status.value)}
-                      className={cn(
-                        "flex min-h-11 shrink-0 items-center gap-1.5 rounded-full border px-3 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring sm:min-h-9",
-                        statusFilter === status.value
-                          ? "border-foreground/25 bg-secondary text-foreground"
-                          : "border-transparent text-muted-foreground hover:text-foreground",
-                      )}
-                      aria-pressed={statusFilter === status.value}
-                    >
-                      {"dot" in status && status.dot ? (
-                        <div className={cn("h-1.5 w-1.5 rounded-full", status.dot)} />
-                      ) : null}
-                      {status.label}
-                    </button>
-                  ))}
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="outline" size="sm" className="h-11 shrink-0 gap-1.5 text-sm sm:h-9">
-                        <Filter className="h-3.5 w-3.5" />
-                        {categoryFilter !== "all" ? categoryFilter.split(" / ")[0] : "Category"}
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-56">
-                      <DropdownMenuItem onClick={() => setCategoryFilter("all")} className="gap-2">
-                        <LayoutGrid className="h-4 w-4 text-muted-foreground" />
-                        All Categories
-                        {categoryFilter === "all" && <Check className="h-3.5 w-3.5 ml-auto text-[color:var(--g-emerald-deep)]" />}
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                      {Object.entries(connectorCategories).map(([cat, data]) => (
-                        <DropdownMenuItem key={cat} onClick={() => setCategoryFilter(cat)} className="gap-2">
-                          <span className="flex-1">{cat}</span>
-                          <span className="text-[10px] text-muted-foreground">{data.connectors.length}</span>
-                          {categoryFilter === cat && <Check className="h-3.5 w-3.5 ml-1 text-[color:var(--g-emerald-deep)]" />}
-                        </DropdownMenuItem>
-                      ))}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                  {hasActiveFilters ? (
-                    <Button variant="ghost" size="sm" className="h-8 shrink-0 text-xs" onClick={clearFilters}>
-                      Clear
-                    </Button>
-                  ) : null}
+                <HubHero
+                  connectors={connectors}
+                  readyCount={connectedCount}
+                  syncingCount={syncingCount}
+                  attentionCount={attentionAll.length}
+                  playsWaiting={plays.waiting}
+                  playsLoaded={plays.loaded}
+                  checkedAt={checkedAt}
+                  refreshing={isLiveRefreshing || isValidating}
+                  onRefresh={() => void refreshLiveStatus()}
+                  onAdd={() => openAddModal()}
+                  onFilter={pickFilter}
+                />
+                <CapabilityFabric phases={fabric} total={connectors.length} />
+                <div id="cn-filters" style={{ scrollMarginTop: 80 }}>
+                  <HubFilters
+                    status={statusFilter}
+                    onStatus={setStatusFilter}
+                    counts={statusCounts}
+                    query={searchQuery}
+                    onQuery={setSearchQuery}
+                    department={departmentFilter}
+                    onDepartment={setDepartmentFilter}
+                    view={viewMode}
+                    onView={setViewMode}
+                  />
                 </div>
-                <div className="hidden items-center gap-1 rounded-full border border-divide bg-[color:var(--g-surface-2)] p-1 lg:flex">
-                  {statusFilterOptions.map((status) => (
-                    <button
-                      key={status.value}
-                      type="button"
-                      onClick={() => setStatusFilter(status.value)}
-                      className={cn(
-                        "flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold transition-all",
-                        statusFilter === status.value
-                          ? "bg-[color:var(--g-emerald-pale)] text-[color:var(--g-emerald-deep)] shadow-[var(--np-shadow)]"
-                          : "text-[color:var(--g-text-muted)] hover:text-[color:var(--g-text-primary)]",
-                      )}
-                    >
-                      {"dot" in status && status.dot ? (
-                        <div className={cn("h-1.5 w-1.5 rounded-full", status.dot)} />
-                      ) : null}
-                      {status.label}
-                    </button>
-                  ))}
-                </div>
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button variant="outline" size="sm" className="hidden h-9 gap-2 lg:flex">
-                      <Filter className="h-3.5 w-3.5" />
-                      {categoryFilter !== "all" ? categoryFilter.split(" / ")[0] : "Category"}
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-56">
-                    <DropdownMenuItem onClick={() => setCategoryFilter("all")} className="gap-2">
-                      <LayoutGrid className="h-4 w-4 text-muted-foreground" />
-                      All Categories
-                      {categoryFilter === "all" && <Check className="h-3.5 w-3.5 ml-auto text-[color:var(--g-emerald-deep)]" />}
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    {Object.entries(connectorCategories).map(([cat, data]) => (
-                      <DropdownMenuItem key={cat} onClick={() => setCategoryFilter(cat)} className="gap-2">
-                        <div className={cn("h-2 w-2 rounded-full", `bg-${data.color}-500`)} />
-                        <span className="flex-1">{cat}</span>
-                        <span className="text-[10px] text-muted-foreground">{data.connectors.length}</span>
-                        {categoryFilter === cat && <Check className="h-3.5 w-3.5 ml-1 text-[color:var(--g-emerald-deep)]" />}
-                      </DropdownMenuItem>
-                    ))}
-                  </DropdownMenuContent>
-                </DropdownMenu>
-                <div className="hidden border rounded-md md:flex" role="group" aria-label="Connector view mode">
-                  <Button
-                    variant={viewMode === "topology" ? "secondary" : "ghost"}
-                    size="sm"
-                    className="h-9 w-9 rounded-r-none p-0"
-                    onClick={() => setViewMode("topology")}
-                    aria-label="Network topology view"
-                    aria-pressed={viewMode === "topology"}
-                  >
-                    <Cable className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant={viewMode === "grid" ? "secondary" : "ghost"}
-                    size="sm"
-                    className="h-9 w-9 rounded-l-none p-0"
-                    onClick={() => setViewMode("grid")}
-                    aria-label="List view"
-                    aria-pressed={viewMode === "grid"}
-                  >
-                    <List className="h-4 w-4" />
-                  </Button>
-                </div>
-              </>
-            ) : null}
-          </div>
-        </GravitrePageHeader>
-
-        {!chromeCollapsed ? (
-        <>
-        {connectors.length > 0 ? (
-          <PhaseBand label="Capability fabric" phases={capabilityPhases} loading={isLoading && connectors.length === 0} />
-        ) : null}
-        </>
-        ) : null}
-
-        {/* Network Topology View */}
-        <div className="relative min-h-0 min-w-0 w-full flex-1">
-          <div className="relative z-[1] h-full min-h-0 overflow-auto p-4 pb-28 md:p-6 md:pb-28">
-          {connectors.length > 0 && (
-            <div className="mb-4 flex justify-end">
-              <DataFreshness
-                updatedAt={data ? Date.now() : null}
-                isRefreshing={isValidating || isLiveRefreshing}
-                onRefresh={() => void refreshLiveStatus()}
-              />
-            </div>
-          )}
-          {showDepartmentPicker ? (
-            <ConnectorDepartmentCards
-              counts={departmentCounts}
-              onSelect={setDepartmentFilter}
-              onShowAll={showAllConnectors}
-            />
-          ) : null}
-          {activeDepartment && connectors.length > 0 ? (
-            <ConnectorDepartmentBar
-              department={activeDepartment}
-              onBack={() => setDepartmentFilter(null)}
-              onShowAll={showAllConnectors}
-            />
-          ) : null}
-          {showDepartmentPicker ? null : isLoading && connectors.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-24 text-center">
-              <Spinner size="lg" className="mb-4" />
-              <p className="text-sm text-muted-foreground">Loading connectors...</p>
-            </div>
-          ) : error && connectors.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-24 text-center">
-              <Illustration name="moment-error" width={190} className="mb-4" />
-              <h3 className="text-base font-medium text-foreground mb-1">Unable to load connectors</h3>
-              <p className="text-sm text-muted-foreground mb-4">
-                {formatUnknownError(error, "Check backend connectivity and try again.")}
-              </p>
-              <Button variant="outline" onClick={() => mutate()}>Try again</Button>
-            </div>
-          ) : connectors.length === 0 ? (
-            <div className="py-6">
-              <Illustration name="moment-welcome" width={180} className="mb-4" />
-              <OperatingEmpty
-                className="px-0 py-0 sm:px-0"
-                title="No connectors yet"
-                body="Connectors are what your agents and workflows can act on. Each one moves from connected, to authorized, to granted the permissions an action needs, before agents can use it."
-                path={["Connect a system", "Authorize access", "Grant permissions", "Agents can act"]}
-              />
-              <div className="mt-5 flex flex-wrap gap-2">
-              <Button onClick={() => openAddModal()} className="gap-2">
-                <Plus className="h-4 w-4" />
-                Add your first connector
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                className="gap-2"
-                disabled={isLiveRefreshing || isValidating || !orgId}
-                onClick={() => void refreshLiveStatus()}
-              >
-                <RefreshCw className={cn("h-3.5 w-3.5", (isLiveRefreshing || isValidating) && "animate-spin")} />
-                Check live status
-              </Button>
-              </div>
-              {availableToConnect.length > 0 && (
-                <div className="mt-6 flex max-w-2xl flex-wrap gap-2">
-                  {availableToConnect.slice(0, 6).map((entry) => (
-                    <Button
-                      key={entry.vendorKey}
-                      variant="outline"
-                      size="sm"
-                      className="gap-2"
-                      onClick={() => openAddModal(entry.type)}
-                    >
-                      <ConnectorIcon vendor={entry.type} size="xs" showStatusIndicator={false} />
-                      {entry.type}
-                    </Button>
-                  ))}
-                </div>
-              )}
-            </div>
-          ) : filteredConnectors.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-16 text-center px-4">
-              <Illustration name="moment-focus-time" width={170} className="mb-3" />
-              {activeDepartment && !searchQuery.trim() && statusFilter === "all" && categoryFilter === "all" ? (
-                <>
-                  <p className="text-sm font-medium text-foreground">
-                    No {connectorDepartment(activeDepartment)?.label} connectors yet
-                  </p>
-                  <p className="text-xs text-muted-foreground mt-1 max-w-sm">
-                    Connect a system this team uses, or pick another department.
-                  </p>
-                  <div className="mt-4 flex flex-wrap justify-center gap-2">
-                    <Button size="sm" className="gap-2" onClick={() => openAddModal()}>
-                      <Plus className="h-4 w-4" />
-                      Add connector
-                    </Button>
-                    <Button variant="outline" size="sm" onClick={showAllConnectors}>
-                      Show all connectors
-                    </Button>
-                  </div>
-                </>
-              ) : (
-                <>
-                  <p className="text-sm font-medium text-foreground">No connectors match your filters</p>
-                  <p className="text-xs text-muted-foreground mt-1 max-w-sm">
-                    {connectors.length} connector{connectors.length === 1 ? "" : "s"} are hidden by search or filter settings.
-                  </p>
-                  <Button variant="outline" size="sm" className="mt-4" onClick={clearFilters}>
-                    Clear filters
-                  </Button>
-                </>
-              )}
-            </div>
-          ) : (
-          <>
-          {viewMode === "topology" && (
-            <div className="relative hidden min-h-[600px] md:block">
-              <div className="flex items-center justify-center gap-0">
-                {/* Left column — lines extend toward hub */}
-                <div className="mr-2 flex flex-1 flex-col items-end gap-6">
-                  {leftConnectors.map((connector) => (
-                    <ConnectorNode
-                      key={connector.id}
-                      connector={connector}
-                      position="left"
-                      onConfigure={() => setConfigureModal(connector)}
-                      onSync={handleSync}
-                      onTestConnection={handleTestConnection}
-                      onReconnect={handleReconnectOAuth}
-                      onDelete={() => setDeleteModal(connector)}
-                      onFocus={setFocusedConnector}
-                    />
-                  ))}
-                </div>
-
-                {/* Central Hub */}
-                <CentralHub connectedCount={hubConnectedCount} totalCount={hubTotalCount} />
-
-                {/* Right column — lines extend toward hub */}
-                <div className="ml-2 flex flex-1 flex-col items-start gap-6">
-                  {rightConnectors.map((connector) => (
-                    <ConnectorNode
-                      key={connector.id}
-                      connector={connector}
-                      position="right"
-                      onConfigure={() => setConfigureModal(connector)}
-                      onSync={handleSync}
-                      onTestConnection={handleTestConnection}
-                      onReconnect={handleReconnectOAuth}
-                      onDelete={() => setDeleteModal(connector)}
-                      onFocus={setFocusedConnector}
-                    />
-                  ))}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Operating list (default): rows + contextual inspector. Topology remains opt-in. */}
-          {viewMode === "grid" && (
-            <div data-testid="connectors-list-view" data-review-surface="connectors-management">
-              <ConnectorAttentionList
-                items={attentionItems}
-                onAction={(item) => {
-                  const target = connectors.find((c) => c.id === item.connector.id)
-                  if (!target) return
-                  setFocusedConnector(target)
-                  if (item.action === "reconnect") void handleReconnectOAuth(target)
-                  else if (item.action === "configure") setConfigureModal(target)
-                  else void handleTestConnection(target.id)
-                }}
-              />
-              <div
-                className={cn(
-                  "grid gap-5 xl:grid-cols-[minmax(0,1fr)_22rem]",
-                  selectedConnector && "lg:grid-cols-[minmax(0,1fr)_22rem]",
-                )}
-              >
-                <section aria-labelledby="connectors-connected-heading" className="min-w-0">
-                  <div className="mb-2 flex items-baseline justify-between gap-3">
-                    <h2 id="connectors-connected-heading" className="text-[13px] font-semibold text-foreground">
-                      {activeDepartment ? `${connectorDepartment(activeDepartment)?.label} connectors` : "Connected systems"}
-                    </h2>
-                    <p className={TYPE.meta}>
-                      {filteredConnectors.length} shown · select a row to inspect
+                {filteredConnectors.length === 0 ? (
+                  <div className="cn-card cn-pad" style={{ alignItems: "center", textAlign: "center", padding: "40px 18px" }}>
+                    <h2 className="cn-h2">{deptLabel && !searchQuery.trim() && statusFilter === "all" ? `No ${deptLabel} connectors yet` : "No connectors match"}</h2>
+                    <p className="cn-sub">
+                      {deptLabel && !searchQuery.trim() && statusFilter === "all"
+                        ? "Connect a system this team uses, or pick another department."
+                        : `${connectors.length} ${connectors.length === 1 ? "connector is" : "connectors are"} hidden by search or filters.`}
                     </p>
+                    <div className="cn-row-flex" style={{ justifyContent: "center" }}>
+                      <button
+                        type="button"
+                        className="gv-btn outline sm"
+                        onClick={() => {
+                          setSearchQuery("")
+                          setStatusFilter("all")
+                          setDepartmentFilter(null)
+                        }}
+                      >
+                        Clear filters
+                      </button>
+                      <button type="button" className="gv-btn dark sm" onClick={() => openAddModal()}>
+                        Add connector
+                      </button>
+                    </div>
                   </div>
-                  <ConnectorRowHeader />
-                  {filteredConnectors.map((connector) => (
-                    <ConnectorOperatingRow
-                      key={connector.id}
-                      connector={connector}
-                      statusLabel={connector.status === "syncing" ? "Syncing" : connectorStatusLabel(connector)}
-                      capability={vendorCapabilities.get(connector.vendorKey)}
-                      agents={agentsByVendor.get(connector.vendorKey)}
-                      attention={attentionIds.has(connector.id)}
-                      selected={selectedConnector?.id === connector.id}
-                      onSelect={event => {
-                        inspectorReturnFocus.current = event.currentTarget
-                        setFocusedConnector((prev) => (prev?.id === connector.id ? null : connector))
-                      }}
-                      menu={
-                        <ConnectorOptionsMenu
-                          connector={connector}
-                          onConfigure={() => setConfigureModal(connector)}
-                          onSync={handleSync}
-                          onTestConnection={handleTestConnection}
-                          onReconnect={handleReconnectOAuth}
-                          onDelete={() => setDeleteModal(connector)}
-                        />
-                      }
-                    />
-                  ))}
-                </section>
-                {selectedConnector ? (
-                  <ResponsiveConnectorInspector
-                    returnFocusTarget={inspectorReturnFocus.current}
-                    connector={selectedConnector}
-                    statusLabel={
-                      selectedConnector.status === "syncing" ? "Syncing" : connectorStatusLabel(selectedConnector)
-                    }
-                    capability={vendorCapabilities.get(selectedConnector.vendorKey)}
-                    agents={agentsByVendor.get(selectedConnector.vendorKey)}
-                    attention={deriveConnectorAttention(selectedConnector)}
-                    onConfigure={() => setConfigureModal(selectedConnector)}
-                    onTest={() => void handleTestConnection(selectedConnector.id)}
-                    onSync={() => void handleSync(selectedConnector.id)}
-                    onReconnect={
-                      connectorNeedsOAuthReconnect(selectedConnector)
-                        ? () => void handleReconnectOAuth(selectedConnector)
-                        : undefined
-                    }
-                    onClose={() => setFocusedConnector(null)}
-                  />
+                ) : viewMode === "topology" ? (
+                  <div className="cn-card" style={{ padding: 20, overflowX: "auto" }}>
+                    <div className="flex min-w-[720px] items-center justify-center gap-0">
+                      <div className="mr-2 flex flex-1 flex-col items-end gap-6">
+                        {filteredConnectors
+                          .filter((_, i) => i % 2 === 0)
+                          .map((connector) => (
+                            <ConnectorNode
+                              key={connector.id}
+                              connector={connector}
+                              position="left"
+                              onConfigure={() => setConfigureModal(connector)}
+                              onSync={handleSync}
+                              onTestConnection={handleTestConnection}
+                              onReconnect={handleReconnectOAuth}
+                              onDelete={() => setDeleteModal(connector)}
+                              onFocus={(c) => inspect(c)}
+                            />
+                          ))}
+                      </div>
+                      <CentralHub
+                        connectedCount={filteredConnectors.filter((c) => connectorIsExecutable(c)).length}
+                        totalCount={filteredConnectors.length}
+                      />
+                      <div className="ml-2 flex flex-1 flex-col items-start gap-6">
+                        {filteredConnectors
+                          .filter((_, i) => i % 2 === 1)
+                          .map((connector) => (
+                            <ConnectorNode
+                              key={connector.id}
+                              connector={connector}
+                              position="right"
+                              onConfigure={() => setConfigureModal(connector)}
+                              onSync={handleSync}
+                              onTestConnection={handleTestConnection}
+                              onReconnect={handleReconnectOAuth}
+                              onDelete={() => setDeleteModal(connector)}
+                              onFocus={(c) => inspect(c)}
+                            />
+                          ))}
+                      </div>
+                    </div>
+                  </div>
                 ) : (
-                  <ConnectorOperatingSummary
-                    className="hidden xl:flex"
-                    connectors={departmentConnectors}
-                    attention={attentionItems}
-                    capabilities={vendorCapabilities}
-                    isExecutable={(c) => connectorIsExecutable(c as Connector)}
-                    onSelect={(c) => {
-                      const target = connectors.find((x) => x.id === c.id)
-                      if (target) setFocusedConnector(target)
-                    }}
-                  />
+                  <div className="cn-cols" data-testid="connectors-list-view" data-review-surface="connectors-management">
+                    <div className="cn-main">
+                      <AttentionCard items={attentionItems} unlock={unlockLine} onAction={runAttention} />
+                      <SystemsTable
+                        title={deptLabel ? `${deptLabel} connectors` : "Connected systems"}
+                        rows={rows}
+                        selectedId={selectedConnector?.id ?? null}
+                        onSelect={(c) => inspect(selectedConnector?.id === c.id ? null : (c as Connector))}
+                        onExport={() => {
+                          exportRowsCsv(rows)
+                          toast.success(`Exported ${rows.length} ${rows.length === 1 ? "connector" : "connectors"}`, {
+                            topic: "Export",
+                            description: "The CSV has the rows shown, with your current filters.",
+                          })
+                        }}
+                        menu={(c) => (
+                          <ConnectorOptionsMenu
+                            connector={c as Connector}
+                            onConfigure={() => setConfigureModal(c as Connector)}
+                            onSync={handleSync}
+                            onTestConnection={handleTestConnection}
+                            onReconnect={handleReconnectOAuth}
+                            onDelete={() => setDeleteModal(c as Connector)}
+                          />
+                        )}
+                      />
+                    </div>
+                    <aside className="cn-side" aria-label="Inspector" ref={inspectorRef}>
+                      {selectedConnector ? (
+                        <HubInspector
+                          connector={selectedConnector}
+                          statusLabel={connectorStatusLabel(selectedConnector)}
+                          capability={vendorCapabilities.get(selectedConnector.vendorKey)}
+                          {...usageFor(selectedConnector)}
+                          attention={deriveConnectorAttention(selectedConnector)}
+                          onReconnect={
+                            selectedConnector.authType === "oauth" ? () => void handleReconnectOAuth(selectedConnector) : undefined
+                          }
+                          onConfigure={() => setConfigureModal(selectedConnector)}
+                          onTest={() => handleTestConnection(selectedConnector.id)}
+                          onSync={() => handleSync(selectedConnector.id)}
+                          onClose={() => setFocusedConnector(null)}
+                        />
+                      ) : (
+                        <HubSideSummary
+                          readyCount={connectedCount}
+                          total={connectors.length}
+                          attention={attentionAll}
+                          onPick={(id) => inspect(connectors.find((c) => c.id === id) ?? null)}
+                        />
+                      )}
+                      <KnowledgeCard isAdmin={isAdmin} />
+                    </aside>
+                  </div>
                 )}
+              </>
+            )}
+
+            {!firstRun ? <DataRemovalReceipts /> : null}
+            {isAdmin && !firstRun ? (
+              // Full sync status and history; the side card above summarises it.
+              <section id="knowledge-sync" aria-labelledby="knowledge-sync-heading" className="gv-set flex scroll-mt-20 flex-col gap-3">
+                <h2 id="knowledge-sync-heading" className="cn-h2">
+                  Knowledge sync
+                </h2>
+                <EnterpriseKnowledgeSync isAdmin={isAdmin} />
+              </section>
+            ) : null}
+            {connectors.length > 0 ? (
+              <div data-testid="connectors-discovery">
+                <ConnectorRecommendations onConnect={(type) => openAddModal(type)} />
+                <AvailableConnectorsStrip
+                  entries={availableToConnect}
+                  onBrowseAll={() => openAddModal()}
+                  onSelect={(type) => openAddModal(type)}
+                  showBrowseAll={false}
+                />
               </div>
+            ) : null}
+            <OutboundProviderCards />
+            <div className="cn-row-flex" style={{ fontSize: 13, color: "var(--gv-muted)" }}>
+              <Link href="/marketplace/connectors" className="cn-btn-text sm">
+                Partner connectors <ArrowRight size={14} aria-hidden />
+              </Link>
+              <Link href="/marketplace/billing" className="cn-btn-text sm">
+                Partner billing
+              </Link>
+              <Link href="/marketplace/submit" className="cn-btn-text sm">
+                Build a partner connector
+              </Link>
+              {isAdmin ? (
+                <Link href="/marketplace/admin" className="cn-btn-text sm">
+                  Review submissions
+                </Link>
+              ) : null}
             </div>
-          )}
-          </>
-          )}
-          {!chromeCollapsed ? <DataRemovalReceipts className="mt-8" /> : null}
-          {!chromeCollapsed && isAdmin ? (
-            // Moved here from Settings > Enterprise: sync status belongs next to the connectors it reads.
-            <section id="knowledge-sync" aria-labelledby="knowledge-sync-heading" className="gv-set mt-8 flex scroll-mt-20 flex-col gap-3">
-              <h2 id="knowledge-sync-heading" className="text-[13px] font-semibold text-foreground">
-                Knowledge sync
-              </h2>
-              <EnterpriseKnowledgeSync isAdmin={isAdmin} />
-            </section>
-          ) : null}
-          {!chromeCollapsed && connectors.length > 0 ? (
-            <div className="-mx-4 mt-8 border-t border-[color:var(--g-border-default)] pt-2 md:-mx-6" data-testid="connectors-discovery">
-              <ConnectorRecommendations onConnect={(type) => openAddModal(type)} />
-              <AvailableConnectorsStrip
-                entries={availableToConnect}
-                onBrowseAll={() => openAddModal()}
-                onSelect={(type) => openAddModal(type)}
-                showBrowseAll={false}
-              />
-            </div>
-          ) : null}
           </div>
+
+          {configureModal ? (
+            <ConfigureConnectorDialog
+              connector={dialogConnector(configureModal)}
+              open
+              onOpenChange={(next) => (next ? null : setConfigureModal(null))}
+              onSave={(patch) => handleConfigure(configureModal, patch)}
+              onReconnect={
+                configureModal.authType === "oauth"
+                  ? () => {
+                      const target = configureModal
+                      setConfigureModal(null)
+                      void handleReconnectOAuth(target)
+                    }
+                  : undefined
+              }
+              missingScopeNote={(() => {
+                const names = (agentsByVendor.get(configureModal.vendorKey) ?? []).map((a) => a.name)
+                return names.length ? `needed by ${names.slice(0, 2).join(" and ")}` : null
+              })()}
+            />
+          ) : null}
+          {deleteModal && removeUsage ? (
+            <RemoveConnectorDialog
+              connector={dialogConnector(deleteModal)}
+              open
+              onOpenChange={(next) => (next ? null : setDeleteModal(null))}
+              onRemove={(name) => handleRemove(deleteModal, name)}
+              agents={removeUsage.agents.length}
+              workflows={removeUsage.workflows.length}
+              plays={removeUsage.plays.length}
+            />
+          ) : null}
+          <AddConnectorModal
+            open={addModal}
+            onClose={closeAddModal}
+            initialConnectorType={addModalPreset}
+            existingConnectors={connectors}
+            publishedConnectors={publishedConnectors}
+            capabilities={vendorCapabilities}
+            agentsByVendor={agentsByVendor}
+            onCreated={async () => {
+              await mutate()
+            }}
+          />
+          {gaPropertyPicker && (
+            <GaPropertyPickerModal
+              connectorId={gaPropertyPicker.connectorId}
+              open
+              onClose={() => setGaPropertyPicker(null)}
+              onLinked={() => void mutate()}
+            />
+          )}
+          {gscSitePicker && (
+            <GscSitePickerModal
+              connectorId={gscSitePicker.connectorId}
+              open
+              onClose={() => setGscSitePicker(null)}
+              onLinked={() => void mutate()}
+            />
+          )}
+          {adsCustomerPicker && (
+            <GoogleAdsCustomerPickerModal
+              connectorId={adsCustomerPicker.connectorId}
+              open
+              onClose={() => setAdsCustomerPicker(null)}
+              onLinked={() => void mutate()}
+            />
+          )}
         </div>
-
-        {!chromeCollapsed ? <OutboundProviderCards /> : null}
-
-        {/* Modals */}
-        {configureModal && (
-          <ConfigureModal
-            connector={configureModal}
-            open={!!configureModal}
-            onClose={() => setConfigureModal(null)}
-            onSave={handleSaveConfig}
-            onReconnectOAuth={handleReconnectOAuth}
-          />
-        )}
-        {deleteModal && (
-          <DeleteModal
-            connector={deleteModal}
-            open={!!deleteModal}
-            onClose={() => setDeleteModal(null)}
-            onConfirm={handleDeleteConnector}
-          />
-        )}
-        <AddConnectorModal
-          open={addModal}
-          onClose={closeAddModal}
-          initialConnectorType={addModalPreset}
-          existingConnectors={connectors}
-          publishedConnectors={publishedConnectors}
-          onCreated={async () => {
-            await mutate()
-          }}
-        />
-        {gaPropertyPicker && (
-          <GaPropertyPickerModal
-            connectorId={gaPropertyPicker.connectorId}
-            open
-            onClose={() => setGaPropertyPicker(null)}
-            onLinked={() => void mutate()}
-          />
-        )}
-        {gscSitePicker && (
-          <GscSitePickerModal
-            connectorId={gscSitePicker.connectorId}
-            open
-            onClose={() => setGscSitePicker(null)}
-            onLinked={() => void mutate()}
-          />
-        )}
-        {adsCustomerPicker && (
-          <GoogleAdsCustomerPickerModal
-            connectorId={adsCustomerPicker.connectorId}
-            open
-            onClose={() => setAdsCustomerPicker(null)}
-            onLinked={() => void mutate()}
-          />
-        )}
-      </div>
+      </ConnectorsOverlaysProvider>
     </AppShell>
   )
 }

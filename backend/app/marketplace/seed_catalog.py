@@ -1,7 +1,7 @@
 """Gravitre starter marketplace catalog (MKT-4.1 – MKT-4.4)."""
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import Any
 
 from app.workflows.constants import SCHEMA_VERSION
@@ -181,6 +181,22 @@ def _agent(
     capabilities: list[str] | None = None,
     model: str = "gpt-4.1",
 ) -> dict[str, Any]:
+    from app.capabilities.agency_enrichment import enrichment_for_slug
+
+    from app.capabilities.paid_media import role_for_slug
+
+    from app.capabilities.operations_roles import role_for_slug as operations_role_for_slug, reference as operations_reference
+
+    operations_role = operations_role_for_slug(slug)
+    paid_role = role_for_slug(slug)
+    spec = enrichment_for_slug(slug)
+    agent_config = {"marketplaceSlug": slug}
+    if operations_role is not None:
+        agent_config["operations_guidance"] = operations_reference(operations_role)
+    if spec is not None:
+        agent_config["agency_enrichment"] = spec.reference()
+    if paid_role is not None:
+        agent_config["paid_media_guidance"] = paid_role.reference()
     return {
         "seed_label": _agent_seed(slug),
         "name": name,
@@ -192,7 +208,7 @@ def _agent(
         "capabilities": capabilities or [],
         "systems": systems,
         "guardrails": [],
-        "config": {"marketplaceSlug": slug},
+        "config": agent_config,
     }
 
 
@@ -309,6 +325,15 @@ def _ai_agents() -> list[CatalogAsset]:
             ["enrichment", "list_sync", "apollo_lists", "hubspot_lists"],
         ),
     ]
+    from app.capabilities.paid_media import ROLES
+
+    specs.extend((r.target_slug, r.name, "Marketing", "MARKETING", [], []) for r in ROLES if r.new_agent)
+    from app.capabilities.operations_roles import ROLES as OPERATIONS_ROLES
+
+    specs.extend((r["target_slug"], r["name"], "Operations", "DEFAULT", [], []) for r in OPERATIONS_ROLES)
+    from app.capabilities.software_roles import ROLES as SOFTWARE_ROLES
+
+    specs.extend((r["target_slug"], r["name"], r["department"], "DEFAULT", [], []) for r in SOFTWARE_ROLES if r["new_agent"])
     assets: list[CatalogAsset] = []
     for slug, name, department, persona, systems, capabilities in specs:
         assets.append(
@@ -335,10 +360,20 @@ def _ai_agents() -> list[CatalogAsset]:
                     if "hubspot" in systems
                     else [ZENDESK]
                     if "zendesk" in systems
+                    else [{**GOOGLE_ANALYTICS, "required": True}]
+                    if slug == "seo-analyst"
                     else []
                 ),
             )
         )
+    # Prerequisites are readiness checks, never default connector/tool grants.
+    for index, asset in enumerate(assets):
+        paid = next((r for r in ROLES if r.target_slug == asset.slug), None)
+        if paid:
+            required = {r["connectorType"]: dict(r) for r in asset.required_connectors}
+            required[paid.connector] = {"connectorType": paid.connector, "label": paid.connector.replace("_", " ").title(),
+                                        "required": True, "connectPath": f"/connectors?type={paid.connector}"}
+            assets[index] = replace(asset, required_connectors=list(required.values()))
     return assets
 
 
@@ -493,6 +528,22 @@ def _workflows() -> list[CatalogAsset]:
             build_msp_enrichment_workflow_steps(),
         ),
     ]
+    from app.capabilities.operations_roles import ROLES as OPERATIONS_ROLES
+
+    for role in OPERATIONS_ROLES:
+        definitions.append((
+            role["target_slug"] + "-review", role["name"] + " Review", "Operations", [],
+            [_agent_step("review", role["name"] + " evidence review", role["target_slug"],
+                         "Using the supplied project or meeting evidence, " + " ".join(role["guidance"]) + " Return a draft deliverable with sources, uncertainties and approval needs; do not publish or mutate external systems.")],
+        ))
+    from app.capabilities.software_roles import ROLES as SOFTWARE_ROLES
+
+    for role in SOFTWARE_ROLES:
+        definitions.append((
+            role["target_slug"] + "-software-review", role["name"] + " Software Review", role["department"], [],
+            [_agent_step("review", role["name"] + " evidence review", role["target_slug"],
+                         "Using supplied authorized software evidence, " + " ".join(role["guidance"]) + " Return a draft with exact sources, uncertainty, tests actually run and approval needs; never publish or execute external changes from this review.")],
+        ))
     ticket_id_install_var = {
         "key": "TICKET_ID",
         "label": "Zendesk ticket ID",
@@ -1125,6 +1176,15 @@ def list_catalog_assets() -> list[CatalogAsset]:
         + msp_service_desk_marketplace3_assets()
         + _department_packs()
     )
+    from copy import deepcopy
+    from app.capabilities.software_roles import role_for_slug as software_role_for_slug, reference as software_reference
+
+    for index, asset in enumerate(assets):
+        role = software_role_for_slug(asset.slug) if asset.asset_type == "ai_agent" else None
+        if role:
+            config = deepcopy(asset.config)
+            config.setdefault("config", {})["software_guidance"] = software_reference(role)
+            assets[index] = replace(asset, config=config)
     slugs = [asset.slug for asset in assets]
     if len(slugs) != len(set(slugs)):
         duplicates = sorted({slug for slug in slugs if slugs.count(slug) > 1})

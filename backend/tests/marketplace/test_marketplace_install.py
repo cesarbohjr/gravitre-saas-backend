@@ -104,8 +104,8 @@ def test_install_ai_agent_uses_create_operator(mock_plan, mock_create_operator, 
 
 
 @patch("app.marketplace.service.get_plan_for_org", return_value={"agents_limit": None, "workflows_limit": None})
-def test_install_blocks_when_connectors_missing(mock_plan):
-    asset = _published_agent_asset()
+def test_non_agent_install_blocks_when_connectors_missing(mock_plan):
+    asset = {**_published_agent_asset(), "asset_type": "workflow"}
     assets = _table([asset])
     connectors = _table([])
     client = MagicMock()
@@ -240,7 +240,7 @@ def test_install_workflow_provisions_companion_agents(mock_plan, mock_version, m
     assert "marketing-analyst" in slugs
 
 
-def test_preview_install_reports_blockers():
+def test_agent_preview_separates_capability_blockers():
     asset = _published_agent_asset()
     assets = _table([asset])
     connectors = _table([])
@@ -248,8 +248,10 @@ def test_preview_install_reports_blockers():
     client.table.side_effect = lambda name: assets if name == "marketplace_assets" else connectors
 
     preview = preview_install(client, "org-1", ASSET_ID)
-    assert preview["canInstall"] is False
-    assert preview["blockers"]
+    assert preview["canInstall"] is True
+    assert not preview["blockers"]
+    assert preview["capabilityBlockers"][0]["connector"] == "hubspot"
+    assert not preview["connectorChecklist"][0]["connected"]
 
 
 @patch("app.marketplace.entitlements.get_entitlement_status")

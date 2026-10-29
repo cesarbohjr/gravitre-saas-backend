@@ -91,7 +91,7 @@ export function MarketingConsentBanner({ country }: Props) {
     >
       <div
         className={cn(
-          "mx-auto max-w-3xl overflow-hidden rounded-2xl border border-border bg-card shadow-2xl shadow-foreground/10",
+          "mx-auto max-h-[calc(100dvh-1.5rem)] max-w-3xl overflow-y-auto rounded-2xl border border-border bg-card shadow-2xl shadow-foreground/10",
           panel === "preferences" && "max-w-lg",
         )}
       >
@@ -105,7 +105,7 @@ export function MarketingConsentBanner({ country }: Props) {
                 <h2 id="marketing-consent-title" className="text-sm font-semibold text-foreground">
                   Cookies & measurement
                 </h2>
-                <p className="mt-1.5 text-sm leading-relaxed text-muted-foreground">
+                <p className="mt-1 text-[13px] leading-relaxed text-muted-foreground sm:mt-1.5 sm:text-sm">
                   We use cookies and similar technologies for analytics and advertising measurement.
                   You can accept all, reject non-essential cookies, or manage preferences. See our{" "}
                   <Link href="/privacy" className="font-medium text-foreground underline underline-offset-2">
@@ -116,11 +116,13 @@ export function MarketingConsentBanner({ country }: Props) {
               </div>
             </div>
 
-            <div className="mt-4 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+            {/* Phones: Reject and Accept share a row with Manage under them, so the banner
+                covers less of the page it sits on. */}
+            <div className="mt-3 grid grid-cols-2 gap-2 sm:mt-4 sm:flex sm:flex-row sm:justify-end">
               <button
                 type="button"
                 onClick={() => setPanel("preferences")}
-                className="inline-flex h-10 items-center justify-center gap-1.5 rounded-full px-4 text-sm font-medium text-foreground transition-colors hover:bg-muted"
+                className="order-last col-span-2 inline-flex h-10 items-center sm:order-none justify-center gap-1.5 rounded-full px-4 text-sm font-medium text-foreground transition-colors hover:bg-muted"
               >
                 <Settings2 className="h-3.5 w-3.5" aria-hidden />
                 Manage preferences

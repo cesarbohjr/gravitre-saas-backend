@@ -53,17 +53,33 @@ def template() -> dict:
 
 def main() -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--template", action="store_true")
-    parser.add_argument("--out", default="docs/delivery/conversation-parity-benchmark-template.json")
+    modes=parser.add_mutually_exclusive_group(required=True)
+    modes.add_argument("--template", action="store_true")
+    modes.add_argument("--product-template", action="store_true",help="Unscored ChatGPT text/voice/execution protocol")
+    modes.add_argument("--product-score",type=Path,help="Private observed-session rating manifest")
+    parser.add_argument("--identity-file",type=Path,help="Separate A/B identity file withheld from raters")
+    parser.add_argument("--evidence-root",type=Path,help="Private capture directory; recordings never enter the report")
+    parser.add_argument("--out", default=None)
     args = parser.parse_args()
-    if not args.template:
-        parser.error("currently supported mode: --template")
-    out = ROOT / args.out
+    default_name="chatgpt-product-benchmark-report.json" if args.product_score else "chatgpt-product-benchmark-template.json" if args.product_template else "conversation-parity-benchmark-template.json"
+    out = ROOT / (args.out or "docs/delivery/"+default_name)
     out.parent.mkdir(parents=True, exist_ok=True)
-    payload = template()
+    if args.product_template:
+        from app.services.conversation_benchmark_evidence import template as product_template
+        payload=product_template()
+    elif args.product_score:
+        if not args.identity_file or not args.evidence_root:parser.error("--product-score requires --identity-file and --evidence-root")
+        from app.services.conversation_benchmark_evidence import evaluate
+        try:
+            if args.product_score.stat().st_size>4194304 or args.identity_file.stat().st_size>4096:raise ValueError('manifest_bounds_invalid')
+            payload=evaluate(json.loads(args.product_score.read_text()),identity=json.loads(args.identity_file.read_text()),evidence_root=args.evidence_root)
+        except (ValueError,OSError,TypeError,KeyError):
+            payload={'schema_version':1,'status':'NOT_CERTIFIED','reason':'evidence_contract_incomplete_or_invalid','whole_product_equivalence_claim':False}
+    else:
+        payload=template()
     out.write_text(json.dumps(payload, indent=2), encoding="utf-8")
-    print(f"wrote {out} ({len(payload['scenarios'])} scenarios)")
-    return 0
+    print(f"wrote {out}; status={payload.get('status','UNSCORED_TEMPLATE')}")
+    return 1 if args.product_score and payload.get('status')!='PASS_MEASURED_SCOPE' else 0
 
 
 if __name__ == "__main__":

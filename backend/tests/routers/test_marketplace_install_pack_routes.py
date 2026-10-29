@@ -1,6 +1,8 @@
 """MKT-AUDIT-5.5: Router coverage for department_pack and knowledge_pack install."""
 from __future__ import annotations
 
+from unittest.mock import Mock
+
 import pytest
 from fastapi.testclient import TestClient
 
@@ -72,3 +74,26 @@ def test_install_department_pack_route(monkeypatch):
     assert body["entities"]["entityType"] == "department_pack"
     assert body["entities"]["agentIds"]
     assert body["entities"]["workflowIds"]
+
+
+def test_install_route_forwards_explicit_agent_snapshot_version(monkeypatch):
+    _authenticate_admin()
+    store = object()
+    installer = Mock(return_value={"installed": True})
+    monkeypatch.setattr("app.routers.marketplace.shared_service_client", lambda *_: store)
+    monkeypatch.setattr("app.routers.marketplace.install_asset", installer)
+    response = client.post("/api/marketplace/assets/content-writer/install", json={"versionNumber": 1})
+    assert response.status_code == 200
+    assert installer.call_args.args == (store, "org-1", "content-writer")
+    assert installer.call_args.kwargs["version_number"] == 1
+    assert installer.call_args.kwargs["actor_id"] == "user-1"
+
+
+@pytest.mark.parametrize("version", [0, True, "1"])
+def test_install_route_rejects_invalid_snapshot_version_before_writes(monkeypatch, version):
+    _authenticate_admin()
+    installer = Mock()
+    monkeypatch.setattr("app.routers.marketplace.install_asset", installer)
+    response = client.post("/api/marketplace/assets/content-writer/install", json={"versionNumber": version})
+    assert response.status_code == 422
+    installer.assert_not_called()
