@@ -26,6 +26,10 @@ elif sys.argv[1]=='browser_use':
     import asyncio
     from engine import configure_browser_sdk
     configure_browser_sdk()
+    from browser_use.browser.events import TabCreatedEvent
+    from browser_use.browser.watchdogs.popups_watchdog import PopupsWatchdog
+    assert PopupsWatchdog.on_TabCreatedEvent.__name__=='on_TabCreatedEvent'
+    assert PopupsWatchdog.on_TabCreatedEvent.__annotations__['event'] is TabCreatedEvent
     assert AboutBlankWatchdog.on_TabClosedEvent is original_recovery
     # The replacement needs no CDP/session/network access, even on an opaque object.
     assert asyncio.run(AboutBlankWatchdog._show_dvd_screensaver_on_about_blank_tabs(object())) is None

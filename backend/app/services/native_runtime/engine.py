@@ -157,14 +157,32 @@ async def stable_browser_evidence(browser_session,requested):
     raise PermissionError('Browser viewport did not stabilize before approval')
 
 
+async def install_rejecting_dialog_handler(watchdog,event):
+    # A click approval is not approval for an additional JS confirmation.
+    # Enable Page only on its target session, never on the browser root.
+    if event.target_id in watchdog._dialog_listeners_registered:return
+    session=await watchdog.browser_session.get_or_create_cdp_session(event.target_id,focus=False)
+    async def dismiss_dialog(event_data,session_id=None):
+        if session_id is not None and session_id!=session.session_id:return
+        await session.cdp_client.send.Page.handleJavaScriptDialog(params={'accept':False},session_id=session.session_id)
+    session.cdp_client.register.Page.javascriptDialogOpening(dismiss_dialog)
+    await session.cdp_client.send.Page.enable(session_id=session.session_id)
+    watchdog._dialog_listeners_registered.add(event.target_id)
+
+
 def configure_browser_sdk():
     from browser_use.browser.watchdogs.aboutblank_watchdog import AboutBlankWatchdog
+    from browser_use.browser.watchdogs.popups_watchdog import PopupsWatchdog
     # The pinned SDK injects an animated remote logo into about:blank even with
     # demo_mode=False. Disable only that cosmetic hook in this one-job process;
     # leave the watchdog's tab creation/recovery and all security hooks intact.
     async def no_blank_animation(self):
         return None
     AboutBlankWatchdog._show_dvd_screensaver_on_about_blank_tabs=no_blank_animation
+    # Preserve the concrete SDK event annotation used by event-bus validation.
+    install_rejecting_dialog_handler.__name__='on_TabCreatedEvent'
+    install_rejecting_dialog_handler.__annotations__=PopupsWatchdog.on_TabCreatedEvent.__annotations__
+    PopupsWatchdog.on_TabCreatedEvent=install_rejecting_dialog_handler
 
 
 async def browse(config):

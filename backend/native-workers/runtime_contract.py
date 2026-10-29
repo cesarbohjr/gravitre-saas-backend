@@ -61,6 +61,28 @@ Path('/workspace/review.py').write_text(json.dumps(proof,sort_keys=True))
 PYCODE"""
 
 
+def browser_fixture_observation(messages):
+    # SDK context warnings may follow the actual state message. Read only the
+    # latest browser-state section, never task/history text or a budget nudge.
+    observed=''
+    for message in reversed(messages):
+        if message.get('role')!='user':continue
+        content=message.get('content','')
+        text=content if isinstance(content,str) else '\n'.join(part.get('text','') for part in content if isinstance(part,dict) and part.get('type')=='text') if isinstance(content,list) else ''
+        sections=re.findall(r'<browser_state>\n(.*?)\n</browser_state>',text,re.S)
+        if sections:
+            observed=sections[-1];break
+    current=re.search(r'^Current tab: ([A-Za-z0-9_-]+)\s*$',observed,re.M)
+    tab=re.search(r'^Tab '+re.escape(current.group(1))+r': (\S+) - (.*)$',observed,re.M) if current else None
+    from urllib.parse import urlsplit
+    url=urlsplit(tab.group(1)) if tab else None
+    body=observed.partition('Interactive elements')[2]
+    return {'state_present':bool(observed) and '<browser_state_error>' not in observed,
+            'title_observed':bool(tab) and tab.group(2).strip()=='Example Domain',
+            'host_observed':bool(url) and url.scheme=='https' and url.hostname=='example.com' and url.path in ('','/'),
+            'body_observed':'Example Domain' in body}
+
+
 def run():
     evidence={};state={'kind':'openhands','calls':0};lock=threading.Lock();entered=threading.Event();cancel=threading.Event()
     class Provider(BaseHTTPRequestHandler):
@@ -79,10 +101,9 @@ def run():
             message={'role':'assistant','content':'Fixture task finished.'};finish='stop'
             if kind=='browser_use':
                 if number>1:
-                    latest_user=next((m for m in reversed(body.get('messages',[])) if m.get('role')=='user'),{})
-                    observed=json.dumps(latest_user.get('content',''))
-                    state['browser_page_observed']='Example Domain' in observed and 'example.com' in observed
-                    state['browser_context_checks'].append({'title_observed':'Example Domain' in observed,'host_observed':'example.com' in observed})
+                    observed=browser_fixture_observation(body.get('messages',[]))
+                    state['browser_page_observed']=all(observed.values())
+                    state['browser_context_checks'].append(observed)
                 # Page rendering can follow successful navigation. Spend only
                 # the existing bounded step budget waiting for actual readback;
                 # never emit done based on the scripted navigation request.

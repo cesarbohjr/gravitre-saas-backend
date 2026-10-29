@@ -200,3 +200,34 @@ async def test_animated_or_changing_page_has_bounded_review_failure(monkeypatch)
     with pytest.raises(PermissionError,match='did not stabilize'):
         await engine.stable_browser_evidence(object(),{})
     assert captures.await_count==6
+
+
+@pytest.mark.asyncio
+async def test_dialogs_are_dismissed_without_root_enable_or_implicit_confirmation():
+    from app.services.native_runtime.engine import install_rejecting_dialog_handler
+    page_api=SimpleNamespace(enable=AsyncMock(),handleJavaScriptDialog=AsyncMock())
+    register=Mock()
+    session=SimpleNamespace(session_id='target-session',cdp_client=SimpleNamespace(send=SimpleNamespace(Page=page_api),register=SimpleNamespace(Page=SimpleNamespace(javascriptDialogOpening=register))))
+    browser=SimpleNamespace(get_or_create_cdp_session=AsyncMock(return_value=session))
+    watchdog=SimpleNamespace(_dialog_listeners_registered=set(),browser_session=browser)
+    event=SimpleNamespace(target_id='target')
+    await install_rejecting_dialog_handler(watchdog,event)
+    page_api.enable.assert_awaited_once_with(session_id='target-session')
+    callback=register.call_args.args[0]
+    for kind in ('alert','confirm','prompt','beforeunload'):
+        await callback({'type':kind,'message':'PRIVATE-PAGE'},session_id='target-session')
+    assert page_api.handleJavaScriptDialog.await_count==4
+    assert all(call.kwargs=={'params':{'accept':False},'session_id':'target-session'} for call in page_api.handleJavaScriptDialog.await_args_list)
+    await callback({'type':'confirm'},session_id='other-target')
+    assert page_api.handleJavaScriptDialog.await_count==4
+    await install_rejecting_dialog_handler(watchdog,event)
+    assert register.call_count==1
+
+
+@pytest.mark.asyncio
+async def test_dialog_domain_enable_failure_cannot_report_success():
+    from app.services.native_runtime.engine import install_rejecting_dialog_handler
+    session=SimpleNamespace(session_id='target-session',cdp_client=SimpleNamespace(send=SimpleNamespace(Page=SimpleNamespace(enable=AsyncMock(side_effect=TimeoutError()))),register=SimpleNamespace(Page=SimpleNamespace(javascriptDialogOpening=Mock()))))
+    watchdog=SimpleNamespace(_dialog_listeners_registered=set(),browser_session=SimpleNamespace(get_or_create_cdp_session=AsyncMock(return_value=session)))
+    with pytest.raises(TimeoutError):await install_rejecting_dialog_handler(watchdog,SimpleNamespace(target_id='target'))
+    assert not watchdog._dialog_listeners_registered
