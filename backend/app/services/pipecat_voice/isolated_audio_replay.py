@@ -8,7 +8,6 @@ a transport as operational without a successful adapter invocation.
 from __future__ import annotations
 
 import argparse
-import hashlib
 import json
 import os
 from pathlib import Path
@@ -18,7 +17,7 @@ import tempfile
 import time
 
 from app.services.pipecat_voice.recorded_audio_evidence import (
-    certify_recorded_trials, inspect_recording,
+    inspect_recording,
 )
 
 
@@ -38,7 +37,8 @@ def run_pair(input_wav: str, case_id: str, commands: dict[str, str], *, timeout_
             out = Path(tmp) / (engine + ".wav")
             metrics = Path(tmp) / (engine + ".json")
             argv = [*shlex.split(command), "--input-wav", str(source),
-                    "--output-wav", str(out), "--metrics-json", str(metrics)]
+                    "--output-wav", str(out), "--metrics-json", str(metrics),
+                    "--case-id", case_id]
             started = time.monotonic_ns()
             env = {**os.environ, "GRAVITRE_VOICE_ISOLATED": "1",
                    "GRAVITRE_VOICE_ENGINE": engine}
