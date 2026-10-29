@@ -9,6 +9,9 @@ on:
   workflow_dispatch:
 permissions:
   contents: read
+concurrency:
+  group: native-workers-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
   pinned-sdk-imports:
     runs-on: ubuntu-latest
@@ -49,12 +52,18 @@ jobs:
           sudo /usr/local/bin/runsc install
           sudo systemctl reload docker
           runsc --version
-      - name: Build actual native images
-        run: |
-          docker build -q -f backend/native-workers/Dockerfile.openhands -t native-openhands backend
-          docker build -q -f backend/native-workers/Dockerfile.browser -t native-browser backend
-          docker build -q -f backend/native-workers/Dockerfile.gateway -t native-gateway backend
-          docker run -d --name native-cert-registry -p 127.0.0.1:5050:5000 registry:2
+      - name: Build actual OpenHands runtime image
+        timeout-minutes: 8
+        run: docker build -f backend/native-workers/Dockerfile.openhands -t native-openhands backend
+      - name: Build actual Browser Use runtime image
+        timeout-minutes: 8
+        run: docker build -f backend/native-workers/Dockerfile.browser -t native-browser backend
+      - name: Build actual gateway runtime image
+        timeout-minutes: 3
+        run: docker build -f backend/native-workers/Dockerfile.gateway -t native-gateway backend
+      - name: Start immutable local certification registry
+        timeout-minutes: 3
+        run: docker run -d --name native-cert-registry -p 127.0.0.1:5050:5000 mirror.gcr.io/library/registry@sha256:a3d8aaa63ed8681a604f1dea0aa03f100d5895b6a58ace528858a7b332415373
       - name: Certify real isolated SDK execution and failure controls
         env:
           NATIVE_CERT_EVIDENCE: native-runtime-evidence.json

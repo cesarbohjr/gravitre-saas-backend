@@ -9,6 +9,9 @@ on:
   workflow_dispatch:
 permissions:
   contents: read
+concurrency:
+  group: native-langfuse-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
   real-delivery:
     runs-on: ubuntu-latest
