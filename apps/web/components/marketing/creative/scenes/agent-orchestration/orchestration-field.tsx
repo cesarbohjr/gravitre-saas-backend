@@ -79,9 +79,22 @@ function MiniTopology({ phase }: { phase: OrchestrationPhase }) {
           />
         )
       })}
-      {layout.nodes.map((p, i) => (
-        <circle key={i} cx={p.x} cy={p.y} r={i === 0 ? 4.5 : 2.4} fill={i === 0 ? "var(--brand)" : "var(--muted-foreground)"} />
-      ))}
+      {layout.nodes.map((p, i) =>
+        i === 0 ? (
+          // Core node is the Gravitre mark: two slanted brand bars on a dark tile.
+          <g key={i}>
+            <rect x={p.x - 7} y={p.y - 7} width={14} height={14} rx={3.5} fill="#141513" />
+            <svg x={p.x - 4.5} y={p.y - 4.5} width={9} height={9} viewBox="0 0 24 24" fill="var(--brand)">
+              <g transform="translate(12 12) skewX(-14) translate(-12 -12)">
+                <rect x="1.5" y="3.2" width="21" height="7" rx="2.4" />
+                <rect x="1.5" y="13.8" width="21" height="7" rx="2.4" />
+              </g>
+            </svg>
+          </g>
+        ) : (
+          <circle key={i} cx={p.x} cy={p.y} r={2.4} fill="var(--muted-foreground)" />
+        ),
+      )}
     </svg>
   )
 }
