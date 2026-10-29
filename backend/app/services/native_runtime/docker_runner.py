@@ -8,13 +8,11 @@ from __future__ import annotations
 from dataclasses import asdict,dataclass
 from http.server import BaseHTTPRequestHandler
 import hmac
-import io
 import ipaddress
 import json
 import re
 import secrets
 import subprocess
-import tarfile
 import threading
 import time
 from uuid import UUID
@@ -156,11 +154,12 @@ class DockerRunner:
                 if time.monotonic()>=deadline:raise TimeoutError('Native sandbox timed out')
                 time.sleep(0.5)
             if process.returncode:raise RuntimeError('Native engine failed')
-            raw=self.docker('cp',engine+':/out/result.json','-')
-            with tarfile.open(fileobj=io.BytesIO(raw),mode='r:*') as archive:
-                members=archive.getmembers()
-                if len(members)!=1 or not members[0].isfile() or not 0<members[0].size<=240000:raise ValueError('Invalid sandbox output')
-                result=json.loads(archive.extractfile(members[0]).read(240001))
+            # gVisor's guest tmpfs is not Docker's host-side mounted rootfs.
+            # Read inside the guest; no host mount or archive extraction needed.
+            raw=self.docker('exec',engine,'python','-c','import sys; f=open("/out/result.json","rb"); sys.stdout.buffer.write(f.read(240001))')
+            if not 0<len(raw)<=240000:raise ValueError('Invalid sandbox output')
+            result=json.loads(raw)
+            if not isinstance(result,dict):raise ValueError('Invalid sandbox output')
             guard()
             return result
         finally:
