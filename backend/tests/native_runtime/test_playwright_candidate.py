@@ -90,3 +90,24 @@ async def test_approved_navigation_revoked_at_final_gateway_gate_never_dispatche
         await candidate["approved_navigation"]({"allowed_hosts":["www.selenium.dev"]},
             session, page, "https://www.selenium.dev/selenium/web/web-form.html")
     page.goto.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_approved_click_revoked_before_dispatch_has_no_effect(monkeypatch):
+    page = SimpleNamespace(locator=AsyncMock())
+    state = SimpleNamespace(url="https://www.selenium.dev/page",
+        dom_state=SimpleNamespace(selector_map={1: SimpleNamespace(attributes={"id": "commit"})}))
+    session = SimpleNamespace(get_browser_state_summary=AsyncMock(return_value=state))
+    evidence = {"page_fingerprint": "a" * 64, "page_title": "fixture", "targets": []}
+    globals_ = candidate["approved_click"].__globals__
+    monkeypatch.setitem(globals_, "action_for", lambda _: {"click": {"index": 1}})
+    monkeypatch.setitem(globals_, "stable_browser_evidence", AsyncMock(return_value=(state, evidence)))
+    monkeypatch.setitem(globals_, "fresh_browser_evidence", AsyncMock(return_value=(state, evidence)))
+    monkeypatch.setitem(globals_, "request_exact_approval", AsyncMock(return_value=None))
+    def revoked(config, path, body):
+        assert path == "/authorize"
+        raise PermissionError("revoked before dispatch")
+    monkeypatch.setitem(globals_, "gateway", revoked)
+    with pytest.raises(PermissionError):
+        await candidate["approved_click"]({"allowed_hosts": ["www.selenium.dev"]}, session, page)
+    assert page.locator.call_count == 0
