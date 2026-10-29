@@ -209,6 +209,11 @@ async def trial(adapter, number):
             assert state.url == fixture.origin + '/page' and state.title == 'Adapter fixture'
             navigation_ms = (time.monotonic() - before_navigation) * 1000
             action = action_for(state)
+            # Initial navigation/readback is not the same as a settled viewport.
+            # The fixture's asynchronously rendered Ready label has completed;
+            # give Chromium one bounded paint interval before capturing the
+            # unmodified production-grade stable evidence twice.
+            await asyncio.sleep(0.5)
             snapshot_started = time.monotonic()
             stage = 'stable_snapshot'
             _, evidence = await stable_browser_evidence(session, action)
