@@ -35,4 +35,4 @@ async def test_action_gateway_denial_never_clicks(monkeypatch):
     monkeypatch.setitem(candidate["approved_click"].__globals__, "request_exact_approval", deny)
     with pytest.raises(PermissionError):
         await candidate["approved_click"]({"allowed_hosts":["www.selenium.dev"]},session,page)
-    page.locator.assert_not_awaited()
+    assert page.locator.call_count == 0
