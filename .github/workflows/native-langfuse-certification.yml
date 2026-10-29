@@ -11,7 +11,8 @@ permissions:
   contents: read
 concurrency:
   group: native-langfuse-${{ github.ref }}
-  cancel-in-progress: true
+  # Preserve an active real delivery/deletion check across unrelated updates.
+  cancel-in-progress: false
 jobs:
   real-delivery:
     runs-on: ubuntu-latest
