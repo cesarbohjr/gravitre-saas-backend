@@ -81,3 +81,15 @@ def test_fenced_reservation_rejects_non_pre_effect_checkpoint(tmp_path):
     with pytest.raises(LeaseLost,match="Verified pre-effect checkpoint"):
         journal.claim_fenced_handoff(scope,job_id)
     assert journal.get(scope,job_id)["phase"]=="fallback_fenced"
+
+
+def test_recovery_inspection_rejects_invalid_checkpoint_marker(tmp_path):
+    private=tmp_path / "private"
+    private.mkdir(mode=0o700)
+    journal=Journal(str(private / "journal.sqlite"),Fernet.generate_key())
+    scope=AdapterScope("org","agent","run")
+    job_id=journal.enqueue(scope,"browser_use","identity",{"task":{}},actor="actor")
+    job=journal.claim("browser_use")
+    journal.save_browser_checkpoint(job,0,{"before_effect":False})
+    assert journal.fence_browser_for_fallback(job,checkpoint_before_effect=True)
+    assert journal.fallback_candidate(scope,job_id) is None
