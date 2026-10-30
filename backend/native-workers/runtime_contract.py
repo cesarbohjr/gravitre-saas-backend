@@ -421,7 +421,7 @@ def run():
             runner.cleanup(cancelled['id']);clean(cancelled['id']);evidence['recovery_cleanup_idempotent']='PASS'
         finally:
             cancel.set();server.shutdown();server.server_close();thread.join(timeout=5);diagnostic()
-        evidence.update(schema_version=1,runtime='runsc',runsc_version=subprocess.check_output(['runsc','--version'],text=True).splitlines()[0],git_sha=os.environ.get('GITHUB_SHA','local'),external_provider_requests=False,live_tenant_data=False)
+        evidence.update(schema_version=1,runtime='runsc',runsc_version=subprocess.check_output(['runsc','--version'],text=True).splitlines()[0],git_sha=os.environ.get('CERT_HEAD_SHA',os.environ.get('GITHUB_SHA','local')),external_provider_requests=False,live_tenant_data=False)
         target=Path(os.environ.get('NATIVE_CERT_EVIDENCE','native-runtime-evidence.json'));target.write_text(json.dumps(evidence,indent=2)+'\n')
         print(json.dumps(evidence,sort_keys=True))
 
