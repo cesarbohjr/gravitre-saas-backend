@@ -9,6 +9,50 @@ on:
 permissions:
   contents: read
 jobs:
+  paired-runtime-readiness:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: acceptance
+    env:
+      SUPABASE_URL: ${{ secrets.E2E_SUPABASE_URL }}
+      SUPABASE_ANON_KEY: ${{ secrets.E2E_SUPABASE_ANON_KEY }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.E2E_SUPABASE_SERVICE_ROLE_KEY }}
+      SUPABASE_JWT_SECRET: ${{ secrets.E2E_SUPABASE_JWT_SECRET }}
+      E2E_SUPABASE_ALLOWED_URL: ${{ vars.E2E_SUPABASE_ALLOWED_URL }}
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Verify isolated runtime configuration (read-only, no production fallback)
+        run: |
+          python - <<'PY'
+          import json, os, pathlib
+          names = ('SUPABASE_URL', 'SUPABASE_ANON_KEY', 'SUPABASE_SERVICE_ROLE_KEY', 'SUPABASE_JWT_SECRET', 'E2E_SUPABASE_ALLOWED_URL')
+          blockers = ['missing:' + name for name in names if not os.environ.get(name)]
+          if not (os.environ.get('ANTHROPIC_API_KEY') or os.environ.get('OPENAI_API_KEY')):
+              blockers.append('missing:ANTHROPIC_API_KEY_or_OPENAI_API_KEY')
+          if os.environ.get('SUPABASE_URL') and (os.environ['SUPABASE_URL'].rstrip('/') != 'https://aadnwmjzrmbvadszroqt.supabase.co' or os.environ['SUPABASE_URL'].rstrip('/') != os.environ.get('E2E_SUPABASE_ALLOWED_URL', '').rstrip('/')):
+              blockers.append('isolated_target_not_explicitly_allowlisted')
+          result = {'status': 'NOT RUN' if blockers else 'CONFIGURATION_PRESENT', 'blockers': blockers,
+                    'paired_inference': 'NOT RUN', 'live_action_certification': 'NOT RUN', 'certified': False}
+          path = pathlib.Path('acceptance-results/paired-runtime-readiness.json')
+          path.parent.mkdir(parents=True, exist_ok=True)
+          path.write_text(json.dumps(result, indent=2))
+          print(json.dumps(result))
+          if blockers: raise SystemExit(2)
+          PY
+      - name: Install read-only smoke identity verifier
+        run: python -m pip install 'supabase>=2,<3' 'PyJWT>=2.8,<3'
+      - name: Verify existing flagged smoke actor and membership; never provision one
+        run: python scripts/mint_smoke_org_session.py --github-env
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: paired-runtime-readiness
+          path: acceptance-results/paired-runtime-readiness.json
   live-provider:
     runs-on: ubuntu-latest
     timeout-minutes: 15
