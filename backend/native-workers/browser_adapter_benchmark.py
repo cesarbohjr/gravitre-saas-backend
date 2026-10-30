@@ -32,6 +32,8 @@ except ModuleNotFoundError as error:
         raise
     from app.services.native_runtime.engine import configure_browser_sdk, fresh_browser_evidence, stable_browser_evidence,ensure_rejecting_dialog_handlers,close_dialog_handlers
 
+from broker_process_contract import IndependentFixture, CrashBroker
+
 TRIALS = 5
 ACTION_TIMEOUT = 10
 PAGE = b'''<!doctype html><title>Adapter fixture</title>
@@ -124,13 +126,15 @@ def action_for(state):
     raise AssertionError('Fixture action absent from observed DOM')
 
 
-async def reviewed_click(session, action, execute, *, approved, cancelled=False, mutate=None):
+async def reviewed_click(session, action, execute, *, approved, cancelled=False, mutate=None, authority=None):
     before_state, before = await stable_browser_evidence(session, action)
     if mutate is not None:
         mutate()
         await wait_state(session, 'Changed')
     if not approved or cancelled:
         raise PermissionError('Fixture authority denied')
+    if authority is not None:
+        await authority(action, before)
     after_state, after = await fresh_browser_evidence(session, action, 'after_approval')
     if before != after:
         error = PermissionError('Fixture context changed after review')
@@ -147,7 +151,7 @@ async def reviewed_click(session, action, execute, *, approved, cancelled=False,
 
 
 async def trial(adapter, number):
-    fixture = Fixture()
+    fixture = None
     child = None
     session = None
     driver = None
@@ -156,6 +160,7 @@ async def trial(adapter, number):
     started = time.monotonic()
     initial_usage = resource.getrusage(resource.RUSAGE_CHILDREN)
     with tempfile.TemporaryDirectory(prefix='adapter-', dir='/workspace') as profile:
+        fixture = IndependentFixture(Path(profile)/'write-counter.sqlite3', PAGE)
         try:
             # Both adapters attach to Chromium started with exactly these flags.
             # Chromium's sandbox stays enabled; no --no-sandbox fallback exists.
@@ -244,15 +249,50 @@ async def trial(adapter, number):
                 else:
                     raise AssertionError('Unapproved, cancelled or stale action executed')
                 assert fixture.writes == 1
+            # The browser and broker cannot edit the server-owned SQLite counter.
+            # Kill the actual journal-owning OS process after its approval reply.
+            recovery = None
+            if number == 0:
+                stage = 'broker_process_crash_restart'
+                fixture.mutated = False
+                await wait_state(session, 'Original')
+                broker = None
+                guarded = []
+                async def crash_authority(requested_action, fingerprint):
+                    nonlocal broker, recovery
+                    broker = CrashBroker(Path(profile)/'private-broker')
+                    request = broker.approve({'actions':requested_action, **fingerprint})
+                    assert request['state'] == 'approved'
+                    recovery = await asyncio.to_thread(broker.kill_and_restart)
+                async def fenced_execute(requested_action):
+                    guarded.append(True)
+                    if not broker.authorized():
+                        raise PermissionError('Restarted broker rejected stale approval')
+                    await execute(requested_action)
+                try:
+                    try:
+                        await reviewed_click(session, action, fenced_execute, approved=True, authority=crash_authority)
+                    except PermissionError:
+                        assert guarded == [True] and recovery is not None
+                    else:
+                        raise AssertionError('Crashed broker approval executed')
+                    assert fixture.writes == 1
+                    recovery['independent_writes_before'] = 1
+                    recovery['independent_writes_after'] = fixture.writes
+                    recovery['unauthorized_writes'] = fixture.writes - 1
+                finally:
+                    if broker is not None:broker.close()
             final_usage = resource.getrusage(resource.RUSAGE_CHILDREN)
             return {'adapter': adapter, 'trial': number, 'passed': True,
+                'independent_server_process': True, 'unauthorized_writes': fixture.writes - 1,
+                'broker_process_recovery': recovery,
                 'total_elapsed_ms': (time.monotonic() - started) * 1000,
                 'child_cpu_ms': max(0.0, (final_usage.ru_utime + final_usage.ru_stime - initial_usage.ru_utime - initial_usage.ru_stime) * 1000),
                 'child_peak_rss_kib': final_usage.ru_maxrss,
                 'setup_ms': setup_ms,
                 'navigation_ms': navigation_ms, 'snapshot_ms': snapshot_ms, 'approved_click_ms': click_ms,
                 'checks': ['redirect', 'dynamic_dom', 'url_title_readback', 'actual_screenshot',
-                           'approved_click_readback', 'denial_no_write', 'cancelled_no_write', 'stale_no_write']}
+                           'approved_click_readback', 'denial_no_write', 'cancelled_no_write', 'stale_no_write', 'independent_server_write_counter']}
         except Exception as error:
             error.benchmark_stage = stage
             raise
@@ -282,7 +322,7 @@ async def trial(adapter, number):
                         os.killpg(child.pid, signal.SIGKILL)
                     except ProcessLookupError:
                         pass
-                fixture.close()
+                if fixture is not None:fixture.close()
 
 
 async def run():
@@ -324,6 +364,8 @@ async def run():
         'production_adapter_selection': 'BLOCKED_PENDING_FULL_GATEWAY_AND_RUNTIME_COMPARISON',
         'unmeasured': ['production_gateway_parity', 'tenant_authorization', 'crash_recovery',
                        'provider_quality', 'operating_cost', 'maintenance_cost', 'representative_reliability'],
+        'process_contract_scope': 'Owned guest-local server and real journal broker child; not production worker lifecycle or live tenant gateway',
+        'broker_process_contract_sha256': hashlib.sha256(Path(__file__).with_name('broker_process_contract.py').read_bytes()).hexdigest(),
         'production_certified': False}
 
 
