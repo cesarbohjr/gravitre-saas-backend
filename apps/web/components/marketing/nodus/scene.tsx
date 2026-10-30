@@ -4,7 +4,8 @@ import { cn } from "@/lib/utils"
 /**
  * Marketing scene — the app's grain-textured illustrations (public/illustrations)
  * in the same frame the workspace uses for its hero art: a soft wash panel with
- * an optional floating status chip. Keeps marketing pages visually in step with
+ * an optional floating status chip. The animated marketing/* set drops the panel
+ * and sits on the Nodus dot field instead. Keeps marketing pages visually in step with
  * the product screenshots instead of abstract placeholder art. The art drifts
  * slowly (mk-scene-drift in globals.css) and holds still under reduced motion.
  */
@@ -51,11 +52,20 @@ export function MarketingScene({
   return (
     <figure
       className={cn(
-        "relative overflow-hidden rounded-2xl border border-divide bg-[#e7ece3]",
+        "relative overflow-hidden",
+        // Marketing art has no backdrop of its own: it sits on the Nodus dot
+        // field (same as the How it works / Benefits graphics) so it blends in.
+        animated ? "isolate" : "rounded-2xl border border-divide bg-[#e7ece3]",
         aspect,
         className,
       )}
     >
+      {animated ? (
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(var(--color-dots)_1px,transparent_1px)] mask-radial-from-10% [background-size:10px_10px]"
+        />
+      ) : null}
       <Image
         src={`/illustrations/${name}.svg`}
         alt={alt}
@@ -66,7 +76,11 @@ export function MarketingScene({
         unoptimized
         draggable={false}
         style={animated ? undefined : { animationDelay: `${-(hash(name) % 14)}s` }}
-        className={cn(!animated && "mk-scene-drift", "block w-full", aspect ? "h-full object-cover" : "h-auto")}
+        className={cn(
+          animated ? "mask-x-from-92% mask-y-from-92%" : "mk-scene-drift",
+          "block w-full",
+          aspect ? "h-full object-cover" : "h-auto",
+        )}
       />
       {status ? (
         <figcaption className="absolute right-3 bottom-3 left-3 flex items-center gap-2 rounded-xl border border-[#e4e4df] bg-white/95 px-3 py-2 text-[13px] text-[#262826] shadow-[0_6px_16px_rgba(20,20,20,0.08)]">

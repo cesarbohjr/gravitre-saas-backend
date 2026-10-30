@@ -71,8 +71,8 @@ const why = [
 export default function CareersPage() {
   return (
     <main className="bg-[color:var(--g-marketing-canvas)]">
-      <Container className="border-divide flex flex-col items-center border-x pb-16">
-        <div className="divide-divide border-divide grid w-full grid-cols-1 border-b lg:grid-cols-2 lg:divide-x">
+      <Container className="border-divide flex flex-col items-center border-x">
+        <div className="divide-divide border-divide grid w-full grid-cols-1 lg:grid-cols-2 lg:divide-x">
           <div className="flex flex-col items-start justify-start px-4 py-10 md:px-8 md:py-32">
             <Badge text="Careers" />
             <SectionHeading className="mt-4 text-left">
@@ -86,7 +86,7 @@ export default function CareersPage() {
               View roles
             </Button>
           </div>
-          <div className="flex flex-col justify-center gap-4 px-4 py-10 md:px-8">
+          <div className="flex flex-col justify-center gap-4 px-4 py-10 md:px-8 md:py-32">
             <p className="font-mono text-xs tracking-tight text-muted-foreground uppercase">
               How we work
             </p>

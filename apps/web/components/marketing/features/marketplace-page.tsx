@@ -130,6 +130,16 @@ const ASSETS: Asset[] = [
     tone: "text-info bg-info/15",
   },
   {
+    name: "Lead Enrichment Agent",
+    art: "market-leads",
+    category: "Agents",
+    subtitle: "Marketing operations",
+    description: "Enrich inbound leads from connected tools and route them to the right owner for review.",
+    availability: "Included",
+    icon: NucleoAgent,
+    tone: "text-brand-text bg-brand/15",
+  },
+  {
     name: "Deal Desk Workflow",
     art: "market-deals",
     category: "Workflows",
@@ -148,6 +158,16 @@ const ASSETS: Asset[] = [
     availability: "Included",
     icon: FileSpreadsheet,
     tone: "text-warning-text bg-warning/15",
+  },
+  {
+    name: "Compliance Review Workflow",
+    art: "market-compliance",
+    category: "Workflows",
+    subtitle: "Audit-ready",
+    description: "Run policy checks on changes, collect evidence, and hold anything risky for sign-off.",
+    availability: "Included",
+    icon: NucleoApproval,
+    tone: "text-info bg-info/15",
   },
   {
     name: "Security Knowledge Base",
@@ -290,13 +310,13 @@ export function MarketplacePage() {
             </AnimatePresence>
           </motion.div>
 
-          <div className="mt-10 flex flex-wrap justify-center gap-4">
+          <div className="mt-10 grid gap-4 sm:grid-cols-3">
             {STEPS.map((step) => {
               const Icon = step.icon
               return (
                 <div
                   key={step.n}
-                  className="border-divide flex min-w-[220px] flex-1 items-center gap-3 rounded-lg border bg-[color:var(--g-marketing-surface)] px-5 py-4 sm:max-w-xs"
+                  className="border-divide flex items-center gap-3 rounded-lg border bg-[color:var(--g-marketing-surface)] px-5 py-4"
                 >
                   <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[color:var(--brand-soft)] text-sm font-bold text-[color:var(--brand)]">
                     {step.n}
@@ -336,7 +356,7 @@ export function MarketplacePage() {
               </GravitreReveal>
             ))}
           </div>
-          <ul className="mx-auto mt-10 grid max-w-3xl gap-3 sm:grid-cols-3">
+          <ul className="mt-4 grid gap-4 sm:grid-cols-3">
             {WHY_GUARANTEES.map((item) => (
               <li
                 key={item}

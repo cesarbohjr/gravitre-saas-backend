@@ -22,11 +22,8 @@
   <radialGradient id="b12b" cx="70%" cy="70%" r="40%"><stop offset="0%" stop-color="#EBDCC0" stop-opacity="0.5" /><stop offset="100%" stop-color="#EBDCC0" stop-opacity="0" /></radialGradient>
   <pattern id="d12" width="14" height="14" patternUnits="userSpaceOnUse"><circle cx="7" cy="7" r="0.7" fill="#2A2B28" opacity="0.13" /></pattern>
 </defs>
-<rect width="400" height="300" fill="#E7ECE3" />
 <ellipse cx="200" cy="120" rx="180" ry="130" fill="url(#b12a)" />
 <ellipse cx="300" cy="220" rx="130" ry="90" fill="url(#b12b)" />
-<rect x="280" y="0" width="120" height="300" fill="url(#d12)" opacity="0.5" />
-<rect width="400" height="300" filter="url(#grain12)" opacity="0.04" fill="#2A2B28" />
 
 
 <rect x="24" y="108" width="352" height="10" rx="4" fill="#C98F5B" />

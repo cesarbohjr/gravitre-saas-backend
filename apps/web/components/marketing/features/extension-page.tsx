@@ -14,7 +14,6 @@ import {
   extensionInstallCtaLabel,
   extensionInstallHref,
 } from "@/lib/extension-install"
-import { ProductScreenshot } from "@/components/marketing/product-screenshot"
 import { BrowserFrame } from "@/components/marketing/browser-frame"
 import {
   BraveVendorIcon,
@@ -163,10 +162,10 @@ export function ExtensionPage() {
           </p>
           <ol className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
             {activationSteps.map((step, i) => (
-              <li key={step.n}>
+              <li key={step.n} className="flex">
                 <GravitreFlow
                   delay={i * 0.05}
-                  className="rounded-lg border border-divide bg-[color:var(--g-marketing-surface)] p-5"
+                  className="w-full rounded-lg border border-divide bg-[color:var(--g-marketing-surface)] p-5"
                 >
                   <div className="mb-3 flex h-8 w-8 items-center justify-center rounded-full bg-primary/15 text-sm font-bold text-primary">
                     {step.n}
@@ -274,31 +273,25 @@ export function ExtensionPage() {
             staged write waits in the same Approvals queue as chat, and the run
             lands in the same Activity feed — tagged with its source.
           </p>
-          {/* Stacked, not side-by-side: these are dense product surfaces, and at
-              half of max-w-5xl the in-app text is too small to read, which turns
-              the proof into decoration. */}
-          <div className="mt-12 flex flex-col gap-14">
-            <GravitreResolve>
+          <div className="mx-auto mt-10 grid max-w-4xl gap-4 md:grid-cols-2">
+            <GravitreResolve className="rounded-lg border border-divide bg-[color:var(--g-marketing-surface)] p-6">
               <h3 className="text-sm font-semibold text-foreground">
                 Step 4, in the app — the shared Approvals queue
               </h3>
-              <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted-foreground">
+              <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
                 The same confirmation you just saw in the overlay also appears
                 here, with the exact catalog action, its blast radius, and who
                 asked for it.
               </p>
-              <ProductScreenshot
-                className="mt-5"
-                src="/product/app-approvals.png"
-                chromeLabel="Approvals"
-                alt="Decision queue showing three requests waiting, with a Zendesk scope grant selected and what will happen, why it paused, and its activity open."
-              />
             </GravitreResolve>
-            <GravitreResolve delay={0.05}>
+            <GravitreResolve
+              delay={0.05}
+              className="rounded-lg border border-divide bg-[color:var(--g-marketing-surface)] p-6"
+            >
               <h3 className="text-sm font-semibold text-foreground">
                 Step 5, in the app — see it in Outcomes
               </h3>
-              <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted-foreground">
+              <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
                 Extension runs appear with source{" "}
                 <code className="rounded bg-muted px-1 py-0.5 text-xs text-foreground">
                   browser_extension
@@ -306,12 +299,6 @@ export function ExtensionPage() {
                 and the same lifecycle chain as chat — planned, approved,
                 executed, verified.
               </p>
-              <ProductScreenshot
-                className="mt-5"
-                src="/product/app-activity.png"
-                chromeLabel="Activity"
-                alt="Activity showing outcomes tagged browser_extension, with a failed HubSpot step open on its run trace: plan, authorize, create, verify."
-              />
             </GravitreResolve>
           </div>
       </MarketingRails>

@@ -257,7 +257,7 @@ function ProductSurfaces() {
   return (
     <Container className="border-divide md:border-x">
       <div className="flex flex-col items-center py-16">
-        <GravitreReveal>
+        <GravitreReveal className="flex flex-col items-center text-center">
           <Badge text="Surfaces" />
           <SectionHeading className="mt-4">
             Everything in the <span className="text-brand">same brain</span>
@@ -267,7 +267,7 @@ function ProductSurfaces() {
             not another disconnected AI silo.
           </SubHeading>
         </GravitreReveal>
-        <div className="border-divide divide-divide mt-16 grid w-full grid-cols-1 divide-y border-y md:grid-cols-2 md:divide-x lg:grid-cols-3">
+        <div className="border-divide divide-divide mt-16 grid w-full grid-cols-1 divide-y border-y md:grid-cols-2 md:divide-x lg:grid-cols-4">
           {surfaces.map((surface, index) => {
             const Icon = surfaceIcons[index % surfaceIcons.length]
             return (
@@ -295,7 +295,7 @@ function AuthorizedUseCases() {
   return (
     <Container className="border-divide relative overflow-hidden md:border-x px-4 md:px-8">
       <div className="relative flex flex-col items-center py-20">
-        <GravitreReveal>
+        <GravitreReveal className="flex flex-col items-center text-center">
           <Badge text={copy.badge} />
           <SectionHeading className="mt-4">{copy.title}</SectionHeading>
           <SubHeading as="p" className="mx-auto mt-6 max-w-lg">
@@ -354,7 +354,7 @@ function HonestReporting() {
   return (
     <Container className="border-divide md:border-x">
       <div className="flex flex-col items-center px-4 py-16 md:px-8">
-        <GravitreReveal>
+        <GravitreReveal className="flex flex-col items-center text-center">
           <Badge text={copy.badge} />
           <SectionHeading className="mt-4 text-center">{copy.title}</SectionHeading>
           <SubHeading as="p" className="mx-auto mt-6 max-w-lg">
