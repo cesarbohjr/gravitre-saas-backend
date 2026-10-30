@@ -150,6 +150,8 @@ class Capture:
         self.last = None
         self.events = {}
         self.event_timeline = []
+        self.turn_complete_at = None
+        self.last_bot_stop_at = None
         self.authorization = {}
         self.scenario = "baseline"
         self.reply_id = None
@@ -184,6 +186,10 @@ class Capture:
         if message.get("type") == "audio.reply":
             self.reply_id = message.get("reply_id")
         kind = message.get("event") or message.get("type", "unknown")
+        if kind == 'assistant_turn.complete':
+            self.turn_complete_at = time.monotonic()
+        elif kind == 'bot-stopped-speaking':
+            self.last_bot_stop_at = time.monotonic()
         if self.started is not None and kind in {
             'user-started-speaking', 'user-stopped-speaking', 'transcript',
             'speech.duck', 'speech.unduck', 'speech.interrupted', 'audio.reply',
@@ -251,7 +257,9 @@ class Capture:
                 raise RuntimeError("pipeline ended before completed reply")
             completed = self.events.get("bot-llm-stopped", 0) and self.events.get("bot-stopped-speaking", 0)
             if self.scenario in {"baseline", "reconnect"}:
-                completed = completed and self.events.get("assistant_turn.complete", 0)
+                completed = (completed and self.turn_complete_at is not None
+                    and self.last_bot_stop_at is not None
+                    and self.last_bot_stop_at >= self.turn_complete_at)
             if self.scenario == "spoken_cancel":
                 completed = completed and self.cancel_recognized
             if completed and self.first is not None and self.last and time.monotonic() - self.last > 4:

@@ -78,7 +78,27 @@ class CompletionTests(unittest.IsolatedAsyncioTestCase):
         try:
             await asyncio.sleep(.02)
             self.assertFalse(settling.done())
-            capture.events = {'bot-llm-stopped': 1, 'bot-stopped-speaking': 1, 'assistant_turn.complete': 1}
+            capture.event({'type': 'bot-llm-stopped'})
+            capture.event({'type': 'assistant_turn.complete'})
+            capture.event({'type': 'bot-stopped-speaking'})
+            await asyncio.wait_for(settling, .5)
+        finally:
+            running.cancel()
+            settling.cancel()
+            await asyncio.gather(running, settling, return_exceptions=True)
+
+    async def test_ack_stop_before_turn_completion_cannot_end_final_capture(self):
+        capture = paired.Capture()
+        capture.first = capture.last = time.monotonic() - 10
+        capture.event({'type': 'bot-llm-stopped'})
+        capture.event({'type': 'bot-stopped-speaking'})
+        capture.event({'type': 'assistant_turn.complete'})
+        running = asyncio.create_task(asyncio.Event().wait())
+        settling = asyncio.create_task(capture.settle(running))
+        try:
+            await asyncio.sleep(.02)
+            self.assertFalse(settling.done())
+            capture.event({'type': 'bot-stopped-speaking'})
             await asyncio.wait_for(settling, .5)
         finally:
             running.cancel()
