@@ -16,12 +16,12 @@
 [style*="gi-stamp-in"],[style*="gi-grow-bar"],[style*="gi-rise-bar"]{transform-box:fill-box;transform-origin:center}
 [style*="gi-grow-bar"],[style*="gi-rise-bar"]{transform-origin:center bottom}
 @media (prefers-reduced-motion: reduce){*{animation:none!important}}
+rect[fill="#FFFFFF"][stroke]{filter:drop-shadow(0 1px 1px rgba(0,0,0,0.04)) drop-shadow(0 3px 8px rgba(0,0,0,0.05))}
 </style><defs>
   <filter id="grain9"><feTurbulence type="fractalNoise" baseFrequency="0.65" numOctaves="3" stitchTiles="stitch" /><feColorMatrix type="saturate" values="0" /><feBlend in="SourceGraphic" mode="overlay" /><feComposite in2="SourceGraphic" operator="in" /></filter>
   <radialGradient id="b9a" cx="50%" cy="50%" r="55%"><stop offset="0%" stop-color="#CFDCCB" stop-opacity="0.6" /><stop offset="100%" stop-color="#CFDCCB" stop-opacity="0" /></radialGradient>
   <pattern id="d9" width="14" height="14" patternUnits="userSpaceOnUse"><circle cx="7" cy="7" r="0.7" fill="#2A2B28" opacity="0.13" /></pattern>
 </defs>
-<ellipse cx="200" cy="150" rx="190" ry="140" fill="url(#b9a)" />
 
 
 <rect x="40" y="210" width="280" height="14" rx="4" fill="#C98F5B" />
@@ -57,34 +57,34 @@
   
   <ellipse cx="8" cy="28" rx="10" ry="7" fill="#7E9A7B" transform="rotate(-20 8 28)" />
   <ellipse cx="28" cy="23" rx="10" ry="7" fill="#7E9A7B" transform="rotate(15 28 23)" />
-  <ellipse cx="36" cy="38" rx="8" ry="6" fill="#CFDCCB" transform="rotate(40 36 38)" />
+  <ellipse cx="36" cy="38" rx="8" ry="6" fill="#F4F4F5" transform="rotate(40 36 38)" />
 </g></g>
 
 
 <g transform="translate(44,138)">
-  <g style="animation:gi-bob 10s ease-in-out infinite 2s"><rect x="0" y="0" width="90" height="64" rx="6" fill="#FBF8F2" stroke="#D9D1C2" stroke-width="1.2" />
-  <rect x="10" y="10" width="70" height="4" rx="2" fill="#CFDCCB" />
+  <g style="animation:gi-bob 10s ease-in-out infinite 2s"><rect x="0" y="0" width="90" height="64" rx="6" fill="#FFFFFF" stroke="#E4E4E7" stroke-width="1.2" />
+  <rect x="10" y="10" width="70" height="4" rx="2" fill="#F4F4F5" />
   
   <text x="45" y="34" font-family="DM Sans,system-ui" font-size="18" fill="#19C37D" text-anchor="middle" style="animation:gi-pulse-op 3s ease-in-out infinite">✦</text>
-  <rect x="10" y="44" width="50" height="4" rx="2" fill="#DDD9D0" />
-  <rect x="10" y="52" width="35" height="4" rx="2" fill="#DDD9D0" />
+  <rect x="10" y="44" width="50" height="4" rx="2" fill="#E4E4E7" />
+  <rect x="10" y="52" width="35" height="4" rx="2" fill="#E4E4E7" />
 </g></g>
 
 
 <g transform="translate(226,170)">
-  <g style="animation:gi-bob 9s ease-in-out infinite 0.5s"><path d="M0,30 L0,10 Q0,0 10,0 L60,0 Q70,0 70,10 L70,30 Z" fill="#FBF8F2" stroke="#D9D1C2" stroke-width="1.2" />
-  <line x1="0" y1="18" x2="70" y2="18" stroke="#D9D1C2" stroke-width="1" />
-  <text x="35" y="12" font-family="DM Sans,system-ui" font-size="8" fill="#C4C0B5" text-anchor="middle">Inbox</text>
+  <g style="animation:gi-bob 9s ease-in-out infinite 0.5s"><path d="M0,30 L0,10 Q0,0 10,0 L60,0 Q70,0 70,10 L70,30 Z" fill="#FFFFFF" stroke="#E4E4E7" stroke-width="1.2" />
+  <line x1="0" y1="18" x2="70" y2="18" stroke="#E4E4E7" stroke-width="1" />
+  <text x="35" y="12" font-family="DM Sans,system-ui" font-size="8" fill="#D4D4D8" text-anchor="middle">Inbox</text>
   
-  <circle cx="35" cy="26" r="5" fill="#CFDCCB" style="animation:gi-pulse-op 4s ease-in-out infinite" />
+  <circle cx="35" cy="26" r="5" fill="#F4F4F5" style="animation:gi-pulse-op 4s ease-in-out infinite" />
 </g></g>
 
 
 <g transform="translate(4,40)" opacity="0.5">
-  <rect x="0" y="0" width="36" height="160" rx="4" fill="#DCE3D3" />
-  <rect x="2" y="2" width="32" height="158" rx="3" fill="#E7ECE3" />
+  <rect x="0" y="0" width="36" height="160" rx="4" fill="#F4F4F5" />
+  <rect x="2" y="2" width="32" height="158" rx="3" fill="#F4F4F5" />
   <circle cx="28" cy="80" r="3" fill="#C98F5B" />
   
-  <path d="M2,2 Q18,-14 34,2" fill="#DCE3D3" />
+  <path d="M2,2 Q18,-14 34,2" fill="#F4F4F5" />
 </g>
 </svg>

@@ -16,22 +16,22 @@
 [style*="gi-stamp-in"],[style*="gi-grow-bar"],[style*="gi-rise-bar"]{transform-box:fill-box;transform-origin:center}
 [style*="gi-grow-bar"],[style*="gi-rise-bar"]{transform-origin:center bottom}
 @media (prefers-reduced-motion: reduce){*{animation:none!important}}
+rect[fill="#FFFFFF"][stroke]{filter:drop-shadow(0 1px 1px rgba(0,0,0,0.04)) drop-shadow(0 3px 8px rgba(0,0,0,0.05))}
 </style><defs>
   <filter id="grain4"><feTurbulence type="fractalNoise" baseFrequency="0.65" numOctaves="3" stitchTiles="stitch" /><feColorMatrix type="saturate" values="0" /><feBlend in="SourceGraphic" mode="overlay" /><feComposite in2="SourceGraphic" operator="in" /></filter>
   <radialGradient id="b4a" cx="40%" cy="50%" r="50%"><stop offset="0%" stop-color="#EBDCC0" stop-opacity="0.7" /><stop offset="100%" stop-color="#EBDCC0" stop-opacity="0" /></radialGradient>
   <pattern id="d4" width="14" height="14" patternUnits="userSpaceOnUse"><circle cx="7" cy="7" r="0.7" fill="#2A2B28" opacity="0.13" /></pattern>
 </defs>
-<ellipse cx="160" cy="120" rx="160" ry="120" fill="url(#b4a)" />
 
 
 <g style="animation:gi-bob 10s ease-in-out infinite 0s; filter:drop-shadow(0 4px 16px rgba(42,43,40,0.10))">
-  <rect x="80" y="30" width="180" height="200" rx="10" fill="#FBF8F2" stroke="#D9D1C2" stroke-width="1.5" />
+  <rect x="80" y="30" width="180" height="200" rx="10" fill="#FFFFFF" stroke="#E4E4E7" stroke-width="1.5" />
   
-  <path d="M80,58 Q90,52 100,58 Q110,52 120,58 Q130,52 140,58 Q150,52 160,58 Q170,52 180,58 Q190,52 200,58 Q210,52 220,58 Q230,52 240,58 Q250,52 260,58 L260,30 L80,30 Z" fill="#E7ECE3" />
+  <path d="M80,58 Q90,52 100,58 Q110,52 120,58 Q130,52 140,58 Q150,52 160,58 Q170,52 180,58 Q190,52 200,58 Q210,52 220,58 Q230,52 240,58 Q250,52 260,58 L260,30 L80,30 Z" fill="#F4F4F5" />
   
   <text x="170" y="75" font-family="DM Sans,system-ui" font-size="10" fill="#2A2B28" font-weight="700" text-anchor="middle">Receipt</text>
   
-  <line x1="96" y1="84" x2="244" y2="84" stroke="#D9D1C2" stroke-width="1" stroke-dasharray="4,3" />
+  <line x1="96" y1="84" x2="244" y2="84" stroke="#E4E4E7" stroke-width="1" stroke-dasharray="4,3" />
   
   <text x="96" y="98" font-family="DM Sans,system-ui" font-size="8.5" fill="#5B6E7A">AI Agents</text>
   <text x="244" y="98" font-family="DM Sans,system-ui" font-size="8.5" fill="#2A2B28" text-anchor="end">$49</text>
@@ -42,18 +42,18 @@
   <text x="96" y="146" font-family="DM Sans,system-ui" font-size="8.5" fill="#5B6E7A">Audit &amp; Governance</text>
   <text x="244" y="146" font-family="DM Sans,system-ui" font-size="8.5" fill="#2A2B28" text-anchor="end">included</text>
   
-  <rect x="96" y="155" width="148" height="16" rx="4" fill="#E7ECE3" />
+  <rect x="96" y="155" width="148" height="16" rx="4" fill="#F4F4F5" />
   <text x="170" y="166" font-family="DM Sans,system-ui" font-size="7.5" fill="#7E9A7B" font-weight="600" text-anchor="middle">No hidden fees</text>
   
-  <line x1="96" y1="178" x2="244" y2="178" stroke="#D9D1C2" stroke-width="1" stroke-dasharray="4,3" />
+  <line x1="96" y1="178" x2="244" y2="178" stroke="#E4E4E7" stroke-width="1" stroke-dasharray="4,3" />
   
   <text x="96" y="194" font-family="DM Sans,system-ui" font-size="10" fill="#2A2B28" font-weight="700">Total</text>
   <text x="244" y="194" font-family="DM Sans,system-ui" font-size="10" fill="#19C37D" font-weight="700" text-anchor="end">$49/mo</text>
   
   <circle cx="170" cy="215" r="10" fill="#19C37D" style="animation:gi-stamp-in 8s ease-in-out infinite 2s" />
-  <path d="M164,215 L168,220 L177,209" stroke="#FBF8F2" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round" />
+  <path d="M164,215 L168,220 L177,209" stroke="#FFFFFF" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round" />
   
-  <rect x="96" y="200" width="56" height="12" rx="6" fill="#E7ECE3" />
+  <rect x="96" y="200" width="56" height="12" rx="6" fill="#F4F4F5" />
   <circle cx="106" cy="206" r="3" fill="#19C37D" style="animation:gi-pulse-op 1.8s ease-in-out infinite" />
   <rect x="113" y="204" width="32" height="4" rx="2" fill="#7E9A7B" opacity="0.7" />
 </g>

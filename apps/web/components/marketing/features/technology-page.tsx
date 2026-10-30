@@ -89,8 +89,8 @@ export function TechnologyPage() {
           className="mb-6"
         />
         <ProductScreenshot
-          src="/product/app-intelligence-reports.png"
-          alt="Gravitre Intelligence reports: measured outcomes and a step-by-step evidence trail behind a prediction"
+          src="/product/app-intelligence-overview.png"
+          alt="Gravitre Intelligence overview: data readiness, this week's results, what Gravitre is learning, and what needs attention"
           chromeLabel="Intelligence"
           className="mx-auto max-w-5xl"
         />

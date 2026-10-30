@@ -16,12 +16,12 @@
 [style*="gi-stamp-in"],[style*="gi-grow-bar"],[style*="gi-rise-bar"]{transform-box:fill-box;transform-origin:center}
 [style*="gi-grow-bar"],[style*="gi-rise-bar"]{transform-origin:center bottom}
 @media (prefers-reduced-motion: reduce){*{animation:none!important}}
+rect[fill="#FFFFFF"][stroke]{filter:drop-shadow(0 1px 1px rgba(0,0,0,0.04)) drop-shadow(0 3px 8px rgba(0,0,0,0.05))}
 </style><defs>
   <filter id="grain6"><feTurbulence type="fractalNoise" baseFrequency="0.65" numOctaves="3" stitchTiles="stitch" /><feColorMatrix type="saturate" values="0" /><feBlend in="SourceGraphic" mode="overlay" /><feComposite in2="SourceGraphic" operator="in" /></filter>
   <radialGradient id="b6a" cx="50%" cy="50%" r="50%"><stop offset="0%" stop-color="#CFDCCB" stop-opacity="0.8" /><stop offset="100%" stop-color="#CFDCCB" stop-opacity="0" /></radialGradient>
   <pattern id="d6" width="14" height="14" patternUnits="userSpaceOnUse"><circle cx="7" cy="7" r="0.7" fill="#2A2B28" opacity="0.13" /></pattern>
 </defs>
-<ellipse cx="200" cy="150" rx="170" ry="130" fill="url(#b6a)" />
 
 
 <g>
@@ -38,7 +38,7 @@
   </g>
   
   <g style="animation:gi-spin-slow 12s linear infinite reverse; transform-origin:200px 150px">
-    <circle cx="200" cy="150" r="34" fill="none" stroke="#CFDCCB" stroke-width="1" stroke-dasharray="3,4" opacity="0.5" />
+    <circle cx="200" cy="150" r="34" fill="none" stroke="#E4E4E7" stroke-width="1" stroke-dasharray="3,4" opacity="0.5" />
     
     <circle cx="234" cy="150" r="2.5" fill="#19C37D" opacity="0.7" style="animation:gi-pulse-op 2s ease-in-out infinite 0s" />
     <circle cx="183" cy="121" r="2.5" fill="#19C37D" opacity="0.7" style="animation:gi-pulse-op 2s ease-in-out infinite 0.66s" />
@@ -53,11 +53,11 @@
 
 
 <g transform="translate(172,40)">
-  <g style="animation:gi-drift-y 9s ease-in-out infinite 0s"><rect x="0" y="0" width="56" height="34" rx="6" fill="#FBF8F2" stroke="#C98F5B" stroke-width="1.5" />
+  <g style="animation:gi-drift-y 9s ease-in-out infinite 0s"><rect x="0" y="0" width="56" height="34" rx="6" fill="#FFFFFF" stroke="#C98F5B" stroke-width="1.5" />
   <rect x="14" y="34" width="8" height="10" rx="1" fill="#C98F5B" />
   <rect x="34" y="34" width="8" height="10" rx="1" fill="#C98F5B" />
-  <rect x="8" y="8" width="36" height="6" rx="2" fill="#DDD9D0" />
-  <rect x="8" y="18" width="24" height="6" rx="2" fill="#DDD9D0" />
+  <rect x="8" y="8" width="36" height="6" rx="2" fill="#E4E4E7" />
+  <rect x="8" y="18" width="24" height="6" rx="2" fill="#E4E4E7" />
   
   <circle cx="42" cy="21" r="4" fill="#19C37D" style="animation:gi-pulse-op 2.5s ease-in-out infinite 0s" />
 </g></g>
@@ -65,11 +65,11 @@
 
 
 <g transform="translate(38,122)">
-  <g style="animation:gi-drift-x 8s ease-in-out infinite 0.8s"><rect x="0" y="0" width="56" height="34" rx="6" fill="#FBF8F2" stroke="#7E9A7B" stroke-width="1.5" />
+  <g style="animation:gi-drift-x 8s ease-in-out infinite 0.8s"><rect x="0" y="0" width="56" height="34" rx="6" fill="#FFFFFF" stroke="#7E9A7B" stroke-width="1.5" />
   <rect x="56" y="10" width="10" height="8" rx="1" fill="#7E9A7B" />
   <rect x="56" y="24" width="10" height="8" rx="1" fill="#7E9A7B" />
-  <rect x="8" y="8" width="36" height="6" rx="2" fill="#DDD9D0" />
-  <rect x="8" y="18" width="24" height="6" rx="2" fill="#DDD9D0" />
+  <rect x="8" y="8" width="36" height="6" rx="2" fill="#E4E4E7" />
+  <rect x="8" y="18" width="24" height="6" rx="2" fill="#E4E4E7" />
   <circle cx="42" cy="21" r="4" fill="#19C37D" style="animation:gi-pulse-op 2.5s ease-in-out infinite 0.6s" />
 </g></g>
 <line x1="114" y1="139" x2="164" y2="146" stroke="#7E9A7B" stroke-width="1.5" stroke-dasharray="4,3" opacity="0.5" />
@@ -79,22 +79,22 @@
 
 
 <g transform="translate(60,210)">
-  <g style="animation:gi-drift-y 10s ease-in-out infinite 1.5s"><rect x="0" y="0" width="56" height="34" rx="6" fill="#FBF8F2" stroke="#5B6E7A" stroke-width="1.5" />
+  <g style="animation:gi-drift-y 10s ease-in-out infinite 1.5s"><rect x="0" y="0" width="56" height="34" rx="6" fill="#FFFFFF" stroke="#5B6E7A" stroke-width="1.5" />
   <rect x="14" y="-10" width="8" height="10" rx="1" fill="#5B6E7A" />
   <rect x="34" y="-10" width="8" height="10" rx="1" fill="#5B6E7A" />
-  <rect x="8" y="8" width="36" height="6" rx="2" fill="#DDD9D0" />
-  <rect x="8" y="18" width="24" height="6" rx="2" fill="#DDD9D0" />
+  <rect x="8" y="8" width="36" height="6" rx="2" fill="#E4E4E7" />
+  <rect x="8" y="18" width="24" height="6" rx="2" fill="#E4E4E7" />
   <circle cx="42" cy="21" r="4" fill="#19C37D" style="animation:gi-pulse-op 2.5s ease-in-out infinite 1.2s" />
 </g></g>
 <line x1="116" y1="218" x2="172" y2="172" stroke="#5B6E7A" stroke-width="1.5" stroke-dasharray="4,3" opacity="0.5" />
 
 
 <g transform="translate(306,122)">
-  <g style="animation:gi-drift-x 9s ease-in-out infinite 0.4s"><rect x="0" y="0" width="56" height="34" rx="6" fill="#FBF8F2" stroke="#B5654A" stroke-width="1.5" />
+  <g style="animation:gi-drift-x 9s ease-in-out infinite 0.4s"><rect x="0" y="0" width="56" height="34" rx="6" fill="#FFFFFF" stroke="#B5654A" stroke-width="1.5" />
   <rect x="-10" y="10" width="10" height="8" rx="1" fill="#B5654A" />
   <rect x="-10" y="24" width="10" height="8" rx="1" fill="#B5654A" />
-  <rect x="8" y="8" width="36" height="6" rx="2" fill="#DDD9D0" />
-  <rect x="8" y="18" width="24" height="6" rx="2" fill="#DDD9D0" />
+  <rect x="8" y="8" width="36" height="6" rx="2" fill="#E4E4E7" />
+  <rect x="8" y="18" width="24" height="6" rx="2" fill="#E4E4E7" />
   <circle cx="42" cy="21" r="4" fill="#19C37D" style="animation:gi-pulse-op 2.5s ease-in-out infinite 1.8s" />
 </g></g>
 <line x1="306" y1="139" x2="236" y2="146" stroke="#B5654A" stroke-width="1.5" stroke-dasharray="4,3" opacity="0.5" />
@@ -104,11 +104,11 @@
 
 
 <g transform="translate(284,210)">
-  <g style="animation:gi-drift-y 11s ease-in-out infinite 2s"><rect x="0" y="0" width="56" height="34" rx="6" fill="#FBF8F2" stroke="#E2A33A" stroke-width="1.5" />
+  <g style="animation:gi-drift-y 11s ease-in-out infinite 2s"><rect x="0" y="0" width="56" height="34" rx="6" fill="#FFFFFF" stroke="#E2A33A" stroke-width="1.5" />
   <rect x="14" y="-10" width="8" height="10" rx="1" fill="#E2A33A" />
   <rect x="34" y="-10" width="8" height="10" rx="1" fill="#E2A33A" />
-  <rect x="8" y="8" width="36" height="6" rx="2" fill="#DDD9D0" />
-  <rect x="8" y="18" width="24" height="6" rx="2" fill="#DDD9D0" />
+  <rect x="8" y="8" width="36" height="6" rx="2" fill="#E4E4E7" />
+  <rect x="8" y="18" width="24" height="6" rx="2" fill="#E4E4E7" />
   <circle cx="42" cy="21" r="4" fill="#19C37D" style="animation:gi-pulse-op 2.5s ease-in-out infinite 2.4s" />
 </g></g>
 <line x1="284" y1="218" x2="228" y2="172" stroke="#E2A33A" stroke-width="1.5" stroke-dasharray="4,3" opacity="0.5" />
