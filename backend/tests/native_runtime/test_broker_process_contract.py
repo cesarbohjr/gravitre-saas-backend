@@ -100,3 +100,60 @@ def test_receiver_commit_precedes_delayed_acknowledgement(tmp_path):
         fixture.hold=False;thread.join(timeout=3)
         assert response==[204]
     finally:fixture.hold=False;fixture.close()
+
+
+def test_real_broker_restart_fences_independent_receiver_writes_before_and_after_effect(tmp_path):
+    """SIGKILL a separate approval broker around a committed HTTP side effect.
+
+    The receiver, not the browser adapter or test, owns the durable write count.
+    A restarted broker cannot reclaim the original intent or replay that effect.
+    """
+    import pytest
+    from urllib.error import HTTPError
+
+    for crash_after_effect in (False, True):
+        case = tmp_path / ('after' if crash_after_effect else 'before')
+        case.mkdir()
+        token = 'isolated-' + case.name
+        receiver = IndependentFixture(case / 'writes.sqlite3', b'<h1>Fixture</h1>', capability=token)
+        broker = CrashBroker(case / 'private')
+        try:
+            request = broker.approve({'actions': {'click': {'index': 1}}, 'page_fingerprint': 'a' * 64})
+            assert request['state'] == 'approved' and broker.authorized()
+
+            def effect(cap):
+                payload = json.dumps({'cap': cap}).encode()
+                call = urllib.request.Request(receiver.origin + '/write', data=payload,
+                    headers={'Content-Type': 'application/json'}, method='POST')
+                with urllib.request.urlopen(call, timeout=3) as response:
+                    assert response.status == 204
+
+            if crash_after_effect:
+                effect(token)
+                assert receiver.writes == 1
+            else:
+                assert receiver.writes == 0
+
+            recovery = broker.kill_and_restart()
+            assert recovery['broker_sigkill'] and recovery['new_broker_pid']
+            assert recovery['journal_state'] == 'uncertain'
+            assert recovery['replayed_claims'] == 0 and recovery['persisted_action_count'] == 1
+            assert not broker.authorized()
+
+            # No old approval may authorize another external side effect.
+            for _ in range(2):
+                if broker.authorized():
+                    effect(token)
+            assert receiver.writes == (1 if crash_after_effect else 0)
+
+            # Independent receiver rejects an unscoped write even after restart.
+            denied = urllib.request.Request(receiver.origin + '/write',
+                data=b'{"cap":"wrong-capability"}',
+                headers={'Content-Type': 'application/json'}, method='POST')
+            with pytest.raises(HTTPError) as rejected:
+                urllib.request.urlopen(denied, timeout=3)
+            assert rejected.value.code == 403
+            assert receiver.writes == (1 if crash_after_effect else 0)
+        finally:
+            broker.close()
+            receiver.close()
