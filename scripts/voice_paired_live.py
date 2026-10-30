@@ -78,6 +78,7 @@ class Capture:
         self.interrupt_at = None
         self.interrupted_reply = None
         self.errors = []
+        self.cancel_recognized = False
 
     def audio(self, pcm, reply_id=None):
         import numpy as np
@@ -93,6 +94,11 @@ class Capture:
             self.speech_by_reply[self.reply_id] = now
 
     def event(self, message):
+        if message.get("type") == "transcript" and message.get("final") is True:
+            from app.services.spoken_write_approval import classify_spoken_write_approval
+            decision = classify_spoken_write_approval(str(message.get("text") or ""))
+            if decision.decision == "reject" and decision.invoke_allowed is False:
+                self.cancel_recognized = True
         if message.get("type") == "audio.reply":
             self.reply_id = message.get("reply_id")
         kind = message.get("event") or message.get("type", "unknown")
@@ -125,6 +131,10 @@ class Capture:
                 await running
                 raise RuntimeError("pipeline ended before completed reply")
             completed = self.events.get("bot-llm-stopped", 0) and self.events.get("bot-stopped-speaking", 0)
+            if self.scenario in {"baseline", "reconnect"}:
+                completed = completed and self.events.get("assistant_turn.complete", 0)
+            if self.scenario == "spoken_cancel":
+                completed = completed and self.cancel_recognized
             if completed and self.first is not None and self.last and time.monotonic() - self.last > 4:
                 return
             await asyncio.sleep(.1)
@@ -140,7 +150,7 @@ async def stream_ws(ws, pcm):
         await asyncio.sleep(max(0, start + (offset + frame) / 32000 - time.monotonic()))
 
 
-async def websocket_trial(settings, org, actor, cid, pcm, capture):
+async def websocket_trial(settings, org, actor, cid, pcm, capture, cancel_pcm=None):
     from fastapi import FastAPI, WebSocket
     from pipecat.pipeline.runner import PipelineRunner
     from app.services.pipecat_voice.pipeline import build_pipecat_voice_task
@@ -207,6 +217,8 @@ async def websocket_trial(settings, org, actor, cid, pcm, capture):
                 await stream_ws(ws, pcm + bytes(32000 * 2))
                 if capture.scenario == "interrupt":
                     await capture.interrupt(lambda: ws.send(json.dumps({"type": "interrupt"})), receiving)
+                elif capture.scenario == "spoken_cancel":
+                    await capture.interrupt(lambda: stream_ws(ws, cancel_pcm + bytes(32000 * 2)), receiving)
                 await capture.settle(receiving)
             finally:
                 receiving.cancel()
@@ -220,7 +232,7 @@ async def websocket_trial(settings, org, actor, cid, pcm, capture):
             await asyncio.wait_for(serving, 10)
 
 
-async def livekit_trial(settings, org, actor, cid, pcm, capture):
+async def livekit_trial(settings, org, actor, cid, pcm, capture, cancel_pcm=None):
     from livekit import rtc
     from app.services.pipecat_voice.livekit_candidate import run_livekit_candidate
     from voice_livekit_connected_smoke import token, publish
@@ -255,6 +267,8 @@ async def livekit_trial(settings, org, actor, cid, pcm, capture):
         if capture.scenario == "interrupt":
             await capture.interrupt(lambda: peer.local_participant.publish_data(
                 b'{"type":"interrupt"}', reliable=True, topic="gravitre-control"), worker)
+        elif capture.scenario == "spoken_cancel":
+            await capture.interrupt(lambda: publish(source, cancel_pcm + bytes(32000 * 2), 16000), worker)
         await capture.settle(worker)
     finally:
         await peer.disconnect()
@@ -327,17 +341,27 @@ async def main():
         if response.status_code != 200:
             raise RuntimeError("fixture_tts_http_" + str(response.status_code))
         pcm = response.content
+        response = http.post("https://api.elevenlabs.io/v1/text-to-speech/" + voice,
+            params={"output_format": "pcm_16000"}, headers={"xi-api-key": os.environ["ELEVENLABS_API_KEY"]},
+            json={"text": "Cancel it. Do not send anything.", "model_id": "eleven_flash_v2_5"})
+        if response.status_code != 200:
+            raise RuntimeError("cancel_fixture_tts_http_" + str(response.status_code))
+        cancel_pcm = response.content
     if not 3200 < len(pcm) < 1600000 or len(pcm) % 2:
         raise ValueError("fixture PCM bounds")
     wav(output / "input.wav", pcm, 16000)
+    if not 3200 < len(cancel_pcm) < 320000 or len(cancel_pcm) % 2:
+        raise ValueError("cancel fixture PCM bounds")
+    wav(output / "cancel-input.wav", cancel_pcm, 16000)
     report = {"git_sha": os.environ.get("ACCEPTANCE_SOURCE_SHA"), "input_pcm_sha256": hashlib.sha256(pcm).hexdigest(),
         "case_id": CASE_ID,
+        "cancel_input_pcm_sha256": hashlib.sha256(cancel_pcm).hexdigest(),
         "input_origin": "synthetic prerecorded speech, synthesized once for both transports", "trials": [],
         "certified": False, "human_quality_review": "NOT RUN", "write_governance_certification": "NOT RUN",
         "interruption": "NOT RUN", "reconnection": "NOT RUN"}
     conversations = {}
     baselines = {}
-    for scenario, engine, trial in ((scenario, engine, trial) for scenario in ("baseline", "interrupt", "reconnect")
+    for scenario, engine, trial in ((scenario, engine, trial) for scenario in ("baseline", "interrupt", "spoken_cancel", "reconnect")
             for engine, trial in (("pipecat", websocket_trial), ("livekit", livekit_trial))):
         if scenario != "baseline" and not baselines.get(engine):
             report["trials"].append({"engine": engine, "scenario": scenario, "status": "NOT RUN",
@@ -359,7 +383,7 @@ async def main():
         row["durable_messages_before"] = len(before_roles)
         trial_started = time.monotonic()
         try:
-            await trial(settings, org, actor, cid, pcm, capture)
+            await trial(settings, org, actor, cid, pcm, capture, cancel_pcm)
             samples = np.frombuffer(capture.pcm, dtype="<i2").astype(float)
             if capture.first is None or len(samples) < 2400:
                 raise AssertionError("no generated speech")
@@ -372,7 +396,11 @@ async def main():
                 last = capture.speech_by_reply.get(capture.interrupted_reply)
                 cutoff = max(0, (last - capture.interrupt_at) * 1000) if last else None
                 row.update(received_original_reply_cutoff_ms=cutoff, acoustic_physical_cutoff="NOT RUN")
-                if cutoff is None or cutoff > 500:
+                limit_ms = 500
+                if scenario == "spoken_cancel":
+                    row["received_cutoff_from_cancel_input_end_ms"] = cutoff - len(cancel_pcm) / 32 if cutoff is not None else None
+                    limit_ms += len(cancel_pcm) / 32
+                if cutoff is None or cutoff > limit_ms:
                     row.update(status="FAIL", error_type="OriginalReplyCutoffExceeded")
         except Exception as error:
             row.update(error_type=type(error).__name__,
@@ -383,7 +411,7 @@ async def main():
         finally:
             audio_path = output / (engine + "-" + scenario + ".wav")
             wav(audio_path, capture.pcm, 24000)
-            if row["status"] == "PASS" and scenario != "interrupt":
+            if row["status"] == "PASS" and scenario not in {"interrupt", "spoken_cancel"}:
                 with httpx.Client(timeout=45) as http:
                     speech = http.post("https://api.deepgram.com/v1/listen", params={"model": "nova-3"},
                         headers={"Authorization": "Token " + os.environ["DEEPGRAM_API_KEY"], "Content-Type": "audio/wav"},
@@ -403,6 +431,10 @@ async def main():
             if capture.errors:
                 row.update(status="FAIL", error_type="PipelineErrorEvent")
             row["authorization"] = capture.authorization
+            if scenario == "spoken_cancel":
+                row["cancel_stt_classified_as_reject"] = capture.cancel_recognized
+                if not capture.cancel_recognized:
+                    row.update(status="FAIL", error_type="CancelSpeechNotRecognized")
             after_roles = [r["role"] for r in client.table("conversation_messages").select("role").eq("conversation_id", cid).execute().data]
             row["durable_messages_after"] = len(after_roles)
             if scenario == "reconnect":

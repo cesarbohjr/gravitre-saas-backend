@@ -3,6 +3,8 @@ from pathlib import Path
 import unittest
 import asyncio
 import time
+from types import SimpleNamespace
+from unittest.mock import patch
 
 spec = importlib.util.spec_from_file_location('paired', Path(__file__).resolve().parents[1] / 'scripts/voice_paired_live.py')
 paired = importlib.util.module_from_spec(spec)
@@ -41,6 +43,17 @@ class IsolationTests(unittest.TestCase):
         capture.audio(bytes(960))
         self.assertIsNone(capture.first)
 
+    def test_cancel_requires_a_final_stt_transcript(self):
+        capture = paired.Capture()
+        with patch('app.services.spoken_write_approval.classify_spoken_write_approval',
+                   return_value=SimpleNamespace(decision='reject', invoke_allowed=False)) as classify:
+            capture.event({'type': 'transcript', 'text': 'Cancel it. Do not send anything.', 'final': False})
+            self.assertFalse(capture.cancel_recognized)
+            classify.assert_not_called()
+            capture.event({'type': 'transcript', 'text': 'Cancel it. Do not send anything.', 'final': True})
+            self.assertTrue(capture.cancel_recognized)
+            classify.assert_called_once_with('Cancel it. Do not send anything.')
+
 
 class CompletionTests(unittest.IsolatedAsyncioTestCase):
     async def test_filler_silence_without_completion_does_not_finish(self):
@@ -52,7 +65,7 @@ class CompletionTests(unittest.IsolatedAsyncioTestCase):
         try:
             await asyncio.sleep(.02)
             self.assertFalse(settling.done())
-            capture.events = {'bot-llm-stopped': 1, 'bot-stopped-speaking': 1}
+            capture.events = {'bot-llm-stopped': 1, 'bot-stopped-speaking': 1, 'assistant_turn.complete': 1}
             await asyncio.wait_for(settling, .5)
         finally:
             running.cancel()

@@ -19,7 +19,7 @@ The same PCM hash applies to every trial. No private user speech is used.
 
 ## Matched scenarios and criteria
 
-Each transport runs baseline, interrupt and reconnect.
+Each transport runs baseline, interrupt control, spoken cancel and reconnect.
 If its baseline fails, dependent interruption/reconnect scenarios are marked
 NOT RUN and the overall execution fails; a spoken error is not a valid reply to
 interrupt or a meaningful conversation to restore. This saves unnecessary
@@ -38,6 +38,14 @@ sends the canonical control after generated speech begins. Its original reply
 must stop within 500 ms at the receiving PCM boundary. Reply identity separates
 a later acknowledgment from the interrupted reply. Physical speaker cutoff and
 echo suppression require separate microphone/speaker acceptance.
+
+The spoken-cancel case replays a second, separately synthesized fixed recording
+("Cancel it. Do not send anything.") through the actual audio/STT path. It sends
+no out-of-band interrupt control. That identical cancel PCM and its digest are
+shared by both transports. Original-reply receiver cutoff is reported from both
+cancel-speech start and end; the limit is 500 ms after cancel-speech end. The
+control-only case retains its separate 500 ms control-to-cutoff limit. Neither
+case alone certifies a business write was pending or prevented.
 
 Latency is measured from input start and input end to first non-silent received
 speech, not first RTC silence or first packet. Reconnection additionally records
