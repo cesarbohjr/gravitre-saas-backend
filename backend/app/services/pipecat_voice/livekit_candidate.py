@@ -48,6 +48,11 @@ class LiveKitCandidateSocket:
         self._pending_audio: dict[str, Any] | None = None
         self._control_ready = asyncio.Event()
         self._output_reply_id: int | None = None
+        self.voice_session: Any | None = None
+
+    def _cancel_turn_work(self, reason: str) -> None:
+        if self.voice_session is not None:
+            self.voice_session.cancel_turn_work(reason)
 
     async def start(self) -> None:
         self.room.on("track_subscribed", self._track_subscribed)
@@ -116,6 +121,9 @@ class LiveKitCandidateSocket:
         # the shared cognitive kernel. Never accept tenant identity in room data.
         if value != {"type": "interrupt"}:
             return
+        # Fence worker threads synchronously, before any pipeline scheduling or
+        # PCM playout await. Cancelling a coroutine alone cannot stop a thread.
+        self._cancel_turn_work("rtc_interrupt")
         self._source.clear_queue()
         # A reserved control slot prevents audio backpressure dropping a stop.
         self._pending_control = {"type": "websocket.receive", "text": json.dumps(value)}
@@ -131,6 +139,7 @@ class LiveKitCandidateSocket:
     def _end_session(self) -> None:
         if self.disconnected.is_set():
             return
+        self._cancel_turn_work("rtc_disconnect")
         self.client_state = WebSocketState.DISCONNECTED
         self.application_state = WebSocketState.DISCONNECTED
         self._source.clear_queue()
@@ -239,6 +248,7 @@ async def run_livekit_candidate(*, url: str, token: str, participant_identity: s
             websocket=socket, settings=settings, org_id=org_id, user_id=user_id,
             conversation_id=conversation_id,
         )
+        socket.voice_session = task.gravitre_voice_session
         await _run_until_disconnect(PipelineRunner(handle_sigint=False).run(task),
                                     socket.disconnected, task.cancel)
     finally:

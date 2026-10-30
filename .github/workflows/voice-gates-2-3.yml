@@ -1,0 +1,47 @@
+name: Voice gates 2 and 3 execution
+on:
+  pull_request:
+    paths:
+      - 'backend/app/services/pipecat_voice/livekit_candidate.py'
+      - 'backend/tests/services/pipecat_voice/test_livekit_write_fence.py'
+      - '.github/workflows/voice-gates-2-3.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  live-provider:
+    uses: ./.github/workflows/isolated-acceptance.yml
+    with:
+      suite: voice
+    secrets: inherit
+  governed-actions:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install backend and RTC test dependencies
+        run: python -m pip install -r backend/requirements-dev.txt 'livekit==1.2.0'
+      - name: Require RTC SDK
+        run: python -c 'from livekit import rtc'
+      - name: Exercise canonical voice write boundaries and RTC stop wiring
+        working-directory: backend
+        run: >-
+          python -m pytest -q -p tests.offline_network_guard
+          tests/services/pipecat_voice/test_livekit_write_fence.py
+          tests/services/pipecat_voice/test_phase3_provider_commit_gate.py
+          tests/services/pipecat_voice/test_turn_scoped_cancellation.py
+          tests/services/pipecat_voice/test_reconnect_and_approval_contract.py
+          tests/services/pipecat_voice/test_confirmation_hold.py
+          --junitxml=voice-governance.xml
+        env:
+          OPENAI_API_KEY: fake-offline-governance
+          ANTHROPIC_API_KEY: fake-offline-governance
+          GEMINI_API_KEY: fake-offline-governance
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: voice-governed-boundaries
+          path: backend/voice-governance.xml
