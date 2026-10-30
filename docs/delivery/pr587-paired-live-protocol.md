@@ -50,6 +50,11 @@ controlled connector/provider sink has been exercised and reconciled.
 The 115 governed-action regression cases remain a separate layer. They do not
 certify a complete speech-to-confirmation-to-authorization-to-provider write.
 No customer connector is installed or invoked by this informational experiment.
+The existing model router forces OpenAI when `AI_FAILOVER_ENABLED=false`, even
+when `PREFERRED_AI_PROVIDER=anthropic`. The isolated job therefore enables its
+priority router while explicitly leaving OpenAI and Gemini credentials empty:
+Anthropic is the only configured inference provider. No production setting is
+changed. The initial run's non-silent spoken errors are not accepted as answers.
 Revocation, cancelled/duplicate real writes, seven-capability intelligence,
 provider faults, crash recovery, physical audio and human quality review remain
 required before final certification. Reports keep `certified: false`.
