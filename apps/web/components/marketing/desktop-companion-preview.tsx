@@ -4,6 +4,7 @@ import { motion, useScroll, useTransform } from "framer-motion"
 import Image from "next/image"
 import { Keyboard, Shield } from "lucide-react"
 import { useRef } from "react"
+import { NodusDotField } from "@/components/marketing/nodus/dot-field"
 
 /**
  * Desktop companion window for the download page: a real capture of the
@@ -20,7 +21,7 @@ export function DesktopCompanionPreview() {
 
   return (
     <motion.div ref={ref} style={{ y, opacity }} className="relative mx-auto max-w-4xl">
-      <div className="pointer-events-none absolute -inset-6 rounded-[2rem] bg-gradient-to-b from-[color:var(--g-emerald)]/20 via-transparent to-transparent blur-2xl" />
+      <NodusDotField className="-inset-x-24 -inset-y-12" />
 
       {/* Floating accent chips */}
       <motion.div
