@@ -1,0 +1,9 @@
+FROM python:3.12.12-slim
+RUN apt-get update && apt-get install -y --no-install-recommends git ca-certificates && rm -rf /var/lib/apt/lists/* && useradd --uid 10001 --create-home runner
+COPY native-workers/requirements-openhands.txt /runner/requirements.txt
+RUN pip install --no-cache-dir -r /runner/requirements.txt
+COPY app/services/native_runtime/engine.py /runner/engine.py
+USER 10001:10001
+WORKDIR /workspace
+CMD ["sleep", "infinity"]
+COPY native-workers/sdk_contract.py /runner/sdk_contract.py

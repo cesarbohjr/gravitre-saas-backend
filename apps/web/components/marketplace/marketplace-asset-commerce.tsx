@@ -1,6 +1,8 @@
 "use client"
 
 import Link from "next/link"
+import { AgentConnectorRecommendations } from "@/components/connectors/agent-connector-recommendations"
+import type { AgentConnectorProfile } from "@/types/api"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { TYPE } from "@/lib/design-system"
@@ -116,13 +118,16 @@ function checklistTone(item: MarketplaceConnectorChecklistItem) {
 
 export function ConnectorChecklist({
   items,
+  profile,
   title = "Apps to connect",
   description = "Required apps block install until connected. Optional apps unlock more automation.",
 }: {
   items: MarketplaceConnectorChecklistItem[]
+  profile?: AgentConnectorProfile
   title?: string
   description?: string
 }) {
+  if (profile) return <AgentConnectorRecommendations profile={profile} />
   if (!items.length) return null
   return (
     <div>
@@ -173,7 +178,7 @@ export function ConnectorChecklist({
                   )}
                 </span>
               </div>
-              {!item.connected ? (
+              {!item.connected && (item.action_url || item.connectPath) ? (
                 <Button
                   size="sm"
                   variant="outline"
@@ -181,7 +186,7 @@ export function ConnectorChecklist({
                   asChild
                 >
                   <Link
-                    href={item.action_url || item.connectPath}
+                    href={(item.action_url || item.connectPath)!}
                     aria-label={`Connect ${item.label || item.connectorType}`}
                   >
                     Connect

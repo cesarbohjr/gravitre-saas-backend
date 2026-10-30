@@ -171,6 +171,20 @@ def summarize_write_action(
                 and payload.get('storage_path') and payload.get('hostedFiles')):
             return 'Generated one private draft image and verified the stored file. It is available in the attached artifact.'
         return 'Image generation has no verified stored artifact; completion is unconfirmed.'
+    from app.services.native_runtime.specs import DEFINITIONS as native_definitions
+    if action.removeprefix('assistant.') in native_definitions and action.startswith('assistant.'):
+        from uuid import UUID
+        data=result_data if isinstance(result_data,dict) else {}
+        job_id=str(data.get('job_id') or (args or {}).get('job_id') or '')
+        try:job_id=str(UUID(job_id))
+        except ValueError:job_id='unconfirmed'
+        state=data.get('state')
+        if state not in {'queued','running','completed','failed','cancelled','uncertain','expired','deleted','delivered','approved','denied'}:state='unconfirmed'
+        if action=='assistant.export_evaluation_metrics':
+            return f'Metrics job {job_id}: {state}. Delivery is confirmed only by the durable worker’s exact remote observation readback.'
+        if action=='assistant.approve_native_action':
+            return f'Browser action decision: {state}. Native job {job_id}; execution remains unverified.'
+        return f'Native job {job_id}: {state}. Draft artifacts require review; external execution remains unverified.'
     verb_phrase, resource = _humanize_action(action)
     label = extract_resource_label(result_data, args=args)
     resource_id = extract_resource_id(result_data, args=args)

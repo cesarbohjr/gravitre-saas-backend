@@ -1,0 +1,106 @@
+# PR581 native runtime and durable metrics implementation
+
+This checkpoint adds deployable broker, SDK engine and model gateway code. It does not activate a service, grant an agent a tool, connect a provider, or certify production. PR581 remains draft, unmerged and undeployed. Shared intelligence and evaluation remain owned by PR587; engine results return through the existing bounded review adapters.
+
+## Execution and authority
+
+Seven canonical `assistant.*` operations share planner schemas with the action catalog: `run_openhands`, `run_browser_use`, `native_job_status`, `cancel_native_job`, `approve_native_action`, `export_evaluation_metrics`, and `withdraw_evaluation_metrics`. Planner names use `platform_` to avoid the separate assistant chat-handler path. Missing `native_worker_url` hides these planner tools. Missing or invalid configuration fails intake closed. Installation never provisions workers or grants permissions.
+
+Every request uses a short-lived signed envelope bound to operation, request digest, authenticated actor, organization, persisted agent, and run. Current membership and exact explicit `platform:native:execute`, `platform:native:read`, or `platform:telemetry:export` grants are checked. Legacy wildcard grants do not activate workers. Execution and export require existing human/run write authority; individual browser actions require new human authority bound to the request and digest. Approval references cannot authorize a second operation. Native status never uses the organization-wide read cache. Queue acceptance is explicitly unverified execution.
+
+The broker renews durable leases and checks cancellation, membership, grants, model policy and the unchanged configured model route at execution boundaries. Native execution with a lost lease becomes uncertain and is not automatically replayed. Cleanup reconciles only labeled resources for that job. Cancellation fences further requests; already sent remote requests can have an uncertain outcome.
+
+## Isolated engines
+
+`backend/native-workers/` contains separate gateway, OpenHands and Browser Use images. SDK source dependencies are pinned to immutable upstream commits. Transitive packages still need build-time supply-chain review; deployment requires the resulting images by SHA-256 digest. Production must use a dedicated Docker host with gVisor (`runsc`) or Kata (`kata-runtime`); ordinary runc is refused. Docker must support isolated internal bridge gateway mode. There is no Docker executable in this development environment, so actual image builds, SDK import contracts, Chromium startup and gVisor/Kata network enforcement are **NOT RUN** locally. The added credential-free Actions workflow builds the real images and checks actual SDK call surfaces; that workflow is not proof of provider execution or sandbox escape resistance.
+
+Engine containers have no host workspace, Docker socket, host browser profile or provider credential. They use bounded CPU, memory, process count, tmpfs, a read-only root and a private job network. The trusted gateway alone has provider credentials and external routing. It receives configuration over stdin, holds it in memory and disables container logs. Engines receive only a random job token. Independent process deadlines limit execution after a broker crash.
+
+The model gateway fixes provider origin and model, rejects streaming/multimodal calls and undeclared parameters, limits response sizes, call counts and conservative reservations using administrator-reviewed prices. No price is invented. These engines currently require a compatible OpenAI chat-completions endpoint. Software tasks have no external browser destinations; supplied bounded files stay in ephemeral storage and produce a draft patch for review, never a host apply or publication.
+
+Browser sessions start with an empty private guest profile. Existing signed-in browser sessions, connector credentials and cookie imports are not supported. Only exact HTTPS destinations are allowed; the proxy validates every resolved address as public and connects to the validated numeric address. Direct engine egress is blocked by the private internal network. Browser code/file/upload actions are excluded. Consequential navigation/interactions wait for a pending action whose digest includes the exact action, URL, indexed target label, page title and screenshot/DOM fingerprint. A fresh fingerprint and target must match after approval; coordinate clicks without a separate visual review path are refused. Dynamic pages may invalidate an approval and stop the task. This is deliberately conservative. Browser observations are untrusted review evidence, never tool grants or external outcome certification.
+
+## Durable Langfuse delivery
+
+The private encrypted SQLite journal uses WAL, FULL synchronization, atomic claims, bounded retries, stable identifiers, sanitized failure categories and tenant/agent/run/actor status checks. It requires a private persistent directory (0700) and file (0600); there is no memory fallback. Separate native execution and telemetry threads operate the journal. Credentials and correlation/encryption keys are administrator configuration, never model arguments.
+
+Export reads an existing tenant/agent/run-bound durable evaluation receipt. Only the seven validated schema/correlation/channel/evaluator/count/duration fields are emitted. No prompts, transcripts, responses, raw tenant/user IDs, credential material or provider error bodies are exported. HMAC-derived trace/span IDs remain unchanged across retries. OTLP HTTP acceptance alone is insufficient: the exact observation ID, trace ID, name and complete metric allowlist must be read back from Langfuse before `delivered` is stored. Partial rejection and delayed acknowledgement stay pending or become explicit finite failures.
+
+Consent is per run, time limited and required before submission and after network completion. Membership/grant revocation schedules deletion. Withdrawal erases unsent submissions and converts potentially sent items to a deletion queue. Deletion is confirmed with a remote readback; an empty query following an unacknowledged in-flight write is not falsely accepted as erasure. Ambiguous deletion can end in an explicit unresolved failure. Deletion credentials must remain available until reconciliation completes. Re-enqueue cannot bypass an existing receipt's deletion identity.
+
+Local erasure clears encrypted payload/results and action records. This does not certify physical erasure from SQLite WAL, storage snapshots or backups. Operators must implement checkpoint/backup retention and key destruction under the environment's retention policy. Preserve tombstones and approval-use records while replay prevention is required; review metadata retention separately. Do not delete a queue volume or rotate away its decrypting key while remote deletion is unresolved.
+
+## Configuration and startup (release stage only)
+
+Use separate application and private broker deployments. Do not expose `/v1/invoke` publicly; restrict ingress to the application plus normal authenticated infrastructure. The application requires `NATIVE_WORKER_URL` (private HTTPS origin) and `NATIVE_WORKER_SIGNING_KEY` (at least 32 random characters). The broker uses the same signing key, existing authorized Supabase settings and:
+
+- `NATIVE_JOURNAL_PATH`: absolute path on the private persistent volume.
+- `NATIVE_JOURNAL_KEY`: Fernet key from the environment's secret manager.
+- `NATIVE_CORRELATION_KEY`: at least 32 random bytes encoded as hex; distinct from all other keys.
+- `NATIVE_OPENHANDS_IMAGE`, `NATIVE_BROWSER_IMAGE`, `NATIVE_GATEWAY_IMAGE`: reviewed images with `@sha256:` digests.
+- `NATIVE_SANDBOX_RUNTIME`: `runsc` or `kata-runtime`.
+- `NATIVE_TENANTS_JSON`: organization UUID keyed object, injected as a secret. Each entry contains `processing_permission` (`owner` current admin/owner UUID, `reference` approved record, `expires_at` timezone-aware and no more than 31 days away), `model` (`provider`, `model`, `base_url`, `api_key`, positive reviewed `budget_usd`, `input_usd_per_million`, `output_usd_per_million`, bounded `max_output_tokens`), and optional `langfuse` (`base_url`, `public_key`, `secret_key`). Separate tenant Langfuse projects are required; duplicate public keys are rejected.
+
+Build images using each Dockerfile with `backend` as context. Run the broker using `uvicorn app.services.native_runtime.worker:build_app --factory` from the backend environment. This document supplies no live tenant, permission record, pricing, credential or grant. Missing tenant routes remain unavailable. Journal errors must alert operators through infrastructure monitoring; job failure categories are visible via status, but there is no public health/activation claim from thread existence alone.
+
+## Validation and remaining release gates
+
+Offline tests cover journal restart/claims/fencing, no replay, scope and explicit authority, actual API signatures and tampering, catalog/planner contracts, draft results, cancellation/revocation, network validation, mocked Docker lifecycle and isolation arguments, gateway budget/routing, exact OTLP serialization, acknowledgement, consent and deletion ambiguity. Mock Docker tests are not actual sandbox certification. Test commands must load `tests.offline_network_guard`; no provider call is authorized by this checkpoint.
+
+Before engineering closeout: green exact-head full CI; successful real pinned-image builds/import contracts; isolated runtime certification for Chromium/OpenHands, gVisor/Kata and direct/redirect/DNS escape attempts; failure/crash/cleanup/backup recovery; shared text/voice authorization parity; and combined PR581/PR587 regression. The two known PR587 failures remain the streaming-audio chunk and interruption-during-early-ack tests. Neither is waived or weakened here. Live/provider and production acceptance follow the separately authorized coordinated release. No merge/deployment or production telemetry activation occurred.
+
+### Local checkpoint evidence
+
+Earlier affected checkpoint: **987 passed** under `tests.offline_network_guard`, covering `tests/native_runtime`, existing native-adapter and tool-registry contracts, write-authority matrix/spine, shared text/voice prompt compatibility and the complete Marketplace suite. Python compilation and `git diff --check` pass. A broader full-backend diagnostic was started during implementation; it must not be substituted for final exact-head CI. Earlier web validation is unchanged by this backend-only checkpoint. The image workflow and real runtime/provider acceptance have not run locally.
+
+The broader diagnostic found 17 failures in global catalog contracts for the new operations (aliases, when/why guidance, retrieval examples, workflow schemas, output mapping and conservative success verification). The implementation now fills those contracts; no debt allowlist or assertion was weakened. A targeted catalog/native rerun passed 453 tests. The original diagnostic reported 12,697 passed, 281 skipped and nine Redis setup errors in addition to those 17 failures; it is not a final PASS. A fresh backend rerun explicitly excludes the nine Redis integration tests because the offline guard blocks localhost Redis. Exact-head infrastructure CI still must exercise that file with its required service.
+
+### Main reconciliation and final local checks
+
+Reconciled main `147da7f0c6a17f1964aa828f9c1ac88dc9b99bc1`. Its exact tree was reconstructed and verified before merging; only the connectors page conflicted. Kept main's redesigned/mobile connector hub and placed the shared installed-agent recommendations above it, including the zero-connector state. API client and Settings additions merged without conflicts. Upstream voice code/tests are retained; no PR587 branch change was made.
+
+- Final native/catalog/Marketplace/write-authority regression before main reconciliation: **1,403 passed** under the network guard.
+- Reconciled native/catalog/output/settings, connector activity, voice acknowledgement/session and Pipecat suite: **2,107 passed** under the guard. This includes both earlier reproduced voice test names on the reconciled PR581 tree; it does not certify a new PR581/PR587 combined tree.
+- Full web Vitest on the reconciled tree: **1,960 passed**, 312 files. TypeScript `tsc --noEmit` passed. Compilation and diff whitespace checks passed.
+- The broad backend diagnostic excluding Redis reported **12,717 passed, 281 skipped, one failure** while main reconciliation was underway. Its sole Settings scan observed newly merged voice call sites after Settings had already been imported from the earlier tree. Those two Settings fields exist in the reconciled configuration and the unchanged Settings test passes in the 2,107-test rerun. This mixed-state diagnostic is not a final exact-head suite result.
+
+Full exact-head Actions, pinned SDK image builds, actual sandbox certification, Redis integration and final PR587 compatibility remain release gates. Missing Docker in this environment is the local image/runtime blocker. PR581 stays draft; no live activation, merge or deployment occurred.
+
+### Runtime image and combined compatibility evidence
+
+- Real pinned OpenHands, Browser Use and gateway image contracts **PASS** in [Actions 40800803798](https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/40800803798), head `de7c595d75cd477d7e22de1f14362c3af861ac47`. Browser Use additionally executes its real SDK request/response serialization against an in-process mock transport with networking disabled. A prior read-only-home import failure was corrected by giving the contract the worker's ephemeral home; the root stays read-only. This certifies image build/import and bounded SDK call surfaces, not an actual provider task or gVisor/Kata browser launch.
+- Detached combination with PR587 `e170472ac60091b9511dddb1dca2a5715f1a767b`: **10,762 passed, three skipped**, under the external-network guard. The only merge conflict was a documentation link; its PR587 reference was retained. Both formerly failing voice tests pass. An MCP test leaked its temporary vendor into later catalog checks in this suite ordering; restoring its original registry/cache state fixes the cause without changing production rules or assertions. The pollution reproducer/native rerun passed **76 tests, one skipped**.
+- Langfuse queue items now bind a SHA-256 fingerprint of the configured origin/public project key. Destination changes block export and deletion with an explicit bounded failure; a new project's empty readback cannot falsely certify old-project erasure. Restoring the original destination/valid rotated credentials permits reconciliation. This local fingerprint is never exported as metrics. Dedicated native/catalog/adapter/order regressions: **112 passed, one skipped**, and the same final delta passes in the combined checkout. The broad combined run precedes this last narrow destination-binding delta; exact-head CI remains required.
+
+Full repository CI was successfully triggered after resolving main conflicts. It is not certified until its final exact-head run completes. No production provider request, live installation, deployment or activation was performed.
+
+## PR581 Chromium root-cause and browser-adapter selection gate (2026-10-29)
+
+The observed-page readback failure is not evidence that Chromium itself is broken or that Browser Use must be replaced. Diagnose first, then compare adapters **inside the same pinned Chromium image and gVisor/Kata sandbox**. No migration or library adoption is authorized merely by this gate.
+
+1. Reproduce the failing real observed-page case on the PR581 exact head. Record bounded, payload-free evidence for Chromium process/exit, sandbox startup, gateway route, approved destination and DNS resolution, HTTP response/redirect chain, DOM-ready/readback, screenshot and timeout stage. Preserve the existing fail-closed approval fingerprint, egress and cancellation controls. Do not expose page contents, cookies or credentials in CI artifacts.
+2. Isolate the failure by running the **same deterministic local page fixture** with direct Chromium/Playwright control and the pinned Browser Use adapter on the same isolated worker, network gateway, policy, action budget and timeout. Test navigation, dynamic DOM readiness, observed URL/title/DOM, actual viewport screenshot, approval-gated click, redirects, cancellation and crash recovery. Distinguish a shared infrastructure failure from a Browser Use-only readback failure; do not infer root cause from a single failing SDK.
+3. Fix the demonstrated root cause at the correct layer (sandbox/network/page readiness/SDK) and rerun the original failure. Only if Browser Use is materially worse should an alternative adapter be considered. Compare correctness and security first, then latency, failure rate, reproducibility and maintenance cost. Stagehand is optional exploratory evidence, not a prerequisite to certify Chromium.
+4. Select **retain Browser Use**, **integrate direct Playwright**, or **replicate only needed adapter behavior** based on measured results. Complete the selected path, maintain canonical authorization/tenant isolation and no unsafe fallback, then rerun real sandbox certification, final exact-head CI and PR587 combined compatibility. An unexecuted benchmark is BLOCKED, never PASS.
+
+This section defines required execution and acceptance evidence; it does **not** claim the fix or comparative benchmark has run.
+
+### Executed adapter microbenchmark and startup follow-up
+
+The paired real gVisor experiment and its exact source/image/artifact provenance
+are recorded in `PR581_BROWSER_ADAPTER_COMPARISON.md`. Ten actual adapter trials
+passed on the combined checkpoint. This is limited local-fixture evidence, not
+the full production adapter-selection gate.
+
+A parallel PR581 run exposed intermittent startup blocking at dialog-handler
+`Page.enable`, before any browser model request or approval. The candidate
+correction defers that activation out of the tab-created event and explicitly
+awaits its success before starting model execution, capturing review evidence,
+or returning completion. Pending tasks are cancelled and collected at cleanup.
+The handler remains target scoped and always rejects confirmation dialogs;
+activation failure still fails closed. The new handshake regression, existing
+dialog-rejection contracts and affected evidence fixtures pass locally (**48
+tests**); real exact-head certification remains pending. Configuration is also
+idempotent so repeated benchmark trials do not accumulate snapshot wrappers.
+The comparison now runs diagnostically even when baseline certification fails;
+the failed baseline step still fails the job. No baseline assertion is relaxed.

@@ -85,7 +85,8 @@ def merge_install_ready(
     """Combine connector checklist, binding gate, and honesty labels."""
     binding = evaluate_binding_install_ready(asset)
     manual = _manual_setup_required(asset.get("required_connectors") or [])
-    install_ready = bool(connector_can_install and binding["installReady"] and not entitlement_blocks)
+    connector_eligible = connector_can_install or asset.get("asset_type") == "ai_agent"
+    install_ready = bool(connector_eligible and binding["installReady"] and not entitlement_blocks)
     blockers: list[dict[str, Any]] = []
     for err in binding["installReadyErrors"]:
         blockers.append(

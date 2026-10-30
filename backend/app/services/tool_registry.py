@@ -20,11 +20,13 @@ from app.services.tool_service import (
     registered_actions_fingerprint,
 )
 from app.services.tool_types import ToolContext, ToolError, ToolNotFoundError
+from app.services.native_runtime.specs import DEFINITIONS as NATIVE_TOOL_DEFINITIONS
 
 logger = get_logger(__name__)
 
 
-_UNCERTAIN_CODES = frozenset({"outcome_uncertain", "connector_timeout"})
+_UNCERTAIN_CODES = frozenset({"outcome_uncertain", "connector_timeout", "native_outcome_uncertain"})
+_NATIVE_ACTIONS = frozenset("assistant." + op for op in NATIVE_TOOL_DEFINITIONS)
 
 
 def _uncertain_write_payload(*, tool: str, action: str, detail: str) -> dict[str, Any]:
@@ -70,6 +72,9 @@ async def _settle_write_payload(
                 tool=tool, action=action, detail=str(payload.get("error") or "timeout")[:160]
             )
         return payload
+    if action in _NATIVE_ACTIONS:
+        # Queue acceptance and approval recording are not verified execution.
+        return {**payload, "outcome_verified": False, "verification": {"verified": False, "status": "pending", "reason": "Read the durable native job or delivery status for completion."}}
     if not verify:
         return payload
     data = payload.get("result") if isinstance(payload.get("result"), dict) else {}
@@ -875,6 +880,7 @@ def _build_agent_tool_specs() -> dict[str, AgentToolSpec]:
             always_available=False,
         ),
     ]
+    specs.extend(AgentToolSpec(name="platform_"+operation,description=definition[0],parameters=definition[1],invoke_action="assistant."+operation,integration="platform",always_available=False) for operation,definition in NATIVE_TOOL_DEFINITIONS.items())
     return {spec.name: spec for spec in specs}
 
 
@@ -991,6 +997,8 @@ class ToolRegistry:
     def _connected(self, spec: AgentToolSpec, connected_integrations: list[str]) -> bool:
         if spec.always_available:
             return True
+        if spec.invoke_action in _NATIVE_ACTIONS:
+            return bool(getattr(get_settings(), "native_worker_url", ""))
         # Phase 3: gravitre-managed sources use platform keys — available without tenant OAuth
         if spec.integration in {"fred", "nvd"}:
             return True
@@ -1019,6 +1027,9 @@ class ToolRegistry:
         """
         tools: list[dict[str, Any]] = []
         for spec in self._specs.values():
+            if spec.invoke_action and spec.invoke_action.startswith("assistant.") and spec.invoke_action.removeprefix("assistant.") in NATIVE_TOOL_DEFINITIONS:
+                if not getattr(get_settings(), "native_worker_url", ""):
+                    continue
             if not self._permitted(spec, permitted_tools):
                 continue
             if not self._connected(spec, connected_integrations):
@@ -1531,7 +1542,7 @@ class ToolRegistry:
             set_cached_read_result,
         )
 
-        if is_read_invoke_action(invoke_action):
+        if invoke_action not in _NATIVE_ACTIONS and is_read_invoke_action(invoke_action):
             cached = get_cached_read_result(ctx.org_id, invoke_action, invoke_params)
             if cached is not None:
                 return cached
@@ -1598,7 +1609,7 @@ class ToolRegistry:
                 "result": result.data,
                 "connector_id": result.connector_id,
             }
-            if is_read_invoke_action(invoke_action):
+            if invoke_action not in _NATIVE_ACTIONS and is_read_invoke_action(invoke_action):
                 set_cached_read_result(ctx.org_id, invoke_action, invoke_params, payload)
                 return payload
             return await _settle_write_payload(
@@ -1663,7 +1674,7 @@ class ToolRegistry:
                 "error": f"Backend action not implemented: {action}",
             }
 
-        if is_read_invoke_action(action):
+        if action not in _NATIVE_ACTIONS and is_read_invoke_action(action):
             cached = get_cached_read_result(ctx.org_id, action, invoke_params)
             if cached is not None:
                 return cached
@@ -1731,7 +1742,7 @@ class ToolRegistry:
                 "result": result.data,
                 "connector_id": result.connector_id,
             }
-            if is_read_invoke_action(action):
+            if action not in _NATIVE_ACTIONS and is_read_invoke_action(action):
                 set_cached_read_result(ctx.org_id, action, invoke_params, payload)
                 return payload
             return await _settle_write_payload(

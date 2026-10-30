@@ -1,0 +1,13 @@
+FROM native-sdk:browser
+USER root
+# Isolated comparison dependency. It never enters application requirements or
+# the production native image. Both adapters run this same derived image.
+COPY native-workers/requirements-browser-benchmark.lock /runner/benchmark-requirements.lock
+RUN pip install --no-cache-dir --require-hashes -r /runner/benchmark-requirements.lock && pip check
+RUN pip install --no-cache-dir cryptography==50.0.2 && pip check
+COPY app/services/native_agent_adapters.py /runner/app/services/native_agent_adapters.py
+COPY app/core/safe_dict.py /runner/app/core/safe_dict.py
+COPY app/services/native_runtime/store.py /runner/app/services/native_runtime/store.py
+COPY native-workers/broker_process_contract.py /runner/broker_process_contract.py
+COPY native-workers/browser_adapter_benchmark.py /runner/browser_adapter_benchmark.py
+USER 10001:10001

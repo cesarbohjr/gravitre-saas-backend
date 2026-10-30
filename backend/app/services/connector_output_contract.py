@@ -120,6 +120,12 @@ MUTATING_ADVANCED_VERB_TOKENS: frozenset[str] = frozenset(
 # Seed set (hand-tuned mappers) plus write + advanced batches cleared via generic summarizer.
 _SEED_VERIFIED_OUTPUT_ACTIONS: frozenset[str] = frozenset(
     {
+        # Native mapper exposes validated job/state and explicitly unverified
+        # execution. This output contract does not certify external completion.
+        "assistant.run_openhands",
+        "assistant.run_browser_use",
+        "assistant.approve_native_action",
+        "assistant.export_evaluation_metrics",
         "assistant.generate_image",  # Inline private-file SHA256 readback; bounded completion mapper.
         "apollo.lists.create",
         "apollo.lists.add",
