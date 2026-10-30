@@ -8,6 +8,7 @@ import base64
 import contextlib
 from datetime import datetime, timezone
 import hashlib
+import importlib.metadata
 import json
 import logging
 import os
@@ -66,6 +67,16 @@ def wav(path, pcm, rate):
     with wave.open(str(path), "wb") as f:
         f.setparams((1, 2, rate, 0, "NONE", "PCM16"))
         f.writeframes(pcm)
+
+
+def verified_fixture(path, expected_hash):
+    with wave.open(str(path), 'rb') as source:
+        if (source.getframerate(), source.getnchannels(), source.getsampwidth()) != (16000, 1, 2):
+            raise ValueError('recorded fixture format mismatch')
+        pcm = source.readframes(source.getnframes())
+    if hashlib.sha256(pcm).hexdigest() != expected_hash:
+        raise ValueError('recorded fixture digest mismatch')
+    return pcm
 
 
 class FinalFenceProbe:
@@ -453,20 +464,10 @@ async def main():
     positive_result = await asyncio.to_thread(positive.run, TurnCancellation())
     if positive_result['gate_blocked']:
         raise AssertionError('fixture positive control blocked')
-    voice = os.environ.get("ELEVENLABS_VOICE_ID") or "EXAVITQu4vr4xnSDxMaL"
-    with httpx.Client(timeout=45) as http:
-        response = http.post("https://api.elevenlabs.io/v1/text-to-speech/" + voice,
-            params={"output_format": "pcm_16000"}, headers={"xi-api-key": os.environ["ELEVENLABS_API_KEY"]},
-            json={"text": PROMPT, "model_id": "eleven_flash_v2_5"})
-        if response.status_code != 200:
-            raise RuntimeError("fixture_tts_http_" + str(response.status_code))
-        pcm = response.content
-        response = http.post("https://api.elevenlabs.io/v1/text-to-speech/" + voice,
-            params={"output_format": "pcm_16000"}, headers={"xi-api-key": os.environ["ELEVENLABS_API_KEY"]},
-            json={"text": "Cancel it. Do not send anything.", "model_id": "eleven_flash_v2_5"})
-        if response.status_code != 200:
-            raise RuntimeError("cancel_fixture_tts_http_" + str(response.status_code))
-        cancel_pcm = response.content
+    pcm = verified_fixture(os.environ['ACCEPTANCE_INPUT_WAV'],
+        'bd1062d37671b640cf0be2ae4397d3c133bd23131ac2d6f568c1ec1c076e3731')
+    cancel_pcm = verified_fixture(os.environ['ACCEPTANCE_CANCEL_WAV'],
+        'cb59c58a686767cc7fc882ac6773dbd09beed5c22d420a229524f8a55a2c4936')
     if not 3200 < len(pcm) < 1600000 or len(pcm) % 2:
         raise ValueError("fixture PCM bounds")
     wav(output / "input.wav", pcm, 16000)
@@ -477,7 +478,11 @@ async def main():
         "case_id": CASE_ID,
         "cancel_input_pcm_sha256": hashlib.sha256(cancel_pcm).hexdigest(),
         "fixture_positive_control": positive_result,
-        "input_origin": "synthetic prerecorded speech, synthesized once for both transports", "trials": [],
+        "runtime_versions": {name: importlib.metadata.version(name) for name in ('pipecat-ai', 'livekit', 'supabase', 'httpx', 'anthropic')},
+        "configured_providers": {'inference': settings.preferred_ai_provider,
+            'stt': settings.voice_pipecat_stt, 'tts_model': settings.elevenlabs_tts_model},
+        "livekit_server": '1.13.11 loopback only',
+        "input_origin": "pinned synthetic recordings from run 41134456513 artifact 13017080382", "trials": [],
         "certified": False, "human_quality_review": "NOT RUN", "write_governance_certification": "NOT RUN",
         "interruption": "NOT RUN", "reconnection": "NOT RUN"}
     conversations = {}
@@ -543,6 +548,7 @@ async def main():
                     if speech.status_code != 200:
                         row.update(status="FAIL", output_stt_http_status=speech.status_code)
                     else:
+                        row['output_transcription_request_id'] = speech.json().get('metadata', {}).get('request_id')
                         transcript = speech.json()["results"]["channels"][0]["alternatives"][0]["transcript"].lower()
                         valid = ("alex" in transcript and "team" in transcript and
                             any(word in transcript for word in ("welcome", "happy", "glad", "excited", "thrilled")) and

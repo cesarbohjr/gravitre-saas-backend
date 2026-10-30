@@ -17,6 +17,7 @@ on:
   workflow_dispatch:
 permissions:
   contents: read
+  actions: read
 jobs:
   paired-runtime-readiness:
     runs-on: ubuntu-latest
@@ -40,6 +41,8 @@ jobs:
       ELEVENLABS_VOICE_ID: ${{ vars.ACCEPTANCE_ELEVENLABS_VOICE_ID }}
       ELEVENLABS_VOICE_SARAH: ${{ vars.ACCEPTANCE_ELEVENLABS_VOICE_ID }}
       ACCEPTANCE_SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+      ACCEPTANCE_INPUT_WAV: /tmp/voice-pinned-recordings/paired-live/input.wav
+      ACCEPTANCE_CANCEL_WAV: /tmp/voice-pinned-recordings/paired-live/cancel-input.wav
     steps:
       - uses: actions/checkout@v4
         with:
@@ -129,6 +132,13 @@ jobs:
         run: python -m pytest -q --confcutdir=tests/core tests/core/test_supabase_credential_whitespace.py tests/core/test_shared_http_client.py
       - name: Refresh short-lived acceptance identity after dependency installation
         run: python scripts/mint_smoke_org_session.py --github-env
+      - name: Reuse the exact previously executed recordings (digest checked by controller)
+        uses: actions/download-artifact@v4
+        with:
+          name: paired-runtime-readiness
+          run-id: 41134456513
+          github-token: ${{ github.token }}
+          path: /tmp/voice-pinned-recordings
       - name: Start hash-verified loopback RTC server and execute paired real inference
         run: |
           mkdir -p /tmp/gravitre-paired acceptance-results/paired-live

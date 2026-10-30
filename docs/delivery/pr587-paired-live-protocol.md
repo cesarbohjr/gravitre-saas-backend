@@ -16,6 +16,9 @@ engines. The controller WebSocket is not the production HTTP router.
 
 One fixed synthetic speech recording is generated once and replayed unchanged.
 The same PCM hash applies to every trial. No private user speech is used.
+Subsequent executions download the immutable recordings from run `41134456513`
+and check both PCM hashes before playback. They fail if the artifact is absent
+or altered; they never silently synthesize a different input on a rerun.
 
 ## Matched scenarios and criteria
 

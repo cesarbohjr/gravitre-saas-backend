@@ -3,6 +3,8 @@ from pathlib import Path
 import unittest
 import asyncio
 import time
+import hashlib
+import tempfile
 from types import SimpleNamespace
 from unittest.mock import patch
 
@@ -42,6 +44,17 @@ class IsolationTests(unittest.TestCase):
         capture.started = 1
         capture.audio(bytes(960))
         self.assertIsNone(capture.first)
+
+    def test_pinned_recording_rejects_changed_pcm(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / 'input.wav'
+            original = bytes(640)
+            paired.wav(path, original, 16000)
+            digest = hashlib.sha256(original).hexdigest()
+            self.assertEqual(paired.verified_fixture(path, digest), original)
+            paired.wav(path, b'\x01\x00' * 320, 16000)
+            with self.assertRaises(ValueError):
+                paired.verified_fixture(path, digest)
 
     def test_cancel_requires_a_final_stt_transcript(self):
         capture = paired.Capture()
