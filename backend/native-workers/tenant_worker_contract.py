@@ -40,6 +40,24 @@ document.querySelector('#commit').onclick=()=>fetch('/write',{method:'POST',head
 setInterval(()=>fetch('/state').then(r=>r.json()).then(s=>{const t=s.mutated?'Changed':'Original';const n=document.querySelector('#revision');if(n.textContent!==t)n.textContent=t}),100)</script>'''
 
 
+
+class AcceptanceCredentialError(ValueError):
+    def __init__(self,name):
+        self.credential_name=name
+        super().__init__('Acceptance API credential is not a valid HTTP header token')
+
+
+def normalize_acceptance_headers(environment):
+    normalized=[]
+    for name in ('E2E_SUPABASE_ANON_KEY','E2E_SUPABASE_SERVICE_ROLE_KEY'):
+        raw=environment.get(name,'');clean=raw.strip()
+        if not clean or any(ord(character)<33 or ord(character)>126 for character in clean):
+            raise AcceptanceCredentialError(name)
+        if raw!=clean:normalized.append(name)
+        environment[name]=clean
+    return normalized
+
+
 def wait_for(predicate, seconds, category):
     deadline=time.monotonic()+seconds
     while time.monotonic()<deadline:
@@ -192,22 +210,22 @@ def run():
     stage='acceptance_preflight';rows=[];case_counts=[];private_captures=[];user=None;orgs=[];admin=None;logged=None;fixture=None;tunnel=None;model=None;worker=None
     temporary=None;stream=None
     target=Path(os.environ.get('NATIVE_TENANT_EVIDENCE','native-tenant-worker-evidence.json'))
-    report={'schema_version':1,'git_sha':os.environ.get('CERT_HEAD_SHA',os.environ.get('GITHUB_SHA','local')),'status':'BLOCKED','scenarios':rows,
+    report={'schema_version':1,'git_sha':os.environ.get('GITHUB_SHA','local'),'status':'BLOCKED','scenarios':rows,
             'live_customer_data':False,'external_provider_inference':False,'production_adapter_switch':False}
     try:
         required=('E2E_SUPABASE_URL','E2E_SUPABASE_ALLOWED_URL','E2E_SUPABASE_SERVICE_ROLE_KEY','E2E_SUPABASE_ANON_KEY','E2E_SUPABASE_JWT_SECRET')
         if any(not os.environ.get(k) for k in required):raise RuntimeError('missing_acceptance_secret')
         if os.environ['E2E_SUPABASE_URL'].rstrip('/')!=ACCEPTANCE or os.environ['E2E_SUPABASE_ALLOWED_URL'].rstrip('/')!=ACCEPTANCE:
             raise RuntimeError('non_acceptance_target_blocked')
+        stage='acceptance_credential_headers'
+        report['normalized_outer_whitespace_fields']=normalize_acceptance_headers(os.environ)
+        stage='acceptance_database_preflight'
         os.environ.update(APP_ENV='dev',SUPABASE_URL=ACCEPTANCE,SUPABASE_SERVICE_ROLE_KEY=os.environ['E2E_SUPABASE_SERVICE_ROLE_KEY'],
             SUPABASE_ANON_KEY=os.environ['E2E_SUPABASE_ANON_KEY'],SUPABASE_JWT_SECRET=os.environ['E2E_SUPABASE_JWT_SECRET'])
         from supabase import create_client
         from app.core.db import shared_http_options
-        # Only sanitized stages are persisted: transport exceptions may include credentials.
-        stage='acceptance_service_client_construction'
         admin=create_client(ACCEPTANCE,os.environ['E2E_SUPABASE_SERVICE_ROLE_KEY'],options=shared_http_options())
         for table in ('organizations','organization_members','agents','agent_tool_permissions'):
-            stage='acceptance_schema_'+table
             admin.table(table).select('id').limit(0).execute()
         stage='disposable_tenant_authentication'
         password=secrets.token_urlsafe(32);email='native-'+uuid4().hex+'@example.invalid'
@@ -382,6 +400,8 @@ def run():
         report['status']='PASS'
     except Exception as error:
         report.update(status='BLOCKED',failure_stage=stage,failure_class=type(error).__name__)
+        if isinstance(error,AcceptanceCredentialError):report['invalid_credential_name']=error.credential_name
+        if type(error).__name__=='LocalProtocolError':report['header_value_rejected']='Illegal header value' in str(error)
         code=str(getattr(error,'code',''))
         if re.fullmatch(r'[A-Za-z0-9_-]{1,48}',code):report['failure_code']=code
         capture=worker.capture if worker is not None else (private_captures[-1] if private_captures else None)

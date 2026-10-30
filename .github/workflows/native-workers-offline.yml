@@ -172,9 +172,10 @@ jobs:
           names=('E2E_SUPABASE_URL','E2E_SUPABASE_ALLOWED_URL','E2E_SUPABASE_ANON_KEY','E2E_SUPABASE_SERVICE_ROLE_KEY','E2E_SUPABASE_JWT_SECRET')
           missing=[name for name in names if not os.environ.get(name)]
           allowed='https://aadnwmjzrmbvadszroqt.supabase.co'
-          valid=not missing and os.environ['E2E_SUPABASE_URL'].rstrip('/')==allowed and os.environ['E2E_SUPABASE_ALLOWED_URL'].rstrip('/')==allowed
+          invalid_headers=[name for name in ('E2E_SUPABASE_ANON_KEY','E2E_SUPABASE_SERVICE_ROLE_KEY') if not os.environ.get(name,'').strip() or any(ord(c)<33 or ord(c)>126 for c in os.environ.get(name,'').strip())]
+          valid=not missing and not invalid_headers and os.environ['E2E_SUPABASE_URL'].rstrip('/')==allowed and os.environ['E2E_SUPABASE_ALLOWED_URL'].rstrip('/')==allowed
           if not valid:
-              Path('native-tenant-worker-evidence.json').write_text(json.dumps({'status':'BLOCKED','failure_stage':'acceptance_configuration','missing_names':missing})+'\n')
+              Path('native-tenant-worker-evidence.json').write_text(json.dumps({'status':'BLOCKED','failure_stage':'acceptance_configuration','missing_names':missing,'invalid_header_names':invalid_headers})+'\n')
               raise SystemExit('Dedicated acceptance configuration required; no fallback to production')
           PY
       - name: Install real backend and process-test dependencies
@@ -183,7 +184,7 @@ jobs:
         working-directory: backend
         env:
           APP_ENV: dev
-        run: python -m pytest -q tests/native_runtime/test_broker_process_contract.py
+        run: python -m pytest -q tests/native_runtime/test_broker_process_contract.py tests/native_runtime/test_tenant_worker_contract.py
       - name: Install pinned verified gVisor runtime
         run: |
           curl --fail --location --silent --show-error https://github.com/google/gvisor/releases/download/release-20261026.0/gvisor-x86_64.tar.zstd -o /tmp/gvisor.tar.zstd
