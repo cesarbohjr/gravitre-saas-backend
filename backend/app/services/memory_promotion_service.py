@@ -855,7 +855,7 @@ class MemoryPromotionService:
         client.table("memory_promotion_candidates").update(
             {"status": MemoryPromotionStatus.APPROVED.value, "updated_at": self._now().isoformat()}
         ).eq("id", candidate_id).execute()
-        return self._promote_candidate(
+        result = self._promote_candidate(
             client,
             candidate,
             org_id=org_id,
@@ -867,6 +867,16 @@ class MemoryPromotionService:
             decided_by=approved_by_user_id,
             status_at_decision=MemoryPromotionStatus.APPROVED.value,
         )
+        # An approved correction replaces the memory it corrects.
+        metadata = safe_normalize_stored_dict(candidate, key="metadata")
+        for memory_id in metadata.get("corrects_memory_ids") or []:
+            try:
+                await self.rollback_memory(
+                    str(memory_id), org_id, approved_by_user_id, "Replaced by a reviewed correction"
+                )
+            except ValueError:
+                continue
+        return result
 
     async def edit_candidate(
         self,
@@ -927,6 +937,90 @@ class MemoryPromotionService:
             {"before": before[:500], "after": text[:500]},
         )
         return {**candidate, **update}
+
+    async def request_correction(
+        self,
+        candidate_id: str,
+        org_id: str,
+        requested_by_user_id: str,
+        content: str,
+        reason: str | None = None,
+    ) -> dict[str, Any]:
+        """Suggest a fix for a memory Gravitre already uses.
+
+        The memory in use is not changed. The corrected wording becomes a new
+        candidate waiting for an admin, linked back through
+        ``metadata.corrects_candidate_id``; approving it writes the new memory
+        and retires the old one (see ``approve_candidate``).
+        """
+        text = " ".join(str(content or "").split())
+        if not text:
+            raise ValueError("A correction needs some text")
+        if len(text) > 2000:
+            raise ValueError("Keep a correction under 2,000 characters")
+        client = self._client()
+        rows = (
+            client.table("memory_promotion_candidates")
+            .select("*")
+            .eq("id", candidate_id)
+            .eq("org_id", org_id)
+            .limit(1)
+            .execute()
+            .data
+            or []
+        )
+        if not rows:
+            raise ValueError("Memory not found")
+        original = rows[0]
+        if original.get("status") in {
+            MemoryPromotionStatus.CANDIDATE.value,
+            MemoryPromotionStatus.PENDING_APPROVAL.value,
+        }:
+            raise ValueError("This memory is still waiting for review, so edit it instead")
+        if original.get("status") not in {
+            MemoryPromotionStatus.WRITTEN.value,
+            MemoryPromotionStatus.APPROVED.value,
+            MemoryPromotionStatus.AUTO_PROMOTED.value,
+        }:
+            raise ValueError("Only a memory Gravitre is using can be corrected")
+        before = str(original.get("content") or "")
+        if text == before:
+            raise ValueError("The correction is the same as the current memory")
+        note = " ".join(str(reason or "").split())[:500]
+        correction = self._upsert_candidate(
+            client,
+            org_id=org_id,
+            source_table="memory_correction",
+            source_id=candidate_id,
+            candidate_type=str(original.get("candidate_type") or ""),
+            content=text,
+            memory_category=str(original.get("memory_category") or ""),
+            status=MemoryPromotionStatus.PENDING_APPROVAL.value,
+            frequency=int(original.get("frequency") or 1),
+            department_count=int(original.get("department_count") or 1),
+            metadata={
+                "corrects_candidate_id": candidate_id,
+                "corrects_memory_ids": [str(x) for x in (original.get("memory_ids") or [])],
+                "original_content": before,
+                "reason": note or None,
+                "requested_by": requested_by_user_id,
+                "requested_at": self._now().isoformat(),
+            },
+        )
+        if not correction:
+            raise ValueError("This correction was turned down before, so it was not sent again")
+        from app.workflows.audit import write_audit_event
+
+        write_audit_event(
+            client,
+            org_id,
+            requested_by_user_id,
+            "memory.correction_requested",
+            "memory_promotion_candidate",
+            candidate_id,
+            {"before": before[:500], "after": text[:500], "reason": note[:500], "correction_id": correction.get("id")},
+        )
+        return correction
 
     async def reject_candidate(
         self,

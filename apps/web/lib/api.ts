@@ -3019,7 +3019,14 @@ export type IntelligenceAbilityName =
   | "adaptive"
   | "predictive"
 export type IntelligenceAbilityMode = "conservative" | "balanced" | "proactive"
-export type IntelligenceAbilitySetting = { mode: IntelligenceAbilityMode; description: string; behavior_wired?: boolean }
+export type IntelligenceAbilitySetting = {
+  mode: IntelligenceAbilityMode
+  description: string
+  behavior_wired?: boolean
+  /** False when an admin turned the ability off (only abilities with can_turn_off). */
+  enabled?: boolean
+  can_turn_off?: boolean
+}
 export type IntelligenceOverviewReadiness = {
   tier: "insufficient" | "limited" | "cross_system_candidate"
   connector_count: number
@@ -3243,7 +3250,9 @@ export const intelligenceApi = {
   },
   /** Tenant-scoped Overview contract: readiness, the seven ability settings and the sweep queue. */
   overview: () => fetcher<IntelligenceOverviewResponse>(apiUrl("/api/intelligence/overview")),
-  updateOverviewProfile: (capabilities: Partial<Record<IntelligenceAbilityName, { mode: IntelligenceAbilityMode }>>) =>
+  updateOverviewProfile: (
+    capabilities: Partial<Record<IntelligenceAbilityName, { mode: IntelligenceAbilityMode; enabled?: boolean }>>,
+  ) =>
     patchJson<{ capabilities: Record<IntelligenceAbilityName, IntelligenceAbilitySetting>; saved: boolean }>(
       apiUrl("/api/intelligence/overview/profile"),
       { capabilities },
@@ -3789,6 +3798,12 @@ export const memoryPromotionApi = {
   /** Reword a memory that is still waiting for review. */
   edit: (candidateId: string, content: string) =>
     patchJson<Record<string, unknown>>(apiUrl(`/api/admin/memory-promotion/candidates/${candidateId}`), { content }),
+  /** Suggest a fix for a memory already in use; an admin reviews it before it replaces the old one. */
+  correct: (candidateId: string, content: string, reason?: string) =>
+    postJson<PromotionCandidate>(apiUrl(`/api/admin/memory-promotion/candidates/${candidateId}/correction`), {
+      content,
+      reason: reason?.trim() || null,
+    }),
   reject: (candidateId: string, reason?: string) =>
     postJson<{ status: string }>(
       apiUrl(`/api/admin/memory-promotion/candidates/${candidateId}/reject`),

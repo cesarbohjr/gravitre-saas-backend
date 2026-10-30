@@ -376,6 +376,12 @@ export type FeedItem = {
   href: string
   /** Heuristic card id, when the item can be dismissed. */
   cardId?: string
+  /** Detail panel: why Gravitre thinks this, in plain words, from the source record. */
+  why?: string[]
+  /** Detail panel: what it looked at. */
+  sources?: string[]
+  /** Detail panel: technical details (label, value), for admins and analysts. */
+  tech?: Array<[string, string]>
 }
 
 type HeuristicCard = { id: string; kind: string; title: string; reason: string; href: string; confidence?: number }
@@ -444,6 +450,14 @@ export function buildFeed({
       at: parseTime(row?.createdAt),
       actionLabel: actions.length > 0 ? "Review" : "Details",
       href: routes.forecasts,
+      why: f.drivers,
+      sources: f.evidence,
+      tech: [
+        ["Confidence", f.confidence == null ? "Not given by the source" : `${Math.round(f.confidence * 100)}% · an estimate, not a fact`],
+        ["Source", f.origin === "workflow_alert" ? "Workflow failure check" : "Forecast"],
+        ["When", f.whenLabel || "No timing given"],
+        ...(f.confidenceNote ? ([["Note", f.confidenceNote]] as Array<[string, string]>) : []),
+      ],
     })
   }
 
@@ -460,6 +474,13 @@ export function buildFeed({
       actionLabel: "Review",
       href: card.href || routes.forecasts,
       cardId: card.id,
+      why: card.reason ? [card.reason] : [],
+      sources: [humanize(card.kind)].filter(Boolean),
+      tech: [
+        ["Detection", "Rule based, from your connected apps and their usage"],
+        ["Confidence", typeof card.confidence === "number" ? `${Math.round(card.confidence * 100)}%` : "Not given"],
+        ["Actions taken", "None until someone acts on it"],
+      ],
     })
   }
 
@@ -476,6 +497,8 @@ export function buildFeed({
       at: parseTime(learning.learnedAt),
       actionLabel: "Details",
       href: routes.memory,
+      sources: ["Organization memory"],
+      tech: [["Learned", learning.learnedAt ? new Date(str(learning.learnedAt)).toLocaleString("en-US") : "Date not recorded"]],
     })
   }
 
@@ -493,6 +516,12 @@ export function buildFeed({
       at: parseTime(event.createdAt),
       actionLabel: copy.kind === "action" ? "View" : "Details",
       href: copy.kind === "action" ? routes.activity : routes.reports,
+      sources: ["Outcome ledger"],
+      tech: [
+        ["Event", str(event.event)],
+        ...(entity ? ([["Recorded for", entity]] as Array<[string, string]>) : []),
+        ...(event.createdAt ? ([["At", new Date(str(event.createdAt)).toLocaleString("en-US")]] as Array<[string, string]>) : []),
+      ],
     })
   }
 
@@ -519,37 +548,192 @@ export function overviewForecasts(
 
 /**
  * The seven abilities the intelligence router applies to every question
- * (`CAPABILITY_NAMES` in the backend). Descriptions and each ability's mode come
- * from the Overview contract; the defaults below mirror the backend's copy.
+ * (`CAPABILITY_NAMES` in the backend), in the order and words of the Overview
+ * design. Each ability's mode and on/off state come from the Overview contract.
+ * Examples are generic on purpose: they describe the behavior, not a customer.
  */
 export const ABILITY_MODES: Array<{ id: IntelligenceAbilityMode; label: string }> = [
-  { id: "conservative", label: "Careful" },
+  { id: "conservative", label: "Conservative" },
   { id: "balanced", label: "Balanced" },
   { id: "proactive", label: "Proactive" },
 ]
 
-const ABILITY_DEFAULTS: Array<{ id: IntelligenceAbilityName; label: string; detail: string }> = [
-  { id: "contextual", label: "Context", detail: "Understands the business context behind a question." },
-  { id: "sentiment", label: "Sentiment", detail: "Looks for changes in customer tone and friction." },
-  { id: "causal", label: "Cause", detail: "Investigates potential causes without confusing correlation with proof." },
-  { id: "temporal", label: "Timing", detail: "Recognizes changes over time and timing patterns." },
-  { id: "relational", label: "Relationships", detail: "Connects relevant people, accounts and business entities." },
-  { id: "adaptive", label: "Learning", detail: "Suggests improvements based on observed outcomes." },
-  { id: "predictive", label: "Prediction", detail: "Estimates future risks and opportunities when enough evidence exists." },
+type AbilityCopy = {
+  id: IntelligenceAbilityName
+  label: string
+  detail: string
+  example: string
+  /** 24px icon path from the design. */
+  path: string
+  /** Safe to turn off: answers get less rich, never wrong or unsafe. */
+  canTurnOff: boolean
+  /** Footnote under the controls. */
+  why: string
+  modes: Record<IntelligenceAbilityMode, string>
+}
+
+export const ABILITY_CATALOG: AbilityCopy[] = [
+  {
+    id: "contextual",
+    label: "Understands context",
+    detail: "Works out what a question is about, which account or deal it means, and what matters to the answer.",
+    example: "When you ask how an account is doing, it works out which account you mean and looks at its renewal, tickets and contacts.",
+    path: "M4 12h16M4 6h10M4 18h7",
+    canTurnOff: false,
+    why: "Always on. Gravitre needs it to understand what you are asking.",
+    modes: {
+      conservative: "Only uses the account or deal you name. Asks when a question is unclear.",
+      balanced: "Infers the likely account or deal from recent work, and asks when unsure.",
+      proactive: "Fills in context from your recent work and open items without asking.",
+    },
+  },
+  {
+    id: "sentiment",
+    label: "Reads tone",
+    detail: "Notices frustration or urgency in messages so replies and alerts fit the moment.",
+    example: "A customer writing \u201cthird time asking\u201d gets flagged for a faster, more careful reply.",
+    path: "M8 14s1.5 2 4 2 4-2 4-2M9 9h.01M15 9h.01M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18z",
+    canTurnOff: true,
+    why: "Safe to turn off. Replies and alerts just stop adapting to tone.",
+    modes: {
+      conservative: "Only flags clear frustration, such as repeated complaints or escalation words.",
+      balanced: "Flags frustration and urgency and suggests a faster or gentler reply.",
+      proactive: "Also flags subtle signs, like shorter replies or slower responses, earlier.",
+    },
+  },
+  {
+    id: "temporal",
+    label: "Tracks time",
+    detail: "Keeps dates, deadlines and freshness in mind, so old information is not treated as current.",
+    example: "It warns when a renewal is weeks away and when the notes it is using are months old.",
+    path: "M12 7v5l3 2M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18z",
+    canTurnOff: false,
+    why: "Always on. It keeps old information from being treated as current.",
+    modes: {
+      conservative: "Warns about anything older than 30 days and leans on the newest sources.",
+      balanced: "Warns when information is older than 60 days or a deadline is within 2 weeks.",
+      proactive: "Watches deadlines further out and suggests timing for follow-ups.",
+    },
+  },
+  {
+    id: "relational",
+    label: "Connects relationships",
+    detail: "Links people, companies, deals and tickets so it sees the whole picture.",
+    example: "It connects a main contact leaving a customer with that customer\u2019s upcoming renewal.",
+    path: "M6 6h.01M18 6h.01M12 18h.01M7 7l4 9M17 7l-4 9M7 6h10",
+    canTurnOff: false,
+    why: "Always on. Account answers depend on knowing who is connected to what.",
+    modes: {
+      conservative: "Uses only links confirmed in your apps, like a contact on a deal.",
+      balanced: "Also uses links that appear often in emails and tickets.",
+      proactive: "Suggests likely links it has not confirmed yet, clearly marked as suggestions.",
+    },
+  },
+  {
+    id: "causal",
+    label: "Explains causes",
+    detail: "Looks for what might be driving a change, and says plainly when it can only see a correlation.",
+    example: "It says a spike in failed sign-ins is likely related to a settings change, without claiming proof.",
+    path: "M5 12h4l3-8 3 16 3-8h1",
+    canTurnOff: true,
+    why: "Safe to turn off. Gravitre will describe what changed without suggesting why.",
+    modes: {
+      conservative: "Only explains a cause when the evidence is strong. Otherwise says it is unclear.",
+      balanced: "Shares likely causes, labeled as correlation when it cannot confirm them.",
+      proactive: "Offers more possible causes to investigate, each with how sure it is.",
+    },
+  },
+  {
+    id: "predictive",
+    label: "Predicts",
+    detail: "Estimates what is likely to happen next, like which customers may leave or what revenue to expect.",
+    example: "It estimates which renewals are at risk, and says when an estimate comes from a simple average.",
+    path: "M4 19h16M7 15l3-4 3 3 5-7",
+    canTurnOff: true,
+    why: "Safe to turn off. Gravitre will stop forecasting and only report what has happened.",
+    modes: {
+      conservative: "Only shows predictions from fully validated models.",
+      balanced: "Shows predictions, using simpler estimates where a model is not ready, and says so.",
+      proactive: "Predicts earlier with less data, with wider ranges and a clear warning.",
+    },
+  },
+  {
+    id: "adaptive",
+    label: "Adapts to you",
+    detail: "Learns from what your team approves, edits and ignores, so suggestions get more useful over time.",
+    example: "After your team removes the same kind of line from a few drafts, Gravitre stops suggesting it.",
+    path: "M4 4v6h6M20 20v-6h-6M5 13a7 7 0 0 0 12 4M19 11A7 7 0 0 0 7 7",
+    canTurnOff: true,
+    why: "Safe to turn off. Suggestions stay the same no matter how your team responds.",
+    modes: {
+      conservative: "Changes suggestions only after the same feedback repeats many times.",
+      balanced: "Learns from approvals, edits and dismissals over a few weeks.",
+      proactive: "Adjusts quickly after a handful of approvals or edits.",
+    },
+  },
 ]
 
-export type Ability = { id: IntelligenceAbilityName; label: string; detail: string; mode: IntelligenceAbilityMode | null }
+export type Ability = AbilityCopy & {
+  mode: IntelligenceAbilityMode | null
+  /** False only when an admin turned a safe ability off. */
+  enabled: boolean
+}
 
 export function sevenAbilities(
   capabilities: Partial<Record<IntelligenceAbilityName, IntelligenceAbilitySetting>> | null | undefined,
 ): Ability[] {
-  return ABILITY_DEFAULTS.map((ability) => {
+  return ABILITY_CATALOG.map((ability) => {
     const setting = capabilities?.[ability.id]
     return {
       ...ability,
-      detail: setting?.description?.trim() || ability.detail,
+      canTurnOff: setting?.can_turn_off ?? ability.canTurnOff,
       mode: setting?.mode ?? null,
+      enabled: !(ability.canTurnOff && setting?.enabled === false),
     }
+  })
+}
+
+// ---------------------------------------------------------------- readiness by business area
+
+export type ReadinessDepth = "Good" | "Partial" | "Missing"
+
+export const READINESS_AREAS: Array<{ name: string; vendors: string[]; missing: string }> = [
+  { name: "Customers and sales", vendors: ["hubspot", "salesforce", "pipedrive", "zoho_crm", "close", "attio", "gong"], missing: "Connect HubSpot or Salesforce" },
+  { name: "Support", vendors: ["zendesk", "intercom", "freshdesk", "helpscout", "front", "jira_service_management"], missing: "Connect Zendesk or Intercom" },
+  { name: "Billing", vendors: ["stripe", "chargebee", "recurly", "paddle"], missing: "Connect Stripe" },
+  { name: "Marketing", vendors: ["ga4", "google_analytics", "google_ads", "meta_ads", "linkedin_ads", "mailchimp", "klaviyo", "marketo"], missing: "Connect GA4 or Google Ads" },
+  { name: "Accounting", vendors: ["quickbooks", "xero", "netsuite", "freshbooks", "sage"], missing: "Connect QuickBooks or Xero" },
+]
+
+export type ReadinessArea = { name: string; depth: ReadinessDepth; src: string; level: number; cta: string }
+
+/**
+ * Readiness per business area. Good = an app for the area synced in the last
+ * three days; Partial = connected but not synced recently; Missing = nothing
+ * connected. History depth isn't measured, so no area is ever called "Rich".
+ */
+export function readinessAreas({
+  connectors,
+  readiness,
+}: {
+  connectors: Connector[] | null | undefined
+  readiness?: IntelligenceOverviewReadiness | null
+}): ReadinessArea[] {
+  const connected = connectedApps(connectors)
+  const names = new Map(connected.map((c) => [String(c.vendor ?? "").toLowerCase(), appName(c)]))
+  const vendors = readiness ? readiness.vendors.map((v) => v.toLowerCase()) : [...names.keys()]
+  const fresh = new Set((readiness?.fresh_connectors ?? []).map((v) => v.toLowerCase()))
+  const recent = Date.now() - 3 * 86_400_000
+  const isFresh = (vendor: string) =>
+    readiness
+      ? fresh.has(vendor)
+      : connected.some((c) => String(c.vendor).toLowerCase() === vendor && Date.parse(String(c.last_sync_at ?? "")) >= recent)
+  return READINESS_AREAS.map((area) => {
+    const here = vendors.filter((v) => area.vendors.includes(v))
+    const label = listNames(here.map((v) => names.get(v) ?? humanize(v)))
+    if (here.length === 0) return { name: area.name, depth: "Missing", src: "Not connected", level: 0, cta: area.missing }
+    if (here.some(isFresh)) return { name: area.name, depth: "Good", src: `${label} · synced in the last 3 days`, level: 3, cta: "" }
+    return { name: area.name, depth: "Partial", src: `${label} · not synced in the last 3 days`, level: 2, cta: "" }
   })
 }
 

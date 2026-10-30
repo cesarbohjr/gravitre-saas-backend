@@ -1,51 +1,163 @@
 "use client"
 
 /**
- * Overview sections (Intelligence-Main design): data readiness, at a glance,
- * what Gravitre knows / is learning / needs you for, how Gravitre thinks, and
- * recent insights and activity. Presentational only; overview-model.ts turns
- * the engine's responses into these props.
+ * Overview sections, built to the 10-30 "Intelligence · Overview" design:
+ * data readiness (with its hide/unhide details), at a glance, what Gravitre
+ * knows / is learning / needs you for, how Gravitre thinks (with the seven
+ * abilities toggle) and recent insights and activity (with the analysis
+ * banner). Markup and classes follow the design (overview.css); every number
+ * comes from overview-model.ts, and a missing one shows as a dash.
  */
-import { useState, type ReactNode } from "react"
+import { useState, type CSSProperties, type ReactNode } from "react"
 import Link from "next/link"
-import {
-  ArrowRight,
-  CaretDown,
-  ChartLineUp,
-  Check,
-  Clock,
-  CurrencyDollar,
-  Lightbulb,
-  Play,
-  ShareNetwork,
-  Sparkle,
-} from "@phosphor-icons/react"
-import { Button } from "@/components/ui/button"
 import { formatHours } from "@/components/intelligence/impact/impact-model"
 import {
   FEED_FILTERS,
   READINESS_TIERS,
-  ABILITY_MODES,
-  type Ability,
   appName,
+  formatMoneyCompact,
+  type Ability,
   type AttentionItem,
   type DataReadiness,
   type FeedItem,
   type FeedKind,
   type GlanceCard,
-  formatMoneyCompact,
+  type ReadinessArea,
 } from "@/components/intelligence/overview/overview-model"
 import type { PromotionCandidate } from "@/lib/api"
 import type { Connector } from "@/types/api"
-import { cn } from "@/lib/utils"
+import "./overview.css"
 
-const CARD = "rounded-[18px] border border-[color:var(--g-border-default)] bg-[color:var(--g-surface-1)]"
-const EYEBROW = "font-mono text-[11px] ig-caps tracking-[0.12em] text-[color:var(--g-text-muted)]"
-const GREEN_LINK =
-  "inline-flex items-center gap-1 text-[13px] font-medium text-[color:var(--g-brand-active)] hover:text-[color:var(--g-brand-hover)] hover:underline underline-offset-2 dark:text-[color:var(--g-brand)]"
+// ---------------------------------------------------------------- shared bits
 
-function Dash({ loading }: { loading?: boolean }) {
-  return <span className="text-[color:var(--g-text-muted)]">{loading ? "…" : "—"}</span>
+export const IO_TEXT = {
+  body: { color: "#33342F" } as CSSProperties,
+  muted: { color: "#55564F" } as CSSProperties,
+  faint: { color: "#8A8B85" } as CSSProperties,
+}
+
+export function Ico({
+  d,
+  size = 14,
+  width = 2,
+  round = false,
+  style,
+}: {
+  d: string
+  size?: number
+  width?: number
+  round?: boolean
+  style?: CSSProperties
+}) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={width}
+      strokeLinecap={round ? "round" : undefined}
+      strokeLinejoin={round ? "round" : undefined}
+      aria-hidden
+      style={style}
+    >
+      <path d={d} />
+    </svg>
+  )
+}
+
+export const PATHS = {
+  arrow: "M5 12h14M13 6l6 6-6 6",
+  chevron: "m6 9 6 6 6-6",
+  close: "M6 6l12 12M18 6 6 18",
+  spark: "M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z",
+  sparks: "M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8zM18.5 15.5l.7 1.8 1.8.7-1.8.7-.7 1.8-.7-1.8-1.8-.7 1.8-.7z",
+  chat: "M5 5h14v10H9l-4 4z",
+  play: "M7 4.5v15l12-7.5z",
+  shield: "M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6z",
+  share: "M4 12v7a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-7M16 6l-4-4-4 4M12 2v13",
+  team: "M16 19v-1a4 4 0 0 0-8 0v1M12 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM20 19v-1a3 3 0 0 0-3-3M4 19v-1a3 3 0 0 1 3-3",
+  thumb: "M7 11v9H4v-9zM7 11l4-8c1.5 0 2.5 1 2.5 2.5V9h5.2a2 2 0 0 1 2 2.3l-1.2 7A2 2 0 0 1 17.5 20H7",
+  know: "M5 6c0-1.4 3.1-2.6 7-2.6s7 1.2 7 2.6v12c0 1.4-3.1 2.6-7 2.6S5 19.4 5 18zM5 6c0 1.4 3.1 2.6 7 2.6s7-1.2 7-2.6",
+}
+
+/** Feed kinds in the design's colors and icons. */
+export const KIND: Record<FeedKind, { label: string; bg: string; fg: string; path: string }> = {
+  recommendation: { label: "Recommendation", bg: "#F3FBF7", fg: "#0A6B47", path: PATHS.spark },
+  action: { label: "Action", bg: "#EEF2FF", fg: "#2B59E0", path: "M5 12l4 4L19 6" },
+  insight: {
+    label: "Insight",
+    bg: "#FBF1DC",
+    fg: "#8A5A06",
+    path: "M9 18h6M10 21h4M12 3a6 6 0 0 0-3.5 10.9c.6.5 1 1.2 1 2.1h5c0-.9.4-1.6 1-2.1A6 6 0 0 0 12 3z",
+  },
+  outcome: { label: "Outcome", bg: "#EFEFEA", fg: "#33342F", path: "M4 19h16M7 15l3-4 3 3 5-7" },
+}
+
+/** Glance tiles in the design's colors and icons. */
+export const GLANCE_LOOK: Record<GlanceCard["id"], { bg: string; fg: string; path: string }> = {
+  revenue: {
+    bg: "#DDF3E8",
+    fg: "#0A6B47",
+    path: "M12 2v20M17 6.5c0-1.9-2.2-3.5-5-3.5S7 4.3 7 6.5 9 9.6 12 10.4s5 1.9 5 4.1-2.2 3.5-5 3.5-5-1.6-5-3.5",
+  },
+  hours: { bg: "#EEF2FF", fg: "#2B59E0", path: "M12 7v5l3 2M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18z" },
+  resolved: { bg: "#F3FBF7", fg: "#0B8A5C", path: "M5 12l4 4L19 6" },
+  approval: { bg: "#FBF1DC", fg: "#8A5A06", path: "M12 8v4l2.5 2.5M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18z" },
+}
+
+const LOGOS = new Set(["gmail", "hubspot", "microsoft_teams", "outlook", "slack", "stripe", "zendesk"])
+const BRAND: Record<string, string> = {
+  hubspot: "#FF7A59",
+  zendesk: "#03363D",
+  gmail: "#EA4335",
+  stripe: "#635BFF",
+  slack: "#4A154B",
+  salesforce: "#00A1E0",
+  outlook: "#0F6CBD",
+  microsoft_teams: "#5B5FC7",
+  intercom: "#1F8DED",
+  quickbooks: "#2CA01C",
+}
+
+export function vendorKey(vendor: string): string {
+  const v = vendor.toLowerCase().replace(/[\s-]+/g, "_")
+  if (v === "teams") return "microsoft_teams"
+  if (v === "google_mail") return "gmail"
+  return v
+}
+
+export function brandColor(vendor: string): string {
+  return BRAND[vendorKey(vendor)] ?? "#8A8B85"
+}
+
+/** Small round app mark: the vendor's logo when we ship one, else its initial. */
+export function AppDot({ vendor, name, size }: { vendor: string; name: string; size?: number }) {
+  const key = vendorKey(vendor)
+  const box = size ? { width: size, height: size, fontSize: Math.round(size * 0.45) } : {}
+  if (LOGOS.has(key)) {
+    return (
+      <span
+        className="io-appdot"
+        aria-hidden
+        style={{
+          ...box,
+          background: `#FFFFFF url(/connector-logos/${key}.svg) center / 62% no-repeat`,
+          boxShadow: "inset 0 0 0 1px #E4E4DF",
+        }}
+      />
+    )
+  }
+  return (
+    <span className="io-appdot" aria-hidden style={{ ...box, background: brandColor(vendor) }}>
+      {name.charAt(0).toUpperCase()}
+    </span>
+  )
+}
+
+function dash(loading: boolean): string {
+  return loading ? "…" : "—"
 }
 
 export function relativeTime(at: number | null, now: number = Date.now()): string {
@@ -61,95 +173,125 @@ export function relativeTime(at: number | null, now: number = Date.now()): strin
   return new Date(at).toLocaleDateString("en-US", { month: "short", day: "numeric" })
 }
 
+function SectionHead({ id, title, sub }: { id: string; title: string; sub: string }) {
+  return (
+    <div>
+      <h2 id={id} className="io-h2">
+        {title}
+      </h2>
+      <p className="io-sub">{sub}</p>
+    </div>
+  )
+}
+
 // ---------------------------------------------------------------- data readiness
+
+const DEPTH_STYLE: Record<ReadinessArea["depth"], CSSProperties> = {
+  Good: { background: "#DDF3E8", color: "#0A6B47" },
+  Partial: { background: "#FBF1DC", color: "#8A5A06" },
+  Missing: { background: "#EFEFEA", color: "#55564F" },
+}
 
 export function DataReadinessCard({
   readiness,
+  areas,
   loading,
   href,
 }: {
   readiness: DataReadiness
+  areas: ReadinessArea[]
   loading: boolean
   href: string
 }) {
+  const [open, setOpen] = useState(false)
   const reached = READINESS_TIERS.findIndex((t) => t.id === readiness.tier)
+  const next = areas.find((a) => a.depth === "Missing")
+  const linked = areas.filter((a) => a.depth !== "Missing").length
   return (
-    <section
-      aria-labelledby="overview-readiness-heading"
-      className={cn(CARD, "flex flex-col gap-5 p-5 sm:p-6 lg:flex-row lg:items-center lg:justify-between")}
-    >
-      <div className="min-w-0 max-w-xl">
-        <div className="flex flex-wrap items-center gap-2">
-          <h2 id="overview-readiness-heading" className="text-[15px] font-semibold text-[color:var(--g-text-primary)]">
-            Data readiness
-          </h2>
-          {!loading ? (
-            <span className="rounded-full bg-[color:var(--g-brand-soft)] px-2 py-0.5 text-[12px] font-medium text-[color:var(--g-brand-active)] dark:text-[color:var(--g-brand)]">
-              {readiness.label}
-            </span>
-          ) : null}
+    <section aria-labelledby="dr-h" className="io-card dr-card io-rise">
+      <div className="dr-top">
+        <div style={{ display: "flex", flexDirection: "column", gap: 6, flex: "1 1 320px", minWidth: 0 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+            <h2 id="dr-h" style={{ margin: 0, fontSize: 16, fontWeight: 600 }}>
+              Data readiness
+            </h2>
+            <span className="dr-badge">{loading ? "Checking" : readiness.label}</span>
+          </div>
+          <span data-io-muted style={{ fontSize: 14, lineHeight: 1.5, ...IO_TEXT.muted }}>
+            {loading ? "Checking which apps Gravitre can read…" : readiness.summary}
+          </span>
         </div>
-        <p className="mt-1.5 text-[13.5px] leading-relaxed text-[color:var(--g-text-secondary)]">
-          {loading ? "Checking which apps Gravitre can read…" : readiness.summary}
-        </p>
-      </div>
-      <div className="w-full shrink-0 lg:w-[360px]">
-        <ol className="grid grid-cols-3 gap-1.5" aria-label={`Readiness: ${readiness.label}`}>
+        <div
+          className="dr-meter"
+          role="img"
+          aria-label={`Analysis depth: ${readiness.label.toLowerCase()}, step ${reached + 1} of ${READINESS_TIERS.length}`}
+        >
           {READINESS_TIERS.map((tier, i) => (
-            <li key={tier.id} className="min-w-0">
-              <span
-                aria-hidden
-                className={cn(
-                  "block h-1 rounded-full",
-                  !loading && i <= reached ? "bg-[color:var(--g-brand-active)] dark:bg-[color:var(--g-brand)]" : "bg-[color:var(--g-border-default)]",
-                )}
-              />
-              <span
-                className={cn(
-                  "mt-2 block truncate text-[12px]",
-                  !loading && i === reached
-                    ? "font-semibold text-[color:var(--g-text-primary)]"
-                    : "text-[color:var(--g-text-muted)]",
-                )}
-                aria-current={!loading && i === reached ? "step" : undefined}
-              >
-                {tier.label}
-              </span>
-            </li>
+            <div key={tier.id} className="dr-step">
+              <span className={i <= reached ? "dr-seg on" : "dr-seg"} />
+              <span className={i === reached ? "dr-l on" : "dr-l"}>{tier.label}</span>
+            </div>
           ))}
-        </ol>
-        <div className="mt-2 text-right">
-          <Link href={href} className={GREEN_LINK}>
-            See what is ready
-          </Link>
         </div>
+        <button
+          type="button"
+          className="io-link"
+          style={{ fontSize: 13 }}
+          aria-expanded={open}
+          onClick={() => setOpen((v) => !v)}
+        >
+          {open ? "Hide details" : "See what is ready"}
+        </button>
       </div>
+      {open ? (
+        <div className="dr-body">
+          <div className="dr-areas">
+            {areas.map((a) => (
+              <div key={a.name} className="dr-area">
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+                  <span style={{ fontSize: 13.5, fontWeight: 600 }}>{a.name}</span>
+                  <span className="dr-depth" style={DEPTH_STYLE[a.depth]}>
+                    {a.depth}
+                  </span>
+                </div>
+                <div className="dr-gauge">
+                  <span style={{ width: `${a.level * 25}%`, background: a.depth === "Partial" ? "#E2A33A" : "#19C37D" }} />
+                </div>
+                <span data-io-muted style={{ fontSize: 12.5, lineHeight: 1.4, ...IO_TEXT.muted }}>
+                  {a.src}
+                </span>
+              </div>
+            ))}
+          </div>
+          <div className="dr-foot">
+            <div className="dr-link">
+              <span className="io-dot" style={{ background: linked >= 2 ? "#19C37D" : "#E2A33A" }} />
+              <span>
+                {linked >= 2
+                  ? `${linked} business areas have a connected app. Gravitre doesn't match records across apps into one count yet, so it doesn't claim how many accounts they share. One rich source gives value on its own; apps from different areas unlock broader findings.`
+                  : "One rich source gives value on its own; apps from different areas unlock broader findings."}
+              </span>
+            </div>
+            <div className="dr-next">
+              <span style={{ flex: 1 }}>
+                {next
+                  ? `Connect ${next.name.toLowerCase()} to give Gravitre a fuller picture of how your business runs.`
+                  : "Every business area has a connected app."}
+              </span>
+              <Link className="io-btn" style={{ whiteSpace: "nowrap", textDecoration: "none" }} href={href}>
+                {next ? next.cta : "Open Connectors"}
+              </Link>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </section>
   )
 }
 
 // ---------------------------------------------------------------- at a glance
 
-const GLANCE_ICON: Record<GlanceCard["id"], { icon: ReactNode; tile: string }> = {
-  revenue: {
-    icon: <CurrencyDollar className="h-3.5 w-3.5" weight="bold" aria-hidden />,
-    tile: "bg-[color:var(--g-brand-soft)] text-[color:var(--g-brand-active)] dark:text-[color:var(--g-brand)]",
-  },
-  hours: {
-    icon: <Clock className="h-3.5 w-3.5" weight="bold" aria-hidden />,
-    tile: "bg-[color:var(--g-signal-soft)] text-[color:var(--g-signal)]",
-  },
-  resolved: {
-    icon: <Check className="h-3.5 w-3.5" weight="bold" aria-hidden />,
-    tile: "bg-[color:var(--g-brand-soft)] text-[color:var(--g-brand-active)] dark:text-[color:var(--g-brand)]",
-  },
-  approval: {
-    icon: <Clock className="h-3.5 w-3.5" weight="bold" aria-hidden />,
-    tile: "bg-[color:var(--g-approval-soft)] text-[color:var(--g-approval)]",
-  },
-}
-
-function glanceValue(card: GlanceCard): string | null {
+export function glanceValue(card: GlanceCard): string | null {
   if (card.value == null) return null
   if (card.id === "revenue") return formatMoneyCompact(card.value, card.currency)
   if (card.id === "hours") return card.value === 0 ? "0 hrs" : `≈ ${formatHours(card.value).replace(" h", " hrs")}`
@@ -160,79 +302,54 @@ export function AtAGlance({
   cards,
   loading,
   phrase,
-  onOpenEvidence,
+  onOpen,
+  children,
 }: {
   cards: GlanceCard[]
   loading: boolean
   phrase: string
-  /** Opens the records behind a card that has evidence (Revenue opportunities). */
-  onOpenEvidence?: (id: GlanceCard["id"]) => void
+  /** Opens the records behind a card. */
+  onOpen: (id: GlanceCard["id"]) => void
+  /** The three cards below the results (knows, learning, attention). */
+  children: ReactNode
 }) {
   return (
-    <section aria-labelledby="overview-glance-heading" className="space-y-3">
-      <div>
-        <h2 id="overview-glance-heading" className="text-[17px] font-semibold text-[color:var(--g-text-primary)]">
-          At a glance
-        </h2>
-        <p className="mt-0.5 text-[13px] text-[color:var(--g-text-secondary)]">
-          {phrase.charAt(0).toUpperCase() + phrase.slice(1)}&apos;s results, and the three things worth knowing right now.
-        </p>
-      </div>
-      <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+    <section aria-labelledby="glance-h" style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+      <SectionHead
+        id="glance-h"
+        title="At a glance"
+        sub={`${phrase.charAt(0).toUpperCase()}${phrase.slice(1)}'s results, and the three things worth knowing right now.`}
+      />
+      <div className="rs-grid" role="list" aria-label="This week's results">
         {cards.map((card) => {
+          const look = GLANCE_LOOK[card.id]
           const value = glanceValue(card)
-          const meta = GLANCE_ICON[card.id]
           return (
-            <li key={card.id} className={cn(CARD, "flex min-h-[150px] flex-col gap-2 p-4")}>
-              <span className="flex items-center justify-between gap-2 text-[12.5px] text-[color:var(--g-text-secondary)]">
-                <span className="flex items-center gap-2">
-                  <span className={cn("grid h-6 w-6 place-items-center rounded-[7px]", meta.tile)}>{meta.icon}</span>
-                  {card.label}
+            <button key={card.id} type="button" role="listitem" className="rs-card io-rise" onClick={() => onOpen(card.id)}>
+              <span data-io-muted style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, ...IO_TEXT.muted }}>
+                <span className="rs-ico" style={{ background: look.bg, color: look.fg }}>
+                  <Ico d={look.path} round />
                 </span>
+                {card.label}
               </span>
-              <span className="text-[28px] font-semibold leading-none tracking-[-0.02em] tabular-nums text-[color:var(--g-text-primary)]">
-                {value && !loading ? value : <Dash loading={loading} />}
+              <span className="rs-val">{value && !loading ? value : dash(loading)}</span>
+              <span data-io-muted style={{ fontSize: 13, lineHeight: 1.45, ...IO_TEXT.muted }}>
+                {card.hint}
               </span>
-              <span className="text-[12.5px] leading-snug text-[color:var(--g-text-secondary)]">{card.hint}</span>
-              {card.evidence && onOpenEvidence ? (
-                <button
-                  type="button"
-                  onClick={() => onOpenEvidence(card.id)}
-                  className={cn(GREEN_LINK, "mt-auto self-start text-left text-[12.5px]")}
-                >
-                  {card.link.label}
-                  <ArrowRight className="h-3 w-3" weight="bold" aria-hidden />
-                </button>
-              ) : (
-                <Link href={card.link.href} className={cn(GREEN_LINK, "mt-auto text-[12.5px]")}>
-                  {card.link.label}
-                  <ArrowRight className="h-3 w-3" weight="bold" aria-hidden />
-                </Link>
-              )}
-            </li>
+              <span className="rs-basis">
+                {card.link.label}
+                <Ico d={PATHS.arrow} size={12} width={2.2} />
+              </span>
+            </button>
           )
         })}
-      </ul>
+      </div>
+      <div className="io-glance">{children}</div>
     </section>
   )
 }
 
 // ---------------------------------------------------------------- knows / learning / attention
-
-function AppChip({ connector }: { connector: Connector }) {
-  const name = appName(connector)
-  return (
-    <span className="inline-flex items-center gap-1.5 rounded-full border border-[color:var(--g-border-default)] px-2 py-1 text-[12px] text-[color:var(--g-text-primary)]">
-      <span
-        aria-hidden
-        className="grid h-4 w-4 place-items-center rounded-full bg-[color:var(--g-text-primary)] text-[9px] font-semibold text-[color:var(--g-surface-1)]"
-      >
-        {name.charAt(0).toUpperCase()}
-      </span>
-      {name}
-    </span>
-  )
-}
 
 export function KnowsCard({
   entities,
@@ -240,51 +357,57 @@ export function KnowsCard({
   apps,
   updatedAt,
   loading,
-  href,
+  onOpen,
 }: {
   entities: number | null
   relationships: number | null
   apps: Connector[]
   updatedAt: string | null
   loading: boolean
-  href: string
+  onOpen: () => void
 }) {
   const shown = apps.slice(0, 4)
   const more = apps.length - shown.length
   const updated = updatedAt ? relativeTime(Date.parse(updatedAt)) : ""
   return (
-    <section aria-labelledby="overview-knows-heading" className={cn(CARD, "flex flex-col p-5")}>
-      <h3 id="overview-knows-heading" className={EYEBROW}>
-        What Gravitre knows
-      </h3>
-      <p className="mt-3 flex flex-wrap items-baseline gap-x-2.5">
-        <span className="text-[38px] font-semibold leading-none tracking-[-0.03em] tabular-nums text-[color:var(--g-text-primary)]">
-          {entities != null && !loading ? entities.toLocaleString("en-US") : <Dash loading={loading} />}
+    <article className="io-card io-gcard io-rise io-d1">
+      <span className="io-eyebrow">What Gravitre knows</span>
+      <div style={{ display: "flex", alignItems: "baseline", gap: 10 }}>
+        <span className="io-big">{entities != null && !loading ? entities.toLocaleString("en-US") : dash(loading)}</span>
+        <span data-io-muted style={{ fontSize: 15, ...IO_TEXT.muted }}>
+          facts about your business
         </span>
-        <span className="text-[14px] text-[color:var(--g-text-secondary)]">things about your business</span>
-      </p>
-      <p className="mt-3 text-[13.5px] leading-relaxed text-[color:var(--g-text-secondary)]">
-        {relationships != null ? `${relationships.toLocaleString("en-US")} links between them` : "Customers, deals, people and terms"}
+      </div>
+      <span data-io-muted style={{ fontSize: 14, lineHeight: 1.5, ...IO_TEXT.muted }}>
+        {relationships != null
+          ? `${relationships.toLocaleString("en-US")} links between customers, deals, people and terms`
+          : "Customers, deals, tickets, policies and how they connect"}
         {apps.length > 0 ? `, from ${apps.length} connected ${apps.length === 1 ? "app" : "apps"}.` : ". No apps are connected yet."}
         {updated ? ` Updated ${updated}.` : ""}
-      </p>
-      {shown.length > 0 ? (
-        <div className="mt-3 flex flex-wrap gap-1.5">
+      </span>
+      {apps.length > 0 ? (
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
           {shown.map((c) => (
-            <AppChip key={c.id} connector={c} />
+            <span key={c.id} className="io-app">
+              <AppDot vendor={String(c.vendor ?? "")} name={appName(c)} />
+              {appName(c)}
+            </span>
           ))}
           {more > 0 ? (
-            <span className="inline-flex items-center rounded-full border border-[color:var(--g-border-default)] px-2 py-1 text-[12px] text-[color:var(--g-text-secondary)]">
+            <span className="io-app">
+              <span className="io-appdot" style={{ background: "#8A8B85" }} aria-hidden>
+                +
+              </span>
               +{more} more
             </span>
           ) : null}
         </div>
       ) : null}
-      <Link href={href} className={cn(GREEN_LINK, "mt-auto pt-5")}>
+      <button type="button" className="io-link" onClick={onOpen}>
         View and correct knowledge
-        <ArrowRight className="h-3 w-3" weight="bold" aria-hidden />
-      </Link>
-    </section>
+        <Ico d={PATHS.arrow} size={14} />
+      </button>
+    </article>
   )
 }
 
@@ -295,7 +418,7 @@ export function LearningCard({
   topEvidence,
   pendingCount,
   loading,
-  href,
+  onOpen,
 }: {
   newCount: number | null
   phrase: string
@@ -303,147 +426,255 @@ export function LearningCard({
   topEvidence: string
   pendingCount: number
   loading: boolean
-  href: string
+  onOpen: () => void
 }) {
   return (
-    <section aria-labelledby="overview-learning-heading" className={cn(CARD, "flex flex-col p-5")}>
-      <h3 id="overview-learning-heading" className={EYEBROW}>
-        What it is learning
-      </h3>
-      <p className="mt-3 flex flex-wrap items-baseline gap-x-2.5">
-        <span className="text-[38px] font-semibold leading-none tracking-[-0.03em] tabular-nums text-[color:var(--g-text-primary)]">
-          {newCount != null && !loading ? newCount.toLocaleString("en-US") : <Dash loading={loading} />}
-        </span>
-        <span className="text-[14px] text-[color:var(--g-text-secondary)]">
+    <article className="io-card io-gcard io-rise io-d2">
+      <span className="io-eyebrow">What it is learning</span>
+      <div style={{ display: "flex", alignItems: "baseline", gap: 10 }}>
+        <span className="io-big">{newCount != null && !loading ? newCount.toLocaleString("en-US") : dash(loading)}</span>
+        <span data-io-muted style={{ fontSize: 15, ...IO_TEXT.muted }}>
           new {newCount === 1 ? "pattern" : "patterns"} {phrase}
         </span>
-      </p>
+      </div>
       {top ? (
-        <div className="mt-3 rounded-[12px] border border-[color:var(--g-brand-border)] bg-[color:var(--g-brand-surface)] p-3.5">
-          <p className="text-[13.5px] leading-snug text-[color:var(--g-text-primary)]">{String(top.content ?? "")}</p>
+        <div className="io-quote">
+          {String(top.content ?? "")}
           {topEvidence ? (
-            <p className="mt-2 flex items-center gap-1.5 text-[12px] text-[color:var(--g-brand-active)] dark:text-[color:var(--g-brand)]">
-              <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-current" />
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 10, fontSize: 12.5, color: "#0A6B47" }}>
+              <span className="io-dot" style={{ background: "#19C37D" }} />
               {topEvidence}
-            </p>
+            </div>
           ) : null}
         </div>
       ) : !loading ? (
-        <p className="mt-3 rounded-[12px] border border-dashed border-[color:var(--g-border-strong)] p-3.5 text-[13px] text-[color:var(--g-text-secondary)]">
+        <div className="io-quote">
           Nothing new yet. Patterns show up here once an agent sees the same thing across several runs.
-        </p>
+        </div>
       ) : null}
-      <p className="mt-3 text-[12.5px] leading-snug text-[color:var(--g-text-secondary)]">
+      <span data-io-muted style={{ fontSize: 13.5, lineHeight: 1.5, ...IO_TEXT.muted }}>
         Gravitre only starts using a pattern after someone on your team approves it.
-      </p>
-      <Link href={href} className={cn(GREEN_LINK, "mt-auto pt-5")}>
-        {pendingCount > 0 ? `Review ${pendingCount} ${pendingCount === 1 ? "suggestion" : "suggestions"}` : "Open memory"}
-        <ArrowRight className="h-3 w-3" weight="bold" aria-hidden />
-      </Link>
-    </section>
+      </span>
+      <button type="button" className="io-link" onClick={onOpen}>
+        {pendingCount > 0 ? `Review ${pendingCount} ${pendingCount === 1 ? "suggestion" : "suggestions"}` : "See what it is learning"}
+        <Ico d={PATHS.arrow} size={14} />
+      </button>
+    </article>
   )
 }
 
 const ATTENTION_DOT: Record<AttentionItem["tone"], string> = {
-  danger: "bg-[color:var(--g-danger)]",
-  warning: "bg-[color:var(--g-approval)]",
-  live: "bg-[color:var(--g-brand)]",
+  danger: "#A3333D",
+  warning: "#E2A33A",
+  live: "#19C37D",
 }
 
-export function AttentionCard({ items, loading }: { items: AttentionItem[]; loading: boolean }) {
+export function AttentionCard({
+  items,
+  loading,
+  onAction,
+}: {
+  items: AttentionItem[]
+  loading: boolean
+  /** Handles an item in place (returns true) instead of following its link. */
+  onAction?: (item: AttentionItem) => boolean
+}) {
+  const shown = items.slice(0, 4)
   return (
-    <section aria-labelledby="overview-attention-heading" className={cn(CARD, "flex flex-col p-5")}>
-      <div className="flex items-center justify-between gap-2">
-        <h3 id="overview-attention-heading" className={EYEBROW}>
-          Needs your attention
-        </h3>
+    <article className="io-card io-gcard io-rise io-d3">
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <span className="io-eyebrow">Needs your attention</span>
         {!loading && items.length > 0 ? (
-          <span className="rounded-full bg-[color:var(--g-approval-soft)] px-2 py-0.5 text-[11.5px] font-medium text-[color:var(--g-approval)]">
+          <span
+            style={{ fontSize: 12.5, fontWeight: 600, color: "#8A5A06", background: "#FBF1DC", borderRadius: 999, padding: "2px 9px" }}
+          >
             {items.length} open
           </span>
         ) : null}
       </div>
-      {loading ? (
-        <p className="mt-4 text-[13px] text-[color:var(--g-text-muted)]">Checking…</p>
-      ) : items.length === 0 ? (
-        <p className="mt-4 text-[13.5px] leading-relaxed text-[color:var(--g-text-secondary)]">
-          Nothing is waiting on you. Approvals, sign-ins and new patterns show up here.
-        </p>
-      ) : (
-        <ul className="mt-2 divide-y divide-[color:var(--g-border-subtle)]">
-          {items.slice(0, 4).map((item) => (
-            <li key={item.id} className="flex items-center gap-3 py-3">
-              <span aria-hidden className={cn("h-1.5 w-1.5 shrink-0 rounded-full", ATTENTION_DOT[item.tone])} />
-              <span className="min-w-0 flex-1 text-[13.5px] leading-snug text-[color:var(--g-text-primary)]">{item.text}</span>
-              <Button asChild variant="outline" size="sm" className="h-8 shrink-0 rounded-[9px] px-3 text-[12.5px]">
-                <Link href={item.href}>{item.actionLabel}</Link>
-              </Button>
-            </li>
-          ))}
-        </ul>
-      )}
-    </section>
+      <div style={{ display: "flex", flexDirection: "column" }}>
+        {loading ? (
+          <div data-io-faint style={{ padding: "18px 0", fontSize: 14, ...IO_TEXT.faint }}>
+            Checking…
+          </div>
+        ) : shown.length === 0 ? (
+          <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "18px 0", fontSize: 14, color: "#0A6B47" }}>
+            <span className="io-dot" style={{ background: "#19C37D" }} />
+            You are all caught up.
+          </div>
+        ) : (
+          shown.map((item) => (
+            <div key={item.id} className="io-att">
+              <span className="io-dot" style={{ background: ATTENTION_DOT[item.tone] }} />
+              <span style={{ flex: 1, fontSize: 14, lineHeight: 1.4 }}>{item.text}</span>
+              <Link
+                className="io-btn"
+                style={{ textDecoration: "none" }}
+                href={item.href}
+                onClick={(event) => {
+                  if (onAction?.(item)) event.preventDefault()
+                }}
+              >
+                {item.actionLabel}
+              </Link>
+            </div>
+          ))
+        )}
+      </div>
+    </article>
   )
 }
 
 // ---------------------------------------------------------------- how Gravitre thinks
 
+const ART_FALLBACK = ["#FF7A59", "#03363D", "#EA4335", "#635BFF"]
+
+/** Knowledge art: up to four connected apps feeding a fact stack, animated as in the design. */
 function KnowledgeArt({ apps }: { apps: Connector[] }) {
-  const letters = (apps.length > 0 ? apps.slice(0, 4).map(appName) : ["", "", "", ""]).map((n) => n.charAt(0).toUpperCase())
-  const tones = ["#e8603c", "#141513", "#d94a3a", "#5b5bd6"]
+  const rows = [22, 48, 74, 100]
   return (
-    <svg viewBox="0 0 200 96" className="h-full w-full" aria-hidden>
-      {letters.map((letter, i) => {
-        const y = 16 + i * 21
-        return (
-          <g key={i}>
-            <path d={`M30 ${y} C 70 ${y}, 90 48, 128 48`} fill="none" stroke="var(--g-brand)" strokeOpacity="0.35" strokeWidth="1.2" />
-            <circle cx="22" cy={y} r="8" fill={apps[i] ? tones[i] : "var(--g-border-strong)"} />
-            {letter ? (
-              <text x="22" y={y + 3} textAnchor="middle" fontSize="8" fontWeight="600" fill="#fff">
-                {letter}
-              </text>
-            ) : null}
+    <div className="ax-art kx-art" aria-hidden>
+      <svg viewBox="0 0 300 118" preserveAspectRatio="xMidYMid meet" style={{ width: "100%", height: "100%", display: "block" }}>
+        <defs>
+          <pattern id="kxDots" width="12" height="12" patternUnits="userSpaceOnUse">
+            <circle cx="1" cy="1" r=".9" fill="#B9C6B8" />
+          </pattern>
+        </defs>
+        <rect width="300" height="118" fill="url(#kxDots)" opacity=".55" />
+        {rows.map((y, i) => {
+          const app = apps[i]
+          const color = app ? brandColor(String(app.vendor ?? "")) : ART_FALLBACK[i]
+          const d = `M44 ${y} C 100 ${y}, 110 60, 166 60`
+          return (
+            <g key={`p${y}`}>
+              <path d={d} fill="none" stroke="#CDEBDC" strokeWidth="1.3" />
+              <path className={`kx-pkt kx-p${i}`} d={d} fill="none" stroke={color} strokeWidth="2.6" strokeLinecap="round" />
+            </g>
+          )
+        })}
+        {rows.map((y, i) => {
+          const app = apps[i]
+          const key = app ? vendorKey(String(app.vendor ?? "")) : ""
+          return (
+            <g key={`a${y}`} className={`kx-app kx-a${i}`}>
+              <circle cx="30" cy={y} r="11" fill="#FFFFFF" stroke="#E4E4DF" />
+              {app && LOGOS.has(key) ? (
+                <image href={`/connector-logos/${key}.svg`} x="23.125" y={y - 6.875} width="13.75" height="13.75" />
+              ) : app ? (
+                <text x="30" y={y + 3.6} textAnchor="middle" fontSize="10" fontWeight="700" fill={brandColor(key)}>
+                  {appName(app).charAt(0).toUpperCase()}
+                </text>
+              ) : (
+                <circle cx="30" cy={y} r="3" fill="#CBCBC3" />
+              )}
+            </g>
+          )
+        })}
+        <g className="kx-stack">
+          <rect x="182" y="26" width="104" height="80" rx="12" fill="#FFFFFF" opacity=".55" transform="translate(8 -8)" />
+          <rect x="180" y="20" width="104" height="80" rx="12" fill="#FFFFFF" stroke="#E4E4DF" />
+        </g>
+        {[
+          [36, 58],
+          [52, 44],
+          [68, 64],
+          [84, 36],
+        ].map(([y, w], i) => (
+          <g key={`f${y}`} className={`kx-fact kx-f${i}`}>
+            <circle cx="196" cy={y} r="2.6" fill="#19C37D" />
+            <rect x="204" y={y - 2.5} width={w} height="5" rx="2.5" fill="#33342F" opacity=".7" />
           </g>
-        )
-      })}
-      <rect x="128" y="22" width="58" height="52" rx="8" fill="var(--g-surface-1)" stroke="var(--g-border-default)" />
-      <rect x="138" y="34" width="36" height="4" rx="2" fill="var(--g-text-primary)" opacity="0.7" />
-      <rect x="138" y="44" width="28" height="4" rx="2" fill="var(--g-text-muted)" opacity="0.5" />
-      <circle cx="134" cy="36" r="1.6" fill="var(--g-brand)" />
-    </svg>
+        ))}
+        <g className="kx-sync">
+          <circle cx="276" cy="20" r="9" fill="#0B8A5C" />
+          <path
+            className="kx-spin"
+            d="M272 19.5a4.2 4.2 0 0 1 7.4-2.4M280 20.5a4.2 4.2 0 0 1-7.4 2.4M279.6 14.6v2.8h-2.8M272.4 25.4v-2.8h2.8"
+            fill="none"
+            stroke="#FFFFFF"
+            strokeWidth="1.3"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </g>
+      </svg>
+    </div>
   )
 }
 
+/** Actions art: three checked rows feeding a rising chart, animated as in the design. */
 function ActionsArt() {
+  const rows: Array<[number, number, number, string]> = [
+    [12, 74, 52, "#DDF3E8"],
+    [46, 60, 70, "#EEF2FF"],
+    [80, 82, 44, "#FBF1DC"],
+  ]
   return (
-    <svg viewBox="0 0 200 96" className="h-full w-full" aria-hidden>
-      {[0, 1, 2].map((i) => {
-        const y = 18 + i * 24
-        return (
-          <g key={i}>
-            <circle cx="22" cy={y} r="6" fill="var(--g-brand)" />
-            <path d={`M19 ${y} l2 2 l4 -4`} stroke="#fff" strokeWidth="1.4" fill="none" strokeLinecap="round" />
-            <rect x="34" y={y - 2} width="56" height="4" rx="2" fill="var(--g-text-primary)" opacity="0.65" />
-            <rect x="98" y={y - 3} width="24" height="6" rx="3" fill="var(--g-brand-soft)" />
+    <div className="ax-art" aria-hidden>
+      <svg viewBox="0 0 300 118" preserveAspectRatio="xMidYMid meet" style={{ width: "100%", height: "100%", display: "block" }}>
+        <defs>
+          <linearGradient id="axArea" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stopColor="#19C37D" stopOpacity=".28" />
+            <stop offset="1" stopColor="#19C37D" stopOpacity="0" />
+          </linearGradient>
+          <pattern id="axDots" width="12" height="12" patternUnits="userSpaceOnUse">
+            <circle cx="1" cy="1" r=".9" fill="#B9C6B8" />
+          </pattern>
+        </defs>
+        <rect width="300" height="118" fill="url(#axDots)" opacity=".55" />
+        {rows.map(([y, w1, w2, chip], i) => (
+          <g key={y} className={`ax-row ax-r${i + 1}`}>
+            <rect x="12" y={y} width="170" height="26" rx="8" fill="#FFFFFF" stroke="#E4E4DF" />
+            <circle cx="27" cy={y + 13} r="7" fill="#EFEFEA" className="ax-dot" />
+            <circle cx="27" cy={y + 13} r="7" fill="#19C37D" className="ax-fill" />
+            <path
+              d={`M23.5 ${y + 13.2}l2.4 2.4 4.6-4.8`}
+              fill="none"
+              stroke="#FFFFFF"
+              strokeWidth="1.8"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="ax-check"
+            />
+            <rect x="41" y={y + 7} width={w1} height="5" rx="2.5" fill="#33342F" opacity=".75" />
+            <rect x="41" y={y + 15.5} width={w2} height="4" rx="2" fill="#CBCBC3" />
+            <rect x="148" y={y + 8} width="26" height="10" rx="5" fill={chip} opacity=".9" />
           </g>
-        )
-      })}
-      <path d="M126 18 C 140 18, 140 48, 152 48 M126 66 C 140 66, 140 48, 152 48" fill="none" stroke="var(--g-brand)" strokeOpacity="0.4" strokeDasharray="3 3" />
-      <rect x="152" y="26" width="38" height="44" rx="7" fill="var(--g-surface-1)" stroke="var(--g-border-default)" />
-      <rect x="160" y="36" width="20" height="4" rx="2" fill="var(--g-text-primary)" opacity="0.7" />
-    </svg>
+        ))}
+        <g className="ax-link">
+          <path d="M186 25 C 200 25, 200 60, 214 60" fill="none" stroke="#19C37D" strokeWidth="1.4" strokeDasharray="3 3" opacity=".6" />
+          <path d="M186 93 C 200 93, 200 60, 214 60" fill="none" stroke="#19C37D" strokeWidth="1.4" strokeDasharray="3 3" opacity=".6" />
+        </g>
+        <g className="ax-chart">
+          <rect x="214" y="14" width="76" height="90" rx="12" fill="#FFFFFF" stroke="#E4E4DF" />
+          <path className="ax-area" d="M222 92 L234 84 L246 86 L258 72 L270 62 L282 42 L282 96 L222 96 Z" fill="url(#axArea)" />
+          <path
+            className="ax-line"
+            d="M222 92 L234 84 L246 86 L258 72 L270 62 L282 42"
+            fill="none"
+            stroke="#0B8A5C"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+          <circle className="ax-halo" cx="282" cy="42" r="7" fill="#19C37D" opacity=".25" />
+          <circle className="ax-pt" cx="282" cy="42" r="3.4" fill="#0B8A5C" />
+          <rect x="222" y="22" width="30" height="5" rx="2.5" fill="#33342F" opacity=".7" />
+        </g>
+      </svg>
+    </div>
   )
 }
 
-function FlowArrow() {
-  return (
-    <span aria-hidden className="hidden items-center justify-center lg:flex">
-      <span className="h-2 w-2 rounded-full bg-[color:var(--g-brand)]" />
-      <span className="h-px w-8 bg-[color:var(--g-brand)] opacity-60" />
-      <ArrowRight className="-ml-1 h-3 w-3 text-[color:var(--g-brand)]" weight="bold" />
-    </span>
-  )
+function count(n: number | null, one: string, many: string): string | null {
+  if (n == null) return null
+  return `${n.toLocaleString("en-US")} ${n === 1 ? one : many}`
+}
+
+export function abilityStatus(ability: Ability): string {
+  if (!ability.enabled) return "Turned off"
+  const mode = ability.mode ?? "balanced"
+  return `${mode.charAt(0).toUpperCase()}${mode.slice(1)}${mode === "balanced" ? " (recommended)" : ""}`
 }
 
 export function HowGravitreThinks({
@@ -453,10 +684,10 @@ export function HowGravitreThinks({
   actions,
   awaiting,
   summary,
-  routes,
   abilities,
-  onModeChange,
-  savingAbility,
+  onOpenKnowledge,
+  onOpenAbility,
+  onSeeActivity,
 }: {
   apps: Connector[]
   entities: number | null
@@ -464,116 +695,112 @@ export function HowGravitreThinks({
   actions: number | null
   awaiting: number | null
   summary: string | null
-  routes: { knowledge: string; activity: string }
   abilities: Ability[]
-  /** Admins only: how readily each ability adds optional evidence to answers. */
-  onModeChange?: (id: Ability["id"], mode: NonNullable<Ability["mode"]>) => void
-  savingAbility?: Ability["id"] | null
+  onOpenKnowledge: () => void
+  onOpenAbility: (ability: Ability) => void
+  onSeeActivity: () => void
 }) {
   const [open, setOpen] = useState(false)
-  const count = (value: number | null, one: string, many: string) =>
-    value == null ? null : `${value.toLocaleString("en-US")} ${value === 1 ? one : many}`
-  const actionLine = [
+  const knowledgeLine =
+    entities != null
+      ? `${entities.toLocaleString("en-US")} facts from ${apps.length} ${apps.length === 1 ? "app" : "apps"}, kept fresh automatically.`
+      : apps.length > 0
+        ? `Facts from ${apps.length} connected ${apps.length === 1 ? "app" : "apps"}, kept fresh automatically.`
+        : "Connect an app and Gravitre starts learning how your business works."
+  const actionParts = [
     count(recommendations, "recommendation", "recommendations"),
-    count(actions, "action taken", "actions taken"),
-    count(awaiting, "waiting for you", "waiting for you"),
+    actions != null ? `${actions.toLocaleString("en-US")} ${actions === 1 ? "action" : "actions"} taken` : null,
+    awaiting != null ? `${awaiting.toLocaleString("en-US")} waiting for you` : null,
   ].filter(Boolean)
   return (
-    <section aria-labelledby="overview-thinks-heading" className="space-y-3">
-      <div>
-        <h2 id="overview-thinks-heading" className="text-[17px] font-semibold text-[color:var(--g-text-primary)]">
-          How Gravitre thinks
-        </h2>
-        <p className="mt-0.5 text-[13px] text-[color:var(--g-text-secondary)]">
-          Your knowledge goes in, Gravitre reasons about it, and useful actions come out. Nothing is changed in your apps
-          without the approvals you set.
-        </p>
-      </div>
-      <div className="rounded-[18px] border border-[color:var(--g-border-default)] bg-[linear-gradient(135deg,var(--g-brand-surface),var(--g-surface-2))] p-4 sm:p-7">
-        <div className="grid grid-cols-1 items-stretch gap-4 lg:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)_auto_minmax(0,1fr)] lg:gap-2">
-          <article className="flex flex-col rounded-[14px] border border-[color:var(--g-border-default)] bg-[color:var(--g-surface-1)] p-4">
-            <div className="h-24 rounded-[10px] bg-[color:var(--g-surface-2)] p-2">
-              <KnowledgeArt apps={apps} />
-            </div>
-            <p className={cn(EYEBROW, "mt-4")}>Knowledge</p>
-            <h3 className="mt-1 text-[15px] font-semibold text-[color:var(--g-text-primary)]">Your connected data</h3>
-            <p className="mt-1 text-[13px] leading-relaxed text-[color:var(--g-text-secondary)]">
-              {entities != null
-                ? `${entities.toLocaleString("en-US")} things from ${apps.length} ${apps.length === 1 ? "app" : "apps"}, kept fresh as they sync.`
-                : "What your connected apps tell Gravitre, kept fresh as they sync."}
-            </p>
-            <Link href={routes.knowledge} className={cn(GREEN_LINK, "mt-auto pt-3")}>
-              See what it knows
-            </Link>
-          </article>
-          <FlowArrow />
-          <article className="flex flex-col rounded-[14px] bg-[color:var(--g-carbon,#141513)] p-4 text-white dark:border dark:border-[color:var(--g-border-default)]">
-            <span className="grid h-8 w-8 place-items-center rounded-[9px] bg-white/10 text-[color:var(--g-brand)]">
-              <Sparkle className="h-4 w-4" weight="fill" aria-hidden />
+    <section aria-labelledby="think-h" style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+      <SectionHead
+        id="think-h"
+        title="How Gravitre thinks"
+        sub="Your knowledge goes in, Gravitre reasons about it, and useful actions come out. Nothing is changed in your apps without the approvals you set."
+      />
+      <div className="io-card io-think">
+        <div className="io-mesh" aria-hidden />
+        <div className="io-grid" aria-hidden />
+        <div className="io-flow">
+          <div className="io-stage io-rise io-d1">
+            <KnowledgeArt apps={apps} />
+            <span className="io-eyebrow">Knowledge</span>
+            <span style={{ fontSize: 17, fontWeight: 600 }}>Your connected data</span>
+            <span data-io-muted style={{ fontSize: 14, lineHeight: 1.5, ...IO_TEXT.muted }}>
+              {knowledgeLine}
             </span>
-            <p className="mt-4 font-mono text-[11px] ig-caps tracking-[0.12em] text-[color:var(--g-brand)]">Intelligence</p>
-            <h3 className="mt-1 text-[15px] font-semibold">Understands, predicts and explains</h3>
-            <p className="mt-1 text-[13px] leading-relaxed text-white/70">
+            <button type="button" className="io-link" style={{ fontSize: 13 }} onClick={onOpenKnowledge}>
+              See what it knows
+            </button>
+          </div>
+          <div className="io-pipe" aria-hidden>
+            <span className="io-pulse" />
+            <span className="io-pulse b" />
+          </div>
+          <div className="io-stage core io-rise io-d2">
+            <span className="io-sicon">
+              <Ico d={PATHS.sparks} size={20} width={1.8} />
+            </span>
+            <span className="io-eyebrow" style={{ color: "#19C37D" }}>
+              Intelligence
+            </span>
+            <span style={{ fontSize: 17, fontWeight: 600 }}>Understands, predicts and explains</span>
+            <span style={{ fontSize: 14, color: "#CBCBC3", lineHeight: 1.5 }}>
               Seven abilities work together on every question, using only what is relevant.
-            </p>
-            {open ? (
-              <ul id="overview-seven-abilities" className="mt-3 space-y-1.5">
-                {abilities.map((ability) => (
-                  <li key={ability.id} className="flex items-start justify-between gap-3 text-[12.5px] leading-snug text-white/80">
-                    <span className="min-w-0">
-                      <span className="font-semibold text-white">{ability.label}.</span> {ability.detail}
-                    </span>
-                    {onModeChange && ability.mode ? (
-                      <select
-                        aria-label={`${ability.label} setting`}
-                        value={ability.mode}
-                        disabled={savingAbility === ability.id}
-                        onChange={(event) => onModeChange(ability.id, event.target.value as NonNullable<Ability["mode"]>)}
-                        className="h-7 shrink-0 rounded-[7px] border border-white/20 bg-white/5 px-1.5 text-[12px] text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--g-brand)] disabled:opacity-60"
-                      >
-                        {ABILITY_MODES.map((mode) => (
-                          <option key={mode.id} value={mode.id} className="text-black">
-                            {mode.label}
-                          </option>
-                        ))}
-                      </select>
-                    ) : ability.mode ? (
-                      <span className="shrink-0 rounded-full bg-white/10 px-2 py-0.5 text-[11.5px] text-white/80">
-                        {ABILITY_MODES.find((mode) => mode.id === ability.mode)?.label}
-                      </span>
-                    ) : null}
-                  </li>
-                ))}
-              </ul>
-            ) : null}
+            </span>
             <button
               type="button"
-              aria-expanded={open}
-              aria-controls="overview-seven-abilities"
+              className={open ? "io-toggle open" : "io-toggle"}
               onClick={() => setOpen((v) => !v)}
-              className="mt-auto inline-flex w-fit items-center gap-1.5 self-start rounded-full border border-white/25 px-3 py-1.5 text-[12.5px] font-medium text-white hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--g-brand)]"
-              style={{ marginTop: open ? 12 : undefined }}
+              aria-expanded={open}
             >
               {open ? "Hide the seven abilities" : "See the seven abilities"}
-              <CaretDown className={cn("h-3 w-3 transition-transform", open && "rotate-180")} weight="bold" aria-hidden />
+              <Ico d={PATHS.chevron} />
             </button>
-          </article>
-          <FlowArrow />
-          <article className="flex flex-col rounded-[14px] border border-[color:var(--g-border-default)] bg-[color:var(--g-surface-1)] p-4">
-            <div className="h-24 rounded-[10px] bg-[color:var(--g-surface-2)] p-2">
-              <ActionsArt />
-            </div>
-            <p className={cn(EYEBROW, "mt-4")}>Actions</p>
-            <h3 className="mt-1 text-[15px] font-semibold text-[color:var(--g-text-primary)]">Recommendations and results</h3>
-            <p className="mt-1 text-[13px] leading-relaxed text-[color:var(--g-text-secondary)]">
-              {actionLine.length > 0 ? `${actionLine.join(", ")}.` : "What Gravitre suggested, did and is waiting on."}
-            </p>
-            <Link href={routes.activity} className={cn(GREEN_LINK, "mt-auto pt-3")}>
+          </div>
+          <div className="io-pipe" aria-hidden>
+            <span className="io-pulse" />
+            <span className="io-pulse b" />
+          </div>
+          <div className="io-stage io-rise io-d3">
+            <ActionsArt />
+            <span className="io-eyebrow">Actions</span>
+            <span style={{ fontSize: 17, fontWeight: 600 }}>Recommendations and results</span>
+            <span data-io-muted style={{ fontSize: 14, lineHeight: 1.5, ...IO_TEXT.muted }}>
+              {actionParts.length > 0 ? `${actionParts.join(", ")}.` : "Recommendations and finished work show up here."}
+            </span>
+            <button type="button" className="io-link" style={{ fontSize: 13 }} onClick={onSeeActivity}>
               See the activity
-            </Link>
-          </article>
+            </button>
+          </div>
         </div>
-        {summary ? <p className="mt-5 text-[13.5px] text-[color:var(--g-text-primary)]">{summary}</p> : null}
+        {open ? (
+          <div className="io-abil" style={{ position: "relative" }}>
+            {abilities.map((ability, i) => (
+              <button
+                key={ability.id}
+                type="button"
+                className="io-ab"
+                style={{ animationDelay: `${(i * 0.04).toFixed(2)}s` }}
+                onClick={() => onOpenAbility(ability)}
+              >
+                <span className="io-abi">
+                  <Ico d={ability.path} size={15} width={1.9} />
+                </span>
+                <span style={{ fontSize: 13.5, fontWeight: 600, lineHeight: 1.3 }}>{ability.label}</span>
+                <span data-io-muted style={{ fontSize: 12, ...IO_TEXT.muted }}>
+                  {abilityStatus(ability)}
+                </span>
+              </button>
+            ))}
+          </div>
+        ) : null}
+        {summary ? (
+          <p data-io-body style={{ position: "relative", margin: "22px 0 0", fontSize: 14, ...IO_TEXT.body }}>
+            {summary}
+          </p>
+        ) : null}
       </div>
     </section>
   )
@@ -581,174 +808,159 @@ export function HowGravitreThinks({
 
 // ---------------------------------------------------------------- recent insights and activity
 
-const KIND_META: Record<FeedKind, { label: string; icon: ReactNode; tile: string; badge: string }> = {
-  recommendation: {
-    label: "Recommendation",
-    icon: <Sparkle className="h-4 w-4" weight="bold" aria-hidden />,
-    tile: "bg-[color:var(--g-brand-surface)] text-[color:var(--g-brand-active)] dark:text-[color:var(--g-brand)]",
-    badge: "bg-[color:var(--g-brand-soft)] text-[color:var(--g-brand-active)] dark:text-[color:var(--g-brand)]",
-  },
-  action: {
-    label: "Action",
-    icon: <Check className="h-4 w-4" weight="bold" aria-hidden />,
-    tile: "bg-[color:var(--g-signal-surface)] text-[color:var(--g-signal)]",
-    badge: "bg-[color:var(--g-signal-soft)] text-[color:var(--g-signal)]",
-  },
-  insight: {
-    label: "Insight",
-    icon: <Lightbulb className="h-4 w-4" weight="bold" aria-hidden />,
-    tile: "bg-[color:var(--g-approval-surface)] text-[color:var(--g-approval)]",
-    badge: "bg-[color:var(--g-approval-soft)] text-[color:var(--g-approval)]",
-  },
-  outcome: {
-    label: "Outcome",
-    icon: <ChartLineUp className="h-4 w-4" weight="bold" aria-hidden />,
-    tile: "bg-[color:var(--g-surface-2)] text-[color:var(--g-text-secondary)]",
-    badge: "bg-[color:var(--g-surface-2)] text-[color:var(--g-text-secondary)]",
-  },
-}
+export type SweepStep = { name: string; state: "done" | "on" | "wait" }
+export type SweepView =
+  | { status: "running"; pct: number; steps: SweepStep[] }
+  | { status: "done"; text: string }
+  | { status: "idle" }
 
 export function RecentActivity({
+  id,
   items,
   loading,
-  onDismiss,
+  filter,
+  onFilter,
+  sweep,
+  newIds,
+  onOpen,
   onSelect,
-  onShare,
-  onReview,
-  id,
 }: {
+  id?: string
   items: FeedItem[]
   loading: boolean
-  onDismiss?: (cardId: string) => void
+  filter: FeedKind | "all"
+  onFilter: (filter: FeedKind | "all") => void
+  sweep: SweepView
+  /** Items that appeared after the last "Analyze my business". */
+  newIds: Set<string>
+  onOpen: (item: FeedItem) => void
+  /** The item under the pointer or focus becomes Ask Gravitre's context. */
   onSelect?: (item: FeedItem) => void
-  /** Opens the item in a side panel instead of following its link; return false to follow the link. */
-  onReview?: (item: FeedItem) => boolean
-  /** Opens "Share this finding" for an insight or suggestion. */
-  onShare?: (item: FeedItem) => void
-  id?: string
 }) {
-  const [filter, setFilter] = useState<FeedKind | "all">("all")
-  const shown = (filter === "all" ? items : items.filter((item) => item.kind === filter)).slice(0, 8)
+  const visible = filter === "all" ? items : items.filter((item) => item.kind === filter)
+  const empty =
+    filter === "all"
+      ? "Nothing yet. As agents run and forecasts come in, what Gravitre noticed, did and learned shows up here."
+      : `No ${FEED_FILTERS.find((f) => f.id === filter)?.label.toLowerCase()} yet.`
   return (
-    <section id={id} aria-labelledby="overview-feed-heading" className="scroll-mt-6 space-y-3">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <h2 id="overview-feed-heading" className="text-[17px] font-semibold text-[color:var(--g-text-primary)]">
-            Recent insights and activity
-          </h2>
-          <p className="mt-0.5 text-[13px] text-[color:var(--g-text-secondary)]">
-            What Gravitre noticed, did, and learned. Open any item for the details.
-          </p>
-        </div>
-        <div
-          role="tablist"
-          aria-label="Filter activity"
-          className="flex w-full gap-0.5 overflow-x-auto rounded-full bg-[color:var(--g-surface-2)] p-1 [scrollbar-width:none] sm:w-auto"
-        >
+    <section id={id} aria-labelledby="feed-h" style={{ display: "flex", flexDirection: "column", gap: 18, scrollMarginTop: 24 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", gap: 16, flexWrap: "wrap" }}>
+        <SectionHead
+          id="feed-h"
+          title="Recent insights and activity"
+          sub="What Gravitre noticed, did, and learned. Open any item for the details."
+        />
+        <div className="io-seg" role="tablist" aria-label="Filter activity">
           {FEED_FILTERS.map((f) => (
             <button
               key={f.id}
               type="button"
               role="tab"
               aria-selected={filter === f.id}
-              onClick={() => setFilter(f.id)}
-              className={cn(
-                "min-h-8 shrink-0 rounded-full px-3 text-[12.5px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                filter === f.id
-                  ? "bg-[color:var(--g-surface-1)] text-[color:var(--g-text-primary)] shadow-sm"
-                  : "text-[color:var(--g-text-secondary)] hover:text-[color:var(--g-text-primary)]",
-              )}
+              className={filter === f.id ? "on" : ""}
+              onClick={() => onFilter(f.id)}
             >
               {f.label}
             </button>
           ))}
         </div>
       </div>
-      <div className={cn(CARD, "overflow-hidden")}>
-        {loading && items.length === 0 ? (
-          <p className="p-6 text-[13px] text-[color:var(--g-text-muted)]">Loading recent activity…</p>
-        ) : shown.length === 0 ? (
-          <div className="p-8 text-center">
-            <p className="text-[14px] font-medium text-[color:var(--g-text-primary)]">
-              {filter === "all" ? "Nothing here yet" : `No ${FEED_FILTERS.find((f) => f.id === filter)?.label.toLowerCase()} yet`}
-            </p>
-            <p className="mx-auto mt-1 max-w-md text-[13px] text-[color:var(--g-text-secondary)]">
-              Forecasts, suggestions, agent actions and confirmed results appear here as your connected apps sync and
-              agents run.
-            </p>
+      {sweep.status === "running" ? (
+        <div className="sw-banner" role="status" aria-live="polite">
+          <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+            <span style={{ fontSize: 14, fontWeight: 600 }}>Analyzing your business</span>
+            <span data-io-muted style={{ fontSize: 13, flex: 1, ...IO_TEXT.muted }}>
+              Re-reading your connected apps, using only data you are allowed to see. New findings will appear here.
+            </span>
+            <span className="io-mono" data-io-muted style={{ fontSize: 12, ...IO_TEXT.muted }}>
+              {sweep.pct}%
+            </span>
           </div>
-        ) : (
-          <ul className="divide-y divide-[color:var(--g-border-subtle)]">
-            {shown.map((item) => {
-              const meta = KIND_META[item.kind]
-              const when = relativeTime(item.at)
-              return (
-                <li
-                  key={item.id}
-                  className="flex gap-4 px-4 py-4 sm:px-5"
-                  onPointerEnter={() => onSelect?.(item)}
-                  onFocus={() => onSelect?.(item)}
-                >
-                  <span className={cn("mt-0.5 grid h-9 w-9 shrink-0 place-items-center rounded-[10px]", meta.tile)}>
-                    {meta.icon}
+          <div className="sw-bar">
+            <span style={{ width: `${Math.max(6, sweep.pct)}%` }} />
+          </div>
+          <div style={{ display: "flex", gap: 18, flexWrap: "wrap" }}>
+            {sweep.steps.map((step) => (
+              <span key={step.name} className="sw-app">
+                <span className={step.state === "done" ? "sw-st ok" : step.state === "on" ? "sw-st on" : "sw-st"} />
+                {step.name}
+                <span data-io-faint style={IO_TEXT.faint}>
+                  {step.state === "done" ? "Done" : step.state === "on" ? "Reading" : "Waiting"}
+                </span>
+              </span>
+            ))}
+          </div>
+        </div>
+      ) : null}
+      {sweep.status === "done" ? (
+        <div className="sw-done" role="status" style={{ marginTop: 0 }}>
+          <span className="io-dot" style={{ background: "#19C37D" }} />
+          <span style={{ flex: 1 }}>{sweep.text}</span>
+        </div>
+      ) : null}
+      <div className="io-card io-feed" style={{ overflow: "hidden" }}>
+        {sweep.status === "running" || (loading && items.length === 0) ? (
+          <>
+            <div className="sw-skel">
+              <span className="sw-sk1" />
+              <span className="sw-sk2" />
+            </div>
+            <div className="sw-skel">
+              <span className="sw-sk1" />
+              <span className="sw-sk2" />
+            </div>
+          </>
+        ) : null}
+        {!loading && visible.length === 0 && sweep.status !== "running" ? (
+          <p data-io-muted style={{ margin: 0, padding: "22px 24px", fontSize: 14, ...IO_TEXT.muted }}>
+            {empty}
+          </p>
+        ) : null}
+        {visible.map((item) => {
+          const k = KIND[item.kind]
+          const when = relativeTime(item.at)
+          const meta = [...item.meta, when].filter(Boolean).join(" · ")
+          return (
+            <button
+              key={item.id}
+              type="button"
+              className="io-item"
+              onClick={() => onOpen(item)}
+              onPointerEnter={() => onSelect?.(item)}
+              onFocus={() => onSelect?.(item)}
+            >
+              <span className="io-itile" style={{ background: k.bg, color: k.fg }}>
+                <Ico d={k.path} size={19} width={1.8} round />
+              </span>
+              <span style={{ display: "flex", flexDirection: "column", gap: 4, minWidth: 0 }}>
+                <span style={{ fontSize: 15, fontWeight: 600, lineHeight: 1.35 }}>
+                  {item.title}
+                  {newIds.has(item.id) ? <span className="sw-new">New</span> : null}
+                </span>
+                <span data-io-muted style={{ fontSize: 14, lineHeight: 1.5, ...IO_TEXT.muted }}>
+                  {item.detail}
+                </span>
+                {item.suggestion ? (
+                  <span className="io-fixpill">
+                    <Ico d={PATHS.play} size={13} />
+                    {item.suggestionLabel ?? "Suggested"}: {item.suggestion}
                   </span>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-[14px] font-semibold leading-snug text-[color:var(--g-text-primary)]">{item.title}</p>
-                    {item.detail ? (
-                      <p className="mt-0.5 text-[13px] leading-relaxed text-[color:var(--g-text-secondary)]">{item.detail}</p>
-                    ) : null}
-                    {item.suggestion ? (
-                      <span className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-[color:var(--g-brand-surface)] px-2.5 py-1 text-[12px] font-medium text-[color:var(--g-brand-active)] dark:text-[color:var(--g-brand)]">
-                        <Play className="h-3 w-3" weight="fill" aria-hidden />
-                        {item.suggestionLabel ?? "Suggested"}: {item.suggestion}
-                      </span>
-                    ) : null}
-                    {item.meta.length > 0 || when ? (
-                      <p className="mt-1.5 text-[12px] text-[color:var(--g-text-muted)]">
-                        {[...item.meta, when].filter(Boolean).join(" · ")}
-                      </p>
-                    ) : null}
-                  </div>
-                  <div className="flex shrink-0 flex-col items-end gap-2 sm:flex-row sm:items-center">
-                    <span className={cn("hidden rounded-full px-2 py-0.5 text-[11.5px] font-medium sm:inline", meta.badge)}>
-                      {meta.label}
-                    </span>
-                    <Button asChild variant="outline" size="sm" className="h-8 rounded-[9px] px-3 text-[12.5px]">
-                      <Link
-                        href={item.href}
-                        onClick={(event) => {
-                          if (onReview?.(item)) event.preventDefault()
-                        }}
-                      >
-                        {item.actionLabel}
-                      </Link>
-                    </Button>
-                    {onShare && (item.kind === "insight" || item.kind === "recommendation") ? (
-                      <button
-                        type="button"
-                        onClick={() => onShare(item)}
-                        aria-label={`Share ${item.title}`}
-                        className="inline-flex items-center gap-1 text-[12px] text-[color:var(--g-text-muted)] underline-offset-2 hover:text-[color:var(--g-text-primary)] hover:underline"
-                      >
-                        <ShareNetwork className="h-3.5 w-3.5" aria-hidden />
-                        Share
-                      </button>
-                    ) : null}
-                    {item.cardId && onDismiss ? (
-                      <button
-                        type="button"
-                        onClick={() => onDismiss(item.cardId!)}
-                        className="text-[12px] text-[color:var(--g-text-muted)] underline-offset-2 hover:text-[color:var(--g-text-primary)] hover:underline"
-                      >
-                        Dismiss
-                      </button>
-                    ) : null}
-                  </div>
-                </li>
-              )
-            })}
-          </ul>
-        )}
+                ) : null}
+                {meta ? (
+                  <span data-io-faint style={{ fontSize: 12.5, ...IO_TEXT.faint }}>
+                    {meta}
+                  </span>
+                ) : null}
+              </span>
+              <span style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <span className="io-kind" style={{ background: k.bg, color: k.fg }}>
+                  {k.label}
+                </span>
+                <span className="io-btn">{item.actionLabel}</span>
+              </span>
+            </button>
+          )
+        })}
       </div>
     </section>
   )

@@ -83,3 +83,19 @@ def test_baseline_adaptive_evidence_remains_enabled_for_optional_requested_work(
         {"requires_prediction": True}, {"defer_optional": True}, {},
     )
     assert not any(deferred.values())
+
+
+def test_turned_off_ability_does_no_work_and_shows_no_evidence():
+    from app.services.intelligence_overview_policy import apply_response_sensitivity, select_enrichment_work
+    policy = normalize_policy({"causal": {"mode": "proactive", "enabled": False}, "temporal": {"enabled": False}})
+    assert policy["causal"] == "off"
+    assert policy["temporal"] == "balanced"
+    work = select_enrichment_work({"requires_causal": True, "requires_prediction": True}, {}, policy)
+    assert work["causal"] is False
+    assert work["predictive"] is True
+    out = apply_response_sensitivity(
+        {"enrichments": {"capabilities": {"causal": {"status": "ok", "confidence": 0.99, "data": {"x": 1}}}}}, policy
+    )
+    slot = out["enrichments"]["capabilities"]["causal"]
+    assert "data" not in slot
+    assert slot["suppression_reason"] == "turned_off"

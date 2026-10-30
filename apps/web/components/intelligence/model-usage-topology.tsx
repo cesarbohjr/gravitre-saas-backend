@@ -9,6 +9,7 @@
  */
 import { TYPE } from "@/lib/design-system"
 import { cn } from "@/lib/utils"
+import "@/components/intelligence/shell/intel-motion.css"
 
 export type ModelUsageRow = {
   id: string
@@ -20,24 +21,8 @@ export type ModelUsageRow = {
 }
 
 function Connector({ live }: { live: boolean }) {
-  return (
-    <svg className="hidden h-2 w-full md:block" viewBox="0 0 56 8" preserveAspectRatio="none" aria-hidden>
-      {live ? (
-        <line x1="4" y1="4" x2="52" y2="4" className="g-topology-path g-motion-route" strokeDasharray="6 6" />
-      ) : (
-        <line
-          x1="4"
-          y1="4"
-          x2="52"
-          y2="4"
-          stroke="var(--g-border-strong)"
-          strokeWidth={2}
-          strokeDasharray="1.5 3.5"
-          strokeLinecap="round"
-        />
-      )}
-    </svg>
-  )
+  // The design's connector: moving dashes while live, a dotted line when not.
+  return <div className={cn("hidden md:block", live ? "ig-flow" : "ig-idle")} aria-hidden />
 }
 
 const COLUMN_LABEL = "font-mono text-[10px] uppercase tracking-[0.1em] text-[color:var(--g-text-muted)]"
@@ -109,17 +94,13 @@ export function ModelUsageTopology({
                     : "border border-dashed border-[color:var(--g-border-strong)] bg-[color:var(--g-surface-1)]",
                 )}
               >
-                <span className="relative flex h-2 w-2 shrink-0" aria-hidden>
-                  {row.live ? (
-                    <span className="g-live-ping absolute inline-flex h-full w-full rounded-full bg-[color:var(--g-brand)] opacity-60" />
-                  ) : null}
-                  <span
-                    className={cn(
-                      "relative inline-flex h-2 w-2 rounded-full",
-                      row.live ? "bg-[color:var(--g-brand)]" : "bg-[color:var(--g-text-disabled)]",
-                    )}
-                  />
-                </span>
+                <span
+                  aria-hidden
+                  className={cn(
+                    "h-2 w-2 shrink-0 rounded-full",
+                    row.live ? "ig-live bg-[color:var(--g-brand)]" : "bg-[color:var(--g-text-disabled)]",
+                  )}
+                />
                 <span className="min-w-0">
                   <span
                     className={cn(

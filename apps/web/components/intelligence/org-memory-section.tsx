@@ -10,7 +10,7 @@
 import { useEffect, useState } from "react"
 import Link from "next/link"
 import { toast } from "@/components/intelligence/overlays/toast"
-import { ArrowCounterClockwise, Brain, Sparkle } from "@phosphor-icons/react"
+import { ArrowCounterClockwise, Sparkle } from "@phosphor-icons/react"
 import { ErrorState } from "@/components/gravitre/empty-state"
 import { Button } from "@/components/ui/button"
 import { ApiError } from "@/lib/fetcher"
@@ -18,6 +18,7 @@ import { memoryPromotionApi } from "@/lib/api"
 import { APP_ROUTES } from "@/lib/app-routes"
 import { TYPE } from "@/lib/design-system"
 import { cn } from "@/lib/utils"
+import { MemoryArt } from "@/components/intelligence/knowledge/memory-art"
 import { MemoryPipeline } from "@/components/intelligence/knowledge/memory-pipeline"
 import {
   KNOWLEDGE_CARD,
@@ -111,10 +112,8 @@ function QueueEmpty({ filter, memory }: { filter: MemoryQueueFilter; memory: Org
   const target = memory.watchedAgents.find((a) => a.status !== "processing") ?? memory.watchedAgents[0] ?? null
   return (
     <div className="flex flex-col items-center gap-2.5 rounded-[14px] border-[1.5px] border-dashed border-[color:var(--g-border-default)] px-5 py-7 text-center">
-      <span className="grid h-11 w-11 place-items-center rounded-[12px] bg-[color:var(--g-surface-2)]">
-        <Brain className="h-5 w-5 text-[color:var(--g-text-secondary)]" aria-hidden />
-      </span>
-      <strong className="text-sm font-semibold text-[color:var(--g-text-primary)]">No real candidates yet</strong>
+      <MemoryArt />
+      <strong className="mt-1 text-[15px] font-semibold text-[color:var(--g-text-primary)]">No real candidates yet</strong>
       <span className="max-w-[340px] text-[13px] leading-relaxed text-[color:var(--g-text-secondary)]">
         They appear here once an agent sees the same fact across several runs.{" "}
         {!memory.agentsLoaded
