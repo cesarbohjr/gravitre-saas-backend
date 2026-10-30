@@ -245,6 +245,72 @@ def run():
             clean(candidate['id'])
             evidence['playwright_real_gvisor_denied_navigation_no_dispatch']='PASS'
             print(json.dumps({'completed_runtime_checks':evidence},sort_keys=True))
+            # Match both browser implementations at the actual submit boundary.
+            # Navigation is approved; denial/cancellation must fence the next click.
+            safety_rows=[]
+            for adapter_name, tested_runner in (('browser_use',runner),('playwright',candidate_runner)):
+                for mode in ('denied','cancelled'):
+                    state.update(kind='browser_use',calls=0,browser_page_observed=False,
+                        browser_submitted=False,browser_context_checks=[])
+                    journal_root=root/('safety-'+adapter_name+'-'+mode)
+                    journal_root.mkdir(mode=0o700)
+                    journal=Journal(str(journal_root/'journal.sqlite3'),Fernet.generate_key())
+                    scope=AdapterScope('fixture-org','fixture-agent','fixture-'+adapter_name+'-'+mode)
+                    payload=job('browser_use')['payload']
+                    job_id=journal.enqueue(scope,'browser_use','submit-intent',payload,ttl=3600,max_attempts=1)
+                    controlled_job=journal.claim('browser_use',lease_seconds=600)
+                    assert controlled_job['id']==job_id
+                    requested=[]
+                    def safety_guard():
+                        if not journal.active(controlled_job):
+                            raise LeaseLost('fixture_browser_job_cancelled')
+                        return route
+                    def review_submit(sequence,action):
+                        assert sequence==len(requested) and sequence in (0,1)
+                        assert len(action['page_fingerprint'])==64
+                        request=journal.request_action(controlled_job,sequence,action)
+                        requested.append(sequence)
+                        if sequence==0:
+                            assert action['actions']=={'navigate':{'url':'https://www.selenium.dev/selenium/web/web-form.html'}}
+                            journal.approve(scope,job_id,request['id'],request['digest'],True)
+                            return journal.request_action(controlled_job,sequence,action)
+                        assert set(action['actions'])=={'click'}
+                        if mode=='denied':
+                            journal.approve(scope,job_id,request['id'],request['digest'],False)
+                            return {'state':'denied'}
+                        # Approval cannot survive a cancellation in the durable
+                        # authority, even if the worker just received approved.
+                        journal.approve(scope,job_id,request['id'],request['digest'],True)
+                        assert journal.cancel(scope,job_id)
+                        return {'state':'approved'}
+                    try:
+                        try:
+                            tested_runner.execute(controlled_job,guard=safety_guard,action_gate=review_submit)
+                        except (LeaseLost,PermissionError,RuntimeError):
+                            assert requested==[0,1], 'Worker failed before the reviewed submit boundary'
+                        else:
+                            raise AssertionError(adapter_name+' completed a '+mode+' submit')
+                    finally:
+                        tested_runner.cleanup(job_id)
+                        clean(job_id)
+                    assert journal.get(scope,job_id)['state']=='cancelled'
+                    assert not journal.active(controlled_job)
+                    assert journal.claim('browser_use') is None
+                    assert journal.actions(scope,job_id)==[]
+                    try:
+                        journal.request_action(controlled_job,2,{'actions':{'click':{'index':1}}})
+                    except LeaseLost:
+                        pass
+                    else:
+                        raise AssertionError('Cancelled action journal accepted another dispatch')
+                    # A post-cancel model readback must never report submission.
+                    assert not state.get('browser_submitted')
+                    evidence[adapter_name+'_real_gvisor_'+mode+'_submit_fenced']='PASS'
+                    safety_rows.append({'adapter':adapter_name,'scenario':mode,
+                        'requested_sequences':requested,'journal_state':'cancelled',
+                        'post_cancel_claim':False,'stale_action_rejected':True,'resources_cleaned':True})
+                    print(json.dumps({'completed_runtime_checks':evidence},sort_keys=True))
+            evidence['browser_safety_scenarios']=safety_rows
             # Matched real-runsc revocation boundary for both browser engines.
             # The approval callback revokes the host-owned lease before the
             # candidate or Browser Use may send its final /authorize request.
