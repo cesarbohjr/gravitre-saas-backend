@@ -10,10 +10,41 @@ permissions:
   contents: read
 jobs:
   live-provider:
-    uses: ./.github/workflows/isolated-acceptance.yml
-    with:
-      suite: voice
-    secrets: inherit
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: acceptance
+    env:
+      APP_ENV: dev
+      DEEPGRAM_API_KEY: ${{ secrets.ACCEPTANCE_DEEPGRAM_API_KEY }}
+      ELEVENLABS_API_KEY: ${{ secrets.ACCEPTANCE_ELEVENLABS_API_KEY }}
+      ELEVENLABS_VOICE_ID: ${{ vars.ACCEPTANCE_ELEVENLABS_VOICE_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Check dedicated provider credentials without disclosing values
+        run: |
+          python - <<'PY'
+          import json, os, pathlib
+          missing = [name for name in ('DEEPGRAM_API_KEY', 'ELEVENLABS_API_KEY') if not os.environ.get(name)]
+          if missing:
+              p = pathlib.Path('acceptance-results/provider-roundtrip.json')
+              p.parent.mkdir(parents=True, exist_ok=True)
+              p.write_text(json.dumps({'status': 'NOT RUN', 'blockers': ['missing:' + n for n in missing], 'certified': False}))
+              print('Live provider NOT RUN: missing dedicated acceptance credentials: ' + ', '.join(missing))
+              raise SystemExit(2)
+          print('Dedicated provider credentials present; values withheld')
+          PY
+      - name: Install existing provider runner dependencies
+        run: python -m pip install -r backend/requirements-dev.txt
+      - name: Execute bounded real-provider audio and final write-gate acceptance
+        run: python scripts/verify-voice-provider-roundtrip.py --output acceptance-results/provider-roundtrip.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: voice-live-provider-boundaries
+          path: acceptance-results/provider-roundtrip.json
   governed-actions:
     runs-on: ubuntu-latest
     timeout-minutes: 25
