@@ -225,6 +225,22 @@ class Journal:
         token=str(uuid4())
         with self.connect() as db:
             db.execute('BEGIN IMMEDIATE')
+            # The existence of a checkpoint alone is insufficient: require a
+            # validated pre-effect marker inside the same reservation transaction.
+            checkpoint=db.execute("""
+                SELECT c.payload,c.sequence FROM browser_checkpoints c
+                JOIN jobs j ON j.id=c.job
+                WHERE j.id=? AND j.org=? AND j.agent=? AND j.run=?
+                  AND j.kind='browser_use' AND j.state='uncertain'
+                  AND j.phase='fallback_fenced' AND j.lease IS NULL
+                  AND j.expires_at>?
+                  AND NOT EXISTS(SELECT 1 FROM action_requests a WHERE a.job=j.id)
+            """,(job_id,scope.org_id,scope.agent_id,scope.run_id,time.time())).fetchone()
+            if checkpoint is None or checkpoint['sequence']!=0:
+                raise LeaseLost('Verified pre-effect checkpoint required')
+            marker=self._open(checkpoint['payload'])
+            if not isinstance(marker,dict) or marker.get('before_effect') is not True:
+                raise LeaseLost('Verified pre-effect checkpoint required')
             changed=db.execute("""
                 UPDATE jobs SET phase='fallback_reserved',lease=?
                 WHERE id=? AND org=? AND agent=? AND run=?
