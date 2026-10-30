@@ -214,7 +214,10 @@ class Journal:
             """,(job_id,scope.org_id,scope.agent_id,scope.run_id,time.time())).fetchone()
         if not row:return None
         checkpoint=self._open(row['payload'])
-        if checkpoint.get('before_effect') is not True:return None
+        if row['sequence']!=0 or not isinstance(checkpoint,dict) or checkpoint.get('before_effect') is not True:
+            return None
+        # A recovery candidate is only advisory; the atomic reservation must
+        # revalidate the marker under its own transaction.
         return {'sequence':row['sequence'],'checkpoint':checkpoint}
 
     def claim_fenced_handoff(self, scope: AdapterScope, job_id: str) -> str:
