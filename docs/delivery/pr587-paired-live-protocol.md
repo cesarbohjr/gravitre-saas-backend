@@ -155,3 +155,14 @@ roles and grew each conversation from two to four messages. Both spoken cancel
 transcripts were classified as reject by the canonical classifier. These are
 single-trial observations on one fixed generative case, not an engine-selection
 benchmark, physical acoustic cutoff, semantic memory score or complete Gate 3.
+
+Pinned-recording run `41136278659` on `b4fb667`, artifact `13017297749`,
+retained both source PCM hashes and passed seven of eight scenarios. LiveKit
+spoken cancellation failed its 500 ms end-relative cutoff: 793.58 ms. This
+failure supersedes any claim that the earlier single successful trial establishes
+reliable cancellation latency. All four stopped workers still hit
+`write_commit_interrupted`; the independent sink recorded zero attempts and
+effects for those workers, with one positive-control attempt and effect.
+The candidate now flushes native RTC playout when the canonical pipeline emits
+`speech.interrupted`, covering spoken ingress as well as RTC control ingress.
+That change requires a new paired live run; it is not certified by inspection.

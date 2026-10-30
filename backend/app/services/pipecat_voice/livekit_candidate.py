@@ -202,6 +202,11 @@ class LiveKitCandidateSocket:
                 self._output_reply_id = reply_id
             await self._source.capture_frame(rtc.AudioFrame(pcm, 24000, 1, len(pcm) // 2))
         else:
+            # Spoken barge-in enters through STT rather than the RTC control
+            # channel. Flush native playout on the canonical interruption too;
+            # dropping future Pipecat frames cannot retract already queued PCM.
+            if (message.get("event") or message.get("type")) == "speech.interrupted":
+                self._source.clear_queue()
             await self.room.local_participant.publish_data(
                 json.dumps(message).encode(), reliable=True, topic="gravitre-events",
                 destination_identities=[self.participant_identity],

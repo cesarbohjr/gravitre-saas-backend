@@ -163,3 +163,21 @@ async def test_pipeline_failure_is_not_hidden_by_disconnect_monitor(candidate_mo
     with pytest.raises(RuntimeError, match="pipeline failed"):
         await candidate_module._run_until_disconnect(run(), asyncio.Event(), cancel)
     cancel.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_spoken_interruption_flushes_native_playout_before_event(candidate_module):
+    order = []
+    async def published(*args, **kwargs):
+        order.append("published")
+    room = SimpleNamespace(local_participant=SimpleNamespace(publish_data=published))
+    socket = candidate_module.LiveKitCandidateSocket(room, participant_identity="replay-user")
+    source = socket._source
+    try:
+        socket._source = SimpleNamespace(clear_queue=lambda: order.append("flushed"))
+        await socket.send_json({"type": "event", "event": "speech.interrupted"})
+        assert order == ["flushed", "published"]
+    finally:
+        socket._source = source
+        await socket.close()
+
