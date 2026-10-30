@@ -434,7 +434,7 @@ describe("CES 2.0 KF-A normalize (decision A)", () => {
   })
 })
 
-describe("CES 2.0 Pilot 1 mobile topology", () => {
+describe("CES 2.0 Pilot 1 mobile hub", () => {
   it("does not use ring-spin in mobile core", async () => {
     const { readFileSync } = await import("node:fs")
     const { resolve } = await import("node:path")
@@ -445,8 +445,7 @@ describe("CES 2.0 Pilot 1 mobile topology", () => {
       ),
       "utf8",
     )
-    expect(src).toMatch(/topologyForCoreState/)
-    expect(src).toMatch(/mobile-topology-svg/)
+    expect(src).toMatch(/mobile-hub-core/)
     expect(src).not.toMatch(/animate-spin/)
   })
 })
