@@ -13,6 +13,8 @@ def test_browser_fence_revokes_lease_and_never_queues_replay(tmp_path):
     job_id = journal.enqueue(scope, "browser_use", "identity", {"task": {}}, actor="actor")
     job = journal.claim("browser_use")
     assert job["id"] == job_id
+    journal.save_browser_checkpoint(job, 0, {"url": "https://example.com", "before_effect": True})
+    assert journal.browser_checkpoint(scope, job_id)["sequence"] == 0
     assert journal.fence_browser_for_fallback(job, checkpoint_before_effect=True) is True
     assert not journal.active(job)
     assert journal.get(scope, job_id)["state"] == "uncertain"
@@ -33,3 +35,21 @@ def test_checkpoint_with_prior_action_requires_reconciliation(tmp_path):
     assert journal.fence_browser_for_fallback(job, checkpoint_before_effect=True) is False
     assert journal.get(scope, job_id)["phase"] == "fallback_reconcile"
     assert journal.claim("browser_use") is None
+
+
+def test_checkpoint_cannot_follow_action_or_lost_lease(tmp_path):
+    private = tmp_path / "private"
+    private.mkdir(mode=0o700)
+    journal = Journal(str(private / "journal.sqlite"), Fernet.generate_key())
+    scope = AdapterScope("org", "agent", "run")
+    journal.enqueue(scope, "browser_use", "identity", {"task": {}}, actor="actor")
+    job = journal.claim("browser_use")
+    journal.save_browser_checkpoint(job, 0, {"before_effect": True})
+    with pytest.raises(ValueError):
+        journal.save_browser_checkpoint(job, 0, {"before_effect": True})
+    journal.request_action(job, 0, {"type": "click"})
+    with pytest.raises(PermissionError):
+        journal.save_browser_checkpoint(job, 1, {"before_effect": True})
+    assert journal.fence_browser_for_fallback(job, checkpoint_before_effect=True) is False
+    with pytest.raises(LeaseLost):
+        journal.save_browser_checkpoint(job, 2, {"before_effect": True})
