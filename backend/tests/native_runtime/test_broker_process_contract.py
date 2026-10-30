@@ -57,3 +57,46 @@ assert browser_adapter_benchmark.PlaywrightSession
     environment={**os.environ,'PYTHONPATH':os.pathsep.join(sys.path)}
     result=subprocess.run([sys.executable,'-c',script],env=environment,capture_output=True,timeout=10)
     assert result.returncode==0,result.stderr.decode()
+
+
+def test_capability_protected_receiver_rejects_unauthorized_effect(tmp_path):
+    from urllib.error import HTTPError
+    fixture=IndependentFixture(tmp_path/'counter.sqlite3',b'<h1>Fixture</h1>',capability='fixture-capability')
+    try:
+        for token in ('','incorrect'):
+            request=urllib.request.Request(fixture.origin+'/write',data=json.dumps({'cap':token}).encode(),
+                headers={'Content-Type':'application/json'},method='POST')
+            try:urllib.request.urlopen(request,timeout=2)
+            except HTTPError as error:assert error.code==403
+            else:raise AssertionError('Unauthorized receiver write accepted')
+        assert fixture.writes==0
+        with urllib.request.urlopen(urllib.request.Request(fixture.origin+'/write',
+            data=b'{"cap":"fixture-capability"}',headers={'Content-Type':'application/json'},method='POST'),timeout=2) as response:
+            assert response.status==204
+        assert fixture.writes==1
+        fixture.register_capability('second-case')
+        assert fixture.count('fixture-capability')==1 and fixture.count('second-case')==0
+        with urllib.request.urlopen(urllib.request.Request(fixture.origin+'/write',
+            data=b'{"cap":"second-case"}',headers={'Content-Type':'application/json'},method='POST'),timeout=2) as response:
+            assert response.status==204
+        assert fixture.count('fixture-capability')==1 and fixture.count('second-case')==1 and fixture.writes==2
+    finally:fixture.close()
+
+
+def test_receiver_commit_precedes_delayed_acknowledgement(tmp_path):
+    import threading,time
+    fixture=IndependentFixture(tmp_path/'counter.sqlite3',b'<h1>Fixture</h1>',capability='fixture-capability')
+    response=[]
+    try:
+        fixture.hold=True
+        def post():
+            with urllib.request.urlopen(urllib.request.Request(fixture.origin+'/write',
+                data=b'{"cap":"fixture-capability"}',headers={'Content-Type':'application/json'},method='POST'),timeout=5) as value:
+                response.append(value.status)
+        thread=threading.Thread(target=post);thread.start()
+        deadline=time.monotonic()+3
+        while fixture.writes!=1 and time.monotonic()<deadline:time.sleep(.05)
+        assert fixture.writes==1 and not response
+        fixture.hold=False;thread.join(timeout=3)
+        assert response==[204]
+    finally:fixture.hold=False;fixture.close()

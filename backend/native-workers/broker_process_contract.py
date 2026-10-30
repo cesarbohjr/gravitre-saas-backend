@@ -1,6 +1,8 @@
 """Certification-only process boundaries; no production transport or permissions."""
 from __future__ import annotations
 import json
+import hmac
+import hashlib
 import multiprocessing as mp
 import os
 from pathlib import Path
@@ -11,11 +13,17 @@ import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 
-def _fixture(pipe, path, page):
+def _fixture(pipe, path, page, capability=None):
+    # Public test receiver has no need for application, CI or database credentials.
+    for name in tuple(os.environ):
+        if name.startswith(('SUPABASE_','E2E_','NATIVE_','ACTIONS_','GITHUB_')) or name.endswith(('_KEY','_TOKEN','_SECRET','_PASSWORD')):
+            os.environ.pop(name,None)
+    allowed_caps={hashlib.sha256(capability.encode()).hexdigest()} if capability is not None else set()
     lock=threading.Lock()
     with sqlite3.connect(path) as db:
-        db.execute('CREATE TABLE writes (id INTEGER PRIMARY KEY)')
+        db.execute('CREATE TABLE writes (id INTEGER PRIMARY KEY, cap_hash TEXT)')
     mutated=False
+    release=threading.Event();release.set()
     class Handler(BaseHTTPRequestHandler):
         def log_message(self,*_):pass
         def do_GET(self):
@@ -24,33 +32,61 @@ def _fixture(pipe, path, page):
             if self.path=='/page':data,kind=page,'text/html'
             elif self.path=='/state':data,kind=json.dumps({'mutated':mutated}).encode(),'application/json'
             else:self.send_error(404);return
-            self.send_response(200);self.send_header('Content-Type',kind);self.send_header('Content-Length',str(len(data)));self.end_headers();self.wfile.write(data)
+            self.send_response(200);self.send_header('Content-Type',kind);self.send_header('Cache-Control','no-store');self.send_header('Content-Length',str(len(data)));self.end_headers();self.wfile.write(data)
         def do_POST(self):
             if self.path!='/write':self.send_error(404);return
+            cap_hash=None
+            if capability is not None:
+                try:
+                    size=int(self.headers.get('Content-Length','0'))
+                    if not 0<size<=4096:raise ValueError('bounds')
+                    token=json.loads(self.rfile.read(size)).get('cap','')
+                    if not isinstance(token,str):raise ValueError('shape')
+                    cap_hash=hashlib.sha256(token.encode()).hexdigest()
+                    if not any(hmac.compare_digest(cap_hash,value) for value in tuple(allowed_caps)):raise ValueError('scope')
+                except Exception:
+                    self.send_error(403);return
             # Only this independent server owns the committed write counter.
             with lock, sqlite3.connect(path) as db:
                 db.execute('PRAGMA synchronous=FULL')
-                db.execute('INSERT INTO writes DEFAULT VALUES')
+                db.execute('INSERT INTO writes(cap_hash) VALUES(?)',(cap_hash,))
+            release.wait(10)
             self.send_response(204);self.end_headers()
-    server=ThreadingHTTPServer(('127.0.0.1',0),Handler)
+    class Server(ThreadingHTTPServer):
+        daemon_threads=True
+        request_queue_size=16
+        slots=threading.BoundedSemaphore(16)
+        def get_request(self):
+            connection,address=super().get_request();connection.settimeout(5);return connection,address
+        def process_request(self,request,address):
+            if not self.slots.acquire(blocking=False):self.shutdown_request(request);return
+            try:super().process_request(request,address)
+            except BaseException:self.slots.release();raise
+        def process_request_thread(self,request,address):
+            try:super().process_request_thread(request,address)
+            finally:self.slots.release()
+    server=Server(('127.0.0.1',0),Handler)
     thread=threading.Thread(target=server.serve_forever,daemon=True);thread.start()
     pipe.send({'port':server.server_port,'pid':os.getpid()})
     try:
         while True:
             command,value=pipe.recv()
             if command=='close':break
-            if command=='mutate':mutated=value;pipe.send(True)
+            if command=='register_cap':allowed_caps.add(value);pipe.send(True)
+            elif command=='hold':
+                release.clear() if value else release.set();pipe.send(True)
+            elif command=='mutate':mutated=value;pipe.send(True)
             elif command=='count':
                 with lock, sqlite3.connect(path) as db:
-                    pipe.send(db.execute('SELECT COUNT(*) FROM writes').fetchone()[0])
+                    pipe.send(db.execute('SELECT COUNT(*) FROM writes WHERE cap_hash=?',(value,)).fetchone()[0] if value is not None else db.execute('SELECT COUNT(*) FROM writes').fetchone()[0])
             else:raise ValueError('Unknown fixture operation')
-    finally:server.shutdown();server.server_close();thread.join(timeout=3);pipe.close()
+    finally:release.set();server.shutdown();server.server_close();thread.join(timeout=3);pipe.close()
 
 
 class IndependentFixture:
-    def __init__(self,path,page):
+    def __init__(self,path,page,*,capability=None):
         context=mp.get_context('spawn');self.pipe,child=context.Pipe()
-        self.process=context.Process(target=_fixture,args=(child,str(path),page))
+        self.process=context.Process(target=_fixture,args=(child,str(path),page,capability))
         self.process.start();child.close()
         ready=self._receive();self.pid=ready['pid'];self.origin='http://127.0.0.1:'+str(ready['port'])
         assert self.pid!=os.getpid()
@@ -59,11 +95,20 @@ class IndependentFixture:
         return self.pipe.recv()
     @property
     def writes(self):self.pipe.send(('count',None));return self._receive()
+    def register_capability(self,token):
+        self.pipe.send(('register_cap',hashlib.sha256(token.encode()).hexdigest()));assert self._receive() is True
+    def count(self,token):
+        self.pipe.send(('count',hashlib.sha256(token.encode()).hexdigest()));return self._receive()
     @property
     def mutated(self):return self._mutated if hasattr(self,'_mutated') else False
     @mutated.setter
     def mutated(self,value):
         self.pipe.send(('mutate',bool(value)));assert self._receive() is True;self._mutated=bool(value)
+    @property
+    def hold(self):return getattr(self,'_hold',False)
+    @hold.setter
+    def hold(self,value):
+        self.pipe.send(('hold',bool(value)));assert self._receive() is True;self._hold=bool(value)
     def close(self):
         if self.process.is_alive():self.pipe.send(('close',None))
         self.process.join(timeout=5)

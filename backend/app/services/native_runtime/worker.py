@@ -27,7 +27,7 @@ from app.services.tool_types import ToolContext
 
 logger=get_logger(__name__)
 
-def build_app():
+def build_app(*, runner_factory=None):
     settings=get_settings();client=get_supabase_client(settings)
     journal=Journal(os.environ['NATIVE_JOURNAL_PATH'],os.environ['NATIVE_JOURNAL_KEY'].encode())
     signer=IntakeSigner(settings.native_worker_signing_key)
@@ -62,7 +62,7 @@ def build_app():
             require_access(ToolContext(settings,client,scope.org_id,actor,agent_id=scope.agent_id,run_id=scope.run_id),'telemetry')
             return True
         except Exception:return False
-    runtime=NativeRuntime(journal,settings,client,DockerRunner(images),route_for)
+    runtime=NativeRuntime(journal,settings,client,(runner_factory if runner_factory is not None else DockerRunner)(images),route_for)
     outbox=LangfuseOutbox(journal,bytes.fromhex(os.environ['NATIVE_CORRELATION_KEY']),transport_for,export_allowed=export_allowed)
     app=create_app(runtime,outbox,signer)
     stop=threading.Event();threads=[]

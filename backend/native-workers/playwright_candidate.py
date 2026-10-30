@@ -114,6 +114,9 @@ async def run(config, *, browser=None):
                 await page.wait_for_url("https://www.selenium.dev/selenium/web/submitted-form.html*", timeout=10000)
                 if await page.locator("#message").inner_text(timeout=10000) != "Received!":
                     raise AssertionError("Fixture submission readback failed")
+            else:
+                # The owned HTTPS fixture acknowledges only a committed server effect.
+                await page.wait_for_function("document.querySelector('#result')?.textContent === 'Written'", timeout=15000)
             return {"observations": [{"summary": "Comparison candidate completed one reviewed fixture click.", "url": url}], **result}
         finally:
             await instance.close()

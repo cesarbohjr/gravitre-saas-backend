@@ -132,3 +132,95 @@ jobs:
             browser-adapter-evidence.json
             browser-adapter-image.id
           if-no-files-found: error
+
+  tenant-worker-certification:
+    name: Persisted tenant authorization and full worker lifecycle
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    needs: pinned-sdk-imports
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    environment: acceptance
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: backend/requirements-dev.txt
+      - name: Refuse absent or non-acceptance credentials
+        env:
+          E2E_SUPABASE_URL: ${{ secrets.E2E_SUPABASE_URL }}
+          E2E_SUPABASE_ALLOWED_URL: ${{ vars.E2E_SUPABASE_ALLOWED_URL }}
+          E2E_SUPABASE_ANON_KEY: ${{ secrets.E2E_SUPABASE_ANON_KEY }}
+          E2E_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.E2E_SUPABASE_SERVICE_ROLE_KEY }}
+          E2E_SUPABASE_JWT_SECRET: ${{ secrets.E2E_SUPABASE_JWT_SECRET }}
+        run: |
+          python - <<'PY'
+          import json,os
+          from pathlib import Path
+          names=('E2E_SUPABASE_URL','E2E_SUPABASE_ALLOWED_URL','E2E_SUPABASE_ANON_KEY','E2E_SUPABASE_SERVICE_ROLE_KEY','E2E_SUPABASE_JWT_SECRET')
+          missing=[name for name in names if not os.environ.get(name)]
+          allowed='https://aadnwmjzrmbvadszroqt.supabase.co'
+          valid=not missing and os.environ['E2E_SUPABASE_URL'].rstrip('/')==allowed and os.environ['E2E_SUPABASE_ALLOWED_URL'].rstrip('/')==allowed
+          if not valid:
+              Path('native-tenant-worker-evidence.json').write_text(json.dumps({'status':'BLOCKED','failure_stage':'acceptance_configuration','missing_names':missing})+'\n')
+              raise SystemExit('Dedicated acceptance configuration required; no fallback to production')
+          PY
+      - name: Install real backend and process-test dependencies
+        run: python -m pip install -r backend/requirements-dev.txt
+      - name: Verify owned receiver and real process contracts
+        env:
+          APP_ENV: dev
+        run: python -m pytest -q backend/tests/native_runtime/test_broker_process_contract.py
+      - name: Install pinned verified gVisor runtime
+        run: |
+          curl --fail --location --silent --show-error https://github.com/google/gvisor/releases/download/release-20261026.0/gvisor-x86_64.tar.zstd -o /tmp/gvisor.tar.zstd
+          echo '708afc62f2ee82d19930c703e85f9dab4f27a78c0aec40c0f55eb1040107f1a7  /tmp/gvisor.tar.zstd' | sha256sum --check
+          sudo tar --zstd -xf /tmp/gvisor.tar.zstd -C /usr/local/bin
+          sudo /usr/local/bin/runsc install
+          sudo systemctl reload docker
+          runsc --version
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: native-sdk-image-*
+          merge-multiple: true
+          path: ${{ runner.temp }}/native-images
+      - name: Load exactly the images that passed SDK contracts
+        timeout-minutes: 5
+        run: |
+          set -euo pipefail
+          for engine in openhands browser; do
+            zstd --decompress --stdout "$RUNNER_TEMP/native-images/$engine-image.tar.zst" | docker load
+            test "$(docker image inspect native-sdk:$engine --format '{{.Id}}')" = "$(cat "$RUNNER_TEMP/native-images/$engine-image.id")"
+            docker tag native-sdk:$engine native-$engine
+          done
+      - name: Build scoped gateway and comparison images
+        run: |
+          docker build -f backend/native-workers/Dockerfile.gateway -t native-gateway backend
+          docker build -f backend/native-workers/Dockerfile.playwright-comparison -t native-playwright-comparison backend
+      - name: Start immutable local certification registry
+        run: docker run -d --name native-cert-registry -p 127.0.0.1:5050:5000 mirror.gcr.io/library/registry@sha256:a3d8aaa63ed8681a604f1dea0aa03f100d5895b6a58ace528858a7b332415373
+      - name: Install hash-verified ephemeral test tunnel
+        run: |
+          curl --fail --location --silent --show-error https://github.com/cloudflare/cloudflared/releases/download/2026.10.6/cloudflared-linux-amd64 -o "$RUNNER_TEMP/cloudflared"
+          echo "1d356dac769d0dbf62ebe588c4034824bbff98d5790c2f844cc99e0e2f57462d  $RUNNER_TEMP/cloudflared" | sha256sum --check
+          chmod 700 "$RUNNER_TEMP/cloudflared"
+          "$RUNNER_TEMP/cloudflared" --version
+      - name: Execute both real workers through persisted acceptance IAM
+        timeout-minutes: 30
+        env:
+          E2E_SUPABASE_URL: ${{ secrets.E2E_SUPABASE_URL }}
+          E2E_SUPABASE_ALLOWED_URL: ${{ vars.E2E_SUPABASE_ALLOWED_URL }}
+          E2E_SUPABASE_ANON_KEY: ${{ secrets.E2E_SUPABASE_ANON_KEY }}
+          E2E_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.E2E_SUPABASE_SERVICE_ROLE_KEY }}
+          E2E_SUPABASE_JWT_SECRET: ${{ secrets.E2E_SUPABASE_JWT_SECRET }}
+          CLOUDFLARED_BIN: ${{ runner.temp }}/cloudflared
+          NATIVE_TENANT_EVIDENCE: native-tenant-worker-evidence.json
+        run: python backend/native-workers/tenant_worker_contract.py
+      - name: Publish sanitized tenant and lifecycle evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: native-tenant-worker-certification
+          path: native-tenant-worker-evidence.json
+          if-no-files-found: warn
