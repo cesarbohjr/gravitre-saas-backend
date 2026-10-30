@@ -9,10 +9,12 @@ import contextlib
 from datetime import datetime, timezone
 import hashlib
 import json
+import logging
 import os
 from pathlib import Path
 import sys
 import time
+import traceback
 import uuid
 import wave
 
@@ -20,6 +22,25 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "backend"))
 
 TARGET = "https://aadnwmjzrmbvadszroqt.supabase.co"
 PROMPT = "Please explain why the sky is blue in two short sentences."
+
+
+class SanitizedDiagnostics(logging.Handler):
+    def __init__(self, output):
+        super().__init__(logging.ERROR)
+        self.output = output
+        self.rows = []
+
+    def emit(self, record):
+        if not record.exc_info or len(self.rows) >= 50:
+            return
+        kind, error, tb = record.exc_info
+        message = str(error).lower()
+        self.rows.append({"error_type": kind.__name__,
+            "http_status": getattr(error, "status_code", None) if type(getattr(error, "status_code", None)) is int else None,
+            "categories": [word for word in ("anthropic", "openai", "missing", "credit", "permission", "budget", "model", "column", "relation", "key", "settings") if word in message],
+            "frames": [{"file": Path(f.filename).name, "line": f.lineno, "function": f.name}
+                       for f in traceback.extract_tb(tb)[-12:]]})
+        self.output.write_text(json.dumps(self.rows, indent=2))
 
 
 def guard(env):
@@ -47,9 +68,18 @@ class Capture:
         self.first = None
         self.last = None
         self.events = {}
+        self.authorization = {}
+        self.scenario = "baseline"
+        self.reply_id = None
+        self.speech_by_reply = {}
+        self.interrupt_at = None
+        self.interrupted_reply = None
+        self.errors = []
 
-    def audio(self, pcm):
+    def audio(self, pcm, reply_id=None):
         import numpy as np
+        if reply_id is not None:
+            self.reply_id = reply_id
         self.pcm.extend(pcm)
         # RTC emits silence before synthesis. First packet is not first speech.
         if pcm and float(np.sqrt(np.mean(np.frombuffer(pcm, dtype="<i2").astype(float) ** 2))) > 100:
@@ -57,10 +87,33 @@ class Capture:
             if self.started is not None and self.first is None:
                 self.first = now
             self.last = now
+            self.speech_by_reply[self.reply_id] = now
 
     def event(self, message):
+        if message.get("type") == "audio.reply":
+            self.reply_id = message.get("reply_id")
         kind = message.get("event") or message.get("type", "unknown")
         self.events[str(kind)] = self.events.get(str(kind), 0) + 1
+        if kind == "error":
+            text = json.dumps(message).lower()
+            self.errors.append({"fields": sorted(message), "categories": [word for word in
+                ("anthropic", "openai", "deepgram", "elevenlabs", "401", "403", "429", "credit",
+                 "missing", "model", "permission", "budget", "settings", "validation", "database", "timeout")
+                if word in text]})
+
+    async def interrupt(self, send, running):
+        deadline = time.monotonic() + 75
+        while self.first is None:
+            if running.done():
+                await running
+                raise RuntimeError("session ended before interruption trial")
+            if time.monotonic() > deadline:
+                raise TimeoutError("no generated speech to interrupt")
+            await asyncio.sleep(.01)
+        await asyncio.sleep(.25)
+        self.interrupted_reply = self.reply_id
+        self.interrupt_at = time.monotonic()
+        await send()
 
     async def settle(self, running):
         deadline = time.monotonic() + 75
@@ -123,6 +176,14 @@ async def websocket_trial(settings, org, actor, cid, pcm, capture):
             if serving.done():
                 await serving
             await asyncio.sleep(.05)
+        try:
+            async with websockets.connect("ws://127.0.0.1:8769/acceptance",
+                additional_headers={"Authorization": "Bearer invalid-acceptance-token"}):
+                raise AssertionError("unauthenticated controller WebSocket accepted")
+        except websockets.exceptions.InvalidStatus as error:
+            if error.response.status_code != 403:
+                raise
+            capture.authorization["invalid_websocket_token_denied"] = True
         async with websockets.connect("ws://127.0.0.1:8769/acceptance?audio_origin=user_mic",
             additional_headers={"Authorization": "Bearer " + os.environ["PLATFORM_LIVE_BEARER_TOKEN"]}) as ws:
             await asyncio.wait_for(ready.wait(), 30)
@@ -132,7 +193,7 @@ async def websocket_trial(settings, org, actor, cid, pcm, capture):
                 async for raw in ws:
                     message = json.loads(raw)
                     if message.get("type") == "audio":
-                        capture.audio(base64.b64decode(message["pcm16_b64"]))
+                        capture.audio(base64.b64decode(message["pcm16_b64"]), message.get("reply_id"))
                     else:
                         capture.event(message)
             receiving = asyncio.create_task(receive())
@@ -140,6 +201,8 @@ async def websocket_trial(settings, org, actor, cid, pcm, capture):
                 await asyncio.sleep(2)
                 capture.started = time.monotonic()
                 await stream_ws(ws, pcm + bytes(32000 * 2))
+                if capture.scenario == "interrupt":
+                    await capture.interrupt(lambda: ws.send(json.dumps({"type": "interrupt"})), receiving)
                 await capture.settle(receiving)
             finally:
                 receiving.cancel()
@@ -185,6 +248,9 @@ async def livekit_trial(settings, org, actor, cid, pcm, capture):
         await asyncio.sleep(2)
         capture.started = time.monotonic()
         await publish(source, pcm + bytes(32000 * 2), 16000)
+        if capture.scenario == "interrupt":
+            await capture.interrupt(lambda: peer.local_participant.publish_data(
+                b'{"type":"interrupt"}', reliable=True, topic="gravitre-control"), worker)
         await capture.settle(worker)
     finally:
         await peer.disconnect()
@@ -219,6 +285,7 @@ async def main():
     import numpy as np
     output = Path("acceptance-results/paired-live")
     output.mkdir(parents=True, exist_ok=True)
+    logging.getLogger().addHandler(SanitizedDiagnostics(output / "pipeline-failures.json"))
     client = create_client(TARGET, os.environ["SUPABASE_SERVICE_ROLE_KEY"])
     actor = os.environ["ISOLATED_CONVERSATION_TEST_USER_ID"]
     org = os.environ["ISOLATED_CONVERSATION_TEST_ORG_ID"]
@@ -226,7 +293,8 @@ async def main():
         raise ValueError("actor mismatch")
     membership = client.table("organization_members").select("user_id").eq("org_id", org).eq("user_id", actor).execute().data
     organization = client.table("organizations").select("settings").eq("id", org).single().execute().data
-    if not membership or organization["settings"].get("never_customer_visible") is not True:
+    if (not membership or organization["settings"].get("never_customer_visible") is not True
+            or organization["settings"].get("isolated_conversation_test_org") is not True):
         raise ValueError("isolated membership missing")
     settings = get_settings()
     voice = os.environ.get("ELEVENLABS_VOICE_ID") or "EXAVITQu4vr4xnSDxMaL"
@@ -244,34 +312,90 @@ async def main():
         "input_origin": "synthetic prerecorded speech, synthesized once for both transports", "trials": [],
         "certified": False, "human_quality_review": "NOT RUN", "write_governance_certification": "NOT RUN",
         "interruption": "NOT RUN", "reconnection": "NOT RUN"}
-    for engine, trial in (("pipecat", websocket_trial), ("livekit", livekit_trial)):
-        cid = str(uuid.uuid4())
+    conversations = {}
+    for scenario, engine, trial in ((scenario, engine, trial) for scenario in ("baseline", "interrupt", "reconnect")
+            for engine, trial in (("pipecat", websocket_trial), ("livekit", livekit_trial))):
+        cid = conversations.get(engine) if scenario == "reconnect" else str(uuid.uuid4())
+        if not cid:
+            raise RuntimeError("missing initial conversation for reconnect")
         since = datetime.now(timezone.utc).isoformat()
-        client.table("conversations").insert({"id": cid, "org_id": org, "user_id": actor, "title": "Internal acceptance " + engine}).execute()
+        if scenario != "reconnect":
+            client.table("conversations").insert({"id": cid, "org_id": org, "user_id": actor, "title": "Internal acceptance " + engine}).execute()
+        if scenario == "baseline":
+            conversations[engine] = cid
         capture = Capture()
-        row = {"engine": engine, "conversation_id": cid, "status": "FAIL"}
+        capture.scenario = scenario
+        row = {"engine": engine, "scenario": scenario, "conversation_id": cid, "status": "FAIL"}
+        before_roles = [r["role"] for r in client.table("conversation_messages").select("role").eq("conversation_id", cid).execute().data]
+        row["durable_messages_before"] = len(before_roles)
+        trial_started = time.monotonic()
         try:
             await trial(settings, org, actor, cid, pcm, capture)
             samples = np.frombuffer(capture.pcm, dtype="<i2").astype(float)
             if capture.first is None or len(samples) < 2400:
                 raise AssertionError("no generated speech")
             row.update(status="PASS", first_speech_from_input_start_ms=round((capture.first-capture.started)*1000, 2),
+                session_start_to_first_speech_ms=round((capture.first-trial_started)*1000, 2),
                 first_speech_from_input_end_ms=round((capture.first-capture.started-len(pcm)/32000)*1000, 2),
                 output_duration_s=len(samples)/24000, output_pcm_sha256=hashlib.sha256(capture.pcm).hexdigest(),
                 rms=float(np.sqrt(np.mean(samples**2))), clipping_fraction=float(np.mean(abs(samples)>=32760)))
+            if capture.interrupt_at is not None:
+                last = capture.speech_by_reply.get(capture.interrupted_reply)
+                cutoff = max(0, (last - capture.interrupt_at) * 1000) if last else None
+                row.update(received_original_reply_cutoff_ms=cutoff, acoustic_physical_cutoff="NOT RUN")
+                if cutoff is None or cutoff > 500:
+                    row.update(status="FAIL", error_type="OriginalReplyCutoffExceeded")
         except Exception as error:
-            row.update(error_type=type(error).__name__)
+            row.update(error_type=type(error).__name__,
+                error_frames=[{"file": Path(f.filename).name, "line": f.lineno, "function": f.name}
+                              for f in traceback.extract_tb(error.__traceback__)[-8:]])
             # Fixed stage diagnostics only; no provider bodies, transcripts or keys.
             print(engine + " failed: " + type(error).__name__, flush=True)
         finally:
-            wav(output / (engine + ".wav"), capture.pcm, 24000)
+            audio_path = output / (engine + "-" + scenario + ".wav")
+            wav(audio_path, capture.pcm, 24000)
+            if row["status"] == "PASS" and scenario != "interrupt":
+                with httpx.Client(timeout=45) as http:
+                    speech = http.post("https://api.deepgram.com/v1/listen", params={"model": "nova-3"},
+                        headers={"Authorization": "Token " + os.environ["DEEPGRAM_API_KEY"], "Content-Type": "audio/wav"},
+                        content=audio_path.read_bytes())
+                    if speech.status_code != 200:
+                        row.update(status="FAIL", output_stt_http_status=speech.status_code)
+                    else:
+                        transcript = speech.json()["results"]["channels"][0]["alternatives"][0]["transcript"].lower()
+                        valid = "blue" in transcript and any(word in transcript for word in ("scatter", "wavelength", "sunlight", "light"))
+                        row["answer_content_valid"] = valid
+                        if not valid:
+                            row.update(status="FAIL", error_type="GeneratedAnswerContentMismatch")
             row["events"] = capture.events
+            row["pipeline_errors"] = capture.errors
+            if capture.errors:
+                row.update(status="FAIL", error_type="PipelineErrorEvent")
+            row["authorization"] = capture.authorization
+            after_roles = [r["role"] for r in client.table("conversation_messages").select("role").eq("conversation_id", cid).execute().data]
+            row["durable_messages_after"] = len(after_roles)
+            if scenario == "reconnect":
+                row["durable_prior_user_and_assistant_present"] = all(role in before_roles for role in ("user", "assistant"))
+                if not row["durable_prior_user_and_assistant_present"]:
+                    row.update(status="FAIL", error_type="MissingDurablePriorConversation")
             row["independent_audit"] = independent_audit(client, org, cid, since)
             report["trials"].append(row)
+            report["interruption"] = "MEASURED_RECEIVER_PCM_ONLY" if any(r.get("received_original_reply_cutoff_ms") is not None for r in report["trials"]) else "NOT RUN"
+            report["reconnection"] = "FRESH_SESSION_SAME_CONVERSATION" if any(r["scenario"] == "reconnect" for r in report["trials"]) else "NOT RUN"
             (output / "manifest.json").write_text(json.dumps(report, indent=2))
     if not all(r["status"] == "PASS" for r in report["trials"]):
         raise SystemExit(2)
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    try:
+        asyncio.run(main())
+    except Exception as error:
+        output = Path("acceptance-results/paired-live")
+        output.mkdir(parents=True, exist_ok=True)
+        (output / "controller-failure.json").write_text(json.dumps({
+            "status": "FAIL", "error_type": type(error).__name__,
+            "frames": [{"file": Path(f.filename).name, "line": f.lineno, "function": f.name}
+                       for f in traceback.extract_tb(error.__traceback__)[-8:]],
+            "certified": False}, indent=2))
+        raise SystemExit(2)
