@@ -240,6 +240,7 @@ jobs:
         run: >-
           python -m pytest -q -p tests.offline_network_guard
           tests/scripts/test_voice_provider_roundtrip.py
+          tests/operators/test_agent_jobs_turn_cancellation.py
           tests/services/pipecat_voice/test_livekit_write_fence.py
           tests/services/pipecat_voice/test_phase3_provider_commit_gate.py
           tests/services/pipecat_voice/test_turn_scoped_cancellation.py

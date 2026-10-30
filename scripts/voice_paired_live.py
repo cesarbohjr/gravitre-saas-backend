@@ -132,6 +132,7 @@ class Capture:
         self.first = None
         self.last = None
         self.events = {}
+        self.event_timeline = []
         self.authorization = {}
         self.scenario = "baseline"
         self.reply_id = None
@@ -166,6 +167,17 @@ class Capture:
         if message.get("type") == "audio.reply":
             self.reply_id = message.get("reply_id")
         kind = message.get("event") or message.get("type", "unknown")
+        if self.started is not None and kind in {
+            'user-started-speaking', 'user-stopped-speaking', 'transcript',
+            'speech.duck', 'speech.unduck', 'speech.interrupted', 'audio.reply',
+            'assistant_turn.complete', 'bot-started-speaking', 'bot-stopped-speaking',
+        } and len(self.event_timeline) < 200:
+            # Timing only: transcript text and provider/credential bodies are
+            # deliberately excluded from portable diagnostic artifacts.
+            self.event_timeline.append({'event': kind,
+                'from_input_start_ms': round((time.monotonic() - self.started) * 1000, 2),
+                'reply_id': message.get('reply_id') if type(message.get('reply_id')) is int else None,
+                'final': message.get('final') if type(message.get('final')) is bool else None})
         self.events[str(kind)] = self.events.get(str(kind), 0) + 1
         if kind == "error":
             text = json.dumps(message).lower()
@@ -557,6 +569,7 @@ async def main():
                         if not valid:
                             row.update(status="FAIL", error_type="GeneratedAnswerContentMismatch")
             row["events"] = capture.events
+            row["event_timeline"] = capture.event_timeline
             row["pipeline_errors"] = capture.errors
             if capture.errors:
                 row.update(status="FAIL", error_type="PipelineErrorEvent")
