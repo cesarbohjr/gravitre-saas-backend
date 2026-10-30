@@ -11,10 +11,7 @@ import { Button } from "@/components/marketing/nodus/button"
 import { DivideX } from "@/components/marketing/nodus/divide"
 import { HeroImage } from "@/components/marketing/nodus/hero-image"
 import { MarketingPageEndCta, MarketingPageHero } from "@/components/marketing/nodus/page-shell"
-import {
-  AgentOrchestrationField,
-  EntityConvergenceWorkbenchField,
-} from "@/components/marketing/creative"
+import { AgentOrchestrationField } from "@/components/marketing/creative"
 import { ProductScreenshot } from "@/components/marketing/product-screenshot"
 import { GravitreReveal, GravitreTrace } from "@/components/marketing/system/motion"
 import { GravitreSection, GravitreSectionHeader } from "@/components/marketing/system/section"
@@ -32,7 +29,7 @@ const specPills = [
  */
 export function TechnologyPage() {
   return (
-    <div className="bg-[color:var(--g-marketing-canvas)]" data-technology-legacy="0" data-kf-production="workbench">
+    <div className="bg-[color:var(--g-marketing-canvas)]" data-technology-legacy="0">
       <MarketingPageHero
         badge="Platform technology"
         title={
@@ -114,26 +111,6 @@ export function TechnologyPage() {
         <GravitreTrace>
           <AgentOrchestrationField />
         </GravitreTrace>
-      </GravitreSection>
-
-      <DivideX />
-
-      <GravitreSection>
-        <GravitreSectionHeader
-          align="center"
-          badge="Knowledge Fabric"
-          title="Mentions converge when the match is exact"
-          description="An illustrative Entity Convergence field — normalize, exact-match, and evidence. Not fuzzy person matching. Not a live org graph."
-          className="mb-6"
-        />
-        <GravitreTrace>
-          <EntityConvergenceWorkbenchField />
-        </GravitreTrace>
-        <p className="mt-4 text-center text-[11px] text-[color:var(--g-text-muted)]">
-          <Link className="underline underline-offset-2" href="/docs/guides/how-to/sources">
-            How sources feed the fabric
-          </Link>
-        </p>
       </GravitreSection>
 
       <MarketingPageEndCta />
