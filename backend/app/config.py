@@ -19,6 +19,7 @@ class Settings(BaseSettings):
         env_file=(".env", "../.env"),  # repo root or backend/
         env_file_encoding="utf-8",
         extra="ignore",
+        hide_input_in_errors=True,
     )
 
     app_env: str = "dev"
@@ -26,6 +27,20 @@ class Settings(BaseSettings):
     supabase_anon_key: str
     supabase_service_role_key: str
     supabase_jwt_secret: str  # Legacy HS256 secret; ES256 tokens verified via JWKS
+
+    @field_validator("supabase_anon_key", "supabase_service_role_key", mode="before")
+    @classmethod
+    def _normalize_supabase_api_key(cls, value):
+        # Secrets copied from a file/form may retain a final newline. HTTP/2
+        # can normalize this while the canonical HTTP/1.1 pool rejects it as
+        # LocalProtocolError. Normalize token boundaries once, before clients
+        # are constructed; internal whitespace/control bytes are never valid.
+        if not isinstance(value, str):
+            return value
+        token = value.strip()
+        if not token or any(c.isspace() or ord(c) < 32 or ord(c) == 127 for c in token):
+            raise ValueError("Supabase API credentials must be nonempty single-line tokens")
+        return token
     # JWT validation: issuer must match (e.g. https://<project-ref>.supabase.co/auth/v1)
     supabase_jwt_issuer: str = ""
     # Optional; default "authenticated" used if empty
@@ -1649,3 +1664,4 @@ def get_settings() -> Settings:
     except ValidationError as exc:
         missing_fields = _extract_missing_fields(exc)
         raise SettingsNotConfiguredError(missing_fields=missing_fields) from exc
+

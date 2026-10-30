@@ -85,3 +85,13 @@ isolated model-router configuration. Neither correction alone certifies runtime.
 A separate direct database check confirmed zero connectors in the smoke tenant.
 Full business-write safety remains unexecuted until an isolated provider fixture
 is available; an empty audit result is not a substitute.
+
+Run `41132228873`, source `3036d227f43986c0e2dafbe31a120017096eb454`,
+artifact `13014460189`, reproduced the failure before any audio/provider work
+through the canonical service client. The validity-only request hook confirmed
+the correct acceptance host and configured key, a nonempty bearer, and control
+characters plus trailing whitespace in headers. No header values were exported.
+`Settings` now trims surrounding whitespace from Supabase API tokens, rejects
+empty/internal whitespace/control characters, and hides validation input values.
+The legacy JWT signing secret is unchanged. A loopback HTTP/1.1 regression uses
+the real canonical client and SDK with a newline-terminated fixture credential.

@@ -299,7 +299,7 @@ async def main():
             or organization["settings"].get("isolated_conversation_test_org") is not True):
         raise ValueError("isolated membership missing")
     settings = get_settings()
-    if settings.supabase_url.rstrip('/') != TARGET or settings.supabase_service_role_key != os.environ['SUPABASE_SERVICE_ROLE_KEY']:
+    if settings.supabase_url.rstrip('/') != TARGET or settings.supabase_service_role_key != os.environ['SUPABASE_SERVICE_ROLE_KEY'].strip():
         raise ValueError('canonical database settings differ from controller')
     from app.core.db import get_supabase_client
     canonical = get_supabase_client(settings)
@@ -308,8 +308,8 @@ async def main():
         headers = request.headers
         header_checks.append({
             'target_is_acceptance': request.url.host == 'aadnwmjzrmbvadszroqt.supabase.co',
-            'apikey_matches_configured_service_key': headers.get('apikey') == os.environ['SUPABASE_SERVICE_ROLE_KEY'],
-            'authorization_matches_configured_service_key': headers.get('authorization') == 'Bearer ' + os.environ['SUPABASE_SERVICE_ROLE_KEY'],
+            'apikey_matches_configured_service_key': headers.get('apikey') == settings.supabase_service_role_key,
+            'authorization_matches_configured_service_key': headers.get('authorization') == 'Bearer ' + settings.supabase_service_role_key,
             'authorization_is_empty_bearer': headers.get('authorization', '').strip().lower() == 'bearer',
             'header_has_control_character': any(any(ord(c) < 32 or ord(c) == 127 for c in value) for value in headers.values()),
             'header_has_trailing_whitespace': any(value != value.rstrip() for value in headers.values()),
