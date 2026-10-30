@@ -8,6 +8,7 @@ from typing import Any,Callable
 from app.services.native_agent_adapters import AdapterScope,openhands_review_plan,browser_use_review_plan
 from app.services.native_runtime.control import ACTIONS,require_access,require_member_and_agent,validate_task
 from app.services.native_runtime.store import Journal,LeaseLost
+from app.services.native_runtime.fallback_policy import RecoveryEvidence, RecoveryDecision, decide_recovery
 from app.services.tool_types import ToolContext
 from app.services.voice_barge_in_write import raise_if_barge_in_blocks_invoke
 from app.services.model_policy_service import assert_model_allowed,load_org_model_policy
@@ -93,6 +94,13 @@ class NativeRuntime:
         self.journal.consume_authority(claims['scope']['org_id'],claims['actor'],authority['ref'],'action:'+request_id+':'+digest+':'+str(approved))
         self.journal.approve(AdapterScope(**claims['scope']),job_id,request_id,digest,approved)
 
+    def _fallback_authorized(self, claims: dict) -> bool:
+        try:
+            self.authorize(claims)
+            return True
+        except Exception:
+            return False
+
     def tick(self,engine: str) -> str | None:
         job=self.journal.claim(engine,lease_seconds=60)
         if not job:return None
@@ -123,6 +131,31 @@ class NativeRuntime:
             return 'completed'
         except LeaseLost:
             return 'cancelled_or_lease_lost'
+        except (ConnectionError, TimeoutError) as failure:
+            # A transport timeout is not evidence that a browser action did not
+            # commit. Fence the old worker; do not schedule Playwright here.
+            if engine=='browser_use':
+                try:
+                    actions=self.journal.actions(job['scope'],job['id'])
+                    decision=decide_recovery(RecoveryEvidence(
+                        failure_kind='navigation_timeout' if isinstance(failure,TimeoutError) else 'browser_disconnected',
+                        job_active=self.journal.active(job),
+                        cancellation_requested=False,
+                        authorization_current=self._fallback_authorized(claims),
+                        lease_fenced=True,
+                        checkpoint_durable=False,
+                        checkpoint_before_effect=False,
+                        pending_action=bool(actions),
+                        effect_outcome_uncertain=bool(actions),
+                    ))
+                    if decision is not RecoveryDecision.STOP:
+                        self.journal.fence_browser_for_fallback(job,checkpoint_before_effect=False)
+                        return 'fallback_reconciliation_required'
+                except (LeaseLost,PermissionError):
+                    return 'cancelled_or_lease_lost'
+            try:self.journal.update(job,'failed',error='native_execution_failed')
+            except LeaseLost:pass
+            return 'failed'
         except Exception:
             try:self.journal.update(job,'failed',error='native_execution_failed')
             except LeaseLost:pass
