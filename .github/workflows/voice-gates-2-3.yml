@@ -45,7 +45,7 @@ jobs:
           if blockers: raise SystemExit(2)
           PY
       - name: Install read-only smoke identity verifier
-        run: python -m pip install 'supabase>=2,<3' 'PyJWT>=2.8,<3'
+        run: python -m pip install 'supabase==2.33.0' 'PyJWT==2.15.1'
       - name: Verify existing flagged smoke actor and membership; never provision one
         run: python scripts/mint_smoke_org_session.py --github-env
       - uses: actions/upload-artifact@v4
