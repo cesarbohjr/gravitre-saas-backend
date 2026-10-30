@@ -8,6 +8,7 @@
 import { useEffect, useState } from "react"
 import { motion, useReducedMotion } from "framer-motion"
 import { cn } from "@/lib/utils"
+import { NodusDotField } from "@/components/marketing/nodus/dot-field"
 
 export type TraceStage = {
   id: string
@@ -52,14 +53,7 @@ export function StageTraceVisual({
 
   return (
     <div className={cn("relative mx-auto w-full max-w-4xl", className)}>
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-0 rounded-[var(--g-marketing-radius)]"
-        style={{
-          background:
-            "radial-gradient(ellipse at 50% 40%, color-mix(in oklch, var(--color-brand) 7%, transparent), transparent 65%)",
-        }}
-      />
+      <NodusDotField className="-inset-x-8 -inset-y-6" />
       <svg
         viewBox={`0 0 ${width} 220`}
         className="relative h-auto w-full"
@@ -153,8 +147,8 @@ export function StageTraceVisual({
                   fill="none"
                   stroke="var(--color-brand, #0b8a5c)"
                   strokeWidth={1.5}
-                  initial={{ r: 14, opacity: 0 }}
-                  animate={{ r: [14, 14, 16, 24, 24], opacity: [0, 0, 0.55, 0, 0] }}
+                  initial={{ r: 20, opacity: 0 }}
+                  animate={{ r: [20, 20, 22, 30, 30], opacity: [0, 0, 0.55, 0, 0] }}
                   transition={{
                     duration: LOOP,
                     times: [0, at, Math.min(at + 0.04, 1), Math.min(at + 0.16, 1), 1],
@@ -162,13 +156,20 @@ export function StageTraceVisual({
                   }}
                 />
               )}
-              <motion.circle
-                cx={xs[index]}
-                cy={y}
-                r={14}
+              <motion.rect
+                x={xs[index] - 17}
+                y={y - 17}
+                width={34}
+                height={34}
+                rx={9}
                 fill="var(--card)"
-                stroke={last ? "var(--color-brand, #0b8a5c)" : "var(--color-gray-400, #cbcbc3)"}
-                strokeWidth="1.5"
+                stroke={last ? "var(--color-brand, #0b8a5c)" : "var(--color-line, #e4e4df)"}
+                strokeWidth="1.25"
+                style={{
+                  filter: "drop-shadow(0 1px 1px rgba(0,0,0,0.05)) drop-shadow(0 4px 10px rgba(0,0,0,0.06))",
+                  transformBox: "fill-box",
+                  transformOrigin: "center",
+                }}
                 initial={reduce ? false : { scale: 0.7, opacity: 0 }}
                 whileInView={reduce ? undefined : { scale: 1, opacity: 1 }}
                 viewport={{ once: true }}
@@ -207,10 +208,19 @@ export function StageTraceVisual({
                 x={xs[index]}
                 y={y + 42}
                 textAnchor="middle"
-                className="fill-[color:var(--g-text-secondary)]"
-                style={{ fontSize: 12, fontWeight: 500 }}
+                className="fill-[color:var(--g-text-primary,#1f2421)]"
+                style={{ fontSize: 12.5, fontWeight: 500 }}
               >
                 {stage.label}
+              </text>
+              <text
+                x={xs[index]}
+                y={y + 58}
+                textAnchor="middle"
+                className="fill-gray-500 font-mono"
+                style={{ fontSize: 10 }}
+              >
+                {String(index + 1).padStart(2, "0")}
               </text>
             </g>
           )

@@ -29,6 +29,7 @@ import {
   pathStatesForPhase,
   type OrchestrationPhase,
 } from "./storyboard"
+import { NodusDotField } from "@/components/marketing/nodus/dot-field"
 
 const ROLE_ICONS = {
   research: NucleoSearch,
@@ -185,17 +186,19 @@ function AgentOrchestrationFieldImpl({ className }: { className?: string }) {
       data-creative-frozen={frozenPhase ? "1" : "0"}
     >
       {reduced ? (
-        <div className="rounded-2xl border border-divide bg-card p-5" data-testid="orchestration-reduced">
+        <div className="relative isolate px-5 py-8" data-testid="orchestration-reduced">
+          <NodusDotField className="-z-10" />
           <ReducedModel />
         </div>
       ) : (
         <>
           <div
-            className="hidden rounded-2xl border border-divide bg-card p-4 md:block md:p-6"
+            className="relative isolate hidden px-4 py-8 md:block md:px-6"
             data-testid="orchestration-desktop"
           >
-            <div className="grid grid-cols-[1.1fr_1.4fr_1fr] gap-4">
-              <div>
+            <NodusDotField className="-z-10" />
+            <div className="grid grid-cols-[1.1fr_1.4fr_1fr] items-center gap-6">
+              <div className="rounded-lg bg-card p-4 shadow-aceternity">
                 <p className="text-[10px] font-semibold uppercase tracking-wide text-[color:var(--g-text-muted)]">Intent</p>
                 <p className="mt-2 text-sm font-medium leading-snug text-[color:var(--g-text-secondary)]">{ILLUSTRATIVE_REQUEST}</p>
               </div>
@@ -204,14 +207,14 @@ function AgentOrchestrationFieldImpl({ className }: { className?: string }) {
                 {showPlan ? (
                   <ul className="mt-2 flex flex-wrap justify-center gap-1">
                     {PLAN_CHIPS.map((c) => (
-                      <li key={c} className="rounded-md border border-divide px-1.5 py-0.5 text-[10px] text-[color:var(--g-text-secondary)]">
+                      <li key={c} className="rounded-md bg-card px-1.5 py-0.5 font-mono text-[10px] text-[color:var(--g-text-secondary)] shadow-aceternity">
                         {c}
                       </li>
                     ))}
                   </ul>
                 ) : null}
               </div>
-              <div>
+              <div className="rounded-lg bg-card p-4 shadow-aceternity">
                 <p className="text-[10px] font-semibold uppercase tracking-wide text-[color:var(--g-text-muted)]">Outcome</p>
                 {phase === "outcome" || phase === "learned" || phase === "verify" ? (
                   <p className="mt-2 text-sm font-medium text-brand">
@@ -277,9 +280,10 @@ function AgentOrchestrationFieldImpl({ className }: { className?: string }) {
           </div>
 
           <div
-            className="space-y-3 rounded-2xl border border-divide bg-card p-4 md:hidden"
+            className="relative isolate space-y-3 px-2 py-6 md:hidden"
             data-testid="orchestration-mobile"
           >
+            <NodusDotField className="-z-10" />
             <p className="text-sm font-medium">{ILLUSTRATIVE_REQUEST}</p>
             <MiniTopology phase={phase} />
             {showPlan ? (
