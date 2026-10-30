@@ -11,6 +11,8 @@ import logging
 import os
 from pathlib import Path
 import secrets
+import subprocess
+import traceback
 import uuid
 
 from voice_paired_live import (TARGET, Capture, SanitizedDiagnostics, guard, livekit_trial,
@@ -24,6 +26,7 @@ async def main():
     from app.core.db import get_supabase_client
     from app.services.conversation_state_service import get_conversation_state_service
     from supabase import create_client
+    from app.services.tier1_voice_service import synthesize_speech
     settings = get_settings()
     if settings.supabase_url.rstrip('/') != TARGET:
         raise ValueError('acceptance target mismatch')
@@ -56,13 +59,16 @@ async def main():
     pcm = {}
     with httpx.Client(timeout=45) as http:
         for name, text in phrases.items():
-            response = http.post('https://api.elevenlabs.io/v1/text-to-speech/' + os.environ['ELEVENLABS_VOICE_ID'],
-                params={'output_format': 'pcm_16000'}, headers={'xi-api-key': os.environ['ELEVENLABS_API_KEY']},
-                json={'text': text, 'model_id': 'eleven_flash_v2_5'})
-            response.raise_for_status()
-            if not 3200 < len(response.content) < 1600000 or len(response.content) % 2:
+            encoded, _, _ = synthesize_speech(settings, text=text,
+                voice_key=os.environ.get('ELEVENLABS_VOICE_ID') or None, http_client=http)
+            if not 1000 < len(encoded) < 5000000:
+                raise ValueError('encoded recording bounds')
+            decoded = subprocess.run(['ffmpeg', '-nostdin', '-v', 'error', '-i', 'pipe:0',
+                '-f', 's16le', '-ar', '16000', '-ac', '1', 'pipe:1'],
+                input=encoded, capture_output=True, check=True)
+            if not 3200 < len(decoded.stdout) < 1600000 or len(decoded.stdout) % 2:
                 raise ValueError('invalid synthesized PCM')
-            pcm[name] = response.content
+            pcm[name] = decoded.stdout
             wav(output / (name + '.wav'), pcm[name], 16000)
             report['recordings'][name] = {'pcm_sha256': hashlib.sha256(pcm[name]).hexdigest(), 'source_text': text}
     state_service = get_conversation_state_service(settings)
@@ -145,4 +151,13 @@ async def main():
 
 
 if __name__ == '__main__':
-    asyncio.run(main())
+    try:
+        asyncio.run(main())
+    except Exception as error:
+        path = Path('acceptance-results/paired-native-assignment/startup-failure.json')
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps({'status': 'FAIL', 'error_type': type(error).__name__,
+            'http_status': getattr(error, 'upstream_status', None),
+            'frames': [{'file': Path(f.filename).name, 'line': f.lineno, 'function': f.name}
+                for f in traceback.extract_tb(error.__traceback__)[-20:]]}, indent=2))
+        raise SystemExit(1)
