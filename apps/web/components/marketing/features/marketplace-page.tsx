@@ -8,14 +8,11 @@ import {
   Headphones,
   TrendingUp,
   Megaphone,
-  BookOpen,
-  FileSpreadsheet,
   Download,
   CheckCircle2,
 } from "lucide-react"
 import {
   NucleoAgent,
-  NucleoApproval,
   NucleoConnector,
   NucleoSearch,
   NucleoWorkflow,
@@ -50,9 +47,9 @@ const WHY_GUARANTEES = [
   "Version history and rollback",
 ]
 
-type Category = "All" | "Agents" | "Workflows" | "Department packs" | "Knowledge"
+type Category = "All" | "Agents" | "Workflows" | "Department packs"
 
-const CATEGORIES: Category[] = ["All", "Agents", "Workflows", "Department packs", "Knowledge"]
+const CATEGORIES: Category[] = ["All", "Agents", "Workflows", "Department packs"]
 
 type AssetIcon = ComponentType<{ className?: string }>
 
@@ -148,46 +145,6 @@ const ASSETS: Asset[] = [
     availability: "Included",
     icon: NucleoWorkflow,
     tone: "text-primary bg-primary/15",
-  },
-  {
-    name: "Invoice Processing",
-    art: "market-finance",
-    category: "Workflows",
-    subtitle: "Finance operations",
-    description: "Parse invoices, match POs, and queue exceptions for human review before writes.",
-    availability: "Included",
-    icon: FileSpreadsheet,
-    tone: "text-warning-text bg-warning/15",
-  },
-  {
-    name: "Compliance Review Workflow",
-    art: "market-compliance",
-    category: "Workflows",
-    subtitle: "Audit-ready",
-    description: "Run policy checks on changes, collect evidence, and hold anything risky for sign-off.",
-    availability: "Included",
-    icon: NucleoApproval,
-    tone: "text-info bg-info/15",
-  },
-  {
-    name: "Security Knowledge Base",
-    art: "market-security",
-    category: "Knowledge",
-    subtitle: "RAG source",
-    description: "Curated threat-intel and policy docs, ready for agents with routing traces.",
-    availability: "Included",
-    icon: NucleoApproval,
-    tone: "text-danger-text bg-destructive/15",
-  },
-  {
-    name: "Onboarding Playbook",
-    art: "market-onboarding",
-    category: "Knowledge",
-    subtitle: "HR operations",
-    description: "Structured onboarding checklists and request routing for new hires.",
-    availability: "Included",
-    icon: BookOpen,
-    tone: "text-brand-text bg-brand/15",
   },
 ]
 
@@ -292,7 +249,7 @@ export function MarketplacePage() {
           <StageTraceVisual
             stages={MARKETPLACE_TRACE_STAGES}
             gradientId="marketplace-trace"
-            payloads={["Deal Desk Workflow", "RevOps Copilot", "Onboarding Playbook", "Ticket Triage Agent"]}
+            payloads={["Deal Desk Workflow", "RevOps Copilot", "Lead Enrichment Agent", "Ticket Triage Agent"]}
             ariaLabel="Marketplace path from browse through readiness and approval gate to live"
             caption="Browse → readiness → approval gate → live — same governance as chat and workflows."
           />
