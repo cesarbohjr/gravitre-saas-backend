@@ -340,6 +340,15 @@ def build_pipecat_voice_task(
     vad = None if use_flux else _optional_silero_vad()
     user_params_kwargs: dict[str, Any] = {"vad_analyzer": vad}
     if use_flux:
+        async def note_classification(decision):
+            sink = getattr(voice_session, 'interruption_timing_sink', None)
+            if callable(sink):
+                sink('classification', {
+                    'classification': decision.classification.value,
+                    'resolved_by_timeout': decision.resolved_by_timeout,
+                    'decision_latency_ms': round(decision.decision_latency_ms, 2),
+                })
+
         # Conversational-realism Phase 1 (backchannel vs. interruption):
         # Flux's own turn detection drives this via Proposed*SpeakingFrame,
         # normally resolved instantly by ExternalUserTurnStartStrategy
@@ -358,6 +367,7 @@ def build_pipecat_voice_task(
                     gravitre_user_id=user_id,
                     gravitre_conversation_id=conversation_id,
                     voice_session=voice_session,
+                    on_classification=note_classification,
                 )
             ],
             stop=[ExternalUserTurnStopStrategy()],
@@ -417,7 +427,7 @@ def build_pipecat_voice_task(
         ]
     )
 
-    latency_observer = GravitreVoiceLatencyObserver(turn_trace=turn_trace)
+    latency_observer = GravitreVoiceLatencyObserver(turn_trace=turn_trace, voice_session=voice_session)
     task = PipelineTask(
         pipeline,
         params=PipelineParams(

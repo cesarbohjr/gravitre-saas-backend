@@ -24,8 +24,10 @@ from typing import Any
 
 from pipecat.frames.frames import (
     BotStartedSpeakingFrame,
+    BotStoppedSpeakingFrame,
     EagerTranscriptionFrame,
     InterimTranscriptionFrame,
+    InterruptionFrame,
     ProposedUserStartedSpeakingFrame,
     ProposedUserStoppedSpeakingFrame,
     TranscriptionFrame,
@@ -43,9 +45,31 @@ class GravitreVoiceLatencyObserver(UserBotLatencyObserver):
     user-speech, TTS and first-audio-out moments of each turn onto that trace.
     """
 
-    def __init__(self, *args: Any, turn_trace: Any | None = None, **kwargs: Any) -> None:
+    def __init__(self, *args: Any, turn_trace: Any | None = None,
+                 voice_session: Any | None = None, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
         self._turn_trace = turn_trace
+        self._voice_session = voice_session
+        self._interruption_seen: set[int] = set()
+
+    def _stamp_interruption(self, data: FramePushed) -> None:
+        # Trusted acceptance controllers may attach a timing-only sink. Normal
+        # sessions allocate no trace records and send no additional client data.
+        sink = getattr(self._voice_session, 'interruption_timing_sink', None)
+        if not callable(sink) or data.direction != FrameDirection.DOWNSTREAM:
+            return
+        frame = data.frame
+        if not isinstance(frame, (ProposedUserStartedSpeakingFrame,
+            ProposedUserStoppedSpeakingFrame, InterimTranscriptionFrame,
+            TranscriptionFrame, InterruptionFrame, BotStoppedSpeakingFrame)):
+            return
+        key = frame.id
+        if key in self._interruption_seen or len(self._interruption_seen) >= 200:
+            return
+        self._interruption_seen.add(key)
+        text = getattr(frame, 'text', None)
+        sink('pipeline.' + type(frame).__name__,
+            {'characters': len(text) if isinstance(text, str) else None})
 
     def _stamp_turn_trace(self, frame: Any) -> None:
         trace = self._turn_trace
@@ -67,6 +91,7 @@ class GravitreVoiceLatencyObserver(UserBotLatencyObserver):
 
     async def on_push_frame(self, data: FramePushed):
         try:
+            self._stamp_interruption(data)
             self._stamp_turn_trace(data.frame)
         except Exception:  # noqa: BLE001 - latency evidence must never break the pipeline
             pass

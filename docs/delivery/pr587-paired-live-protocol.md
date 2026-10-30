@@ -190,3 +190,30 @@ be mistaken for a successfully cleared pending action. Separate live probes test
 the production Pipecat ASGI route with missing/tampered/expired tokens, foreign
 org access and membership revocation using a disposable Auth actor. These do
 not certify RTC token issuance or fresh authorization at an in-flight tool call.
+
+## Flux partial-word repair and repeated acceptance
+
+The pinned Pipecat 1.12.0 Flux SDK dispatches StartOfTurn and Update text only
+through callbacks. The existing Gravitre turn strategy consumes
+InterimTranscriptionFrame, so it could not see those words before committed
+EndOfTurn. This is the verified protocol gap behind the shared late-classifier
+path; the exact contribution of provider timing remains measured, not assumed.
+An ordered Flux subclass now forwards those two protocol hooks as interim
+frames. The SDK still owns finals and turn commitment. Late updates after
+committed EOT are ignored. No cancellation threshold or grace bound changed.
+
+Actual SDK dispatch/strategy regressions cover early cancel from either hook,
+non-interrupting backchannels, final-transcript ownership and partial approval
+remaining uncommitted. Factory tests patch the new adapter at its import site;
+their settings assertions are unchanged. Optional acceptance-only frame and
+classification timing sinks retain stage names, timing and character counts,
+never interim text. RTC native flush is stamped separately from receiver cutoff.
+
+The live gate schedules three repetitions, retaining every verdict. Each
+repetition runs ten matched audio trials (including spoken backchannel) and
+four native cancel/approve/replay cases. Native recordings are pinned to run
+41141376937 artifact 13019106451 by exact PCM digest; conversation IDs isolate
+write readbacks, so resynthesizing input is unnecessary. Every phase receives
+a freshly verified short-lived session. One failed trial fails the aggregate;
+later passes cannot replace it. Physical playback and human quality review
+remain separate requirements.

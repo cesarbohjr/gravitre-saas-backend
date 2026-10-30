@@ -10,23 +10,19 @@ import json
 import logging
 import os
 from pathlib import Path
-import secrets
-import subprocess
 import traceback
 import uuid
 
 from voice_paired_live import (TARGET, Capture, SanitizedDiagnostics, guard, livekit_trial,
-    websocket_trial, wav)
+    websocket_trial, verified_fixture, wav)
 
 
 async def main():
     guard(os.environ)
-    import httpx
     from app.config import get_settings
     from app.core.db import get_supabase_client
     from app.services.conversation_state_service import get_conversation_state_service
     from supabase import create_client
-    from app.services.tier1_voice_service import synthesize_speech
     settings = get_settings()
     if settings.supabase_url.rstrip('/') != TARGET:
         raise ValueError('acceptance target mismatch')
@@ -45,32 +41,27 @@ async def main():
     if not members or any(flags.get(k) is not True for k in ('never_customer_visible', 'isolated_conversation_test_org')):
         raise ValueError('acceptance membership missing')
     started = datetime.now(timezone.utc).isoformat()
-    trace = 'acceptance ' + ' '.join(secrets.choice(('marigold', 'cobalt', 'orchard', 'harbor', 'maple', 'violet', 'cedar', 'amber')) for _ in range(5))
+    trace = 'acceptance orchard violet harbor marigold amber'
     phrases = {'stage': ('Create an internal Gravitre assignment to draft a two sentence welcome note for Alex. '
         'Use the reference ' + trace + '. Do not contact anyone. Ask for my confirmation before creating it.'),
         'cancel': 'Cancel.', 'approve': 'Yes.'}
-    output = Path('acceptance-results/paired-native-assignment')
+    output = Path(os.environ.get('ACCEPTANCE_NATIVE_ARTIFACT_DIR', 'acceptance-results/paired-native-assignment'))
     output.mkdir(parents=True, exist_ok=True)
     logging.getLogger().addHandler(SanitizedDiagnostics(output / 'pipeline-failures.json'))
     report = {'git_sha': os.environ.get('ACCEPTANCE_SOURCE_SHA'), 'trace': trace,
         'scope': 'real transports and native product action; no worker execution',
-        'certified': False, 'outcome_learning': 'NOT RUN', 'trials': [], 'recordings': {}}
+        'certified': False, 'outcome_learning': 'NOT RUN', 'trials': [], 'recordings': {},
+        'input_origin': 'run 41141376937 artifact 13019106451; exact PCM reused'}
     manifest = output / 'manifest.json'
     pcm = {}
-    with httpx.Client(timeout=45) as http:
-        for name, text in phrases.items():
-            encoded, _, _ = synthesize_speech(settings, text=text,
-                voice_key=os.environ.get('ELEVENLABS_VOICE_ID') or None, http_client=http)
-            if not 1000 < len(encoded) < 5000000:
-                raise ValueError('encoded recording bounds')
-            decoded = subprocess.run(['ffmpeg', '-nostdin', '-v', 'error', '-i', 'pipe:0',
-                '-f', 's16le', '-ar', '16000', '-ac', '1', 'pipe:1'],
-                input=encoded, capture_output=True, check=True)
-            if not 3200 < len(decoded.stdout) < 1600000 or len(decoded.stdout) % 2:
-                raise ValueError('invalid synthesized PCM')
-            pcm[name] = decoded.stdout
-            wav(output / (name + '.wav'), pcm[name], 16000)
-            report['recordings'][name] = {'pcm_sha256': hashlib.sha256(pcm[name]).hexdigest(), 'source_text': text}
+    fixture_root = Path(os.environ['ACCEPTANCE_NATIVE_RECORDINGS_DIR'])
+    digests = {'stage': 'c0dc49c1c7cc00a291f140697629efeab9860ae9eed166536a9f2749499e7853',
+        'cancel': '6879be0f25bf1d150c0e3dddd06d0b5298462dde65b75942b2b05da4001eff9f',
+        'approve': '91e37080c6122a0e5df30858e72bffcbeb34e4a4415597771f7fa78382bb2133'}
+    for name, text in phrases.items():
+        pcm[name] = verified_fixture(fixture_root / (name + '.wav'), digests[name])
+        wav(output / (name + '.wav'), pcm[name], 16000)
+        report['recordings'][name] = {'pcm_sha256': hashlib.sha256(pcm[name]).hexdigest(), 'source_text': text}
     state_service = get_conversation_state_service(settings)
 
     def jobs(cid):
@@ -83,8 +74,13 @@ async def main():
         capture = Capture()
         # Require authoritative completed turn, rather than a filler ACK.
         capture.scenario = 'baseline'
-        await trial(settings, org, actor, cid, pcm[phrase], capture)
-        wav(output / (engine + '-' + label + '.wav'), capture.pcm, 24000)
+        try:
+            await trial(settings, org, actor, cid, pcm[phrase], capture)
+        finally:
+            wav(output / (engine + '-' + label + '.wav'), capture.pcm, 24000)
+            (output / (engine + '-' + label + '-timing.json')).write_text(json.dumps({
+                'events': capture.event_timeline, 'stages': capture.interruption_timeline,
+                'errors': capture.errors}, indent=2))
         if capture.errors or capture.first is None:
             raise AssertionError('voice pipeline failed')
         return await state_service.get_task_state(cid, org, client=reader, strict=True)
@@ -154,7 +150,7 @@ if __name__ == '__main__':
     try:
         asyncio.run(main())
     except Exception as error:
-        path = Path('acceptance-results/paired-native-assignment/startup-failure.json')
+        path = Path(os.environ.get('ACCEPTANCE_NATIVE_ARTIFACT_DIR', 'acceptance-results/paired-native-assignment')) / 'startup-failure.json'
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(json.dumps({'status': 'FAIL', 'error_type': type(error).__name__,
             'http_status': getattr(error, 'upstream_status', None),

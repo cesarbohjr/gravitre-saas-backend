@@ -125,6 +125,7 @@ class LiveKitCandidateSocket:
         # PCM playout await. Cancelling a coroutine alone cannot stop a thread.
         self._cancel_turn_work("rtc_interrupt")
         self._source.clear_queue()
+        self._note_playout_flush('rtc_control')
         # A reserved control slot prevents audio backpressure dropping a stop.
         self._pending_control = {"type": "websocket.receive", "text": json.dumps(value)}
         self._control_ready.set()
@@ -132,6 +133,12 @@ class LiveKitCandidateSocket:
     def _participant_disconnected(self, participant) -> None:
         if participant.identity == self.participant_identity:
             self._end_session()
+
+    def _note_playout_flush(self, reason: str) -> None:
+        sink = getattr(self.voice_session, 'interruption_timing_sink', None)
+        if callable(sink):
+            with contextlib.suppress(Exception):
+                sink('rtc.audio_queue_flushed', {'reason': reason})
 
     def _disconnected(self, *_args) -> None:
         self._end_session()
@@ -143,6 +150,7 @@ class LiveKitCandidateSocket:
         self.client_state = WebSocketState.DISCONNECTED
         self.application_state = WebSocketState.DISCONNECTED
         self._source.clear_queue()
+        self._note_playout_flush('rtc_disconnect')
         self._control_ready.set()
         self.disconnected.set()
 
@@ -207,6 +215,7 @@ class LiveKitCandidateSocket:
             # dropping future Pipecat frames cannot retract already queued PCM.
             if (message.get("event") or message.get("type")) == "speech.interrupted":
                 self._source.clear_queue()
+                self._note_playout_flush('speech_interrupted')
             await self.room.local_participant.publish_data(
                 json.dumps(message).encode(), reliable=True, topic="gravitre-events",
                 destination_identities=[self.participant_identity],

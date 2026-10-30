@@ -116,7 +116,9 @@ def build_pipecat_stt(
     if choice == STT_FLUX:
         if not dg_key:
             raise RuntimeError("DEEPGRAM_API_KEY required for Flux STT")
-        from pipecat.services.deepgram.flux.stt import DeepgramFluxSTTService
+        from app.services.pipecat_voice.flux_stt import (
+            InterimAwareFluxSTTService as DeepgramFluxSTTService,
+        )
 
         eager, eot = resolve_flux_eot_settings(settings)
         preset_key = TURN_SENSITIVITY_TO_FLUX_PRESET.get(str(turn_sensitivity or "").strip().lower())
@@ -148,6 +150,7 @@ def build_pipecat_stt(
         meta = stt_meta(STT_FLUX, fallback_from=fallback_from, fallback_reason=fallback_reason)
         meta["stt_turn_detection"] = "flux_native_eot"
         meta["stt_eager_end_of_turn"] = eager is not None
+        meta["stt_partial_transcripts"] = "flux_native_updates"
         if preset_key:
             meta["stt_turn_sensitivity"] = preset_key
         if keyterms:

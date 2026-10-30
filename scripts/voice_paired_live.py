@@ -150,6 +150,7 @@ class Capture:
         self.last = None
         self.events = {}
         self.event_timeline = []
+        self.interruption_timeline = []
         self.turn_complete_at = None
         self.last_bot_stop_at = None
         self.authorization = {}
@@ -160,9 +161,21 @@ class Capture:
         self.interrupted_reply = None
         self.errors = []
         self.cancel_recognized = False
+        self.backchannel_recognized = False
+        self.backchannel_original_token = None
         self.voice_session = None
         self.probe = None
         self.probe_result = None
+
+    def bind_voice_session(self, session):
+        self.voice_session = session
+        session.interruption_timing_sink = self.note_interruption_stage
+
+    def note_interruption_stage(self, stage, details):
+        if self.started is not None and len(self.interruption_timeline) < 240:
+            self.interruption_timeline.append({'stage': stage,
+                'from_input_start_ms': round((time.monotonic() - self.started) * 1000, 2),
+                **details})
 
     def audio(self, pcm, reply_id=None):
         import numpy as np
@@ -183,6 +196,10 @@ class Capture:
             decision = classify_spoken_write_approval(str(message.get("text") or ""))
             if decision.decision == "reject" and decision.invoke_allowed is False:
                 self.cancel_recognized = True
+            if self.scenario == 'backchannel':
+                from app.services.pipecat_voice.backchannel_classifier import classify_user_utterance, is_backchannel
+                if is_backchannel(classify_user_utterance(str(message.get('text') or ''))):
+                    self.backchannel_recognized = True
         if message.get("type") == "audio.reply":
             self.reply_id = message.get("reply_id")
         kind = message.get("event") or message.get("type", "unknown")
@@ -249,6 +266,21 @@ class Capture:
                 self.probe_result = await asyncio.wait_for(probe_task, 10)
                 self.probe_result['original_token_cancelled'] = bool(token.cancelled)
 
+    async def backchannel(self, send, running):
+        deadline = time.monotonic() + 75
+        while self.first is None:
+            if running.done():
+                await running
+                raise RuntimeError('session ended before backchannel trial')
+            if time.monotonic() > deadline:
+                raise TimeoutError('no speech for backchannel trial')
+            await asyncio.sleep(.01)
+        await asyncio.sleep(.25)
+        self.backchannel_original_token = getattr(self.voice_session, 'turn_cancellation', None)
+        if self.backchannel_original_token is None or self.backchannel_original_token.cancelled:
+            raise AssertionError('no active original turn for backchannel')
+        await send()
+
     async def settle(self, running):
         deadline = time.monotonic() + 75
         while time.monotonic() < deadline:
@@ -256,7 +288,7 @@ class Capture:
                 await running
                 raise RuntimeError("pipeline ended before completed reply")
             completed = self.events.get("bot-llm-stopped", 0) and self.events.get("bot-stopped-speaking", 0)
-            if self.scenario in {"baseline", "reconnect"}:
+            if self.scenario in {"baseline", "reconnect", "backchannel"}:
                 completed = (completed and self.turn_complete_at is not None
                     and self.last_bot_stop_at is not None
                     and self.last_bot_stop_at >= self.turn_complete_at)
@@ -277,7 +309,7 @@ async def stream_ws(ws, pcm):
         await asyncio.sleep(max(0, start + (offset + frame) / 32000 - time.monotonic()))
 
 
-async def websocket_trial(settings, org, actor, cid, pcm, capture, cancel_pcm=None):
+async def websocket_trial(settings, org, actor, cid, pcm, capture, cancel_pcm=None, backchannel_pcm=None):
     from fastapi import FastAPI, WebSocket
     from pipecat.pipeline.runner import PipelineRunner
     from app.services.pipecat_voice.pipeline import build_pipecat_voice_task
@@ -300,7 +332,7 @@ async def websocket_trial(settings, org, actor, cid, pcm, capture, cancel_pcm=No
             task, _ = build_pipecat_voice_task(websocket=ws, settings=settings,
                 org_id=org, user_id=actor, conversation_id=cid)
             tasks.append(task)
-            capture.voice_session = task.gravitre_voice_session
+            capture.bind_voice_session(task.gravitre_voice_session)
             ready.set()
             await PipelineRunner(handle_sigint=False).run(task)
         except Exception as error:
@@ -347,6 +379,8 @@ async def websocket_trial(settings, org, actor, cid, pcm, capture, cancel_pcm=No
                     await capture.interrupt(lambda: ws.send(json.dumps({"type": "interrupt"})), receiving)
                 elif capture.scenario == "spoken_cancel":
                     await capture.interrupt(lambda: stream_ws(ws, cancel_pcm + bytes(32000 * 2)), receiving)
+                elif capture.scenario == 'backchannel':
+                    await capture.backchannel(lambda: stream_ws(ws, backchannel_pcm + bytes(32000 * 2)), receiving)
                 await capture.settle(receiving)
             finally:
                 receiving.cancel()
@@ -360,7 +394,7 @@ async def websocket_trial(settings, org, actor, cid, pcm, capture, cancel_pcm=No
             await asyncio.wait_for(serving, 10)
 
 
-async def livekit_trial(settings, org, actor, cid, pcm, capture, cancel_pcm=None):
+async def livekit_trial(settings, org, actor, cid, pcm, capture, cancel_pcm=None, backchannel_pcm=None):
     from livekit import rtc
     from app.services.pipecat_voice.livekit_candidate import run_livekit_candidate
     from voice_livekit_connected_smoke import token, publish
@@ -382,7 +416,7 @@ async def livekit_trial(settings, org, actor, cid, pcm, capture, cancel_pcm=None
     worker = asyncio.create_task(run_livekit_candidate(url="ws://127.0.0.1:7880",
         token=token(room_name, "candidate"), participant_identity="recorded-peer",
         settings=settings, org_id=org, user_id=actor, conversation_id=cid, isolated=True,
-        session_observer=lambda session: setattr(capture, 'voice_session', session)))
+        session_observer=capture.bind_voice_session))
     source = None
     try:
         await peer.connect("ws://127.0.0.1:7880", token(room_name, "recorded-peer"))
@@ -398,6 +432,8 @@ async def livekit_trial(settings, org, actor, cid, pcm, capture, cancel_pcm=None
                 b'{"type":"interrupt"}', reliable=True, topic="gravitre-control"), worker)
         elif capture.scenario == "spoken_cancel":
             await capture.interrupt(lambda: publish(source, cancel_pcm + bytes(32000 * 2), 16000), worker)
+        elif capture.scenario == 'backchannel':
+            await capture.backchannel(lambda: publish(source, backchannel_pcm + bytes(32000 * 2), 16000), worker)
         await capture.settle(worker)
     finally:
         await peer.disconnect()
@@ -430,7 +466,7 @@ async def main():
     from app.config import get_settings
     import httpx
     import numpy as np
-    output = Path("acceptance-results/paired-live")
+    output = Path(os.environ.get('ACCEPTANCE_ARTIFACT_DIR', 'acceptance-results/paired-live'))
     output.mkdir(parents=True, exist_ok=True)
     logging.getLogger().addHandler(SanitizedDiagnostics(output / "pipeline-failures.json"))
     client = create_client(TARGET, os.environ["SUPABASE_SERVICE_ROLE_KEY"])
@@ -505,15 +541,19 @@ async def main():
         'bd1062d37671b640cf0be2ae4397d3c133bd23131ac2d6f568c1ec1c076e3731')
     cancel_pcm = verified_fixture(os.environ['ACCEPTANCE_CANCEL_WAV'],
         'cb59c58a686767cc7fc882ac6773dbd09beed5c22d420a229524f8a55a2c4936')
+    backchannel_pcm = verified_fixture(Path(os.environ['ACCEPTANCE_NATIVE_RECORDINGS_DIR']) / 'approve.wav',
+        '91e37080c6122a0e5df30858e72bffcbeb34e4a4415597771f7fa78382bb2133')
     if not 3200 < len(pcm) < 1600000 or len(pcm) % 2:
         raise ValueError("fixture PCM bounds")
     wav(output / "input.wav", pcm, 16000)
     if not 3200 < len(cancel_pcm) < 320000 or len(cancel_pcm) % 2:
         raise ValueError("cancel fixture PCM bounds")
     wav(output / "cancel-input.wav", cancel_pcm, 16000)
+    wav(output / 'backchannel-input.wav', backchannel_pcm, 16000)
     report = {"git_sha": os.environ.get("ACCEPTANCE_SOURCE_SHA"), "input_pcm_sha256": hashlib.sha256(pcm).hexdigest(),
         "case_id": CASE_ID,
         "cancel_input_pcm_sha256": hashlib.sha256(cancel_pcm).hexdigest(),
+        'backchannel_input_pcm_sha256': hashlib.sha256(backchannel_pcm).hexdigest(),
         "fixture_positive_control": positive_result,
         "runtime_versions": {name: importlib.metadata.version(name) for name in ('pipecat-ai', 'livekit', 'supabase', 'httpx', 'anthropic')},
         "configured_providers": {'inference': settings.preferred_ai_provider,
@@ -524,7 +564,7 @@ async def main():
         "interruption": "NOT RUN", "reconnection": "NOT RUN"}
     conversations = {}
     baselines = {}
-    for scenario, engine, trial in ((scenario, engine, trial) for scenario in ("baseline", "interrupt", "spoken_cancel", "reconnect")
+    for scenario, engine, trial in ((scenario, engine, trial) for scenario in ("baseline", "backchannel", "interrupt", "spoken_cancel", "reconnect")
             for engine, trial in (("pipecat", websocket_trial), ("livekit", livekit_trial))):
         if scenario != "baseline" and not baselines.get(engine):
             report["trials"].append({"engine": engine, "scenario": scenario, "status": "NOT RUN",
@@ -549,7 +589,7 @@ async def main():
         row["durable_messages_before"] = len(before_roles)
         trial_started = time.monotonic()
         try:
-            await trial(settings, org, actor, cid, pcm, capture, cancel_pcm)
+            await trial(settings, org, actor, cid, pcm, capture, cancel_pcm, backchannel_pcm)
             samples = np.frombuffer(capture.pcm, dtype="<i2").astype(float)
             if capture.first is None or len(samples) < 2400:
                 raise AssertionError("no generated speech")
@@ -598,6 +638,7 @@ async def main():
                             row.update(status="FAIL", error_type="GeneratedAnswerContentMismatch")
             row["events"] = capture.events
             row["event_timeline"] = capture.event_timeline
+            row['interruption_timeline'] = capture.interruption_timeline
             row["pipeline_errors"] = capture.errors
             if capture.errors:
                 row.update(status="FAIL", error_type="PipelineErrorEvent")
@@ -627,6 +668,13 @@ async def main():
                     row.update(status="FAIL", error_type="CancelSpeechNotRecognized")
             after_roles = [r["role"] for r in client.table("conversation_messages").select("role").eq("conversation_id", cid).execute().data]
             row["durable_messages_after"] = len(after_roles)
+            if scenario == 'backchannel':
+                row['backchannel_recognized'] = capture.backchannel_recognized
+                row['original_work_cancelled'] = (capture.backchannel_original_token is None
+                    or capture.backchannel_original_token.cancelled)
+                if (not capture.backchannel_recognized or row['original_work_cancelled']
+                        or len(after_roles) != 2 or capture.events.get('assistant_turn.complete') != 1):
+                    row.update(status='FAIL', error_type='BackchannelInterruptedOrBecameANewTurn')
             if scenario == "reconnect":
                 row["durable_prior_user_and_assistant_present"] = all(role in before_roles for role in ("user", "assistant"))
                 if not row["durable_prior_user_and_assistant_present"]:
@@ -660,7 +708,7 @@ if __name__ == "__main__":
     try:
         asyncio.run(main())
     except Exception as error:
-        output = Path("acceptance-results/paired-live")
+        output = Path(os.environ.get('ACCEPTANCE_ARTIFACT_DIR', 'acceptance-results/paired-live'))
         output.mkdir(parents=True, exist_ok=True)
         (output / "controller-failure.json").write_text(json.dumps({
             "status": "FAIL", "error_type": type(error).__name__,

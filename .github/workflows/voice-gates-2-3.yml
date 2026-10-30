@@ -7,6 +7,10 @@ on:
       - '.github/workflows/voice-gates-2-3.yml'
       - 'scripts/bootstrap_voice_acceptance.py'
       - 'scripts/voice_paired_live.py'
+      - 'scripts/voice_acceptance_repetitions.py'
+      - 'backend/app/services/pipecat_voice/flux_stt.py'
+      - 'backend/app/services/pipecat_voice/stt_factory.py'
+      - 'backend/tests/services/pipecat_voice/test_flux_partial_bridge.py'
       - 'scripts/voice_native_assignment_live.py'
       - 'scripts/voice_acceptance_sink.py'
       - 'scripts/verify_native_assignment_cancel.py'
@@ -50,6 +54,7 @@ jobs:
       ACCEPTANCE_SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
       ACCEPTANCE_INPUT_WAV: /tmp/voice-pinned-recordings/paired-live/input.wav
       ACCEPTANCE_CANCEL_WAV: /tmp/voice-pinned-recordings/paired-live/cancel-input.wav
+      ACCEPTANCE_NATIVE_RECORDINGS_DIR: /tmp/voice-native-pinned/paired-native-assignment
     steps:
       - uses: actions/checkout@v4
         with:
@@ -139,6 +144,7 @@ jobs:
         run: |
           python -m unittest discover -s tests -p test_voice_paired_live.py
           python -m unittest discover -s tests -p test_voice_acceptance_sink.py
+          python -m unittest discover -s tests -p test_voice_acceptance_repetitions.py
       - name: Regress real HTTP1 credential serialization
         working-directory: backend
         run: python -m pytest -q --confcutdir=tests/core tests/core/test_supabase_credential_whitespace.py tests/core/test_shared_http_client.py
@@ -162,6 +168,13 @@ jobs:
           run-id: 41138120065
           github-token: ${{ github.token }}
           path: /tmp/voice-failed-reconnect
+      - name: Reuse the exact executed native-action recordings
+        uses: actions/download-artifact@v4
+        with:
+          name: paired-runtime-readiness
+          run-id: 41141376937
+          github-token: ${{ github.token }}
+          path: /tmp/voice-native-pinned
       - name: Transcribe the retained synthetic reconnect failure
         run: |
           python - <<'PY'
@@ -180,7 +193,11 @@ jobs:
               'transcript': data['results']['channels'][0]['alternatives'][0]['transcript'][:3000]}
           pathlib.Path('acceptance-results/reconnect-content-diagnostic.json').write_text(json.dumps(result, indent=2))
           PY
-      - name: Start hash-verified loopback RTC server and execute paired real inference
+      - name: Sequence native evidence after predecessor acceptance runs finish
+        run: python scripts/wait_voice_acceptance_predecessors.py
+        env:
+          GH_TOKEN: ${{ github.token }}
+      - name: Execute three matched repetitions through both real transports and native writes
         id: paired_voice
         run: |
           mkdir -p /tmp/gravitre-paired acceptance-results/paired-live
@@ -196,33 +213,7 @@ jobs:
             if ! kill -0 "$server_pid" 2>/dev/null; then exit 1; fi
             sleep 0.25
           done
-          python scripts/voice_paired_live.py >/tmp/gravitre-paired/pipeline.log 2>&1
-      - name: Refresh acceptance identity before native action trials
-        id: native_identity
-        if: always() && steps.paired_voice.outputs.server_verified == 'true'
-        run: python scripts/mint_smoke_org_session.py --github-env
-      - name: Sequence native trials after superseded actor-wide probes finish
-        id: predecessor_wait
-        if: always() && steps.paired_voice.outputs.server_verified == 'true' && steps.native_identity.outcome == 'success'
-        run: python scripts/wait_voice_acceptance_predecessors.py
-        env:
-          GH_TOKEN: ${{ github.token }}
-      - name: Refresh acceptance identity after predecessor wait
-        id: native_ready
-        if: always() && steps.predecessor_wait.outcome == 'success'
-        run: python scripts/mint_smoke_org_session.py --github-env
-      - name: Execute paired native assignment approval and cancellation
-        if: always() && steps.paired_voice.outputs.server_verified == 'true' && steps.native_ready.outcome == 'success'
-        run: |
-          /tmp/gravitre-paired/livekit-server --dev --bind 127.0.0.1 --node-ip 127.0.0.1 --rtc.enable_loopback_candidate >/tmp/gravitre-paired/native-server.log 2>&1 &
-          server_pid=$!
-          trap 'kill "$server_pid" 2>/dev/null || true' EXIT
-          for attempt in $(seq 1 40); do
-            if curl -fsS http://127.0.0.1:7880 >/dev/null; then break; fi
-            if ! kill -0 "$server_pid" 2>/dev/null; then exit 1; fi
-            sleep 0.25
-          done
-          python scripts/voice_native_assignment_live.py >/tmp/gravitre-paired/native-pipeline.log 2>&1
+          python scripts/voice_acceptance_repetitions.py
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -236,6 +227,7 @@ jobs:
             acceptance-results/reconnect-content-diagnostic.json
             acceptance-results/paired-live
             acceptance-results/paired-native-assignment
+            acceptance-results/repeated-paired
   live-provider:
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -293,6 +285,7 @@ jobs:
         run: >-
           python -m pytest -q -p tests.offline_network_guard
           tests/scripts/test_voice_provider_roundtrip.py
+          tests/services/pipecat_voice/test_flux_partial_bridge.py
           tests/operators/test_agent_jobs_turn_cancellation.py
           tests/services/pipecat_voice/test_livekit_write_fence.py
           tests/services/pipecat_voice/test_phase3_provider_commit_gate.py
