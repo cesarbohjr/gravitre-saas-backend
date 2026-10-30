@@ -217,6 +217,28 @@ class Journal:
         if checkpoint.get('before_effect') is not True:return None
         return {'sequence':row['sequence'],'checkpoint':checkpoint}
 
+    def claim_fenced_handoff(self, scope: AdapterScope, job_id: str) -> str:
+        """Atomically reserve a fenced checkpoint for independent review.
+
+        This reservation never starts a browser or authorizes an external write.
+        """
+        token=str(uuid4())
+        with self.connect() as db:
+            db.execute('BEGIN IMMEDIATE')
+            changed=db.execute("""
+                UPDATE jobs SET phase='fallback_reserved',lease=?
+                WHERE id=? AND org=? AND agent=? AND run=?
+                  AND kind='browser_use' AND state='uncertain'
+                  AND phase='fallback_fenced' AND lease IS NULL
+                  AND expires_at>?
+                  AND EXISTS(SELECT 1 FROM browser_checkpoints c
+                             WHERE c.job=jobs.id)
+                  AND NOT EXISTS(SELECT 1 FROM action_requests a
+                                 WHERE a.job=jobs.id)
+            """,(token,job_id,scope.org_id,scope.agent_id,scope.run_id,time.time())).rowcount
+            if changed!=1:raise LeaseLost('Fenced recovery unavailable or already reserved')
+        return token
+
     def cancel(self, scope: AdapterScope, job_id: str) -> bool:
         with self.connect() as db:
             changed=db.execute("UPDATE jobs SET state='cancelled',lease=NULL,payload=NULL,result=NULL WHERE id=? AND org=? AND agent=? AND run=? AND kind IN ('openhands','browser_use') AND state IN ('queued','running','uncertain')",
