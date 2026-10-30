@@ -21,6 +21,7 @@ import sys
 import tempfile
 import threading
 import time
+import traceback
 from urllib.error import HTTPError
 from urllib.parse import urlsplit
 from urllib.request import Request, urlopen
@@ -381,6 +382,12 @@ def run():
                     if case=='lost_approval_ack':assert worker.approve(id,click)[0]==403
                     assert worker.call('run_browser_use',payload,authority)[1]['job_id']==id
                     assert worker.journal.get(worker.scope,id)['state']==result['state']
+                    # Terminal journal state precedes the runner's finally cleanup.
+                    # Observe its cleanup before exercising idempotency; concurrent
+                    # removal would race the worker and obscure actual recovery.
+                    def resources_removed():
+                        return not docker('ps','-aq','--filter','label=gravitre.native.job='+id) and not docker('network','ls','-q','--filter','label=gravitre.native.job='+id)
+                    wait_for(resources_removed,30,'worker_resource_cleanup_timeout')
                     cleaner.cleanup(id)
                     assert not docker('ps','-aq','--filter','label=gravitre.native.job='+id)
                     assert not docker('network','ls','-q','--filter','label=gravitre.native.job='+id)
@@ -402,6 +409,11 @@ def run():
         report['status']='PASS'
     except Exception as error:
         report.update(status='BLOCKED',failure_stage=stage,failure_class=type(error).__name__)
+        report['failure_frames']=[{'file':Path(frame.filename).name,'line':frame.lineno,'function':frame.name} for frame in traceback.extract_tb(error.__traceback__)[-12:]]
+        if isinstance(error,subprocess.CalledProcessError):
+            report['subprocess_returncode']=error.returncode
+            if isinstance(error.cmd,list) and len(error.cmd)>1 and error.cmd[0]=='docker' and error.cmd[1] in {'ps','network','rm','exec','kill','image','push','tag','build'}:
+                report['docker_operation']=error.cmd[1]
         if isinstance(error,AcceptanceCredentialError):report['invalid_credential_name']=error.credential_name
         if type(error).__name__=='LocalProtocolError':report['header_value_rejected']='Illegal header value' in str(error)
         code=str(getattr(error,'code',''))
