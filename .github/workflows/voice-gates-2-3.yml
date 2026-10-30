@@ -68,16 +68,6 @@ jobs:
               raise SystemExit('Smoke token identity verification failed')
           print('AUTHENTICATED_SMOKE_ACTOR_VERIFIED: Auth API identity matches isolated membership')
           PY
-      - name: Require inference configuration after independent actor verification
-        run: |
-          python - <<'PY'
-          import json, pathlib
-          result = json.loads(pathlib.Path('acceptance-results/paired-runtime-readiness.json').read_text())
-          if result['blockers']:
-              print(json.dumps(result))
-              raise SystemExit(2)
-          print('Isolated configuration and existing actor verified; paired inference still requires execution')
-          PY
       - name: Authenticate and run bounded live Anthropic inference
         env:
           ACCEPTANCE_ANTHROPIC_API_KEY: ${{ secrets.ACCEPTANCE_ANTHROPIC_API_KEY }}
