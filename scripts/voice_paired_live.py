@@ -101,11 +101,28 @@ class FinalFenceProbe:
             self.started.set()
             if not self.release.wait(15):
                 raise TimeoutError('fixture worker release deadline')
+            # Exercise the native repository independently of the connector
+            # final fence. A cancelled audio turn must stop both boundaries.
+            from app.core.db import get_supabase_client
+            from app.operators.agent_jobs import create_job
+            native_client = get_supabase_client(self.ctx.settings)
+            native = {'native_insert_blocked': False}
+            try:
+                job = create_job(native_client, self.ctx.org_id,
+                    environment='acceptance', max_attempts=1,
+                    payload={'acceptance_trace': self.ctx.conversation_id,
+                        'case': self.logical_id, 'task': 'Synthetic audio cancellation sentinel. Do not execute.'})
+                native['native_job_id'] = str(job['id'])
+                # No worker or notification fanout: this row is only an insert
+                # witness and must never remain queued for later execution.
+                native_client.table('agent_jobs').update({'status': 'cancelled'}).eq('org_id', self.ctx.org_id).eq('id', job['id']).execute()
+            except ToolValidationError as error:
+                native.update(native_insert_blocked=True, native_error_code=error.code)
             try:
                 handle = begin_write_effect(self.ctx, 'gmail.send')
             except ToolValidationError as error:
                 return {'gate_blocked': True, 'gate_error_code': error.code,
-                        'scope': 'canonical final write fence with fixture provider'}
+                        'scope': 'canonical final write fence with fixture provider', **native}
             if handle is None:
                 raise AssertionError('write gate did not recognize mutating catalog action')
             body = dict(org_id=self.ctx.org_id, actor_id=self.ctx.actor_id,
@@ -122,7 +139,7 @@ class FinalFenceProbe:
             finally:
                 connection.close()
             finish_write_effect(handle, 'completed')
-            return {'gate_blocked': False, 'scope': 'canonical final write fence with fixture provider'}
+            return {'gate_blocked': False, 'scope': 'canonical final write fence with fixture provider', **native}
 
 
 class Capture:
@@ -582,8 +599,14 @@ async def main():
                 effects = [r for r in evidence['effects'] if r['logical_id'] == capture.probe.logical_id]
                 row['independent_fixture_attempts'] = len(attempts)
                 row['independent_fixture_effects'] = len(effects)
+                native_rows = client.table('agent_jobs').select('id,status').eq('org_id', org).contains('payload', {'acceptance_trace': cid}).execute().data
+                row['independent_native_job_ids'] = [r['id'] for r in native_rows]
+                row['independent_native_effects'] = len(native_rows)
                 valid_fence = (capture.probe_result and capture.probe_result.get('gate_blocked') is True
-                    and capture.probe_result.get('original_token_cancelled') is True and not attempts and not effects)
+                    and capture.probe_result.get('original_token_cancelled') is True
+                    and capture.probe_result.get('native_insert_blocked') is True
+                    and capture.probe_result.get('native_error_code') == 'write_commit_interrupted'
+                    and not native_rows and not attempts and not effects)
                 if not valid_fence:
                     row.update(status='FAIL', error_type='FinalWriteFenceNotIndependentlyVerified')
                 (output / 'write-sink-audit.json').write_text(json.dumps(evidence, indent=2))
@@ -611,9 +634,13 @@ async def main():
     positive_effects = [r for r in evidence['effects'] if r['logical_id'] == 'positive-control']
     report['fixture_positive_control']['independent_attempts'] = len(positive_attempts)
     report['fixture_positive_control']['independent_effects'] = len(positive_effects)
+    native_positive = client.table('agent_jobs').select('id,status').eq('org_id', org).contains('payload', {'acceptance_trace': positive.ctx.conversation_id}).execute().data
+    report['fixture_positive_control']['independent_native_rows'] = native_positive
     (output / 'manifest.json').write_text(json.dumps(report, indent=2))
     if len(positive_attempts) != 1 or len(positive_effects) != 1:
         raise AssertionError('independent fixture positive control failed')
+    if len(native_positive) != 1 or native_positive[0]['status'] != 'cancelled':
+        raise AssertionError('independent native positive control failed')
     if not all(r["status"] == "PASS" for r in report["trials"]):
         raise SystemExit(2)
 
