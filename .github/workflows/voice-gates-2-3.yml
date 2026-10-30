@@ -130,6 +130,11 @@ jobs:
           PY
       - name: Install production voice pipeline and isolated transport dependencies
         run: python -m pip install -r backend/requirements-dev.txt -r backend/requirements-voice-comparison.txt 'livekit-api==1.2.2'
+      - name: Install recording decoder from the runner package repository
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install --yes --no-install-recommends ffmpeg
+          ffmpeg -version
       - name: Verify paired controller isolation and capture contracts
         run: |
           python -m unittest discover -s tests -p test_voice_paired_live.py
