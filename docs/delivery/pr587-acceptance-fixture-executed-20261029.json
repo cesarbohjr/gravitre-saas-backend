@@ -59,5 +59,25 @@
     "merged": false,
     "production_app_deployed": false,
     "voice_engine_changed": false
+  },
+  "auth_api_verified": {
+    "passed": true,
+    "run": "https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/41001939439",
+    "source_head": "2e2bba1049c14e0bdd37a48e721fecd7df5e6197"
+  },
+  "governed_regressions": {
+    "passed": 115,
+    "run": "https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/41001789056",
+    "source_head": "cf4d21962240e836db32a83771121f9a6b837d9f"
+  },
+  "live_speech_provider": {
+    "status": "PASS",
+    "scope": "two fixed synthetic recorded phrases, real ElevenLabs/Deepgram and local canonical write gate",
+    "run": "https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/41001789056",
+    "prior_failure_preserved": {
+      "source_head": "61243c2e661f9a0af7d50f752443eae76cd81e61",
+      "artifact_id": 12953921112
+    },
+    "fix": "Explicit negative commands retain their veto when STT omits sentence punctuation; no affirmative path expanded"
   }
 }
