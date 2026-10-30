@@ -368,7 +368,24 @@ def run():
                         if row['state'] in ('completed','failed','cancelled','uncertain'):
                             return row if not crash or row['phase']=='reconciled' else False
                         return False
-                    result=wait_for(finished,100 if crash else 60,'worker_terminal_or_reconciliation_timeout')
+                    # A dropped submit ACK can leave the client unaware of the
+                    # accepted job. Keep the recovery boundary fail-closed, but
+                    # preserve sanitized journal/worker diagnostics on timeout.
+                    try:
+                        result=wait_for(finished,100 if crash else 60,'worker_terminal_or_reconciliation_timeout')
+                    except TimeoutError:
+                        row=worker.journal.get(worker.scope,id)
+                        actions=worker.actions(id)
+                        report['terminal_timeout_details']={
+                            'adapter':adapter,'scenario':case,
+                            'journal_state':row['state'] if row else 'missing',
+                            'journal_phase':row['phase'] if row else 'missing',
+                            'action_states':[action['state'] for action in actions],
+                            'action_count':len(actions),
+                            'worker_alive':worker.process.poll() is None,
+                            'external_write_count':fixture.count(case_cap)-before,
+                        }
+                        raise
                     expected=1 if case in ('approved','broker_crash_after_effect','lost_submit_ack','lost_approval_ack') else 0
                     assert fixture.count(case_cap)-before==expected
                     if crash:assert result['state']=='uncertain'
