@@ -94,6 +94,13 @@ class NativeRuntime:
         self.journal.consume_authority(claims['scope']['org_id'],claims['actor'],authority['ref'],'action:'+request_id+':'+digest+':'+str(approved))
         self.journal.approve(AdapterScope(**claims['scope']),job_id,request_id,digest,approved)
 
+    def checkpoint_browser(self, job: dict, sequence: int, checkpoint: dict) -> None:
+        """Trusted broker boundary; the engine cannot declare its own safe handoff."""
+        if job.get('kind')!='browser_use' or not self.journal.active(job):
+            raise LeaseLost('Browser checkpoint requires an active worker')
+        self.authorize(job['payload']['claims'])
+        self.journal.save_browser_checkpoint(job,sequence,checkpoint)
+
     def _fallback_authorized(self, claims: dict) -> bool:
         try:
             self.authorize(claims)
