@@ -169,9 +169,10 @@ jobs:
       - name: Install real backend and process-test dependencies
         run: python -m pip install -r backend/requirements-dev.txt
       - name: Verify owned receiver and real process contracts
+        working-directory: backend
         env:
           APP_ENV: dev
-        run: python -m pytest -q backend/tests/native_runtime/test_broker_process_contract.py
+        run: python -m pytest -q tests/native_runtime/test_broker_process_contract.py
       - name: Install pinned verified gVisor runtime
         run: |
           curl --fail --location --silent --show-error https://github.com/google/gvisor/releases/download/release-20261026.0/gvisor-x86_64.tar.zstd -o /tmp/gvisor.tar.zstd
@@ -217,10 +218,20 @@ jobs:
           CLOUDFLARED_BIN: ${{ runner.temp }}/cloudflared
           NATIVE_TENANT_EVIDENCE: native-tenant-worker-evidence.json
         run: python backend/native-workers/tenant_worker_contract.py
+      - name: Preserve blocked evidence if setup did not reach execution
+        if: always()
+        run: |
+          python - <<'PYCODE'
+          import json,os
+          from pathlib import Path
+          target=Path('native-tenant-worker-evidence.json')
+          if not target.exists():
+              target.write_text(json.dumps({'schema_version':1,'git_sha':os.environ.get('GITHUB_SHA'),'status':'BLOCKED','failure_stage':'setup_or_contracts_did_not_reach_tenant_execution'})+'\n')
+          PYCODE
       - name: Publish sanitized tenant and lifecycle evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: native-tenant-worker-certification
           path: native-tenant-worker-evidence.json
-          if-no-files-found: warn
+          if-no-files-found: error
