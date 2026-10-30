@@ -1,0 +1,63 @@
+{
+  "status": "PARTIAL_BLOCKED_ON_INFERENCE",
+  "source_head": "61243c2e661f9a0af7d50f752443eae76cd81e61",
+  "evidence_run": "https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/41001107006",
+  "target": {
+    "project_ref": "aadnwmjzrmbvadszroqt",
+    "name": "gravitre-acceptance",
+    "production_database_modified": false
+  },
+  "schema": {
+    "baseline_sha256": "bf66e05f4dc221f1d761e8965343ebd5bdbda43734dd26cd21f2f3b2d67c2617",
+    "baseline_batches": 29,
+    "recorded_acceptance_migrations": 31,
+    "public_tables": 241,
+    "rls_enabled_tables": 241,
+    "without_rls": [],
+    "canonical_billing_reference_seed_applied": true
+  },
+  "fixture": {
+    "status": "SMOKE_ACTOR_READY",
+    "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
+    "actor_id": "a58ecaf9-d781-419c-b2ec-4c10e3f76841",
+    "membership": "admin",
+    "plan": "control",
+    "short_lived_session_minted": true,
+    "session_ttl_seconds": 600,
+    "customer_connectors_created": 0
+  },
+  "rls_probes": {
+    "scope": "SQL role/claims probes, not HTTP token verification",
+    "negative_fixture_exists": true,
+    "negative_fixture_has_smoke_membership": false,
+    "authenticated_own_visible": 1,
+    "authenticated_foreign_visible": 0,
+    "authorized_update_rows": 1,
+    "unauthorized_update_rows": 0,
+    "update_probe_rolled_back": true,
+    "anonymous_select_denied_sqlstate": "42501"
+  },
+  "advisories": {
+    "inherited_baseline": true,
+    "rls_without_policy_info": 33,
+    "mutable_search_path_warnings": 35,
+    "vector_in_public_warning": 1,
+    "security_definer_exposure": "auth_org_accessible(uuid); inspected membership/auth.uid/region predicate; not a blanket security clearance"
+  },
+  "inference": {
+    "status": "NOT_RUN",
+    "reason": "Dedicated acceptance Anthropic/OpenAI secret absent under supported names",
+    "relay_deployed": false,
+    "relay_deployment_review": "REJECTED: production-environment deployment outside isolated-test authorization",
+    "proposal": "docs/delivery/pr587-inference-relay-proposal.md"
+  },
+  "paired_runtime": {
+    "status": "NOT_RUN",
+    "certified": false
+  },
+  "release": {
+    "merged": false,
+    "production_app_deployed": false,
+    "voice_engine_changed": false
+  }
+}
