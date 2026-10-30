@@ -1,0 +1,93 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300" width="400" height="300">
+<style>@keyframes gi-drift-y { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-6px)} }
+@keyframes gi-drift-x { 0%,100%{transform:translateX(0)} 50%{transform:translateX(5px)} }
+@keyframes gi-pulse-op { 0%,100%{opacity:1} 50%{opacity:0.55} }
+@keyframes gi-stamp-in { 0%{transform:scale(1.4);opacity:0} 15%{transform:scale(0.9);opacity:1} 25%{transform:scale(1)} 100%{transform:scale(1)} }
+@keyframes gi-slide-right { 0%{transform:translateX(-18px);opacity:0} 20%{transform:translateX(0);opacity:1} 80%{transform:translateX(0);opacity:1} 100%{transform:translateX(18px);opacity:0} }
+@keyframes gi-travel-line { 0%{stroke-dashoffset:60} 100%{stroke-dashoffset:0} }
+@keyframes gi-bob { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-4px)} }
+@keyframes gi-fade-cycle { 0%,15%{opacity:0} 25%,75%{opacity:1} 85%,100%{opacity:0} }
+@keyframes gi-grow-bar { from{transform:scaleY(0)} to{transform:scaleY(1)} }
+@keyframes gi-rise-bar { 0%,100%{transform:scaleY(0.4)} 50%{transform:scaleY(1)} }
+@keyframes gi-spin-slow { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
+@keyframes gi-blink { 0%,90%,100%{opacity:1} 95%{opacity:0} }
+
+
+[style*="gi-stamp-in"],[style*="gi-grow-bar"],[style*="gi-rise-bar"]{transform-box:fill-box;transform-origin:center}
+[style*="gi-grow-bar"],[style*="gi-rise-bar"]{transform-origin:center bottom}
+@media (prefers-reduced-motion: reduce){*{animation:none!important}}
+rect[fill="#FFFFFF"][stroke]{filter:drop-shadow(0 1px 1px rgba(0,0,0,0.04)) drop-shadow(0 3px 8px rgba(0,0,0,0.05))}
+</style><defs>
+  <filter id="grain2"><feTurbulence type="fractalNoise" baseFrequency="0.65" numOctaves="3" stitchTiles="stitch" /><feColorMatrix type="saturate" values="0" /><feBlend in="SourceGraphic" mode="overlay" /><feComposite in2="SourceGraphic" operator="in" /></filter>
+  <radialGradient id="b2a" cx="30%" cy="40%" r="50%"><stop offset="0%" stop-color="#CFDCCB" stop-opacity="0.7" /><stop offset="100%" stop-color="#CFDCCB" stop-opacity="0" /></radialGradient>
+  <pattern id="d2" width="14" height="14" patternUnits="userSpaceOnUse"><circle cx="7" cy="7" r="0.7" fill="#2A2B28" opacity="0.13" /></pattern>
+</defs>
+
+
+<g style="animation:gi-drift-y 9s ease-in-out infinite 0s">
+  <rect x="28" y="36" width="160" height="66" rx="8" fill="#FFFFFF" stroke="#E4E4E7" stroke-width="1.2" />
+  <rect x="42" y="50" width="80" height="5" rx="2" fill="#D4D4D8" />
+  <rect x="42" y="60" width="120" height="5" rx="2" fill="#D4D4D8" />
+  <rect x="42" y="70" width="90" height="5" rx="2" fill="#E4E4E7" />
+  
+  <rect x="132" y="58" width="2" height="9" rx="1" fill="#2A2B28" style="animation:gi-blink 1.8s step-end infinite" />
+  <circle cx="42" cy="90" r="4" fill="#19C37D" />
+  <text x="52" y="93" font-family="DM Sans,system-ui" font-size="8" fill="#7E9A7B" font-weight="500">Describe a goal</text>
+</g>
+
+
+<g style="animation:gi-pulse-op 3s ease-in-out infinite 1s">
+  <line x1="108" y1="107" x2="108" y2="128" stroke="#19C37D" stroke-width="1.5" />
+  <polygon points="104,126 108,133 112,126" fill="#19C37D" />
+</g>
+
+
+<g style="animation:gi-drift-y 10s ease-in-out infinite 0.5s">
+  <rect x="28" y="136" width="160" height="66" rx="8" fill="#FFFFFF" stroke="#19C37D" stroke-width="1.5" />
+  
+  <rect x="42" y="148" width="18" height="18" rx="4" fill="#2A2B28" />
+  <g><svg x="45.5" y="150.5" width="11" height="11" viewBox="0 0 24 24" fill="#19C37D"><g transform="translate(12 12) skewX(-14) translate(-12 -12)"><rect x="1.5" y="3.2" width="21" height="7" rx="2.4" /><rect x="1.5" y="13.8" width="21" height="7" rx="2.4" /></g></svg></g>
+  
+  <circle cx="74" cy="157" r="3" fill="#F4F4F5" style="animation:gi-fade-cycle 6s ease-in-out infinite 0s" />
+  <line x1="77" y1="157" x2="84" y2="157" stroke="#D4D4D8" stroke-width="1" />
+  <circle cx="87" cy="157" r="3" fill="#F4F4F5" style="animation:gi-fade-cycle 6s ease-in-out infinite 0.6s" />
+  <line x1="90" y1="157" x2="97" y2="157" stroke="#D4D4D8" stroke-width="1" />
+  <circle cx="100" cy="157" r="3" fill="#F4F4F5" style="animation:gi-fade-cycle 6s ease-in-out infinite 1.2s" />
+  <line x1="103" y1="157" x2="110" y2="157" stroke="#D4D4D8" stroke-width="1" />
+  <circle cx="113" cy="157" r="3" fill="#F4F4F5" style="animation:gi-fade-cycle 6s ease-in-out infinite 1.8s" />
+  <rect x="42" y="170" width="130" height="4" rx="2" fill="#E4E4E7" />
+  <rect x="42" y="178" width="80" height="4" rx="2" fill="#E4E4E7" />
+  <text x="108" y="194" font-family="DM Sans,system-ui" font-size="8" fill="#19C37D" font-weight="600" text-anchor="middle">Brain drafts workflow</text>
+</g>
+
+
+<g style="animation:gi-pulse-op 3s ease-in-out infinite 2s">
+  <line x1="108" y1="206" x2="108" y2="226" stroke="#19C37D" stroke-width="1.5" />
+  <polygon points="104,224 108,231 112,224" fill="#19C37D" />
+</g>
+
+
+<g style="animation:gi-drift-y 8s ease-in-out infinite 1s">
+  <rect x="28" y="234" width="160" height="50" rx="8" fill="#FFFFFF" stroke="#E4E4E7" stroke-width="1.2" />
+  
+  <rect x="38" y="248" width="28" height="12" rx="6" fill="#19C37D" style="animation:gi-fade-cycle 8s ease-in-out infinite 0s" />
+  <rect x="72" y="248" width="28" height="12" rx="6" fill="#7E9A7B" style="animation:gi-fade-cycle 8s ease-in-out infinite 1s" />
+  <rect x="106" y="248" width="28" height="12" rx="6" fill="#F4F4F5" style="animation:gi-fade-cycle 8s ease-in-out infinite 2s" />
+  <rect x="140" y="248" width="28" height="12" rx="6" fill="#E4E4E7" style="animation:gi-fade-cycle 8s ease-in-out infinite 3s" />
+  <text x="108" y="274" font-family="DM Sans,system-ui" font-size="8" fill="#5B6E7A" font-weight="500" text-anchor="middle">Steps light up in order</text>
+</g>
+
+
+<g transform="translate(220,80)">
+  <g style="animation:gi-bob 11s ease-in-out infinite 2s"><rect x="0" y="10" width="80" height="100" rx="6" fill="#FFFFFF" stroke="#E4E4E7" stroke-width="1.2" />
+  <line x1="40" y1="0" x2="40" y2="10" stroke="#2A2B28" stroke-width="2" />
+  <line x1="10" y1="0" x2="70" y2="0" stroke="#2A2B28" stroke-width="2" />
+  <rect x="10" y="20" width="60" height="4" rx="2" fill="#D4D4D8" />
+  <rect x="10" y="30" width="40" height="4" rx="2" fill="#E4E4E7" />
+  
+  <rect x="12" y="75" width="10" height="22" rx="2" fill="#7E9A7B" transform-origin="12 97" style="animation:gi-grow-bar 4s ease-in-out infinite alternate 0s" />
+  <rect x="26" y="65" width="10" height="32" rx="2" fill="#19C37D" transform-origin="26 97" style="animation:gi-grow-bar 4s ease-in-out infinite alternate 0.4s" />
+  <rect x="40" y="55" width="10" height="42" rx="2" fill="#C98F5B" transform-origin="40 97" style="animation:gi-grow-bar 4s ease-in-out infinite alternate 0.8s" />
+  <rect x="54" y="70" width="10" height="27" rx="2" fill="#5B6E7A" transform-origin="54 97" style="animation:gi-grow-bar 4s ease-in-out infinite alternate 1.2s" />
+</g></g>
+</svg>

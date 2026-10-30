@@ -77,9 +77,9 @@ function gvMark(w = 24, h = 14, color = "var(--br)") {
   return svg
 }
 
-/** White mark on the carbon tile, as in the design's header. */
+/** The real app icon: mint mark on the brand-green tile (matches icons/icon128.png). */
 function gvMarkTile(size = 22) {
-  return h("span", { class: "mark", title: "Gravitre", style: { width: `${size}px`, height: `${size}px` } }, gvMark(Math.round(size * 0.6), Math.round(size * 0.34), "#fff"))
+  return h("span", { class: "mark", title: "Gravitre", style: { width: `${size}px`, height: `${size}px` } }, gvMark(Math.round(size * 0.62), Math.round(size * 0.36), "#e0f3ec"))
 }
 
 /** h("div", { class: "row", onclick }, child, "text") */

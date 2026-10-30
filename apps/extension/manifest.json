@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Gravitre",
-  "version": "0.7.0",
+  "version": "0.7.1",
   "description": "Ask about any page, approve what your agents propose and follow their work, with the same Gravitre workspace.",
   "permissions": [
     "activeTab",

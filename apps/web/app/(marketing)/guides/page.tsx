@@ -10,11 +10,11 @@ import {
   Workflow,
   Database,
   Lightbulb,
-  Play,
 } from "lucide-react"
 import { useState } from "react"
 import { guideHref } from "@/lib/marketing-guide-links"
 import { DivideX } from "@/components/marketing/nodus/divide"
+import { MarketingScene } from "@/components/marketing/nodus/scene"
 import {
   MarketingPageEndCta,
   MarketingPageHero,
@@ -29,6 +29,14 @@ import {
   GravitreTrace,
   StageTraceVisual,
 } from "@/components/marketing/system"
+
+/** App illustrations (no people) used as featured-guide thumbnails. */
+const GUIDE_ART: Record<string, string> = {
+  "Install the Chrome browser extension": "market-site-health",
+  "Create Your First AI Agent": "market-leads",
+  "Understanding Agent Capabilities": "market-campaigns",
+  "Building Multi-Step Workflows": "market-pipeline",
+}
 
 const categories = [
   { id: "all", label: "All Guides", icon: BookOpen },
@@ -275,11 +283,13 @@ export default function GuidesPage() {
                 href={guideHref(guide.title)}
                 className="group relative block overflow-hidden rounded-2xl border border-border bg-card transition-all hover:border-primary/30 hover:shadow-lg"
               >
-                <div className="aspect-video bg-gradient-to-br from-primary/10 via-card to-muted/50 p-6 flex items-center justify-center">
-                  <div className="h-16 w-16 rounded-2xl bg-muted flex items-center justify-center group-hover:scale-110 transition-transform">
-                    <Play className="h-8 w-8 text-muted-foreground" />
-                  </div>
-                </div>
+                <MarketingScene
+                  name={GUIDE_ART[guide.title] ?? "spot-reports"}
+                  width={300}
+                  height={190}
+                  aspect="aspect-video"
+                  className="rounded-none border-0 border-b"
+                />
                 <div className="p-6">
                   <div className="flex items-center gap-3 mb-3">
                     <span

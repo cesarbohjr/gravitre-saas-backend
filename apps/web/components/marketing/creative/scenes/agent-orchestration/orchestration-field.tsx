@@ -14,8 +14,6 @@ import {
 import { cn } from "@/lib/utils"
 import { GravitreAgentNode } from "../../primitives/agent-node"
 import { GravitreEvidenceMark } from "../../primitives/evidence-mark"
-import { topologyForCoreState } from "../../primitives/relational-topology"
-import type { CoreState } from "@/components/marketing/system/department-network/types"
 import { withCreativeScene } from "../../fallbacks/with-creative-scene"
 import {
   AGENT_ROLES,
@@ -29,6 +27,8 @@ import {
   pathStatesForPhase,
   type OrchestrationPhase,
 } from "./storyboard"
+import { NodusDotField } from "@/components/marketing/nodus/dot-field"
+import { TesseractCore } from "./tesseract-core"
 
 const ROLE_ICONS = {
   research: NucleoSearch,
@@ -36,55 +36,6 @@ const ROLE_ICONS = {
   support: NucleoChat,
   ops: NucleoRun,
 } as const
-
-function coreStateFor(phase: OrchestrationPhase): CoreState {
-  switch (phase) {
-    case "intent":
-      return "receiving"
-    case "understand":
-      return "connecting"
-    case "plan":
-    case "delegate":
-      return "coordinating"
-    case "waiting":
-      return "verifying"
-    case "verify":
-    case "outcome":
-    case "learned":
-      return "learned"
-    case "failure":
-      return "verifying"
-    default:
-      return "idle"
-  }
-}
-
-function MiniTopology({ phase }: { phase: OrchestrationPhase }) {
-  const layout = topologyForCoreState(coreStateFor(phase))
-  return (
-    <svg viewBox="0 0 80 72" className="pointer-events-none h-24 w-28" aria-hidden>
-      {layout.edges.map(([a, b], i) => {
-        const pa = layout.nodes[a]
-        const pb = layout.nodes[b]
-        if (!pa || !pb) return null
-        return (
-          <line
-            key={i}
-            x1={pa.x}
-            y1={pa.y}
-            x2={pb.x}
-            y2={pb.y}
-            stroke="color-mix(in srgb, var(--g-intelligence) 40%, var(--g-border-strong))"
-            strokeWidth={1.1}
-          />
-        )
-      })}
-      {layout.nodes.map((p, i) => (
-        <circle key={i} cx={p.x} cy={p.y} r={i === 0 ? 4.5 : 2.4} fill={i === 0 ? "var(--brand)" : "var(--muted-foreground)"} />
-      ))}
-    </svg>
-  )
-}
 
 function ReducedModel() {
   return (
@@ -153,6 +104,7 @@ function AgentOrchestrationFieldImpl({ className }: { className?: string }) {
   const showTools = ["tools", "parallel", "waiting", "verify", "outcome", "learned", "failure"].includes(phase)
   const waiting = phase === "waiting"
   const failed = phase === "failure"
+  const settled = phase === "verify" || phase === "outcome" || phase === "learned"
   const inspected = AGENT_ROLES.find((role) => role.id === inspectedRole) ?? null
   const paths = pathStatesForPhase(phase)
   const pathId = activePathId(phase)
@@ -172,33 +124,35 @@ function AgentOrchestrationFieldImpl({ className }: { className?: string }) {
       data-creative-frozen={frozenPhase ? "1" : "0"}
     >
       {reduced ? (
-        <div className="rounded-2xl border border-divide bg-card p-5" data-testid="orchestration-reduced">
+        <div className="relative isolate px-5 py-8" data-testid="orchestration-reduced">
+          <NodusDotField className="-z-10" />
           <ReducedModel />
         </div>
       ) : (
         <>
           <div
-            className="hidden rounded-2xl border border-divide bg-card p-4 md:block md:p-6"
+            className="relative isolate hidden px-4 py-8 md:block md:px-6"
             data-testid="orchestration-desktop"
           >
-            <div className="grid grid-cols-[1.1fr_1.4fr_1fr] gap-4">
-              <div>
+            <NodusDotField className="-z-10" />
+            <div className="grid grid-cols-[1fr_1.6fr_1fr] items-center gap-6">
+              <div className="rounded-lg bg-card p-4 shadow-aceternity">
                 <p className="text-[10px] font-semibold uppercase tracking-wide text-[color:var(--g-text-muted)]">Intent</p>
                 <p className="mt-2 text-sm font-medium leading-snug text-[color:var(--g-text-secondary)]">{ILLUSTRATIVE_REQUEST}</p>
               </div>
               <div className="flex flex-col items-center">
-                <MiniTopology phase={phase} />
+                <TesseractCore settled={settled} className="w-full max-w-[320px]" />
                 {showPlan ? (
                   <ul className="mt-2 flex flex-wrap justify-center gap-1">
                     {PLAN_CHIPS.map((c) => (
-                      <li key={c} className="rounded-md border border-divide px-1.5 py-0.5 text-[10px] text-[color:var(--g-text-secondary)]">
+                      <li key={c} className="rounded-md bg-card px-1.5 py-0.5 font-mono text-[10px] text-[color:var(--g-text-secondary)] shadow-aceternity">
                         {c}
                       </li>
                     ))}
                   </ul>
                 ) : null}
               </div>
-              <div>
+              <div className="rounded-lg bg-card p-4 shadow-aceternity">
                 <p className="text-[10px] font-semibold uppercase tracking-wide text-[color:var(--g-text-muted)]">Outcome</p>
                 {phase === "outcome" || phase === "learned" || phase === "verify" ? (
                   <p className="mt-2 text-sm font-medium text-brand">
@@ -264,11 +218,12 @@ function AgentOrchestrationFieldImpl({ className }: { className?: string }) {
           </div>
 
           <div
-            className="space-y-3 rounded-2xl border border-divide bg-card p-4 md:hidden"
+            className="relative isolate space-y-3 px-2 py-6 md:hidden"
             data-testid="orchestration-mobile"
           >
+            <NodusDotField className="-z-10" />
             <p className="text-sm font-medium">{ILLUSTRATIVE_REQUEST}</p>
-            <MiniTopology phase={phase} />
+            <TesseractCore settled={settled} className="mx-auto w-52" />
             {showPlan ? (
               <ul className="space-y-1 text-xs text-[color:var(--g-text-secondary)]">
                 {PLAN_CHIPS.map((c) => (

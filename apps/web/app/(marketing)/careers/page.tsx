@@ -3,6 +3,7 @@ import { Badge } from "@/components/marketing/nodus/badge"
 import { Button } from "@/components/marketing/nodus/button"
 import { Container } from "@/components/marketing/nodus/container"
 import { CTA } from "@/components/marketing/nodus/cta"
+import { MarketingScene } from "@/components/marketing/nodus/scene"
 import { DivideX } from "@/components/marketing/nodus/divide"
 import { SectionHeading } from "@/components/marketing/nodus/seciton-heading"
 import { SubHeading } from "@/components/marketing/nodus/subheading"
@@ -70,8 +71,8 @@ const why = [
 export default function CareersPage() {
   return (
     <main className="bg-[color:var(--g-marketing-canvas)]">
-      <Container className="border-divide flex flex-col items-center border-x pb-16">
-        <div className="divide-divide border-divide grid w-full grid-cols-1 border-b lg:grid-cols-2 lg:divide-x">
+      <Container className="border-divide flex flex-col items-center border-x">
+        <div className="divide-divide border-divide grid w-full grid-cols-1 lg:grid-cols-2 lg:divide-x">
           <div className="flex flex-col items-start justify-start px-4 py-10 md:px-8 md:py-32">
             <Badge text="Careers" />
             <SectionHeading className="mt-4 text-left">
@@ -85,7 +86,7 @@ export default function CareersPage() {
               View roles
             </Button>
           </div>
-          <div className="flex flex-col justify-center gap-4 px-4 py-10 md:px-8">
+          <div className="flex flex-col justify-center gap-4 px-4 py-10 md:px-8 md:py-32">
             <p className="font-mono text-xs tracking-tight text-muted-foreground uppercase">
               How we work
             </p>
@@ -128,6 +129,13 @@ export default function CareersPage() {
           <SubHeading className="mx-auto mt-4 max-w-lg px-4 text-center">
             We are not listing invented openings. Reach out if you want to build with us.
           </SubHeading>
+          <MarketingScene
+            name="marketing/open-roles"
+            alt="An empty desk with a monitor, a plant and a welcome card"
+            width={400}
+            height={300}
+            className="mx-4 mt-10 w-[calc(100%-2rem)] max-w-xl"
+          />
           <Button as={Link} href="/contact" className="mt-8">
             Contact careers
           </Button>
