@@ -115,6 +115,7 @@ jobs:
       - name: Certify real isolated SDK execution and failure controls
         env:
           NATIVE_CERT_EVIDENCE: native-runtime-evidence.json
+          CERT_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
         run: python backend/native-workers/runtime_contract.py
       - uses: actions/upload-artifact@v4
         with:
