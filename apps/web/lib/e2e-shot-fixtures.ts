@@ -2887,6 +2887,36 @@ export const SHOT_FIXTURES: Record<string, unknown> = {
     ],
     unavailable: [],
   },
+  // FIXTURE: Overview evidence panel (GET .../sweep-usage and .../evidence-recommendations).
+  "/api/intelligence/overview/sweep-usage": {
+    period: "2026-10",
+    limit: 50,
+    used: 12,
+    remaining: 38,
+    unit: "sweeps",
+  },
+  "/api/intelligence/overview/evidence-recommendations": {
+    recommendations: [
+      {
+        id: "rec_shot_renewals",
+        title: "Three renewals show the same support escalation pattern",
+        description: "HubSpot deals and Zendesk tickets point at the same accounts. Review before outreach.",
+        kind: "cross_provider_identity",
+        sources: [
+          { connector_id: "hubspot", object_type: "deal", external_id: "d-1042" },
+          { connector_id: "zendesk", object_type: "ticket", external_id: "t-8831" },
+          { connector_id: "zendesk", object_type: "ticket", external_id: "t-8840" },
+        ],
+        recommended_play_key: "renewal_risk_follow_up",
+        advisory_only: true,
+        approval_required: true,
+        business_impact: null,
+        outcome_verified: false,
+      },
+    ],
+    count: 1,
+    advisoryOnly: true,
+  },
   // FIXTURE: tenant Overview contract (shape of GET /api/intelligence/overview).
   "/api/intelligence/overview": {
     schema_version: "intelligence_overview_v1",

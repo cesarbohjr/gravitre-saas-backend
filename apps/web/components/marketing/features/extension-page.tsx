@@ -14,7 +14,6 @@ import {
   extensionInstallCtaLabel,
   extensionInstallHref,
 } from "@/lib/extension-install"
-import { ProductScreenshot } from "@/components/marketing/product-screenshot"
 import { BrowserFrame } from "@/components/marketing/browser-frame"
 import {
   BraveVendorIcon,
@@ -163,10 +162,10 @@ export function ExtensionPage() {
           </p>
           <ol className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
             {activationSteps.map((step, i) => (
-              <li key={step.n}>
+              <li key={step.n} className="flex">
                 <GravitreFlow
                   delay={i * 0.05}
-                  className="rounded-lg border border-divide bg-[color:var(--g-marketing-surface)] p-5"
+                  className="w-full rounded-lg border border-divide bg-[color:var(--g-marketing-surface)] p-5"
                 >
                   <div className="mb-3 flex h-8 w-8 items-center justify-center rounded-full bg-primary/15 text-sm font-bold text-primary">
                     {step.n}
@@ -177,6 +176,32 @@ export function ExtensionPage() {
               </li>
             ))}
           </ol>
+      </MarketingRails>
+
+      <DivideX />
+
+      <MarketingRails>
+          <h2 className="text-center text-2xl font-medium text-charcoal-700 sm:text-3xl">
+            Steps 1 and 2, in the toolbar
+          </h2>
+          <p className="mx-auto mt-3 max-w-2xl text-center text-gray-600">
+            Click the Gravitre icon on any supported page. The popup shows who
+            is on the page, where they already live in your connected apps, and
+            what is waiting for your approval.
+          </p>
+          <GravitreReveal className="mx-auto mt-12 max-w-3xl">
+            <BrowserFrame
+              url="linkedin.com/in/…"
+              tabTitle="LinkedIn"
+              placement="popup"
+              panel={{
+                src: "/product/extension-popup.png",
+                alt: "Gravitre extension popup on a LinkedIn profile: the person on the page, matches in HubSpot and Salesforce, and three approvals waiting.",
+                width: 680,
+                height: 864,
+              }}
+            />
+          </GravitreReveal>
       </MarketingRails>
 
       <DivideX />
@@ -196,7 +221,8 @@ export function ExtensionPage() {
               </h3>
               <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
                 Catalog reads run against the tab you are on. Nothing is read
-                until you open the overlay.
+                until you open the overlay, and matches come straight from the
+                apps you already connected.
               </p>
               <BrowserFrame
                 className="mt-5"
@@ -204,9 +230,9 @@ export function ExtensionPage() {
                 tabTitle="LinkedIn"
                 panel={{
                   src: "/product/extension-overlay-enrich.png",
-                  alt: "Gravitre overlay panel open on a LinkedIn profile, showing enriched company and contact fields pulled from catalog reads.",
-                  width: 760,
-                  height: 1802,
+                  alt: "Gravitre side panel open on a LinkedIn profile, showing the person on the page, matches in HubSpot and Salesforce, and suggested plays.",
+                  width: 800,
+                  height: 1520,
                 }}
               />
             </GravitreReveal>
@@ -222,14 +248,11 @@ export function ExtensionPage() {
                 className="mt-5"
                 url="linkedin.com/in/…"
                 tabTitle="LinkedIn"
-                // The confirm block is at the end of this panel — anchor to
-                // the bottom so the actual approval is what you see.
-                panelAlign="bottom"
                 panel={{
                   src: "/product/extension-approval.png",
-                  alt: "Gravitre overlay panel showing a staged HubSpot contact create awaiting confirmation, with the catalog action and target fields listed.",
-                  width: 760,
-                  height: 2358,
+                  alt: "Gravitre side panel Approvals tab: a staged HubSpot contact create with Approve and Reject, and two more requests waiting.",
+                  width: 800,
+                  height: 1520,
                 }}
               />
             </GravitreReveal>
@@ -250,30 +273,25 @@ export function ExtensionPage() {
             staged write waits in the same Approvals queue as chat, and the run
             lands in the same Activity feed — tagged with its source.
           </p>
-          {/* Stacked, not side-by-side: these are dense product surfaces, and at
-              half of max-w-5xl the in-app text is too small to read, which turns
-              the proof into decoration. */}
-          <div className="mt-12 flex flex-col gap-14">
-            <GravitreResolve>
+          <div className="mx-auto mt-10 grid max-w-4xl gap-4 md:grid-cols-2">
+            <GravitreResolve className="rounded-lg border border-divide bg-[color:var(--g-marketing-surface)] p-6">
               <h3 className="text-sm font-semibold text-foreground">
                 Step 4, in the app — the shared Approvals queue
               </h3>
-              <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted-foreground">
+              <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
                 The same confirmation you just saw in the overlay also appears
                 here, with the exact catalog action, its blast radius, and who
                 asked for it.
               </p>
-              <ProductScreenshot
-                className="mt-5"
-                src="/product/app-approvals.png"
-                alt="Approvals queue showing three pending requests, with a HubSpot contact create selected and its recommendation, SLA, and impact detail open."
-              />
             </GravitreResolve>
-            <GravitreResolve delay={0.05}>
+            <GravitreResolve
+              delay={0.05}
+              className="rounded-lg border border-divide bg-[color:var(--g-marketing-surface)] p-6"
+            >
               <h3 className="text-sm font-semibold text-foreground">
                 Step 5, in the app — see it in Outcomes
               </h3>
-              <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted-foreground">
+              <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
                 Extension runs appear with source{" "}
                 <code className="rounded bg-muted px-1 py-0.5 text-xs text-foreground">
                   browser_extension
@@ -281,11 +299,6 @@ export function ExtensionPage() {
                 and the same lifecycle chain as chat — planned, approved,
                 executed, verified.
               </p>
-              <ProductScreenshot
-                className="mt-5"
-                src="/product/app-activity.png"
-                alt="Activity feed listing runs with lifecycle state and source, including a created HubSpot contact run sourced from the browser extension."
-              />
             </GravitreResolve>
           </div>
       </MarketingRails>

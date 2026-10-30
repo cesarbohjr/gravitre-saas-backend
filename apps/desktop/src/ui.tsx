@@ -77,11 +77,11 @@ export function Mark({ width = 24, height = 14, color = "var(--br)" }: { width?:
   )
 }
 
-/** The app tile: the mark in white on carbon. */
+/** The app tile: the real app icon (public/icon-512x512.png), mint mark on brand green. */
 export function MarkTile({ size = 24 }: { size?: number }) {
   return (
     <span className="mark" style={{ width: size, height: size, borderRadius: Math.round(size / 4) }}>
-      <Mark width={Math.round(size * 0.58)} height={Math.round(size * 0.34)} color="#ffffff" />
+      <Mark width={Math.round(size * 0.62)} height={Math.round(size * 0.36)} color="#e0f3ec" />
     </span>
   )
 }

@@ -1,7 +1,5 @@
 "use client"
 
-import { useId } from "react"
-import { motion } from "framer-motion"
 import type { PacketKind } from "./types"
 
 const KIND_MID: Record<PacketKind, string> = {
@@ -11,8 +9,9 @@ const KIND_MID: Record<PacketKind, string> = {
 }
 
 /**
- * Path TRACE — idle mineral stroke + sweeping gradient when active.
- * Learned edges stay as a permanent brand hairline (system remembered).
+ * Path TRACE in the Nodus wiring: a --color-line hairline with a short beam
+ * that keeps travelling toward the core. An active edge runs a faster beam in
+ * its packet colour; learned edges keep a faint brand hairline.
  */
 export function GravitreSignalPath({
   d,
@@ -20,76 +19,52 @@ export function GravitreSignalPath({
   muted = false,
   reduced = false,
   learned = false,
+  delay = 0,
 }: {
   d: string
   activeKind?: PacketKind | null
   muted?: boolean
   reduced?: boolean
   learned?: boolean
+  /** Seconds to offset the idle beam so the wires don't pulse in sync. */
+  delay?: number
 }) {
-  const uid = useId().replace(/:/g, "")
-  const gradId = `gv-dept-path-${uid}`
   const active = activeKind != null
 
   return (
-    <g>
-      <path
-        d={d}
-        fill="none"
-        stroke="var(--line)"
-        strokeWidth={1.25}
-        strokeLinecap="round"
-        opacity={muted ? 0.2 : 0.65}
-      />
+    <g opacity={muted ? 0.35 : 1}>
+      <style>{`
+        @keyframes dn-beam {
+          0% { stroke-dashoffset: 0.3; opacity: 0 }
+          8% { opacity: 1 }
+          62% { opacity: 1 }
+          71%, 100% { stroke-dashoffset: -1; opacity: 0 }
+        }
+      `}</style>
+      <path d={d} fill="none" stroke="var(--color-line)" strokeWidth={1.5} strokeLinecap="round" />
       {learned && !active ? (
+        <path d={d} fill="none" stroke="var(--brand)" strokeWidth={1.5} strokeLinecap="round" opacity={0.35} />
+      ) : null}
+      {reduced ? (
+        active ? (
+          <path d={d} fill="none" stroke={KIND_MID[activeKind]} strokeWidth={1.5} strokeLinecap="round" />
+        ) : null
+      ) : (
         <path
+          key={active ? `active-${activeKind}` : "idle"}
           d={d}
           fill="none"
-          stroke="var(--brand)"
-          strokeWidth={1.75}
+          pathLength={1}
+          stroke={active ? KIND_MID[activeKind] : "var(--brand)"}
+          strokeWidth={active ? 2 : 1.5}
           strokeLinecap="round"
-          opacity={0.55}
+          strokeDasharray="0.3 1.3"
+          style={{
+            opacity: 0,
+            animation: active ? "dn-beam 1.6s linear infinite" : `dn-beam 7s linear ${delay}s infinite`,
+          }}
         />
-      ) : null}
-      {active ? (
-        <>
-          <path
-            d={d}
-            fill="none"
-            stroke={`url(#${gradId})`}
-            strokeWidth={2}
-            strokeLinecap="round"
-            opacity={muted ? 0.4 : 1}
-          />
-          <defs>
-            {reduced ? (
-              <linearGradient id={gradId} gradientUnits="userSpaceOnUse" x1="0%" x2="100%">
-                <stop stopColor="var(--line)" />
-                <stop offset="0.5" stopColor={KIND_MID[activeKind]} />
-                <stop offset="1" stopColor="var(--line)" />
-              </linearGradient>
-            ) : (
-              <motion.linearGradient
-                id={gradId}
-                gradientUnits="userSpaceOnUse"
-                initial={{ x1: "-10%", x2: "0%", y1: 0, y2: 1 }}
-                animate={{ x1: "110%", x2: "120%", y1: 0, y2: 1 }}
-                transition={{
-                  duration: 2,
-                  repeat: Infinity,
-                  repeatType: "loop",
-                  ease: "easeInOut",
-                  repeatDelay: 0.4,
-                }}
-              >
-                <stop stopColor="var(--line)" />
-                <stop offset="0.5" stopColor={KIND_MID[activeKind]} />
-                <stop offset="1" stopColor="var(--line)" />
-              </motion.linearGradient>
-            )}
-          </defs>
-        </>
-      ) : null}
+      )}
     </g>
   )
 }

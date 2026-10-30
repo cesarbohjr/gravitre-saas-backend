@@ -18,6 +18,7 @@ import {
   mentionWithNormalized,
   normalizeIllustrativeMention,
 } from "./normalize"
+import { NodusDotField } from "@/components/marketing/nodus/dot-field"
 
 export const KF_A_BEATS = [
   "sources",
@@ -258,9 +259,10 @@ export function EntityConvergenceWorkbench({ className }: { className?: string }
 
       {/* Single structured field — mentions live here only */}
       <div
-        className="relative overflow-hidden rounded-2xl border border-line bg-[color:color-mix(in_srgb,var(--g-marketing-surface)_92%,var(--card))]"
+        className="relative isolate overflow-hidden rounded-2xl"
         data-testid="kf-a-field"
       >
+        <NodusDotField className="-z-10" />
         <svg
           viewBox="0 0 400 240"
           className="h-auto w-full"
@@ -364,6 +366,21 @@ export function EntityConvergenceWorkbench({ className }: { className?: string }
                 data-matched={inMatch && showMatch ? "1" : "0"}
                 data-rejected={isRejected ? "1" : "0"}
               >
+                {/* Nodus-style card behind each mention, matching the home page skeletons */}
+                {isConverged ? null : (
+                  <rect
+                    x={pos.x - 48}
+                    y={pos.y - 17}
+                    width={96}
+                    height={rawPeek || (showNorm && isSelected) ? 62 : 48}
+                    rx={6}
+                    fill="var(--card)"
+                    stroke={isSelected ? CREATIVE_TOKENS.brand : "var(--line)"}
+                    strokeWidth="0.75"
+                    style={{ filter: "drop-shadow(0 2px 4px rgba(0,0,0,0.06))" }}
+                    className={transition}
+                  />
+                )}
                 {/* Selection response — soft ring */}
                 {isSelected ? (
                   <circle

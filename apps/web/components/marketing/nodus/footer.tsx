@@ -7,7 +7,6 @@ import { Button } from "./button"
 import { Container } from "./container"
 import { Logo } from "./logo"
 import { SubHeading } from "./subheading"
-import { FooterClosingField } from "@/components/marketing/system/footer-closing-field"
 import { openMarketingConsentSettings } from "@/lib/marketing-consent"
 
 const product = [
@@ -140,7 +139,6 @@ export function Footer({ variant = "full" }: { variant?: "full" | "slim" }) {
 
   return (
     <footer className="relative isolate overflow-hidden bg-[color:var(--g-marketing-canvas)]" data-marketing-footer="full">
-      <FooterClosingField />
       <Container className="relative">
         <div className="grid grid-cols-1 gap-y-2 px-4 pt-16 pb-10 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-8 lg:gap-x-4 lg:pt-20">
           <div className="mb-8 sm:col-span-2 md:col-span-4 lg:col-span-2 lg:mb-0">
