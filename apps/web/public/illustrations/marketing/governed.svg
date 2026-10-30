@@ -33,7 +33,6 @@ rect[fill="#FFFFFF"][stroke]{filter:drop-shadow(0 1px 1px rgba(0,0,0,0.04)) drop
   
   <path d="M18,36 L26,46 L44,24" stroke="#19C37D" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round" />
   
-  <ellipse cx="30" cy="35" rx="38" ry="40" fill="none" stroke="#19C37D" stroke-width="1" opacity="0.2" style="animation:gi-pulse-op 3s ease-in-out infinite" />
 </g></g>
 
 
