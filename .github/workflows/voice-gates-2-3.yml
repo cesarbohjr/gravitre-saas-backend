@@ -5,6 +5,7 @@ on:
       - 'backend/app/services/pipecat_voice/livekit_candidate.py'
       - 'backend/tests/services/pipecat_voice/test_livekit_write_fence.py'
       - '.github/workflows/voice-gates-2-3.yml'
+      - 'scripts/bootstrap_voice_acceptance.py'
   workflow_dispatch:
 permissions:
   contents: read
@@ -48,7 +49,11 @@ jobs:
           PY
       - name: Install read-only smoke identity verifier
         run: python -m pip install 'supabase==2.33.0' 'PyJWT==2.15.1'
-      - name: Verify existing flagged smoke actor and membership; never provision one
+      - name: Verify target-pinning guards
+        run: python -m unittest discover -s tests -p test_bootstrap_voice_acceptance.py
+      - name: Provision authorized disposable acceptance tenant and actor
+        run: python scripts/bootstrap_voice_acceptance.py
+      - name: Verify flagged smoke actor and mint short-lived session
         run: python scripts/mint_smoke_org_session.py --github-env
       - name: Require inference configuration after independent actor verification
         run: |
@@ -64,7 +69,9 @@ jobs:
         if: always()
         with:
           name: paired-runtime-readiness
-          path: acceptance-results/paired-runtime-readiness.json
+          path: |
+            acceptance-results/paired-runtime-readiness.json
+            acceptance-results/smoke-fixture.json
   live-provider:
     runs-on: ubuntu-latest
     timeout-minutes: 15
