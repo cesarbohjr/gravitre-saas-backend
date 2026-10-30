@@ -37,6 +37,7 @@ class SandboxImages:
 
 
 class DockerRunner:
+    supports_browser_checkpoint = True
     def __init__(self,images: SandboxImages,*,command=None,process_factory=None,comparison_url: str | None=None):
         images.validate()
         if comparison_url is not None:
