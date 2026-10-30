@@ -186,8 +186,11 @@ class Journal:
             actions=db.execute("SELECT COUNT(*) FROM action_requests WHERE job=?",(job['id'],)).fetchone()[0]
             # Even an approved action can have committed externally; any action
             # history requires independent reconciliation, never blind replay.
-            checkpoint=db.execute("SELECT 1 FROM browser_checkpoints WHERE job=? AND lease=?",(job['id'],job['lease'])).fetchone()
-            safe=checkpoint_before_effect and actions==0 and checkpoint is not None
+            checkpoint=db.execute("SELECT sequence,payload FROM browser_checkpoints WHERE job=? AND lease=?",(job['id'],job['lease'])).fetchone()
+            marker=self._open(checkpoint['payload']) if checkpoint is not None else None
+            safe=(checkpoint_before_effect and actions==0 and checkpoint is not None
+                  and checkpoint['sequence']==0 and isinstance(marker,dict)
+                  and marker.get('before_effect') is True)
             phase='fallback_fenced' if safe else 'fallback_reconcile'
             changed=db.execute(
                 "UPDATE jobs SET state='uncertain',phase=?,lease=NULL,lease_until=NULL,error_code='fallback_pending' WHERE id=? AND lease=? AND state='running'",
