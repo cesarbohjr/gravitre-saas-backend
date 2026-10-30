@@ -192,7 +192,7 @@ def run():
     stage='acceptance_preflight';rows=[];case_counts=[];private_captures=[];user=None;orgs=[];admin=None;logged=None;fixture=None;tunnel=None;model=None;worker=None
     temporary=None;stream=None
     target=Path(os.environ.get('NATIVE_TENANT_EVIDENCE','native-tenant-worker-evidence.json'))
-    report={'schema_version':1,'git_sha':os.environ.get('GITHUB_SHA','local'),'status':'BLOCKED','scenarios':rows,
+    report={'schema_version':1,'git_sha':os.environ.get('CERT_HEAD_SHA',os.environ.get('GITHUB_SHA','local')),'status':'BLOCKED','scenarios':rows,
             'live_customer_data':False,'external_provider_inference':False,'production_adapter_switch':False}
     try:
         required=('E2E_SUPABASE_URL','E2E_SUPABASE_ALLOWED_URL','E2E_SUPABASE_SERVICE_ROLE_KEY','E2E_SUPABASE_ANON_KEY','E2E_SUPABASE_JWT_SECRET')
@@ -203,8 +203,11 @@ def run():
             SUPABASE_ANON_KEY=os.environ['E2E_SUPABASE_ANON_KEY'],SUPABASE_JWT_SECRET=os.environ['E2E_SUPABASE_JWT_SECRET'])
         from supabase import create_client
         from app.core.db import shared_http_options
+        # Only sanitized stages are persisted: transport exceptions may include credentials.
+        stage='acceptance_service_client_construction'
         admin=create_client(ACCEPTANCE,os.environ['E2E_SUPABASE_SERVICE_ROLE_KEY'],options=shared_http_options())
         for table in ('organizations','organization_members','agents','agent_tool_permissions'):
+            stage='acceptance_schema_'+table
             admin.table(table).select('id').limit(0).execute()
         stage='disposable_tenant_authentication'
         password=secrets.token_urlsafe(32);email='native-'+uuid4().hex+'@example.invalid'
