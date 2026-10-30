@@ -19,7 +19,13 @@ The same PCM hash applies to every trial. No private user speech is used.
 
 ## Matched scenarios and criteria
 
-Each transport runs baseline, interrupt and reconnect. Reconnect creates a fresh
+Each transport runs baseline, interrupt and reconnect.
+If its baseline fails, dependent interruption/reconnect scenarios are marked
+NOT RUN and the overall execution fails; a spoken error is not a valid reply to
+interrupt or a meaningful conversation to restore. This saves unnecessary
+provider calls without relaxing any required gate.
+
+Reconnect creates a fresh
 transport session against that engine's original conversation ID; it repeats
 the identical recording. This proves a new session can generate audio for an
 existing conversation only. It is not a semantic memory-restoration score.
@@ -62,3 +68,20 @@ required before final certification. Reports keep `certified: false`.
 All failures remain failures. Sanitized diagnostics include exception classes
 and stack locations, never provider bodies, keys or raw generated transcripts.
 Raw pipeline debug logs stay in the disposable runner and are not uploaded.
+
+## Initial execution checkpoint
+
+Run `41129683591`, source `e0ca9dec9cf2780ea73c15156a172f9f20c95e35`,
+returned audio over both real transports. Artifact `13012876954` contains the
+shared input PCM hash `5b47a4b2c270a59dbd3238a89b1988f944dd246dd8e2d607a23d15168480d4a0`.
+Each session also emitted an error event; independent database reads found no
+durable user/assistant messages or conversation audit rows. Its permissive
+per-row PASS values are rejected as end-to-end voice evidence. Source
+`5bd2530c96c8c7513ecae095d884ff6baa48217f` adds explicit error rejection,
+semantic output checks, paired interruption/reconnection and sanitized exception
+locations. Source `009410188eac4efb59c5c2087b7a5c75985ef109` corrects the
+isolated model-router configuration. Neither correction alone certifies runtime.
+
+A separate direct database check confirmed zero connectors in the smoke tenant.
+Full business-write safety remains unexecuted until an isolated provider fixture
+is available; an empty audit result is not a substitute.

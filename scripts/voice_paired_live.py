@@ -37,9 +37,10 @@ class SanitizedDiagnostics(logging.Handler):
         message = str(error).lower()
         self.rows.append({"error_type": kind.__name__,
             "http_status": getattr(error, "status_code", None) if type(getattr(error, "status_code", None)) is int else None,
-            "categories": [word for word in ("anthropic", "openai", "missing", "credit", "permission", "budget", "model", "column", "relation", "key", "settings") if word in message],
+            "categories": [word for word in ("anthropic", "openai", "missing", "credit", "permission", "budget", "model", "column", "relation", "key", "settings", "illegal header", "bearer", "host header", "request line") if word in message],
+            "escaped_newline_in_diagnostic": '\\n' in message or '\\r' in message,
             "frames": [{"file": Path(f.filename).name, "line": f.lineno, "function": f.name}
-                       for f in traceback.extract_tb(tb)[-12:]]})
+                       for f in traceback.extract_tb(tb)[-40:]]})
         self.output.write_text(json.dumps(self.rows, indent=2))
 
 
@@ -121,7 +122,8 @@ class Capture:
             if running.done():
                 await running
                 raise RuntimeError("pipeline ended before completed reply")
-            if self.first is not None and self.last and time.monotonic() - self.last > 4:
+            completed = self.events.get("bot-llm-stopped", 0) and self.events.get("bot-stopped-speaking", 0)
+            if completed and self.first is not None and self.last and time.monotonic() - self.last > 4:
                 return
             await asyncio.sleep(.1)
         raise TimeoutError("generated speech deadline")
@@ -297,6 +299,24 @@ async def main():
             or organization["settings"].get("isolated_conversation_test_org") is not True):
         raise ValueError("isolated membership missing")
     settings = get_settings()
+    if settings.supabase_url.rstrip('/') != TARGET or settings.supabase_service_role_key != os.environ['SUPABASE_SERVICE_ROLE_KEY']:
+        raise ValueError('canonical database settings differ from controller')
+    from app.core.db import get_supabase_client
+    canonical = get_supabase_client(settings)
+    header_checks = []
+    def inspect_headers(request):
+        headers = request.headers
+        header_checks.append({
+            'target_is_acceptance': request.url.host == 'aadnwmjzrmbvadszroqt.supabase.co',
+            'apikey_matches_configured_service_key': headers.get('apikey') == os.environ['SUPABASE_SERVICE_ROLE_KEY'],
+            'authorization_matches_configured_service_key': headers.get('authorization') == 'Bearer ' + os.environ['SUPABASE_SERVICE_ROLE_KEY'],
+            'authorization_is_empty_bearer': headers.get('authorization', '').strip().lower() == 'bearer',
+            'header_has_control_character': any(any(ord(c) < 32 or ord(c) == 127 for c in value) for value in headers.values()),
+            'header_has_trailing_whitespace': any(value != value.rstrip() for value in headers.values()),
+        })
+        (output / 'canonical-db-header-checks.json').write_text(json.dumps(header_checks[-30:], indent=2))
+    canonical.postgrest.session.event_hooks.setdefault('request', []).append(inspect_headers)
+    canonical.table('organizations').select('id').eq('id', org).limit(1).execute()
     voice = os.environ.get("ELEVENLABS_VOICE_ID") or "EXAVITQu4vr4xnSDxMaL"
     with httpx.Client(timeout=45) as http:
         response = http.post("https://api.elevenlabs.io/v1/text-to-speech/" + voice,
@@ -313,8 +333,14 @@ async def main():
         "certified": False, "human_quality_review": "NOT RUN", "write_governance_certification": "NOT RUN",
         "interruption": "NOT RUN", "reconnection": "NOT RUN"}
     conversations = {}
+    baselines = {}
     for scenario, engine, trial in ((scenario, engine, trial) for scenario in ("baseline", "interrupt", "reconnect")
             for engine, trial in (("pipecat", websocket_trial), ("livekit", livekit_trial))):
+        if scenario != "baseline" and not baselines.get(engine):
+            report["trials"].append({"engine": engine, "scenario": scenario, "status": "NOT RUN",
+                "blocker": "baseline_generated_answer_failed"})
+            (output / "manifest.json").write_text(json.dumps(report, indent=2))
+            continue
         cid = conversations.get(engine) if scenario == "reconnect" else str(uuid.uuid4())
         if not cid:
             raise RuntimeError("missing initial conversation for reconnect")
@@ -379,6 +405,8 @@ async def main():
                 if not row["durable_prior_user_and_assistant_present"]:
                     row.update(status="FAIL", error_type="MissingDurablePriorConversation")
             row["independent_audit"] = independent_audit(client, org, cid, since)
+            if scenario == "baseline":
+                baselines[engine] = row["status"] == "PASS"
             report["trials"].append(row)
             report["interruption"] = "MEASURED_RECEIVER_PCM_ONLY" if any(r.get("received_original_reply_cutoff_ms") is not None for r in report["trials"]) else "NOT RUN"
             report["reconnection"] = "FRESH_SESSION_SAME_CONVERSATION" if any(r["scenario"] == "reconnect" for r in report["trials"]) else "NOT RUN"

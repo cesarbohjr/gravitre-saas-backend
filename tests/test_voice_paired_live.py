@@ -1,6 +1,8 @@
 import importlib.util
 from pathlib import Path
 import unittest
+import asyncio
+import time
 
 spec = importlib.util.spec_from_file_location('paired', Path(__file__).resolve().parents[1] / 'scripts/voice_paired_live.py')
 paired = importlib.util.module_from_spec(spec)
@@ -38,6 +40,30 @@ class IsolationTests(unittest.TestCase):
         capture.started = 1
         capture.audio(bytes(960))
         self.assertIsNone(capture.first)
+
+
+class CompletionTests(unittest.IsolatedAsyncioTestCase):
+    async def test_filler_silence_without_completion_does_not_finish(self):
+        capture = paired.Capture()
+        capture.first = time.monotonic() - 10
+        capture.last = capture.first
+        running = asyncio.create_task(asyncio.Event().wait())
+        settling = asyncio.create_task(capture.settle(running))
+        try:
+            await asyncio.sleep(.02)
+            self.assertFalse(settling.done())
+            capture.events = {'bot-llm-stopped': 1, 'bot-stopped-speaking': 1}
+            await asyncio.wait_for(settling, .5)
+        finally:
+            running.cancel()
+            settling.cancel()
+            await asyncio.gather(running, settling, return_exceptions=True)
+
+    async def test_error_diagnostics_do_not_retain_message_body(self):
+        capture = paired.Capture()
+        capture.event({'type': 'error', 'message': 'private-body anthropic 401'})
+        self.assertEqual(capture.errors[0]['categories'], ['anthropic', '401'])
+        self.assertNotIn('private-body', str(capture.errors))
 
 
 if __name__ == '__main__': unittest.main()
