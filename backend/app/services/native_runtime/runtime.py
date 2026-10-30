@@ -154,14 +154,15 @@ class NativeRuntime:
                         cancellation_requested=False,
                         authorization_current=self._fallback_authorized(claims),
                         lease_fenced=True,
-                        checkpoint_durable=False,
-                        checkpoint_before_effect=False,
+                        checkpoint_durable=self.journal.browser_checkpoint(job['scope'],job['id']) is not None,
+                        checkpoint_before_effect=self.journal.browser_checkpoint(job['scope'],job['id']) is not None and not actions,
                         pending_action=bool(actions),
                         effect_outcome_uncertain=bool(actions),
                     ))
                     if decision is not RecoveryDecision.STOP:
-                        self.journal.fence_browser_for_fallback(job,checkpoint_before_effect=False)
-                        return 'fallback_reconciliation_required'
+                        safe=self.journal.fence_browser_for_fallback(
+                            job,checkpoint_before_effect=decision is RecoveryDecision.SAFE_CHECKPOINT)
+                        return 'fallback_checkpoint_fenced' if safe else 'fallback_reconciliation_required'
                 except (LeaseLost,PermissionError):
                     return 'cancelled_or_lease_lost'
             try:self.journal.update(job,'failed',error='native_execution_failed')
