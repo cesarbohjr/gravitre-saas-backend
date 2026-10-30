@@ -50,6 +50,7 @@ class Journal:
             CREATE TABLE IF NOT EXISTS telemetry_consent (org TEXT, agent TEXT, run TEXT, enabled INTEGER NOT NULL, expires_at REAL NOT NULL, PRIMARY KEY(org,agent,run));
             CREATE TABLE IF NOT EXISTS action_requests (id TEXT PRIMARY KEY, job TEXT NOT NULL, sequence INTEGER NOT NULL, digest TEXT NOT NULL, payload BLOB NOT NULL, state TEXT NOT NULL, UNIQUE(job,sequence));
             CREATE TABLE IF NOT EXISTS authority_uses (key TEXT PRIMARY KEY, operation TEXT NOT NULL);
+            CREATE TABLE IF NOT EXISTS browser_checkpoints (job TEXT PRIMARY KEY, lease TEXT NOT NULL, sequence INTEGER NOT NULL, payload BLOB NOT NULL, created_at REAL NOT NULL);
             CREATE TRIGGER IF NOT EXISTS native_action_erase AFTER UPDATE OF payload ON jobs WHEN NEW.payload IS NULL BEGIN DELETE FROM action_requests WHERE job=NEW.id; END;
             CREATE INDEX IF NOT EXISTS native_jobs_ready ON jobs(kind,state,next_at);
             ''')
@@ -140,6 +141,32 @@ class Journal:
                 (job['id'],job['lease'],stamp,stamp)).fetchone()
         return bool(row)
 
+    def save_browser_checkpoint(self, job: dict, sequence: int, checkpoint: dict) -> None:
+        """Persist a pre-effect checkpoint only while the browser lease is live."""
+        if job.get('kind')!='browser_use' or type(sequence) is not int or not 0<=sequence<=100:
+            raise ValueError('Invalid browser checkpoint')
+        if not isinstance(checkpoint,dict) or len(json.dumps(checkpoint).encode())>32768:
+            raise ValueError('Invalid checkpoint payload')
+        stamp=time.time()
+        with self.connect() as db:
+            db.execute('BEGIN IMMEDIATE')
+            live=db.execute("SELECT 1 FROM jobs WHERE id=? AND lease=? AND state='running' AND lease_until>? AND expires_at>?",
+                (job['id'],job['lease'],stamp,stamp)).fetchone()
+            if not live:raise LeaseLost('Checkpoint worker lease no longer active')
+            if db.execute("SELECT 1 FROM action_requests WHERE job=?",(job['id'],)).fetchone():
+                raise PermissionError('Cannot checkpoint after an action has been requested')
+            previous=db.execute("SELECT sequence FROM browser_checkpoints WHERE job=?",(job['id'],)).fetchone()
+            if previous and sequence<=previous['sequence']:raise ValueError('Checkpoint sequence must increase')
+            db.execute("INSERT INTO browser_checkpoints(job,lease,sequence,payload,created_at) VALUES(?,?,?,?,?) ON CONFLICT(job) DO UPDATE SET lease=excluded.lease,sequence=excluded.sequence,payload=excluded.payload,created_at=excluded.created_at",
+                (job['id'],job['lease'],sequence,self._seal(checkpoint),stamp))
+
+    def browser_checkpoint(self, scope: AdapterScope, job_id: str) -> dict | None:
+        """Read scoped checkpoint metadata; never expose it to untrusted clients."""
+        with self.connect() as db:
+            row=db.execute("SELECT c.sequence,c.payload FROM browser_checkpoints c JOIN jobs j ON j.id=c.job WHERE j.id=? AND j.org=? AND j.agent=? AND j.run=?",
+                (job_id,scope.org_id,scope.agent_id,scope.run_id)).fetchone()
+        return {'sequence':row['sequence'],'checkpoint':self._open(row['payload'])} if row else None
+
     def fence_browser_for_fallback(self, job: dict, *, checkpoint_before_effect: bool) -> bool:
         """Atomically revoke the Browser Use lease and reserve reconciliation.
 
@@ -159,7 +186,8 @@ class Journal:
             actions=db.execute("SELECT COUNT(*) FROM action_requests WHERE job=?",(job['id'],)).fetchone()[0]
             # Even an approved action can have committed externally; any action
             # history requires independent reconciliation, never blind replay.
-            safe=checkpoint_before_effect and actions==0
+            checkpoint=db.execute("SELECT 1 FROM browser_checkpoints WHERE job=? AND lease=?",(job['id'],job['lease'])).fetchone()
+            safe=checkpoint_before_effect and actions==0 and checkpoint is not None
             phase='fallback_fenced' if safe else 'fallback_reconcile'
             changed=db.execute(
                 "UPDATE jobs SET state='uncertain',phase=?,lease=NULL,lease_until=NULL,error_code='fallback_pending' WHERE id=? AND lease=? AND state='running'",
