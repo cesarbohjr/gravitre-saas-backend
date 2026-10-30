@@ -117,7 +117,7 @@ class DockerRunner:
             pinned[model_host]=preferred(addresses)
         return [entry for host,address in pinned.items() for entry in ('--add-host',host+':'+address)]
 
-    def execute(self,job: dict,*,guard,action_gate) -> dict:
+    def execute(self,job: dict,*,guard,action_gate,checkpoint_gate=None) -> dict:
         id=job['id'];network,engine,gateway=self.names(id)
         route=guard();route.validate()
         runtimes=json.loads(self.docker('info','--format','{{json .Runtimes}}'))
@@ -134,6 +134,8 @@ class DockerRunner:
                     if not 0<count<=16384:raise ValueError('bounds')
                     body=json.loads(self.rfile.read(count));guard()
                     if body['operation']=='authorize':value={'authorized':True}
+                    elif body['operation']=='checkpoint' and job['kind']=='browser_use' and checkpoint_gate is not None:
+                        payload=body['payload'];checkpoint_gate(payload['sequence'],payload['checkpoint']);value={'persisted':True}
                     elif body['operation']=='action' and job['kind']=='browser_use':
                         payload=body['payload'];value=action_gate(payload['sequence'],payload['action'])
                     else:raise PermissionError('unknown native operation')
