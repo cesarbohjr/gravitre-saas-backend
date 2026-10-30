@@ -291,6 +291,12 @@ async def browse(config):
             before_url=before.url
             before_pixels=hashlib.sha256(before.screenshot.encode()).hexdigest()
             before_dom=hashlib.sha256(before.dom_state.llm_representation().encode()).hexdigest()
+            # Persist only a pre-effect marker. This is not a resumable browser
+            # session; a new adapter must independently verify page state.
+            if self.sequence==0:
+                await asyncio.to_thread(gateway,config,'/checkpoint',{
+                    'sequence':0,'checkpoint':{'before_effect':True,
+                        'url':before.url,'page_fingerprint':evidence['page_fingerprint']}})
             details={'actions':requested,'url':before.url,**evidence}
             sequence=self.sequence
             deadline=time.monotonic()+config['max_seconds']
