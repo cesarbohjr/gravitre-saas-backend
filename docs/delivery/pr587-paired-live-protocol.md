@@ -47,6 +47,24 @@ cancel-speech start and end; the limit is 500 ms after cancel-speech end. The
 control-only case retains its separate 500 ms control-to-cutoff limit. Neither
 case alone certifies a business write was pending or prevented.
 
+The final-fence experiment starts a separate loopback-only HTTP fixture process
+with its own SQLite WAL ledger. A positive control must produce exactly one
+HTTP attempt and one effect. For each stop case, a real worker binds the
+original production turn's cancellation token, waits across the actual control
+or spoken-cancel ingress, then calls the canonical `begin_write_effect` gate.
+The controller never cancels that token itself. Separate-process ledger reads
+must find zero requests and zero effects for the cancelled worker. Both
+authenticated attempts and effects are retained, so provider-side deduplication
+cannot hide an application retry. Wrong actor/tenant and unauthenticated
+requests are independently covered by the fixture's real HTTP tests.
+
+This is expressly a final-write-fence integration experiment. It uses the
+existing mutating catalog key `gmail.send` only to exercise that gate; the
+provider effect is `acceptance.note.create` in a local disposable SQLite file.
+No Gmail/email is sent, no vendor credential is provisioned, and no production
+tool registry is replaced. It does not substitute for complete confirmation,
+HMAC approval, fresh authorization, revocation or vendor-side-effect acceptance.
+
 Latency is measured from input start and input end to first non-silent received
 speech, not first RTC silence or first packet. Reconnection additionally records
 session start to first speech, including fixed warmup and pipeline startup.
@@ -114,3 +132,23 @@ did not run dependent interruption/reconnection cases. This result remains FAIL.
 The next case, `provided_welcome_rewrite_v1`, is a distinct generative task using
 only user-provided text, with no external factual grounding requirement. This is
 a change of case, not a waiver or relabeling of the failed factual-answer test.
+
+Run `41134087803` exposed an acknowledgment-only capture before durable turn
+completion. Source `ad7337311c521b012d2bad2e2cb1c1844e9d6ca3` requires the
+canonical `assistant_turn.complete` event for baseline/reconnect captures and
+adds actual spoken cancellation. Run `41134456513`, artifact `13017080382`, then
+passed all eight matched trials. Shared source PCM hash:
+`bd1062d37671b640cf0be2ae4397d3c133bd23131ac2d6f568c1ec1c076e3731`.
+
+| Receiver-boundary measure | Pipecat | LiveKit |
+| --- | ---: | ---: |
+| Baseline first speech after input end | 4655.30 ms | 2098.57 ms |
+| Control to original-reply cutoff | 2.84 ms | 52.25 ms |
+| Spoken cancel start to original-reply cutoff | 465.53 ms | 531.58 ms |
+| Reconnect first speech after input end | 1998.05 ms | 1760.82 ms |
+
+Each baseline wrote two durable messages; reconnection observed both prior
+roles and grew each conversation from two to four messages. Both spoken cancel
+transcripts were classified as reject by the canonical classifier. These are
+single-trial observations on one fixed generative case, not an engine-selection
+benchmark, physical acoustic cutoff, semantic memory score or complete Gate 3.

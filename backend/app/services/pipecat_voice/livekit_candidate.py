@@ -223,7 +223,8 @@ class LiveKitCandidateSocket:
 
 async def run_livekit_candidate(*, url: str, token: str, participant_identity: str,
                                 settings: Any, org_id: str, user_id: str,
-                                conversation_id: str, isolated: bool = False) -> None:
+                                conversation_id: str, isolated: bool = False,
+                                session_observer: Any = None) -> None:
     """Run one authenticated isolated session; never modifies runtime selection.
 
     Token and tenant arguments come from the trusted test controller, never
@@ -249,6 +250,9 @@ async def run_livekit_candidate(*, url: str, token: str, participant_identity: s
             conversation_id=conversation_id,
         )
         socket.voice_session = task.gravitre_voice_session
+        if session_observer is not None:
+            # Trusted isolated controller only; never read from room messages.
+            session_observer(socket.voice_session)
         await _run_until_disconnect(PipelineRunner(handle_sigint=False).run(task),
                                     socket.disconnected, task.cancel)
     finally:
@@ -302,3 +306,4 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+

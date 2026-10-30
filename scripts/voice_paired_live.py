@@ -11,10 +11,14 @@ import hashlib
 import json
 import logging
 import os
+import secrets
+import subprocess
 from pathlib import Path
 import sys
 import time
 import traceback
+import threading
+from types import SimpleNamespace
 import uuid
 import wave
 
@@ -64,6 +68,52 @@ def wav(path, pcm, rate):
         f.writeframes(pcm)
 
 
+class FinalFenceProbe:
+    """A real worker waits across cancellation before the canonical final gate.
+
+    This exercises the final fence only, not approval issuance or the full tool
+    invoker. The provider is an independent loopback fixture, never Gmail.
+    """
+    def __init__(self, *, settings, org, actor, cid, sink_token, logical_id):
+        self.ctx = SimpleNamespace(settings=settings, org_id=org, actor_id=actor, conversation_id=cid)
+        self.sink_token = sink_token
+        self.logical_id = logical_id
+        self.release = threading.Event()
+        self.started = threading.Event()
+
+    def run(self, token):
+        import http.client
+        from app.services.turn_cancellation import bound_turn_cancellation
+        from app.services.voice_barge_in_write import begin_write_effect, finish_write_effect
+        from app.services.tool_types import ToolValidationError
+        with bound_turn_cancellation(token):
+            self.started.set()
+            if not self.release.wait(15):
+                raise TimeoutError('fixture worker release deadline')
+            try:
+                handle = begin_write_effect(self.ctx, 'gmail.send')
+            except ToolValidationError as error:
+                return {'gate_blocked': True, 'gate_error_code': error.code,
+                        'scope': 'canonical final write fence with fixture provider'}
+            if handle is None:
+                raise AssertionError('write gate did not recognize mutating catalog action')
+            body = dict(org_id=self.ctx.org_id, actor_id=self.ctx.actor_id,
+                        logical_id=self.logical_id, action='acceptance.note.create',
+                        payload={'note': 'fixed synthetic acceptance effect'})
+            connection = http.client.HTTPConnection('127.0.0.1', 8771, timeout=5)
+            try:
+                connection.request('POST', '/effects', json.dumps(body),
+                    {'Authorization': 'Bearer ' + self.sink_token, 'Content-Type': 'application/json'})
+                response = connection.getresponse()
+                response.read()
+                if response.status != 200:
+                    raise AssertionError('fixture provider refused positive scope')
+            finally:
+                connection.close()
+            finish_write_effect(handle, 'completed')
+            return {'gate_blocked': False, 'scope': 'canonical final write fence with fixture provider'}
+
+
 class Capture:
     def __init__(self):
         self.pcm = bytearray()
@@ -79,6 +129,9 @@ class Capture:
         self.interrupted_reply = None
         self.errors = []
         self.cancel_recognized = False
+        self.voice_session = None
+        self.probe = None
+        self.probe_result = None
 
     def audio(self, pcm, reply_id=None):
         import numpy as np
@@ -120,9 +173,35 @@ class Capture:
                 raise TimeoutError("no generated speech to interrupt")
             await asyncio.sleep(.01)
         await asyncio.sleep(.25)
+        probe_task = None
+        token = None
+        if self.probe is not None:
+            token = getattr(self.voice_session, 'turn_cancellation', None)
+            if token is None or token.cancelled:
+                raise AssertionError('no uncancelled original turn token to fence')
+            probe_task = asyncio.create_task(asyncio.to_thread(self.probe.run, token))
+            deadline = time.monotonic() + 5
+            while not self.probe.started.is_set():
+                if probe_task.done():
+                    await probe_task
+                if time.monotonic() > deadline:
+                    self.probe.release.set()
+                    raise TimeoutError('fixture worker startup')
+                await asyncio.sleep(.005)
         self.interrupted_reply = self.reply_id
         self.interrupt_at = time.monotonic()
-        await send()
+        try:
+            await send()
+            if token is not None:
+                deadline = time.monotonic() + 5
+                while not token.cancelled and time.monotonic() < deadline:
+                    await asyncio.sleep(.01)
+        finally:
+            if self.probe is not None:
+                self.probe.release.set()
+            if probe_task is not None:
+                self.probe_result = await asyncio.wait_for(probe_task, 10)
+                self.probe_result['original_token_cancelled'] = bool(token.cancelled)
 
     async def settle(self, running):
         deadline = time.monotonic() + 75
@@ -173,6 +252,7 @@ async def websocket_trial(settings, org, actor, cid, pcm, capture, cancel_pcm=No
             task, _ = build_pipecat_voice_task(websocket=ws, settings=settings,
                 org_id=org, user_id=actor, conversation_id=cid)
             tasks.append(task)
+            capture.voice_session = task.gravitre_voice_session
             ready.set()
             await PipelineRunner(handle_sigint=False).run(task)
         except Exception as error:
@@ -253,7 +333,8 @@ async def livekit_trial(settings, org, actor, cid, pcm, capture, cancel_pcm=None
     peer.on("data_received", lambda packet: capture.event(json.loads(packet.data)) if packet.topic == "gravitre-events" else None)
     worker = asyncio.create_task(run_livekit_candidate(url="ws://127.0.0.1:7880",
         token=token(room_name, "candidate"), participant_identity="recorded-peer",
-        settings=settings, org_id=org, user_id=actor, conversation_id=cid, isolated=True))
+        settings=settings, org_id=org, user_id=actor, conversation_id=cid, isolated=True,
+        session_observer=lambda session: setattr(capture, 'voice_session', session)))
     source = None
     try:
         await peer.connect("ws://127.0.0.1:7880", token(room_name, "recorded-peer"))
@@ -333,6 +414,45 @@ async def main():
         (output / 'canonical-db-header-checks.json').write_text(json.dumps(header_checks[-30:], indent=2))
     canonical.postgrest.session.event_hooks.setdefault('request', []).append(inspect_headers)
     canonical.table('organizations').select('id').eq('id', org).limit(1).execute()
+    import atexit
+    import http.client
+    sink_path = output / 'write-sink.sqlite'
+    sink_token = secrets.token_urlsafe(32)
+    sink_script = Path(__file__).with_name('voice_acceptance_sink.py')
+    sink_process = subprocess.Popen([sys.executable, str(sink_script), '--db', str(sink_path),
+        '--org', org, '--actor', actor, '--port', '8771'],
+        env={'GRAVITRE_VOICE_ISOLATED': '1', 'ACCEPTANCE_SINK_TOKEN': sink_token},
+        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    def stop_sink():
+        if sink_process.poll() is None:
+            sink_process.terminate()
+            try:
+                sink_process.wait(timeout=3)
+            except subprocess.TimeoutExpired:
+                sink_process.kill()
+                sink_process.wait(timeout=3)
+    atexit.register(stop_sink)
+    for _ in range(100):
+        if sink_process.poll() is not None:
+            raise RuntimeError('fixture sink exited')
+        connection = http.client.HTTPConnection('127.0.0.1', 8771, timeout=.2)
+        try:
+            connection.request('GET', '/')
+            connection.getresponse().read()
+            break
+        except OSError:
+            await asyncio.sleep(.05)
+        finally:
+            connection.close()
+    else:
+        raise TimeoutError('fixture sink startup')
+    from app.services.turn_cancellation import TurnCancellation
+    positive = FinalFenceProbe(settings=settings, org=org, actor=actor,
+        cid=str(uuid.uuid4()), sink_token=sink_token, logical_id='positive-control')
+    positive.release.set()
+    positive_result = await asyncio.to_thread(positive.run, TurnCancellation())
+    if positive_result['gate_blocked']:
+        raise AssertionError('fixture positive control blocked')
     voice = os.environ.get("ELEVENLABS_VOICE_ID") or "EXAVITQu4vr4xnSDxMaL"
     with httpx.Client(timeout=45) as http:
         response = http.post("https://api.elevenlabs.io/v1/text-to-speech/" + voice,
@@ -356,6 +476,7 @@ async def main():
     report = {"git_sha": os.environ.get("ACCEPTANCE_SOURCE_SHA"), "input_pcm_sha256": hashlib.sha256(pcm).hexdigest(),
         "case_id": CASE_ID,
         "cancel_input_pcm_sha256": hashlib.sha256(cancel_pcm).hexdigest(),
+        "fixture_positive_control": positive_result,
         "input_origin": "synthetic prerecorded speech, synthesized once for both transports", "trials": [],
         "certified": False, "human_quality_review": "NOT RUN", "write_governance_certification": "NOT RUN",
         "interruption": "NOT RUN", "reconnection": "NOT RUN"}
@@ -378,6 +499,9 @@ async def main():
             conversations[engine] = cid
         capture = Capture()
         capture.scenario = scenario
+        if scenario in {'interrupt', 'spoken_cancel'}:
+            capture.probe = FinalFenceProbe(settings=settings, org=org, actor=actor,
+                cid=cid, sink_token=sink_token, logical_id='late-write-' + cid)
         row = {"engine": engine, "scenario": scenario, "conversation_id": cid, "status": "FAIL"}
         before_roles = [r["role"] for r in client.table("conversation_messages").select("role").eq("conversation_id", cid).execute().data]
         row["durable_messages_before"] = len(before_roles)
@@ -431,6 +555,19 @@ async def main():
             if capture.errors:
                 row.update(status="FAIL", error_type="PipelineErrorEvent")
             row["authorization"] = capture.authorization
+            if capture.probe is not None:
+                row['final_write_fence_probe'] = capture.probe_result
+                evidence = json.loads(subprocess.run([sys.executable, str(sink_script), '--db', str(sink_path), '--audit'],
+                    check=True, capture_output=True, text=True).stdout)
+                attempts = [r for r in evidence['attempts'] if r['logical_id'] == capture.probe.logical_id]
+                effects = [r for r in evidence['effects'] if r['logical_id'] == capture.probe.logical_id]
+                row['independent_fixture_attempts'] = len(attempts)
+                row['independent_fixture_effects'] = len(effects)
+                valid_fence = (capture.probe_result and capture.probe_result.get('gate_blocked') is True
+                    and capture.probe_result.get('original_token_cancelled') is True and not attempts and not effects)
+                if not valid_fence:
+                    row.update(status='FAIL', error_type='FinalWriteFenceNotIndependentlyVerified')
+                (output / 'write-sink-audit.json').write_text(json.dumps(evidence, indent=2))
             if scenario == "spoken_cancel":
                 row["cancel_stt_classified_as_reject"] = capture.cancel_recognized
                 if not capture.cancel_recognized:
@@ -448,6 +585,16 @@ async def main():
             report["interruption"] = "MEASURED_RECEIVER_PCM_ONLY" if any(r.get("received_original_reply_cutoff_ms") is not None for r in report["trials"]) else "NOT RUN"
             report["reconnection"] = "FRESH_SESSION_SAME_CONVERSATION" if any(r["scenario"] == "reconnect" for r in report["trials"]) else "NOT RUN"
             (output / "manifest.json").write_text(json.dumps(report, indent=2))
+    evidence = json.loads(subprocess.run([sys.executable, str(sink_script), '--db', str(sink_path), '--audit'],
+        check=True, capture_output=True, text=True).stdout)
+    (output / 'write-sink-audit.json').write_text(json.dumps(evidence, indent=2))
+    positive_attempts = [r for r in evidence['attempts'] if r['logical_id'] == 'positive-control']
+    positive_effects = [r for r in evidence['effects'] if r['logical_id'] == 'positive-control']
+    report['fixture_positive_control']['independent_attempts'] = len(positive_attempts)
+    report['fixture_positive_control']['independent_effects'] = len(positive_effects)
+    (output / 'manifest.json').write_text(json.dumps(report, indent=2))
+    if len(positive_attempts) != 1 or len(positive_effects) != 1:
+        raise AssertionError('independent fixture positive control failed')
     if not all(r["status"] == "PASS" for r in report["trials"]):
         raise SystemExit(2)
 
