@@ -125,7 +125,11 @@ class NativeRuntime:
             return self.journal.request_action(job,sequence,details)
         try:
             guard()
-            result=self.runner.execute(job,guard=guard,action_gate=action)
+            if engine=='browser_use' and getattr(self.runner,'supports_browser_checkpoint',False):
+                result=self.runner.execute(job,guard=guard,action_gate=action,
+                    checkpoint_gate=lambda sequence,checkpoint:self.checkpoint_browser(job,sequence,checkpoint))
+            else:
+                result=self.runner.execute(job,guard=guard,action_gate=action)
             guard()
             if not isinstance(result,dict) or len(json.dumps(result).encode())>240000:raise ValueError('Invalid native result')
             # Scope is attached by trusted host code, not accepted from SDK output.
