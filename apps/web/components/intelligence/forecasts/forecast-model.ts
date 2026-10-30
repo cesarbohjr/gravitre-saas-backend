@@ -389,9 +389,9 @@ export function forecastAreas(rows: Forecast[]): string[] {
 /** Tick positions (% of plot width). */
 export const TIMELINE_TICKS = [
   { label: "Today", days: 0, x: 0 },
-  { label: "2 weeks", days: 14, x: 24 },
-  { label: "1 month", days: 30, x: 48 },
-  { label: "2 months +", days: 60, x: 72 },
+  { label: "2 weeks", days: 14, x: 25 },
+  { label: "1 month", days: 30, x: 50 },
+  { label: "2 months +", days: 60, x: 75 },
 ] as const
 
 export const UNDATED_X = 90
@@ -407,7 +407,7 @@ export function horizonToX(horizonDays: number | null): number {
     }
   }
   // Beyond 60 days: ease toward the end of the dated range without passing it.
-  return Math.min(82, 72 + ((d - 60) / 120) * 10)
+  return Math.min(85, 75 + ((d - 60) / 120) * 10)
 }
 
 export type TimelineDot = {
@@ -416,6 +416,8 @@ export type TimelineDot = {
   lane: number
   side: "above" | "below"
   size: number
+  /** Chip grows leftward from its dot so it stays inside the plot. */
+  flip: boolean
 }
 
 /** Dot diameter in px: bigger dot, more confident. */
@@ -426,23 +428,49 @@ export function dotSize(confidence: number | null): number {
 
 /**
  * Risks above the line, opportunities below. Signals (neither) are listed but
- * not plotted. Chips that would overlap move to the next of three lanes.
+ * not plotted. Chips that would overlap move to the next of three lanes; when
+ * every lane is taken near that date, the chip slides right just enough to sit
+ * clear of the one before it, so no two chips ever cover each other.
  */
-export function layoutTimeline(rows: Forecast[], lanes = 3, minGap = 22): TimelineDot[] {
+export function layoutTimeline(rows: Forecast[], lanes = 3, minGap = 26): TimelineDot[] {
   const dots: TimelineDot[] = []
+  // A chip spans about `minGap`% of the plot: rightward from its dot, or
+  // leftward near the right edge. Two chips in a lane never share a span.
+  const span = (x: number, flip: boolean): [number, number] => (flip ? [x - minGap, x] : [x, x + minGap])
+  const flipAt = 100 - minGap
   for (const side of ["above", "below"] as const) {
     const kind: ForecastKind = side === "above" ? "risk" : "opportunity"
     const placed = rows
       .filter((row) => row.kind === kind)
       .map((row) => ({ row, x: horizonToX(row.horizonDays) }))
       .sort((a, b) => a.x - b.x)
-    const laneEnds: number[] = Array.from({ length: lanes }, () => Number.NEGATIVE_INFINITY)
-    placed.forEach(({ row, x }, index) => {
-      let lane = laneEnds.findIndex((end) => x - end >= minGap)
-      if (lane === -1) lane = index % lanes
-      laneEnds[lane] = x
-      dots.push({ forecast: row, x, lane, side, size: dotSize(row.confidence) })
-    })
+    const taken: Array<Array<[number, number]>> = Array.from({ length: lanes }, () => [])
+    const fits = (lane: number, at: number, flip: boolean) => {
+      const [a, b] = span(at, flip)
+      return taken[lane].every(([c, d]) => b <= c || a >= d)
+    }
+    for (const { row, x } of placed) {
+      let at = x
+      let flip = at > flipAt
+      let lane = taken.findIndex((_, i) => fits(i, at, flip))
+      if (lane === -1) {
+        // Every lane is busy here: slide right in the lane that frees up first.
+        lane = 0
+        let best = Number.POSITIVE_INFINITY
+        taken.forEach((spans, i) => {
+          const end = Math.max(...spans.map(([, d]) => d))
+          if (end < best) {
+            best = end
+            lane = i
+          }
+        })
+        at = Math.min(100, best + (best + minGap > 100 ? minGap : 0))
+        flip = at > flipAt
+        if (!fits(lane, at, flip)) at = best
+      }
+      taken[lane].push(span(at, flip))
+      dots.push({ forecast: row, x: at, lane, side, size: dotSize(row.confidence), flip })
+    }
   }
   return dots
 }

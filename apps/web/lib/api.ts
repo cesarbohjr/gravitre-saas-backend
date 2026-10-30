@@ -3786,6 +3786,9 @@ export const memoryPromotionApi = {
       apiUrl(`/api/admin/memory-promotion/candidates/${candidateId}/approve`),
       {},
     ),
+  /** Reword a memory that is still waiting for review. */
+  edit: (candidateId: string, content: string) =>
+    patchJson<Record<string, unknown>>(apiUrl(`/api/admin/memory-promotion/candidates/${candidateId}`), { content }),
   reject: (candidateId: string, reason?: string) =>
     postJson<{ status: string }>(
       apiUrl(`/api/admin/memory-promotion/candidates/${candidateId}/reject`),
@@ -4278,7 +4281,15 @@ export const intelligenceFindingsApi = {
     ),
   shareOptions: () => fetcher<ShareFindingOptions>(apiUrl("/api/intelligence/share/options")),
   share: (body: ShareFindingRequest) => postJson<ShareFindingResult>(apiUrl("/api/intelligence/share"), body),
+  forecastSnoozes: () => fetcher<{ snoozes: ForecastSnooze[] }>(apiUrl("/api/intelligence/forecasts/snoozes")),
+  snoozeForecast: (body: { key: string; title: string; days: 1 | 7 | 30 }) =>
+    postJson<ForecastSnooze>(apiUrl("/api/intelligence/forecasts/snooze"), body),
+  unsnoozeForecast: (key: string) =>
+    postJson<{ removed: boolean }>(apiUrl("/api/intelligence/forecasts/unsnooze"), { key }),
 }
+
+/** A forecast hidden from Forecasts for the whole team until `until`. */
+export type ForecastSnooze = { key: string; until: string; title: string; by: string }
 
 export const enterpriseApi = {
   // Data residency

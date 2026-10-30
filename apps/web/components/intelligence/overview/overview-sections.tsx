@@ -21,7 +21,6 @@ import {
   Sparkle,
 } from "@phosphor-icons/react"
 import { Button } from "@/components/ui/button"
-import { CertaintyMarker } from "@/components/intelligence/impact/certainty"
 import { formatHours } from "@/components/intelligence/impact/impact-model"
 import {
   FEED_FILTERS,
@@ -190,7 +189,6 @@ export function AtAGlance({
                   <span className={cn("grid h-6 w-6 place-items-center rounded-[7px]", meta.tile)}>{meta.icon}</span>
                   {card.label}
                 </span>
-                <CertaintyMarker certainty={loading ? "none" : card.certainty} />
               </span>
               <span className="text-[28px] font-semibold leading-none tracking-[-0.02em] tabular-nums text-[color:var(--g-text-primary)]">
                 {value && !loading ? value : <Dash loading={loading} />}
@@ -616,18 +614,21 @@ export function RecentActivity({
   onDismiss,
   onSelect,
   onShare,
+  onReview,
   id,
 }: {
   items: FeedItem[]
   loading: boolean
   onDismiss?: (cardId: string) => void
   onSelect?: (item: FeedItem) => void
+  /** Opens the item in a side panel instead of following its link; return false to follow the link. */
+  onReview?: (item: FeedItem) => boolean
   /** Opens "Share this finding" for an insight or suggestion. */
   onShare?: (item: FeedItem) => void
   id?: string
 }) {
   const [filter, setFilter] = useState<FeedKind | "all">("all")
-  const shown = (filter === "all" ? items : items.filter((item) => item.kind === filter)).slice(0, 12)
+  const shown = (filter === "all" ? items : items.filter((item) => item.kind === filter)).slice(0, 8)
   return (
     <section id={id} aria-labelledby="overview-feed-heading" className="scroll-mt-6 space-y-3">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
@@ -699,7 +700,7 @@ export function RecentActivity({
                     {item.suggestion ? (
                       <span className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-[color:var(--g-brand-surface)] px-2.5 py-1 text-[12px] font-medium text-[color:var(--g-brand-active)] dark:text-[color:var(--g-brand)]">
                         <Play className="h-3 w-3" weight="fill" aria-hidden />
-                        Suggested: {item.suggestion}
+                        {item.suggestionLabel ?? "Suggested"}: {item.suggestion}
                       </span>
                     ) : null}
                     {item.meta.length > 0 || when ? (
@@ -713,7 +714,14 @@ export function RecentActivity({
                       {meta.label}
                     </span>
                     <Button asChild variant="outline" size="sm" className="h-8 rounded-[9px] px-3 text-[12.5px]">
-                      <Link href={item.href}>{item.actionLabel}</Link>
+                      <Link
+                        href={item.href}
+                        onClick={(event) => {
+                          if (onReview?.(item)) event.preventDefault()
+                        }}
+                      >
+                        {item.actionLabel}
+                      </Link>
                     </Button>
                     {onShare && (item.kind === "insight" || item.kind === "recommendation") ? (
                       <button

@@ -214,7 +214,7 @@ export function FindDataSection({
             <button
               type="submit"
               disabled={!query.trim() || activeSources.length === 0}
-              className="min-h-11 rounded-[var(--g-radius-control)] bg-[color:var(--g-brand)] px-5 text-sm font-semibold text-[color:var(--g-carbon)] transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--g-brand)] focus-visible:ring-offset-2 focus-visible:ring-offset-[color:var(--g-carbon)]"
+              className="min-h-[42px] rounded-[10px] bg-[#19c37d] px-[18px] text-sm font-semibold text-[#06291a] transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--g-brand)] focus-visible:ring-offset-2 focus-visible:ring-offset-[color:var(--g-carbon)]"
             >
               Search
             </button>
@@ -319,7 +319,7 @@ export function FindDataSection({
                         <p className={cn(TYPE.meta, "mt-1")}>Restricted. The owner must approve access first.</p>
                       </div>
                       {match.kind === "external" && match.dataset.reference_url ? (
-                        <Button asChild variant="outline" size="sm" className="min-h-11 shrink-0">
+                        <Button asChild variant="outline" size="sm" className="min-h-[35px] shrink-0 rounded-[9px] border-[color:var(--g-border-strong)] bg-[color:var(--g-surface-1)] px-3 text-[13px] font-normal">
                           <a href={match.dataset.reference_url} target="_blank" rel="noreferrer">
                             Request access
                           </a>
@@ -491,7 +491,7 @@ function PreviewPanel({
           </Button>
           <Button
             variant="outline"
-            className="min-h-11"
+            className="min-h-11 rounded-[10px] border-[color:var(--g-border-strong)] bg-[color:var(--g-surface-1)] font-normal"
             disabled
             title="Linking your own datasets to an agent or Play isn't available on this page yet."
           >
@@ -588,7 +588,12 @@ function PreviewPanel({
         >
           {saving ? "Importing…" : target ? `Import to train ${target.label}` : "Import for training"}
         </Button>
-        <Button variant="outline" className="min-h-11" disabled={saving} onClick={() => setUseForOpen(true)}>
+        <Button
+          variant="outline"
+          className="min-h-11 rounded-[10px] border-[color:var(--g-border-strong)] bg-[color:var(--g-surface-1)] font-normal"
+          disabled={saving}
+          onClick={() => setUseForOpen(true)}
+        >
           Use for…
         </Button>
       </div>

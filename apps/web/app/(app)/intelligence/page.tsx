@@ -10,7 +10,12 @@ import { EmptyState, ErrorState } from "@/components/gravitre/empty-state"
 import { GravitrePageHeader } from "@/components/gravitre/nodus-product"
 import { CenteredLoader } from "@/components/gravitre/gravitre-loader"
 import { AskGravitreSummonButton } from "@/components/intelligence/ask-gravitre-summon-button"
-import { EvidencePlayRecommendations } from "@/components/intelligence/evidence-play-recommendations"
+import {
+  EVIDENCE_FEED_PREFIX,
+  EvidenceRecommendationSheet,
+  evidenceFeedItems,
+  useEvidenceRecommendations,
+} from "@/components/intelligence/evidence-play-recommendations"
 import type { FailureAlertWithEvidence } from "@/components/intelligence/forecasts/forecast-model"
 import { toast } from "@/components/intelligence/overlays/toast"
 import { ShareFindingDialog, type ShareableFinding } from "@/components/intelligence/overlays/share-finding-dialog"
@@ -283,9 +288,12 @@ function IntelligenceCenterInner() {
       }),
     [connectors, metrics, pending, forecasts],
   )
+  const evidence = useEvidenceRecommendations(enabled, orgId ?? null)
+  const [reviewingEvidence, setReviewingEvidence] = useState<string | null>(null)
   const feed = useMemo(
-    () =>
-      buildFeed({
+    () => [
+      ...evidenceFeedItems(evidence.recommendations, evidence.plays),
+      ...buildFeed({
         ctx: pageContext,
         forecasts,
         cards: heuristics?.recommendations ?? null,
@@ -296,7 +304,8 @@ function IntelligenceCenterInner() {
           memory: MEMORY_HREF,
         },
       }),
-    [pageContext, forecasts, heuristics],
+    ],
+    [pageContext, forecasts, heuristics, evidence.recommendations, evidence.plays],
   )
   const hours = glance.find((card) => card.id === "hours")?.value ?? null
   const revenue = glance.find((card) => card.id === "revenue")?.value ?? null
@@ -545,12 +554,16 @@ function IntelligenceCenterInner() {
                 onModeChange={isAdmin && overview ? (id, mode) => void changeAbility(id, mode) : undefined}
                 savingAbility={savingAbility}
               />
-              <EvidencePlayRecommendations enabled={enabled} orgId={orgId ?? null} />
               <RecentActivity
                 id={FEED_ANCHOR}
                 items={feed}
                 loading={snapshotLoading}
                 onDismiss={(cardId) => void dismissCard(cardId)}
+                onReview={(item) => {
+                  if (!item.id.startsWith(EVIDENCE_FEED_PREFIX)) return false
+                  setReviewingEvidence(item.id.slice(EVIDENCE_FEED_PREFIX.length))
+                  return true
+                }}
                 onSelect={(item) => setSelected({ kind: `intelligence-${item.kind}`, id: item.id, label: item.title })}
                 onShare={(item) =>
                   setSharing({
@@ -560,6 +573,14 @@ function IntelligenceCenterInner() {
                     path: item.href.startsWith("/") ? item.href : APP_ROUTES.intelligencePredictive,
                   })
                 }
+              />
+              <EvidenceRecommendationSheet
+                recommendation={evidence.recommendations.find((item) => item.id === reviewingEvidence) ?? null}
+                plays={evidence.plays}
+                onOpenChange={(open) => {
+                  if (!open) setReviewingEvidence(null)
+                }}
+                onChanged={() => void evidence.refresh()}
               />
               <RevenueOpportunitiesSheet
                 open={revenueOpen}

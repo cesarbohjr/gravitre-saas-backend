@@ -368,6 +368,8 @@ export type FeedItem = {
   detail: string
   /** "Suggested next step" chip, when the source names one. */
   suggestion: string | null
+  /** Chip prefix; "Suggested" unless the source names a Play. */
+  suggestionLabel?: string
   meta: string[]
   at: number | null
   actionLabel: string

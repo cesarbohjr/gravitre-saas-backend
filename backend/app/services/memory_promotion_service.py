@@ -867,6 +867,66 @@ class MemoryPromotionService:
             status_at_decision=MemoryPromotionStatus.APPROVED.value,
         )
 
+    async def edit_candidate(
+        self,
+        candidate_id: str,
+        org_id: str,
+        edited_by_user_id: str,
+        content: str,
+    ) -> dict[str, Any]:
+        """Reword a candidate before anyone approves it.
+
+        Only candidates still waiting for a decision can change. The fingerprint
+        stays the one the original observation produced, so the same pattern
+        seen again keeps landing on this candidate instead of a new one. The
+        first wording is kept in ``metadata.original_content``.
+        """
+        text = " ".join(str(content or "").split())
+        if not text:
+            raise ValueError("A memory needs some text")
+        if len(text) > 2000:
+            raise ValueError("Keep a memory under 2,000 characters")
+        client = self._client()
+        rows = (
+            client.table("memory_promotion_candidates")
+            .select("*")
+            .eq("id", candidate_id)
+            .eq("org_id", org_id)
+            .limit(1)
+            .execute()
+            .data
+            or []
+        )
+        if not rows:
+            raise ValueError("Promotion candidate not found")
+        candidate = rows[0]
+        if candidate.get("status") not in {
+            MemoryPromotionStatus.CANDIDATE.value,
+            MemoryPromotionStatus.PENDING_APPROVAL.value,
+        }:
+            raise ValueError("Only a memory waiting for review can be edited")
+        before = str(candidate.get("content") or "")
+        if text == before:
+            return candidate
+        metadata = dict(candidate.get("metadata") or {})
+        metadata.setdefault("original_content", before)
+        metadata["edited_by"] = edited_by_user_id
+        metadata["edited_at"] = self._now().isoformat()
+        update = {"content": text, "metadata": metadata, "updated_at": self._now().isoformat()}
+        client.table("memory_promotion_candidates").update(update).eq("id", candidate_id).eq("org_id", org_id).execute()
+        from app.workflows.audit import write_audit_event
+
+        write_audit_event(
+            client,
+            org_id,
+            edited_by_user_id,
+            "memory.candidate_edited",
+            "memory_promotion_candidate",
+            candidate_id,
+            {"before": before[:500], "after": text[:500]},
+        )
+        return {**candidate, **update}
+
     async def reject_candidate(
         self,
         candidate_id: str,

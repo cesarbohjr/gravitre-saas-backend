@@ -107,7 +107,7 @@ describe("UX Reset Phase 3 — product IA flatten", () => {
     expect(src).not.toMatch(/SegmentedControl/)
     expect(src).not.toMatch(/AgentContributionCard/)
     const page = readFileSync(resolve(webRoot, "app/(app)/intelligence/performance/page.tsx"), "utf8")
-    expect(page).toMatch(/ariaLabel="Period"/)
+    expect(page).toMatch(/aria-label="Period"/)
     expect(page).toMatch(/getAgentRoi\(\{ periodDays: period \}\)/)
     const flowSrc = readFileSync(
       resolve(webRoot, "components/intelligence/outcome-attribution-flow.tsx"),

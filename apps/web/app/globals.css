@@ -1668,3 +1668,6 @@ details[open] > .g-disclosure > :first-child::after {
 :is(.dept-tile, .dept-glyph, .dept-scope)[data-dept="engineering"] { --dept: var(--dept-engineering); --dept-tint: var(--dept-engineering-tint); --dept-ink: var(--dept-engineering-ink); }
 :is(.dept-tile, .dept-glyph, .dept-scope)[data-dept="security"] { --dept: var(--dept-security); --dept-tint: var(--dept-security-tint); --dept-ink: var(--dept-security-ink); }
 :is(.dept-tile, .dept-glyph, .dept-scope)[data-dept="general"] { --dept: var(--dept-general); --dept-tint: var(--dept-general-tint); --dept-ink: var(--dept-general-ink); }
+
+/* Intelligence pages use the neutral grays of the Intelligence designs. */
+:root:not(.dark) .intel-frame { --g-text-secondary: #55564f; --g-text-muted: #55564f; }

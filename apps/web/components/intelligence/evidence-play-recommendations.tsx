@@ -1,116 +1,220 @@
 "use client"
 
+/**
+ * Evidence-backed recommendations on the Overview. Each one appears in
+ * "Recent insights and activity" as a Recommendation; Review opens this side
+ * panel, where an admin can hand it to an installed, approval-governed Play.
+ *
+ * Recommendations are review-only until a tenant admin selects an installed
+ * Play. Approval and external writes remain server-controlled, and a Play
+ * finishing is never counted as a business outcome.
+ */
 import { useState } from "react"
 import Link from "next/link"
 import useSWR from "swr"
-import { playsApi } from "@/lib/api"
-import { intelligenceEvidenceApi } from "@/lib/intelligence-evidence-api"
+import { ArrowRight, Play } from "@phosphor-icons/react"
+import { Button } from "@/components/ui/button"
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet"
+import type { FeedItem } from "@/components/intelligence/overview/overview-model"
+import { playsApi, type PlayListItem } from "@/lib/api"
+import { APP_ROUTES } from "@/lib/app-routes"
+import { TYPE } from "@/lib/design-system"
+import { intelligenceEvidenceApi, type EvidenceRecommendation } from "@/lib/intelligence-evidence-api"
+import { cn } from "@/lib/utils"
 
-/** Intelligence recommendations are review-only until a tenant admin selects
- * an installed Play. Approval and external writes remain server-controlled. */
-export function EvidencePlayRecommendations({ enabled, orgId }: { enabled: boolean; orgId: string | null }) {
-  const { data: sweepQuota, error: sweepQuotaError } = useSWR(
-    enabled && orgId ? ["intelligence/sweep-usage", orgId] : null,
-    () => intelligenceEvidenceApi.sweepUsage(),
-    { revalidateOnFocus: false },
-  )
-  const { data, error, isLoading, mutate } = useSWR(
-    enabled && orgId ? ["intelligence/evidence-recommendations", orgId] : null,
+export const EVIDENCE_FEED_PREFIX = "evidence:"
+
+export function useEvidenceRecommendations(enabled: boolean, orgId: string | null) {
+  const on = enabled && Boolean(orgId)
+  const recs = useSWR(
+    on ? ["intelligence/evidence-recommendations", orgId] : null,
     () => intelligenceEvidenceApi.evidenceRecommendations(),
     { revalidateOnFocus: false },
   )
-  const { data: playCatalog } = useSWR(
-    enabled && orgId ? ["intelligence/evidence-play-catalog", orgId] : null,
-    () => playsApi.list(),
+  const catalog = useSWR(on ? ["intelligence/evidence-play-catalog", orgId] : null, () => playsApi.list(), {
+    revalidateOnFocus: false,
+  })
+  return {
+    recommendations: recs.data?.recommendations ?? [],
+    plays: catalog.data?.plays ?? [],
+    error: recs.error as unknown,
+    refresh: () => recs.mutate(),
+  }
+}
+
+function playName(key: string, plays: PlayListItem[]): string {
+  const name = plays.find((entry) => entry.play.key === key)?.play.name
+  if (name) return name
+  const words = key.replace(/[-_]+/g, " ").trim()
+  return words.charAt(0).toUpperCase() + words.slice(1)
+}
+
+function readyPlay(key: string, plays: PlayListItem[]) {
+  const entry = plays.find((item) => item.play.key === key)
+  const installationId = entry?.installation?.id
+  const ready =
+    Boolean(installationId) &&
+    entry?.installation?.operatingMode === "ACT WITH APPROVAL" &&
+    Boolean(entry?.readiness.act_with_approval_ready)
+  return { entry, installationId: ready ? installationId : undefined }
+}
+
+/** Feed rows for the Overview's "Recent insights and activity". */
+export function evidenceFeedItems(recommendations: EvidenceRecommendation[], plays: PlayListItem[]): FeedItem[] {
+  return recommendations.map((item) => ({
+    id: `${EVIDENCE_FEED_PREFIX}${item.id}`,
+    kind: "recommendation",
+    title: item.title,
+    detail: item.description,
+    suggestion: item.recommended_play_key ? playName(item.recommended_play_key, plays) : null,
+    suggestionLabel: "Suggested play",
+    meta: [`${item.sources.length} source ${item.sources.length === 1 ? "record" : "records"}`],
+    at: null,
+    actionLabel: "Review",
+    href: APP_ROUTES.plays,
+  }))
+}
+
+export function EvidenceRecommendationSheet({
+  recommendation,
+  plays,
+  onOpenChange,
+  onChanged,
+}: {
+  recommendation: EvidenceRecommendation | null
+  plays: PlayListItem[]
+  onOpenChange: (open: boolean) => void
+  onChanged: () => void
+}) {
+  const open = recommendation != null
+  const id = recommendation?.id ?? null
+  const { data: sweepQuota, error: sweepQuotaError } = useSWR(
+    open ? "intelligence/sweep-usage" : null,
+    () => intelligenceEvidenceApi.sweepUsage(),
     { revalidateOnFocus: false },
   )
-  const [pending, setPending] = useState<string | null>(null)
-  const [selectedRecommendation, setSelectedRecommendation] = useState<string | null>(null)
   const { data: lifecycle, mutate: refreshLifecycle } = useSWR(
-    enabled && orgId && selectedRecommendation ? ["intelligence/evidence-handoffs", orgId, selectedRecommendation] : null,
-    () => intelligenceEvidenceApi.evidenceRecommendationHandoffs(selectedRecommendation ?? ""),
+    id ? ["intelligence/evidence-handoffs", id] : null,
+    () => intelligenceEvidenceApi.evidenceRecommendationHandoffs(id ?? ""),
     { revalidateOnFocus: false },
   )
+  const [pending, setPending] = useState(false)
   const [notice, setNotice] = useState<string | null>(null)
 
-  async function submit(id: string, playKey: string) {
-    const selected = playCatalog?.plays.find((entry) => entry.play.key === playKey)
-    const installationId = selected?.installation?.id
-    if (!installationId || selected?.installation?.operatingMode !== "ACT WITH APPROVAL" || !selected.readiness.act_with_approval_ready) {
+  const key = recommendation?.recommended_play_key ?? ""
+  const { entry, installationId } = readyPlay(key, plays)
+
+  async function submit() {
+    if (!recommendation) return
+    if (!installationId) {
       setNotice("Configure an approval-governed, ready Play before requesting execution.")
       return
     }
-    setPending(id)
+    setPending(true)
     setNotice(null)
     try {
-      const result = await intelligenceEvidenceApi.runEvidenceRecommendation(id, installationId)
-      setSelectedRecommendation(id)
+      const result = await intelligenceEvidenceApi.runEvidenceRecommendation(recommendation.id, installationId)
       void refreshLifecycle()
-      setNotice(`Play request submitted to the governed runtime. Review its approvals and tracked outcomes under Plays → ${result.playKey}. No business outcome has been verified yet.`)
-      await mutate()
+      setNotice(
+        `Play request submitted to the governed runtime. Review its approvals and tracked outcomes under Plays → ${result.playKey}. No business outcome has been verified yet.`,
+      )
+      onChanged()
     } catch (caught) {
       setNotice(caught instanceof Error ? caught.message : "The governed Play request was not accepted.")
     } finally {
-      setPending(null)
+      setPending(false)
     }
   }
 
   return (
-    <section aria-labelledby="evidence-recommendations-title" className="mt-6 rounded-xl border border-border p-5">
-      <h2 id="evidence-recommendations-title" className="text-lg font-semibold">Evidence-backed recommendations</h2>
-      <p className="mt-1 text-sm text-muted-foreground">
-        {sweepQuota
-          ? `Intelligence sweeps: ${sweepQuota.used} of ${sweepQuota.limit} used this period (${sweepQuota.remaining} remaining).`
-          : sweepQuotaError
-            ? "Sweep entitlement unavailable. Review your subscription before requesting analysis."
-            : "Checking your intelligence sweep allowance…"}
-      </p>
-      <p className="mt-1 text-sm text-muted-foreground">
-        Cross-provider identity findings are advisory. Starting a Play requires an existing installation and canonical workflow approvals. Execution is not proof of business impact.
-      </p>
-      {isLoading && <p role="status" className="mt-3 text-sm">Checking verified source evidence…</p>}
-      {error && <p role="alert" className="mt-3 text-sm">Recommendations are unavailable. {error instanceof Error ? error.message : ""}</p>}
-      {data?.recommendations.length === 0 && <p className="mt-3 text-sm text-muted-foreground">No supported cross-provider recommendations yet.</p>}
-      {notice && <p role="status" className="mt-3 text-sm">{notice}</p>}
-      <div className="mt-3 space-y-4">
-        {(data?.recommendations ?? []).map((item) => (
-          <article key={item.id} className="rounded-lg border border-border p-4">
-            <h3 className="font-medium">{item.title}</h3>
-            <p className="mt-1 text-sm text-muted-foreground">{item.description}</p>
-            <p className="mt-1 text-xs text-muted-foreground">{item.sources.length} persisted source records · No verified financial impact</p>
-            <div className="mt-3 flex flex-wrap items-center gap-2">
-              <button type="button" disabled={
-                pending !== null || !playCatalog?.plays.some((entry) =>
-                  entry.play.key === item.recommended_play_key &&
-                  entry.installation?.operatingMode === "ACT WITH APPROVAL" &&
-                  entry.readiness.act_with_approval_ready
-                )
-              }
-                className="rounded border border-border px-3 py-1 text-sm disabled:opacity-50"
-                onClick={() => void submit(item.id, item.recommended_play_key)}>
-                {pending === item.id ? "Submitting…" : "Request approval-governed Play"}
-              </button>
-              <button type="button" className="text-sm underline" onClick={() => { setSelectedRecommendation(item.id); void refreshLifecycle() }}>View outcome lifecycle</button>
-              <Link href="/plays" className="text-sm underline">Configure or review Play approvals</Link>
+    <Sheet
+      open={open}
+      onOpenChange={(next) => {
+        if (!next) setNotice(null)
+        onOpenChange(next)
+      }}
+    >
+      <SheetContent side="right" className="w-full gap-0 overflow-y-auto sm:max-w-md">
+        <SheetHeader className="border-b border-divide">
+          <SheetTitle>{recommendation?.title ?? "Recommendation"}</SheetTitle>
+          <SheetDescription>{recommendation?.description}</SheetDescription>
+        </SheetHeader>
+        {recommendation ? (
+          <div className="space-y-5 p-4">
+            {key ? (
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-[color:var(--g-brand-surface)] px-2.5 py-1 text-[12px] font-medium text-[color:var(--g-brand-active)] dark:text-[color:var(--g-brand)]">
+                <Play className="h-3 w-3" weight="fill" aria-hidden />
+                Suggested play: {playName(key, plays)}
+              </span>
+            ) : null}
+            <div className="space-y-1.5">
+              <p className={cn(TYPE.meta, "font-semibold")}>Evidence</p>
+              <p className={TYPE.bodyMuted}>
+                {recommendation.sources.length} persisted source{" "}
+                {recommendation.sources.length === 1 ? "record" : "records"} across your connected apps. No verified
+                financial impact.
+              </p>
+              <p className={TYPE.bodyMuted}>
+                Cross-provider identity findings are advisory. Starting a Play requires an existing installation and
+                its workflow approvals. Execution is not proof of business impact.
+              </p>
             </div>
-            {selectedRecommendation === item.id && (
-              <div role="status" className="mt-3 text-sm">
-                <p>{lifecycle?.count ?? 0} recorded Play handoffs. A Play finishing does not prove a business outcome.</p>
-                {(lifecycle?.handoffs ?? []).map((run) => (
-                  <p key={run.handoffId}>
-                    Play: {run.playKey} · {run.status} · {run.verifiedBusinessOutcome
-                      ? "Source-verified outcome recorded"
-                      : "No source-verified business outcome yet"}
-                  </p>
-                ))}
-                <button type="button" className="mt-2 text-sm underline" onClick={() => void refreshLifecycle()}>
-                  Refresh outcome verification
-                </button>
+
+            <div className="space-y-2 rounded-[var(--np-radius-md)] bg-[color:var(--g-surface-2)] px-3 py-3">
+              <p className="text-sm font-medium text-[color:var(--g-text-primary)]">
+                {installationId
+                  ? `${playName(key, plays)} is installed and asks for approval before it acts.`
+                  : entry?.installation
+                    ? `${playName(key, plays)} is installed but not set to act with approval yet.`
+                    : `${playName(key, plays)} isn't installed yet.`}
+              </p>
+              <div className="flex flex-wrap items-center gap-2">
+                <Button size="sm" variant="brand" disabled={pending || !installationId} onClick={() => void submit()}>
+                  {pending ? "Submitting…" : "Request approval-governed Play"}
+                </Button>
+                <Link
+                  href={APP_ROUTES.plays}
+                  className="inline-flex items-center gap-1 text-[13px] font-medium text-[color:var(--g-brand-active)] underline underline-offset-2 dark:text-[color:var(--g-brand)]"
+                >
+                  Configure or review Play approvals
+                  <ArrowRight className="h-3 w-3" aria-hidden />
+                </Link>
               </div>
-            )}
-          </article>
-        ))}
-      </div>
-    </section>
+            </div>
+
+            {notice ? (
+              <p role="status" className="text-sm text-[color:var(--g-text-primary)]">
+                {notice}
+              </p>
+            ) : null}
+
+            <div className="space-y-1.5 border-t border-[color:var(--g-border-subtle)] pt-4">
+              <p className={cn(TYPE.meta, "font-semibold")}>Outcome lifecycle</p>
+              <p className={TYPE.bodyMuted}>
+                {lifecycle?.count ?? 0} recorded Play {lifecycle?.count === 1 ? "handoff" : "handoffs"}. A Play finishing
+                does not prove a business outcome.
+              </p>
+              {(lifecycle?.handoffs ?? []).map((run) => (
+                <p key={run.handoffId} className="text-[13px] text-[color:var(--g-text-primary)]">
+                  {run.playKey} · {run.status} ·{" "}
+                  {run.verifiedBusinessOutcome ? "Source-verified outcome recorded" : "No source-verified business outcome yet"}
+                </p>
+              ))}
+              <Button size="sm" variant="outline" onClick={() => void refreshLifecycle()}>
+                Refresh outcome verification
+              </Button>
+            </div>
+
+            <p className={TYPE.meta}>
+              {sweepQuota
+                ? `Intelligence sweeps: ${sweepQuota.used} of ${sweepQuota.limit} used this period (${sweepQuota.remaining} remaining).`
+                : sweepQuotaError
+                  ? "Sweep entitlement unavailable. Review your subscription before requesting analysis."
+                  : "Checking your intelligence sweep allowance…"}
+            </p>
+          </div>
+        ) : null}
+      </SheetContent>
+    </Sheet>
   )
 }

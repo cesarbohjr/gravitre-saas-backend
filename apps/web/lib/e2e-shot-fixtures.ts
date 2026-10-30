@@ -2871,6 +2871,32 @@ export const SHOT_FIXTURES: Record<string, unknown> = {
     toCollect: { total: 4200, currency: "USD", count: 2, overdueCount: 1 },
     generatedAt: "2026-03-12T09:00:00Z",
   },
+  // FIXTURE: governed evidence recommendations and sweep allowance (#572).
+  "/api/intelligence/overview/sweep-usage": { period: "2026-03", limit: 20, used: 1, remaining: 19, unit: "sweep" },
+  "/api/intelligence/overview/evidence-recommendations": {
+    recommendations: [
+      {
+        id: "rec_acme",
+        title: "Acme Freight may not renew",
+        description: "Support tickets tripled this week and their main contact left in September. A check-in with the new contact before the Dec 1 renewal is the usual save.",
+        kind: "renewal_risk",
+        sources: [
+          { connector_id: "c_hubspot", object_type: "company", external_id: "acme" },
+          { connector_id: "c_zendesk", object_type: "ticket", external_id: "t1" },
+        ],
+        recommended_play_key: "renewal-save",
+        advisory_only: true,
+        approval_required: true,
+        business_impact: null,
+        outcome_verified: false,
+      },
+    ],
+    count: 1,
+    advisoryOnly: true,
+  },
+  "/api/intelligence/overview/evidence-recommendations/rec_acme/handoffs": { recommendationId: "rec_acme", count: 0, handoffs: [] },
+  // FIXTURE: forecasts the team snoozed (none open by default).
+  "/api/intelligence/forecasts/snoozes": { snoozes: [] },
   // FIXTURE: where a finding can be shared (connected Slack + email).
   "/api/intelligence/share/options": {
     apps: [

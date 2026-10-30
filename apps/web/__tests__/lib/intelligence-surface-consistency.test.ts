@@ -24,6 +24,6 @@ describe("Intelligence 3.0 surface consistency", () => {
 
   it("keeps the frame on the shared page gutters", () => {
     const tokens = readFileSync(resolve(webRoot, "lib/design-system.ts"), "utf8")
-    expect(tokens).toMatch(/INTELLIGENCE_PAGE_FRAME = `\$\{PAGE_FRAME\} mx-auto w-full max-w-\[1320px\]/)
+    expect(tokens).toMatch(/INTELLIGENCE_PAGE_FRAME = `\$\{PAGE_FRAME\} intel-frame mx-auto w-full max-w-\[1320px\]/)
   })
 })
