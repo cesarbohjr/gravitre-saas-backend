@@ -68,6 +68,15 @@ def wait_for(predicate, seconds, category):
     raise TimeoutError(category)
 
 
+def terminal_wait_budget(case):
+    """Allow slower CI browser execution without changing worker lease or write gates.
+
+    Lost acknowledgements add a retry-and-readback path. The original 60-second
+    terminal wait was a harness deadline, not an execution authorization limit.
+    """
+    return 150 if case in ('lost_submit_ack','lost_approval_ack') else 100 if case.startswith('broker_crash') else 60
+
+
 def docker(*args):
     return subprocess.check_output(['docker',*args],stderr=subprocess.DEVNULL,timeout=120).decode().strip()
 
@@ -372,7 +381,7 @@ def run():
                     # accepted job. Keep the recovery boundary fail-closed, but
                     # preserve sanitized journal/worker diagnostics on timeout.
                     try:
-                        result=wait_for(finished,100 if crash else 60,'worker_terminal_or_reconciliation_timeout')
+                        result=wait_for(finished,terminal_wait_budget(case),'worker_terminal_or_reconciliation_timeout')
                     except TimeoutError:
                         row=worker.journal.get(worker.scope,id)
                         actions=worker.actions(id)
