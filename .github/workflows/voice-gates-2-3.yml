@@ -78,6 +78,40 @@ jobs:
               raise SystemExit(2)
           print('Isolated configuration and existing actor verified; paired inference still requires execution')
           PY
+      - name: Authenticate and run bounded live Anthropic inference
+        env:
+          ACCEPTANCE_ANTHROPIC_API_KEY: ${{ secrets.ACCEPTANCE_ANTHROPIC_API_KEY }}
+        run: |
+          python - <<'PY'
+          import json, os, pathlib, time, urllib.request, urllib.error
+          path = pathlib.Path('acceptance-results/anthropic-inference.json')
+          result = {'status': 'NOT RUN', 'provider': 'anthropic', 'certified': False}
+          key = os.environ.get('ACCEPTANCE_ANTHROPIC_API_KEY')
+          if not key:
+              result['blocker'] = 'missing:ACCEPTANCE_ANTHROPIC_API_KEY'
+              path.write_text(json.dumps(result, indent=2))
+              raise SystemExit('Dedicated acceptance Anthropic key unavailable to this job')
+          print('Dedicated acceptance key available; value withheld')
+          request = urllib.request.Request('https://api.anthropic.com/v1/messages',
+              data=json.dumps({'model': 'claude-haiku-4-5-20251001', 'max_tokens': 16,
+                               'messages': [{'role': 'user', 'content': 'Reply with exactly ACCEPTANCE_OK.'}]}).encode(),
+              headers={'x-api-key': key, 'anthropic-version': '2023-06-01', 'content-type': 'application/json'})
+          start = time.monotonic()
+          try:
+              with urllib.request.urlopen(request, timeout=45) as response:
+                  payload = json.load(response)
+                  answer = ''.join(x.get('text', '') for x in payload.get('content', []) if x.get('type') == 'text').strip()
+                  result.update(status='PASS' if answer == 'ACCEPTANCE_OK' else 'FAIL',
+                                http_status=response.status, elapsed_ms=round((time.monotonic()-start)*1000, 2),
+                                model=payload.get('model'), usage=payload.get('usage'), exact_response=answer == 'ACCEPTANCE_OK')
+          except urllib.error.HTTPError as error:
+              result.update(status='FAIL', http_status=error.code)
+          except Exception as error:
+              result.update(status='FAIL', error_type=type(error).__name__)
+          path.write_text(json.dumps(result, indent=2))
+          print(json.dumps(result))
+          if result['status'] != 'PASS': raise SystemExit(2)
+          PY
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -85,6 +119,7 @@ jobs:
           path: |
             acceptance-results/paired-runtime-readiness.json
             acceptance-results/smoke-fixture.json
+            acceptance-results/anthropic-inference.json
   live-provider:
     runs-on: ubuntu-latest
     timeout-minutes: 15
