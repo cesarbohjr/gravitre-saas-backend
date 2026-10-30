@@ -195,6 +195,28 @@ class Journal:
             if changed!=1:raise LeaseLost('Browser worker lost its execution authority')
             return safe
 
+    def fallback_candidate(self, scope: AdapterScope, job_id: str) -> dict | None:
+        """Return a fenced pre-effect candidate, never an executable job.
+
+        This intentionally does not claim, enqueue or grant Playwright access.
+        The recovery coordinator must independently verify the destination
+        and current authorization before a new engine can be launched.
+        """
+        with self.connect() as db:
+            row=db.execute("""
+                SELECT j.state,j.phase,j.lease,j.expires_at,c.sequence,c.payload
+                FROM jobs j JOIN browser_checkpoints c ON c.job=j.id
+                WHERE j.id=? AND j.org=? AND j.agent=? AND j.run=?
+                  AND j.kind='browser_use' AND j.state='uncertain'
+                  AND j.phase='fallback_fenced' AND j.lease IS NULL
+                  AND j.expires_at>?
+                  AND NOT EXISTS (SELECT 1 FROM action_requests a WHERE a.job=j.id)
+            """,(job_id,scope.org_id,scope.agent_id,scope.run_id,time.time())).fetchone()
+        if not row:return None
+        checkpoint=self._open(row['payload'])
+        if checkpoint.get('before_effect') is not True:return None
+        return {'sequence':row['sequence'],'checkpoint':checkpoint}
+
     def cancel(self, scope: AdapterScope, job_id: str) -> bool:
         with self.connect() as db:
             changed=db.execute("UPDATE jobs SET state='cancelled',lease=NULL,payload=NULL,result=NULL WHERE id=? AND org=? AND agent=? AND run=? AND kind IN ('openhands','browser_use') AND state IN ('queued','running','uncertain')",
