@@ -6,6 +6,8 @@ on:
       - 'backend/tests/services/pipecat_voice/test_livekit_write_fence.py'
       - '.github/workflows/voice-gates-2-3.yml'
       - 'scripts/bootstrap_voice_acceptance.py'
+      - 'backend/app/services/spoken_write_approval.py'
+      - 'backend/tests/scripts/test_voice_provider_roundtrip.py'
   workflow_dispatch:
 permissions:
   contents: read
@@ -128,6 +130,7 @@ jobs:
         working-directory: backend
         run: >-
           python -m pytest -q -p tests.offline_network_guard
+          tests/scripts/test_voice_provider_roundtrip.py
           tests/services/pipecat_voice/test_livekit_write_fence.py
           tests/services/pipecat_voice/test_phase3_provider_commit_gate.py
           tests/services/pipecat_voice/test_turn_scoped_cancellation.py
