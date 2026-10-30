@@ -166,3 +166,27 @@ effects for those workers, with one positive-control attempt and effect.
 The candidate now flushes native RTC playout when the canonical pipeline emits
 `speech.interrupted`, covering spoken ingress as well as RTC control ingress.
 That change requires a new paired live run; it is not certified by inspection.
+
+Runs `41137586224` (`3032f713`) and `41137867111` (`7b53079d`)
+then passed all eight pinned scenarios after the native RTC flush change.
+The latter also passed a real acceptance-database repository race: one retired
+positive-control assignment and zero cancelled-worker assignments. An independent
+Supabase SQL query confirmed those rows. This is not full approval certification.
+
+Run `41138120065` on `2c0f7b46` passed seven audio scenarios and the native
+repository race, but failed LiveKit reconnect generated-answer content. That
+FAIL is retained. Subsequent runs retain fixed synthetic output transcripts and
+retranscribe this failed WAV for diagnosis; the content criteria are unchanged.
+Independent native-action trials now continue after a recorded audio-case FAIL
+when the RTC binary was hash-verified and a fresh acceptance token was minted.
+The earlier failure still fails the workflow; collecting further evidence does
+not waive it.
+
+Native assignments now carry their originating conversation ID in JSON context.
+The live staging/cancel/approve/replay controller reads and retires only jobs
+with that conversation ID, preventing simultaneous acceptance runs from being
+misattributed to one another. State readback is strict: a database error cannot
+be mistaken for a successfully cleared pending action. Separate live probes test
+the production Pipecat ASGI route with missing/tampered/expired tokens, foreign
+org access and membership revocation using a disposable Auth actor. These do
+not certify RTC token issuance or fresh authorization at an in-flight tool call.

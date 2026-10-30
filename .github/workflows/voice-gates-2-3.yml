@@ -12,6 +12,7 @@ on:
       - 'scripts/verify_native_assignment_cancel.py'
       - 'scripts/verify_voice_route_authorization.py'
       - 'backend/app/operators/agent_jobs.py'
+      - 'backend/app/services/conversational_execution_service.py'
       - 'tests/test_voice_acceptance_sink.py'
       - 'tests/test_voice_paired_live.py'
       - 'backend/app/services/spoken_write_approval.py'
@@ -148,12 +149,39 @@ jobs:
           run-id: 41134456513
           github-token: ${{ github.token }}
           path: /tmp/voice-pinned-recordings
+      - name: Retrieve the failed reconnect recording for content diagnosis
+        uses: actions/download-artifact@v4
+        with:
+          name: paired-runtime-readiness
+          run-id: 41138120065
+          github-token: ${{ github.token }}
+          path: /tmp/voice-failed-reconnect
+      - name: Transcribe the retained synthetic reconnect failure
+        run: |
+          python - <<'PY'
+          import hashlib, json, os, pathlib, httpx
+          path = pathlib.Path('/tmp/voice-failed-reconnect/paired-live/livekit-reconnect.wav')
+          audio = path.read_bytes()
+          if not 1000 < len(audio) < 5000000: raise SystemExit('diagnostic recording bounds')
+          with httpx.Client(timeout=45) as client:
+              response = client.post('https://api.deepgram.com/v1/listen', params={'model': 'nova-3'},
+                  headers={'Authorization': 'Token ' + os.environ['DEEPGRAM_API_KEY'], 'Content-Type': 'audio/wav'}, content=audio)
+              if response.status_code != 200: raise SystemExit('diagnostic transcription failed')
+              data = response.json()
+          result = {'source_run': 41138120065, 'source_commit': '2c0f7b464f979f55291dcd00d383734849b22266',
+              'wav_sha256': hashlib.sha256(audio).hexdigest(), 'scope': 'retranscription of retained synthetic failure; original verdict unchanged',
+              'request_id': data.get('metadata', {}).get('request_id'),
+              'transcript': data['results']['channels'][0]['alternatives'][0]['transcript'][:3000]}
+          pathlib.Path('acceptance-results/reconnect-content-diagnostic.json').write_text(json.dumps(result, indent=2))
+          PY
       - name: Start hash-verified loopback RTC server and execute paired real inference
+        id: paired_voice
         run: |
           mkdir -p /tmp/gravitre-paired acceptance-results/paired-live
           curl -fsSL --retry 2 https://github.com/livekit/livekit/releases/download/v1.13.11/livekit_1.13.11_linux_amd64.tar.gz -o /tmp/gravitre-paired/server.tar.gz
           echo '1e9ee90ca301e1842b2887fc77cb122759756a9c8aeb4334ee91de3325ec43fb  /tmp/gravitre-paired/server.tar.gz' | sha256sum -c -
           tar -xzf /tmp/gravitre-paired/server.tar.gz -C /tmp/gravitre-paired
+          echo 'server_verified=true' >> "$GITHUB_OUTPUT"
           /tmp/gravitre-paired/livekit-server --dev --bind 127.0.0.1 --node-ip 127.0.0.1 --rtc.enable_loopback_candidate >/tmp/gravitre-paired/server.log 2>&1 &
           server_pid=$!
           trap 'kill "$server_pid" 2>/dev/null || true' EXIT
@@ -164,8 +192,11 @@ jobs:
           done
           python scripts/voice_paired_live.py >/tmp/gravitre-paired/pipeline.log 2>&1
       - name: Refresh acceptance identity before native action trials
+        id: native_identity
+        if: always() && steps.paired_voice.outputs.server_verified == 'true'
         run: python scripts/mint_smoke_org_session.py --github-env
       - name: Execute paired native assignment approval and cancellation
+        if: always() && steps.paired_voice.outputs.server_verified == 'true' && steps.native_identity.outcome == 'success'
         run: |
           /tmp/gravitre-paired/livekit-server --dev --bind 127.0.0.1 --node-ip 127.0.0.1 --rtc.enable_loopback_candidate >/tmp/gravitre-paired/native-server.log 2>&1 &
           server_pid=$!
@@ -186,6 +217,7 @@ jobs:
             acceptance-results/anthropic-inference.json
             acceptance-results/native-assignment-cancellation.json
             acceptance-results/voice-route-authorization.json
+            acceptance-results/reconnect-content-diagnostic.json
             acceptance-results/paired-live
             acceptance-results/paired-native-assignment
   live-provider:

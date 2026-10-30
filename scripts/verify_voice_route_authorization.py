@@ -79,11 +79,12 @@ def main():
                 raise AssertionError('foreign-org fixture is not foreign')
             denied(browser, 'foreign_org', token, foreign, 'forbidden', True)
 
-            user = client.auth.admin.create_user({'email': 'smoke+voice-revoke-' + uuid.uuid4().hex + '@gravitre.app',
+            fixture_email = 'smoke+voice-revoke-' + uuid.uuid4().hex + '@gravitre.app'
+            user = client.auth.admin.create_user({'email': fixture_email,
                 'password': secrets.token_urlsafe(40), 'email_confirm': True}).user
             disposable = str(user.id)
             client.table('organization_members').insert({'org_id': org, 'user_id': disposable, 'role': 'member'}).execute()
-            temporary_claims = {**claims, 'sub': disposable, 'iat': int(time.time()),
+            temporary_claims = {**claims, 'sub': disposable, 'email': fixture_email, 'iat': int(time.time()),
                 'nbf': int(time.time()) - 1, 'exp': int(time.time()) + 300}
             temporary_token = jwt.encode(temporary_claims, settings.supabase_jwt_secret, algorithm='HS256')
             if str(client.auth.get_user(temporary_token).user.id) != disposable:

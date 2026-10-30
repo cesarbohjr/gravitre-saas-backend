@@ -579,6 +579,9 @@ async def main():
                     else:
                         row['output_transcription_request_id'] = speech.json().get('metadata', {}).get('request_id')
                         transcript = speech.json()["results"]["channels"][0]["alternatives"][0]["transcript"].lower()
+                        # This case contains fixed synthetic welcome text only;
+                        # retain its generated transcript for content/quality QA.
+                        row['synthetic_output_transcript'] = transcript[:3000]
                         valid = ("alex" in transcript and "team" in transcript and
                             any(word in transcript for word in ("welcome", "happy", "glad", "excited", "thrilled")) and
                             not any(phrase in transcript for phrase in ("can't answer", "cannot answer", "not configured", "knowledge base")))

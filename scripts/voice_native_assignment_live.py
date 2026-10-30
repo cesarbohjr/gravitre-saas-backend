@@ -67,8 +67,8 @@ async def main():
             report['recordings'][name] = {'pcm_sha256': hashlib.sha256(pcm[name]).hexdigest(), 'source_text': text}
     state_service = get_conversation_state_service(settings)
 
-    def jobs():
-        rows = reader.table('agent_jobs').select('id,status,payload').eq('org_id', org).eq('created_by', actor).gte('created_at', started).limit(1000).execute().data
+    def jobs(cid):
+        rows = reader.table('agent_jobs').select('id,status,payload').eq('org_id', org).eq('created_by', actor).contains('payload', {'context': {'conversation_id': cid}}).gte('created_at', started).limit(1000).execute().data
         if len(rows) >= 1000:
             raise AssertionError('job read truncated')
         return {str(r['id']): r for r in rows}
@@ -81,7 +81,7 @@ async def main():
         wav(output / (engine + '-' + label + '.wav'), capture.pcm, 24000)
         if capture.errors or capture.first is None:
             raise AssertionError('voice pipeline failed')
-        return await state_service.get_task_state(cid, org, client=reader)
+        return await state_service.get_task_state(cid, org, client=reader, strict=True)
 
     try:
         for engine, trial in (('pipecat', websocket_trial), ('livekit', livekit_trial)):
@@ -92,7 +92,7 @@ async def main():
                 row['conversation_id'] = cid
                 writer.table('conversations').insert({'id': cid, 'org_id': org, 'user_id': actor,
                     'title': 'Internal native voice acceptance'}).execute()
-                before = jobs()
+                before = jobs(cid)
                 try:
                     state = await speak(engine, trial, cid, 'stage', decision + '-stage')
                     pending = state.get('pending_task') or {}
@@ -100,11 +100,11 @@ async def main():
                     row['staged_pending_status'] = pending.get('status')
                     if pending.get('type') != 'create_assignment' or pending.get('status') != 'awaiting_confirm':
                         raise AssertionError('assignment not durably awaiting approval')
-                    if set(jobs()) != set(before):
+                    if set(jobs(cid)) != set(before):
                         raise AssertionError('assignment created before approval')
                     row['staged_without_write'] = True
                     state = await speak(engine, trial, cid, decision, decision)
-                    after = jobs()
+                    after = jobs(cid)
                     created = set(after) - set(before)
                     row['new_job_ids'] = sorted(created)
                     if decision == 'cancel':
@@ -125,7 +125,7 @@ async def main():
                             raise AssertionError('independent assignment creation audit missing')
                         row['independent_write_audit_ids'] = [r['id'] for r in audit]
                         await speak(engine, trial, cid, 'approve', 'approval-replay')
-                        if set(jobs()) != set(after):
+                        if set(jobs(cid)) != set(after):
                             raise AssertionError('approval replay created another assignment')
                         row['duplicate_effects'] = 0
                     row['status'] = 'PASS'
@@ -134,7 +134,7 @@ async def main():
                 finally:
                     # Only IDs independently observed as new in this isolated
                     # actor's bounded trial. No execution worker is launched.
-                    for job_id in set(jobs()) - set(before):
+                    for job_id in set(jobs(cid)) - set(before):
                         writer.table('agent_jobs').update({'status': 'cancelled',
                             'error': 'synthetic voice acceptance retired; worker not executed'}).eq('org_id', org).eq('id', job_id).execute()
                     manifest.write_text(json.dumps(report, indent=2))
