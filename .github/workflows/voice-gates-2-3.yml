@@ -57,6 +57,17 @@ jobs:
         run: python scripts/bootstrap_voice_acceptance.py
       - name: Verify flagged smoke actor and mint short-lived session
         run: python scripts/mint_smoke_org_session.py --github-env
+      - name: Verify short-lived smoke token against Supabase Auth
+        run: |
+          python - <<'PY'
+          import os
+          from supabase import create_client
+          client = create_client(os.environ['SUPABASE_URL'], os.environ['SUPABASE_SERVICE_ROLE_KEY'])
+          user = client.auth.get_user(os.environ['PLATFORM_LIVE_BEARER_TOKEN']).user
+          if not user or str(user.id) != os.environ['ISOLATED_CONVERSATION_TEST_USER_ID']:
+              raise SystemExit('Smoke token identity verification failed')
+          print('AUTHENTICATED_SMOKE_ACTOR_VERIFIED: Auth API identity matches isolated membership')
+          PY
       - name: Require inference configuration after independent actor verification
         run: |
           python - <<'PY'
