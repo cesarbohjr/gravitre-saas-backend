@@ -9,6 +9,7 @@ from typing import Any
 
 from app.config import Settings, get_settings
 from app.core.logging import get_logger
+from app.core.safe_dict import safe_normalize_stored_dict
 from app.rag.embedding import get_embedding
 from app.services.query_normalization import normalize_query
 from app.workflows.repository import get_supabase_client
@@ -908,7 +909,7 @@ class MemoryPromotionService:
         before = str(candidate.get("content") or "")
         if text == before:
             return candidate
-        metadata = dict(candidate.get("metadata") or {})
+        metadata = safe_normalize_stored_dict(candidate, key="metadata")
         metadata.setdefault("original_content", before)
         metadata["edited_by"] = edited_by_user_id
         metadata["edited_at"] = self._now().isoformat()
