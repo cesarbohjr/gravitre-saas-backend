@@ -94,6 +94,15 @@ class NativeRuntime:
         self.journal.consume_authority(claims['scope']['org_id'],claims['actor'],authority['ref'],'action:'+request_id+':'+digest+':'+str(approved))
         self.journal.approve(AdapterScope(**claims['scope']),job_id,request_id,digest,approved)
 
+    def inspect_fallback_candidate(self, claims: dict, job_id: str) -> dict | None:
+        """Trusted recovery coordinator read path, not permission to execute."""
+        scope=AdapterScope(**claims['scope'])
+        row=self.journal.get(scope,job_id,material=True)
+        if not row or row['kind']!='browser_use' or row['actor']!=claims['actor']:
+            raise PermissionError('Browser recovery scope mismatch')
+        self.authorize(row['payload']['claims'])
+        return self.journal.fallback_candidate(scope,job_id)
+
     def checkpoint_browser(self, job: dict, sequence: int, checkpoint: dict) -> None:
         """Trusted broker boundary; the engine cannot declare its own safe handoff."""
         if job.get('kind')!='browser_use' or not self.journal.active(job):
