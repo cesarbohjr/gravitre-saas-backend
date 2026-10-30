@@ -140,6 +140,33 @@ class Journal:
                 (job['id'],job['lease'],stamp,stamp)).fetchone()
         return bool(row)
 
+    def fence_browser_for_fallback(self, job: dict, *, checkpoint_before_effect: bool) -> bool:
+        """Atomically revoke the Browser Use lease and reserve reconciliation.
+
+        This is a safety fence, NOT authorization to launch Playwright. A fresh
+        checkpoint and independent effect reconciliation must precede handoff.
+        """
+        if job.get('kind') != 'browser_use' or type(checkpoint_before_effect) is not bool:
+            raise ValueError('Browser Use lease and explicit checkpoint required')
+        stamp=time.time()
+        with self.connect() as db:
+            db.execute('BEGIN IMMEDIATE')
+            row=db.execute(
+                "SELECT state,lease,lease_until,expires_at FROM jobs WHERE id=? AND org=? AND agent=? AND run=?",
+                (job['id'],job['scope'].org_id,job['scope'].agent_id,job['scope'].run_id)).fetchone()
+            if not row or row['state']!='running' or row['lease']!=job['lease'] or row['lease_until']<=stamp or row['expires_at']<=stamp:
+                raise LeaseLost('Cannot fence an inactive or stale browser worker')
+            actions=db.execute("SELECT COUNT(*) FROM action_requests WHERE job=?",(job['id'],)).fetchone()[0]
+            # Even an approved action can have committed externally; any action
+            # history requires independent reconciliation, never blind replay.
+            safe=checkpoint_before_effect and actions==0
+            phase='fallback_fenced' if safe else 'fallback_reconcile'
+            changed=db.execute(
+                "UPDATE jobs SET state='uncertain',phase=?,lease=NULL,lease_until=NULL,error_code='fallback_pending' WHERE id=? AND lease=? AND state='running'",
+                (phase,job['id'],job['lease'])).rowcount
+            if changed!=1:raise LeaseLost('Browser worker lost its execution authority')
+            return safe
+
     def cancel(self, scope: AdapterScope, job_id: str) -> bool:
         with self.connect() as db:
             changed=db.execute("UPDATE jobs SET state='cancelled',lease=NULL,payload=NULL,result=NULL WHERE id=? AND org=? AND agent=? AND run=? AND kind IN ('openhands','browser_use') AND state IN ('queued','running','uncertain')",
