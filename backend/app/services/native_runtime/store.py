@@ -315,9 +315,9 @@ class Journal:
 
     def uncertain_jobs(self) -> list[str]:
         with self.connect() as db:
-            return [r['id'] for r in db.execute("SELECT id FROM jobs WHERE kind IN ('openhands','browser_use') AND state IN ('uncertain','cancelled','expired','failed') AND phase!='reconciled'").fetchall()]
+            return [r['id'] for r in db.execute("SELECT id FROM jobs WHERE kind IN ('openhands','browser_use') AND state IN ('uncertain','cancelled','expired','failed') AND phase NOT IN ('reconciled','fallback_fenced','fallback_reserved','fallback_reconcile')").fetchall()]
 
 
     def reconciled(self, id: str) -> None:
         with self.connect() as db:
-            db.execute("UPDATE jobs SET phase='reconciled' WHERE id=? AND state IN ('uncertain','cancelled','expired','failed')",(id,))
+            db.execute("UPDATE jobs SET phase='reconciled' WHERE id=? AND state IN ('uncertain','cancelled','expired','failed') AND phase NOT IN ('fallback_fenced','fallback_reserved','fallback_reconcile')",(id,))
