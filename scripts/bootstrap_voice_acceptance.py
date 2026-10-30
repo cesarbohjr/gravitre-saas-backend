@@ -33,6 +33,13 @@ def provision(env, client):
     listed = client.auth.admin.list_users()
     users = listed if isinstance(listed, list) else getattr(listed, "users", [])
     existing = next((user for user in users if (getattr(user, "email", "") or "").lower() == "conversation-smoke-sa@gravitre.app"), None)
+    if existing is None:
+        created = client.auth.admin.create_user({
+            "email": "conversation-smoke-sa@gravitre.app", "email_confirm": True,
+            "user_metadata": {"full_name": "Gravitre Conversation Smoke SA", "company_name": "Gravitre Conversation Smoke"},
+            "app_metadata": {"purpose": "disposable_voice_acceptance"},
+        })
+        existing = created.user
     if existing is not None:
         env["ISOLATED_CONVERSATION_TEST_USER_ID"] = str(existing.id)
         os.environ["ISOLATED_CONVERSATION_TEST_USER_ID"] = str(existing.id)
@@ -74,6 +81,12 @@ def main() -> int:
         result = provision(env, client)
     except Exception as exc:
         result = {"status": "FAIL", "failure_category": type(exc).__name__, "certified": False}
+        code = getattr(exc, "code", None)
+        if isinstance(code, str) and len(code) < 80 and all(c.isalnum() or c in "_-" for c in code):
+            result["failure_code"] = code
+        import traceback
+        result["failure_locations"] = [{"file": Path(frame.filename).name, "line": frame.lineno, "function": frame.name}
+                                       for frame in traceback.extract_tb(exc.__traceback__)]
         destination.write_text(json.dumps(result, indent=2))
         print(json.dumps(result))
         return 1
