@@ -11,6 +11,7 @@ on:
       - 'scripts/voice_acceptance_sink.py'
       - 'scripts/verify_native_assignment_cancel.py'
       - 'scripts/verify_voice_route_authorization.py'
+      - 'scripts/wait_voice_acceptance_predecessors.py'
       - 'backend/app/operators/agent_jobs.py'
       - 'backend/app/services/conversational_execution_service.py'
       - 'tests/test_voice_acceptance_sink.py'
@@ -26,7 +27,7 @@ permissions:
 jobs:
   paired-runtime-readiness:
     runs-on: ubuntu-latest
-    timeout-minutes: 40
+    timeout-minutes: 60
     environment: acceptance
     env:
       SUPABASE_URL: ${{ secrets.E2E_SUPABASE_URL }}
@@ -195,8 +196,18 @@ jobs:
         id: native_identity
         if: always() && steps.paired_voice.outputs.server_verified == 'true'
         run: python scripts/mint_smoke_org_session.py --github-env
-      - name: Execute paired native assignment approval and cancellation
+      - name: Sequence native trials after superseded actor-wide probes finish
+        id: predecessor_wait
         if: always() && steps.paired_voice.outputs.server_verified == 'true' && steps.native_identity.outcome == 'success'
+        run: python scripts/wait_voice_acceptance_predecessors.py
+        env:
+          GH_TOKEN: ${{ github.token }}
+      - name: Refresh acceptance identity after predecessor wait
+        id: native_ready
+        if: always() && steps.predecessor_wait.outcome == 'success'
+        run: python scripts/mint_smoke_org_session.py --github-env
+      - name: Execute paired native assignment approval and cancellation
+        if: always() && steps.paired_voice.outputs.server_verified == 'true' && steps.native_ready.outcome == 'success'
         run: |
           /tmp/gravitre-paired/livekit-server --dev --bind 127.0.0.1 --node-ip 127.0.0.1 --rtc.enable_loopback_candidate >/tmp/gravitre-paired/native-server.log 2>&1 &
           server_pid=$!
