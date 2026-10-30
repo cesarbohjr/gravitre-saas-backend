@@ -8,6 +8,8 @@ on:
       - 'scripts/bootstrap_voice_acceptance.py'
       - 'scripts/voice_paired_live.py'
       - 'scripts/voice_acceptance_sink.py'
+      - 'scripts/verify_native_assignment_cancel.py'
+      - 'backend/app/operators/agent_jobs.py'
       - 'tests/test_voice_acceptance_sink.py'
       - 'tests/test_voice_paired_live.py'
       - 'backend/app/services/spoken_write_approval.py'
@@ -132,6 +134,8 @@ jobs:
         run: python -m pytest -q --confcutdir=tests/core tests/core/test_supabase_credential_whitespace.py tests/core/test_shared_http_client.py
       - name: Refresh short-lived acceptance identity after dependency installation
         run: python scripts/mint_smoke_org_session.py --github-env
+      - name: Verify native assignment cancellation against the isolated database
+        run: python scripts/verify_native_assignment_cancel.py
       - name: Reuse the exact previously executed recordings (digest checked by controller)
         uses: actions/download-artifact@v4
         with:
@@ -162,6 +166,7 @@ jobs:
             acceptance-results/paired-runtime-readiness.json
             acceptance-results/smoke-fixture.json
             acceptance-results/anthropic-inference.json
+            acceptance-results/native-assignment-cancellation.json
             acceptance-results/paired-live
   live-provider:
     runs-on: ubuntu-latest
