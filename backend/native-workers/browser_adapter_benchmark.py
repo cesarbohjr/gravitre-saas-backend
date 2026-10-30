@@ -32,8 +32,6 @@ except ModuleNotFoundError as error:
         raise
     from app.services.native_runtime.engine import configure_browser_sdk, fresh_browser_evidence, stable_browser_evidence,ensure_rejecting_dialog_handlers,close_dialog_handlers
 
-from broker_process_contract import IndependentFixture, CrashBroker
-
 TRIALS = 5
 ACTION_TIMEOUT = 10
 PAGE = b'''<!doctype html><title>Adapter fixture</title>
@@ -151,6 +149,7 @@ async def reviewed_click(session, action, execute, *, approved, cancelled=False,
 
 
 async def trial(adapter, number):
+    from broker_process_contract import IndependentFixture, CrashBroker
     fixture = None
     child = None
     session = None

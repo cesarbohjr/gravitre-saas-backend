@@ -40,3 +40,20 @@ def test_real_broker_sigkill_new_pid_and_durable_no_replay(tmp_path):
             'journal_state':'uncertain','replayed_claims':0,'persisted_action_count':1}
         assert not broker.authorized()
     finally:broker.close()
+
+
+def test_shared_session_helpers_do_not_require_broker_test_module():
+    import subprocess
+    script='''import importlib.abc, sys
+class NoBroker(importlib.abc.MetaPathFinder):
+    def find_spec(self, fullname, path=None, target=None):
+        if fullname == 'broker_process_contract':
+            raise ModuleNotFoundError('broker helper absent from candidate image')
+sys.meta_path.insert(0, NoBroker())
+import browser_adapter_benchmark
+assert browser_adapter_benchmark.PlaywrightSession
+'''
+    import os
+    environment={**os.environ,'PYTHONPATH':os.pathsep.join(sys.path)}
+    result=subprocess.run([sys.executable,'-c',script],env=environment,capture_output=True,timeout=10)
+    assert result.returncode==0,result.stderr.decode()
