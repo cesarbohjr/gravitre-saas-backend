@@ -1,3 +1,4 @@
+import type React from "react"
 import Image from "next/image"
 import { cn } from "@/lib/utils"
 import { AppWindow } from "@/components/marketing/nodus/app-window"
@@ -20,6 +21,8 @@ export interface ProductScreenshotProps {
   /** Intrinsic size of the capture; defaults to the 2880x1800 web shots. */
   width?: number
   height?: number
+  /** Live layer drawn over the capture, positioned in % of the image. */
+  overlay?: React.ReactNode
   /** Set on the first shot above the fold only. */
   priority?: boolean
   /** Title pill in the macOS window outline every shot is framed in. */
@@ -36,6 +39,7 @@ export function ProductScreenshot({
   width = 2880,
   height = 1800,
   priority = false,
+  overlay,
   chromeLabel,
   glowClassName,
   className,
@@ -63,7 +67,14 @@ export function ProductScreenshot({
         ) : null}
 
         <AppWindow title={chromeLabel ?? "Gravitre"} className="relative">
-          {image}
+          {overlay ? (
+            <div className="relative">
+              {image}
+              {overlay}
+            </div>
+          ) : (
+            image
+          )}
         </AppWindow>
       </div>
       {caption ? (

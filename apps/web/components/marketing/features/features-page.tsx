@@ -215,11 +215,12 @@ export function FeaturesPage() {
         />
         <ProductScreenshot
           src="/product/desktop-voice.png"
-          alt="Gravitre desktop voice mode: the orb speaking an answer, with the live transcript beside it"
+          alt="Gravitre desktop voice mode: the green orb listening while you speak, with the live transcript beside it"
           width={2360}
           height={1280}
           chromeLabel="Gravitre Desktop · Voice"
           className="mx-auto max-w-4xl"
+          overlay={<VoiceOrbOverlay />}
         />
       </GravitreSection>
 
@@ -231,6 +232,22 @@ export function FeaturesPage() {
       <HonestReporting />
       <MarketingPageEndCta />
     </main>
+  )
+}
+
+/** The capture's orb is hidden; this live one sits exactly where it was. */
+function VoiceOrbOverlay() {
+  return (
+    <div
+      aria-hidden
+      className="pointer-events-none absolute aspect-square w-[20.34%] -translate-x-1/2 -translate-y-1/2"
+      style={{ left: "40%", top: "44.06%" }}
+    >
+      <span className="mk-voice-ring absolute inset-0" />
+      <span className="mk-voice-ring absolute inset-0" />
+      <span className="mk-voice-ring absolute inset-0" />
+      <span className="mk-voice-orb absolute inset-0" />
+    </div>
   )
 }
 

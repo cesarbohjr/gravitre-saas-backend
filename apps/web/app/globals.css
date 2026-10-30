@@ -1691,3 +1691,28 @@ details[open] > .g-disclosure > :first-child::after {
   .mk-scene-drift, .mk-scene-pulse { animation: none; }
 }
 
+/* Live voice orb laid over the desktop Voice screenshot (Features). Matches
+   the desktop app's listening orb: same gradient, breathing and glow. */
+.mk-voice-orb {
+  border-radius: 9999px;
+  background: radial-gradient(circle at 36% 30%, #2fd394 0%, #19c37d 50%, #0b8a5c 100%);
+  box-shadow: 0 0 40px 18px rgb(25 195 125 / 0.24), 0 0 100px 60px rgb(25 195 125 / 0.09);
+  animation: mk-voice-breathe 0.8s cubic-bezier(0.22, 1, 0.36, 1) infinite alternate;
+}
+.mk-voice-ring {
+  border-radius: 9999px;
+  border: 2px solid rgb(25 195 125 / 0.45);
+  animation: mk-voice-ring 2.4s ease-out infinite;
+}
+.mk-voice-ring + .mk-voice-ring { animation-delay: 0.8s; }
+.mk-voice-ring + .mk-voice-ring + .mk-voice-ring { animation-delay: 1.6s; }
+@keyframes mk-voice-breathe { from { transform: scale(0.96); } to { transform: scale(1.04); } }
+@keyframes mk-voice-ring {
+  0% { transform: scale(1); opacity: 0.9; }
+  100% { transform: scale(1.55); opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .mk-voice-orb, .mk-voice-ring { animation: none; }
+  .mk-voice-ring { opacity: 0; }
+}
+
