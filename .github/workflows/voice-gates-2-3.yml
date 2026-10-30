@@ -10,6 +10,7 @@ on:
       - 'scripts/voice_native_assignment_live.py'
       - 'scripts/voice_acceptance_sink.py'
       - 'scripts/verify_native_assignment_cancel.py'
+      - 'scripts/verify_voice_route_authorization.py'
       - 'backend/app/operators/agent_jobs.py'
       - 'tests/test_voice_acceptance_sink.py'
       - 'tests/test_voice_paired_live.py'
@@ -37,6 +38,7 @@ jobs:
       GEMINI_API_KEY: ''
       APP_ENV: dev
       GRAVITRE_VOICE_ISOLATED: '1'
+      VOICE_PIPECAT_ENABLED: 'true'
       PREFERRED_AI_PROVIDER: anthropic
       AI_FAILOVER_ENABLED: 'true'
       DEEPGRAM_API_KEY: ${{ secrets.ACCEPTANCE_DEEPGRAM_API_KEY }}
@@ -137,6 +139,8 @@ jobs:
         run: python scripts/mint_smoke_org_session.py --github-env
       - name: Verify native assignment cancellation against the isolated database
         run: python scripts/verify_native_assignment_cancel.py
+      - name: Verify production route authorization and fresh membership revocation
+        run: python scripts/verify_voice_route_authorization.py
       - name: Reuse the exact previously executed recordings (digest checked by controller)
         uses: actions/download-artifact@v4
         with:
@@ -181,6 +185,7 @@ jobs:
             acceptance-results/smoke-fixture.json
             acceptance-results/anthropic-inference.json
             acceptance-results/native-assignment-cancellation.json
+            acceptance-results/voice-route-authorization.json
             acceptance-results/paired-live
             acceptance-results/paired-native-assignment
   live-provider:
