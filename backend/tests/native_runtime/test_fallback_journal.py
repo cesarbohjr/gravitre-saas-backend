@@ -53,3 +53,17 @@ def test_checkpoint_cannot_follow_action_or_lost_lease(tmp_path):
     assert journal.fence_browser_for_fallback(job, checkpoint_before_effect=True) is False
     with pytest.raises(LeaseLost):
         journal.save_browser_checkpoint(job, 2, {"before_effect": True})
+
+
+def test_fenced_reservation_is_single_use(tmp_path):
+    private=tmp_path / "private"
+    private.mkdir(mode=0o700)
+    journal=Journal(str(private / "journal.sqlite"),Fernet.generate_key())
+    scope=AdapterScope("org","agent","run")
+    job_id=journal.enqueue(scope,"browser_use","identity",{"task":{}},actor="actor")
+    job=journal.claim("browser_use")
+    journal.save_browser_checkpoint(job,0,{"before_effect":True})
+    journal.fence_browser_for_fallback(job,checkpoint_before_effect=True)
+    assert journal.claim_fenced_handoff(scope,job_id)
+    with pytest.raises(LeaseLost):
+        journal.claim_fenced_handoff(scope,job_id)
