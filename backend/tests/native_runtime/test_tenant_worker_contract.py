@@ -22,3 +22,14 @@ def test_embedded_control_space_and_nonascii_are_rejected_without_echo():
             assert str(error)=='Acceptance API credential is not a valid HTTP header token'
             assert secret not in str(error)
         else:raise AssertionError('Malformed header credential accepted')
+
+
+
+def test_lost_ack_acceptance_has_bounded_extended_terminal_wait():
+    from tenant_worker_contract import terminal_wait_budget
+    assert terminal_wait_budget('lost_submit_ack') == 150
+    assert terminal_wait_budget('lost_approval_ack') == 150
+    assert terminal_wait_budget('broker_crash_after_effect') == 100
+    assert terminal_wait_budget('broker_crash_before_dispatch') == 100
+    assert terminal_wait_budget('approved') == 60
+    assert terminal_wait_budget('denied') == 60
