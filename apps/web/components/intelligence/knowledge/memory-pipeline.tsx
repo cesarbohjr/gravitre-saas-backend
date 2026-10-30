@@ -6,6 +6,7 @@ import { TYPE } from "@/lib/design-system"
 import { cn } from "@/lib/utils"
 import { KNOWLEDGE_STAT, KNOWLEDGE_TILE, KnowledgeCard } from "./knowledge-card"
 import type { MemoryPolicy } from "./use-org-memory"
+import "@/components/intelligence/shell/intel-motion.css"
 
 type StageTone = "neutral" | "review" | "done"
 
@@ -109,7 +110,7 @@ export function MemoryPipeline({
               aria-hidden
               className={cn(
                 "h-[7px] w-[7px] rounded-full",
-                watchedAgents > 0 ? "bg-[color:var(--g-brand)]" : "bg-[color:var(--g-text-disabled)]",
+                watchedAgents > 0 ? "ig-live bg-[color:var(--g-brand)]" : "bg-[color:var(--g-text-disabled)]",
               )}
             />
             {watchedAgents > 0

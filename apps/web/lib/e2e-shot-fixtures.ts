@@ -2871,6 +2871,32 @@ export const SHOT_FIXTURES: Record<string, unknown> = {
     toCollect: { total: 4200, currency: "USD", count: 2, overdueCount: 1 },
     generatedAt: "2026-03-12T09:00:00Z",
   },
+  // FIXTURE: governed evidence recommendations and sweep allowance (#572).
+  "/api/intelligence/overview/sweep-usage": { period: "2026-03", limit: 20, used: 1, remaining: 19, unit: "sweep" },
+  "/api/intelligence/overview/evidence-recommendations": {
+    recommendations: [
+      {
+        id: "rec_acme",
+        title: "Acme Freight may not renew",
+        description: "Support tickets tripled this week and their main contact left in September. A check-in with the new contact before the Dec 1 renewal is the usual save.",
+        kind: "renewal_risk",
+        sources: [
+          { connector_id: "c_hubspot", object_type: "company", external_id: "acme" },
+          { connector_id: "c_zendesk", object_type: "ticket", external_id: "t1" },
+        ],
+        recommended_play_key: "renewal-save",
+        advisory_only: true,
+        approval_required: true,
+        business_impact: null,
+        outcome_verified: false,
+      },
+    ],
+    count: 1,
+    advisoryOnly: true,
+  },
+  "/api/intelligence/overview/evidence-recommendations/rec_acme/handoffs": { recommendationId: "rec_acme", count: 0, handoffs: [] },
+  // FIXTURE: forecasts the team snoozed (none open by default).
+  "/api/intelligence/forecasts/snoozes": { snoozes: [] },
   // FIXTURE: where a finding can be shared (connected Slack + email).
   "/api/intelligence/share/options": {
     apps: [
@@ -2886,36 +2912,6 @@ export const SHOT_FIXTURES: Record<string, unknown> = {
       { id: "email", name: "Email", channels: [], people: [{ id: "u2", name: "Jordan P.", email: "jordan@example.com" }] },
     ],
     unavailable: [],
-  },
-  // FIXTURE: Overview evidence panel (GET .../sweep-usage and .../evidence-recommendations).
-  "/api/intelligence/overview/sweep-usage": {
-    period: "2026-10",
-    limit: 50,
-    used: 12,
-    remaining: 38,
-    unit: "sweeps",
-  },
-  "/api/intelligence/overview/evidence-recommendations": {
-    recommendations: [
-      {
-        id: "rec_shot_renewals",
-        title: "Three renewals show the same support escalation pattern",
-        description: "HubSpot deals and Zendesk tickets point at the same accounts. Review before outreach.",
-        kind: "cross_provider_identity",
-        sources: [
-          { connector_id: "hubspot", object_type: "deal", external_id: "d-1042" },
-          { connector_id: "zendesk", object_type: "ticket", external_id: "t-8831" },
-          { connector_id: "zendesk", object_type: "ticket", external_id: "t-8840" },
-        ],
-        recommended_play_key: "renewal_risk_follow_up",
-        advisory_only: true,
-        approval_required: true,
-        business_impact: null,
-        outcome_verified: false,
-      },
-    ],
-    count: 1,
-    advisoryOnly: true,
   },
   // FIXTURE: tenant Overview contract (shape of GET /api/intelligence/overview).
   "/api/intelligence/overview": {
@@ -3000,8 +2996,46 @@ export const SHOT_FIXTURES: Record<string, unknown> = {
         updated_at: T(240),
         thresholdComparison: { frequency: 3, departmentCount: 1, autoPromoteMinOccurrences: 20, autoPromoteMinDepartments: 2, meetsAutoThreshold: false, canAutoPromote: false },
       },
+      {
+        id: "mpc_acme_contact",
+        candidate_type: "glossary",
+        content: "Acme Freight's main contact is Lena Ortiz, VP Operations.",
+        memory_category: "accounts",
+        status: "written",
+        source_table: "org_glossary_terms",
+        frequency: 6,
+        department_count: 2,
+        memory_ids: ["mem_acme_contact"],
+        metadata: {},
+        updated_at: T(60 * 24 * 12),
+      },
+      {
+        id: "mpc_acme_contact_fix",
+        candidate_type: "glossary",
+        content: "Acme Freight's main contact is Marcus Hale, Director of Logistics.",
+        memory_category: "accounts",
+        status: "pending_approval",
+        source_table: "memory_correction",
+        frequency: 6,
+        department_count: 2,
+        metadata: { corrects_candidate_id: "mpc_acme_contact", reason: "HubSpot shows Lena left in September." },
+        updated_at: T(30),
+      },
+      {
+        id: "mpc_renewal_terms",
+        candidate_type: "glossary",
+        content: "Enterprise renewals are annual and invoiced 30 days before the renewal date.",
+        memory_category: "billing",
+        status: "written",
+        source_table: "org_glossary_terms",
+        frequency: 9,
+        department_count: 3,
+        memory_ids: ["mem_renewal_terms"],
+        metadata: {},
+        updated_at: T(60 * 24 * 20),
+      },
     ],
-    total: 2,
+    total: 5,
     limit: 200,
     offset: 0,
   },

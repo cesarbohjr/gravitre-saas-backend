@@ -14,6 +14,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from app.auth.dependencies import get_org_context, get_environment_context, require_admin, require_org_member
 from app.config import Settings, get_settings
+from app.services.intelligence_overview_policy import CAN_TURN_OFF
 from app.services.intelligence_router import CAPABILITY_NAMES
 from app.services.intelligence_overview_readiness import score_readiness
 from app.services.recommendation_heuristics_service import (
@@ -41,6 +42,8 @@ DESCRIPTIONS = {
 class CapabilitySetting(BaseModel):
     model_config = ConfigDict(extra="forbid")
     mode: Mode = "balanced"
+    # Only the abilities in CAN_TURN_OFF accept False.
+    enabled: bool = True
 
 
 class ProfilePatch(BaseModel):
@@ -68,6 +71,10 @@ def _settings(raw: dict) -> dict:
             "mode": (raw.get(name) or {}).get("mode", "balanced")
             if isinstance(raw.get(name), dict) and (raw.get(name) or {}).get("mode") in ("balanced", "conservative", "proactive")
             else "balanced",
+            "enabled": not (name in CAN_TURN_OFF and (raw.get(name) or {}).get("enabled") is False)
+            if isinstance(raw.get(name), dict)
+            else True,
+            "can_turn_off": name in CAN_TURN_OFF,
             "description": DESCRIPTIONS[name],
             "behavior_wired": True,
             "runtime_effect": "optional_enrichment_eligibility_and_evidence_threshold" if name != "adaptive" else "optional_enrichment_eligibility_guidance_and_evidence_threshold",
@@ -124,6 +131,9 @@ def update_profile(
     unknown = set(body.capabilities) - CAPABILITIES
     if unknown:
         raise HTTPException(status_code=422, detail=f"Unknown capabilities: {', '.join(sorted(unknown))}")
+    locked = sorted(k for k, v in body.capabilities.items() if not v.enabled and k not in CAN_TURN_OFF)
+    if locked:
+        raise HTTPException(status_code=422, detail=f"These abilities always stay on: {', '.join(locked)}")
     client = _db(settings)
     previous = _profile(client, org_id).get("capabilities") or {}
     merged = {**previous, **{k: v.model_dump() for k, v in body.capabilities.items()}}

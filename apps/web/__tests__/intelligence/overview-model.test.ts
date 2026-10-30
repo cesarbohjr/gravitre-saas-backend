@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { dataReadiness, buildFeed, sevenAbilities } from "@/components/intelligence/overview/overview-model"
+import { dataReadiness, buildFeed, readinessAreas, sevenAbilities } from "@/components/intelligence/overview/overview-model"
 import type { Connector, IntelligencePageContextResponse } from "@/lib/api"
 
 const app = (name: string, status = "active") => ({ id: name, name, status }) as unknown as Connector
@@ -43,10 +43,44 @@ describe("Overview data readiness", () => {
 
 describe("Overview seven abilities", () => {
   it("lists the router's seven abilities with the tenant's saved mode", () => {
-    const list = sevenAbilities({ predictive: { mode: "proactive", description: "Estimates future risks." } })
-    expect(list.map((a) => a.id)).toEqual(["contextual", "sentiment", "causal", "temporal", "relational", "adaptive", "predictive"])
-    expect(list.at(-1)).toMatchObject({ mode: "proactive", detail: "Estimates future risks." })
+    const list = sevenAbilities({
+      predictive: { mode: "proactive", description: "Estimates future risks." },
+      sentiment: { mode: "balanced", description: "", enabled: false },
+      temporal: { mode: "balanced", description: "", enabled: false },
+    })
+    expect(list.map((a) => a.id)).toEqual(["contextual", "sentiment", "temporal", "relational", "causal", "predictive", "adaptive"])
+    expect(list.find((a) => a.id === "predictive")).toMatchObject({ mode: "proactive", label: "Predicts", enabled: true })
+    expect(list.find((a) => a.id === "sentiment")?.enabled).toBe(false)
+    // Time can't be turned off, so a stored "off" is ignored.
+    expect(list.find((a) => a.id === "temporal")?.enabled).toBe(true)
     expect(list[0].mode).toBeNull()
+  })
+})
+
+describe("Overview readiness by business area", () => {
+  it("rates each area from what is connected and fresh, never inventing depth", () => {
+    const areas = readinessAreas({
+      connectors: [],
+      readiness: {
+        tier: "cross_system_candidate",
+        connector_count: 2,
+        vendors: ["hubspot", "stripe"],
+        fresh_connectors: ["hubspot"],
+        fresh_count: 1,
+        coverage_verified: false,
+        comprehensive: false,
+        recommended_connector_count: 4,
+        missing_evidence: [],
+      },
+    })
+    expect(areas.map((a) => [a.name, a.depth])).toEqual([
+      ["Customers and sales", "Good"],
+      ["Support", "Missing"],
+      ["Billing", "Partial"],
+      ["Marketing", "Missing"],
+      ["Accounting", "Missing"],
+    ])
+    expect(areas[1].cta).toBe("Connect Zendesk or Intercom")
   })
 })
 

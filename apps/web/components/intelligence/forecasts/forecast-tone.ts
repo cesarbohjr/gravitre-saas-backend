@@ -4,7 +4,7 @@ import type { Forecast, ForecastKind } from "@/components/intelligence/forecasts
 export function forecastDotColor(forecast: Pick<Forecast, "kind" | "confidence">): string {
   if (forecast.kind === "opportunity") return "var(--g-emerald)"
   if (forecast.kind === "signal") return "var(--g-text-muted)"
-  return (forecast.confidence ?? 0) >= 0.65 ? "var(--g-danger)" : "var(--g-warning)"
+  return (forecast.confidence ?? 0) >= 0.65 ? "#c2410c" : "#d98a1f"
 }
 
 export const KIND_LABEL: Record<ForecastKind, string> = {
@@ -14,7 +14,7 @@ export const KIND_LABEL: Record<ForecastKind, string> = {
 }
 
 export const KIND_CHIP_CLASS: Record<ForecastKind, string> = {
-  risk: "bg-[color:var(--g-approval-soft)] text-[color:var(--g-approval-bright)]",
-  opportunity: "bg-[color:var(--g-emerald-soft)] text-[color:var(--g-emerald)]",
+  risk: "bg-[#fcebdd] text-[#8a3a0b] dark:bg-[color:var(--g-approval-soft)] dark:text-[color:var(--g-approval-bright)]",
+  opportunity: "bg-[color:var(--g-emerald-soft)] text-[color:var(--g-emerald-deep)] dark:text-[color:var(--g-emerald)]",
   signal: "bg-[color:var(--g-surface-2)] text-muted-foreground",
 }

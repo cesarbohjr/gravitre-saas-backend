@@ -18,6 +18,15 @@ class RejectCandidateRequest(BaseModel):
     reason: str | None = None
 
 
+class EditCandidateRequest(BaseModel):
+    content: str = Field(..., min_length=1, max_length=2000)
+
+
+class CorrectMemoryRequest(BaseModel):
+    content: str = Field(..., min_length=1, max_length=2000)
+    reason: str | None = Field(default=None, max_length=500)
+
+
 class RollbackMemoryRequest(BaseModel):
     reason: str = Field(..., min_length=1)
 
@@ -48,6 +57,40 @@ async def approve_promotion_candidate(
     service = get_memory_promotion_service(settings)
     try:
         return await service.approve_candidate(candidate_id, org_id, user_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+
+@router.patch("/candidates/{candidate_id}")
+async def edit_promotion_candidate(
+    candidate_id: str,
+    body: EditCandidateRequest,
+    org_id: Annotated[str, Depends(get_org_context)],
+    admin: Annotated[tuple, Depends(require_admin)],
+    settings: Settings = Depends(get_settings),
+) -> dict[str, Any]:
+    user, _org = admin
+    user_id = str(user.get("user_id") or user.get("id") or "")
+    service = get_memory_promotion_service(settings)
+    try:
+        return await service.edit_candidate(candidate_id, org_id, user_id, body.content)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+
+
+@router.post("/candidates/{candidate_id}/correction")
+async def request_memory_correction(
+    candidate_id: str,
+    body: CorrectMemoryRequest,
+    org_id: Annotated[str, Depends(get_org_context)],
+    admin: Annotated[tuple, Depends(require_admin)],
+    settings: Settings = Depends(get_settings),
+) -> dict[str, Any]:
+    user, _org = admin
+    user_id = str(user.get("user_id") or user.get("id") or "")
+    service = get_memory_promotion_service(settings)
+    try:
+        return await service.request_correction(candidate_id, org_id, user_id, body.content, body.reason)
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
 

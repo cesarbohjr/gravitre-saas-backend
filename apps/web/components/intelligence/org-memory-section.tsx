@@ -10,7 +10,7 @@
 import { useEffect, useState } from "react"
 import Link from "next/link"
 import { toast } from "@/components/intelligence/overlays/toast"
-import { ArrowCounterClockwise, Brain, Sparkle } from "@phosphor-icons/react"
+import { ArrowCounterClockwise, Sparkle } from "@phosphor-icons/react"
 import { ErrorState } from "@/components/gravitre/empty-state"
 import { Button } from "@/components/ui/button"
 import { ApiError } from "@/lib/fetcher"
@@ -18,6 +18,7 @@ import { memoryPromotionApi } from "@/lib/api"
 import { APP_ROUTES } from "@/lib/app-routes"
 import { TYPE } from "@/lib/design-system"
 import { cn } from "@/lib/utils"
+import { MemoryArt } from "@/components/intelligence/knowledge/memory-art"
 import { MemoryPipeline } from "@/components/intelligence/knowledge/memory-pipeline"
 import {
   KNOWLEDGE_CARD,
@@ -111,10 +112,8 @@ function QueueEmpty({ filter, memory }: { filter: MemoryQueueFilter; memory: Org
   const target = memory.watchedAgents.find((a) => a.status !== "processing") ?? memory.watchedAgents[0] ?? null
   return (
     <div className="flex flex-col items-center gap-2.5 rounded-[14px] border-[1.5px] border-dashed border-[color:var(--g-border-default)] px-5 py-7 text-center">
-      <span className="grid h-11 w-11 place-items-center rounded-[12px] bg-[color:var(--g-surface-2)]">
-        <Brain className="h-5 w-5 text-[color:var(--g-text-secondary)]" aria-hidden />
-      </span>
-      <strong className="text-sm font-semibold text-[color:var(--g-text-primary)]">No real candidates yet</strong>
+      <MemoryArt />
+      <strong className="mt-1 text-[15px] font-semibold text-[color:var(--g-text-primary)]">No real candidates yet</strong>
       <span className="max-w-[340px] text-[13px] leading-relaxed text-[color:var(--g-text-secondary)]">
         They appear here once an agent sees the same fact across several runs.{" "}
         {!memory.agentsLoaded
@@ -192,7 +191,8 @@ function impactNote(item: MemoryItem): string {
 export function OrgMemorySection({ memory, previewExample }: { memory: OrgMemory; previewExample: boolean }) {
   const [filter, setFilter] = useState<MemoryQueueFilter>("pending")
   const [selectedKey, setSelectedKey] = useState<string | null>(null)
-  const [busy, setBusy] = useState<"approve" | "reject" | "rollback" | null>(null)
+  const [busy, setBusy] = useState<"approve" | "reject" | "rollback" | "edit" | null>(null)
+  const [draft, setDraft] = useState<{ key: string; text: string } | null>(null)
 
   // Turning the preview on shows the example in the inspector, as the design does.
   useEffect(() => {
@@ -219,6 +219,27 @@ export function OrgMemorySection({ memory, previewExample }: { memory: OrgMemory
   // Like the design, the inspector shows the first memory in the queue until another is picked.
   const selectedCandidate = items.find((item) => item.key === selectedKey) ?? items[0] ?? null
   const isExample = selectedCandidate?.kind === "example"
+  const editing = draft != null && selectedCandidate != null && draft.key === selectedCandidate.key
+
+  async function saveEdit(item: MemoryItem, text: string) {
+    if (!item.candidateId) return
+    const next = text.replace(/\s+/g, " ").trim()
+    if (!next || next === item.content) {
+      setDraft(null)
+      return
+    }
+    setBusy("edit")
+    try {
+      await memoryPromotionApi.edit(item.candidateId, next)
+      toast.success("Memory reworded. It still waits for your approval.")
+      setDraft(null)
+      await memory.refresh()
+    } catch (err) {
+      toast.error(err instanceof ApiError || err instanceof Error ? err.message : "That didn't save. Try again.")
+    } finally {
+      setBusy(null)
+    }
+  }
 
   async function run(action: "approve" | "reject" | "rollback", item: MemoryItem) {
     setBusy(action)
@@ -333,9 +354,28 @@ export function OrgMemorySection({ memory, previewExample }: { memory: OrgMemory
 
           {selectedCandidate ? (
             <>
-              <blockquote className="text-lg font-medium leading-snug tracking-[-0.01em] text-[color:var(--g-text-primary)]">
-                “{selectedCandidate.content}”
-              </blockquote>
+              {editing ? (
+                <label className="block space-y-1.5">
+                  <span className={TYPE.meta}>Reword this memory before you approve it</span>
+                  <textarea
+                    autoFocus
+                    rows={3}
+                    maxLength={2000}
+                    value={draft.text}
+                    disabled={busy !== null}
+                    onChange={(e) => setDraft({ key: draft.key, text: e.target.value })}
+                    onKeyDown={(e) => {
+                      if (e.key === "Escape") setDraft(null)
+                      if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) void saveEdit(selectedCandidate, draft.text)
+                    }}
+                    className="w-full rounded-[10px] border border-[color:var(--g-border-strong)] bg-[color:var(--g-surface-1)] px-3 py-2.5 text-lg font-medium leading-snug text-[color:var(--g-text-primary)] outline-none focus:border-[color:var(--g-brand)]"
+                  />
+                </label>
+              ) : (
+                <blockquote className="text-lg font-medium leading-snug tracking-[-0.01em] text-[color:var(--g-text-primary)]">
+                  “{selectedCandidate.content}”
+                </blockquote>
+              )}
 
               <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-3">
                 <StatTile
@@ -385,7 +425,26 @@ export function OrgMemorySection({ memory, previewExample }: { memory: OrgMemory
                     {busy === "rollback" ? "Rolling back…" : "Roll back"}
                   </Button>
                 </div>
-              ) : selectedCandidate.kind === "rejected" ? null : (
+              ) : selectedCandidate.kind === "rejected" ? null : editing ? (
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    variant="brand"
+                    className="min-h-11 flex-1 basis-[140px]"
+                    disabled={busy !== null || !draft.text.trim()}
+                    onClick={() => void saveEdit(selectedCandidate, draft.text)}
+                  >
+                    {busy === "edit" ? "Saving…" : "Save wording"}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="min-h-11 flex-1 basis-[100px]"
+                    disabled={busy !== null}
+                    onClick={() => setDraft(null)}
+                  >
+                    Cancel
+                  </Button>
+                </div>
+              ) : (
                 <div className="flex flex-wrap gap-2">
                   <Button
                     variant="brand"
@@ -400,8 +459,9 @@ export function OrgMemorySection({ memory, previewExample }: { memory: OrgMemory
                   <Button
                     variant="outline"
                     className="min-h-11 flex-1 basis-[100px]"
-                    disabled
-                    title="Editing a memory before approval is not supported yet."
+                    disabled={isExample || busy !== null || !selectedCandidate.candidateId}
+                    title={isExample ? "This is an example. There is nothing to edit." : undefined}
+                    onClick={() => setDraft({ key: selectedCandidate.key, text: selectedCandidate.content })}
                   >
                     Edit
                   </Button>
