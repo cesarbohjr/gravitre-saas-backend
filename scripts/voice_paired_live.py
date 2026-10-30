@@ -21,7 +21,9 @@ import wave
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "backend"))
 
 TARGET = "https://aadnwmjzrmbvadszroqt.supabase.co"
-PROMPT = "Please explain why the sky is blue in two short sentences."
+CASE_ID = "provided_welcome_rewrite_v1"
+PROMPT = ("Please rewrite this welcome note in a warmer tone, keeping the same meaning in two short sentences: "
+          "Welcome to the team, Alex. We are happy you joined us.")
 
 
 class SanitizedDiagnostics(logging.Handler):
@@ -329,6 +331,7 @@ async def main():
         raise ValueError("fixture PCM bounds")
     wav(output / "input.wav", pcm, 16000)
     report = {"git_sha": os.environ.get("ACCEPTANCE_SOURCE_SHA"), "input_pcm_sha256": hashlib.sha256(pcm).hexdigest(),
+        "case_id": CASE_ID,
         "input_origin": "synthetic prerecorded speech, synthesized once for both transports", "trials": [],
         "certified": False, "human_quality_review": "NOT RUN", "write_governance_certification": "NOT RUN",
         "interruption": "NOT RUN", "reconnection": "NOT RUN"}
@@ -389,7 +392,9 @@ async def main():
                         row.update(status="FAIL", output_stt_http_status=speech.status_code)
                     else:
                         transcript = speech.json()["results"]["channels"][0]["alternatives"][0]["transcript"].lower()
-                        valid = "blue" in transcript and any(word in transcript for word in ("scatter", "wavelength", "sunlight", "light"))
+                        valid = ("alex" in transcript and "team" in transcript and
+                            any(word in transcript for word in ("welcome", "happy", "glad", "excited", "thrilled")) and
+                            not any(phrase in transcript for phrase in ("can't answer", "cannot answer", "not configured", "knowledge base")))
                         row["answer_content_valid"] = valid
                         if not valid:
                             row.update(status="FAIL", error_type="GeneratedAnswerContentMismatch")

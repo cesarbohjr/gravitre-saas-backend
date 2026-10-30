@@ -31,7 +31,8 @@ the identical recording. This proves a new session can generate audio for an
 existing conversation only. It is not a semantic memory-restoration score.
 
 Baseline/reconnect must yield non-silent generated audio and a live Deepgram
-read-back containing the expected sky/light explanation. An acknowledgment,
+read-back containing the provided welcome-note rewrite (Alex, team, welcoming
+sentiment, no configuration/knowledge refusal). An acknowledgment,
 startup greeting or canned failure alone does not pass. The interrupt trial
 sends the canonical control after generated speech begins. Its original reply
 must stop within 500 ms at the receiving PCM boundary. Reply identity separates
@@ -95,3 +96,13 @@ characters plus trailing whitespace in headers. No header values were exported.
 empty/internal whitespace/control characters, and hides validation input values.
 The legacy JWT signing secret is unchanged. A loopback HTTP/1.1 regression uses
 the real canonical client and SDK with a newline-terminated fixture credential.
+
+Run `41133238281`, source `0c1102790ddd10aa9713c3033c238d895c1bd5dd`,
+artifact `13014077287`, then verified valid canonical headers, real STT, durable
+messages and composer/latency audit rows on both paths. The sky-explanation case
+still failed: the unchanged source-bound knowledge policy returned its explicit
+no-KB/no-web-search refusal. The controller correctly rejected that output and
+did not run dependent interruption/reconnection cases. This result remains FAIL.
+The next case, `provided_welcome_rewrite_v1`, is a distinct generative task using
+only user-provided text, with no external factual grounding requirement. This is
+a change of case, not a waiver or relabeling of the failed factual-answer test.
