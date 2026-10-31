@@ -16,6 +16,28 @@ URL = "https://api.elevenlabs.io/v1/user/subscription"
 TIERS = {"free", "trial", "starter", "creator", "pro", "scale", "business", "enterprise"}
 STATUSES = {"active", "trialing", "past_due", "unpaid", "canceled", "free"}
 
+def rejection_reason(body):
+    """Retain fixed provider reason/permission only, never the message itself."""
+    try:
+        data = json.loads(body)
+        detail = data.get("detail", data)
+        if not isinstance(detail, dict):
+            return {}
+        result = {}
+        reason = detail.get("status", detail.get("code"))
+        if isinstance(reason, str) and reason in {
+            "invalid_api_key", "invalid_api_key_prefix", "missing_permissions",
+            "insufficient_permissions", "quota_exceeded", "key_expired",
+        }:
+            result["provider_reason"] = reason
+        message = detail.get("message")
+        if (reason in {"missing_permissions", "insufficient_permissions"}
+                and isinstance(message, str) and "user_read" in message):
+            result["required_permission"] = "user_read"
+        return result
+    except (ValueError, TypeError, AttributeError):
+        return {}
+
 class NoRedirect(urllib.request.HTTPRedirectHandler):
     def redirect_request(self, req, fp, code, msg, headers, newurl):
         return None
@@ -60,6 +82,11 @@ def probe(env, opener=None):
             report["status"] = "OBSERVED"
     except urllib.error.HTTPError as error:
         report.update(status="BLOCKED", http_status=error.code, diagnostic="subscription_read_rejected")
+        try:
+            with error:
+                report.update(rejection_reason(error.read(262144)))
+        except Exception:
+            pass  # Preserve the rejection even if its diagnostic body is unreadable.
     except (ValueError, TypeError):
         report.update(status="BLOCKED", diagnostic="invalid_subscription_response")
     except Exception:
@@ -80,3 +107,4 @@ def main():
 
 if __name__ == "__main__":
     raise SystemExit(main())
+

@@ -80,5 +80,19 @@ class AccountProbeTests(unittest.TestCase):
         self.assertIsNone(module.NoRedirect().redirect_request(
             None,None,302,"redirect",{}, "https://other.example/steal"))
 
+    def test_subscription_rejection_keeps_only_fixed_permission_diagnostic(self):
+        opener = Mock()
+        body = json.dumps({"detail":{"status":"missing_permissions",
+            "message":"fixture-key private-user missing user_read"}}).encode()
+        opener.open.side_effect = HTTPError(module.URL, 401, "private", {}, io.BytesIO(body))
+        report = module.probe({"ELEVENLABS_API_KEY":"fixture-key"}, opener)
+        self.assertEqual(report["provider_reason"], "missing_permissions")
+        self.assertEqual(report["required_permission"], "user_read")
+        self.assertNotIn("private", json.dumps(report))
+        self.assertNotIn("fixture-key", json.dumps(report))
+        for malformed in (b"private", b"[]", b'{"detail":[]}', b'{"detail":{"status":["private"]}}'):
+            self.assertEqual(module.rejection_reason(malformed), {})
+
 if __name__ == "__main__":
     unittest.main()
+
