@@ -121,6 +121,19 @@ def run():
                         else [{'wait':{'seconds':1}}])
                 output={'evaluation_previous_goal':'Fixture browser is running','memory':'Only the approved public fixture page may be read','next_goal':'Observe the fixture page','action':action}
                 message['content']=json.dumps(output)
+            elif kind=='playwright_recovery':
+                # Scripted response based solely on observed DOM identities;
+                # no customer prompt, external provider or arbitrary selector.
+                if number==1:
+                    question=json.loads(body['messages'][-1]['content'])
+                    observed=json.loads(question['page'])
+                    index=next((idx+1 for idx,node in enumerate(observed['nodes'])
+                                if node.get('id')=='my-text-id'),None)
+                    if index is None:raise AssertionError('Recovery field not observed')
+                    message['content']=json.dumps({'action':'fill','index':index,'value':'certified'})
+                else:
+                    message['content']=json.dumps({'action':'finish',
+                        'summary':'Reviewed Playwright recovery reached the observed form'})
             elif kind=='openhands':
                 tools=[x['function'] for x in body.get('tools',[]) if x.get('type')=='function']
                 if number==1:
@@ -216,6 +229,55 @@ def run():
             finally:print(json.dumps({'fixture_browser_model_requests':state['calls'],'fixture_browser_approvals':len(approved),'fixture_browser_page_observed':state['browser_page_observed'],'fixture_browser_context_checks':state['browser_context_checks']}))
             assert checkpoints==[0] and approved==[0,1] and state.get('browser_submitted') and result.get('observations')
             clean(browser['id']);evidence['browser_real_sdk_chromium_exact_approval']='PASS'
+            print(json.dumps({'completed_runtime_checks':evidence},sort_keys=True))
+            # Live automatic handoff: pre-effect Browser Use checkpoint ->
+            # atomic new lease -> actual isolated Playwright navigation and fill.
+            # The old lease cannot dispatch, and both new actions are reviewed.
+            state.update(kind='playwright_recovery',calls=0)
+            handoff_root=root/'verified-playwright-handoff'
+            handoff_root.mkdir(mode=0o700)
+            handoff_journal=Journal(str(handoff_root/'journal.sqlite3'),Fernet.generate_key())
+            handoff_scope=AdapterScope('fixture-org','fixture-agent','fixture-fallback')
+            handoff_payload=job('browser_use')['payload']
+            handoff_id=handoff_journal.enqueue(handoff_scope,'browser_use',
+                'auto-fallback',handoff_payload,ttl=3600,max_attempts=1)
+            source=handoff_journal.claim('browser_use',lease_seconds=600)
+            handoff_url='https://www.selenium.dev/selenium/web/web-form.html'
+            handoff_journal.save_browser_checkpoint(source,0,{
+                'before_effect':True,'url':handoff_url,'page_fingerprint':'a'*64})
+            assert handoff_journal.fence_browser_for_fallback(source,checkpoint_before_effect=True)
+            handoff_token=handoff_journal.claim_fenced_handoff(handoff_scope,handoff_id)
+            recovered_job=handoff_journal.activate_fenced_handoff(
+                handoff_scope,handoff_id,handoff_token,lease_seconds=600)
+            assert not handoff_journal.active(source) and handoff_journal.active(recovered_job)
+            reviewed=[]
+            def recovery_guard():
+                if not handoff_journal.active(recovered_job):
+                    raise LeaseLost('Recovered worker no longer authorized')
+                return route
+            def recovery_action(sequence,action):
+                assert sequence==len(reviewed) and sequence in (0,1)
+                assert len(action['page_fingerprint'])==64
+                if sequence==0:
+                    assert action['actions']=={'navigate':{'url':handoff_url}}
+                else:
+                    assert set(action['actions'])=={'fill'}
+                pending=handoff_journal.request_action(recovered_job,sequence,action)
+                handoff_journal.approve(handoff_scope,handoff_id,pending['id'],pending['digest'],True)
+                reviewed.append(sequence)
+                return handoff_journal.request_action(recovered_job,sequence,action)
+            try:
+                recovered_result=candidate_runner.execute(recovered_job,
+                    guard=recovery_guard,action_gate=recovery_action)
+                assert reviewed==[0,1] and recovered_result.get('observations')
+                handoff_journal.update(recovered_job,'completed',result={
+                    'certification':'reviewed_recovery'})
+            finally:
+                candidate_runner.cleanup(handoff_id)
+                clean(handoff_id)
+            assert len(handoff_journal.actions(handoff_scope,handoff_id))==2
+            assert handoff_journal.claim('browser_use') is None
+            evidence['playwright_real_gvisor_automatic_fenced_handoff']='PASS'
             print(json.dumps({'completed_runtime_checks':evidence},sort_keys=True))
             # This is a real runsc/DockerRunner candidate execution, intentionally
             # denied at the canonical action callback before any navigation.
