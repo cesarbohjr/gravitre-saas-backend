@@ -257,3 +257,56 @@ bias or transcript editing. **7 diagnostic contract tests pass**. No provider
 switch is made until actual latency and false-activation evidence is inspected.
 The paired cancellation limit, pinned recordings and full standing batteries
 are unchanged. Physical-device playout remains NOT RUN.
+
+## Executed three-provider comparison and SDK reconnect correction
+
+[Provider comparison 41247978686](https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/41247978686)
+completed all **27/27 observations** on `3980a8db9d70e79a1bf479ace7b1eba3c94d7833`.
+[Exact sanitized results](pr587-stt-control-latency-3980a8d.json) were extracted
+from artifact `13060626518`; verified ZIP SHA-256:
+`d4e913e8f750fbf7542266000c08548d2dd4f4a7b2a6ceb46f634cd99a709480`.
+
+| Provider | Cancellation word from recording start, ms (three repetitions) |
+| --- | --- |
+| Flux | 535.096 / 492.963 / 494.461 |
+| Nova-3 | 1042.450 / 1040.545 / 1011.741 |
+| Scribe v2 Realtime | 1012.803 / 1016.839 / 1013.384 |
+
+None reported a stop word in the six unchanged backchannel/ordinary-request
+negative observations per provider. Maximum sender lateness was 2.182 ms.
+This small provider-only sample supports rejecting Nova-3 and Scribe **as a
+latency remedy under these measured conditions**. It does not rank general
+recognition quality or certify runtime cancellation. Flux stays selected; its
+worst recognition already exceeds 500 ms before downstream work. The strict
+runtime gate remains open; no recording, threshold or transcript was changed.
+
+A separate recovery defect was reproduced through Pipecat 1.12.0's actual
+`send_with_retry` -> `_try_reconnect` -> `_reconnect_websocket` dispatch.
+That path invokes `_connect_websocket`, bypassing Gravitre's old `_connect`
+reset. A committed provider turn index of 4 therefore suppressed a fresh
+connection's index-0 cancellation update. The new regression fails on the
+original source at the expected missing-interim assertion. Connection-local
+indices now reset at the actual new-socket hook, before receiver dispatch.
+Calling connect on an already-open socket preserves the committed-turn fence.
+SDK-owned final transcription, canonical classification and write authority
+remain unchanged. This is a locally reproduced recovery correction, **not**
+proof that the live 500 ms deadline is met.
+
+The live voice workflow also now triggers directly on response-composer,
+Module D prompt and repeated-request/unified-reasoning regression changes.
+Those changes must execute the existing full standing batteries as well as
+matched voice tests. Fresh exact-head CI and live certification are required;
+physical-device, independent-review and remaining comparative release gates
+remain open.
+
+Local validation for the socket-hook correction: **1,726 passed** in 65.26 s
+with `python -m pytest -q -x -p tests.offline_network_guard
+ tests/services/pipecat_voice tests/services/test_repeated_request_composition.py
+ tests/services/test_unified_turn_conversational_model.py
+ tests/services/test_unified_turn_reasoning.py tests/services/test_gravitre_voice.py`
+from `backend/`. The 27 bridge/strategy contracts also pass independently;
+the new actual-send-retry regression fails on the original runtime source.
+Workflow YAML parses and includes direct prompt-path trigger coverage.
+The initial broad local run was interrupted after environment failures caused
+by missing `socksio` for the host's configured proxy. Installing that test-host
+dependency resolved those setup failures; application dependencies are unchanged.

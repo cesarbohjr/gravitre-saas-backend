@@ -8,6 +8,7 @@ the SDK retains sole ownership of final transcription and turn commitment.
 from pipecat.frames.frames import InterimTranscriptionFrame, ProposedUserStartedSpeakingFrame
 from pipecat.services.deepgram.flux.stt import DeepgramFluxSTTService
 from pipecat.utils.time import time_now_iso8601
+from websockets.protocol import State
 
 from app.services.pipecat_voice.backchannel_classifier import InterruptIntent, classify_interrupt_intent
 
@@ -23,12 +24,15 @@ class InterimAwareFluxSTTService(DeepgramFluxSTTService):
         self._dispatch_turn_index = None
         self._committed_turn_index = -1
 
-    async def _connect(self):
-        # Flux turn indices are connection-scoped, including reconnects.
-        self._early_control_turn_index = None
-        self._dispatch_turn_index = None
-        self._committed_turn_index = -1
-        await super()._connect()
+    async def _connect_websocket(self):
+        # SDK send_with_retry reconnects at this lower-level hook without
+        # invoking _connect. Reset before the new receiver can dispatch a
+        # connection-scoped index; an already-open connection is a no-op.
+        if not self._websocket or self._websocket.state is not State.OPEN:
+            self._early_control_turn_index = None
+            self._dispatch_turn_index = None
+            self._committed_turn_index = -1
+        await super()._connect_websocket()
 
     async def _handle_turn_info(self, data):
         index = data.get('turn_index')

@@ -174,11 +174,74 @@ async def test_reconnect_allows_provider_to_restart_turn_indices():
         await service._handle_turn_info(dict(event='Update', turn_index=0, transcript='cancel'))
         assert len(emitted) == count
         # Replace connection I/O only; exercise adapter state and SDK dispatch.
-        with patch.object(DeepgramFluxSTTService, '_connect', new_callable=AsyncMock):
-            await service._connect()
+        with patch.object(DeepgramFluxSTTService, '_connect_websocket', new_callable=AsyncMock):
+            await service._connect_websocket()
         await service._handle_turn_info(dict(event='Update', turn_index=0, transcript='cancel'))
         assert len(emitted) > count
         assert recorder.turn_started_calls[-1].enable_interruptions is True
     finally:
+        await strategy.cleanup()
+        await service.cleanup()
+
+
+@pytest.mark.asyncio
+async def test_open_socket_connect_noop_preserves_committed_turn_fence():
+    from types import SimpleNamespace
+    from unittest.mock import patch
+    from websockets.protocol import State
+    from pipecat.services.deepgram.flux.stt import DeepgramFluxSTTService
+
+    service, strategy, recorder, emitted = await connected_strategy()
+    try:
+        await service._handle_turn_info(dict(event='StartOfTurn', turn_index=4, transcript='uh-huh'))
+        await service._handle_turn_info(dict(event='EndOfTurn', turn_index=4, transcript='uh-huh'))
+        count = len(emitted)
+        service._websocket = SimpleNamespace(state=State.OPEN)
+        with patch.object(DeepgramFluxSTTService, '_connect_websocket', new_callable=AsyncMock):
+            await service._connect_websocket()
+        await service._handle_turn_info(dict(event='Update', turn_index=4, transcript='cancel'))
+        assert len(emitted) == count
+        assert service._committed_turn_index == 4
+    finally:
+        service._websocket = None
+        await strategy.cleanup()
+        await service.cleanup()
+
+
+@pytest.mark.asyncio
+async def test_sdk_send_retry_reconnect_resets_provider_turn_indices():
+    from types import SimpleNamespace
+    from unittest.mock import patch
+    from websockets.protocol import State
+    from pipecat.services.deepgram.flux.stt import DeepgramFluxSTTService
+
+    service, strategy, recorder, emitted = await connected_strategy()
+    try:
+        await service._handle_turn_info(dict(event='StartOfTurn', turn_index=4, transcript='uh-huh'))
+        await service._handle_turn_info(dict(event='EndOfTurn', turn_index=4, transcript='uh-huh'))
+        count = len(emitted)
+        replacement = SimpleNamespace(state=State.OPEN, send=AsyncMock(), ping=AsyncMock())
+        service._websocket = SimpleNamespace(state=State.CLOSED, send=AsyncMock(side_effect=ConnectionError()))
+
+        async def disconnect():
+            service._websocket = None
+
+        async def connect():
+            service._websocket = replacement
+            service._user_is_speaking = False
+
+        # Keep the actual SDK send/retry/reconnect dispatch. Replace socket I/O
+        # only: this path invokes _connect_websocket, never the full _connect.
+        with patch.object(DeepgramFluxSTTService, '_disconnect_websocket', side_effect=disconnect), \
+             patch.object(DeepgramFluxSTTService, '_connect_websocket', side_effect=connect):
+            await service.send_with_retry(b'pcm', AsyncMock())
+
+        replacement.send.assert_awaited_once_with(b'pcm')
+        await service._handle_turn_info(dict(event='Update', turn_index=0, transcript='cancel'))
+        assert len(emitted) > count
+        assert recorder.turn_started_calls[-1].enable_interruptions is True
+        assert not any(isinstance(f, TranscriptionFrame) for f in emitted[count:])
+    finally:
+        service._websocket = None
         await strategy.cleanup()
         await service.cleanup()
