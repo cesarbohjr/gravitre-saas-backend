@@ -82,5 +82,16 @@ class InterimAwareFluxSTTService(DeepgramFluxSTTService):
         await self._push_partial(transcript)
 
     async def _handle_update(self, transcript: str):
+        # The SDK's on_update callback can perform arbitrary asynchronous work.
+        # For an explicit cancel, deliver the control-only partial to the
+        # existing turn/authorization authority BEFORE that callback. This
+        # changes neither the provider recognition timestamp nor the write
+        # fence and must not be counted as a passed 500 ms audio gate.
+        urgent = (self._user_is_speaking and self.partial_control_enabled()
+                  and isinstance(transcript, str)
+                  and classify_interrupt_intent(transcript) is InterruptIntent.TASK_CANCEL)
+        if urgent:
+            await self._push_partial(transcript)
         await super()._handle_update(transcript)
-        await self._push_partial(transcript)
+        if not urgent:
+            await self._push_partial(transcript)
