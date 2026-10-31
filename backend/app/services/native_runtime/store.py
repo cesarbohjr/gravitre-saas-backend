@@ -257,7 +257,7 @@ class Journal:
                              WHERE c.job=jobs.id)
                   AND NOT EXISTS(SELECT 1 FROM action_requests a
                                  WHERE a.job=jobs.id)
-            """,(token,job_id,scope.org_id,scope.agent_id,scope.run_id,time.time())).rowcount
+            """,(token,job_id,scope.org_id,scope.agent_id,scope.run_id,time.time(),time.time())).rowcount
             if changed!=1:raise LeaseLost('Fenced recovery unavailable or already reserved')
         return token
 
@@ -362,7 +362,7 @@ class Journal:
     def approve(self, scope: AdapterScope, job_id: str, request_id: str, digest: str, approved: bool) -> None:
         if type(approved) is not bool:raise ValueError('Explicit boolean decision required')
         with self.connect() as db:
-            changed=db.execute("UPDATE action_requests SET state=? WHERE id=? AND job=? AND digest=? AND state='pending' AND EXISTS(SELECT 1 FROM jobs WHERE id=? AND org=? AND agent=? AND run=? AND state='running' AND expires_at>?)",('approved' if approved else 'denied',request_id,job_id,digest,job_id,scope.org_id,scope.agent_id,scope.run_id,time.time())).rowcount
+            changed=db.execute("UPDATE action_requests SET state=? WHERE id=? AND job=? AND digest=? AND state='pending' AND EXISTS(SELECT 1 FROM jobs WHERE id=? AND org=? AND agent=? AND run=? AND state='running' AND lease IS NOT NULL AND lease_until>? AND expires_at>?)",('approved' if approved else 'denied',request_id,job_id,digest,job_id,scope.org_id,scope.agent_id,scope.run_id,time.time())).rowcount
         if changed!=1:raise PermissionError('Approval is stale, changed or outside tenant scope')
         if not approved:self.cancel(scope,job_id)
 
