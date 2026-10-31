@@ -8,6 +8,7 @@ default native worker executable.
 from __future__ import annotations
 import asyncio
 import json
+import time
 import sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -103,20 +104,27 @@ async def run(config, *, browser=None):
             raise PermissionError("Recovery URL does not match the fenced checkpoint")
 
     from playwright.async_api import async_playwright
+    startup_started=time.perf_counter_ns()
     async with async_playwright() as playwright:
         instance = await playwright.chromium.launch(executable_path="/usr/bin/chromium",
             headless=True, chromium_sandbox=True,
             proxy={"server": "http://gateway:8080", "bypass": "gateway,localhost,127.0.0.1"})
+        chromium_launched=time.perf_counter_ns()
         try:
             context = await instance.new_context(viewport={"width":1280,"height":720}, accept_downloads=False,
                 permissions=[], service_workers="block")
             page = await context.new_page()
+            browser_ready=time.perf_counter_ns()
+            startup_timings={'chromium_launch_ms':round((chromium_launched-startup_started)/1e6,3),
+                'browser_context_and_page_ms':round((browser_ready-chromium_launched)/1e6,3)}
             page.on("dialog", lambda dialog: asyncio.create_task(dialog.dismiss()))
             # Destination is a trusted benchmark input, not an LLM-supplied URL.
             url = validate_url(config["comparison_url"], config["allowed_hosts"])
             if recovery is not None:
                 from playwright_recovery import run_general
-                return await run_general(config,page,recovery)
+                result=await run_general(config,page,recovery)
+                result['browser_startup_timings_ms']=startup_timings
+                return result
             session = PlaywrightSession(page)
             next_sequence = await approved_navigation(config, session, page, url)
             result = await approved_click(config, session, page, sequence=next_sequence)
@@ -127,7 +135,8 @@ async def run(config, *, browser=None):
             else:
                 # The owned HTTPS fixture acknowledges only a committed server effect.
                 await page.wait_for_function("document.querySelector('#result')?.textContent === 'Written'", timeout=15000)
-            return {"observations": [{"summary": "Comparison candidate completed one reviewed fixture click.", "url": url}], **result}
+            return {"observations": [{"summary": "Comparison candidate completed one reviewed fixture click.", "url": url}], **result,
+                    "browser_startup_timings_ms":startup_timings}
         finally:
             await instance.close()
 
