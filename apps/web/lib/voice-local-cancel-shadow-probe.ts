@@ -39,7 +39,7 @@ export class LocalCancellationShadowProbe {
       this.audioStartMs = null
       return
     }
-    if (!this.audioStartMs) this.audioStartMs = this.clock()
+    if (this.audioStartMs === null) this.audioStartMs = this.clock()
     const next = new Int16Array(this.pending.length + pcm.length)
     next.set(this.pending)
     next.set(pcm, this.pending.length)
