@@ -46,7 +46,24 @@ async def test_cancel_reaches_classifier_before_end_of_turn(event):
         assert len(recorder.turn_started_calls) == 1
         assert recorder.turn_started_calls[0].enable_interruptions is True
         assert [f.text for f in emitted if isinstance(f, InterimTranscriptionFrame)] == ['cancel it']
+        assert all(f.gravitre_turn_control_only for f in emitted if isinstance(f, InterimTranscriptionFrame))
         assert not any(isinstance(f, TranscriptionFrame) for f in emitted)
+    finally:
+        await strategy.cleanup()
+        await service.cleanup()
+
+
+@pytest.mark.asyncio
+async def test_normal_listening_retains_sdk_final_without_new_interim_work():
+    service, strategy, recorder, emitted = await connected_strategy()
+    service.partial_control_enabled = lambda: False
+    try:
+        await service._handle_turn_info({'event': 'StartOfTurn', 'transcript': 'ordinary question'})
+        await service._handle_turn_info({'event': 'Update', 'transcript': 'ordinary question updated'})
+        assert not emitted
+        await service._handle_turn_info({'event': 'EndOfTurn', 'transcript': 'ordinary question updated'})
+        assert len([f for f in emitted if isinstance(f, TranscriptionFrame)]) == 1
+        assert not any(isinstance(f, InterimTranscriptionFrame) for f in emitted)
     finally:
         await strategy.cleanup()
         await service.cleanup()

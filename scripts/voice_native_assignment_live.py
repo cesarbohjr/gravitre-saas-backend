@@ -80,7 +80,7 @@ async def main():
             wav(output / (engine + '-' + label + '.wav'), capture.pcm, 24000)
             (output / (engine + '-' + label + '-timing.json')).write_text(json.dumps({
                 'events': capture.event_timeline, 'stages': capture.interruption_timeline,
-                'errors': capture.errors}, indent=2))
+                'errors': capture.errors, 'timeout_tasks': capture.timeout_tasks}, indent=2))
         if capture.errors or capture.first is None:
             raise AssertionError('voice pipeline failed')
         return await state_service.get_task_state(cid, org, client=reader, strict=True)

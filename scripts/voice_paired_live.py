@@ -36,18 +36,35 @@ class SanitizedDiagnostics(logging.Handler):
         super().__init__(logging.ERROR)
         self.output = output
         self.rows = []
+        # Pipecat uses Loguru; stdlib logging alone misses its error records.
+        from loguru import logger
+        self.loguru_sink = logger.add(self.emit_loguru, level='ERROR')
+
+    def emit_loguru(self, message):
+        record = message.record
+        exception = record.get('exception')
+        self.capture(record['message'], exception.type if exception else None,
+                     exception.value if exception else None,
+                     exception.traceback if exception else None)
 
     def emit(self, record):
-        if not record.exc_info or len(self.rows) >= 50:
+        kind, error, tb = record.exc_info or (None, None, None)
+        self.capture(record.getMessage(), kind, error, tb)
+
+    def capture(self, text, kind, error, tb):
+        if len(self.rows) >= 50:
             return
-        kind, error, tb = record.exc_info
-        message = str(error).lower()
-        self.rows.append({"error_type": kind.__name__,
+        message = (str(text) + ' ' + str(error or '')).lower()
+        self.rows.append({"error_type": kind.__name__ if kind else None,
+            'recognized_errors': [name for name in ('RuntimeError', 'TimeoutError', 'CancelledError',
+                'APIConnectionError', 'ConnectError', 'ReadTimeout', 'APIStatusError', 'ValidationError',
+                'AttributeError', 'TypeError', 'ValueError', 'AssertionError', 'ConnectionClosed')
+                if name.lower() in message],
             "http_status": getattr(error, "status_code", None) if type(getattr(error, "status_code", None)) is int else None,
-            "categories": [word for word in ("anthropic", "openai", "missing", "credit", "permission", "budget", "model", "column", "relation", "key", "settings", "illegal header", "bearer", "host header", "request line") if word in message],
+            "categories": [word for word in ("anthropic", "openai", "missing", "credit", "permission", "budget", "model", "column", "relation", "key", "settings", "illegal header", "bearer", "host header", "request line", "different loop", "event loop", "closed", "timeout", "deepgram", "elevenlabs") if word in message],
             "escaped_newline_in_diagnostic": '\\n' in message or '\\r' in message,
             "frames": [{"file": Path(f.filename).name, "line": f.lineno, "function": f.name}
-                       for f in traceback.extract_tb(tb)[-40:]]})
+                       for f in traceback.extract_tb(tb)[-40:]] if tb else []})
         self.output.write_text(json.dumps(self.rows, indent=2))
 
 
@@ -160,6 +177,7 @@ class Capture:
         self.interrupt_at = None
         self.interrupted_reply = None
         self.errors = []
+        self.timeout_tasks = []
         self.cancel_recognized = False
         self.backchannel_recognized = False
         self.backchannel_original_token = None
@@ -297,6 +315,19 @@ class Capture:
             if completed and self.first is not None and self.last and time.monotonic() - self.last > 4:
                 return
             await asyncio.sleep(.1)
+        # Capture code locations only, never task reprs, locals or arguments.
+        for task in list(asyncio.all_tasks())[:200]:
+            frames = []
+            coroutine = task.get_coro()
+            for _ in range(40):
+                frame = getattr(coroutine, 'cr_frame', None) or getattr(coroutine, 'gi_frame', None)
+                if frame is not None:
+                    frames.append({'file': Path(frame.f_code.co_filename).name,
+                        'function': frame.f_code.co_name, 'line': frame.f_lineno})
+                coroutine = getattr(coroutine, 'cr_await', None) or getattr(coroutine, 'gi_yieldfrom', None)
+                if coroutine is None:
+                    break
+            self.timeout_tasks.append({'frames': frames})
         raise TimeoutError("generated speech deadline")
 
 
@@ -640,6 +671,7 @@ async def main():
             row["event_timeline"] = capture.event_timeline
             row['interruption_timeline'] = capture.interruption_timeline
             row["pipeline_errors"] = capture.errors
+            row['timeout_tasks'] = capture.timeout_tasks
             if capture.errors:
                 row.update(status="FAIL", error_type="PipelineErrorEvent")
             row["authorization"] = capture.authorization

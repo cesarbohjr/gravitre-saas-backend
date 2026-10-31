@@ -14,6 +14,20 @@ spec.loader.exec_module(paired)
 
 
 class IsolationTests(unittest.TestCase):
+    def test_sdk_error_diagnostics_retain_no_provider_body(self):
+        from loguru import logger
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory) / 'diagnostics.json'
+            handler = paired.SanitizedDiagnostics(output)
+            try:
+                logger.error('RuntimeError anthropic timeout secret-body-not-for-artifact')
+                content = output.read_text()
+                self.assertIn('RuntimeError', content)
+                self.assertIn('anthropic', content)
+                self.assertNotIn('secret-body-not-for-artifact', content)
+            finally:
+                logger.remove(handler.loguru_sink)
+
     def env(self):
         return dict(GRAVITRE_VOICE_ISOLATED='1', SUPABASE_URL=paired.TARGET,
             E2E_SUPABASE_ALLOWED_URL=paired.TARGET, ANTHROPIC_API_KEY='offline',

@@ -165,7 +165,7 @@ def build_pipecat_voice_task(
 
     krisp_filter, krisp_meta = build_krisp_viva_input_filter(settings)
 
-    from app.services.pipecat_voice.voice_audio_origin import VoicePipelineSession, normalize_origin
+    from app.services.pipecat_voice.voice_audio_origin import SPEAKING, WARMING, VoicePipelineSession, normalize_origin
 
     voice_session = VoicePipelineSession()
     query_origin = ""
@@ -240,6 +240,10 @@ def build_pipecat_voice_task(
         if stt_info.get("stt_provider_key") != STT_FLUX and not dg_key and stt_info.get("stt_provider_key") != "openai":
             raise RuntimeError("DEEPGRAM_API_KEY required for Pipecat voice")
     use_flux = stt_info.get("stt_provider_key") == STT_FLUX
+    if use_flux and hasattr(stt, "partial_control_enabled"):
+        stt.partial_control_enabled = lambda: bool(
+            voice_session.work_active or voice_session.turn_state in {SPEAKING, WARMING}
+        )
 
     # Voice-SLO follow-up (2026-09-05): shared LLMContext (so the speculative
     # path can read the same prior-turn history GravitreCognitiveLLMService
