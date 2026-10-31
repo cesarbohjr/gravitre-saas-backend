@@ -250,51 +250,81 @@ def run():
             # Live automatic handoff: pre-effect Browser Use checkpoint ->
             # atomic new lease -> actual isolated Playwright navigation and fill.
             # The old lease cannot dispatch, and both new actions are reviewed.
-            state.update(kind='playwright_recovery',calls=0)
-            handoff_root=root/'verified-playwright-handoff'
-            handoff_root.mkdir(mode=0o700)
-            handoff_journal=Journal(str(handoff_root/'journal.sqlite3'),Fernet.generate_key())
-            handoff_scope=AdapterScope('fixture-org','fixture-agent','fixture-fallback')
-            handoff_payload=job('browser_use')['payload']
-            handoff_id=handoff_journal.enqueue(handoff_scope,'browser_use',
-                'auto-fallback',handoff_payload,ttl=3600,max_attempts=1)
-            source=handoff_journal.claim('browser_use',lease_seconds=600)
-            handoff_url='https://www.selenium.dev/selenium/web/web-form.html'
-            handoff_journal.save_browser_checkpoint(source,0,{
-                'before_effect':True,'url':handoff_url,'page_fingerprint':'a'*64})
-            assert handoff_journal.fence_browser_for_fallback(source,checkpoint_before_effect=True)
-            handoff_token=handoff_journal.claim_fenced_handoff(handoff_scope,handoff_id)
-            recovered_job=handoff_journal.activate_fenced_handoff(
-                handoff_scope,handoff_id,handoff_token,lease_seconds=600)
-            assert not handoff_journal.active(source) and handoff_journal.active(recovered_job)
-            reviewed=[]
-            def recovery_guard():
-                if not handoff_journal.active(recovered_job):
-                    raise LeaseLost('Recovered worker no longer authorized')
-                return route
-            def recovery_action(sequence,action):
-                assert sequence==len(reviewed) and sequence in (0,1)
-                assert len(action['page_fingerprint'])==64
-                if sequence==0:
-                    assert action['actions']=={'navigate':{'url':handoff_url}}
-                else:
-                    assert set(action['actions'])=={'fill'}
-                pending=handoff_journal.request_action(recovered_job,sequence,action)
-                handoff_journal.approve(handoff_scope,handoff_id,pending['id'],pending['digest'],True)
-                reviewed.append(sequence)
-                return handoff_journal.request_action(recovered_job,sequence,action)
-            try:
-                recovered_result=candidate_runner.execute(recovered_job,
-                    guard=recovery_guard,action_gate=recovery_action)
-                assert reviewed==[0,1] and recovered_result.get('observations')
-                handoff_journal.update(recovered_job,'completed',result={
-                    'certification':'reviewed_recovery'})
-            finally:
-                candidate_runner.cleanup(handoff_id)
-                clean(handoff_id)
-            assert len(handoff_journal.actions(handoff_scope,handoff_id))==2
-            assert handoff_journal.claim('browser_use') is None
+            live_handoff_trials=[]
+            for trial_number in range(3):
+                trial_started_ns=time.perf_counter_ns()
+                state.update(kind='playwright_recovery',calls=0)
+                handoff_root=root/('verified-playwright-handoff-'+str(trial_number))
+                handoff_root.mkdir(mode=0o700)
+                handoff_journal=Journal(str(handoff_root/'journal.sqlite3'),Fernet.generate_key())
+                handoff_scope=AdapterScope('fixture-org','fixture-agent','fixture-fallback-'+str(trial_number))
+                handoff_payload=job('browser_use')['payload']
+                handoff_id=handoff_journal.enqueue(handoff_scope,'browser_use',
+                    'auto-fallback',handoff_payload,ttl=3600,max_attempts=1)
+                source=handoff_journal.claim('browser_use',lease_seconds=600)
+                handoff_url='https://www.selenium.dev/selenium/web/web-form.html'
+                handoff_journal.save_browser_checkpoint(source,0,{
+                    'before_effect':True,'url':handoff_url,'page_fingerprint':'a'*64})
+                assert handoff_journal.fence_browser_for_fallback(source,checkpoint_before_effect=True)
+                fenced_ns=time.perf_counter_ns()
+                handoff_token=handoff_journal.claim_fenced_handoff(handoff_scope,handoff_id)
+                recovered_job=handoff_journal.activate_fenced_handoff(
+                    handoff_scope,handoff_id,handoff_token,lease_seconds=600)
+                assert not handoff_journal.active(source) and handoff_journal.active(recovered_job)
+                activated_ns=time.perf_counter_ns()
+                reviewed=[]
+                first_review_ns=[None]
+                def recovery_guard():
+                    if not handoff_journal.active(recovered_job):
+                        raise LeaseLost('Recovered worker no longer authorized')
+                    return route
+                def recovery_action(sequence,action):
+                    assert sequence==len(reviewed) and sequence in (0,1)
+                    assert len(action['page_fingerprint'])==64
+                    if sequence==0:
+                        assert action['actions']=={'navigate':{'url':handoff_url}}
+                    else:
+                        assert set(action['actions'])=={'fill'}
+                    pending=handoff_journal.request_action(recovered_job,sequence,action)
+                    handoff_journal.approve(handoff_scope,handoff_id,pending['id'],pending['digest'],True)
+                    reviewed.append(sequence)
+                    if sequence==0:first_review_ns[0]=time.perf_counter_ns()
+                    return handoff_journal.request_action(recovered_job,sequence,action)
+                try:
+                    recovered_result=candidate_runner.execute(recovered_job,
+                        guard=recovery_guard,action_gate=recovery_action)
+                    result_ns=time.perf_counter_ns()
+                    assert reviewed==[0,1] and recovered_result.get('observations')
+                    handoff_journal.update(recovered_job,'completed',result={
+                        'certification':'reviewed_recovery'})
+                finally:
+                    candidate_runner.cleanup(handoff_id)
+                    clean(handoff_id)
+                assert len(handoff_journal.actions(handoff_scope,handoff_id))==2
+                assert handoff_journal.claim('browser_use') is None
+                live_handoff_trials.append({'trial':trial_number+1,
+                    'fence_ms':round((fenced_ns-trial_started_ns)/1e6,2),
+                    'lease_ms':round((activated_ns-fenced_ns)/1e6,2),
+                    'first_review_ms':round((first_review_ns[0]-fenced_ns)/1e6,2),
+                    'playwright_result_ms':round((result_ns-fenced_ns)/1e6,2)})
+            def handoff_percentile(values,quantile):
+                ordered=sorted(values)
+                position=(len(ordered)-1)*quantile
+                low=int(position);high=min(low+1,len(ordered)-1)
+                return round(ordered[low]+(ordered[high]-ordered[low])*(position-low),2)
+            handoff_summary={
+                'measurement':'actual_gvisor_playwright_recovery_from_fenced_checkpoint',
+                'trials':live_handoff_trials,'sample_count':len(live_handoff_trials),
+                'p50_ms':handoff_percentile([v['playwright_result_ms'] for v in live_handoff_trials],.5),
+                'p95_ms':handoff_percentile([v['playwright_result_ms'] for v in live_handoff_trials],.95),
+                'first_review_p50_ms':handoff_percentile([v['first_review_ms'] for v in live_handoff_trials],.5),
+                'first_review_p95_ms':handoff_percentile([v['first_review_ms'] for v in live_handoff_trials],.95),
+                'scope':'fixture-only; not production customer navigation',
+                'trial_count_sufficient_for_service_slo':False}
+            assert handoff_summary['sample_count']==3
             evidence['playwright_real_gvisor_automatic_fenced_handoff']='PASS'
+            evidence['live_handoff_latency']=handoff_summary
+            print(json.dumps({'live_handoff_latency':handoff_summary},sort_keys=True))
             print(json.dumps({'completed_runtime_checks':evidence},sort_keys=True))
             candidate=job('browser_use')
             denied=[]
