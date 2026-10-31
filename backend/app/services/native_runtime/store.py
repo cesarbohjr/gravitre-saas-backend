@@ -261,6 +261,43 @@ class Journal:
             if changed!=1:raise LeaseLost('Fenced recovery unavailable or already reserved')
         return token
 
+    def activate_fenced_handoff(self, scope: AdapterScope, job_id: str, reservation: str, *, lease_seconds: int=60) -> dict:
+        """One-time transaction converting a safe reservation into an execution lease.
+
+        The old lease has already been invalidated. This grants the new worker
+        no approval to write; each action still traverses the governed broker.
+        """
+        if not isinstance(reservation,str) or not reservation or not 1<=lease_seconds<=600:
+            raise ValueError('Invalid recovery reservation')
+        stamp=time.time()
+        with self.connect() as db:
+            db.execute('BEGIN IMMEDIATE')
+            row=db.execute("""
+                SELECT j.*,c.sequence AS checkpoint_sequence,c.payload AS checkpoint_payload
+                FROM jobs j JOIN browser_checkpoints c ON c.job=j.id
+                WHERE j.id=? AND j.org=? AND j.agent=? AND j.run=?
+                  AND j.kind='browser_use' AND j.state='uncertain'
+                  AND j.phase='fallback_reserved' AND j.lease=?
+                  AND j.expires_at>? AND j.attempts=1
+                  AND NOT EXISTS(SELECT 1 FROM action_requests a WHERE a.job=j.id)
+            """,(job_id,scope.org_id,scope.agent_id,scope.run_id,reservation,stamp)).fetchone()
+            if row is None or row['checkpoint_sequence']!=0:
+                raise LeaseLost('Recovery reservation no longer eligible')
+            marker=self._open(row['checkpoint_payload'])
+            if not isinstance(marker,dict) or marker.get('before_effect') is not True:
+                raise LeaseLost('Verified pre-effect checkpoint required')
+            token=str(uuid4())
+            changed=db.execute("""
+                UPDATE jobs SET state='running',phase='fallback_playwright',
+                    lease=?,lease_until=?,attempts=attempts+1,error_code=NULL
+                WHERE id=? AND lease=? AND state='uncertain' AND phase='fallback_reserved'
+            """,(token,stamp+lease_seconds,job_id,reservation)).rowcount
+            if changed!=1:raise LeaseLost('Concurrent recovery activation')
+            return {'id':job_id,'scope':scope,'kind':'browser_use','lease':token,
+                    'phase':'fallback_playwright','attempts':2,
+                    'created_at':row['created_at'],'expires_at':row['expires_at'],
+                    'payload':self._open(row['payload']),'checkpoint':marker}
+
     def cancel(self, scope: AdapterScope, job_id: str) -> bool:
         with self.connect() as db:
             changed=db.execute("UPDATE jobs SET state='cancelled',lease=NULL,payload=NULL,result=NULL WHERE id=? AND org=? AND agent=? AND run=? AND kind IN ('openhands','browser_use') AND state IN ('queued','running','uncertain')",
