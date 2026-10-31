@@ -1,0 +1,47 @@
+name: Voice provider control latency diagnosis
+on:
+  pull_request:
+    paths:
+      - 'scripts/voice_stt_control_latency.py'
+      - 'tests/test_voice_stt_control_latency.py'
+      - '.github/workflows/voice-stt-control-latency.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+jobs:
+  control-latency:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: acceptance
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Regress timing parser and pinned inputs
+        run: python -m unittest discover -s tests -p test_voice_stt_control_latency.py
+      - name: Install bounded provider transport
+        run: python -m pip install --no-cache-dir 'websockets==15.0.1'
+      - name: Reuse unchanged executed cancellation and backchannel recordings
+        uses: actions/download-artifact@v4
+        with:
+          name: paired-runtime-readiness
+          run-id: 41216971203
+          github-token: ${{ github.token }}
+          path: /tmp/voice-control-recordings
+      - name: Measure three matched repetitions without tenant or TTS access
+        env:
+          DEEPGRAM_API_KEY: ${{ secrets.ACCEPTANCE_DEEPGRAM_API_KEY }}
+          ACCEPTANCE_SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: >-
+          python scripts/voice_stt_control_latency.py
+          --recordings /tmp/voice-control-recordings/repeated-paired/repetition-1/voice
+          --output acceptance-results/stt-control-latency.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: stt-control-latency
+          path: acceptance-results/stt-control-latency.json

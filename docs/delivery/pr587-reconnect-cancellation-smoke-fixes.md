@@ -50,3 +50,37 @@ write readbacks, then the full standing intelligence batteries, full CI and
 combined-source checks. Retain every failure. No stage is complete until its
 new results and source provenance have been inspected. Physical audio and the
 remaining comparative/human-review requirements are outside this narrow result.
+
+## Executed result on `5e766f352dd795b0617638b170a1930ad464669a`
+
+[Matched run 41216971203](https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/41216971203)
+retains aggregate **FAIL**: 25/30 voice cases and 12/12 native-action cases pass.
+All six reconnect cases now pass. All twelve stop probes independently show
+zero fixture attempts, fixture effects and native insert effects. Spoken-cancel
+receiver cutoffs in repetition order (Pipecat / LiveKit, milliseconds) are
+877.49 / 754.31, 972.77 / 864.54, and 715.64 / 460.13. Five of six exceed 500 ms.
+The artifact ZIP digest is
+`15ac1f1222bc0b6db77a16a5a27371144f4c4fd22cd80c1106ea09fc5fde34c8`.
+
+Trace alignment places the first Flux partial around 780–980 ms after the
+cancellation input starts. Local intent classification follows within roughly
+1–5 ms. The unchanged recording has audible samples beginning around 18–28 ms;
+leading recording silence does not explain this delay. Smaller output queues
+did not resolve provider recognition latency. A natural silence gap can also
+yield a short receiver cutoff despite late recognition; receiver silence alone
+must not be described as proof of timely logical cancellation.
+
+Full CI and the connected RTC workflow passed on this source. Connected RTC
+measured 9.33 ms control delivery, 92.24 ms rejoin and 0.9771 waveform correlation;
+these do not certify spoken provider control or physical playout. Standing
+batteries successfully passed the separated provisioning and token-mint steps
+and reached live prompts; their final result is still pending.
+
+`voice_stt_control_latency.py` now defines a bounded diagnostic comparison of
+Flux and Nova-3 using these exact cancellation and backchannel PCM digests,
+three matched repetitions, real-time input and no retries. It exports first
+speech-start, transcript and explicit control-word timings without transcript
+or provider-body retention. It has no tenant, TTS, canonical final-transcript or
+runtime selection authority. Four local regression tests pass. A faster model
+must first be measured; this diagnostic alone cannot close the 500 ms gate or
+justify interrupting backchannels.
