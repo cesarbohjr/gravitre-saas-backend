@@ -855,6 +855,7 @@ class AgentIntelligence:
         from app.services.gravitre_voice import (
             anti_repeat_prompt_section,
             domain_focus_section,
+            repeated_request_prompt_section,
             voice_system_prompt_section,
         )
         from app.services.voice_agent_profile import spoken_register_section
@@ -1043,6 +1044,9 @@ class AgentIntelligence:
         # Conversation turns belong in the messages prefix (Phase F5), not the system prompt.
         if anti_repeat:
             sections.extend(["", anti_repeat])
+        repeated_request = repeated_request_prompt_section(spoken_user_text, task_history)
+        if repeated_request:
+            sections.extend(["", repeated_request])
         if handoff_section.strip():
             sections.append(handoff_section.strip())
         if memory_section and memory_section.strip():

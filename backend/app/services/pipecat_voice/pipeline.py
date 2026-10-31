@@ -213,6 +213,9 @@ def build_pipecat_voice_task(
         params=FastAPIWebsocketParams(
             audio_in_enabled=True,
             audio_out_enabled=True,
+            # Limit the PCM already committed to one WebSocket send. The
+            # SDK default batches 40 ms; stop cannot retract a sent frame.
+            audio_out_10ms_chunks=1,
             audio_in_sample_rate=16000,
             audio_out_sample_rate=LIVE_VOICE_OUTPUT_SAMPLE_RATE,
             audio_in_channels=1,

@@ -44,6 +44,7 @@ __all__ = (
     "VOICE_SECTION_HEADER",
     "OutcomeDigestItem",
     "anti_repeat_prompt_section",
+    "repeated_request_prompt_section",
     "apply_voice",
     "bind_voice_expression_state",
     "chev_term",
@@ -180,6 +181,33 @@ def anti_repeat_prompt_section(recent_assistant: list[str] | None) -> str:
         "tool call or a mutating action; preserve fresh authorization and "
         "idempotency requirements for actions. Recent phrasing:\n"
         f"{bullets}"
+    )
+
+
+def repeated_request_prompt_section(user_text: str | None, history: list[dict] | None) -> str:
+    """Clarify a fresh repeated turn without copying history into policy text."""
+    def normalized(value: str) -> str:
+        # STT changes punctuation/case between otherwise identical requests.
+        return " ".join(re.sub(r"[^\w\s]", " ", value.casefold()).split())
+
+    current = normalized(user_text or "")
+    if not current or not any(
+        isinstance(message, dict)
+        and message.get("role") == "user"
+        and isinstance(message.get("content"), str)
+        and normalized(message["content"]) == current
+        for message in (history or [])
+    ):
+        return ""
+    return (
+        "## Current repeated request\n"
+        "The latest user message repeats an earlier user request. Treat it as a fresh "
+        "request to answer now, including after a reconnect. For a content request, "
+        "provide the requested content in full in this reply, even if it matches an "
+        "earlier answer. Do not merely say it was already done, point to a previous "
+        "message, or ask whether to redo it. This instruction overrides stylistic "
+        "anti-repeat guidance only. It does not authorize tool execution: preserve "
+        "fresh authorization, approvals, cancellation and idempotency for actions."
     )
 
 GRAVITRE_VOICE_RULES: tuple[str, ...] = (

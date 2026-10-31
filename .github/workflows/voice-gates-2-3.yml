@@ -3,6 +3,10 @@ on:
   pull_request:
     paths:
       - 'backend/app/services/pipecat_voice/livekit_candidate.py'
+      - 'backend/app/services/pipecat_voice/pipeline.py'
+      - 'backend/app/operators/agent_intelligence.py'
+      - 'backend/tests/operators/test_agent_intelligence.py'
+      - 'backend/tests/services/pipecat_voice/test_voice_output_audio_framing.py'
       - 'backend/tests/services/pipecat_voice/test_livekit_write_fence.py'
       - '.github/workflows/voice-gates-2-3.yml'
       - 'scripts/bootstrap_voice_acceptance.py'
@@ -74,10 +78,10 @@ jobs:
         run: python scripts/wait_voice_acceptance_predecessors.py
         env:
           GH_TOKEN: ${{ github.token }}
-      - name: Verify dedicated acceptance identity and refresh session
-        run: |
-          python scripts/bootstrap_voice_acceptance.py
-          python scripts/mint_smoke_org_session.py --github-env
+      - name: Provision and verify the dedicated acceptance identity
+        run: python scripts/bootstrap_voice_acceptance.py
+      - name: Mint the exported acceptance actor session
+        run: python scripts/mint_smoke_org_session.py --github-env
       - name: Run complete standing prompt batteries against the loopback acceptance API
         run: python scripts/voice_standing_acceptance.py
       - uses: actions/upload-artifact@v4

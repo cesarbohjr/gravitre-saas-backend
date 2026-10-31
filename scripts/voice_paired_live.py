@@ -31,6 +31,23 @@ PROMPT = ("Please rewrite this welcome note in a warmer tone, keeping the same m
           "Welcome to the team, Alex. We are happy you joined us.")
 
 
+def interruption_cutoff_observations(capture, cancel_pcm=None):
+    """Receiver PCM cutoff, strictly relative to interruption recording start."""
+    last = capture.speech_by_reply.get(capture.interrupted_reply)
+    cutoff = max(0, (last - capture.interrupt_at) * 1000) if last is not None else None
+    result = dict(received_original_reply_cutoff_ms=cutoff, acoustic_physical_cutoff="NOT RUN",
+        interruption_input_start_ms=round((capture.interrupt_at - capture.started) * 1000, 2),
+        cutoff_limit_ms=500, cutoff_reference="interruption_input_start")
+    if cancel_pcm is not None:
+        # Keep the prior end-relative observation, but never extend the gate
+        # by the phrase's duration or retroactively regrade earlier evidence.
+        result["received_cutoff_from_cancel_input_end_ms"] = (
+            cutoff - len(cancel_pcm) / 32 if cutoff is not None else None)
+    if cutoff is None or cutoff > 500:
+        result.update(status="FAIL", error_type="OriginalReplyCutoffExceeded")
+    return result
+
+
 class SanitizedDiagnostics(logging.Handler):
     def __init__(self, output):
         super().__init__(logging.ERROR)
@@ -638,15 +655,8 @@ async def main():
                 output_duration_s=len(samples)/24000, output_pcm_sha256=hashlib.sha256(capture.pcm).hexdigest(),
                 rms=float(np.sqrt(np.mean(samples**2))), clipping_fraction=float(np.mean(abs(samples)>=32760)))
             if capture.interrupt_at is not None:
-                last = capture.speech_by_reply.get(capture.interrupted_reply)
-                cutoff = max(0, (last - capture.interrupt_at) * 1000) if last else None
-                row.update(received_original_reply_cutoff_ms=cutoff, acoustic_physical_cutoff="NOT RUN")
-                limit_ms = 500
-                if scenario == "spoken_cancel":
-                    row["received_cutoff_from_cancel_input_end_ms"] = cutoff - len(cancel_pcm) / 32 if cutoff is not None else None
-                    limit_ms += len(cancel_pcm) / 32
-                if cutoff is None or cutoff > limit_ms:
-                    row.update(status="FAIL", error_type="OriginalReplyCutoffExceeded")
+                row.update(interruption_cutoff_observations(
+                    capture, cancel_pcm if scenario == 'spoken_cancel' else None))
         except Exception as error:
             row.update(error_type=type(error).__name__,
                 error_frames=[{"file": Path(f.filename).name, "line": f.lineno, "function": f.name}

@@ -38,7 +38,9 @@ class LiveKitCandidateSocket:
         self.client_state = WebSocketState.CONNECTED
         self.application_state = WebSocketState.CONNECTED
         self._incoming: asyncio.Queue[dict[str, Any]] = asyncio.Queue(maxsize=100)
-        self._source = rtc.AudioSource(24000, 1, queue_size_ms=100)
+        # Bound native playout backlog to one 20 ms RTC frame. Cancellation
+        # still flushes it; this also limits audio already being delivered.
+        self._source = rtc.AudioSource(24000, 1, queue_size_ms=20)
         self._audio_task: asyncio.Task | None = None
         self._stream: rtc.AudioStream | None = None
         self._closed = False

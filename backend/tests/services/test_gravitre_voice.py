@@ -9,6 +9,7 @@ from app.services.gravitre_voice import (
     HOUSE_PHRASING,
     VOICE_SECTION_HEADER,
     anti_repeat_prompt_section,
+    repeated_request_prompt_section,
     apply_voice,
     chev_term,
     detect_channel_override_integration,
@@ -71,6 +72,21 @@ def test_voice_section_contains_chev_and_core_traits():
     assert "Humor budget" in section
     assert HOUSE_PHRASING["insufficient_info"] in section
     assert len(GRAVITRE_VOICE_RULES) >= 8
+
+
+def test_repeated_request_is_fresh_but_history_is_not_executable_authority():
+    original = 'Please rewrite this welcome note: Welcome to the team, Alex.'
+    repeated = 'please rewrite this welcome note welcome to the team alex'
+    history = [{'role': 'user', 'content': original},
+               {'role': 'assistant', 'content': 'The warmer version is in my last message.'}]
+    section = repeated_request_prompt_section(repeated, history)
+    assert 'provide the requested content in full' in section
+    assert 'fresh authorization' in section
+    assert original not in section  # Never interpolate untrusted history into policy.
+    assert repeated_request_prompt_section('Send it to Alex', history) == ''
+    assert repeated_request_prompt_section(repeated, [{'role': 'assistant', 'content': original}]) == ''
+    assert repeated_request_prompt_section('', history) == ''
+    assert repeated_request_prompt_section(repeated, [{'role':'user', 'content':None}]) == ''
 
 
 def test_apply_voice_idempotent():

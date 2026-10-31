@@ -14,6 +14,20 @@ spec.loader.exec_module(paired)
 
 
 class IsolationTests(unittest.TestCase):
+    def test_cancel_deadline_never_moves_to_recording_end(self):
+        for elapsed, failed in ((.5, False), (.509, True), (None, True)):
+            with self.subTest(elapsed=elapsed):
+                capture = paired.Capture()
+                capture.started, capture.interrupt_at, capture.interrupted_reply = 0, 10, 7
+                if elapsed is not None:
+                    capture.speech_by_reply[7] = 10 + elapsed
+                result = paired.interruption_cutoff_observations(capture, bytes(64000))
+                self.assertEqual(result.get('status') == 'FAIL', failed)
+                self.assertEqual(result['cutoff_reference'], 'interruption_input_start')
+                self.assertEqual(result['cutoff_limit_ms'], 500)
+                if elapsed is not None:
+                    self.assertLess(result['received_cutoff_from_cancel_input_end_ms'], 0)
+
     def test_sdk_error_diagnostics_retain_no_provider_body(self):
         from loguru import logger
         with tempfile.TemporaryDirectory() as directory:
