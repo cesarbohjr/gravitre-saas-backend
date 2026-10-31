@@ -77,8 +77,8 @@ def test_fenced_reservation_rejects_non_pre_effect_checkpoint(tmp_path):
     job_id=journal.enqueue(scope,"browser_use","identity",{"task":{}},actor="actor")
     job=journal.claim("browser_use")
     journal.save_browser_checkpoint(job,0,{"before_effect":False})
-    assert journal.fence_browser_for_fallback(job,checkpoint_before_effect=True)
-    with pytest.raises(LeaseLost,match="Verified pre-effect checkpoint"):
+    assert journal.fence_browser_for_fallback(job,checkpoint_before_effect=True) is False
+    with pytest.raises(LeaseLost):
         journal.claim_fenced_handoff(scope,job_id)
     assert journal.get(scope,job_id)["phase"]=="fallback_fenced"
 
@@ -91,7 +91,7 @@ def test_recovery_inspection_rejects_invalid_checkpoint_marker(tmp_path):
     job_id=journal.enqueue(scope,"browser_use","identity",{"task":{}},actor="actor")
     job=journal.claim("browser_use")
     journal.save_browser_checkpoint(job,0,{"before_effect":False})
-    assert journal.fence_browser_for_fallback(job,checkpoint_before_effect=True)
+    assert journal.fence_browser_for_fallback(job,checkpoint_before_effect=True) is False
     assert journal.fallback_candidate(scope,job_id) is None
 
 
@@ -108,3 +108,48 @@ def test_invalid_checkpoint_fences_to_reconciliation_not_handoff(tmp_path):
     assert journal.fallback_candidate(scope,job_id) is None
     with pytest.raises(LeaseLost):
         journal.claim_fenced_handoff(scope,job_id)
+
+
+def test_atomic_playwright_activation_is_exclusive_and_revokes_old_lease(tmp_path):
+    private=tmp_path / "private"
+    private.mkdir(mode=0o700)
+    journal=Journal(str(private / "journal.sqlite"),Fernet.generate_key())
+    scope=AdapterScope("org","agent","run")
+    job_id=journal.enqueue(scope,"browser_use","identity",{"task":{}},actor="actor")
+    old=journal.claim("browser_use")
+    journal.save_browser_checkpoint(old,0,{"before_effect":True,
+        "url":"https://www.selenium.dev/selenium/web/web-form.html"})
+    assert journal.fence_browser_for_fallback(old,checkpoint_before_effect=True)
+    token=journal.claim_fenced_handoff(scope,job_id)
+    recovered=journal.activate_fenced_handoff(scope,job_id,token)
+    assert recovered["phase"]=="fallback_playwright"
+    assert recovered["lease"]!=old["lease"]
+    assert recovered["attempts"]==2
+    assert journal.active(recovered)
+    assert not journal.active(old)
+    with pytest.raises(LeaseLost):
+        journal.activate_fenced_handoff(scope,job_id,token)
+    with pytest.raises(LeaseLost):
+        journal.update(old,"completed")
+    assert journal.claim("browser_use") is None
+    assert journal.cancel(scope,job_id)
+    assert not journal.active(recovered)
+    with pytest.raises(LeaseLost):
+        journal.request_action(recovered,0,{"type":"click"})
+
+
+def test_activation_rejects_wrong_scope_and_reservation(tmp_path):
+    private=tmp_path / "private"
+    private.mkdir(mode=0o700)
+    journal=Journal(str(private / "journal.sqlite"),Fernet.generate_key())
+    scope=AdapterScope("org","agent","run")
+    job_id=journal.enqueue(scope,"browser_use","identity",{"task":{}},actor="actor")
+    original=journal.claim("browser_use")
+    journal.save_browser_checkpoint(original,0,{"before_effect":True})
+    journal.fence_browser_for_fallback(original,checkpoint_before_effect=True)
+    reservation=journal.claim_fenced_handoff(scope,job_id)
+    with pytest.raises(LeaseLost):
+        journal.activate_fenced_handoff(AdapterScope("other","agent","run"),job_id,reservation)
+    with pytest.raises(LeaseLost):
+        journal.activate_fenced_handoff(scope,job_id,"wrong")
+    assert journal.activate_fenced_handoff(scope,job_id,reservation)
