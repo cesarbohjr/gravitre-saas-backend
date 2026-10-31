@@ -101,6 +101,7 @@ def worker_main(adapter):
 class Model:
     def __init__(self,root,url):
         self.url=url;self.token=secrets.token_urlsafe(32)
+        self.click_proposed_for=None
         owner=self
         class Handler(BaseHTTPRequestHandler):
             def log_message(self,*_):pass
@@ -120,10 +121,22 @@ class Model:
                 same=bool(seen) and seen.scheme=='https' and seen.netloc==expected.netloc and seen.path=='/page'
                 dom=state.partition('Interactive elements')[2]
                 target=re.search(r'\[(\d+)\]<button\b[^\n]*\bid=commit\b',dom)
-                action=([{'done':{'text':'Owned fixture readback complete','success':True}}] if same and 'Written' in dom
-                        else [{'click':{'index':int(target.group(1))}}] if same and target
-                        else [{'wait':{'seconds':1}}] if same
-                        else [{'navigate':{'url':owner.url}}])
+                # The result paragraph is noninteractive and may appear before
+                # the Interactive elements section. The prior test model missed
+                # that readback, proposed a second click and left it pending.
+                # Never propose the same externally mutating click twice.
+                observed_written=same and bool(re.search(r'\\bWritten\\b',state))
+                if observed_written:
+                    action=[{'done':{'text':'Owned fixture readback complete','success':True}}]
+                elif same and owner.click_proposed_for==owner.url:
+                    action=[{'wait':{'seconds':1}}]
+                elif same and target:
+                    owner.click_proposed_for=owner.url
+                    action=[{'click':{'index':int(target.group(1))}}]
+                elif same:
+                    action=[{'wait':{'seconds':1}}]
+                else:
+                    action=[{'navigate':{'url':owner.url}}]
                 content=json.dumps({'evaluation_previous_goal':'Observe owned fixture','memory':'Only the approved fixture is in scope',
                     'next_goal':'Read back the reviewed fixture effect','action':action})
                 data=json.dumps({'id':'fixture','object':'chat.completion','created':1,'model':'fixture-native',
