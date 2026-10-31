@@ -80,7 +80,7 @@ def test_fenced_reservation_rejects_non_pre_effect_checkpoint(tmp_path):
     assert journal.fence_browser_for_fallback(job,checkpoint_before_effect=True) is False
     with pytest.raises(LeaseLost):
         journal.claim_fenced_handoff(scope,job_id)
-    assert journal.get(scope,job_id)["phase"]=="fallback_fenced"
+    assert journal.get(scope,job_id)["phase"]=="fallback_reconcile"
 
 
 def test_recovery_inspection_rejects_invalid_checkpoint_marker(tmp_path):
