@@ -117,12 +117,26 @@ class NativeRuntime:
         except Exception:
             return False
 
+    def _record_fallback_timing(self, job_id: str, duration_ms: dict, outcome: str) -> None:
+        """Emit sanitized monotonic phase durations to an injected evidence sink.
+
+        A real runner supplies real cold-start and restore durations. This
+        callback intentionally never includes task text, URL, or credentials.
+        """
+        sink=getattr(self,'fallback_timing_sink',None)
+        if sink is not None:
+            sink({'schema_version':1,'job_id':job_id,'outcome':outcome,
+                  'durations_ms':{name:round(value,3) for name,value in duration_ms.items()},
+                  'measurement':'actual_coordinator_wall_clock'})
+
     def _run_verified_playwright_fallback(self, original: dict) -> str:
         """Resume an approved fixture task with a fresh, exclusively fenced lease.
 
         Unsupported checkpoints fail closed; this does not generalize the
         comparison executable to arbitrary customer websites or tasks.
         """
+        handoff_started=time.perf_counter_ns()
+        phases={}
         scope=original['scope']
         checkpoint=self.journal.fallback_candidate(scope,original['id'])
         if checkpoint is None:return 'fallback_reconciliation_required'
@@ -143,8 +157,11 @@ class NativeRuntime:
         # Stop the fenced source sandbox before starting the replacement.
         # A stale source process must not coexist with the newly leased worker.
         self.runner.cleanup(original['id'])
+        phases['source_cleanup']=(time.perf_counter_ns()-handoff_started)/1e6
+        lease_started=time.perf_counter_ns()
         reservation=self.journal.claim_fenced_handoff(scope,original['id'])
         job=self.journal.activate_fenced_handoff(scope,original['id'],reservation)
+        phases['lease_transition']=(time.perf_counter_ns()-lease_started)/1e6
         bound_route=[None]
         def guard():
             if not self.journal.active(job):raise LeaseLost('Fallback lease revoked')
@@ -159,7 +176,9 @@ class NativeRuntime:
             return self.journal.request_action(job,sequence,details)
         try:
             guard()
+            launch_started=time.perf_counter_ns()
             result=self.runner.execute(job,guard=guard,action_gate=action)
+            phases['playwright_execute_through_result']=(time.perf_counter_ns()-launch_started)/1e6
             guard()
             if not isinstance(result,dict) or len(json.dumps(result).encode())>240000:
                 raise ValueError('Invalid Playwright result')
@@ -170,12 +189,18 @@ class NativeRuntime:
             self.journal.update(job,'completed',result={
                 'plan':plan.model_dump(mode='json') if hasattr(plan,'model_dump') else asdict(plan),
                 'verified_execution':False,'requires_review':True})
+            phases['total_to_review_completion']=(time.perf_counter_ns()-handoff_started)/1e6
+            self._record_fallback_timing(original['id'],phases,'completed')
             return 'fallback_playwright_completed'
         except LeaseLost:
+            phases['total_until_blocked']=(time.perf_counter_ns()-handoff_started)/1e6
+            self._record_fallback_timing(original['id'],phases,'lease_lost')
             return 'cancelled_or_lease_lost'
         except Exception:
             try:self.journal.update(job,'uncertain',phase='fallback_reconcile',error='recovery_failed')
             except LeaseLost:pass
+            phases['total_until_blocked']=(time.perf_counter_ns()-handoff_started)/1e6
+            self._record_fallback_timing(original['id'],phases,'reconciliation')
             return 'fallback_reconciliation_required'
         finally:
             self.runner.cleanup(job['id'])
