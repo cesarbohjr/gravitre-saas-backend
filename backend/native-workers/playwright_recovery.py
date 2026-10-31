@@ -115,7 +115,7 @@ async def run_general(config, page, checkpoint):
         if kind=='fill' and node.node_name not in {'INPUT','TEXTAREA'}:
             raise PermissionError('Target not fillable')
         action={kind:{'index':index,**({'text':requested['value']} if kind=='fill' else {})}}
-        before,evidence=await stable_browser_evidence(session,action)
+        before,evidence=await stable_browser_evidence(session,action,settle_interval=0.05)
         await request_exact_approval(config,action,
             {'url':before.url,'snapshot':evidence},sequence)
         after,refreshed=await fresh_browser_evidence(session,action,'recovery_after_approval')
