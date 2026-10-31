@@ -199,11 +199,11 @@ class DockerRunner:
                 # proxy's death before the task-level timeout; never replay an
                 # unacknowledged effect or silently launch another adapter.
                 if gateway_process.poll() is not None:
-                    raise RuntimeError('Native gateway process exited')
+                    raise ConnectionError('Native gateway process exited')
                 if time.monotonic()>=deadline:raise TimeoutError('Native sandbox timed out')
                 time.sleep(0.5)
             if gateway_process.poll() is not None:
-                raise RuntimeError('Native gateway process exited')
+                raise ConnectionError('Native gateway process exited')
             if process.returncode:raise RuntimeError('Native engine failed')
             # gVisor's guest tmpfs is not Docker's host-side mounted rootfs.
             # Read inside the guest; no host mount or archive extraction needed.
