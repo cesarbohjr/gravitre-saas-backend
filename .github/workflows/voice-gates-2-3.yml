@@ -233,6 +233,9 @@ jobs:
     timeout-minutes: 15
     environment: acceptance
     env:
+      # Avoid retaining multi-GB inference wheels alongside their installed
+      # copies on the disposable hosted runner. Dependency versions are unchanged.
+      PIP_NO_CACHE_DIR: '1'
       APP_ENV: dev
       DEEPGRAM_API_KEY: ${{ secrets.ACCEPTANCE_DEEPGRAM_API_KEY }}
       ELEVENLABS_API_KEY: ${{ secrets.ACCEPTANCE_ELEVENLABS_API_KEY }}

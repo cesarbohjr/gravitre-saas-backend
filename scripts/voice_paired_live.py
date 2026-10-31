@@ -181,6 +181,7 @@ class Capture:
         self.cancel_recognized = False
         self.backchannel_recognized = False
         self.backchannel_original_token = None
+        self.backchannel_cancelled_at_completion = None
         self.voice_session = None
         self.probe = None
         self.probe_result = None
@@ -313,6 +314,13 @@ class Capture:
             if self.scenario == "spoken_cancel":
                 completed = completed and self.cancel_recognized
             if completed and self.first is not None and self.last and time.monotonic() - self.last > 4:
+                if self.scenario == 'backchannel':
+                    # Snapshot while the session is still connected. RTC
+                    # teardown correctly cancels its token afterward, which
+                    # must not rewrite the completed backchannel observation.
+                    self.backchannel_cancelled_at_completion = (
+                        self.backchannel_original_token is None
+                        or self.backchannel_original_token.cancelled)
                 return
             await asyncio.sleep(.1)
         # Capture code locations only, never task reprs, locals or arguments.
@@ -702,9 +710,12 @@ async def main():
             row["durable_messages_after"] = len(after_roles)
             if scenario == 'backchannel':
                 row['backchannel_recognized'] = capture.backchannel_recognized
-                row['original_work_cancelled'] = (capture.backchannel_original_token is None
+                row['backchannel_verdict_phase'] = 'completed_reply_before_transport_teardown'
+                row['original_work_cancelled'] = capture.backchannel_cancelled_at_completion
+                row['original_work_cancelled_after_teardown'] = (
+                    capture.backchannel_original_token is None
                     or capture.backchannel_original_token.cancelled)
-                if (not capture.backchannel_recognized or row['original_work_cancelled']
+                if (not capture.backchannel_recognized or row['original_work_cancelled'] is not False
                         or len(after_roles) != 2 or capture.events.get('assistant_turn.complete') != 1):
                     row.update(status='FAIL', error_type='BackchannelInterruptedOrBecameANewTurn')
             if scenario == "reconnect":

@@ -83,6 +83,31 @@ class IsolationTests(unittest.TestCase):
 
 
 class CompletionTests(unittest.IsolatedAsyncioTestCase):
+    async def test_backchannel_snapshot_precedes_disconnect_and_preserves_real_cancellation(self):
+        from app.services.turn_cancellation import TurnCancellation
+        for cancelled_before_completion in (False, True):
+            with self.subTest(cancelled_before_completion=cancelled_before_completion):
+                capture = paired.Capture()
+                capture.scenario = 'backchannel'
+                token = TurnCancellation()
+                capture.backchannel_original_token = token
+                if cancelled_before_completion:
+                    token.cancel('true_interrupt')
+                capture.first = capture.last = time.monotonic() - 10
+                capture.event({'type': 'bot-llm-stopped'})
+                capture.event({'type': 'assistant_turn.complete'})
+                capture.event({'type': 'bot-stopped-speaking'})
+                running = asyncio.create_task(asyncio.Event().wait())
+                try:
+                    await asyncio.wait_for(capture.settle(running), .5)
+                    self.assertIs(capture.backchannel_cancelled_at_completion, cancelled_before_completion)
+                    token.cancel('rtc_disconnect')
+                    self.assertTrue(token.cancelled)
+                    self.assertIs(capture.backchannel_cancelled_at_completion, cancelled_before_completion)
+                finally:
+                    running.cancel()
+                    await asyncio.gather(running, return_exceptions=True)
+
     async def test_filler_silence_without_completion_does_not_finish(self):
         capture = paired.Capture()
         capture.first = time.monotonic() - 10
