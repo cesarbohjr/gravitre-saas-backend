@@ -1,0 +1,80 @@
+{
+  "git_sha": "5e766f352dd795b0617638b170a1930ad464669a",
+  "status": "FAIL",
+  "certified": false,
+  "started_at": "2026-10-31T16:34:43.304412+00:00",
+  "api_base": "http://127.0.0.1:8790",
+  "scope": "production routes with real Auth/DB/inference; lifespan workers disabled",
+  "batteries": [
+    {
+      "battery": "phase2",
+      "exit_code": 124,
+      "status": "FAIL",
+      "report_present": false,
+      "elapsed_s": 1200.01,
+      "diagnostic_categories": [
+        "missing",
+        "connector"
+      ]
+    },
+    {
+      "battery": "persona",
+      "exit_code": 124,
+      "status": "FAIL",
+      "report_present": false,
+      "elapsed_s": 600.01,
+      "diagnostic_categories": []
+    },
+    {
+      "battery": "pending",
+      "exit_code": 0,
+      "status": "PASS",
+      "report_present": true,
+      "elapsed_s": 67.52,
+      "reported_verdict": null,
+      "diagnostic_categories": [
+        "connector"
+      ]
+    },
+    {
+      "battery": "mapper",
+      "exit_code": 1,
+      "status": "FAIL",
+      "report_present": true,
+      "elapsed_s": 53.14,
+      "reported_verdict": null,
+      "diagnostic_categories": []
+    },
+    {
+      "battery": "ttft",
+      "exit_code": 1,
+      "status": "FAIL",
+      "report_present": true,
+      "elapsed_s": 128.66,
+      "reported_verdict": null,
+      "diagnostic_categories": [
+        "403"
+      ]
+    },
+    {
+      "battery": "breakdown",
+      "exit_code": 0,
+      "status": "PASS",
+      "report_present": true,
+      "elapsed_s": 107.77,
+      "reported_verdict": null,
+      "diagnostic_categories": []
+    },
+    {
+      "battery": "injection",
+      "exit_code": 1,
+      "status": "FAIL",
+      "report_present": false,
+      "elapsed_s": 1.27,
+      "diagnostic_categories": [
+        "401"
+      ]
+    }
+  ],
+  "retired_job_ids": []
+}

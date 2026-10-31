@@ -7,8 +7,10 @@ fixed verdicts, numeric/boolean observations and bounded diagnostic categories.
 from __future__ import annotations
 
 from datetime import datetime, timezone
+import ast
 import json
 import os
+import re
 import contextlib
 from pathlib import Path
 import signal
@@ -37,7 +39,46 @@ REPORT_KEYS = frozenset({
     'matrix', 'cutover_gates', 'ttft', 'latency_ms', 'elapsed_ms', 'exit_code',
     'classical_batteries', 'skipped', 'unified_live', 'unified_shadow', 'n',
     'count', 'p50_ms', 'p95_ms', 'min_ms', 'max_ms', 'error', 'fatal',
+    'health', 'http', 'status_code', 'turn', 'id', 'case', 'round', 'failures',
+    'shadow_audit_missing', 'live_served', 'shadow_outcome', 'outcome_kind',
+    'action', 'audit_action', 'audit_outcome', 'instrumentation_present',
+    'shadow_latency_ms', 'first_token_ms', 'first_token_proxy_ms',
+    'model_ttft_ms', 'functional_n', 'database_latency_ms', 'ai_disabled',
+    'unified_turn_shadow_enabled', 'unified_turn_live_enabled',
+    'unified_turn_qa_hooks_enabled', 'unified_turn_embedding_tool_retrieval',
+    'unified_turn_embed_min_catalog_tools', 'convergence_p1_single_selection_v1',
 })
+SAFE_LABELS = frozenset({
+    'unified_turn.live.completed', 'unified_turn.shadow.completed',
+    'unified_turn.live.fallthrough', 'conversational_reply', 'knowledge_boundary',
+    'clarifying_question', 'confirmation_request', 'connector_tool_proposal',
+    'missing_shadow_audit', 'missing_unified_turn_audit', 'classical_catalog_leak',
+    'classical_cheer', 'model_cheer', 'model_catalog_leak', 'spelling_correction_narration',
+    'empty_imperfect_reply', 'intent_not_resolved', 'shadow_message_catalog_leak',
+    'shadow_fabricated_run_count', 'shadow_conversational_fabrication',
+    'classical_fabricated_run_count', 'http', 'forbidden_pattern',
+    'classical_fabrication', 'assistant_echo_fragment', 'typo_echo', 'shadow_outcome',
+})
+
+
+def source_case_labels():
+    """Only fixed identifiers from this checked-out corpus may leave the runner."""
+    labels = set()
+    for _, script, _ in BATTERIES:
+        path = ROOT / 'scripts' / script
+        if not path.is_file():
+            continue
+        for node in ast.walk(ast.parse(path.read_text())):
+            if isinstance(node, ast.Dict):
+                for key, value in zip(node.keys, node.values):
+                    if (isinstance(key, ast.Constant) and key.value == 'id'
+                            and isinstance(value, ast.Constant) and isinstance(value.value, str)
+                            and re.fullmatch(r'[a-z][a-z0-9_]{0,80}', value.value)):
+                        labels.add(value.value)
+    return frozenset(labels)
+
+
+CASE_LABELS = source_case_labels()
 
 
 def validate_environment(env):
@@ -65,7 +106,12 @@ def portable(value, depth=0):
     if value is None or type(value) in (bool, int, float):
         return value
     if isinstance(value, str):
-        return value if value in VERDICTS else '[omitted]'
+        if value in VERDICTS | SAFE_LABELS | CASE_LABELS:
+            return value
+        # Fixed failure category only; never export a regex, prompt fragment,
+        # catalog payload, arbitrary exception or provider body after the colon.
+        category = value.split(':', 1)[0]
+        return category if category in SAFE_LABELS else '[omitted]'
     if isinstance(value, list):
         return [portable(v, depth + 1) for v in value[:500]]
     if isinstance(value, dict):
@@ -135,6 +181,23 @@ def run_batteries(env, output, raw, report):
             'budget', 'timeout', 'assertion', 'rate limit', '401', '403', '429', 'exception')
             if word in diagnostic]
         report['batteries'].append(row)
+        server_log = raw / 'server.log'
+        if server_log.is_file():
+            with server_log.open('rb') as source_log:
+                source_log.seek(0, os.SEEK_END)
+                source_log.seek(max(0, source_log.tell() - 1000000))
+                tail = source_log.read(1000000).decode(errors='replace')
+            report['server_diagnostic_tail_counts'] = {
+                label: sum(phrase in line for line in tail.splitlines())
+                for label, phrase in {
+                    'audit_insert_failed': 'audit_events insert failed',
+                    'unified_audit_skipped': 'unified_turn shadow audit skipped',
+                    'audit_actor_invalid': 'reason=non_uuid_actor_or_resource',
+                    'live_fallthrough': 'unified_turn.live.fallthrough',
+                    'inference_unauthorized': '401 Unauthorized',
+                    'request_forbidden': '403 Forbidden',
+                }.items()
+            }
         (output / 'manifest.json').write_text(json.dumps(report, indent=2))
         print('ACCEPTANCE_STANDING', label, row['status'], flush=True)
 

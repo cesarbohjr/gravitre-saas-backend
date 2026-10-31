@@ -32,6 +32,11 @@ on:
       - 'backend/tests/services/test_gravitre_voice.py'
       - 'scripts/voice_standing_acceptance.py'
       - 'tests/test_voice_standing_acceptance.py'
+      - 'scripts/live_battery_checkpoint.py'
+      - 'scripts/verify-unified-turn-phase2-live.py'
+      - 'scripts/verify-unified-turn-persona-drift-live.py'
+      - 'scripts/verify-unified-turn-prompt-injection-live.py'
+      - 'tests/test_prompt_injection_smoke_auth.py'
       - 'scripts/verify_elevenlabs_account.py'
       - 'tests/test_elevenlabs_account_probe.py'
   workflow_dispatch:
@@ -73,7 +78,9 @@ jobs:
       - name: Install production dependencies without retaining wheel cache
         run: python -m pip install -r backend/requirements-dev.txt
       - name: Regress acceptance targeting, report privacy and full-battery retention
-        run: python -m unittest discover -s tests -p test_voice_standing_acceptance.py
+        run: |
+          python -m unittest discover -s tests -p test_voice_standing_acceptance.py
+          python -m unittest discover -s tests -p test_prompt_injection_smoke_auth.py
       - name: Wait for predecessor acceptance runs before touching the shared smoke actor
         run: python scripts/wait_voice_acceptance_predecessors.py
         env:

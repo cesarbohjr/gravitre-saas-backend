@@ -23,7 +23,6 @@ from pathlib import Path
 from typing import Any
 
 import httpx
-import jwt
 from dotenv import dotenv_values
 from supabase import create_client
 
@@ -33,6 +32,7 @@ sys.path.insert(0, str(BACKEND))
 sys.path.insert(0, str(ROOT / "scripts"))
 
 from isolated_conversation_org import resolve_isolated_conversation_actor, smoke_http_headers  # noqa: E402
+from mint_smoke_org_session import mint_token  # noqa: E402
 from app.services.ai_guardrails import detect_prompt_injection  # noqa: E402
 
 BASE = os.environ.get("LIVE_API_BASE", "https://api.gravitre.app").rstrip("/")
@@ -178,20 +178,8 @@ async def main() -> int:
     env = load_env()
     sb = create_client(env["SUPABASE_URL"], env["SUPABASE_SERVICE_ROLE_KEY"])
     org_id, actor_user_id, actor_email = resolve_isolated_conversation_actor(env, sb)
-    tok = jwt.encode(
-        {
-            "sub": actor_email,
-            "email": actor_email,
-            "user_id": actor_user_id,
-            "role": "authenticated",
-            "aud": "authenticated",
-        },
-        env["SUPABASE_JWT_SECRET"],
-        algorithm="HS256",
-    )
     headers = {
         **smoke_http_headers(),
-        "Authorization": f"Bearer {tok}",
         "X-Org-Id": org_id,
         "X-Environment": "production",
         "Accept": "text/event-stream",
@@ -220,6 +208,13 @@ async def main() -> int:
             return 2
 
         for case in CASES:
+            # Use the same UUID-subject, issuer-bound short-lived session as
+            # the acceptance preflight. Refresh between cases, never by
+            # extending the session's lifetime or weakening Auth validation.
+            headers["Authorization"] = "Bearer " + mint_token(
+                supabase_url=env["SUPABASE_URL"], secret=env["SUPABASE_JWT_SECRET"],
+                user_id=actor_user_id, email=actor_email,
+            )
             cr = await client.post(
                 f"{BASE}/api/conversations",
                 headers={k: v for k, v in headers.items() if k != "Accept"},

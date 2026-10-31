@@ -120,3 +120,38 @@ Focused backend regression: **1,700 passed** in 76.42 seconds; the additional
 connection-index reset regression also passes (15 bridge tests total). No
 provider switch, second recognizer, new inference path or widened deadline was
 introduced.
+
+## Standing results and harness follow-up
+
+The standing job on `5e766f3` finished **FAIL**. Phase 2 exceeded its unchanged
+1,200-second controller budget and persona exceeded 600 seconds; neither wrote
+a final report. Pending-reply passed, mapper and task-TTFT failed, breakdown
+completed diagnostically, and injection exited with HTTP 401 before a report.
+[Exact manifest](pr587-standing-5e766f3-manifest.json), from artifact
+`13049879841`, ZIP SHA-256
+`99d4dd5492106919f93995e164b0652b4433cb34f60d73e453d4dcaa6fc0b623`.
+The earlier sanitized reports omitted too many field names to establish the
+missing-audit/mapper root cause. Those failures are not regraded.
+
+The `b82b528` paired job did not run its matched trials: its 1,200-second
+predecessor wait expired. Unit-test fixture PASS lines earlier in its log are
+not live measurements. Its provider and governed-action jobs passed; full CI
+also passed. Cancellation timing on this candidate remains **NOT RUN**.
+
+Inspection found injection minted a JWT with the actor's email as `sub` rather
+than its UUID. It now uses the existing issuer-bound 600-second smoke-token
+minter, refreshed between cases. A regression intercepts the real battery's
+first protected request and verifies its signature, UUID subject, issuer,
+audience and expiry with all outbound sockets forbidden.
+
+Phase 2 and persona now atomically checkpoint each completed case with verdict
+RUNNING. Timeouts remain failures and retain incomplete evidence. The redundant
+eight-second sleep before Phase 2's existing bounded audit poll is removed;
+the controller and request deadlines, prompts, repetitions and assertions are
+unchanged. Portable artifacts retain fixed field names, source-defined case
+identifiers, closed failure categories and numeric health/audit observations.
+Raw prompts, replies, provider bodies, arbitrary keys and credentials remain
+omitted. Server diagnostics export fixed category counts from a bounded log
+tail. Seven controller/privacy/checkpoint tests and the actual-request JWT
+regression pass locally. Live confirmation and diagnosis of the remaining
+standing failures are still required. No workflow was cancelled.

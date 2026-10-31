@@ -9,9 +9,51 @@ from unittest.mock import patch
 spec = importlib.util.spec_from_file_location('standing', Path(__file__).resolve().parents[1] / 'scripts/voice_standing_acceptance.py')
 standing = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(standing)
+checkpoint_spec = importlib.util.spec_from_file_location('checkpoint', Path(__file__).resolve().parents[1] / 'scripts/live_battery_checkpoint.py')
+checkpoint_module = importlib.util.module_from_spec(checkpoint_spec)
+checkpoint_spec.loader.exec_module(checkpoint_module)
 
 
 class StandingAcceptanceTests(unittest.TestCase):
+    def test_timeout_retains_incomplete_cases_and_safe_audit_diagnostics(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            output, raw = root / 'output', root / 'raw'
+            output.mkdir(); raw.mkdir(); (root / 'docs/delivery').mkdir(parents=True)
+            report = {'batteries': []}
+            original = {'health': {'unified_turn_live_enabled': True},
+                'cases': [{'case': 'reveal_system_prompt', 'ok': False,
+                    'shadow_audit_missing': True, 'failures': ['missing_shadow_audit',
+                    'forbidden_pattern:private-token-never-export'], 'http': 200}]}
+            def child(command, *, env, log, timeout):
+                checkpoint_module.checkpoint(root / 'docs/delivery/result.json', original)
+                log.write_text('bounded process timed out')
+                (raw / 'server.log').write_text('audit_events insert failed: private-token-never-export\n')
+                return 124
+            with patch.object(standing, 'ROOT', root), patch.object(
+                    standing, 'BATTERIES', (('fixture', 'fixture.py', 'result.json'),)), patch.object(
+                    standing, 'run_bounded', side_effect=child):
+                standing.run_batteries({}, output, raw, report)
+            row = report['batteries'][0]
+            self.assertEqual((row['status'], row['exit_code'], row['report_present']), ('FAIL', 124, True))
+            saved = json.loads((output / 'result.json').read_text())
+            self.assertEqual(saved['verdict'], 'RUNNING')
+            self.assertTrue(saved['cases'][0]['shadow_audit_missing'])
+            self.assertEqual(saved['cases'][0]['http'], 200)
+            self.assertNotIn('private-token', json.dumps(saved) + json.dumps(report))
+            self.assertEqual(report['server_diagnostic_tail_counts']['audit_insert_failed'], 1)
+            self.assertNotIn('verdict', original)
+
+    def test_checkpoint_failure_preserves_last_complete_observation(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / 'result.json'
+            checkpoint_module.checkpoint(path, {'cases': [{'ok': False}]})
+            previous = path.read_bytes()
+            with patch.object(Path, 'replace', side_effect=OSError('interrupted')):
+                with self.assertRaises(OSError):
+                    checkpoint_module.checkpoint(path, {'cases': [{'ok': True}]})
+            self.assertEqual(path.read_bytes(), previous)
+
     def test_process_group_cleanup_handles_exit_and_timeout(self):
         with tempfile.TemporaryDirectory() as directory:
             log = Path(directory) / 'child.log'
