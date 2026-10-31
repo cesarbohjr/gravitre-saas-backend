@@ -285,6 +285,31 @@ async def browser_page_diagnostic(browser):
         print(json.dumps({'browser_page_diagnostic':{'unavailable':True}}),file=sys.stderr,flush=True)
 
 
+def checkpoint_destination(current_url, requested, allowed_hosts):
+    """Choose an approved-host *candidate*, never execute its navigation.
+
+    Before the first browser navigation the observed URL can be about:blank.
+    A single proposed HTTPS navigation may be checkpointed for later fresh
+    authorization, but no checkpoint grants authority to navigate or write.
+    """
+    from urllib.parse import urlsplit
+    if not isinstance(requested,dict):
+        raise PermissionError('Invalid browser checkpoint action')
+    candidate=current_url
+    if 'navigate' in requested:
+        if set(requested)!={'navigate'} or not isinstance(requested['navigate'],dict):
+            raise PermissionError('Checkpoint requires one bounded navigation intent')
+        candidate=requested['navigate'].get('url')
+    if not isinstance(candidate,str):
+        raise PermissionError('Checkpoint requires a reviewed HTTPS destination')
+    parsed=urlsplit(candidate)
+    if (parsed.scheme!='https' or parsed.hostname not in allowed_hosts
+            or parsed.username or parsed.password or parsed.port not in (None,443)
+            or parsed.fragment):
+        raise PermissionError('Checkpoint destination outside reviewed HTTPS scope')
+    return candidate
+
+
 async def browse(config):
     from browser_use import Agent,Browser,ChatOpenAI,Tools
     from browser_use.browser.profile import BrowserProfile
@@ -307,9 +332,13 @@ async def browse(config):
             # Persist only a pre-effect marker. This is not a resumable browser
             # session; a new adapter must independently verify page state.
             if self.sequence==0:
+                # A fresh tab may still be about:blank. Store only the
+                # validated *proposed* navigation destination; the recovery
+                # worker must obtain a new approval before visiting it.
+                destination=checkpoint_destination(before.url,requested,config['allowed_hosts'])
                 await asyncio.to_thread(gateway,config,'/checkpoint',{
                     'sequence':0,'checkpoint':{'before_effect':True,
-                        'url':before.url,'page_fingerprint':evidence['page_fingerprint']}})
+                        'url':destination,'page_fingerprint':evidence['page_fingerprint']}})
             details={'actions':requested,'url':before.url,**evidence}
             sequence=self.sequence
             deadline=time.monotonic()+config['max_seconds']
