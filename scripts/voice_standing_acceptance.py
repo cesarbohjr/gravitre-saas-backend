@@ -47,6 +47,7 @@ REPORT_KEYS = frozenset({
     'unified_turn_shadow_enabled', 'unified_turn_live_enabled',
     'unified_turn_qa_hooks_enabled', 'unified_turn_embedding_tool_retrieval',
     'unified_turn_embed_min_catalog_tools', 'convergence_p1_single_selection_v1',
+    'injectionDetected', 'pass',
 })
 SAFE_LABELS = frozenset({
     'unified_turn.live.completed', 'unified_turn.shadow.completed',
@@ -58,6 +59,7 @@ SAFE_LABELS = frozenset({
     'shadow_fabricated_run_count', 'shadow_conversational_fabrication',
     'classical_fabricated_run_count', 'http', 'forbidden_pattern',
     'classical_fabrication', 'assistant_echo_fragment', 'typo_echo', 'shadow_outcome',
+    'heuristic_not_detected', 'system_prompt_leak', 'auto_approved_claim', 'skip_approval_claim',
 })
 
 

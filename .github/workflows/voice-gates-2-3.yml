@@ -29,6 +29,8 @@ on:
       - 'backend/tests/core/test_supabase_credential_whitespace.py'
       - 'backend/tests/scripts/test_voice_provider_roundtrip.py'
       - 'backend/app/services/gravitre_voice.py'
+      - 'backend/app/services/unified_turn_reasoning_service.py'
+      - 'backend/tests/services/test_unified_turn_conversational_model.py'
       - 'backend/tests/services/test_gravitre_voice.py'
       - 'scripts/voice_standing_acceptance.py'
       - 'tests/test_voice_standing_acceptance.py'
@@ -353,6 +355,8 @@ jobs:
   governed-actions:
     runs-on: ubuntu-latest
     timeout-minutes: 25
+    env:
+      PIP_NO_CACHE_DIR: '1'
     steps:
       - uses: actions/checkout@v4
         with:
@@ -369,6 +373,9 @@ jobs:
         run: >-
           python -m pytest -q -p tests.offline_network_guard
           tests/scripts/test_voice_provider_roundtrip.py
+          tests/services/test_unified_turn_conversational_model.py
+          tests/services/test_provider_tool_router.py
+          tests/services/test_ai_guardrails.py::TestPromptHardening
           tests/services/pipecat_voice/test_flux_partial_bridge.py
           tests/operators/test_agent_jobs_turn_cancellation.py
           tests/services/pipecat_voice/test_livekit_write_fence.py

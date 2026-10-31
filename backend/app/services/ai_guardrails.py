@@ -160,7 +160,8 @@ _INJECTION_PATTERNS: list[tuple[str, re.Pattern[str]]] = [
     (
         "reveal_system_prompt",
         re.compile(
-            r"\b(?:reveal|show|print|dump|repeat)\s+(?:your\s+)?(?:system|hidden|secret)\s+"
+            r"\b(?:reveal|show|print|dump|repeat)\s+(?:your\s+)?"
+            r"(?:system|hidden(?:\s+system)?|secret(?:\s+system)?)\s+"
             r"(?:prompt|instructions|rules)\b",
             re.I,
         ),

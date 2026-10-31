@@ -314,10 +314,16 @@ class Capture:
                     await asyncio.sleep(.01)
         finally:
             if cancellation_observer is not None:
-                # Yield once for a set waiter before cleanup. The observation
-                # is conservative: scheduling can make it later, never earlier
-                # than token cancellation. Teardown must not create a PASS.
-                await asyncio.sleep(0)
+                # Thread-safe token notification and the observer can need
+                # separate loop turns. One sleep(0) could cancel the observer
+                # before it saw an already-cancelled token on a fast control.
+                # Wait only for that existing notification; teardown may not
+                # cancel the token or manufacture a timing observation.
+                if token.cancelled:
+                    try:
+                        await asyncio.wait_for(asyncio.shield(cancellation_observer), .1)
+                    except asyncio.TimeoutError:
+                        pass
                 cancellation_observer.cancel()
                 await asyncio.gather(cancellation_observer, return_exceptions=True)
             if self.probe is not None:

@@ -529,6 +529,19 @@ def _resolve_model(
 ) -> str:
     from app.config import MODEL_TIERS
 
+    # Use the same configured provider family as the canonical router. The
+    # acceptance environment intentionally has Anthropic only; hardcoding the
+    # OpenAI column made real turns return openai_not_configured despite the
+    # provider preflight succeeding. This is selection, not silent failover.
+    provider = str(getattr(settings, "preferred_ai_provider", "openai") or "openai").strip().lower()
+    if provider not in {"openai", "anthropic", "gemini"}:
+        provider = "openai"
+    default_model = {
+        "openai": "gpt-5.5",
+        "anthropic": "claude-sonnet-4-6",
+        "gemini": "gemini-2.5-pro",
+    }[provider]
+
     # Conversational depth may use a latency-optimized model only when explicitly
     # configured. Do not silently pin production conversation quality to a nano
     # model: absent an override, use the same standard model family as text.
@@ -537,19 +550,19 @@ def _resolve_model(
         if pinned:
             return pinned
         tier = MODEL_TIERS.get("medium") or MODEL_TIERS.get("high") or {}
-        return str(tier.get("openai") or "gpt-5.5")
+        return str(tier.get(provider) or default_model)
 
     if task_shaped:
         tier_name = str(getattr(settings, "unified_turn_task_model_tier", "") or "").strip().lower()
         if tier_name:
             tier = MODEL_TIERS.get(tier_name) or {}
-            model = str(tier.get("openai") or "").strip()
+            model = str(tier.get(provider) or "").strip()
             if model:
                 return model
     # Unified conversational/task reasoning must never fall through to a legacy
     # mini model merely because a non-existent tier key was requested.
     tier = MODEL_TIERS.get("medium") or MODEL_TIERS.get("high") or MODEL_TIERS.get("low") or {}
-    return str(tier.get("openai") or "gpt-5.5")
+    return str(tier.get(provider) or default_model)
 
 
 def _resolve_unified_turn_model(

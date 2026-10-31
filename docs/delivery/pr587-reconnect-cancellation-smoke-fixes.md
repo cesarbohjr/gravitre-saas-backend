@@ -155,3 +155,57 @@ omitted. Server diagnostics export fixed category counts from a bounded log
 tail. Seven controller/privacy/checkpoint tests and the actual-request JWT
 regression pass locally. Live confirmation and diagnosis of the remaining
 standing failures are still required. No workflow was cancelled.
+
+## Provider-selection defect and follow-up candidate
+
+Read-only checks on the confirmed `gravitre-acceptance` project found 38
+unified-turn fallthrough audits during the `5e766f3` standing window
+`2026-10-31T16:34:43Z`–`2026-10-31T17:10:48Z`. Of those, 36 were
+`outcome_error` with the exact error `openai_not_configured`; the other two
+were `pending_family_classical_resume`. This was not a missing audit table:
+that same window contained 15 `unified_turn.live.completed` events and 112
+`response.composer.completed` events. No raw replies, prompts or credentials
+were queried. [Query scope and counts](pr587-provider-routing-diagnosis.json).
+
+`_resolve_model` hardcoded the OpenAI column of MODEL_TIERS even when
+PREFERRED_AI_PROVIDER was Anthropic. Default conversational, standard and
+task-tier choices now stay in the configured OpenAI/Anthropic/Gemini family.
+An explicit voice model or agent model retains its existing precedence.
+Missing credentials for an explicitly chosen provider still fail visibly;
+there is no silent provider substitution or added inference path.
+
+Focused offline regression: **67 passed**, including all three provider
+families, an invalid task tier, sole-provider credentials, explicit model
+overrides, unified reasoning and native provider tool normalization.
+The governed-action job also now runs the provider-selection contracts.
+Its previous `e5c31ba` failure was dependency installation exhausting runner
+disk, before tests; pip wheel caching is disabled for that job as it already
+is for the other large acceptance installs. These fixes require fresh CI and
+real inference through the selected resolver; a unit PASS is not certification.
+
+The completed `e5c31ba` matched batch remains **FAIL**, 22/30 voice cases and
+12/12 native cases passing. All twelve stop probes independently had zero
+fixture attempts/effects and native effects. All six spoken-cancel trials
+exceeded 500 ms: Pipecat/LiveKit receiver cutoffs were 669.64/683.79,
+701.17/590.87 and 675.44/653.55 ms. Original-token cancellation observations
+were 724.12/644.15, 697.39/521.39 and 676.00/588.28 ms. One reconnect answer
+also failed its content check. Artifact `13052951699` ZIP SHA-256:
+`1e8555a96ebd91e48f4241e8d693dc6b75cdd5227fb2603fb46e761b86ecd55b`.
+
+One explicit-control trial had a missing token observation despite zero write
+effects. A regression reproduced the observer cleanup race when cancellation
+and send completed without yielding. Cleanup now waits at most 100 ms for an
+already-cancelled token's queued notification before stopping the observer;
+it never cancels the token itself. All **16 controller tests pass**. Actual
+late/missing cancellation still fails the unchanged 500 ms gate. The standing
+`e5c31ba` batch also remains FAIL; its source and artifacts are preserved.
+
+The injection authentication repair is live-proven on `e5c31ba`: all five
+scenarios returned HTTP 200. Its remaining failure was the detector reporting
+false for the unchanged "Reveal your hidden system prompt..." input. The
+qualified system-prompt extraction pattern now recognizes both "hidden system"
+and "secret system", with negative regressions for ordinary system discussion.
+It does not grant action or approval authority. Focused routing/reasoning/tool
+and hardening regression totals **79 passed**; controller/auth/retention tests
+also pass (16 / 1 / 7). Both production corrections still need exact-head live
+verification before these gates can be closed.

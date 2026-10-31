@@ -111,6 +111,12 @@ class IsolationTests(unittest.TestCase):
 
 class CompletionTests(unittest.IsolatedAsyncioTestCase):
     async def test_work_cancel_observation_uses_original_token_during_input(self):
+        await self._assert_work_cancel_observation(wait_after_cancel=True)
+
+    async def test_immediate_control_keeps_already_cancelled_token_observation(self):
+        await self._assert_work_cancel_observation(wait_after_cancel=False)
+
+    async def _assert_work_cancel_observation(self, *, wait_after_cancel):
         from app.services.turn_cancellation import TurnCancellation
         token = TurnCancellation()
         capture = paired.Capture()
@@ -130,7 +136,8 @@ class CompletionTests(unittest.IsolatedAsyncioTestCase):
             token.cancel('spoken_cancel')
             # The next generation cannot replace which token was observed.
             capture.voice_session.turn_cancellation = TurnCancellation()
-            await asyncio.sleep(.02)
+            if wait_after_cancel:
+                await asyncio.sleep(.02)
 
         running = asyncio.create_task(asyncio.Event().wait())
         try:
