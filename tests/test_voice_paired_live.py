@@ -5,6 +5,7 @@ import asyncio
 import time
 import hashlib
 import tempfile
+import threading
 from types import SimpleNamespace
 from unittest.mock import patch
 
@@ -19,6 +20,7 @@ class IsolationTests(unittest.TestCase):
             with self.subTest(elapsed=elapsed):
                 capture = paired.Capture()
                 capture.started, capture.interrupt_at, capture.interrupted_reply = 0, 10, 7
+                capture.original_token_cancelled_at = 10.1
                 if elapsed is not None:
                     capture.speech_by_reply[7] = 10 + elapsed
                 result = paired.interruption_cutoff_observations(capture, bytes(64000))
@@ -27,6 +29,17 @@ class IsolationTests(unittest.TestCase):
                 self.assertEqual(result['cutoff_limit_ms'], 500)
                 if elapsed is not None:
                     self.assertLess(result['received_cutoff_from_cancel_input_end_ms'], 0)
+
+    def test_audio_gap_cannot_hide_late_or_missing_work_cancellation(self):
+        for observed, failed in ((10.4, False), (10.5, False), (10.51, True), (None, True)):
+            with self.subTest(observed=observed):
+                capture = paired.Capture()
+                capture.started, capture.interrupt_at, capture.interrupted_reply = 0, 10, 7
+                capture.speech_by_reply[7] = 10.1
+                capture.original_token_cancelled_at = observed
+                result = paired.interruption_cutoff_observations(capture, bytes(64000))
+                self.assertEqual(result.get('status') == 'FAIL', failed)
+                self.assertEqual(result['logical_cancel_timing'], 'event_loop_observation_upper_bound')
 
     def test_sdk_error_diagnostics_retain_no_provider_body(self):
         from loguru import logger
@@ -97,6 +110,40 @@ class IsolationTests(unittest.TestCase):
 
 
 class CompletionTests(unittest.IsolatedAsyncioTestCase):
+    async def test_work_cancel_observation_uses_original_token_during_input(self):
+        from app.services.turn_cancellation import TurnCancellation
+        token = TurnCancellation()
+        capture = paired.Capture()
+        capture.first = time.monotonic()
+        capture.voice_session = SimpleNamespace(turn_cancellation=token)
+        started, release = threading.Event(), threading.Event()
+
+        def probe_run(original):
+            self.assertIs(original, token)
+            started.set()
+            if not release.wait(5):
+                raise TimeoutError('test probe release')
+            return {}
+
+        capture.probe = SimpleNamespace(started=started, release=release, run=probe_run)
+        async def send():
+            token.cancel('spoken_cancel')
+            # The next generation cannot replace which token was observed.
+            capture.voice_session.turn_cancellation = TurnCancellation()
+            await asyncio.sleep(.02)
+
+        running = asyncio.create_task(asyncio.Event().wait())
+        try:
+            await asyncio.wait_for(capture.interrupt(send, running), 2)
+            self.assertIsNotNone(capture.original_token_cancelled_at)
+            self.assertGreaterEqual(capture.original_token_cancelled_at, capture.interrupt_at)
+            self.assertLess(capture.original_token_cancelled_at - capture.interrupt_at, .5)
+            self.assertFalse(capture.voice_session.turn_cancellation.cancelled)
+        finally:
+            release.set()
+            running.cancel()
+            await asyncio.gather(running, return_exceptions=True)
+
     async def test_backchannel_snapshot_precedes_disconnect_and_preserves_real_cancellation(self):
         from app.services.turn_cancellation import TurnCancellation
         for cancelled_before_completion in (False, True):

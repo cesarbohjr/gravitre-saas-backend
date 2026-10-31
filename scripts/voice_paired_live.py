@@ -45,6 +45,13 @@ def interruption_cutoff_observations(capture, cancel_pcm=None):
             cutoff - len(cancel_pcm) / 32 if cutoff is not None else None)
     if cutoff is None or cutoff > 500:
         result.update(status="FAIL", error_type="OriginalReplyCutoffExceeded")
+    cancelled_at = capture.original_token_cancelled_at
+    logical = max(0, (cancelled_at - capture.interrupt_at) * 1000) if cancelled_at is not None else None
+    result['original_token_cancel_observed_ms'] = logical
+    result['logical_cancel_timing'] = 'event_loop_observation_upper_bound'
+    if logical is None or logical > 500:
+        # A natural TTS silence is not proof that the original work stopped.
+        result.update(status="FAIL", logical_cancel_error="OriginalWorkCancellationDeadlineExceeded")
     return result
 
 
@@ -193,6 +200,7 @@ class Capture:
         self.speech_by_reply = {}
         self.interrupt_at = None
         self.interrupted_reply = None
+        self.original_token_cancelled_at = None
         self.errors = []
         self.timeout_tasks = []
         self.cancel_recognized = False
@@ -288,6 +296,15 @@ class Capture:
                     raise TimeoutError('fixture worker startup')
                 await asyncio.sleep(.005)
         self.interrupted_reply = self.reply_id
+        cancellation_observer = None
+        if token is not None:
+            waiter = token.waiter()
+
+            async def observe_cancellation():
+                await waiter.wait()
+                self.original_token_cancelled_at = time.monotonic()
+
+            cancellation_observer = asyncio.create_task(observe_cancellation())
         self.interrupt_at = time.monotonic()
         try:
             await send()
@@ -296,6 +313,13 @@ class Capture:
                 while not token.cancelled and time.monotonic() < deadline:
                     await asyncio.sleep(.01)
         finally:
+            if cancellation_observer is not None:
+                # Yield once for a set waiter before cleanup. The observation
+                # is conservative: scheduling can make it later, never earlier
+                # than token cancellation. Teardown must not create a PASS.
+                await asyncio.sleep(0)
+                cancellation_observer.cancel()
+                await asyncio.gather(cancellation_observer, return_exceptions=True)
             if self.probe is not None:
                 self.probe.release.set()
             if probe_task is not None:

@@ -64,7 +64,8 @@ The artifact ZIP digest is
 
 Trace alignment places the first Flux partial around 780–980 ms after the
 cancellation input starts. Local intent classification follows within roughly
-1–5 ms. The unchanged recording has audible samples beginning around 18–28 ms;
+1–9 ms. The unchanged recording exceeds PCM amplitude thresholds of 100–1000
+beginning around 18–28 ms;
 leading recording silence does not explain this delay. Smaller output queues
 did not resolve provider recognition latency. A natural silence gap can also
 yield a short receiver cutoff despite late recognition; receiver silence alone
@@ -84,3 +85,38 @@ or provider-body retention. It has no tenant, TTS, canonical final-transcript or
 runtime selection authority. Four local regression tests pass. A faster model
 must first be measured; this diagnostic alone cannot close the 500 ms gate or
 justify interrupting backchannels.
+
+## Measured diagnosis and next candidate
+
+[Provider-only comparison 41220909176](https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/41220909176)
+completed all twelve observations on `bb302a6c02ce48464b13161ba44f4c193589bc53`.
+[Unabridged sanitized numeric results](pr587-stt-control-latency-bb302a6.json)
+match the downloaded artifact; ZIP SHA-256 is
+`cc619c76ffe91d9aaf7ce046c4ef53a95b17092a5e6d8f79e3ef319b93843c38`.
+Flux's cancellation word arrived at 492.50 / 494.08 / 492.57 ms, before native
+StartOfTurn at 731.93 / 734.25 / 732.79 ms. The existing bridge discarded these
+pre-start partials. Nova-3's word arrived at 1040.55 / 1040.16 / 1038.01 ms;
+switching to Nova-3 is not supported by this experiment. Neither model reported
+a cancellation word in any backchannel trial. Maximum sender lateness was
+under 2 ms. These observations do not establish a full runtime 500 ms PASS.
+
+The next candidate therefore retains Flux and forwards an indexed, explicit
+task-cancel Update before native StartOfTurn to the same existing turn
+classifier and echo/origin protections. Bare "stop" waits for its continuation,
+so "stop talking, keep working" does not become task cancellation. Approvals,
+backchannels, ambiguous text, inactive sessions and updates from committed or
+unknown provider turns cannot take this early path. A later native StartOfTurn
+adopts that same proposal rather than starting another turn. Only the SDK's
+EndOfTurn emits final transcription; connection-local indices reset on reconnect.
+
+The paired harness also independently observes the original token's cancellation
+event during input. Its event-loop timestamp is a conservative upper bound and
+must meet the same 500 ms deadline. Silence or later teardown cannot substitute
+for cancelling the original work. Fifteen controller tests pass, including
+late/missing cancellation despite an early audio gap and generation replacement.
+Fresh live certification is required; the measured 493 ms recognition leaves
+little margin for transport and playout, so this remains an unproven candidate.
+Focused backend regression: **1,700 passed** in 76.42 seconds; the additional
+connection-index reset regression also passes (15 bridge tests total). No
+provider switch, second recognizer, new inference path or widened deadline was
+introduced.

@@ -9,6 +9,7 @@ from unittest.mock import AsyncMock
 import pytest
 from pipecat.frames.frames import (
     BotStartedSpeakingFrame, InterimTranscriptionFrame, TranscriptionFrame,
+    ProposedUserStartedSpeakingFrame,
 )
 
 from app.services.pipecat_voice.flux_stt import InterimAwareFluxSTTService
@@ -100,6 +101,84 @@ async def test_partial_approval_never_becomes_a_final_transcript():
         await service._handle_turn_info({'event': 'EndOfTurn', 'transcript': 'yes wait hold on'})
         finals = [f for f in emitted if isinstance(f, TranscriptionFrame)]
         assert len(finals) == 1 and finals[0].text == 'yes wait hold on'
+    finally:
+        await strategy.cleanup()
+        await service.cleanup()
+
+
+@pytest.mark.asyncio
+async def test_indexed_cancel_update_precedes_native_start_without_duplicate_turn():
+    service, strategy, recorder, emitted = await connected_strategy()
+    try:
+        await service._handle_turn_info(dict(event='Update', turn_index=0, transcript='can'))
+        assert not recorder.turn_started_calls and not emitted
+        await service._handle_turn_info(dict(event='Update', turn_index=0, transcript='cancel'))
+        assert len(recorder.turn_started_calls) == 1
+        assert recorder.turn_started_calls[0].enable_interruptions is True
+        assert not service._user_is_speaking  # native SDK state is still native
+        await service._handle_turn_info(dict(event='Update', turn_index=0, transcript='cancel it'))
+        await service._handle_turn_info(dict(event='StartOfTurn', turn_index=0, transcript='cancel it'))
+        assert service._user_is_speaking
+        assert service.broadcast_frame.await_count == 1
+        assert len(recorder.turn_started_calls) == 1
+        assert all(isinstance(f, InterimTranscriptionFrame) for f in emitted)
+        await service._handle_turn_info(dict(event='EndOfTurn', turn_index=0, transcript='Cancel it.'))
+        assert len([f for f in emitted if isinstance(f, TranscriptionFrame)]) == 1
+        count = len(emitted)
+        for index in (0, None, -1, True):
+            await service._handle_turn_info(dict(event='Update', turn_index=index, transcript='cancel'))
+        assert len(emitted) == count  # stale/ambiguous generation cannot rearm
+        await service._handle_turn_info(dict(event='Update', turn_index=1, transcript='cancel'))
+        assert len(emitted) > count  # fresh provider turn can still cancel
+    finally:
+        await strategy.cleanup()
+        await service.cleanup()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize('text', ['yes', 'uh-huh', 'can', 'stop', 'stop talking keep working', '', 'do not cancel'])
+async def test_pre_start_updates_do_not_promote_approval_backchannel_or_speech_only_stop(text):
+    service, strategy, recorder, emitted = await connected_strategy()
+    try:
+        await service._handle_turn_info(dict(event='Update', turn_index=0, transcript=text))
+        assert not emitted and not recorder.turn_started_calls
+        service.broadcast_frame.assert_not_awaited()
+    finally:
+        await strategy.cleanup()
+        await service.cleanup()
+
+
+@pytest.mark.asyncio
+async def test_early_cancel_disabled_outside_active_work_or_speech():
+    service, strategy, recorder, emitted = await connected_strategy()
+    service.partial_control_enabled = lambda: False
+    try:
+        await service._handle_turn_info(dict(event='Update', turn_index=0, transcript='cancel'))
+        assert not emitted and not recorder.turn_started_calls
+        service.broadcast_frame.assert_not_awaited()
+    finally:
+        await strategy.cleanup()
+        await service.cleanup()
+
+
+@pytest.mark.asyncio
+async def test_reconnect_allows_provider_to_restart_turn_indices():
+    from unittest.mock import patch
+    from pipecat.services.deepgram.flux.stt import DeepgramFluxSTTService
+
+    service, strategy, recorder, emitted = await connected_strategy()
+    try:
+        await service._handle_turn_info(dict(event='StartOfTurn', turn_index=0, transcript='uh-huh'))
+        await service._handle_turn_info(dict(event='EndOfTurn', turn_index=0, transcript='uh-huh'))
+        count = len(emitted)
+        await service._handle_turn_info(dict(event='Update', turn_index=0, transcript='cancel'))
+        assert len(emitted) == count
+        # Replace connection I/O only; exercise adapter state and SDK dispatch.
+        with patch.object(DeepgramFluxSTTService, '_connect', new_callable=AsyncMock):
+            await service._connect()
+        await service._handle_turn_info(dict(event='Update', turn_index=0, transcript='cancel'))
+        assert len(emitted) > count
+        assert recorder.turn_started_calls[-1].enable_interruptions is True
     finally:
         await strategy.cleanup()
         await service.cleanup()
