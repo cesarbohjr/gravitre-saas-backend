@@ -30,7 +30,7 @@ BATTERIES = (
     ('breakdown', 'verify-unified-turn-ttft-breakdown-live.py', 'unified-turn-ttft-breakdown-live.json'),
     ('injection', 'verify-unified-turn-prompt-injection-live.py', 'unified-turn-prompt-injection-live.json'),
 )
-VERDICTS = frozenset({'PASS', 'FAIL', 'NOT RUN', 'RUNNING', 'pass', 'fail'})
+VERDICTS = frozenset({'PASS', 'FAIL', 'NOT RUN', 'RUNNING', 'PARTIAL', 'BLOCKED', 'pass', 'fail'})
 REPORT_KEYS = frozenset({
     'status', 'verdict', 'ok', 'passed', 'failed', 'cases', 'results', 'probes',
     'turns', 'functional_ok', 'functional_pass_n', 'functional_fail_n', 'total',
@@ -117,7 +117,14 @@ def run_batteries(env, output, raw, report):
                 data = json.loads(source.read_text())
                 verdict = data.get('verdict', data.get('status'))
                 row['reported_verdict'] = verdict if isinstance(verdict, str) and verdict in VERDICTS else None
-                if row['reported_verdict'] in {'FAIL', 'fail', 'NOT RUN'}:
+                # Some batteries exit zero for PARTIAL. Exit success cannot
+                # override an unfinished, unknown or contradictory result.
+                # Diagnostic-only reports may omit verdicts; retain that scope
+                # rather than inventing a quality verdict for them.
+                if any(key in data and data[key] not in ('PASS', 'pass')
+                       for key in ('verdict', 'status')):
+                    row['status'] = 'FAIL'
+                if 'ok' in data and data['ok'] is not True:
                     row['status'] = 'FAIL'
                 (output / filename).write_text(json.dumps(portable(data), indent=2))
                 source.replace(raw / filename)
@@ -212,3 +219,4 @@ def main():
 
 if __name__ == '__main__':
     main()
+

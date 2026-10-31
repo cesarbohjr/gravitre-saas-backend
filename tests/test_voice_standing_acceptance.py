@@ -68,6 +68,34 @@ class StandingAcceptanceTests(unittest.TestCase):
             self.assertTrue(all(r['status'] == 'PASS' for r in report['batteries'][1:]))
             self.assertEqual(json.loads((output / 'manifest.json').read_text())['batteries'][0]['status'], 'FAIL')
 
+    def test_zero_exit_cannot_override_nonpassing_or_contradictory_report(self):
+        reports = [
+            {'verdict': 'PARTIAL'}, {'status': 'RUNNING'}, {'verdict': 'UNKNOWN'},
+            {'verdict': 'PASS', 'status': 'FAIL'}, {'ok': False}, {'ok': 1},
+            {'verdict': None}, {'status': True}, {'status': 'NOT RUN'},
+            {'status': 'PASS', 'ok': True}, {'verdict': 'pass'},
+            {'unified_live': {'instrumentation_present': True}},
+        ]
+        for data in reports:
+            with self.subTest(data=data), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                output, raw = root / 'output', root / 'raw'
+                output.mkdir(); raw.mkdir(); (root / 'docs/delivery').mkdir(parents=True)
+                def child(command, *, env, log, timeout):
+                    (root / 'docs/delivery/result.json').write_text(json.dumps(data))
+                    log.write_text('fixed fixture diagnostics')
+                    return 0
+                report = {'batteries': []}
+                with patch.object(standing, 'ROOT', root), patch.object(
+                        standing, 'BATTERIES', (('fixture', 'fixture.py', 'result.json'),)), patch.object(
+                        standing, 'run_bounded', side_effect=child):
+                    standing.run_batteries({}, output, raw, report)
+                expected = 'PASS' if data in reports[-3:] else 'FAIL'
+                self.assertEqual(report['batteries'][0]['status'], expected)
+                self.assertTrue((output / 'result.json').exists())
+                self.assertTrue((raw / 'result.json').exists())
+
 
 if __name__ == '__main__':
     unittest.main()
+
