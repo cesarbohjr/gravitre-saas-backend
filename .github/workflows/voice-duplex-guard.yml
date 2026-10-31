@@ -75,6 +75,10 @@ jobs:
           npm install
           cd apps/web && pnpm install --frozen-lockfile
 
+      - name: Verify local cancellation candidate remains shadow-only
+        working-directory: apps/web
+        run: pnpm exec vitest run lib/__tests__/voice-local-cancel-candidate.test.ts
+
       - name: Install Playwright Chromium
         run: npx playwright install --with-deps chromium
 
