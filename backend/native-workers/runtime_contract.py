@@ -206,9 +206,15 @@ def run():
                 assert len(action['page_fingerprint'])==64
                 approved.append(sequence);return {'state':'approved'}
             browser=job('browser_use')
-            try:result=runner.execute(browser,guard=lambda:route,action_gate=action_gate)
+            checkpoints=[]
+            def checkpoint_gate(sequence,checkpoint):
+                assert sequence==0 and checkpoint.get('before_effect') is True
+                assert isinstance(checkpoint.get('page_fingerprint'),str) and len(checkpoint['page_fingerprint'])==64
+                assert not approved, 'Checkpoint must precede external approval'
+                checkpoints.append(sequence)
+            try:result=runner.execute(browser,guard=lambda:route,action_gate=action_gate,checkpoint_gate=checkpoint_gate)
             finally:print(json.dumps({'fixture_browser_model_requests':state['calls'],'fixture_browser_approvals':len(approved),'fixture_browser_page_observed':state['browser_page_observed'],'fixture_browser_context_checks':state['browser_context_checks']}))
-            assert approved==[0,1] and state.get('browser_submitted') and result.get('observations')
+            assert checkpoints==[0] and approved==[0,1] and state.get('browser_submitted') and result.get('observations')
             clean(browser['id']);evidence['browser_real_sdk_chromium_exact_approval']='PASS'
             print(json.dumps({'completed_runtime_checks':evidence},sort_keys=True))
             # This is a real runsc/DockerRunner candidate execution, intentionally
