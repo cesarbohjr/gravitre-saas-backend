@@ -251,7 +251,7 @@ def run():
             # atomic new lease -> actual isolated Playwright navigation and fill.
             # The old lease cannot dispatch, and both new actions are reviewed.
             live_handoff_trials=[]
-            for trial_number in range(3):
+            for trial_number in range(12):
                 trial_started_ns=time.perf_counter_ns()
                 state.update(kind='playwright_recovery',calls=0)
                 handoff_root=root/('verified-playwright-handoff-'+str(trial_number))
@@ -320,8 +320,10 @@ def run():
                 'first_review_p50_ms':handoff_percentile([v['first_review_ms'] for v in live_handoff_trials],.5),
                 'first_review_p95_ms':handoff_percentile([v['first_review_ms'] for v in live_handoff_trials],.95),
                 'scope':'fixture-only; not production customer navigation',
-                'trial_count_sufficient_for_service_slo':False}
-            assert handoff_summary['sample_count']==3
+                'trial_count_sufficient_for_service_slo':False,
+                'startup_from_pre_fenced_checkpoint_only':True,
+                'failure_detection_included':False}
+            assert handoff_summary['sample_count']==12
             evidence['playwright_real_gvisor_automatic_fenced_handoff']='PASS'
             evidence['live_handoff_latency']=handoff_summary
             print(json.dumps({'live_handoff_latency':handoff_summary},sort_keys=True))
