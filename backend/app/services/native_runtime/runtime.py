@@ -127,11 +127,17 @@ class NativeRuntime:
         checkpoint=self.journal.fallback_candidate(scope,original['id'])
         if checkpoint is None:return 'fallback_reconciliation_required'
         marker=checkpoint['checkpoint']
-        # The existing Playwright executable only understands the owned and
-        # Selenium approval fixtures. Never replay a generic customer task.
-        if marker.get('url') not in {
-            'https://www.selenium.dev/selenium/web/web-form.html'
-        } and not getattr(self.runner,'supports_owned_recovery_fixture',False):
+        # Checkpoint identity and allowlist are independently validated before
+        # activating a new execution lease; missing evidence fails closed.
+        from urllib.parse import urlsplit
+        destination=marker.get('url')
+        allowed=original['payload']['task'].get('allowed_hosts',[])
+        if not isinstance(destination,str):
+            return 'fallback_reconciliation_required'
+        parts=urlsplit(destination)
+        if parts.scheme!='https' or parts.hostname not in allowed or parts.username or parts.password or parts.port not in (None,443):
+            return 'fallback_reconciliation_required'
+        if not isinstance(marker.get('page_fingerprint'),str) or len(marker['page_fingerprint'])!=64:
             return 'fallback_reconciliation_required'
         self.authorize(original['payload']['claims'])
         # Stop the fenced source sandbox before starting the replacement.
