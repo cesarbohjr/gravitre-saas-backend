@@ -1,0 +1,135 @@
+{
+  "schema": 1,
+  "status": "BLOCKED",
+  "source_sha": "77d065e17c6eccc6898e6fc74b0498c24d7359b6",
+  "scope": "Workstream 2 synthetic generated-response evaluation; not application ingress, tool enforcement, TTS/STT or device certification",
+  "matrix": {
+    "roles": [
+      "DEFAULT",
+      "SALES",
+      "MARKETING",
+      "FINANCE",
+      "HR",
+      "CS",
+      "DEVOPS",
+      "REVENUE_OPS",
+      "PLANNER",
+      "VALIDATOR"
+    ],
+    "paths": [
+      "unified",
+      "classical"
+    ],
+    "channels": [
+      "text",
+      "voice"
+    ],
+    "scenarios": 16,
+    "expected_generated_replies": 640,
+    "expected_paired_judgments": 320
+  },
+  "provider_attempt": {
+    "timestamp": "2026-10-27T16:36:21.282705112Z",
+    "level": "info",
+    "event": "summary",
+    "status": "FAIL",
+    "source_sha": "77d065e17c6eccc6898e6fc74b0498c24d7359b6",
+    "model": "claude-sonnet-4-6",
+    "started": "2026-10-27T16:36:21.118Z",
+    "finished": "2026-10-27T16:36:21.267Z",
+    "expected_pairs": 320,
+    "completed_pairs": 2,
+    "passed": 0,
+    "failed": 0,
+    "errors": 2,
+    "requests": 4,
+    "input_tokens": 0,
+    "output_tokens": 0,
+    "cache_read_tokens": 0,
+    "roles": [
+      "DEFAULT",
+      "SALES",
+      "MARKETING",
+      "FINANCE",
+      "HR",
+      "CS",
+      "DEVOPS",
+      "REVENUE_OPS",
+      "PLANNER",
+      "VALIDATOR"
+    ],
+    "paths": [
+      "unified",
+      "classical"
+    ],
+    "criteria": [
+      "empathy",
+      "attribution",
+      "boundaries",
+      "governance",
+      "honesty",
+      "channel_style",
+      "task_focus",
+      "consistency"
+    ],
+    "method": "separate LLM-judge calls over paired synthetic generated replies; not human or production certification",
+    "scope": "generated replies from canonical prompt builders; no live app ingress, tools, persistence, TTS or STT"
+  },
+  "credential_probes": [
+    {
+      "timestamp": "2026-10-27T16:37:56.746766486Z",
+      "level": "info",
+      "event": "credential_probe",
+      "provider": "anthropic",
+      "present": true,
+      "unresolved_reference": false,
+      "has_surrounding_whitespace": false,
+      "expected_prefix": true,
+      "http_status": 401,
+      "status": "REJECTED"
+    },
+    {
+      "timestamp": "2026-10-27T16:37:56.746769056Z",
+      "level": "info",
+      "event": "credential_probe",
+      "provider": "openai",
+      "present": true,
+      "unresolved_reference": false,
+      "has_surrounding_whitespace": false,
+      "expected_prefix": true,
+      "http_status": 401,
+      "status": "REJECTED"
+    }
+  ],
+  "railway": {
+    "project_id": "6017a555-f639-4b28-b538-031b5119e1e3",
+    "environment_id": "8807955a-b694-407d-938a-c373e68ca3f4",
+    "evaluation_service_id": "35f256c1-ac95-43a0-8687-49739f198596",
+    "evaluation_deployment_id": "3cf33015-983d-4bff-8bb8-bfc1468834fd",
+    "credential_probe_deployment_id": "5abfe423-49dd-48ec-9e1e-d6279f838a3a",
+    "customer_application_source_unchanged": true,
+    "public_domain_created": false,
+    "temporary_credential_references_cleared": true
+  },
+  "local_validation": {
+    "targeted_pytest_passed": 1184,
+    "node_evaluator_contracts_passed": 6
+  },
+  "ci": {
+    "run_id": 40542182132,
+    "url": "https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/40542182132",
+    "source_sha": "77d065e17c6eccc6898e6fc74b0498c24d7359b6",
+    "status": "IN PROGRESS"
+  },
+  "quality_verdict": "NOT RUN: no provider reply was generated; failed authentication is not a behavioral failure or quality score",
+  "required_next_action": "Replace either configured provider credential in Railway with a valid credential; never paste secrets into evaluation reports.",
+  "source_hashes": {
+    "backend/app/services/dialogue_interpreter.py": "9fe3db1d874ec00521866753a0049ec92300c00d81ab84b51c9e1a39a9f044e8",
+    "backend/app/services/conversational_behavior.py": "9ad1a82ee6109632f07e7bb1f673a38a395469198442d1adafe76df6f6d065ea",
+    "backend/app/services/module_d_unified_voice_spec.py": "a32f6142d2c8d08c70035e31e479cbb92719d382a92244f49dda34a441b49aa9",
+    "backend/app/operators/agent_prompts.py": "90231f4cbb13f1913117d98de5efdd32ccd12232e4a7043f87e2d534c7dbe5f7",
+    "backend/app/operators/agent_intelligence.py": "bf7f436e302d0e264faa2cccceeff75ac19811881a3cd526a59547a4ea86d2a9",
+    "backend/app/services/persona_service.py": "4a52f4f4281a7c00010d105fc3044a7332d9b1eea2c7267309d957f803ea0e94"
+  },
+  "retry_harness_note": "After the authentication-only failed attempt, the harness was corrected to keep unified dialogue guidance in user context and classical guidance in system context. No successful generated replies exist for either version."
+}

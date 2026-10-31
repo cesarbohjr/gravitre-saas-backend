@@ -19,6 +19,7 @@ class Settings(BaseSettings):
         env_file=(".env", "../.env"),  # repo root or backend/
         env_file_encoding="utf-8",
         extra="ignore",
+        hide_input_in_errors=True,
     )
 
     app_env: str = "dev"
@@ -26,6 +27,20 @@ class Settings(BaseSettings):
     supabase_anon_key: str
     supabase_service_role_key: str
     supabase_jwt_secret: str  # Legacy HS256 secret; ES256 tokens verified via JWKS
+
+    @field_validator("supabase_anon_key", "supabase_service_role_key", mode="before")
+    @classmethod
+    def _normalize_supabase_api_key(cls, value):
+        # Secrets copied from a file/form may retain a final newline. HTTP/2
+        # can normalize this while the canonical HTTP/1.1 pool rejects it as
+        # LocalProtocolError. Normalize token boundaries once, before clients
+        # are constructed; internal whitespace/control bytes are never valid.
+        if not isinstance(value, str):
+            return value
+        token = value.strip()
+        if not token or any(c.isspace() or ord(c) < 32 or ord(c) == 127 for c in token):
+            raise ValueError("Supabase API credentials must be nonempty single-line tokens")
+        return token
     # JWT validation: issuer must match (e.g. https://<project-ref>.supabase.co/auth/v1)
     supabase_jwt_issuer: str = ""
     # Optional; default "authenticated" used if empty
@@ -607,6 +622,9 @@ class Settings(BaseSettings):
     # Marketplace v2 (STA-96): platform fee on partner connector usage (basis points, 2000 = 20%)
     marketplace_platform_fee_bps: int = 2000
     # Private connector runtime (STA-98): signed org bundles executed in subprocess sandbox
+    # Private native worker broker; absent configuration leaves execution unavailable.
+    native_worker_url: str = ""
+    native_worker_signing_key: str = ""
     private_connector_runtime_enabled: bool = True
     private_connector_sandbox_timeout_sec: int = 10
     # Shared secret for internal cron endpoints (e.g. usage sync). Not a user JWT.
@@ -1456,6 +1474,9 @@ class Settings(BaseSettings):
     browser_agent_interact_enabled: bool = False
     # Module B phase 2 — cross-conversation ledger recall via entity_resolution_store.
     cross_conversation_ledger_memory_enabled: bool = True
+    # New dialogue-memory consent gate. Enable only after configuring the org's
+    # admin-owned settings.dialogueMemory policy; missing policy fails closed.
+    dialogue_memory_governance_v1: bool = False
     # Heuristic prompt-injection detection on assistant/agent user turns (audit + hardening).
     prompt_injection_detection_enabled: bool = True
     # Assistant context window + summarization (STA-146).
@@ -1643,3 +1664,4 @@ def get_settings() -> Settings:
     except ValidationError as exc:
         missing_fields = _extract_missing_fields(exc)
         raise SettingsNotConfiguredError(missing_fields=missing_fields) from exc
+

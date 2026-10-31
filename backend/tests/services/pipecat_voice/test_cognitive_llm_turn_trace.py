@@ -1,6 +1,9 @@
 """The LLM bridge stamps its stages and the brain's checkpoints on the turn trace."""
 from __future__ import annotations
 
+import pytest
+
+
 import asyncio
 import time
 from typing import Any
@@ -9,6 +12,9 @@ from unittest.mock import AsyncMock, patch
 from app.operators.stream_events import AssistantStreamComplete, AssistantStreamEvent
 from app.services.pipecat_voice.cognitive_llm import GravitreCognitiveLLMService
 from app.services.pipecat_voice.voice_turn_trace import VoiceTurnTrace
+
+# Scripted brain events; provider policy/budget data is supplied by an explicit offline fixture.
+pytestmark = pytest.mark.usefixtures("scripted_voice_external_sources")
 
 
 def test_one_turn_reaches_the_trace_with_brain_marks_tier_and_turn_id() -> None:

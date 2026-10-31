@@ -1,0 +1,390 @@
+name: Voice gates 2 and 3 execution
+on:
+  pull_request:
+    paths:
+      - 'backend/app/services/pipecat_voice/livekit_candidate.py'
+      - 'backend/app/services/pipecat_voice/pipeline.py'
+      - 'backend/app/operators/agent_intelligence.py'
+      - 'backend/tests/operators/test_agent_intelligence.py'
+      - 'backend/tests/services/pipecat_voice/test_voice_output_audio_framing.py'
+      - 'backend/tests/services/pipecat_voice/test_livekit_write_fence.py'
+      - '.github/workflows/voice-gates-2-3.yml'
+      - 'scripts/bootstrap_voice_acceptance.py'
+      - 'scripts/voice_paired_live.py'
+      - 'scripts/voice_acceptance_repetitions.py'
+      - 'backend/app/services/pipecat_voice/flux_stt.py'
+      - 'backend/app/services/pipecat_voice/stt_factory.py'
+      - 'backend/tests/services/pipecat_voice/test_flux_partial_bridge.py'
+      - 'scripts/voice_native_assignment_live.py'
+      - 'scripts/voice_acceptance_sink.py'
+      - 'scripts/verify_native_assignment_cancel.py'
+      - 'scripts/verify_voice_route_authorization.py'
+      - 'scripts/wait_voice_acceptance_predecessors.py'
+      - 'backend/app/operators/agent_jobs.py'
+      - 'backend/app/services/conversational_execution_service.py'
+      - 'tests/test_voice_acceptance_sink.py'
+      - 'tests/test_voice_paired_live.py'
+      - 'backend/app/services/spoken_write_approval.py'
+      - 'backend/app/config.py'
+      - 'backend/tests/core/test_supabase_credential_whitespace.py'
+      - 'backend/tests/scripts/test_voice_provider_roundtrip.py'
+      - 'backend/app/services/gravitre_voice.py'
+      - 'backend/tests/services/test_gravitre_voice.py'
+      - 'scripts/voice_standing_acceptance.py'
+      - 'tests/test_voice_standing_acceptance.py'
+      - 'scripts/live_battery_checkpoint.py'
+      - 'scripts/verify-unified-turn-phase2-live.py'
+      - 'scripts/verify-unified-turn-persona-drift-live.py'
+      - 'scripts/verify-unified-turn-prompt-injection-live.py'
+      - 'tests/test_prompt_injection_smoke_auth.py'
+      - 'scripts/verify_elevenlabs_account.py'
+      - 'tests/test_elevenlabs_account_probe.py'
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+jobs:
+  standing-batteries:
+    needs: [paired-runtime-readiness, live-provider]
+    # Intelligence uses Anthropic, not ElevenLabs. A failed voice-provider
+    # preflight must not hide these independently isolated battery results.
+    if: ${{ always() && needs.paired-runtime-readiness.result != 'cancelled' && needs.live-provider.result != 'cancelled' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    environment: acceptance
+    env:
+      PIP_NO_CACHE_DIR: '1'
+      APP_ENV: dev
+      GRAVITRE_VOICE_ISOLATED: '1'
+      SUPABASE_URL: ${{ secrets.E2E_SUPABASE_URL }}
+      SUPABASE_ANON_KEY: ${{ secrets.E2E_SUPABASE_ANON_KEY }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.E2E_SUPABASE_SERVICE_ROLE_KEY }}
+      SUPABASE_JWT_SECRET: ${{ secrets.E2E_SUPABASE_JWT_SECRET }}
+      E2E_SUPABASE_ALLOWED_URL: ${{ vars.E2E_SUPABASE_ALLOWED_URL }}
+      ANTHROPIC_API_KEY: ${{ secrets.ACCEPTANCE_ANTHROPIC_API_KEY }}
+      OPENAI_API_KEY: ''
+      GEMINI_API_KEY: ''
+      PREFERRED_AI_PROVIDER: anthropic
+      AI_FAILOVER_ENABLED: 'true'
+      NOTIFICATION_EMAIL_ENABLED: 'false'
+      ACCEPTANCE_SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install production dependencies without retaining wheel cache
+        run: python -m pip install -r backend/requirements-dev.txt
+      - name: Regress acceptance targeting, report privacy and full-battery retention
+        run: |
+          python -m unittest discover -s tests -p test_voice_standing_acceptance.py
+          python -m unittest discover -s tests -p test_prompt_injection_smoke_auth.py
+      - name: Wait for predecessor acceptance runs before touching the shared smoke actor
+        run: python scripts/wait_voice_acceptance_predecessors.py
+        env:
+          GH_TOKEN: ${{ github.token }}
+      - name: Provision and verify the dedicated acceptance identity
+        run: python scripts/bootstrap_voice_acceptance.py
+      - name: Mint the exported acceptance actor session
+        run: python scripts/mint_smoke_org_session.py --github-env
+      - name: Run complete standing prompt batteries against the loopback acceptance API
+        run: python scripts/voice_standing_acceptance.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: isolated-standing-batteries
+          path: acceptance-results/standing-batteries
+  paired-runtime-readiness:
+    # Avoid consuming more audio quota after a failed bounded provider probe.
+    needs: live-provider
+    runs-on: ubuntu-latest
+    # Six predeclared 900-second phases plus bounded setup/predecessor waits;
+    # phase deadlines and the 500 ms audio cutoff remain unchanged.
+    timeout-minutes: 120
+    environment: acceptance
+    env:
+      SUPABASE_URL: ${{ secrets.E2E_SUPABASE_URL }}
+      SUPABASE_ANON_KEY: ${{ secrets.E2E_SUPABASE_ANON_KEY }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.E2E_SUPABASE_SERVICE_ROLE_KEY }}
+      SUPABASE_JWT_SECRET: ${{ secrets.E2E_SUPABASE_JWT_SECRET }}
+      E2E_SUPABASE_ALLOWED_URL: ${{ vars.E2E_SUPABASE_ALLOWED_URL }}
+      ANTHROPIC_API_KEY: ${{ secrets.ACCEPTANCE_ANTHROPIC_API_KEY || secrets.ANTHROPIC_API_KEY }}
+      OPENAI_API_KEY: ''
+      GEMINI_API_KEY: ''
+      APP_ENV: dev
+      GRAVITRE_VOICE_ISOLATED: '1'
+      VOICE_PIPECAT_ENABLED: 'true'
+      PREFERRED_AI_PROVIDER: anthropic
+      AI_FAILOVER_ENABLED: 'true'
+      DEEPGRAM_API_KEY: ${{ secrets.ACCEPTANCE_DEEPGRAM_API_KEY }}
+      ELEVENLABS_API_KEY: ${{ secrets.ACCEPTANCE_ELEVENLABS_API_KEY }}
+      ELEVENLABS_VOICE_ID: ${{ vars.ACCEPTANCE_ELEVENLABS_VOICE_ID }}
+      ELEVENLABS_VOICE_SARAH: ${{ vars.ACCEPTANCE_ELEVENLABS_VOICE_ID }}
+      ACCEPTANCE_SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+      ACCEPTANCE_INPUT_WAV: /tmp/voice-pinned-recordings/paired-live/input.wav
+      ACCEPTANCE_CANCEL_WAV: /tmp/voice-pinned-recordings/paired-live/cancel-input.wav
+      ACCEPTANCE_NATIVE_RECORDINGS_DIR: /tmp/voice-native-pinned/paired-native-assignment
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Verify isolated runtime configuration (read-only, no production fallback)
+        run: |
+          python - <<'PY'
+          import json, os, pathlib
+          names = ('SUPABASE_URL', 'SUPABASE_ANON_KEY', 'SUPABASE_SERVICE_ROLE_KEY', 'SUPABASE_JWT_SECRET', 'E2E_SUPABASE_ALLOWED_URL')
+          blockers = ['missing:' + name for name in names if not os.environ.get(name)]
+          if not (os.environ.get('ANTHROPIC_API_KEY') or os.environ.get('OPENAI_API_KEY')):
+              blockers.append('missing:ANTHROPIC_API_KEY_or_OPENAI_API_KEY')
+          if os.environ.get('SUPABASE_URL') and (os.environ['SUPABASE_URL'].rstrip('/') != 'https://aadnwmjzrmbvadszroqt.supabase.co' or os.environ['SUPABASE_URL'].rstrip('/') != os.environ.get('E2E_SUPABASE_ALLOWED_URL', '').rstrip('/')):
+              blockers.append('isolated_target_not_explicitly_allowlisted')
+          result = {'status': 'NOT RUN' if blockers else 'CONFIGURATION_PRESENT', 'blockers': blockers,
+                    'paired_inference': 'NOT RUN', 'live_action_certification': 'NOT RUN', 'certified': False}
+          path = pathlib.Path('acceptance-results/paired-runtime-readiness.json')
+          path.parent.mkdir(parents=True, exist_ok=True)
+          path.write_text(json.dumps(result, indent=2))
+          print(json.dumps(result))
+          if any(b != 'missing:ANTHROPIC_API_KEY_or_OPENAI_API_KEY' for b in blockers): raise SystemExit(2)
+          PY
+      - name: Install read-only smoke identity verifier
+        run: python -m pip install 'supabase==2.33.0' 'PyJWT==2.15.1'
+      - name: Verify target-pinning guards
+        run: python -m unittest discover -s tests -p test_bootstrap_voice_acceptance.py
+      - name: Provision authorized disposable acceptance tenant and actor
+        run: python scripts/bootstrap_voice_acceptance.py
+      - name: Verify flagged smoke actor and mint short-lived session
+        run: python scripts/mint_smoke_org_session.py --github-env
+      - name: Verify short-lived smoke token against Supabase Auth
+        run: |
+          python - <<'PY'
+          import os
+          from supabase import create_client
+          client = create_client(os.environ['SUPABASE_URL'], os.environ['SUPABASE_SERVICE_ROLE_KEY'])
+          user = client.auth.get_user(os.environ['PLATFORM_LIVE_BEARER_TOKEN']).user
+          if not user or str(user.id) != os.environ['ISOLATED_CONVERSATION_TEST_USER_ID']:
+              raise SystemExit('Smoke token identity verification failed')
+          print('AUTHENTICATED_SMOKE_ACTOR_VERIFIED: Auth API identity matches isolated membership')
+          PY
+      - name: Authenticate and run bounded live Anthropic inference
+        env:
+          ACCEPTANCE_ANTHROPIC_API_KEY: ${{ secrets.ACCEPTANCE_ANTHROPIC_API_KEY }}
+        run: |
+          python - <<'PY'
+          import json, os, pathlib, time, urllib.request, urllib.error
+          path = pathlib.Path('acceptance-results/anthropic-inference.json')
+          result = {'status': 'NOT RUN', 'provider': 'anthropic', 'certified': False}
+          key = os.environ.get('ACCEPTANCE_ANTHROPIC_API_KEY')
+          if not key:
+              result['blocker'] = 'missing:ACCEPTANCE_ANTHROPIC_API_KEY'
+              path.write_text(json.dumps(result, indent=2))
+              raise SystemExit('Dedicated acceptance Anthropic key unavailable to this job')
+          print('Dedicated acceptance key available; value withheld')
+          request = urllib.request.Request('https://api.anthropic.com/v1/messages',
+              data=json.dumps({'model': 'claude-haiku-4-5-20251001', 'max_tokens': 16,
+                               'messages': [{'role': 'user', 'content': 'Reply with exactly ACCEPTANCE_OK.'}]}).encode(),
+              headers={'x-api-key': key, 'anthropic-version': '2023-06-01', 'content-type': 'application/json'})
+          start = time.monotonic()
+          try:
+              with urllib.request.urlopen(request, timeout=45) as response:
+                  payload = json.load(response)
+                  answer = ''.join(x.get('text', '') for x in payload.get('content', []) if x.get('type') == 'text').strip()
+                  result.update(status='PASS' if answer == 'ACCEPTANCE_OK' else 'FAIL',
+                                http_status=response.status, elapsed_ms=round((time.monotonic()-start)*1000, 2),
+                                model=payload.get('model'), usage=payload.get('usage'), exact_response=answer == 'ACCEPTANCE_OK')
+          except urllib.error.HTTPError as error:
+              result.update(status='FAIL', http_status=error.code)
+          except Exception as error:
+              result.update(status='FAIL', error_type=type(error).__name__)
+          path.write_text(json.dumps(result, indent=2))
+          print(json.dumps(result))
+          if result['status'] != 'PASS': raise SystemExit(2)
+          PY
+      - name: Install production voice pipeline and isolated transport dependencies
+        run: python -m pip install -r backend/requirements-dev.txt -r backend/requirements-voice-comparison.txt 'livekit-api==1.2.2'
+      - name: Install recording decoder from the runner package repository
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install --yes --no-install-recommends ffmpeg
+          ffmpeg -version
+      - name: Verify paired controller isolation and capture contracts
+        run: |
+          python -m unittest discover -s tests -p test_voice_paired_live.py
+          python -m unittest discover -s tests -p test_voice_acceptance_sink.py
+          python -m unittest discover -s tests -p test_voice_acceptance_repetitions.py
+      - name: Regress real HTTP1 credential serialization
+        working-directory: backend
+        run: python -m pytest -q --confcutdir=tests/core tests/core/test_supabase_credential_whitespace.py tests/core/test_shared_http_client.py
+      - name: Refresh short-lived acceptance identity after dependency installation
+        run: python scripts/mint_smoke_org_session.py --github-env
+      - name: Verify native assignment cancellation against the isolated database
+        run: python scripts/verify_native_assignment_cancel.py
+      - name: Verify production route authorization and fresh membership revocation
+        run: python scripts/verify_voice_route_authorization.py
+      - name: Reuse the exact previously executed recordings (digest checked by controller)
+        uses: actions/download-artifact@v4
+        with:
+          name: paired-runtime-readiness
+          run-id: 41134456513
+          github-token: ${{ github.token }}
+          path: /tmp/voice-pinned-recordings
+      - name: Retrieve the failed reconnect recording for content diagnosis
+        uses: actions/download-artifact@v4
+        with:
+          name: paired-runtime-readiness
+          run-id: 41138120065
+          github-token: ${{ github.token }}
+          path: /tmp/voice-failed-reconnect
+      - name: Reuse the exact executed native-action recordings
+        uses: actions/download-artifact@v4
+        with:
+          name: paired-runtime-readiness
+          run-id: 41141376937
+          github-token: ${{ github.token }}
+          path: /tmp/voice-native-pinned
+      - name: Transcribe the retained synthetic reconnect failure
+        run: |
+          python - <<'PY'
+          import hashlib, json, os, pathlib, httpx
+          path = pathlib.Path('/tmp/voice-failed-reconnect/paired-live/livekit-reconnect.wav')
+          audio = path.read_bytes()
+          if not 1000 < len(audio) < 5000000: raise SystemExit('diagnostic recording bounds')
+          with httpx.Client(timeout=45) as client:
+              response = client.post('https://api.deepgram.com/v1/listen', params={'model': 'nova-3'},
+                  headers={'Authorization': 'Token ' + os.environ['DEEPGRAM_API_KEY'], 'Content-Type': 'audio/wav'}, content=audio)
+              if response.status_code != 200: raise SystemExit('diagnostic transcription failed')
+              data = response.json()
+          result = {'source_run': 41138120065, 'source_commit': '2c0f7b464f979f55291dcd00d383734849b22266',
+              'wav_sha256': hashlib.sha256(audio).hexdigest(), 'scope': 'retranscription of retained synthetic failure; original verdict unchanged',
+              'request_id': data.get('metadata', {}).get('request_id'),
+              'transcript': data['results']['channels'][0]['alternatives'][0]['transcript'][:3000]}
+          pathlib.Path('acceptance-results/reconnect-content-diagnostic.json').write_text(json.dumps(result, indent=2))
+          PY
+      - name: Sequence native evidence after predecessor acceptance runs finish
+        run: python scripts/wait_voice_acceptance_predecessors.py
+        env:
+          GH_TOKEN: ${{ github.token }}
+      - name: Execute three matched repetitions through both real transports and native writes
+        id: paired_voice
+        run: |
+          mkdir -p /tmp/gravitre-paired acceptance-results/paired-live
+          curl -fsSL --retry 2 https://github.com/livekit/livekit/releases/download/v1.13.11/livekit_1.13.11_linux_amd64.tar.gz -o /tmp/gravitre-paired/server.tar.gz
+          echo '1e9ee90ca301e1842b2887fc77cb122759756a9c8aeb4334ee91de3325ec43fb  /tmp/gravitre-paired/server.tar.gz' | sha256sum -c -
+          tar -xzf /tmp/gravitre-paired/server.tar.gz -C /tmp/gravitre-paired
+          echo 'server_verified=true' >> "$GITHUB_OUTPUT"
+          /tmp/gravitre-paired/livekit-server --dev --bind 127.0.0.1 --node-ip 127.0.0.1 --rtc.enable_loopback_candidate >/tmp/gravitre-paired/server.log 2>&1 &
+          server_pid=$!
+          trap 'kill "$server_pid" 2>/dev/null || true' EXIT
+          for attempt in $(seq 1 40); do
+            if curl -fsS http://127.0.0.1:7880 >/dev/null; then break; fi
+            if ! kill -0 "$server_pid" 2>/dev/null; then exit 1; fi
+            sleep 0.25
+          done
+          python scripts/voice_acceptance_repetitions.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: paired-runtime-readiness
+          path: |
+            acceptance-results/paired-runtime-readiness.json
+            acceptance-results/smoke-fixture.json
+            acceptance-results/anthropic-inference.json
+            acceptance-results/native-assignment-cancellation.json
+            acceptance-results/voice-route-authorization.json
+            acceptance-results/reconnect-content-diagnostic.json
+            acceptance-results/paired-live
+            acceptance-results/paired-native-assignment
+            acceptance-results/repeated-paired
+  live-provider:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: acceptance
+    env:
+      # Avoid retaining multi-GB inference wheels alongside their installed
+      # copies on the disposable hosted runner. Dependency versions are unchanged.
+      PIP_NO_CACHE_DIR: '1'
+      APP_ENV: dev
+      ACCEPTANCE_SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+      DEEPGRAM_API_KEY: ${{ secrets.ACCEPTANCE_DEEPGRAM_API_KEY }}
+      ELEVENLABS_API_KEY: ${{ secrets.ACCEPTANCE_ELEVENLABS_API_KEY }}
+      ELEVENLABS_VOICE_ID: ${{ vars.ACCEPTANCE_ELEVENLABS_VOICE_ID }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Regress read-only account probe and privacy guards
+        run: python -m unittest discover -s tests -p test_elevenlabs_account_probe.py
+      - name: Inspect the exact acceptance key subscription without generating audio
+        run: python scripts/verify_elevenlabs_account.py --output acceptance-results/elevenlabs-account-check.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: elevenlabs-acceptance-account-check
+          path: acceptance-results/elevenlabs-account-check.json
+      - name: Check dedicated provider credentials without disclosing values
+        run: |
+          python - <<'PY'
+          import json, os, pathlib
+          missing = [name for name in ('DEEPGRAM_API_KEY', 'ELEVENLABS_API_KEY') if not os.environ.get(name)]
+          if missing:
+              p = pathlib.Path('acceptance-results/provider-roundtrip.json')
+              p.parent.mkdir(parents=True, exist_ok=True)
+              p.write_text(json.dumps({'status': 'NOT RUN', 'blockers': ['missing:' + n for n in missing], 'certified': False}))
+              print('Live provider NOT RUN: missing dedicated acceptance credentials: ' + ', '.join(missing))
+              raise SystemExit(2)
+          print('Dedicated provider credentials present; values withheld')
+          PY
+      - name: Install existing provider runner dependencies
+        run: python -m pip install -r backend/requirements-dev.txt
+      - name: Execute bounded real-provider audio and final write-gate acceptance
+        run: python scripts/verify-voice-provider-roundtrip.py --output acceptance-results/provider-roundtrip.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: voice-live-provider-boundaries
+          path: acceptance-results/provider-roundtrip.json
+  governed-actions:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install backend and RTC test dependencies
+        run: python -m pip install -r backend/requirements-dev.txt 'livekit==1.2.0'
+      - name: Require RTC SDK
+        run: python -c 'from livekit import rtc'
+      - name: Exercise canonical voice write boundaries and RTC stop wiring
+        working-directory: backend
+        run: >-
+          python -m pytest -q -p tests.offline_network_guard
+          tests/scripts/test_voice_provider_roundtrip.py
+          tests/services/pipecat_voice/test_flux_partial_bridge.py
+          tests/operators/test_agent_jobs_turn_cancellation.py
+          tests/services/pipecat_voice/test_livekit_write_fence.py
+          tests/services/pipecat_voice/test_phase3_provider_commit_gate.py
+          tests/services/pipecat_voice/test_turn_scoped_cancellation.py
+          tests/services/pipecat_voice/test_reconnect_and_approval_contract.py
+          tests/services/pipecat_voice/test_confirmation_hold.py
+          --junitxml=voice-governance.xml
+        env:
+          OPENAI_API_KEY: fake-offline-governance
+          ANTHROPIC_API_KEY: fake-offline-governance
+          GEMINI_API_KEY: fake-offline-governance
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: voice-governed-boundaries
+          path: backend/voice-governance.xml
+
+

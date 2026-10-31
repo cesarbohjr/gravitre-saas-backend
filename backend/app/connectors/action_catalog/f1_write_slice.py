@@ -31,6 +31,10 @@ F1_WRITE_CATALOG_ACTIONS: frozenset[str] = frozenset(
 ALWAYS_APPROVE_WRITE_ACTIONS: frozenset[str] = frozenset(
     {
         "assistant.generate_image",
+        "assistant.run_openhands",
+        "assistant.run_browser_use",
+        "assistant.approve_native_action",
+        "assistant.export_evaluation_metrics",
         "hubspot.sequences.enroll",
         "apollo.sequences.add",
         "clay.crm.sync",

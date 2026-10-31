@@ -9,6 +9,8 @@ heard, never the spoken rewrite and never a half-heard amount.
 """
 from __future__ import annotations
 
+
+
 import asyncio
 from typing import Any
 from unittest.mock import AsyncMock, patch
@@ -54,6 +56,9 @@ from app.services.pipecat_voice.voice_reply_playback import (
 )
 from app.services.voice_session_service import split_speakable_chunks
 from tests.support.fake_supabase import FakeSupabase
+
+# Scripted brain events; provider policy/budget data is supplied by an explicit offline fixture.
+pytestmark = pytest.mark.usefixtures("scripted_voice_external_sources")
 
 # ---------------------------------------------------------------------------
 # Formatter

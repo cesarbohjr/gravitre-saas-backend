@@ -855,6 +855,7 @@ class AgentIntelligence:
         from app.services.gravitre_voice import (
             anti_repeat_prompt_section,
             domain_focus_section,
+            repeated_request_prompt_section,
             voice_system_prompt_section,
         )
         from app.services.voice_agent_profile import spoken_register_section
@@ -1043,6 +1044,9 @@ class AgentIntelligence:
         # Conversation turns belong in the messages prefix (Phase F5), not the system prompt.
         if anti_repeat:
             sections.extend(["", anti_repeat])
+        repeated_request = repeated_request_prompt_section(spoken_user_text, task_history)
+        if repeated_request:
+            sections.extend(["", repeated_request])
         if handoff_section.strip():
             sections.append(handoff_section.strip())
         if memory_section and memory_section.strip():
@@ -1598,6 +1602,14 @@ class AgentIntelligence:
             entity_block = "\n\n".join(
                 p for p in (entity_block or "", cognitive_sections["knowledge_section"]) if p
             ).strip()
+        if cognitive_sections.get("dialogue_section"):
+            entity_block = "\n\n".join(
+                p for p in (entity_block, cognitive_sections["dialogue_section"]) if p
+            )
+        if cognitive_sections.get("session_continuity_section"):
+            entity_block = "\n\n".join(
+                p for p in (entity_block, cognitive_sections["session_continuity_section"]) if p
+            )
         if fabric_section:
             entity_block = "\n\n".join(p for p in (entity_block or "", fabric_section) if p).strip()
 
@@ -1634,9 +1646,14 @@ class AgentIntelligence:
             ).strip()
             or None,
         )
-        from app.services.execution_intelligence_context import execution_intelligence_context
-        shared_intelligence = await execution_intelligence_context(settings=active_settings, org_id=org_id,
+        from app.services.execution_intelligence_context import collect_execution_intelligence, capability_diagnostics
+        from app.services.intelligence_router import intelligence_context_block
+
+        shared_packet = await collect_execution_intelligence(settings=active_settings, org_id=org_id,
             task=task_text, agent=agent, briefing=effective_briefing)
+        if cognitive_ctx is not None:
+            cognitive_ctx.intelligence_pack = shared_packet
+        shared_intelligence = intelligence_context_block(shared_packet)
         if shared_intelligence:
             system_prompt += "\n\n" + shared_intelligence
         persona = get_agent_persona(agent)
@@ -1698,6 +1715,8 @@ class AgentIntelligence:
                 "taskId": task_id,
                 "runId": run_id,
                 "personaKey": persona.key,
+                "cognitiveTurnId": getattr(cognitive_ctx, "turn_id", None),
+                "intelligenceCapabilities": capability_diagnostics(shared_packet),
                 "reactStatus": agent_result.react_status,
                 "toolCallCount": len(agent_result.tool_calls),
                 "ragSourceCount": len(rag_sources),

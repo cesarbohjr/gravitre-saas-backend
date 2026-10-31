@@ -466,6 +466,19 @@ def test_build_system_prompt_adds_spoken_register(intelligence: AgentIntelligenc
     assert "Register 5 — SPOKEN" in prompt
 
 
+@pytest.mark.parametrize('spoken_mode', [False, True])
+def test_repeated_current_request_reaches_shared_text_and_voice_prompt(intelligence, spoken_mode):
+    prompt = intelligence._build_system_prompt(
+        'assistant', None, [], {'orgName': 'Acme'}, spoken_mode=spoken_mode,
+        spoken_user_text='Please rewrite the welcome note.',
+        task_history=[{'role':'user', 'content':'Please rewrite the welcome note.'},
+                      {'role':'assistant', 'content':'I already gave you a warmer version in my last message.'}],
+    )
+    assert '## Current repeated request' in prompt
+    assert prompt.index('## Current repeated request') > prompt.index('## Anti-repeat')
+    assert 'does not authorize tool execution' in prompt
+
+
 def test_build_system_prompt_includes_operator_act_section(intelligence: AgentIntelligence):
     prompt = intelligence._build_system_prompt(
         "assistant",

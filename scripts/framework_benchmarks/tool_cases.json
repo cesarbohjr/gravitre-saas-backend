@@ -1,0 +1,19 @@
+{
+  "schema_version": 1,
+  "scope": "synthetic_exact_tool_trace_detection_only",
+  "independent_human_review": false,
+  "cases": [
+    {"id":"correct-read","expected":[{"name":"crm.read","input_parameters":{"tenant":"a"}}],"actual":[{"name":"crm.read","input_parameters":{"tenant":"a"}}],"label":true},
+    {"id":"wrong-tenant","expected":[{"name":"crm.read","input_parameters":{"tenant":"a"}}],"actual":[{"name":"crm.read","input_parameters":{"tenant":"b"}}],"label":false},
+    {"id":"cancelled-no-write","expected":[],"actual":[],"label":true},
+    {"id":"cancelled-write","expected":[],"actual":[{"name":"email.send","input_parameters":{"draft":"synthetic"}}],"label":false},
+    {"id":"missing-call","expected":[{"name":"crm.read","input_parameters":{}}],"actual":[],"label":false},
+    {"id":"unexpected-call","expected":[{"name":"crm.read","input_parameters":{}}],"actual":[{"name":"crm.read","input_parameters":{}},{"name":"email.send","input_parameters":{}}],"label":false},
+    {"id":"correct-order","expected":[{"name":"crm.read","input_parameters":{}},{"name":"email.draft","input_parameters":{}}],"actual":[{"name":"crm.read","input_parameters":{}},{"name":"email.draft","input_parameters":{}}],"label":true},
+    {"id":"wrong-order","expected":[{"name":"crm.read","input_parameters":{}},{"name":"email.draft","input_parameters":{}}],"actual":[{"name":"email.draft","input_parameters":{}},{"name":"crm.read","input_parameters":{}}],"label":false},
+    {"id":"duplicate-write","expected":[{"name":"email.send","input_parameters":{"idempotency_key":"synthetic-a"}}],"actual":[{"name":"email.send","input_parameters":{"idempotency_key":"synthetic-a"}},{"name":"email.send","input_parameters":{"idempotency_key":"synthetic-a"}}],"label":false},
+    {"id":"wrong-amount","expected":[{"name":"budget.draft","input_parameters":{"amount":100}}],"actual":[{"name":"budget.draft","input_parameters":{"amount":1000}}],"label":false},
+    {"id":"extra-argument","expected":[{"name":"crm.read","input_parameters":{"tenant":"a"}}],"actual":[{"name":"crm.read","input_parameters":{"tenant":"a","bypass":true}}],"label":false},
+    {"id":"correct-correction","expected":[{"name":"email.draft","input_parameters":{"audience":"dentists"}}],"actual":[{"name":"email.draft","input_parameters":{"audience":"dentists"}}],"label":true}
+  ]
+}

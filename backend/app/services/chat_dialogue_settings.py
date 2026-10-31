@@ -17,6 +17,8 @@ DEFAULT_DIALOGUE_SETTINGS: dict[str, Any] = {
     "consensus_enabled": True,
     "sentiment_detection_enabled": True,
     "memory_retention_days": 90,
+    "evaluation_feedback_enabled": False,
+    "evaluation_feedback_retention_days": 30,
 }
 
 
@@ -70,6 +72,12 @@ async def save_chat_dialogue_settings(
     *,
     client: Any | None = None,
 ) -> dict[str, Any]:
+    if "evaluation_feedback_enabled" in updates and type(updates["evaluation_feedback_enabled"]) is not bool:
+        raise ValueError("evaluation_feedback_enabled must be boolean")
+    if "evaluation_feedback_retention_days" in updates:
+        days = updates["evaluation_feedback_retention_days"]
+        if type(days) is not int or not 1 <= days <= 90:
+            raise ValueError("evaluation feedback retention must be 1–90 days")
     active_settings = settings or get_settings()
     db = client or get_supabase_client(active_settings)
     current = await load_chat_dialogue_settings(org_id, active_settings, client=db)
@@ -84,8 +92,17 @@ async def save_chat_dialogue_settings(
     }
     if "default_persona" in updates:
         payload["default_persona"] = updates["default_persona"]
+    # Erase metrics before accepting explicit opt-out. A failed erasure must
+    # remain visible to the admin caller, never a silent successful revocation.
+    if updates.get("evaluation_feedback_enabled") is False:
+        from app.core.io_pool import run_io
+        from app.services.dialogue_evaluation_feedback import purge_feedback
+
+        await run_io(lambda: purge_feedback(db, org_id))
     try:
         db.table("org_intelligence_engine_settings").upsert(payload).execute()
     except Exception as exc:  # noqa: BLE001
         logger.warning("save_chat_dialogue_settings failed org_id=%s error=%s", org_id, exc)
+        if {"evaluation_feedback_enabled", "evaluation_feedback_retention_days"} & updates.keys():
+            raise ValueError("evaluation feedback settings were not saved") from None
     return merged

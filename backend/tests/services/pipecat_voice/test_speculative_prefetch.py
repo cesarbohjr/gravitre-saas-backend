@@ -49,6 +49,24 @@ async def _processor(**kwargs) -> SpeculativePrefetchProcessor:
     return proc
 
 
+@pytest.mark.asyncio
+async def test_flux_control_partial_passes_without_prefetch_or_speculative_revision():
+    coordinator = SimpleNamespace(note_transcript=AsyncMock(), cancel=AsyncMock())
+    proc = await _processor(speculative_coordinator=coordinator)
+    frame = _interim('cancel this request immediately')
+    frame.gravitre_turn_control_only = True
+    proc._prefetch = AsyncMock()
+    try:
+        await proc.process_frame(frame, FrameDirection.DOWNSTREAM)
+        assert proc._task is None
+        proc._prefetch.assert_not_called()
+        coordinator.note_transcript.assert_not_called()
+        coordinator.cancel.assert_not_called()
+        proc.push_frame.assert_awaited_once_with(frame, FrameDirection.DOWNSTREAM)
+    finally:
+        await proc.cleanup()
+
+
 class TestWriteShapedGate:
     def test_write_verbs_are_flagged(self):
         # Phrasing chosen to empirically match the real

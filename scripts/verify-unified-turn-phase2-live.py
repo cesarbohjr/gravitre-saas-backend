@@ -37,6 +37,7 @@ from isolated_conversation_org import (  # noqa: E402
     smoke_http_headers,
 )
 from app.services.user_facing_copy_guard import contains_raw_catalog_action_key  # noqa: E402
+from live_battery_checkpoint import checkpoint  # noqa: E402
 
 BASE = os.environ.get("LIVE_API_BASE", "https://api.gravitre.app").rstrip("/")
 OUT = Path(
@@ -639,6 +640,7 @@ async def main() -> int:
         report["health"] = h
         sha = str(h.get("git_sha") or "")
         report["git_sha"] = sha
+        checkpoint(OUT, report)
         expect = EXPECT_SHA or sha[:8]
         report["expect_sha"] = expect
         if expect and not (
@@ -706,7 +708,9 @@ async def main() -> int:
                     message=str(case["message"]),
                     mode=str(case.get("mode") or "standard"),
                 )
-                await asyncio.sleep(8)
+                # The bounded audit poll below already waits for persistence.
+                # Query immediately after the completed stream, instead of
+                # spending eight seconds before every first read.
                 shadow = fetch_shadow_audit(
                     sb, org_id=org_id, conversation_id=conv_id, after_iso=started
                 )
@@ -725,6 +729,8 @@ async def main() -> int:
                         },
                     }
                 )
+                report["cases"] = results
+                checkpoint(OUT, report)
                 print(
                     json.dumps(
                         {
@@ -818,6 +824,7 @@ async def main() -> int:
                 "stdout_tail": stdout_tail,
                 "stderr_tail": stderr_tail,
             }
+            checkpoint(OUT, report)
 
     targeted_ok = passed == len(results) and len(results) > 0
     classical = report["classical_batteries"]

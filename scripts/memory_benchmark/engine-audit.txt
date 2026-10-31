@@ -1,0 +1,3 @@
+# Vulnerability identity for the separately source-pinned SDK, plus its full worker lock.
+-r engine-requirements.lock
+mem0ai==2.2.1

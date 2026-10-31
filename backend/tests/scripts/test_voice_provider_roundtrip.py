@@ -17,9 +17,10 @@ def test_missing_provider_setup_returns_not_run_without_requests():
     assert result['physical_acceptance'] == 'NOT RUN'
 
 
-def test_synthetic_provider_protocol_and_commit_gate_roundtrip():
+@pytest.mark.parametrize('cancel_transcript', ['Cancel it. Do not send anything.', 'Cancel it do not send anything', 'Cancel it, do not send anything', 'Do not send anything', 'Don’t send anything'])
+def test_synthetic_provider_protocol_and_commit_gate_roundtrip(cancel_transcript):
     calls = []
-    transcripts = iter(['Yes, wait. Hold on.', 'Cancel it. Do not send anything.'])
+    transcripts = iter(['Yes, wait. Hold on.', cancel_transcript])
     def request(req):
         calls.append(req)
         if req.url.host == 'api.elevenlabs.io':
@@ -45,3 +46,4 @@ def test_synthetic_provider_protocol_and_commit_gate_roundtrip():
 @pytest.mark.parametrize('trial',range(20))
 async def test_twenty_cancelled_turns_reach_no_business_write_commit(trial):
     assert await module.prove_commit_block('Yes, wait. Hold on.')
+

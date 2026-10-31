@@ -10,12 +10,18 @@ client for display and only normalizing complete, sentence-chunked text
 """
 from __future__ import annotations
 
+import pytest
+
+
 import asyncio
 from typing import Any
 from unittest.mock import AsyncMock, patch
 
 from app.operators.stream_events import AssistantStreamComplete, AssistantStreamEvent
 from app.services.pipecat_voice.cognitive_llm import GravitreCognitiveLLMService
+
+# Scripted brain events; provider policy/budget data is supplied by an explicit offline fixture.
+pytestmark = pytest.mark.usefixtures("scripted_voice_external_sources")
 
 
 def _drive(deltas: list[str]) -> tuple[list[str], list[str]]:

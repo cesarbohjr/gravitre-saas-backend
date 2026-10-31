@@ -65,8 +65,15 @@ def _spoken_lines(events_and_delays: list[tuple[Any, float]], *, notice_s: float
         def get_messages(self) -> list[dict[str, Any]]:
             return [{"role": "user", "content": "find the stalled deals"}]
 
-    with patch("app.operators.agent_intelligence.get_agent_intelligence", return_value=fake_intelligence):
+    # This tests timing against a fake stream, not provider moderation. Keep
+    # the concurrent shared guard local; its refusal path has dedicated tests.
+    with (
+        patch("app.operators.agent_intelligence.get_agent_intelligence", return_value=fake_intelligence),
+        patch("app.services.shared_turn_preparation.build_turn_system_prompt", return_value="LOCAL TEST PROMPT"),
+        patch("app.services.shared_turn_preparation.guard_spoken_turn", new_callable=AsyncMock) as guard,
+    ):
         asyncio.run(service._run_gravitre_turn(_FakeContext()))
+    guard.assert_awaited_once()
     return spoken
 
 

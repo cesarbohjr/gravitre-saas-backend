@@ -27,7 +27,7 @@ export type ListingReadiness = {
 }
 
 function missingRequired(asset: MarketplaceAssetSummary): MarketplaceConnectorChecklistItem[] {
-  return (asset.connectorChecklist ?? []).filter((item) => item.required && !item.connected)
+  return (asset.assetType === "ai_agent" ? [] : asset.connectorChecklist ?? []).filter((item) => item.required && !item.connected)
 }
 
 function needsLabel(missing: MarketplaceConnectorChecklistItem[]): string {
@@ -59,7 +59,7 @@ export function listingReadiness(asset: MarketplaceAssetSummary, { canInstall }:
     }
   }
 
-  const limited = (asset.connectorChecklist ?? []).find((item) => item.discoveryLimitation || item.warning)
+  const limited = (asset.assetType === "ai_agent" ? [] : asset.connectorChecklist ?? []).find((item) => item.discoveryLimitation || item.warning)
   if (limited) {
     const name = limited.label || limited.connectorType
     return {
@@ -69,7 +69,7 @@ export function listingReadiness(asset: MarketplaceAssetSummary, { canInstall }:
       action: { kind: "review", label: "Review" },
     }
   }
-  const manual = asset.manualSetupRequired?.[0]
+  const manual = asset.assetType === "ai_agent" ? undefined : asset.manualSetupRequired?.[0]
   if (manual) {
     return {
       state: "review",

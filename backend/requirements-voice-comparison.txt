@@ -1,0 +1,3 @@
+# Isolated LiveKit RTC comparison only. Not included by Railway requirements.txt.
+-r requirements-extras-voice.txt
+livekit==1.2.0

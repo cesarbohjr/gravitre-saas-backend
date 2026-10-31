@@ -81,6 +81,13 @@ def validate_memory_write(
     out = dict(raw)
     source_class = classify_memory_source(out, provenance=provenance)
     out["source_class"] = source_class
+    # Extraction's quarantine marker is a stop signal, not merely a confidence
+    # hint. Recheck all external candidates so alternate writers cannot omit it.
+    if raw.get("blocked_injection") is True or (
+        (source_class == SOURCE_UNTRUSTED_EXTERNAL or raw.get("from_untrusted_external") or raw.get("untrusted_source"))
+        and looks_like_injection(str(out.get("content") or out.get("memory_text") or ""))
+    ):
+        out["blocked_injection"] = True
 
     try:
         conf = float(out.get("confidence") if out.get("confidence") is not None else 80)

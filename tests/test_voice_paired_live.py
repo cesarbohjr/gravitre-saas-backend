@@ -1,0 +1,215 @@
+import importlib.util
+from pathlib import Path
+import unittest
+import asyncio
+import time
+import hashlib
+import tempfile
+import threading
+from types import SimpleNamespace
+from unittest.mock import patch
+
+spec = importlib.util.spec_from_file_location('paired', Path(__file__).resolve().parents[1] / 'scripts/voice_paired_live.py')
+paired = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(paired)
+
+
+class IsolationTests(unittest.TestCase):
+    def test_cancel_deadline_never_moves_to_recording_end(self):
+        for elapsed, failed in ((.5, False), (.509, True), (None, True)):
+            with self.subTest(elapsed=elapsed):
+                capture = paired.Capture()
+                capture.started, capture.interrupt_at, capture.interrupted_reply = 0, 10, 7
+                capture.original_token_cancelled_at = 10.1
+                if elapsed is not None:
+                    capture.speech_by_reply[7] = 10 + elapsed
+                result = paired.interruption_cutoff_observations(capture, bytes(64000))
+                self.assertEqual(result.get('status') == 'FAIL', failed)
+                self.assertEqual(result['cutoff_reference'], 'interruption_input_start')
+                self.assertEqual(result['cutoff_limit_ms'], 500)
+                if elapsed is not None:
+                    self.assertLess(result['received_cutoff_from_cancel_input_end_ms'], 0)
+
+    def test_audio_gap_cannot_hide_late_or_missing_work_cancellation(self):
+        for observed, failed in ((10.4, False), (10.5, False), (10.51, True), (None, True)):
+            with self.subTest(observed=observed):
+                capture = paired.Capture()
+                capture.started, capture.interrupt_at, capture.interrupted_reply = 0, 10, 7
+                capture.speech_by_reply[7] = 10.1
+                capture.original_token_cancelled_at = observed
+                result = paired.interruption_cutoff_observations(capture, bytes(64000))
+                self.assertEqual(result.get('status') == 'FAIL', failed)
+                self.assertEqual(result['logical_cancel_timing'], 'event_loop_observation_upper_bound')
+
+    def test_sdk_error_diagnostics_retain_no_provider_body(self):
+        from loguru import logger
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory) / 'diagnostics.json'
+            handler = paired.SanitizedDiagnostics(output)
+            try:
+                logger.error('RuntimeError anthropic timeout secret-body-not-for-artifact')
+                content = output.read_text()
+                self.assertIn('RuntimeError', content)
+                self.assertIn('anthropic', content)
+                self.assertNotIn('secret-body-not-for-artifact', content)
+            finally:
+                logger.remove(handler.loguru_sink)
+
+    def env(self):
+        return dict(GRAVITRE_VOICE_ISOLATED='1', SUPABASE_URL=paired.TARGET,
+            E2E_SUPABASE_ALLOWED_URL=paired.TARGET, ANTHROPIC_API_KEY='offline',
+            DEEPGRAM_API_KEY='offline', ELEVENLABS_API_KEY='offline',
+            SUPABASE_SERVICE_ROLE_KEY='offline', PLATFORM_LIVE_BEARER_TOKEN='offline',
+            ISOLATED_CONVERSATION_TEST_ORG_ID='org', ISOLATED_CONVERSATION_TEST_USER_ID='actor')
+
+    def test_production_target_refused_before_any_client(self):
+        env = self.env()
+        env['SUPABASE_URL'] = 'https://production.supabase.co'
+        with self.assertRaises(ValueError): paired.guard(env)
+
+    def test_allowlist_must_match(self):
+        env = self.env()
+        env.pop('E2E_SUPABASE_ALLOWED_URL')
+        with self.assertRaises(ValueError): paired.guard(env)
+
+    def test_explicit_isolation_required(self):
+        env = self.env()
+        env['GRAVITRE_VOICE_ISOLATED'] = '0'
+        with self.assertRaises(ValueError): paired.guard(env)
+
+    def test_exact_acceptance_config(self):
+        paired.guard(self.env())
+
+    def test_silence_is_not_first_speech(self):
+        capture = paired.Capture()
+        capture.started = 1
+        capture.audio(bytes(960))
+        self.assertIsNone(capture.first)
+
+    def test_pinned_recording_rejects_changed_pcm(self):
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / 'input.wav'
+            original = bytes(640)
+            paired.wav(path, original, 16000)
+            digest = hashlib.sha256(original).hexdigest()
+            self.assertEqual(paired.verified_fixture(path, digest), original)
+            paired.wav(path, b'\x01\x00' * 320, 16000)
+            with self.assertRaises(ValueError):
+                paired.verified_fixture(path, digest)
+
+    def test_cancel_requires_a_final_stt_transcript(self):
+        capture = paired.Capture()
+        with patch('app.services.spoken_write_approval.classify_spoken_write_approval',
+                   return_value=SimpleNamespace(decision='reject', invoke_allowed=False)) as classify:
+            capture.event({'type': 'transcript', 'text': 'Cancel it. Do not send anything.', 'final': False})
+            self.assertFalse(capture.cancel_recognized)
+            classify.assert_not_called()
+            capture.event({'type': 'transcript', 'text': 'Cancel it. Do not send anything.', 'final': True})
+            self.assertTrue(capture.cancel_recognized)
+            classify.assert_called_once_with('Cancel it. Do not send anything.')
+
+
+class CompletionTests(unittest.IsolatedAsyncioTestCase):
+    async def test_work_cancel_observation_uses_original_token_during_input(self):
+        from app.services.turn_cancellation import TurnCancellation
+        token = TurnCancellation()
+        capture = paired.Capture()
+        capture.first = time.monotonic()
+        capture.voice_session = SimpleNamespace(turn_cancellation=token)
+        started, release = threading.Event(), threading.Event()
+
+        def probe_run(original):
+            self.assertIs(original, token)
+            started.set()
+            if not release.wait(5):
+                raise TimeoutError('test probe release')
+            return {}
+
+        capture.probe = SimpleNamespace(started=started, release=release, run=probe_run)
+        async def send():
+            token.cancel('spoken_cancel')
+            # The next generation cannot replace which token was observed.
+            capture.voice_session.turn_cancellation = TurnCancellation()
+            await asyncio.sleep(.02)
+
+        running = asyncio.create_task(asyncio.Event().wait())
+        try:
+            await asyncio.wait_for(capture.interrupt(send, running), 2)
+            self.assertIsNotNone(capture.original_token_cancelled_at)
+            self.assertGreaterEqual(capture.original_token_cancelled_at, capture.interrupt_at)
+            self.assertLess(capture.original_token_cancelled_at - capture.interrupt_at, .5)
+            self.assertFalse(capture.voice_session.turn_cancellation.cancelled)
+        finally:
+            release.set()
+            running.cancel()
+            await asyncio.gather(running, return_exceptions=True)
+
+    async def test_backchannel_snapshot_precedes_disconnect_and_preserves_real_cancellation(self):
+        from app.services.turn_cancellation import TurnCancellation
+        for cancelled_before_completion in (False, True):
+            with self.subTest(cancelled_before_completion=cancelled_before_completion):
+                capture = paired.Capture()
+                capture.scenario = 'backchannel'
+                token = TurnCancellation()
+                capture.backchannel_original_token = token
+                if cancelled_before_completion:
+                    token.cancel('true_interrupt')
+                capture.first = capture.last = time.monotonic() - 10
+                capture.event({'type': 'bot-llm-stopped'})
+                capture.event({'type': 'assistant_turn.complete'})
+                capture.event({'type': 'bot-stopped-speaking'})
+                running = asyncio.create_task(asyncio.Event().wait())
+                try:
+                    await asyncio.wait_for(capture.settle(running), .5)
+                    self.assertIs(capture.backchannel_cancelled_at_completion, cancelled_before_completion)
+                    token.cancel('rtc_disconnect')
+                    self.assertTrue(token.cancelled)
+                    self.assertIs(capture.backchannel_cancelled_at_completion, cancelled_before_completion)
+                finally:
+                    running.cancel()
+                    await asyncio.gather(running, return_exceptions=True)
+
+    async def test_filler_silence_without_completion_does_not_finish(self):
+        capture = paired.Capture()
+        capture.first = time.monotonic() - 10
+        capture.last = capture.first
+        running = asyncio.create_task(asyncio.Event().wait())
+        settling = asyncio.create_task(capture.settle(running))
+        try:
+            await asyncio.sleep(.02)
+            self.assertFalse(settling.done())
+            capture.event({'type': 'bot-llm-stopped'})
+            capture.event({'type': 'assistant_turn.complete'})
+            capture.event({'type': 'bot-stopped-speaking'})
+            await asyncio.wait_for(settling, .5)
+        finally:
+            running.cancel()
+            settling.cancel()
+            await asyncio.gather(running, settling, return_exceptions=True)
+
+    async def test_ack_stop_before_turn_completion_cannot_end_final_capture(self):
+        capture = paired.Capture()
+        capture.first = capture.last = time.monotonic() - 10
+        capture.event({'type': 'bot-llm-stopped'})
+        capture.event({'type': 'bot-stopped-speaking'})
+        capture.event({'type': 'assistant_turn.complete'})
+        running = asyncio.create_task(asyncio.Event().wait())
+        settling = asyncio.create_task(capture.settle(running))
+        try:
+            await asyncio.sleep(.02)
+            self.assertFalse(settling.done())
+            capture.event({'type': 'bot-stopped-speaking'})
+            await asyncio.wait_for(settling, .5)
+        finally:
+            running.cancel()
+            settling.cancel()
+            await asyncio.gather(running, settling, return_exceptions=True)
+
+    async def test_error_diagnostics_do_not_retain_message_body(self):
+        capture = paired.Capture()
+        capture.event({'type': 'error', 'message': 'private-body anthropic 401'})
+        self.assertEqual(capture.errors[0]['categories'], ['anthropic', '401'])
+        self.assertNotIn('private-body', str(capture.errors))
+
+
+if __name__ == '__main__': unittest.main()

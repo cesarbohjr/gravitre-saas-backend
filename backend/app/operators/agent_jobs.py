@@ -81,6 +81,16 @@ def create_job(
         row["goal_id"] = goal_id
     if work_object_id:
         row["work_object_id"] = work_object_id
+    # Voice coroutine cancellation cannot stop a worker thread. Check the
+    # originating turn at the durable insert boundary, before notifications or
+    # queueing can turn a cancelled assignment into work for another process.
+    from app.services.turn_cancellation import current_turn_cancelled
+    if current_turn_cancelled():
+        from app.services.tool_types import ToolValidationError
+        raise ToolValidationError(
+            "Assignment creation was cancelled before its database write.",
+            code="write_commit_interrupted",
+        )
     resp = client.table("agent_jobs").insert(row).execute()
     job = resp.data[0] if resp.data else row
     # Lifecycle notify on queue (claim path skipped to avoid double spam).
@@ -1249,3 +1259,4 @@ async def stop_agent_job_worker(task: asyncio.Task | None) -> None:
         pass
     except Exception as exc:  # noqa: BLE001
         logger.warning("agent job worker stop error: %s", str(exc))
+

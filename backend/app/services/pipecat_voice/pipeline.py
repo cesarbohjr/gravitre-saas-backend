@@ -165,7 +165,7 @@ def build_pipecat_voice_task(
 
     krisp_filter, krisp_meta = build_krisp_viva_input_filter(settings)
 
-    from app.services.pipecat_voice.voice_audio_origin import VoicePipelineSession, normalize_origin
+    from app.services.pipecat_voice.voice_audio_origin import SPEAKING, WARMING, VoicePipelineSession, normalize_origin
 
     voice_session = VoicePipelineSession()
     query_origin = ""
@@ -213,6 +213,9 @@ def build_pipecat_voice_task(
         params=FastAPIWebsocketParams(
             audio_in_enabled=True,
             audio_out_enabled=True,
+            # Limit the PCM already committed to one WebSocket send. The
+            # SDK default batches 40 ms; stop cannot retract a sent frame.
+            audio_out_10ms_chunks=1,
             audio_in_sample_rate=16000,
             audio_out_sample_rate=LIVE_VOICE_OUTPUT_SAMPLE_RATE,
             audio_in_channels=1,
@@ -240,6 +243,10 @@ def build_pipecat_voice_task(
         if stt_info.get("stt_provider_key") != STT_FLUX and not dg_key and stt_info.get("stt_provider_key") != "openai":
             raise RuntimeError("DEEPGRAM_API_KEY required for Pipecat voice")
     use_flux = stt_info.get("stt_provider_key") == STT_FLUX
+    if use_flux and hasattr(stt, "partial_control_enabled"):
+        stt.partial_control_enabled = lambda: bool(
+            voice_session.work_active or voice_session.turn_state in {SPEAKING, WARMING}
+        )
 
     # Voice-SLO follow-up (2026-09-05): shared LLMContext (so the speculative
     # path can read the same prior-turn history GravitreCognitiveLLMService
@@ -340,6 +347,15 @@ def build_pipecat_voice_task(
     vad = None if use_flux else _optional_silero_vad()
     user_params_kwargs: dict[str, Any] = {"vad_analyzer": vad}
     if use_flux:
+        async def note_classification(decision):
+            sink = getattr(voice_session, 'interruption_timing_sink', None)
+            if callable(sink):
+                sink('classification', {
+                    'classification': decision.classification.value,
+                    'resolved_by_timeout': decision.resolved_by_timeout,
+                    'decision_latency_ms': round(decision.decision_latency_ms, 2),
+                })
+
         # Conversational-realism Phase 1 (backchannel vs. interruption):
         # Flux's own turn detection drives this via Proposed*SpeakingFrame,
         # normally resolved instantly by ExternalUserTurnStartStrategy
@@ -358,6 +374,7 @@ def build_pipecat_voice_task(
                     gravitre_user_id=user_id,
                     gravitre_conversation_id=conversation_id,
                     voice_session=voice_session,
+                    on_classification=note_classification,
                 )
             ],
             stop=[ExternalUserTurnStopStrategy()],
@@ -417,7 +434,7 @@ def build_pipecat_voice_task(
         ]
     )
 
-    latency_observer = GravitreVoiceLatencyObserver(turn_trace=turn_trace)
+    latency_observer = GravitreVoiceLatencyObserver(turn_trace=turn_trace, voice_session=voice_session)
     task = PipelineTask(
         pipeline,
         params=PipelineParams(
