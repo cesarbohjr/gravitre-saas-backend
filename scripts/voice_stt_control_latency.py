@@ -21,6 +21,10 @@ FIXTURES = {
     "ordinary_request": ("input.wav", "bd1062d37671b640cf0be2ae4397d3c133bd23131ac2d6f568c1ec1c076e3731"),
 }
 
+# Product control vocabulary, fixed before measurement; never fixture text.
+# Research-only: recognition bias is not cancellation/approval authority.
+CONTROL_KEYTERMS = ("cancel", "abort", "stop", "pause", "wait")
+
 
 def fixture(directory, case):
     name, digest = FIXTURES[case]
@@ -37,7 +41,7 @@ def observation(message, model):
     """Normalize only documented event shapes; no provider text is exported."""
     speech_start = False
     text = ""
-    if model == "flux" and message.get("type") == "TurnInfo":
+    if model in {"flux", "flux_controls"} and message.get("type") == "TurnInfo":
         speech_start = message.get("event") == "StartOfTurn"
         text = message.get("transcript", "")
     elif model == "nova3":
@@ -64,13 +68,16 @@ def connection_config(key, model):
                       language_code="en", commit_strategy="manual")
         return ("wss://api.elevenlabs.io/v1/speech-to-text/realtime?" + urlencode(params),
                 {"xi-api-key": key})
-    if model not in {"flux", "nova3"}:
+    if model not in {"flux", "flux_controls", "nova3"}:
         raise ValueError("unsupported_model")
-    params = dict(model="flux-general-en" if model == "flux" else "nova-3-general",
+    is_flux = model in {"flux", "flux_controls"}
+    params = dict(model="flux-general-en" if is_flux else "nova-3-general",
                   encoding="linear16", sample_rate=16000)
+    if model == "flux_controls":
+        params["keyterm"] = CONTROL_KEYTERMS
     if model == "nova3":
         params.update(interim_results="true", vad_events="true", language="en")
-    return ("wss://api.deepgram.com/" + ("v2" if model == "flux" else "v1") + "/listen?" + urlencode(params),
+    return ("wss://api.deepgram.com/" + ("v2" if is_flux else "v1") + "/listen?" + urlencode(params, doseq=True),
             {"Authorization": "Token " + key})
 
 
@@ -151,23 +158,44 @@ async def trial(key, model, case, pcm, repetition):
     return row
 
 
-async def run(directory, key, source_sha, scribe_key=None):
-    # Verify both digests before any connection or provider spend.
+def write_report(path, report):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temporary = path.with_suffix(path.suffix + ".tmp")
+    temporary.write_text(json.dumps(report, indent=2) + "\n")
+    temporary.replace(path)
+
+
+async def run(directory, key, source_sha, scribe_key=None, *, flux_control_comparison=False, output=None):
+    # Verify every digest before any connection or provider spend.
     recordings = {case: fixture(directory, case) for case in FIXTURES}
-    report = dict(source_sha=source_sha, status="NOT RUN", certified=False,
+    report = dict(source_sha=source_sha, status="RUNNING", certified=False,
                   scope="provider_only_control_word_latency", cutoff_reference="recording_input_start",
                   runtime_changed=False, trials=[])
+    if flux_control_comparison:
+        report["experimental_configuration"] = dict(
+            keyterms=list(CONTROL_KEYTERMS), provider_word_target_ms=400,
+            runtime_cutoff_limit_ms=500, negative_stop_words_allowed=0,
+            selection="NOT SELECTED; requires broader confusable/negation and real runtime tests",
+        )
+    if output is not None:
+        write_report(output, report)
     for repetition in range(1, 4):
         for case, pcm in recordings.items():
             # Alternate first model to avoid always giving one model a colder
             # network slot. No retries, best-of selection or discarded failures.
             models = ("flux", "nova3") if repetition % 2 else ("nova3", "flux")
-            if scribe_key:
+            if flux_control_comparison:
+                models = ("flux", "flux_controls") if repetition % 2 else ("flux_controls", "flux")
+            elif scribe_key:
                 models = models + ("scribe",) if repetition % 2 else ("scribe",) + models
             for model in models:
                 report["trials"].append(await trial(scribe_key if model == "scribe" else key,
                                                    model, case, pcm, repetition))
+                if output is not None:
+                    write_report(output, report)
     report["status"] = "OBSERVED" if all(r["status"] == "OBSERVED" for r in report["trials"]) else "INCOMPLETE"
+    if output is not None:
+        write_report(output, report)
     return report
 
 
@@ -175,14 +203,14 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--recordings", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--flux-control-comparison", action="store_true")
     args = parser.parse_args()
     key = os.environ.get("DEEPGRAM_API_KEY", "")
     if not key:
         raise SystemExit("missing_acceptance_deepgram_key")
     report = asyncio.run(run(args.recordings, key, os.environ.get("ACCEPTANCE_SOURCE_SHA", ""),
-                            os.environ.get("ELEVENLABS_API_KEY")))
-    args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_text(json.dumps(report, indent=2) + "\n")
+                            os.environ.get("ELEVENLABS_API_KEY"),
+                            flux_control_comparison=args.flux_control_comparison, output=args.output))
     print(json.dumps(report))
     return 0 if report["status"] == "OBSERVED" else 1
 

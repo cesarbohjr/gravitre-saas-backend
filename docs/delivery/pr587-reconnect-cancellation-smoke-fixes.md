@@ -310,3 +310,26 @@ Workflow YAML parses and includes direct prompt-path trigger coverage.
 The initial broad local run was interrupted after environment failures caused
 by missing `socksio` for the host's configured proxy. Installing that test-host
 dependency resolved those setup failures; application dependencies are unchanged.
+
+## Fixed-vocabulary latency candidate (research only)
+
+The next controlled experiment compares unchanged Flux against the same model
+with five fixed product control keyterms: cancel, abort, stop, pause and wait.
+This uses Deepgram's documented `keyterm` parameter; no certification sentence,
+transcript editing, new model, tenant data or runtime control authority is added.
+The same three recordings, three repetitions and alternating arm order apply.
+Predeclared provider target: every cancellation-word observation <=400 ms,
+leaving 100 ms for runtime processing/playout under the unchanged 500 ms limit;
+zero control-word detections in the negative cases. Even meeting these narrow
+criteria requires separate confusable/negation, quality and full matched-runtime
+validation before adoption. Failure means reject this latency remedy, not lower
+the target. The earlier 27 observations remain unchanged.
+
+The diagnostic now atomically checkpoints each completed observation with status
+RUNNING, so interruption preserves partial evidence without an observed/complete
+verdict. Ten offline diagnostic tests pass, including credential non-retention,
+exact baseline/candidate configuration differences, all 18 scheduled observations
+and cancellation after two observations. Workflow YAML parses. Application
+runtime is untouched; all live results for this candidate remain pending.
+The paired protocol's obsolete end-relative wording is corrected to match the
+already-enforced start-relative receiver and original-token 500 ms checks.

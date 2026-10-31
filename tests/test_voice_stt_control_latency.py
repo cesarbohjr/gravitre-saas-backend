@@ -7,6 +7,7 @@ import tempfile
 import unittest
 from unittest.mock import patch
 import wave
+from urllib.parse import parse_qs, urlparse
 
 spec = importlib.util.spec_from_file_location("latency", Path(__file__).resolve().parents[1] / "scripts/voice_stt_control_latency.py")
 latency = importlib.util.module_from_spec(spec)
@@ -14,6 +15,50 @@ spec.loader.exec_module(latency)
 
 
 class ControlLatencyTests(unittest.TestCase):
+    def test_flux_controls_change_only_explicit_fixed_keyterms(self):
+        baseline, headers = latency.connection_config("private-key", "flux")
+        candidate, candidate_headers = latency.connection_config("private-key", "flux_controls")
+        before, after = parse_qs(urlparse(baseline).query), parse_qs(urlparse(candidate).query)
+        self.assertEqual(after.pop("keyterm"), list(latency.CONTROL_KEYTERMS))
+        self.assertEqual(before, after)
+        self.assertEqual(urlparse(baseline).path, urlparse(candidate).path)
+        self.assertEqual(headers, candidate_headers)
+        self.assertNotIn("private-key", candidate)
+        self.assertEqual(latency.observation(dict(type="TurnInfo", event="Update", transcript="cancel"),
+                                            "flux_controls"), (False, True, True))
+
+    def test_control_comparison_retains_all_arms_and_never_certifies(self):
+        async def fake_trial(key, model, case, pcm, repetition):
+            return dict(status="OBSERVED", model=model, case=case, repetition=repetition)
+        with patch.object(latency, "fixture", return_value=bytes(6400)), patch.object(latency, "trial", side_effect=fake_trial):
+            report = asyncio.run(latency.run(Path("unused"), "key", "offline", "unused-scribe",
+                                            flux_control_comparison=True))
+        self.assertEqual(len(report["trials"]), 18)
+        self.assertEqual({r['model'] for r in report['trials']}, {"flux", "flux_controls"})
+        self.assertFalse(report["certified"])
+        self.assertFalse(report["runtime_changed"])
+        self.assertEqual(report["experimental_configuration"]["provider_word_target_ms"], 400)
+
+    def test_interrupted_comparison_keeps_completed_observations_as_running(self):
+        calls = 0
+        async def fake_trial(key, model, case, pcm, repetition):
+            nonlocal calls
+            calls += 1
+            if calls == 3:
+                raise asyncio.CancelledError()
+            return dict(status="OBSERVED", model=model, case=case, repetition=repetition)
+        with tempfile.TemporaryDirectory() as directory:
+            output = Path(directory) / "report.json"
+            with patch.object(latency, "fixture", return_value=bytes(6400)), patch.object(latency, "trial", side_effect=fake_trial):
+                with self.assertRaises(asyncio.CancelledError):
+                    asyncio.run(latency.run(Path("unused"), "private-key", "offline",
+                                           flux_control_comparison=True, output=output))
+            report = json.loads(output.read_text())
+            self.assertEqual(report["status"], "RUNNING")
+            self.assertEqual(len(report["trials"]), 2)
+            self.assertFalse(report["certified"])
+            self.assertNotIn("private-key", output.read_text())
+
     def test_only_clear_control_word_is_reported(self):
         for text, expected in (("Cancel it.", True), ("uh-huh", False), ("stopwatch", False), (None, False)):
             with self.subTest(text=text):

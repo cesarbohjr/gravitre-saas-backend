@@ -46,7 +46,9 @@ The spoken-cancel case replays a second, separately synthesized fixed recording
 ("Cancel it. Do not send anything.") through the actual audio/STT path. It sends
 no out-of-band interrupt control. That identical cancel PCM and its digest are
 shared by both transports. Original-reply receiver cutoff is reported from both
-cancel-speech start and end; the limit is 500 ms after cancel-speech end. The
+cancel-speech start and end; the limit is 500 ms after cancel-speech **start**.
+The original work token must also be independently observed cancelled within
+that same start-relative deadline. Recording-end timing is diagnostic only. The
 control-only case retains its separate 500 ms control-to-cutoff limit. Neither
 case alone certifies a business write was pending or prevented.
 
