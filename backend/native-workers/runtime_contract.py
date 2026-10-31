@@ -251,6 +251,8 @@ def run():
             # atomic new lease -> actual isolated Playwright navigation and fill.
             # The old lease cannot dispatch, and both new actions are reviewed.
             live_handoff_trials=[]
+            candidate_runner.timings=[]
+            candidate_runner.timing_sink=candidate_runner.timings.append
             for trial_number in range(12):
                 trial_started_ns=time.perf_counter_ns()
                 state.update(kind='playwright_recovery',calls=0)
@@ -303,6 +305,8 @@ def run():
                 assert len(handoff_journal.actions(handoff_scope,handoff_id))==2
                 assert handoff_journal.claim('browser_use') is None
                 live_handoff_trials.append({'trial':trial_number+1,
+                    'docker_gvisor_phases_ms':candidate_runner.timings[-1]['phases_ms'],
+                    'chromium_phases_ms':recovered_result['browser_startup_timings_ms'],
                     'fence_ms':round((fenced_ns-trial_started_ns)/1e6,2),
                     'lease_ms':round((activated_ns-fenced_ns)/1e6,2),
                     'first_review_ms':round((first_review_ns[0]-fenced_ns)/1e6,2),
@@ -328,14 +332,14 @@ def run():
             evidence['live_handoff_latency']=handoff_summary
             print(json.dumps({'live_handoff_latency':handoff_summary},sort_keys=True))
             print(json.dumps({'completed_runtime_checks':evidence},sort_keys=True))
-            # Coordinator-level benchmark: fail the source at a durable,
-            # before-effect checkpoint; run the actual NativeRuntime.tick
-            # transition and a fresh gVisor Playwright executor. The injected
-            # disconnect is synthetic, so OS failure detection is not measured.
+            # Real OS crash benchmark: kill the isolated Browser Use engine
+            # with SIGKILL after a durable, pre-effect checkpoint and before
+            # any action approval; then execute the actual NativeRuntime.tick
+            # failover through a fresh isolated Playwright container.
             from app.services.native_runtime.runtime import NativeRuntime
             auto_trials=[]
-            for trial_number in range(12):
-                state.update(kind='playwright_recovery',calls=0)
+            for trial_number in range(6):
+                state.update(kind='browser_use',calls=0,browser_page_observed=False,browser_submitted=False,browser_context_checks=[])
                 auto_root=root/('coordinator-auto-'+str(trial_number))
                 auto_root.mkdir(mode=0o700)
                 auto_journal=Journal(str(auto_root/'journal.sqlite3'),Fernet.generate_key())
@@ -347,7 +351,7 @@ def run():
                     'actor':'fixture','engine':'browser_use'}
                 auto_id=auto_journal.enqueue(auto_scope,'browser_use',
                     'coordinator-fault',payload,ttl=3600,max_attempts=1)
-                observed={'fault_ns':None,'review_ns':None,'actions':[]}
+                observed={'fault_ns':None,'kill_start_ns':None,'review_ns':None,'actions':[],'sigkill':False}
                 class CoordinatorRunner:
                     supports_browser_checkpoint=True
                     def cleanup(self,job_id):
@@ -355,10 +359,25 @@ def run():
                     def execute(self,job,*,guard,action_gate,checkpoint_gate=None):
                         if job.get('phase')!='fallback_playwright':
                             assert checkpoint_gate is not None
-                            checkpoint_gate(0,{'before_effect':True,'url':auto_url,
-                                'page_fingerprint':'a'*64})
-                            observed['fault_ns']=time.perf_counter_ns()
-                            raise ConnectionError('injected_source_transport_disconnect')
+                            def kill_after_checkpoint(sequence,marker):
+                                checkpoint_gate(sequence,marker)
+                                assert sequence==0 and marker.get('before_effect') is True
+                                assert not auto_journal.actions(auto_scope,auto_id)
+                                observed['kill_start_ns']=time.perf_counter_ns()
+                                # Real SIGKILL of the per-job isolated gVisor
+                                # engine, not a mocked Python exception.
+                                docker('kill',runner.names(auto_id)[1])
+                                observed['sigkill']=True
+                            try:
+                                runner.execute(job,guard=guard,
+                                    action_gate=lambda *_:(_ for _ in ()).throw(
+                                        AssertionError('Source action dispatched after SIGKILL')),
+                                    checkpoint_gate=kill_after_checkpoint)
+                            except (RuntimeError,subprocess.CalledProcessError,ConnectionError):
+                                assert observed['sigkill']
+                                observed['fault_ns']=time.perf_counter_ns()
+                                raise ConnectionError('isolated_browser_engine_sigkill')
+                            raise AssertionError('SIGKILL source returned success')
                         def approved_action(sequence,details):
                             request=action_gate(sequence,details)
                             auto_journal.approve(auto_scope,auto_id,
@@ -373,13 +392,16 @@ def run():
                 runtime.fallback_timing_sink=timing.append
                 outcome=runtime.tick('browser_use')
                 terminal_ns=time.perf_counter_ns()
-                assert outcome=='fallback_playwright_completed',outcome
+                assert observed['sigkill'] and outcome=='fallback_playwright_completed',outcome
                 assert observed['actions']==[0,1] and observed['review_ns']
                 assert len(timing)==1 and timing[0]['outcome']=='completed'
                 assert not auto_journal.active({'id':auto_id,'lease':'stale'})
                 assert auto_journal.get(auto_scope,auto_id)['state']=='completed'
                 clean(auto_id)
                 auto_trials.append({'trial':trial_number+1,
+                    'os_sigkill_detection_ms':round((observed['fault_ns']-observed['kill_start_ns'])/1e6,2),
+                    'source_os_sigkill_confirmed':observed['sigkill'],
+                    'docker_gvisor_phases_ms':candidate_runner.timings[-1]['phases_ms'],
                     'fault_detected_to_first_review_ms':round(
                         (observed['review_ns']-observed['fault_ns'])/1e6,2),
                     'fault_detected_to_review_completion_ms':round(
@@ -388,10 +410,10 @@ def run():
                     'lease_transition_ms':timing[0]['durations_ms']['lease_transition'],
                     'playwright_execute_ms':timing[0]['durations_ms']['playwright_execute_through_result']})
             auto_summary={
-                'measurement':'injected_source_disconnect_to_actual_coordinator_recovery',
-                'source_failure':'injected ConnectionError after durable pre-effect checkpoint',
+                'measurement':'actual_gvisor_browser_sigkill_to_coordinator_playwright_recovery',
+                'source_failure':'real docker kill of isolated gVisor Browser Use engine after durable pre-effect checkpoint',
                 'real_gvisor_playwright_execution':True,
-                'real_os_failure_detection':False,
+                'real_os_failure_detection':True,
                 'sample_count':len(auto_trials),'trials':auto_trials,
                 'first_review_p50_ms':handoff_percentile(
                     [x['fault_detected_to_first_review_ms'] for x in auto_trials],.5),
@@ -401,7 +423,7 @@ def run():
                     [x['fault_detected_to_review_completion_ms'] for x in auto_trials],.5),
                 'completion_p95_ms':handoff_percentile(
                     [x['fault_detected_to_review_completion_ms'] for x in auto_trials],.95)}
-            assert auto_summary['sample_count']==12
+            assert auto_summary['sample_count']==6
             evidence['coordinator_recovery_latency']=auto_summary
             evidence['real_coordinator_to_gvisor_playwright_recovery']='PASS'
             print(json.dumps({'coordinator_recovery_latency':auto_summary},sort_keys=True))
