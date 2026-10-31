@@ -95,6 +95,16 @@ async def run(config, *, browser=None):
         raise PermissionError("Candidate requires an existing approved browser job")
     if browser is not None:
         raise PermissionError("External browser sessions are forbidden")
+    recovery=config.get("recovery_checkpoint")
+    if recovery is not None:
+        if not isinstance(recovery,dict) or recovery.get("before_effect") is not True:
+            raise PermissionError("Recovery requires a verified pre-effect checkpoint")
+        if recovery.get("url")!=config.get("comparison_url"):
+            raise PermissionError("Recovery URL does not match the fenced checkpoint")
+        # This executable supports only the reviewed public form fixture in
+        # recovery mode. General-site failover needs a separate certified runner.
+        if recovery["url"]!="https://www.selenium.dev/selenium/web/web-form.html":
+            raise PermissionError("Unsupported automatic recovery destination")
     from playwright.async_api import async_playwright
     async with async_playwright() as playwright:
         instance = await playwright.chromium.launch(executable_path="/usr/bin/chromium",
