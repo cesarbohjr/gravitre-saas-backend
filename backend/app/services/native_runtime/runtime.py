@@ -117,6 +117,60 @@ class NativeRuntime:
         except Exception:
             return False
 
+    def _run_verified_playwright_fallback(self, original: dict) -> str:
+        """Resume an approved fixture task with a fresh, exclusively fenced lease.
+
+        Unsupported checkpoints fail closed; this does not generalize the
+        comparison executable to arbitrary customer websites or tasks.
+        """
+        scope=original['scope']
+        checkpoint=self.journal.fallback_candidate(scope,original['id'])
+        if checkpoint is None:return 'fallback_reconciliation_required'
+        marker=checkpoint['checkpoint']
+        # The existing Playwright executable only understands the owned and
+        # Selenium approval fixtures. Never replay a generic customer task.
+        if marker.get('url') not in {
+            'https://www.selenium.dev/selenium/web/web-form.html'
+        } and not getattr(self.runner,'supports_owned_recovery_fixture',False):
+            return 'fallback_reconciliation_required'
+        self.authorize(original['payload']['claims'])
+        reservation=self.journal.claim_fenced_handoff(scope,original['id'])
+        job=self.journal.activate_fenced_handoff(scope,original['id'],reservation)
+        bound_route=[None]
+        def guard():
+            if not self.journal.active(job):raise LeaseLost('Fallback lease revoked')
+            route=self.authorize(job['payload']['claims'])
+            if bound_route[0] is not None and route!=bound_route[0]:
+                raise PermissionError('Recovery model route changed')
+            bound_route[0]=route
+            self.journal.update(job,'running')
+            return route
+        def action(sequence, details):
+            guard()
+            return self.journal.request_action(job,sequence,details)
+        try:
+            guard()
+            result=self.runner.execute(job,guard=guard,action_gate=action)
+            guard()
+            if not isinstance(result,dict) or len(json.dumps(result).encode())>240000:
+                raise ValueError('Invalid Playwright result')
+            envelope={**result,'schema_version':1,
+                'org_id':scope.org_id,'agent_id':scope.agent_id,'run_id':scope.run_id}
+            plan=browser_use_review_plan(envelope,scope=scope,
+                allowed_hosts=frozenset(job['payload']['task']['allowed_hosts']))
+            self.journal.update(job,'completed',result={
+                'plan':plan.model_dump(mode='json') if hasattr(plan,'model_dump') else asdict(plan),
+                'verified_execution':False,'requires_review':True})
+            return 'fallback_playwright_completed'
+        except LeaseLost:
+            return 'cancelled_or_lease_lost'
+        except Exception:
+            try:self.journal.update(job,'uncertain',phase='fallback_reconcile',error='recovery_failed')
+            except LeaseLost:pass
+            return 'fallback_reconciliation_required'
+        finally:
+            self.runner.cleanup(job['id'])
+
     def tick(self,engine: str) -> str | None:
         job=self.journal.claim(engine,lease_seconds=60)
         if not job:return None
@@ -171,7 +225,9 @@ class NativeRuntime:
                     if decision is not RecoveryDecision.STOP:
                         safe=self.journal.fence_browser_for_fallback(
                             job,checkpoint_before_effect=decision is RecoveryDecision.SAFE_CHECKPOINT)
-                        return 'fallback_checkpoint_fenced' if safe else 'fallback_reconciliation_required'
+                        if safe:
+                            return self._run_verified_playwright_fallback(job)
+                        return 'fallback_reconciliation_required'
                 except (LeaseLost,PermissionError):
                     return 'cancelled_or_lease_lost'
             try:self.journal.update(job,'failed',error='native_execution_failed')
