@@ -31,6 +31,7 @@ from app.services.first_token_honesty import (
     reject_premature_done,
 )
 from app.services.module_d_unified_voice_spec import MODULE_D_UNIFIED_SYSTEM_SPEC
+from app.services.gravitre_voice import repeated_request_prompt_section
 from app.services.response_envelope import coerce_user_envelope, envelope_kind
 from app.services.user_facing_copy_guard import (
     collapse_spaces_keep_lines,
@@ -556,6 +557,9 @@ async def _llm_compose(
 
     history_block = _history_excerpt(history)
     system = _system_prompt(spoken=spoken)
+    repeat_section = repeated_request_prompt_section(user_message, history)
+    if repeat_section:
+        system += "\n\n" + repeat_section
     prompt = _user_prompt(kind=kind, envelope=envelope, user_message=user_message, draft=draft)
     if history_block:
         prompt = f"Recent conversation:\n{history_block}\n\n{prompt}"

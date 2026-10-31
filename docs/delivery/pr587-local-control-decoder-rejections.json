@@ -1,0 +1,408 @@
+{
+  "certified": false,
+  "runtime_changed": false,
+  "scope": "offline_causal_streaming_decoder_experiment",
+  "timing_reference": "audio_consumed_offset_not_wall_clock_runtime_latency",
+  "model_url": "https://alphacephei.com/vosk/models/vosk-model-small-en-us-0.15.zip",
+  "model_archive_sha256": "30f26242c4eb449f948e42cb302dd7a686cb29a3423a8367f99ff41780942498",
+  "decisions": {
+    "general": "REJECTED: first cancellation text after 880 ms of audio",
+    "cancel_unk": "REJECTED: ordinary request falsely recognized as cancel",
+    "controls_confusables": "REJECTED: cancellation text after 640 ms of audio",
+    "controls_confusables_prompt": "REJECTED: diagnostic grammar includes the certification prompt and cannot establish generalization"
+  },
+  "initial_trials": [
+    {
+      "grammar": "general",
+      "fixture": "cancel-input.wav",
+      "first_cancel_audio_ms": 880.0,
+      "cpu_ms": 498.02,
+      "pcm_sha256": "cb59c58a686767cc7fc882ac6773dbd09beed5c22d420a229524f8a55a2c4936"
+    },
+    {
+      "grammar": "general",
+      "fixture": "backchannel-input.wav",
+      "first_cancel_audio_ms": null,
+      "cpu_ms": 335.98,
+      "pcm_sha256": "91e37080c6122a0e5df30858e72bffcbeb34e4a4415597771f7fa78382bb2133"
+    },
+    {
+      "grammar": "general",
+      "fixture": "input.wav",
+      "first_cancel_audio_ms": null,
+      "cpu_ms": 1314.57,
+      "pcm_sha256": "bd1062d37671b640cf0be2ae4397d3c133bd23131ac2d6f568c1ec1c076e3731"
+    },
+    {
+      "grammar": "cancel_unk",
+      "fixture": "cancel-input.wav",
+      "first_cancel_audio_ms": 400.0,
+      "cpu_ms": 30.61,
+      "pcm_sha256": "cb59c58a686767cc7fc882ac6773dbd09beed5c22d420a229524f8a55a2c4936"
+    },
+    {
+      "grammar": "cancel_unk",
+      "fixture": "backchannel-input.wav",
+      "first_cancel_audio_ms": null,
+      "cpu_ms": 9.56,
+      "pcm_sha256": "91e37080c6122a0e5df30858e72bffcbeb34e4a4415597771f7fa78382bb2133"
+    },
+    {
+      "grammar": "cancel_unk",
+      "fixture": "input.wav",
+      "first_cancel_audio_ms": 3280.0,
+      "cpu_ms": 175.32,
+      "pcm_sha256": "bd1062d37671b640cf0be2ae4397d3c133bd23131ac2d6f568c1ec1c076e3731"
+    }
+  ],
+  "followup": {
+    "certified": false,
+    "scope": "offline_causal_streaming_probe",
+    "configurations": {
+      "controls_confusables": [
+        "cancel",
+        "stop talking",
+        "stop working",
+        "never mind",
+        "can you",
+        "can I",
+        "cancer",
+        "can sell",
+        "council",
+        "yes",
+        "okay",
+        "please",
+        "[unk]"
+      ],
+      "controls_confusables_prompt": [
+        "cancel",
+        "stop talking",
+        "stop working",
+        "never mind",
+        "can you",
+        "can I",
+        "cancer",
+        "can sell",
+        "council",
+        "yes",
+        "okay",
+        "please rewrite this welcome note in a warmer tone keeping the same meaning in two short sentences welcome to the team Alex we are happy you joined us",
+        "[unk]"
+      ]
+    },
+    "trials": [
+      {
+        "configuration": "controls_confusables",
+        "fixture": "repeated-paired/repetition-1/native/approve.wav",
+        "first_cancel_audio_ms": null,
+        "cpu_ms": 13.52
+      },
+      {
+        "configuration": "controls_confusables",
+        "fixture": "repeated-paired/repetition-1/native/cancel.wav",
+        "first_cancel_audio_ms": 640.0,
+        "cpu_ms": 11.5
+      },
+      {
+        "configuration": "controls_confusables",
+        "fixture": "repeated-paired/repetition-1/native/livekit-approval-replay.wav",
+        "first_cancel_audio_ms": null,
+        "cpu_ms": 262.21
+      },
+      {
+        "configuration": "controls_confusables",
+        "fixture": "repeated-paired/repetition-1/native/livekit-approve-stage.wav",
+        "first_cancel_audio_ms": 41440.0,
+        "cpu_ms": 1052.91
+      },
+      {
+        "configuration": "controls_confusables",
+        "fixture": "repeated-paired/repetition-1/native/livekit-approve.wav",
+        "first_cancel_audio_ms": null,
+        "cpu_ms": 367.9
+      },
+      {
+        "configuration": "controls_confusables",
+        "fixture": "repeated-paired/repetition-1/native/livekit-cancel-stage.wav",
+        "first_cancel_audio_ms": 41440.0,
+        "cpu_ms": 912.63
+      },
+      {
+        "configuration": "controls_confusables",
+        "fixture": "repeated-paired/repetition-1/native/livekit-cancel.wav",
+        "first_cancel_audio_ms": 10720.0,
+        "cpu_ms": 357.52
+      },
+      {
+        "configuration": "controls_confusables",
+        "fixture": "repeated-paired/repetition-1/native/pipecat-approval-replay.wav",
+        "first_cancel_audio_ms": null,
+        "cpu_ms": 52.7
+      },
+      {
+        "configuration": "controls_confusables",
+        "fixture": "repeated-paired/repetition-1/native/pipecat-approve-stage.wav",
+        "first_cancel_audio_ms": 23680.0,
+        "cpu_ms": 449.12
+      },
+      {
+        "configuration": "controls_confusables",
+        "fixture": "repeated-paired/repetition-1/native/pipecat-approve.wav",
+        "first_cancel_audio_ms": null,
+        "cpu_ms": 160.82
+      },
+      {
+        "configuration": "controls_confusables",
+        "fixture": "repeated-paired/repetition-1/native/pipecat-cancel-stage.wav",
+        "first_cancel_audio_ms": null,
+        "cpu_ms": 438.55
+      },
+      {
+        "configuration": "controls_confusables",
+        "fixture": "repeated-paired/repetition-1/native/pipecat-cancel.wav",
+        "first_cancel_audio_ms": 1600.0,
+        "cpu_ms": 96.42
+      },
+      {
+        "configuration": "controls_confusables",
+        "fixture": "repeated-paired/repetition-1/native/stage.wav",
+        "first_cancel_audio_ms": null,
+        "cpu_ms": 240.96
+      },
+      {
+        "configuration": "controls_confusables",
+        "fixture": "repeated-paired/repetition-1/voice/backchannel-input.wav",
+        "first_cancel_audio_ms": null,
+        "cpu_ms": 11.91
+      },
+      {
+        "configuration": "controls_confusables",
+        "fixture": "repeated-paired/repetition-1/voice/cancel-input.wav",
+        "first_cancel_audio_ms": 640.0,
+        "cpu_ms": 33.54
+      },
+      {
+        "configuration": "controls_confusables",
+        "fixture": "repeated-paired/repetition-1/voice/input.wav",
+        "first_cancel_audio_ms": null,
+        "cpu_ms": 192.05
+      },
+      {
+        "configuration": "controls_confusables",
+        "fixture": "repeated-paired/repetition-1/voice/livekit-backchannel.wav",
+        "first_cancel_audio_ms": null,
+        "cpu_ms": 601.8
+      },
+      {
+        "configuration": "controls_confusables",
+        "fixture": "repeated-paired/repetition-1/voice/livekit-baseline.wav",
+        "first_cancel_audio_ms": null,
+        "cpu_ms": 691.64
+      },
+      {
+        "configuration": "controls_confusables",
+        "fixture": "repeated-paired/repetition-1/voice/livekit-interrupt.wav",
+        "first_cancel_audio_ms": null,
+        "cpu_ms": 382.37
+      },
+      {
+        "configuration": "controls_confusables",
+        "fixture": "repeated-paired/repetition-1/voice/livekit-reconnect.wav",
+        "first_cancel_audio_ms": null,
+        "cpu_ms": 575.28
+      },
+      {
+        "configuration": "controls_confusables",
+        "fixture": "repeated-paired/repetition-1/voice/livekit-spoken_cancel.wav",
+        "first_cancel_audio_ms": null,
+        "cpu_ms": 485.23
+      },
+      {
+        "configuration": "controls_confusables",
+        "fixture": "repeated-paired/repetition-1/voice/pipecat-backchannel.wav",
+        "first_cancel_audio_ms": null,
+        "cpu_ms": 342.16
+      },
+      {
+        "configuration": "controls_confusables",
+        "fixture": "repeated-paired/repetition-1/voice/pipecat-baseline.wav",
+        "first_cancel_audio_ms": null,
+        "cpu_ms": 145.76
+      },
+      {
+        "configuration": "controls_confusables",
+        "fixture": "repeated-paired/repetition-1/voice/pipecat-interrupt.wav",
+        "first_cancel_audio_ms": null,
+        "cpu_ms": 0.9
+      },
+      {
+        "configuration": "controls_confusables",
+        "fixture": "repeated-paired/repetition-1/voice/pipecat-reconnect.wav",
+        "first_cancel_audio_ms": null,
+        "cpu_ms": 203.93
+      },
+      {
+        "configuration": "controls_confusables",
+        "fixture": "repeated-paired/repetition-1/voice/pipecat-spoken_cancel.wav",
+        "first_cancel_audio_ms": null,
+        "cpu_ms": 26.16
+      },
+      {
+        "configuration": "controls_confusables_prompt",
+        "fixture": "repeated-paired/repetition-1/native/approve.wav",
+        "first_cancel_audio_ms": null,
+        "cpu_ms": 12.72
+      },
+      {
+        "configuration": "controls_confusables_prompt",
+        "fixture": "repeated-paired/repetition-1/native/cancel.wav",
+        "first_cancel_audio_ms": 640.0,
+        "cpu_ms": 12.66
+      },
+      {
+        "configuration": "controls_confusables_prompt",
+        "fixture": "repeated-paired/repetition-1/native/livekit-approval-replay.wav",
+        "first_cancel_audio_ms": null,
+        "cpu_ms": 217.06
+      },
+      {
+        "configuration": "controls_confusables_prompt",
+        "fixture": "repeated-paired/repetition-1/native/livekit-approve-stage.wav",
+        "first_cancel_audio_ms": 41440.0,
+        "cpu_ms": 921.75
+      },
+      {
+        "configuration": "controls_confusables_prompt",
+        "fixture": "repeated-paired/repetition-1/native/livekit-approve.wav",
+        "first_cancel_audio_ms": null,
+        "cpu_ms": 374.8
+      },
+      {
+        "configuration": "controls_confusables_prompt",
+        "fixture": "repeated-paired/repetition-1/native/livekit-cancel-stage.wav",
+        "first_cancel_audio_ms": 41440.0,
+        "cpu_ms": 973.07
+      },
+      {
+        "configuration": "controls_confusables_prompt",
+        "fixture": "repeated-paired/repetition-1/native/livekit-cancel.wav",
+        "first_cancel_audio_ms": 10720.0,
+        "cpu_ms": 344.4
+      },
+      {
+        "configuration": "controls_confusables_prompt",
+        "fixture": "repeated-paired/repetition-1/native/pipecat-approval-replay.wav",
+        "first_cancel_audio_ms": null,
+        "cpu_ms": 56.25
+      },
+      {
+        "configuration": "controls_confusables_prompt",
+        "fixture": "repeated-paired/repetition-1/native/pipecat-approve-stage.wav",
+        "first_cancel_audio_ms": 23680.0,
+        "cpu_ms": 486.85
+      },
+      {
+        "configuration": "controls_confusables_prompt",
+        "fixture": "repeated-paired/repetition-1/native/pipecat-approve.wav",
+        "first_cancel_audio_ms": null,
+        "cpu_ms": 174.2
+      },
+      {
+        "configuration": "controls_confusables_prompt",
+        "fixture": "repeated-paired/repetition-1/native/pipecat-cancel-stage.wav",
+        "first_cancel_audio_ms": null,
+        "cpu_ms": 482.44
+      },
+      {
+        "configuration": "controls_confusables_prompt",
+        "fixture": "repeated-paired/repetition-1/native/pipecat-cancel.wav",
+        "first_cancel_audio_ms": 1600.0,
+        "cpu_ms": 112.64
+      },
+      {
+        "configuration": "controls_confusables_prompt",
+        "fixture": "repeated-paired/repetition-1/native/stage.wav",
+        "first_cancel_audio_ms": null,
+        "cpu_ms": 261.67
+      },
+      {
+        "configuration": "controls_confusables_prompt",
+        "fixture": "repeated-paired/repetition-1/voice/backchannel-input.wav",
+        "first_cancel_audio_ms": null,
+        "cpu_ms": 12.42
+      },
+      {
+        "configuration": "controls_confusables_prompt",
+        "fixture": "repeated-paired/repetition-1/voice/cancel-input.wav",
+        "first_cancel_audio_ms": 640.0,
+        "cpu_ms": 37.18
+      },
+      {
+        "configuration": "controls_confusables_prompt",
+        "fixture": "repeated-paired/repetition-1/voice/input.wav",
+        "first_cancel_audio_ms": null,
+        "cpu_ms": 197.26
+      },
+      {
+        "configuration": "controls_confusables_prompt",
+        "fixture": "repeated-paired/repetition-1/voice/livekit-backchannel.wav",
+        "first_cancel_audio_ms": null,
+        "cpu_ms": 587.46
+      },
+      {
+        "configuration": "controls_confusables_prompt",
+        "fixture": "repeated-paired/repetition-1/voice/livekit-baseline.wav",
+        "first_cancel_audio_ms": null,
+        "cpu_ms": 603.14
+      },
+      {
+        "configuration": "controls_confusables_prompt",
+        "fixture": "repeated-paired/repetition-1/voice/livekit-interrupt.wav",
+        "first_cancel_audio_ms": null,
+        "cpu_ms": 351.81
+      },
+      {
+        "configuration": "controls_confusables_prompt",
+        "fixture": "repeated-paired/repetition-1/voice/livekit-reconnect.wav",
+        "first_cancel_audio_ms": null,
+        "cpu_ms": 550.47
+      },
+      {
+        "configuration": "controls_confusables_prompt",
+        "fixture": "repeated-paired/repetition-1/voice/livekit-spoken_cancel.wav",
+        "first_cancel_audio_ms": null,
+        "cpu_ms": 440.87
+      },
+      {
+        "configuration": "controls_confusables_prompt",
+        "fixture": "repeated-paired/repetition-1/voice/pipecat-backchannel.wav",
+        "first_cancel_audio_ms": null,
+        "cpu_ms": 334.31
+      },
+      {
+        "configuration": "controls_confusables_prompt",
+        "fixture": "repeated-paired/repetition-1/voice/pipecat-baseline.wav",
+        "first_cancel_audio_ms": null,
+        "cpu_ms": 150.23
+      },
+      {
+        "configuration": "controls_confusables_prompt",
+        "fixture": "repeated-paired/repetition-1/voice/pipecat-interrupt.wav",
+        "first_cancel_audio_ms": null,
+        "cpu_ms": 0.66
+      },
+      {
+        "configuration": "controls_confusables_prompt",
+        "fixture": "repeated-paired/repetition-1/voice/pipecat-reconnect.wav",
+        "first_cancel_audio_ms": null,
+        "cpu_ms": 205.13
+      },
+      {
+        "configuration": "controls_confusables_prompt",
+        "fixture": "repeated-paired/repetition-1/voice/pipecat-spoken_cancel.wav",
+        "first_cancel_audio_ms": null,
+        "cpu_ms": 26.89
+      }
+    ]
+  }
+}

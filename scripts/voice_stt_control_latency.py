@@ -1,11 +1,12 @@
 """Bounded provider-only timing experiment; never a voice certification verdict.
 
 Stream the unchanged paired cancellation/backchannel recordings in real time to
-Flux and Nova-3. Export timing and fixed classifications, never transcripts,
+Flux, Nova-3 and optionally ElevenLabs Scribe Realtime. Export timing and fixed classifications, never transcripts,
 credentials, provider bodies, or account identifiers. No tenant/API/TTS writes.
 """
 import argparse
 import asyncio
+import base64
 import hashlib
 import json
 import os
@@ -17,6 +18,7 @@ import wave
 FIXTURES = {
     "cancel": ("cancel-input.wav", "cb59c58a686767cc7fc882ac6773dbd09beed5c22d420a229524f8a55a2c4936"),
     "backchannel": ("backchannel-input.wav", "91e37080c6122a0e5df30858e72bffcbeb34e4a4415597771f7fa78382bb2133"),
+    "ordinary_request": ("input.wav", "bd1062d37671b640cf0be2ae4397d3c133bd23131ac2d6f568c1ec1c076e3731"),
 }
 
 
@@ -44,6 +46,8 @@ def observation(message, model):
             alternatives = message.get("channel", {}).get("alternatives", [])
             if alternatives:
                 text = alternatives[0].get("transcript", "")
+    elif model == "scribe" and message.get("message_type") in {"partial_transcript", "committed_transcript"}:
+        text = message.get("text", "")
     if not isinstance(text, str):
         text = ""
     words = re.findall(r"[a-z']+", text.lower())
@@ -52,31 +56,60 @@ def observation(message, model):
     return speech_start, bool(words), stop_word
 
 
-async def trial(key, model, case, pcm, repetition):
-    from websockets.asyncio.client import connect
-
+def connection_config(key, model):
+    if model == "scribe":
+        # Official Realtime API, no keyword bias or transcript editing.
+        # https://elevenlabs.io/docs/api-reference/speech-to-text/v-1-speech-to-text-realtime
+        params = dict(model_id="scribe_v2_realtime", audio_format="pcm_16000",
+                      language_code="en", commit_strategy="manual")
+        return ("wss://api.elevenlabs.io/v1/speech-to-text/realtime?" + urlencode(params),
+                {"xi-api-key": key})
+    if model not in {"flux", "nova3"}:
+        raise ValueError("unsupported_model")
     params = dict(model="flux-general-en" if model == "flux" else "nova-3-general",
                   encoding="linear16", sample_rate=16000)
     if model == "nova3":
         params.update(interim_results="true", vad_events="true", language="en")
-    url = "wss://api.deepgram.com/" + ("v2" if model == "flux" else "v1") + "/listen?" + urlencode(params)
+    return ("wss://api.deepgram.com/" + ("v2" if model == "flux" else "v1") + "/listen?" + urlencode(params),
+            {"Authorization": "Token " + key})
+
+
+def audio_message(pcm, model):
+    if model == "scribe":
+        return json.dumps(dict(message_type="input_audio_chunk",
+            audio_base_64=base64.b64encode(pcm).decode("ascii"), sample_rate=16000, commit=False))
+    return pcm
+
+
+async def trial(key, model, case, pcm, repetition):
+    from websockets.asyncio.client import connect
+
+    url, headers = connection_config(key, model)
     row = dict(model=model, case=case, repetition=repetition,
                pcm_sha256=hashlib.sha256(pcm).hexdigest(), status="NOT RUN",
                first_speech_start_ms=None, first_transcript_ms=None,
                first_stop_word_ms=None, max_send_lateness_ms=0)
     try:
         async with asyncio.timeout(20):
-            async with connect(url, additional_headers={"Authorization": "Token " + key},
+            async with connect(url, additional_headers=headers,
                                open_timeout=5, close_timeout=2, max_size=262144) as ws:
                 loop = asyncio.get_running_loop()
                 input_start = None
+                ready = asyncio.Event()
+                if model != "scribe":
+                    ready.set()
 
                 async def receive():
                     async for raw in ws:
                         if isinstance(raw, bytes):
                             continue
                         data = json.loads(raw)
-                        if data.get("type") == "Error":
+                        if data.get("message_type") == "session_started":
+                            ready.set()
+                        if data.get("type") == "Error" or data.get("error") or data.get("message_type") in {
+                            "auth_error", "quota_exceeded", "rate_limited", "unaccepted_terms",
+                            "throttled", "input_error", "queue_overflow", "resource_exhausted",
+                        }:
                             raise RuntimeError("provider_error")
                         if input_start is None:
                             continue
@@ -88,6 +121,7 @@ async def trial(key, model, case, pcm, repetition):
 
                 receiver = asyncio.create_task(receive())
                 try:
+                    await asyncio.wait_for(ready.wait(), timeout=5)
                     # Keep the socket warm with one second of silence before
                     # measurement, like the existing ongoing paired session.
                     audio = bytes(32000) + pcm + bytes(32000 * 3)
@@ -99,7 +133,7 @@ async def trial(key, model, case, pcm, repetition):
                         if input_start is not None:
                             row["max_send_lateness_ms"] = round(max(row["max_send_lateness_ms"],
                                 (loop.time() - started - offset / 32000) * 1000), 3)
-                        await ws.send(audio[offset:offset + 640])
+                        await ws.send(audio_message(audio[offset:offset + 640], model))
                         if receiver.done():
                             await receiver
                             raise RuntimeError("provider_closed_early")
@@ -117,7 +151,7 @@ async def trial(key, model, case, pcm, repetition):
     return row
 
 
-async def run(directory, key, source_sha):
+async def run(directory, key, source_sha, scribe_key=None):
     # Verify both digests before any connection or provider spend.
     recordings = {case: fixture(directory, case) for case in FIXTURES}
     report = dict(source_sha=source_sha, status="NOT RUN", certified=False,
@@ -128,8 +162,11 @@ async def run(directory, key, source_sha):
             # Alternate first model to avoid always giving one model a colder
             # network slot. No retries, best-of selection or discarded failures.
             models = ("flux", "nova3") if repetition % 2 else ("nova3", "flux")
+            if scribe_key:
+                models = models + ("scribe",) if repetition % 2 else ("scribe",) + models
             for model in models:
-                report["trials"].append(await trial(key, model, case, pcm, repetition))
+                report["trials"].append(await trial(scribe_key if model == "scribe" else key,
+                                                   model, case, pcm, repetition))
     report["status"] = "OBSERVED" if all(r["status"] == "OBSERVED" for r in report["trials"]) else "INCOMPLETE"
     return report
 
@@ -142,7 +179,8 @@ def main():
     key = os.environ.get("DEEPGRAM_API_KEY", "")
     if not key:
         raise SystemExit("missing_acceptance_deepgram_key")
-    report = asyncio.run(run(args.recordings, key, os.environ.get("ACCEPTANCE_SOURCE_SHA", "")))
+    report = asyncio.run(run(args.recordings, key, os.environ.get("ACCEPTANCE_SOURCE_SHA", ""),
+                            os.environ.get("ELEVENLABS_API_KEY")))
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(report, indent=2) + "\n")
     print(json.dumps(report))

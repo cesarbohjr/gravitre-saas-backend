@@ -374,6 +374,8 @@ jobs:
           python -m pytest -q -p tests.offline_network_guard
           tests/scripts/test_voice_provider_roundtrip.py
           tests/services/test_unified_turn_conversational_model.py
+          tests/services/test_unified_turn_reasoning.py
+          tests/services/test_repeated_request_composition.py
           tests/services/test_provider_tool_router.py
           tests/services/test_ai_guardrails.py::TestPromptHardening
           tests/services/pipecat_voice/test_flux_partial_bridge.py

@@ -209,3 +209,51 @@ It does not grant action or approval authority. Focused routing/reasoning/tool
 and hardening regression totals **79 passed**; controller/auth/retention tests
 also pass (16 / 1 / 7). Both production corrections still need exact-head live
 verification before these gates can be closed.
+
+## Remaining live voice failures after 4c5346a
+
+Full CI (`41243500878`), connected RTC (`41243500735`), governed-action
+boundaries and live provider roundtrips (`41243500780`) passed for 4c5346a.
+Its actual three matched repetitions remain **FAIL: 23/30 voice, 12/12 native**.
+All six spoken cancellations exceeded the unchanged input-start 500 ms limit.
+Pipecat/LiveKit receiver cutoffs were 531.06/605.85, 667.12/666.32 and
+629.08/552.78 ms; original-token observations were 532.84/534.46,
+668.71/602.99 and 625.64/538.52 ms. Clear Flux cancellation partials arrived
+at 526.85/528.66, 662.64/594.28 and 616.43/531.00 ms. Classification followed
+within a few milliseconds. Smaller downstream queues alone cannot recover a
+deadline already missed before transcript recognition. Paired artifact
+`13059597768` ZIP SHA-256:
+`7d5a2c93b288cfddbde04d9b90ce3c5593103e10df6f6f10515573c842a77ac4`.
+
+Pipecat repetition 2 also returned an already-done deflection after reconnect.
+A narrow read-only query on the pinned synthetic acceptance conversation
+confirmed that both user requests were identical. Its audit path was the
+mandatory response composer (`clarify`), which did not receive the existing
+repeated-request directive from the classical system prompt. The directive
+now reaches the composer and unified-turn model calls too. It asks for current
+content while explicitly preserving fresh authorization, approval, cancellation
+and idempotency; untrusted conversation text is never inserted into policy.
+Actual-call prompt regressions cover typed/spoken modes and clarify, permission
+and stopped outcomes. **64 focused composer/unified reasoning/provider tests
+pass**. This is a code correction awaiting fresh live reconnect verification.
+
+Local Vosk experiments are **rejected**, not adopted: the general decoder first
+recognized cancellation after 880 ms of consumed audio; a constrained decoder
+reported it after 400 ms but also hallucinated cancellation in the ordinary
+request. Adding confusable phrases delayed cancellation to 640 ms. A further
+diagnostic grammar included the certification prompt and cannot establish
+generalization. All observations, including failures, are retained in
+`pr587-local-control-decoder-rejections.json`. These are offline prefix probes,
+not wall-clock runtime certification. No Vosk dependency or model is added to
+the runtime.
+
+The bounded provider diagnostic now compares Scribe v2 Realtime using the
+existing acceptance ElevenLabs key, in addition to Flux/Nova-3. It includes
+the unchanged ordinary-request recording as a negative alongside cancellation
+and backchannel recordings, verifies all PCM digests before connecting, retains
+all 27 observations, and exports no transcripts or credentials. Scribe uses
+original partial/committed transcripts, manual segmentation and no keyword
+bias or transcript editing. **7 diagnostic contract tests pass**. No provider
+switch is made until actual latency and false-activation evidence is inspected.
+The paired cancellation limit, pinned recordings and full standing batteries
+are unchanged. Physical-device playout remains NOT RUN.
