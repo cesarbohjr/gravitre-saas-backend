@@ -96,7 +96,7 @@ class DockerRunner:
                 break
             except subprocess.CalledProcessError:
                 if process.poll() is not None or time.monotonic()>=ready_by:raise RuntimeError('Native gateway did not become ready') from None
-                time.sleep(0.25)
+                time.sleep(0.1)
         return gateway_address
 
     @staticmethod
@@ -215,7 +215,9 @@ class DockerRunner:
                 if gateway_process.poll() is not None:
                     raise ConnectionError('Native gateway process exited')
                 if time.monotonic()>=deadline:raise TimeoutError('Native sandbox timed out')
-                time.sleep(0.5)
+                # Lower completion/crash observation latency without changing
+                # the sandbox process, authority checks, or isolation.
+                time.sleep(0.1)
             mark('engine_process_runtime_ms')
             if gateway_process.poll() is not None:
                 raise ConnectionError('Native gateway process exited')
