@@ -2,6 +2,34 @@
 
 The user's current release instruction authorizes the six-stage sequence below. Earlier draft/no-deploy language in historical records describes earlier checkpoints; it does not override this later instruction. Authorization does not bypass repository protections or acceptance gates.
 
+## Completion review after `146b3b0`
+
+The mandatory pre-merge comparisons below remain the acceptance criteria. This
+review does not waive missing provider, physical-device or independent-review evidence.
+
+- Latest connected RTC run [41170086062](https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/41170086062)
+  failed after recorded ingress while cancelling the receive drain. A deterministic
+  test reproduced cancellation being swallowed during child-task cleanup. The
+  candidate fix cancels both child waits and gathers them together, preserving
+  parent cancellation. All 12 real-SDK unit contracts pass locally, including the
+  new cleanup-race and queue-waiter/reuse cases; fresh connected CI is required.
+- Live-provider run [41170086100](https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/41170086100)
+  failed at ElevenLabs synthesis with upstream HTTP 401 and fixed provider reason
+  `quota_exceeded`. Restore dedicated acceptance-provider quota before live audio
+  can pass. No alternate credentials, account or provider is substituted.
+- The local loopback server could not start: network-route discovery is denied
+  (`netlinkrib: operation not permitted`). Local unit results do not replace the
+  connected CI run or physical microphone/speaker evidence.
+- Next execution order remains: matched three-repetition audio and independent
+  write audits; full standing intelligence batteries; fault/reconnect recovery;
+  remaining comparative quality/cost/privacy and independent review; final combined
+  PR581/PR587 source reconciliation and exact-head CI; protected coordinated release
+  and deployed acceptance. Preserve every failed result rather than retrying it away.
+- Runtime decisions remain unchanged: native governed memory selected, Mem0
+  adoption rejected while scoped complete erasure fails, Browser Use production
+  default, and LiveKit comparison-only. No merge, deployment, production migration,
+  native activation or customer action is certified by this review.
+
 | Stage | Required evidence | Current disposition |
 | --- | --- | --- |
 | 1. PR581 final CI | Every applicable workflow green on the final branch head | Pending final-head certification; the earlier a81ec4e checkpoint is historical |

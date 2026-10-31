@@ -181,3 +181,67 @@ async def test_spoken_interruption_flushes_native_playout_before_event(candidate
         socket._source = source
         await socket.close()
 
+
+@pytest.mark.asyncio
+async def test_receive_cancellation_during_child_cleanup_is_not_swallowed(candidate_module):
+    socket = candidate_module.LiveKitCandidateSocket(SimpleNamespace(), participant_identity="replay-user")
+    cleanup_started, release = asyncio.Event(), asyncio.Event()
+
+    class SlowControl(asyncio.Event):
+        async def wait(self):
+            try:
+                await super().wait()
+            except asyncio.CancelledError:
+                cleanup_started.set()
+                await release.wait()
+                raise
+
+    socket._control_ready = SlowControl()
+    socket._incoming.put_nowait({"type": "websocket.receive", "text": "audio"})
+    receiving = asyncio.create_task(socket.receive())
+    try:
+        # Audio has won; receive is waiting for its cancelled control child.
+        await asyncio.wait_for(cleanup_started.wait(), 1)
+        receiving.cancel()
+        with pytest.raises(asyncio.CancelledError):
+            await asyncio.wait_for(receiving, 1)
+    finally:
+        release.set()
+        receiving.cancel()
+        await asyncio.gather(receiving, return_exceptions=True)
+        await socket.close()
+
+
+@pytest.mark.asyncio
+async def test_cancelled_receive_releases_queue_waiters_and_socket_can_receive_again(candidate_module):
+    socket = candidate_module.LiveKitCandidateSocket(SimpleNamespace(), participant_identity="replay-user")
+    queue_started = asyncio.Event()
+
+    class TrackedQueue(asyncio.Queue):
+        active = 0
+
+        async def get(self):
+            self.active += 1
+            queue_started.set()
+            try:
+                return await super().get()
+            finally:
+                self.active -= 1
+
+    socket._incoming = TrackedQueue()
+    receiving = asyncio.create_task(socket.receive())
+    try:
+        await asyncio.wait_for(queue_started.wait(), 1)
+        receiving.cancel()
+        with pytest.raises(asyncio.CancelledError):
+            await asyncio.wait_for(receiving, 1)
+        assert socket._incoming.active == 0
+        message = {"type": "websocket.receive", "text": "next frame"}
+        socket._incoming.put_nowait(message)
+        assert await asyncio.wait_for(socket.receive(), 1) == message
+    finally:
+        receiving.cancel()
+        await asyncio.gather(receiving, return_exceptions=True)
+        await socket.close()
+
+

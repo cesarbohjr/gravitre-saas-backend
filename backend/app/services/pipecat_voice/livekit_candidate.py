@@ -179,8 +179,10 @@ class LiveKitCandidateSocket:
                 for pending in (audio, control):
                     if not pending.done():
                         pending.cancel()
-                    with contextlib.suppress(asyncio.CancelledError):
-                        await pending
+                # Collect child cancellation without swallowing cancellation
+                # of receive itself. A cancel arriving during a suppressed
+                # child await used to return audio and restart the drain loop.
+                await asyncio.gather(audio, control, return_exceptions=True)
         return {"type": "websocket.disconnect", "code": 1000}
 
     async def send_text(self, data: str) -> None:
@@ -320,4 +322,5 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+
 
