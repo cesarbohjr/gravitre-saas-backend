@@ -28,6 +28,8 @@ on:
       - 'backend/tests/services/test_gravitre_voice.py'
       - 'scripts/voice_standing_acceptance.py'
       - 'tests/test_voice_standing_acceptance.py'
+      - 'scripts/verify_elevenlabs_account.py'
+      - 'tests/test_elevenlabs_account_probe.py'
   workflow_dispatch:
 permissions:
   contents: read
@@ -295,6 +297,7 @@ jobs:
       # copies on the disposable hosted runner. Dependency versions are unchanged.
       PIP_NO_CACHE_DIR: '1'
       APP_ENV: dev
+      ACCEPTANCE_SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
       DEEPGRAM_API_KEY: ${{ secrets.ACCEPTANCE_DEEPGRAM_API_KEY }}
       ELEVENLABS_API_KEY: ${{ secrets.ACCEPTANCE_ELEVENLABS_API_KEY }}
       ELEVENLABS_VOICE_ID: ${{ vars.ACCEPTANCE_ELEVENLABS_VOICE_ID }}
@@ -305,6 +308,15 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+      - name: Regress read-only account probe and privacy guards
+        run: python -m unittest discover -s tests -p test_elevenlabs_account_probe.py
+      - name: Inspect the exact acceptance key subscription without generating audio
+        run: python scripts/verify_elevenlabs_account.py --output acceptance-results/elevenlabs-account-check.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: elevenlabs-acceptance-account-check
+          path: acceptance-results/elevenlabs-account-check.json
       - name: Check dedicated provider credentials without disclosing values
         run: |
           python - <<'PY'
