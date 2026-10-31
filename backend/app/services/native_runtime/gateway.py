@@ -54,6 +54,9 @@ class Handler(BaseHTTPRequestHandler):
             if self.path=='/action':
                 stage='action_authority'
                 return self.reply(200,control('action',body))
+            if self.path=='/checkpoint':
+                stage='checkpoint_authority'
+                return self.reply(200,control('checkpoint',body))
             if self.path!='/v1/chat/completions':return self.reply(404,{'error':'unsupported_native_route'})
             if body.get('stream') is True:raise ValueError('Only bounded non-streamed model calls are supported')
             stage='authority';control('authorize',{})
