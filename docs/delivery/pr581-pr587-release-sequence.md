@@ -12,7 +12,12 @@ review does not waive missing provider, physical-device or independent-review ev
   test reproduced cancellation being swallowed during child-task cleanup. The
   candidate fix cancels both child waits and gathers them together, preserving
   parent cancellation. All 12 real-SDK unit contracts pass locally, including the
-  new cleanup-race and queue-waiter/reuse cases; fresh connected CI is required.
+  new cleanup-race and queue-waiter/reuse cases.
+  Fresh [connected CI 41170496665](https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/41170496665)
+  passed on `77e5d55e3e11099f56fb6390541afcba56b4e35a`: recorded ingress/egress,
+  waveform correlation 0.9772, pinned interrupt delivery 9.32 ms, fresh-peer
+  rejoin 92.36 ms, foreign control rejection and old-session closure. These are
+  loopback transport measurements, not provider quality or physical playout.
 - Live-provider run [41170086100](https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/41170086100)
   failed at ElevenLabs synthesis with upstream HTTP 401 and fixed provider reason
   `quota_exceeded`. Restore dedicated acceptance-provider quota before live audio
@@ -20,6 +25,12 @@ review does not waive missing provider, physical-device or independent-review ev
 - The local loopback server could not start: network-route discovery is denied
   (`netlinkrib: operation not permitted`). Local unit results do not replace the
   connected CI run or physical microphone/speaker evidence.
+- Paired audio is now dependent on the bounded provider preflight, preventing
+  further repeated audio attempts when it fails. Standing Anthropic batteries
+  can still execute after that skipped audio job; they wait for older acceptance
+  runs before touching the shared smoke actor. Orchestration deadlines cover the
+  existing six 900-second phases and predecessor wait; per-test deadlines,
+  repetitions, failure retention and the audio cutoff threshold are unchanged.
 - Next execution order remains: matched three-repetition audio and independent
   write audits; full standing intelligence batteries; fault/reconnect recovery;
   remaining comparative quality/cost/privacy and independent review; final combined
