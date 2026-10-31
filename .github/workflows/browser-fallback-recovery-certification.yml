@@ -16,7 +16,7 @@ permissions:
 
 concurrency:
   group: browser-fallback-cert-${{ github.ref }}
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   independent-recovery-acceptance:
