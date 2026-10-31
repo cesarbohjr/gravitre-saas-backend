@@ -172,7 +172,13 @@ def anti_repeat_prompt_section(recent_assistant: list[str] | None) -> str:
     return (
         "## Anti-repeat\n"
         "Do not reuse these recent assistant phrasings verbatim; vary wording while "
-        "keeping the same facts and next move:\n"
+        "keeping the same facts and next move. This is a style rule, not permission "
+        "to withhold the answer to the current request. When the user asks again "
+        "for content, provide that content again instead of only pointing above "
+        "or saying it was already handled. If they ask for the same wording, "
+        "repeat that wording. Repeating content never authorizes repeating a "
+        "tool call or a mutating action; preserve fresh authorization and "
+        "idempotency requirements for actions. Recent phrasing:\n"
         f"{bullets}"
     )
 

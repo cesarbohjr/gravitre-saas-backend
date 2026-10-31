@@ -24,11 +24,59 @@ on:
       - 'backend/app/config.py'
       - 'backend/tests/core/test_supabase_credential_whitespace.py'
       - 'backend/tests/scripts/test_voice_provider_roundtrip.py'
+      - 'backend/app/services/gravitre_voice.py'
+      - 'backend/tests/services/test_gravitre_voice.py'
+      - 'scripts/voice_standing_acceptance.py'
+      - 'tests/test_voice_standing_acceptance.py'
   workflow_dispatch:
 permissions:
   contents: read
   actions: read
 jobs:
+  standing-batteries:
+    needs: paired-runtime-readiness
+    if: ${{ always() && needs.paired-runtime-readiness.result != 'cancelled' && needs.paired-runtime-readiness.result != 'skipped' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    environment: acceptance
+    env:
+      PIP_NO_CACHE_DIR: '1'
+      APP_ENV: dev
+      GRAVITRE_VOICE_ISOLATED: '1'
+      SUPABASE_URL: ${{ secrets.E2E_SUPABASE_URL }}
+      SUPABASE_ANON_KEY: ${{ secrets.E2E_SUPABASE_ANON_KEY }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.E2E_SUPABASE_SERVICE_ROLE_KEY }}
+      SUPABASE_JWT_SECRET: ${{ secrets.E2E_SUPABASE_JWT_SECRET }}
+      E2E_SUPABASE_ALLOWED_URL: ${{ vars.E2E_SUPABASE_ALLOWED_URL }}
+      ANTHROPIC_API_KEY: ${{ secrets.ACCEPTANCE_ANTHROPIC_API_KEY }}
+      OPENAI_API_KEY: ''
+      GEMINI_API_KEY: ''
+      PREFERRED_AI_PROVIDER: anthropic
+      AI_FAILOVER_ENABLED: 'true'
+      NOTIFICATION_EMAIL_ENABLED: 'false'
+      ACCEPTANCE_SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install production dependencies without retaining wheel cache
+        run: python -m pip install -r backend/requirements-dev.txt
+      - name: Regress acceptance targeting, report privacy and full-battery retention
+        run: python -m unittest discover -s tests -p test_voice_standing_acceptance.py
+      - name: Verify dedicated acceptance identity and refresh session
+        run: |
+          python scripts/bootstrap_voice_acceptance.py
+          python scripts/mint_smoke_org_session.py --github-env
+      - name: Run complete standing prompt batteries against the loopback acceptance API
+        run: python scripts/voice_standing_acceptance.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: isolated-standing-batteries
+          path: acceptance-results/standing-batteries
   paired-runtime-readiness:
     runs-on: ubuntu-latest
     timeout-minutes: 60

@@ -52,6 +52,9 @@ def test_anti_repeat_prompt_section():
     )
     assert "## Anti-repeat" in section
     assert "Connected HubSpot" in section
+    assert "provide that content again" in section
+    assert "repeat that wording" in section
+    assert "never authorizes repeating a tool call or a mutating action" in section
     assert anti_repeat_prompt_section(["hi"]) == ""
 
 
