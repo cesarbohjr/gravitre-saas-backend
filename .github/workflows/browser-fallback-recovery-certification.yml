@@ -62,6 +62,7 @@ jobs:
         working-directory: .
         env:
           EXPECTED_SHA: ${{ github.sha }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
           python - <<'PY'
           import json,os,xml.etree.ElementTree as ET
@@ -69,7 +70,8 @@ jobs:
           root=Path('recovery-evidence')
           root.mkdir(exist_ok=True)
           xml=root/'junit.xml'
-          manifest={'head_sha':os.environ['EXPECTED_SHA'],
+          manifest={'head_sha':os.environ.get('PR_HEAD_SHA') or os.environ['EXPECTED_SHA'],
+                    'github_workflow_sha':os.environ['EXPECTED_SHA'],
                     'test_type':'offline-real-process-and-independent-receiver',
                     'limitations':['not production tenant authorization',
                                    'not live two-adapter browser handoff',
