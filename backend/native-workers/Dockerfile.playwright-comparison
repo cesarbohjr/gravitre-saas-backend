@@ -8,6 +8,7 @@ RUN pip install --no-cache-dir --require-hashes -r /runner/requirements.txt && p
 COPY app/services/native_runtime/engine.py /runner/engine.py
 COPY native-workers/browser_adapter_benchmark.py /runner/browser_adapter_benchmark.py
 COPY native-workers/playwright_candidate.py /runner/playwright_candidate.py
+COPY native-workers/playwright_recovery.py /runner/playwright_recovery.py
 USER 10001:10001
 WORKDIR /workspace
 CMD ["sleep","infinity"]

@@ -101,6 +101,7 @@ def worker_main(adapter):
 class Model:
     def __init__(self,root,url):
         self.url=url;self.token=secrets.token_urlsafe(32)
+        self.click_proposed_for=None
         owner=self
         class Handler(BaseHTTPRequestHandler):
             def log_message(self,*_):pass
@@ -120,10 +121,22 @@ class Model:
                 same=bool(seen) and seen.scheme=='https' and seen.netloc==expected.netloc and seen.path=='/page'
                 dom=state.partition('Interactive elements')[2]
                 target=re.search(r'\[(\d+)\]<button\b[^\n]*\bid=commit\b',dom)
-                action=([{'done':{'text':'Owned fixture readback complete','success':True}}] if same and 'Written' in dom
-                        else [{'click':{'index':int(target.group(1))}}] if same and target
-                        else [{'wait':{'seconds':1}}] if same
-                        else [{'navigate':{'url':owner.url}}])
+                # The result paragraph is noninteractive and may appear before
+                # the Interactive elements section. The prior test model missed
+                # that readback, proposed a second click and left it pending.
+                # Never propose the same externally mutating click twice.
+                observed_written=same and bool(re.search(r'\bWritten\b',state))
+                if observed_written:
+                    action=[{'done':{'text':'Owned fixture readback complete','success':True}}]
+                elif same and owner.click_proposed_for==owner.url:
+                    action=[{'wait':{'seconds':1}}]
+                elif same and target:
+                    owner.click_proposed_for=owner.url
+                    action=[{'click':{'index':int(target.group(1))}}]
+                elif same:
+                    action=[{'wait':{'seconds':1}}]
+                else:
+                    action=[{'navigate':{'url':owner.url}}]
                 content=json.dumps({'evaluation_previous_goal':'Observe owned fixture','memory':'Only the approved fixture is in scope',
                     'next_goal':'Read back the reviewed fixture effect','action':action})
                 data=json.dumps({'id':'fixture','object':'chat.completion','created':1,'model':'fixture-native',
@@ -303,6 +316,7 @@ def run():
                     stage=adapter+':'+case+':worker_startup'
                     worker=Worker(case_root,adapter,{**base_env,'CERT_FIXTURE_URL':case_url},AdapterScope(orgs[0],agents[0],str(uuid4())),user,admin)
                     stage=adapter+':'+case
+                    scenario_started=time.monotonic()
                     worker.scope=AdapterScope(orgs[0],agents[0],str(uuid4()))
                     fixture.mutated=False;fixture.hold=case=='broker_crash_after_effect'
                     before=fixture.count(case_cap);assert before==0
@@ -397,7 +411,11 @@ def run():
                         raise
                     expected=1 if case in ('approved','broker_crash_after_effect','lost_submit_ack','lost_approval_ack') else 0
                     assert fixture.count(case_cap)-before==expected
-                    if crash:assert result['state']=='uncertain'
+                    if crash or case=='gateway_crash':
+                        # A disconnected gateway with an unresolved approval
+                        # must reconcile; it cannot be classified as a safe
+                        # failure or silently replay a possible side effect.
+                        assert result['state']=='uncertain'
                     elif expected:assert result['state']=='completed'
                     elif case in ('denied','cancelled'):assert result['state']=='cancelled'
                     else:assert result['state']=='failed'
@@ -419,8 +437,10 @@ def run():
                     assert not docker('network','ls','-q','--filter','label=gravitre.native.job='+id)
                     time.sleep(.5);assert fixture.count(case_cap)-before==expected
                     case_counts.append((case_cap,expected))
+                    scenario_duration_ms=round((time.monotonic()-scenario_started)*1000,1)
                     rows.append({'adapter':adapter,'scenario':case,'passed':True,'state':result['state'],
                         'authorized_writes':expected,'observed_writes':fixture.count(case_cap)-before,'unauthorized_writes':0,
+                        'scenario_duration_ms':scenario_duration_ms,
                         'replayed_jobs':0,'resources_cleaned':True,'actual_worker_entrypoint':True,
                         'persisted_tenant_authorization':True,'signed_api':True,'natural_lease_expiry':crash,
                         'http_acknowledgement_dropped':case in ('lost_submit_ack','lost_approval_ack','broker_crash_after_effect')})
@@ -432,6 +452,20 @@ def run():
         assert all(fixture.count(capability)==expected for capability,expected in case_counts)
         assert fixture.writes==sum(expected for _,expected in case_counts)
         report['independent_total_writes']=fixture.writes
+        # These are full scenario durations, NOT Browser Use -> Playwright
+        # failover latencies. Do not use them to claim seamless handoff.
+        import statistics
+        report['scenario_duration_by_adapter_ms']={}
+        for engine in ('browser_use','playwright'):
+            values=sorted(row['scenario_duration_ms'] for row in rows
+                          if row.get('adapter')==engine and row.get('passed'))
+            def percentile(percent):
+                position=(len(values)-1)*percent
+                low=int(position);high=min(low+1,len(values)-1)
+                return round(values[low]+(values[high]-values[low])*(position-low),1)
+            report['scenario_duration_by_adapter_ms'][engine]={
+                'count':len(values),'p50':percentile(.5),'p95':percentile(.95)}
+        report['handoff_latency_certified']=False
         report['status']='PASS'
     except Exception as error:
         report.update(status='BLOCKED',failure_stage=stage,failure_class=type(error).__name__)

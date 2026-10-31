@@ -1,0 +1,110 @@
+name: Browser fallback recovery certification
+
+on:
+  pull_request:
+    branches:
+      - feature/unified-agent-capability-manifest-recovery
+    paths:
+      - 'backend/app/services/native_runtime/**'
+      - 'backend/native-workers/**'
+      - 'backend/tests/native_runtime/**'
+      - '.github/workflows/browser-fallback-recovery-certification.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: browser-fallback-cert-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  independent-recovery-acceptance:
+    name: Real broker SIGKILL and independent receiver write audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    defaults:
+      run:
+        working-directory: backend
+    env:
+      APP_ENV: dev
+      PYTHONPATH: .
+      RECOVERY_AUDIT_PATH: ../recovery-evidence/audit
+      SUPABASE_URL: https://test.supabase.co
+      SUPABASE_ANON_KEY: anon-test
+      SUPABASE_SERVICE_ROLE_KEY: service-role-test
+      SUPABASE_JWT_SECRET: jwt-secret-test
+      OPENAI_API_KEY: sk-test-openai
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: backend/requirements-dev.txt
+      - name: Install backend test dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-dev.txt
+      - name: Execute real process and write-audit regressions
+        run: |
+          mkdir -p ../recovery-evidence
+          python -m pytest -q --no-header \
+            tests/native_runtime/test_fallback_journal.py \
+            tests/native_runtime/test_fallback_policy.py \
+            tests/native_runtime/test_broker_process_contract.py \
+            tests/native_runtime/test_gateway_checkpoint_route.py \
+            tests/native_runtime/test_fallback_certification.py \
+            tests/native_runtime/test_playwright_recovery_contract.py \
+            --junitxml=../recovery-evidence/junit.xml
+      - name: Produce SHA-bound certification manifest
+        if: always()
+        working-directory: .
+        env:
+          EXPECTED_SHA: ${{ github.sha }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          python - <<'PY'
+          import json,os,xml.etree.ElementTree as ET
+          from pathlib import Path
+          root=Path('recovery-evidence')
+          root.mkdir(exist_ok=True)
+          xml=root/'junit.xml'
+          manifest={'head_sha':os.environ.get('PR_HEAD_SHA') or os.environ['EXPECTED_SHA'],
+                    'github_workflow_sha':os.environ['EXPECTED_SHA'],
+                    'test_type':'offline-real-process-and-independent-receiver',
+                    'limitations':['not production tenant authorization',
+                                   'not live two-adapter browser handoff',
+                                   'not actual identity-provider revocation']}
+          if xml.exists():
+              doc=ET.parse(xml).getroot()
+              suite=doc.find('testsuite') if doc.tag!='testsuite' else doc
+              manifest['counts']={field:int(suite.attrib.get(field,0))
+                                  for field in ('tests','failures','errors','skipped')}
+              manifest['passed']=manifest['counts']['tests']>0 and not (
+                  manifest['counts']['failures'] or manifest['counts']['errors']
+                  or manifest['counts']['skipped'])
+          else:
+              manifest['passed']=False
+              manifest['error']='No JUnit evidence'
+          cases=[]
+          for audit in sorted((root/'audit').glob('*.json')):
+              cases.append(json.loads(audit.read_text()))
+          manifest['independent_receiver_audit']=cases
+          expected_cases={'sigkill_before_effect','sigkill_after_effect','lost_submit_ack'}
+          manifest['audit_complete']={case['case'] for case in cases}==expected_cases
+          manifest['zero_unauthorized_or_duplicate_writes']=manifest['audit_complete'] and all(
+              case['passed'] and case['unauthorized_or_duplicate_writes']==0 for case in cases)
+          manifest['passed']=manifest['passed'] and manifest['zero_unauthorized_or_duplicate_writes']
+          (root/'manifest.json').write_text(json.dumps(manifest,indent=2))
+          if not manifest['passed']:
+              raise SystemExit('Recovery certification missing or failed required evidence')
+          PY
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: browser-fallback-recovery-${{ github.sha }}
+          path: recovery-evidence/
+          if-no-files-found: error
+          retention-days: 30

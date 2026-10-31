@@ -31,7 +31,7 @@ def build_app(*, runner_factory=None):
     settings=get_settings();client=get_supabase_client(settings)
     journal=Journal(os.environ['NATIVE_JOURNAL_PATH'],os.environ['NATIVE_JOURNAL_KEY'].encode())
     signer=IntakeSigner(settings.native_worker_signing_key)
-    images=SandboxImages(os.environ['NATIVE_OPENHANDS_IMAGE'],os.environ['NATIVE_BROWSER_IMAGE'],os.environ['NATIVE_GATEWAY_IMAGE'],os.environ.get('NATIVE_SANDBOX_RUNTIME','runsc'))
+    images=SandboxImages(os.environ['NATIVE_OPENHANDS_IMAGE'],os.environ['NATIVE_BROWSER_IMAGE'],os.environ['NATIVE_GATEWAY_IMAGE'],os.environ.get('NATIVE_SANDBOX_RUNTIME','runsc'),playwright_comparison=os.environ.get('NATIVE_PLAYWRIGHT_IMAGE'))
     # These routes are trusted administrator configuration, not tool/model args.
     tenants=json.loads(os.environ['NATIVE_TENANTS_JSON'])
     if not isinstance(tenants,dict):raise ValueError('Explicit tenant route configuration required')

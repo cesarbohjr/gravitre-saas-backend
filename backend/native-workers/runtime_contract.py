@@ -121,6 +121,19 @@ def run():
                         else [{'wait':{'seconds':1}}])
                 output={'evaluation_previous_goal':'Fixture browser is running','memory':'Only the approved public fixture page may be read','next_goal':'Observe the fixture page','action':action}
                 message['content']=json.dumps(output)
+            elif kind=='playwright_recovery':
+                # Scripted response based solely on observed DOM identities;
+                # no customer prompt, external provider or arbitrary selector.
+                if number==1:
+                    question=json.loads(body['messages'][-1]['content'])
+                    observed=json.loads(question['page'])
+                    index=next((idx+1 for idx,node in enumerate(observed['nodes'])
+                                if node.get('id')=='my-text-id'),None)
+                    if index is None:raise AssertionError('Recovery field not observed')
+                    message['content']=json.dumps({'action':'fill','index':index,'value':'certified'})
+                else:
+                    message['content']=json.dumps({'action':'finish',
+                        'summary':'Reviewed Playwright recovery reached the observed form'})
             elif kind=='openhands':
                 tools=[x['function'] for x in body.get('tools',[]) if x.get('type')=='function']
                 if number==1:
@@ -176,7 +189,7 @@ def run():
                 for line in stream.read(262144).decode(errors='replace').splitlines():
                     try:
                         entry=json.loads(line)
-                        if isinstance(entry,dict) and set(entry) in ({'browser_page_diagnostic'},{'gateway_failure_stage','gateway_failure_class','known_parameter_flags'},{'browser_error_codes','browser_error_classes'},{'browser_failure_stage','browser_failure_class','frames'},{'browser_evidence_changed','url_changed','decoded_pixels_changed','screenshot_bytes_changed','dom_changed','title_changed','targets_changed'}):
+                        if isinstance(entry,dict) and set(entry) in ({'browser_page_diagnostic'},{'browser_model_validation_categories'},{'gateway_connect_diagnostic'},{'gateway_failure_stage','gateway_failure_class','known_parameter_flags'},{'browser_error_codes','browser_error_classes'},{'browser_failure_stage','browser_failure_class','frames'},{'browser_evidence_changed','url_changed','decoded_pixels_changed','screenshot_bytes_changed','dom_changed','title_changed','targets_changed'}):
                             print(json.dumps(entry))
                     except (ValueError,TypeError):pass
                     match=re.match(r'\s*File "([^"]+)", line (\d+), in ([A-Za-z0-9_<>]+)',line)
@@ -206,9 +219,15 @@ def run():
                 assert len(action['page_fingerprint'])==64
                 approved.append(sequence);return {'state':'approved'}
             browser=job('browser_use')
-            try:result=runner.execute(browser,guard=lambda:route,action_gate=action_gate)
+            checkpoints=[]
+            def checkpoint_gate(sequence,checkpoint):
+                assert sequence==0 and checkpoint.get('before_effect') is True
+                assert isinstance(checkpoint.get('page_fingerprint'),str) and len(checkpoint['page_fingerprint'])==64
+                assert not approved, 'Checkpoint must precede external approval'
+                checkpoints.append(sequence)
+            try:result=runner.execute(browser,guard=lambda:route,action_gate=action_gate,checkpoint_gate=checkpoint_gate)
             finally:print(json.dumps({'fixture_browser_model_requests':state['calls'],'fixture_browser_approvals':len(approved),'fixture_browser_page_observed':state['browser_page_observed'],'fixture_browser_context_checks':state['browser_context_checks']}))
-            assert approved==[0,1] and state.get('browser_submitted') and result.get('observations')
+            assert checkpoints==[0] and approved==[0,1] and state.get('browser_submitted') and result.get('observations')
             clean(browser['id']);evidence['browser_real_sdk_chromium_exact_approval']='PASS'
             print(json.dumps({'completed_runtime_checks':evidence},sort_keys=True))
             # This is a real runsc/DockerRunner candidate execution, intentionally
@@ -228,6 +247,186 @@ def run():
             evidence['playwright_real_gvisor_approved_navigation_click_readback']='PASS'
             evidence['browser_use_real_gvisor_approved_navigation_click_readback']='PASS'
             print(json.dumps({'completed_runtime_checks':evidence},sort_keys=True))
+            # Live automatic handoff: pre-effect Browser Use checkpoint ->
+            # atomic new lease -> actual isolated Playwright navigation and fill.
+            # The old lease cannot dispatch, and both new actions are reviewed.
+            live_handoff_trials=[]
+            candidate_runner.timings=[]
+            candidate_runner.timing_sink=candidate_runner.timings.append
+            for trial_number in range(12):
+                trial_started_ns=time.perf_counter_ns()
+                state.update(kind='playwright_recovery',calls=0)
+                handoff_root=root/('verified-playwright-handoff-'+str(trial_number))
+                handoff_root.mkdir(mode=0o700)
+                handoff_journal=Journal(str(handoff_root/'journal.sqlite3'),Fernet.generate_key())
+                handoff_scope=AdapterScope('fixture-org','fixture-agent','fixture-fallback-'+str(trial_number))
+                handoff_payload=job('browser_use')['payload']
+                handoff_id=handoff_journal.enqueue(handoff_scope,'browser_use',
+                    'auto-fallback',handoff_payload,ttl=3600,max_attempts=1)
+                source=handoff_journal.claim('browser_use',lease_seconds=600)
+                handoff_url='https://www.selenium.dev/selenium/web/web-form.html'
+                handoff_journal.save_browser_checkpoint(source,0,{
+                    'before_effect':True,'url':handoff_url,'page_fingerprint':'a'*64})
+                assert handoff_journal.fence_browser_for_fallback(source,checkpoint_before_effect=True)
+                fenced_ns=time.perf_counter_ns()
+                handoff_token=handoff_journal.claim_fenced_handoff(handoff_scope,handoff_id)
+                recovered_job=handoff_journal.activate_fenced_handoff(
+                    handoff_scope,handoff_id,handoff_token,lease_seconds=600)
+                assert not handoff_journal.active(source) and handoff_journal.active(recovered_job)
+                activated_ns=time.perf_counter_ns()
+                reviewed=[]
+                first_review_ns=[None]
+                def recovery_guard():
+                    if not handoff_journal.active(recovered_job):
+                        raise LeaseLost('Recovered worker no longer authorized')
+                    return route
+                def recovery_action(sequence,action):
+                    assert sequence==len(reviewed) and sequence in (0,1)
+                    assert len(action['page_fingerprint'])==64
+                    if sequence==0:
+                        assert action['actions']=={'navigate':{'url':handoff_url}}
+                    else:
+                        assert set(action['actions'])=={'fill'}
+                    pending=handoff_journal.request_action(recovered_job,sequence,action)
+                    handoff_journal.approve(handoff_scope,handoff_id,pending['id'],pending['digest'],True)
+                    reviewed.append(sequence)
+                    if sequence==0:first_review_ns[0]=time.perf_counter_ns()
+                    return handoff_journal.request_action(recovered_job,sequence,action)
+                try:
+                    recovered_result=candidate_runner.execute(recovered_job,
+                        guard=recovery_guard,action_gate=recovery_action)
+                    result_ns=time.perf_counter_ns()
+                    assert reviewed==[0,1] and recovered_result.get('observations')
+                    handoff_journal.update(recovered_job,'completed',result={
+                        'certification':'reviewed_recovery'})
+                finally:
+                    candidate_runner.cleanup(handoff_id)
+                    clean(handoff_id)
+                assert len(handoff_journal.actions(handoff_scope,handoff_id))==2
+                assert handoff_journal.claim('browser_use') is None
+                live_handoff_trials.append({'trial':trial_number+1,
+                    'docker_gvisor_phases_ms':candidate_runner.timings[-1]['phases_ms'],
+                    'chromium_phases_ms':recovered_result['browser_startup_timings_ms'],
+                    'fence_ms':round((fenced_ns-trial_started_ns)/1e6,2),
+                    'lease_ms':round((activated_ns-fenced_ns)/1e6,2),
+                    'first_review_ms':round((first_review_ns[0]-fenced_ns)/1e6,2),
+                    'playwright_result_ms':round((result_ns-fenced_ns)/1e6,2)})
+            def handoff_percentile(values,quantile):
+                ordered=sorted(values)
+                position=(len(ordered)-1)*quantile
+                low=int(position);high=min(low+1,len(ordered)-1)
+                return round(ordered[low]+(ordered[high]-ordered[low])*(position-low),2)
+            handoff_summary={
+                'measurement':'actual_gvisor_playwright_recovery_from_fenced_checkpoint',
+                'trials':live_handoff_trials,'sample_count':len(live_handoff_trials),
+                'p50_ms':handoff_percentile([v['playwright_result_ms'] for v in live_handoff_trials],.5),
+                'p95_ms':handoff_percentile([v['playwright_result_ms'] for v in live_handoff_trials],.95),
+                'first_review_p50_ms':handoff_percentile([v['first_review_ms'] for v in live_handoff_trials],.5),
+                'first_review_p95_ms':handoff_percentile([v['first_review_ms'] for v in live_handoff_trials],.95),
+                'scope':'fixture-only; not production customer navigation',
+                'trial_count_sufficient_for_service_slo':False,
+                'startup_from_pre_fenced_checkpoint_only':True,
+                'failure_detection_included':False}
+            assert handoff_summary['sample_count']==12
+            evidence['playwright_real_gvisor_automatic_fenced_handoff']='PASS'
+            evidence['live_handoff_latency']=handoff_summary
+            print(json.dumps({'live_handoff_latency':handoff_summary},sort_keys=True))
+            print(json.dumps({'completed_runtime_checks':evidence},sort_keys=True))
+            # Real OS crash benchmark: kill the isolated Browser Use engine
+            # with SIGKILL after a durable, pre-effect checkpoint and before
+            # any action approval; then execute the actual NativeRuntime.tick
+            # failover through a fresh isolated Playwright container.
+            from app.services.native_runtime.runtime import NativeRuntime
+            auto_trials=[]
+            for trial_number in range(6):
+                state.update(kind='browser_use',calls=0,browser_page_observed=False,browser_submitted=False,browser_context_checks=[])
+                auto_root=root/('coordinator-auto-'+str(trial_number))
+                auto_root.mkdir(mode=0o700)
+                auto_journal=Journal(str(auto_root/'journal.sqlite3'),Fernet.generate_key())
+                auto_scope=AdapterScope('fixture-org','fixture-agent','coordinator-'+str(trial_number))
+                auto_url='https://www.selenium.dev/selenium/web/web-form.html'
+                payload=job('browser_use')['payload']
+                payload['claims']={'scope':{'org_id':auto_scope.org_id,
+                    'agent_id':auto_scope.agent_id,'run_id':auto_scope.run_id},
+                    'actor':'fixture','engine':'browser_use'}
+                auto_id=auto_journal.enqueue(auto_scope,'browser_use',
+                    'coordinator-fault',payload,ttl=3600,max_attempts=1)
+                observed={'fault_ns':None,'kill_start_ns':None,'review_ns':None,'actions':[],'sigkill':False}
+                class CoordinatorRunner:
+                    supports_browser_checkpoint=True
+                    def cleanup(self,job_id):
+                        candidate_runner.cleanup(job_id)
+                    def execute(self,job,*,guard,action_gate,checkpoint_gate=None):
+                        if job.get('phase')!='fallback_playwright':
+                            assert checkpoint_gate is not None
+                            def kill_after_checkpoint(sequence,marker):
+                                checkpoint_gate(sequence,marker)
+                                assert sequence==0 and marker.get('before_effect') is True
+                                assert not auto_journal.actions(auto_scope,auto_id)
+                                observed['kill_start_ns']=time.perf_counter_ns()
+                                # Real SIGKILL of the per-job isolated gVisor
+                                # engine, not a mocked Python exception.
+                                docker('kill',runner.names(auto_id)[1])
+                                observed['sigkill']=True
+                            try:
+                                runner.execute(job,guard=guard,
+                                    action_gate=lambda *_:(_ for _ in ()).throw(
+                                        AssertionError('Source action dispatched after SIGKILL')),
+                                    checkpoint_gate=kill_after_checkpoint)
+                            except (RuntimeError,subprocess.CalledProcessError,ConnectionError):
+                                assert observed['sigkill']
+                                observed['fault_ns']=time.perf_counter_ns()
+                                raise ConnectionError('isolated_browser_engine_sigkill')
+                            raise AssertionError('SIGKILL source returned success')
+                        def approved_action(sequence,details):
+                            request=action_gate(sequence,details)
+                            auto_journal.approve(auto_scope,auto_id,
+                                request['id'],request['digest'],True)
+                            observed['actions'].append(sequence)
+                            if sequence==0:observed['review_ns']=time.perf_counter_ns()
+                            return action_gate(sequence,details)
+                        return candidate_runner.execute(job,guard=guard,action_gate=approved_action)
+                runtime=NativeRuntime(auto_journal,None,None,CoordinatorRunner(),lambda _:route)
+                runtime.authorize=lambda _:route
+                timing=[]
+                runtime.fallback_timing_sink=timing.append
+                outcome=runtime.tick('browser_use')
+                terminal_ns=time.perf_counter_ns()
+                assert observed['sigkill'] and outcome=='fallback_playwright_completed',outcome
+                assert observed['actions']==[0,1] and observed['review_ns']
+                assert len(timing)==1 and timing[0]['outcome']=='completed'
+                assert not auto_journal.active({'id':auto_id,'lease':'stale'})
+                assert auto_journal.get(auto_scope,auto_id)['state']=='completed'
+                clean(auto_id)
+                auto_trials.append({'trial':trial_number+1,
+                    'os_sigkill_detection_ms':round((observed['fault_ns']-observed['kill_start_ns'])/1e6,2),
+                    'source_os_sigkill_confirmed':observed['sigkill'],
+                    'docker_gvisor_phases_ms':candidate_runner.timings[-1]['phases_ms'],
+                    'fault_detected_to_first_review_ms':round(
+                        (observed['review_ns']-observed['fault_ns'])/1e6,2),
+                    'fault_detected_to_review_completion_ms':round(
+                        (terminal_ns-observed['fault_ns'])/1e6,2),
+                    'source_cleanup_ms':timing[0]['durations_ms']['source_cleanup'],
+                    'lease_transition_ms':timing[0]['durations_ms']['lease_transition'],
+                    'playwright_execute_ms':timing[0]['durations_ms']['playwright_execute_through_result']})
+            auto_summary={
+                'measurement':'actual_gvisor_browser_sigkill_to_coordinator_playwright_recovery',
+                'source_failure':'real docker kill of isolated gVisor Browser Use engine after durable pre-effect checkpoint',
+                'real_gvisor_playwright_execution':True,
+                'real_os_failure_detection':True,
+                'sample_count':len(auto_trials),'trials':auto_trials,
+                'first_review_p50_ms':handoff_percentile(
+                    [x['fault_detected_to_first_review_ms'] for x in auto_trials],.5),
+                'first_review_p95_ms':handoff_percentile(
+                    [x['fault_detected_to_first_review_ms'] for x in auto_trials],.95),
+                'completion_p50_ms':handoff_percentile(
+                    [x['fault_detected_to_review_completion_ms'] for x in auto_trials],.5),
+                'completion_p95_ms':handoff_percentile(
+                    [x['fault_detected_to_review_completion_ms'] for x in auto_trials],.95)}
+            assert auto_summary['sample_count']==6
+            evidence['coordinator_recovery_latency']=auto_summary
+            evidence['real_coordinator_to_gvisor_playwright_recovery']='PASS'
+            print(json.dumps({'coordinator_recovery_latency':auto_summary},sort_keys=True))
             candidate=job('browser_use')
             denied=[]
             def deny_candidate(sequence,action):
@@ -285,7 +484,8 @@ def run():
                         return {'state':'approved'}
                     try:
                         try:
-                            tested_runner.execute(controlled_job,guard=safety_guard,action_gate=review_submit)
+                            checkpoint_args=({'checkpoint_gate':lambda sequence,marker:journal.save_browser_checkpoint(controlled_job,sequence,marker)} if adapter_name=='browser_use' else {})
+                            tested_runner.execute(controlled_job,guard=safety_guard,action_gate=review_submit,**checkpoint_args)
                         except (LeaseLost,PermissionError,RuntimeError):
                             assert requested==[0,1], 'Worker failed before the reviewed submit boundary'
                         else:
@@ -332,7 +532,8 @@ def run():
                     return {'state':'approved'}
                 try:
                     try:
-                        tested_runner.execute(revoked_job,guard=revoked_guard,action_gate=revoke_on_approval)
+                        checkpoint_args=({'checkpoint_gate':lambda sequence,marker: (sequence==0 and marker.get('before_effect') is True) or (_ for _ in ()).throw(AssertionError('Invalid revoked checkpoint'))} if adapter_name=='browser_use' else {})
+                        tested_runner.execute(revoked_job,guard=revoked_guard,action_gate=revoke_on_approval,**checkpoint_args)
                     except (PermissionError,RuntimeError):
                         assert action_calls==[0], 'Revocation did not pass through the shared review gate'
                     else:
@@ -372,7 +573,8 @@ def run():
                             if not journal.active(crashed_job):
                                 raise LeaseLost('crashed_job_lease_lost')
                             return route
-                        tested_runner.execute(crashed_job,guard=crash_guard,action_gate=crash_on_approval)
+                        checkpoint_args=({'checkpoint_gate':lambda sequence,marker:journal.save_browser_checkpoint(crashed_job,sequence,marker)} if adapter_name=='browser_use' else {})
+                        tested_runner.execute(crashed_job,guard=crash_guard,action_gate=crash_on_approval,**checkpoint_args)
                     except (PermissionError,RuntimeError,subprocess.CalledProcessError):
                         assert approvals==[0], 'Engine crash did not reach the approval boundary'
                     else:

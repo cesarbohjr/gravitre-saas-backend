@@ -8,6 +8,7 @@ from typing import Any,Callable
 from app.services.native_agent_adapters import AdapterScope,openhands_review_plan,browser_use_review_plan
 from app.services.native_runtime.control import ACTIONS,require_access,require_member_and_agent,validate_task
 from app.services.native_runtime.store import Journal,LeaseLost
+from app.services.native_runtime.fallback_policy import RecoveryEvidence, RecoveryDecision, decide_recovery
 from app.services.tool_types import ToolContext
 from app.services.voice_barge_in_write import raise_if_barge_in_blocks_invoke
 from app.services.model_policy_service import assert_model_allowed,load_org_model_policy
@@ -93,6 +94,117 @@ class NativeRuntime:
         self.journal.consume_authority(claims['scope']['org_id'],claims['actor'],authority['ref'],'action:'+request_id+':'+digest+':'+str(approved))
         self.journal.approve(AdapterScope(**claims['scope']),job_id,request_id,digest,approved)
 
+    def inspect_fallback_candidate(self, claims: dict, job_id: str) -> dict | None:
+        """Trusted recovery coordinator read path, not permission to execute."""
+        scope=AdapterScope(**claims['scope'])
+        row=self.journal.get(scope,job_id,material=True)
+        if not row or row['kind']!='browser_use' or row['actor']!=claims['actor']:
+            raise PermissionError('Browser recovery scope mismatch')
+        self.authorize(row['payload']['claims'])
+        return self.journal.fallback_candidate(scope,job_id)
+
+    def checkpoint_browser(self, job: dict, sequence: int, checkpoint: dict) -> None:
+        """Trusted broker boundary; the engine cannot declare its own safe handoff."""
+        if job.get('kind')!='browser_use' or not self.journal.active(job):
+            raise LeaseLost('Browser checkpoint requires an active worker')
+        self.authorize(job['payload']['claims'])
+        self.journal.save_browser_checkpoint(job,sequence,checkpoint)
+
+    def _fallback_authorized(self, claims: dict) -> bool:
+        try:
+            self.authorize(claims)
+            return True
+        except Exception:
+            return False
+
+    def _record_fallback_timing(self, job_id: str, duration_ms: dict, outcome: str) -> None:
+        """Emit sanitized monotonic phase durations to an injected evidence sink.
+
+        A real runner supplies real cold-start and restore durations. This
+        callback intentionally never includes task text, URL, or credentials.
+        """
+        sink=getattr(self,'fallback_timing_sink',None)
+        if sink is not None:
+            sink({'schema_version':1,'job_id':job_id,'outcome':outcome,
+                  'durations_ms':{name:round(value,3) for name,value in duration_ms.items()},
+                  'measurement':'actual_coordinator_wall_clock'})
+
+    def _run_verified_playwright_fallback(self, original: dict) -> str:
+        """Resume an approved fixture task with a fresh, exclusively fenced lease.
+
+        Unsupported checkpoints fail closed; this does not generalize the
+        comparison executable to arbitrary customer websites or tasks.
+        """
+        handoff_started=time.perf_counter_ns()
+        phases={}
+        scope=original['scope']
+        checkpoint=self.journal.fallback_candidate(scope,original['id'])
+        if checkpoint is None:return 'fallback_reconciliation_required'
+        marker=checkpoint['checkpoint']
+        # Checkpoint identity and allowlist are independently validated before
+        # activating a new execution lease; missing evidence fails closed.
+        from urllib.parse import urlsplit
+        destination=marker.get('url')
+        allowed=original['payload']['task'].get('allowed_hosts',[])
+        if not isinstance(destination,str):
+            return 'fallback_reconciliation_required'
+        parts=urlsplit(destination)
+        if parts.scheme!='https' or parts.hostname not in allowed or parts.username or parts.password or parts.port not in (None,443):
+            return 'fallback_reconciliation_required'
+        if not isinstance(marker.get('page_fingerprint'),str) or len(marker['page_fingerprint'])!=64:
+            return 'fallback_reconciliation_required'
+        self.authorize(original['payload']['claims'])
+        # Stop the fenced source sandbox before starting the replacement.
+        # A stale source process must not coexist with the newly leased worker.
+        self.runner.cleanup(original['id'])
+        phases['source_cleanup']=(time.perf_counter_ns()-handoff_started)/1e6
+        lease_started=time.perf_counter_ns()
+        reservation=self.journal.claim_fenced_handoff(scope,original['id'])
+        job=self.journal.activate_fenced_handoff(scope,original['id'],reservation)
+        phases['lease_transition']=(time.perf_counter_ns()-lease_started)/1e6
+        bound_route=[None]
+        def guard():
+            if not self.journal.active(job):raise LeaseLost('Fallback lease revoked')
+            route=self.authorize(job['payload']['claims'])
+            if bound_route[0] is not None and route!=bound_route[0]:
+                raise PermissionError('Recovery model route changed')
+            bound_route[0]=route
+            self.journal.update(job,'running')
+            return route
+        def action(sequence, details):
+            guard()
+            return self.journal.request_action(job,sequence,details)
+        try:
+            guard()
+            launch_started=time.perf_counter_ns()
+            result=self.runner.execute(job,guard=guard,action_gate=action)
+            phases['playwright_execute_through_result']=(time.perf_counter_ns()-launch_started)/1e6
+            guard()
+            if not isinstance(result,dict) or len(json.dumps(result).encode())>240000:
+                raise ValueError('Invalid Playwright result')
+            envelope={**result,'schema_version':1,
+                'org_id':scope.org_id,'agent_id':scope.agent_id,'run_id':scope.run_id}
+            plan=browser_use_review_plan(envelope,scope=scope,
+                allowed_hosts=frozenset(job['payload']['task']['allowed_hosts']))
+            self.journal.update(job,'completed',result={
+                'plan':plan.model_dump(mode='json') if hasattr(plan,'model_dump') else asdict(plan),
+                'verified_execution':False,'requires_review':True})
+            phases['total_to_review_completion']=(time.perf_counter_ns()-handoff_started)/1e6
+            self._record_fallback_timing(original['id'],phases,'completed')
+            return 'fallback_playwright_completed'
+        except LeaseLost:
+            phases['total_until_blocked']=(time.perf_counter_ns()-handoff_started)/1e6
+            self._record_fallback_timing(original['id'],phases,'lease_lost')
+            return 'cancelled_or_lease_lost'
+        except Exception:
+            try:self.journal.update(job,'uncertain',phase='fallback_reconcile',error='recovery_failed')
+            except LeaseLost:pass
+            phases['total_until_blocked']=(time.perf_counter_ns()-handoff_started)/1e6
+            self._record_fallback_timing(original['id'],phases,'reconciliation')
+            return 'fallback_reconciliation_required'
+        finally:
+            self.runner.cleanup(job['id'])
+
     def tick(self,engine: str) -> str | None:
         job=self.journal.claim(engine,lease_seconds=60)
         if not job:return None
@@ -110,7 +222,11 @@ class NativeRuntime:
             return self.journal.request_action(job,sequence,details)
         try:
             guard()
-            result=self.runner.execute(job,guard=guard,action_gate=action)
+            if engine=='browser_use' and getattr(self.runner,'supports_browser_checkpoint',False):
+                result=self.runner.execute(job,guard=guard,action_gate=action,
+                    checkpoint_gate=lambda sequence,checkpoint:self.checkpoint_browser(job,sequence,checkpoint))
+            else:
+                result=self.runner.execute(job,guard=guard,action_gate=action)
             guard()
             if not isinstance(result,dict) or len(json.dumps(result).encode())>240000:raise ValueError('Invalid native result')
             # Scope is attached by trusted host code, not accepted from SDK output.
@@ -123,6 +239,34 @@ class NativeRuntime:
             return 'completed'
         except LeaseLost:
             return 'cancelled_or_lease_lost'
+        except (ConnectionError, TimeoutError) as failure:
+            # A transport timeout is not evidence that a browser action did not
+            # commit. Fence the old worker; do not schedule Playwright here.
+            if engine=='browser_use':
+                try:
+                    actions=self.journal.actions(job['scope'],job['id'])
+                    decision=decide_recovery(RecoveryEvidence(
+                        failure_kind='navigation_timeout' if isinstance(failure,TimeoutError) else 'browser_disconnected',
+                        job_active=self.journal.active(job),
+                        cancellation_requested=False,
+                        authorization_current=self._fallback_authorized(claims),
+                        lease_fenced=True,
+                        checkpoint_durable=self.journal.browser_checkpoint(job['scope'],job['id']) is not None,
+                        checkpoint_before_effect=self.journal.browser_checkpoint(job['scope'],job['id']) is not None and not actions,
+                        pending_action=bool(actions),
+                        effect_outcome_uncertain=bool(actions),
+                    ))
+                    if decision is not RecoveryDecision.STOP:
+                        safe=self.journal.fence_browser_for_fallback(
+                            job,checkpoint_before_effect=decision is RecoveryDecision.SAFE_CHECKPOINT)
+                        if safe:
+                            return self._run_verified_playwright_fallback(job)
+                        return 'fallback_reconciliation_required'
+                except (LeaseLost,PermissionError):
+                    return 'cancelled_or_lease_lost'
+            try:self.journal.update(job,'failed',error='native_execution_failed')
+            except LeaseLost:pass
+            return 'failed'
         except Exception:
             try:self.journal.update(job,'failed',error='native_execution_failed')
             except LeaseLost:pass
