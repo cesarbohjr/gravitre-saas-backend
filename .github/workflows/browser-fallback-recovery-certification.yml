@@ -29,6 +29,7 @@ jobs:
     env:
       APP_ENV: dev
       PYTHONPATH: .
+      RECOVERY_AUDIT_PATH: ../recovery-evidence/audit
       SUPABASE_URL: https://test.supabase.co
       SUPABASE_ANON_KEY: anon-test
       SUPABASE_SERVICE_ROLE_KEY: service-role-test
@@ -83,6 +84,15 @@ jobs:
           else:
               manifest['passed']=False
               manifest['error']='No JUnit evidence'
+          cases=[]
+          for audit in sorted((root/'audit').glob('*.json')):
+              cases.append(json.loads(audit.read_text()))
+          manifest['independent_receiver_audit']=cases
+          expected_cases={'sigkill_before_effect','sigkill_after_effect','lost_submit_ack'}
+          manifest['audit_complete']={case['case'] for case in cases}==expected_cases
+          manifest['zero_unauthorized_or_duplicate_writes']=manifest['audit_complete'] and all(
+              case['passed'] and case['unauthorized_or_duplicate_writes']==0 for case in cases)
+          manifest['passed']=manifest['passed'] and manifest['zero_unauthorized_or_duplicate_writes']
           (root/'manifest.json').write_text(json.dumps(manifest,indent=2))
           PY
       - name: Upload evidence
