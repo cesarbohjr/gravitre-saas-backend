@@ -180,3 +180,45 @@ def test_lost_submit_ack_does_not_authorize_second_write(tmp_path):
         receiver.hold=False
         broker.close()
         receiver.close()
+
+
+def test_runtime_revocation_between_actions_blocks_second_effect(tmp_path):
+    """Actual runtime guard must deny actions after authority is withdrawn."""
+    from app.services.native_runtime.runtime import NativeRuntime
+    private=tmp_path/"runtime-journal"
+    private.mkdir(mode=0o700)
+    journal=Journal(str(private/"db.sqlite3"),Fernet.generate_key())
+    scope=AdapterScope("org","agent","run")
+    claims={"scope":{"org_id":"org","agent_id":"agent","run_id":"run"},
+            "actor":"actor","engine":"browser_use"}
+    job_id=journal.enqueue(scope,"browser_use","revocation",
+        {"claims":claims,"task":{"allowed_hosts":["example.com"]}},
+        actor="actor")
+    original=journal.claim("browser_use")
+    journal.save_browser_checkpoint(original,0,{"before_effect":True,
+        "url":"https://example.com/","page_fingerprint":"a"*64})
+    assert journal.fence_browser_for_fallback(original,checkpoint_before_effect=True)
+    authority={"valid":True}
+    class GuardedRunner:
+        def __init__(self):
+            self.attempted=0
+        def cleanup(self,_):
+            pass
+        def execute(self,job,*,guard,action_gate):
+            first=action_gate(0,{"click":{"index":1}})
+            assert first["state"]=="pending"
+            authority["valid"]=False
+            self.attempted+=1
+            # This must fail in host runtime before a second request/write.
+            action_gate(1,{"click":{"index":2}})
+            raise AssertionError("Revoked action incorrectly authorized")
+    runner=GuardedRunner()
+    runtime=NativeRuntime(journal,None,None,runner,lambda _:None)
+    def authorize(_):
+        if not authority["valid"]:raise PermissionError("revoked")
+        return "same-route"
+    runtime.authorize=authorize
+    assert runtime._run_verified_playwright_fallback(original)=="fallback_reconciliation_required"
+    assert runner.attempted==1
+    assert len(journal.actions(scope,job_id))==1
+    assert journal.get(scope,job_id)["state"]=="uncertain"
