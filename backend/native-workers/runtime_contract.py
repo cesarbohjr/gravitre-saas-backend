@@ -230,6 +230,23 @@ def run():
             assert checkpoints==[0] and approved==[0,1] and state.get('browser_submitted') and result.get('observations')
             clean(browser['id']);evidence['browser_real_sdk_chromium_exact_approval']='PASS'
             print(json.dumps({'completed_runtime_checks':evidence},sort_keys=True))
+            # This is a real runsc/DockerRunner candidate execution, intentionally
+            # denied at the canonical action callback before any navigation.
+            # It proves the separate engine image reaches the shared review gate,
+            # not approved navigation/click parity or crash-recovery parity.
+            candidate_image=publish('native-playwright-comparison')
+            candidate_images=SandboxImages(images.openhands,images.browser_use,
+                images.gateway,playwright_comparison=candidate_image)
+            candidate_runner=ObservedRunner(candidate_images,process_factory=process_factory,
+                comparison_url='https://www.selenium.dev/selenium/web/web-form.html')
+            candidate_approved=job('browser_use')
+            approved.clear()
+            result=candidate_runner.execute(candidate_approved,guard=lambda:route,action_gate=action_gate)
+            assert approved==[0,1] and result.get('approved_action') is True and result.get('observations')
+            clean(candidate_approved['id'])
+            evidence['playwright_real_gvisor_approved_navigation_click_readback']='PASS'
+            evidence['browser_use_real_gvisor_approved_navigation_click_readback']='PASS'
+            print(json.dumps({'completed_runtime_checks':evidence},sort_keys=True))
             # Live automatic handoff: pre-effect Browser Use checkpoint ->
             # atomic new lease -> actual isolated Playwright navigation and fill.
             # The old lease cannot dispatch, and both new actions are reviewed.
@@ -278,23 +295,6 @@ def run():
             assert len(handoff_journal.actions(handoff_scope,handoff_id))==2
             assert handoff_journal.claim('browser_use') is None
             evidence['playwright_real_gvisor_automatic_fenced_handoff']='PASS'
-            print(json.dumps({'completed_runtime_checks':evidence},sort_keys=True))
-            # This is a real runsc/DockerRunner candidate execution, intentionally
-            # denied at the canonical action callback before any navigation.
-            # It proves the separate engine image reaches the shared review gate,
-            # not approved navigation/click parity or crash-recovery parity.
-            candidate_image=publish('native-playwright-comparison')
-            candidate_images=SandboxImages(images.openhands,images.browser_use,
-                images.gateway,playwright_comparison=candidate_image)
-            candidate_runner=ObservedRunner(candidate_images,process_factory=process_factory,
-                comparison_url='https://www.selenium.dev/selenium/web/web-form.html')
-            candidate_approved=job('browser_use')
-            approved.clear()
-            result=candidate_runner.execute(candidate_approved,guard=lambda:route,action_gate=action_gate)
-            assert approved==[0,1] and result.get('approved_action') is True and result.get('observations')
-            clean(candidate_approved['id'])
-            evidence['playwright_real_gvisor_approved_navigation_click_readback']='PASS'
-            evidence['browser_use_real_gvisor_approved_navigation_click_readback']='PASS'
             print(json.dumps({'completed_runtime_checks':evidence},sort_keys=True))
             candidate=job('browser_use')
             denied=[]
