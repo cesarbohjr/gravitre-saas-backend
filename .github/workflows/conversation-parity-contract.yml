@@ -29,8 +29,17 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - name: Install focused test dependencies
-        run: pip install -r requirements.txt pytest pytest-asyncio
+      - name: Reclaim unused toolchains for heavy backend dependencies
+        run: |
+          df -h /
+          sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/hostedtoolcache/CodeQL
+          df -h /
+      - name: Install focused test dependencies without wheel cache
+        env:
+          PIP_NO_CACHE_DIR: "1"
+        run: |
+          python -m pip install --no-cache-dir -r requirements.txt pytest pytest-asyncio
+          df -h /
       - name: Run conversation parity contract
         run: PYTHONPATH=. pytest -q tests/services/test_conversation_parity_benchmark.py tests/services/test_conversation_parity_model_routing.py tests/services/test_conversation_parity_no_canned_eval_answers.py tests/services/pipecat_voice/test_durable_conversation_parity.py tests/services/pipecat_voice/test_interrupt_reporter_durable_behaviour.py tests/services/pipecat_voice/test_cognitive_llm_barge_in_and_seed.py tests/services/test_few_shot_benchmark_isolation.py
       - name: Prove benchmark template builds
