@@ -385,6 +385,11 @@ def run():
                             observed['actions'].append(sequence)
                             if sequence==0:observed['review_ns']=time.perf_counter_ns()
                             return action_gate(sequence,details)
+                        # The model fixture must respond as the resumed
+                        # Playwright planner, not the now-dead Browser Use SDK.
+                        # This is test-server routing only; runtime model policy
+                        # and authorization remain unchanged.
+                        state.update(kind='playwright_recovery',calls=0)
                         return candidate_runner.execute(job,guard=guard,action_gate=approved_action)
                 runtime=NativeRuntime(auto_journal,None,None,CoordinatorRunner(),lambda _:route)
                 runtime.authorize=lambda _:route
@@ -392,6 +397,16 @@ def run():
                 runtime.fallback_timing_sink=timing.append
                 outcome=runtime.tick('browser_use')
                 terminal_ns=time.perf_counter_ns()
+                if outcome!='fallback_playwright_completed':
+                    row=auto_journal.get(auto_scope,auto_id)
+                    print(json.dumps({'real_sigkill_recovery_failure':{
+                        'trial':trial_number+1,'outcome':outcome,
+                        'journal_state':row['state'],'journal_phase':row['phase'],
+                        'checkpoint_present':auto_journal.browser_checkpoint(auto_scope,auto_id) is not None,
+                        'action_states':[a['state'] for a in auto_journal.actions(auto_scope,auto_id)],
+                        'approved_action_count':len(observed['actions']),
+                        'timing_outcomes':[entry['outcome'] for entry in timing]}},
+                        sort_keys=True),flush=True)
                 assert observed['sigkill'] and outcome=='fallback_playwright_completed',outcome
                 assert observed['actions']==[0,1] and observed['review_ns']
                 assert len(timing)==1 and timing[0]['outcome']=='completed'
