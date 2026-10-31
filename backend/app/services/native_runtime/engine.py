@@ -159,7 +159,7 @@ async def fresh_browser_evidence(browser_session,requested,phase):
         raise
 
 
-async def stable_browser_evidence(browser_session,requested):
+async def stable_browser_evidence(browser_session,requested,*,settle_interval=0.25):
     # Initial paint can lag the DOM. Obtain two identical fresh captures before
     # presenting a review; never retry or refresh an already approved action.
     previous=None
@@ -167,7 +167,7 @@ async def stable_browser_evidence(browser_session,requested):
         state,evidence=await fresh_browser_evidence(browser_session,requested,'before_approval')
         if evidence==previous:return state,evidence
         previous=evidence
-        await asyncio.sleep(0.25)
+        await asyncio.sleep(settle_interval)
     raise PermissionError('Browser viewport did not stabilize before approval')
 
 
