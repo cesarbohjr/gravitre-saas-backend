@@ -134,6 +134,9 @@ class NativeRuntime:
         } and not getattr(self.runner,'supports_owned_recovery_fixture',False):
             return 'fallback_reconciliation_required'
         self.authorize(original['payload']['claims'])
+        # Stop the fenced source sandbox before starting the replacement.
+        # A stale source process must not coexist with the newly leased worker.
+        self.runner.cleanup(original['id'])
         reservation=self.journal.claim_fenced_handoff(scope,original['id'])
         job=self.journal.activate_fenced_handoff(scope,original['id'],reservation)
         bound_route=[None]
