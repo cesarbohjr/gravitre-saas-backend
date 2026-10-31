@@ -105,6 +105,19 @@ def browser_error_diagnostic(history):
     codes+=sorted({code.lower() for code in ('ERR_TUNNEL_CONNECTION_FAILED','ERR_NAME_NOT_RESOLVED','ERR_CERT_AUTHORITY_INVALID','ERR_PROXY_CONNECTION_FAILED','ERR_CONNECTION_REFUSED','ERR_CONNECTION_CLOSED','ERR_CONNECTION_RESET','ERR_CONNECTION_TIMED_OUT') if any(code in error for error in errors)})
     known_classes={'ValueError','ValidationError','RuntimeError','TimeoutError','PermissionError','ConnectionError','BrowserError','BrowserClosedError','CancelledError','HTTPStatusError'}
     classes=sorted({match.group(1) for error in errors for match in re.finditer(r'\b([A-Za-z_][A-Za-z0-9_]*(?:Error|Exception)):',error) if match.group(1) in known_classes})
+    categories={
+        'missing_required_field':('field required','missing required'),
+        'extra_field':('extra inputs are not permitted','extra_forbidden'),
+        'invalid_action':('invalid action','action not found','unknown action'),
+        'invalid_model_json':('invalid json','json_invalid','json decode'),
+        'invalid_schema':('validation error','invalid schema','schema validation'),
+        'invalid_url':('invalid url','not allowed to navigate','domain not allowed'),
+        'invalid_browser_state':('state_error','browser state error','invalid browser state'),
+        'llm_parse_failed':('parse failed','parse error','failed to parse'),
+    }
+    fixed=sorted(key for key,phrases in categories.items()
+                 if any(phrase in error.lower() for error in errors for phrase in phrases))
+    print(json.dumps({'browser_model_validation_categories':fixed}),file=sys.stderr,flush=True)
     print(json.dumps({'browser_error_codes':codes,'browser_error_classes':classes}),file=sys.stderr,flush=True)
 
 
