@@ -44,7 +44,7 @@ async def request_exact_approval(config, action, evidence, sequence):
 async def approved_navigation(config, session, page, url, sequence=0):
     url = validate_url(url, config["allowed_hosts"])
     action = {"navigate": {"url": url}}
-    before, fingerprint = await stable_browser_evidence(session, action)
+    before, fingerprint = await stable_browser_evidence(session, action, settle_interval=0.05)
     await request_exact_approval(config, action, {"url": before.url, "snapshot": fingerprint}, sequence)
     after, updated = await fresh_browser_evidence(session, action, "after_navigation_approval")
     if updated != fingerprint or after.url != before.url:
@@ -67,7 +67,7 @@ async def approved_click(config, session, page, sequence=0):
         action = {"click": {"index": targets[0]}}
     else:
         action = action_for(state)
-    before, fingerprint = await stable_browser_evidence(session, action)
+    before, fingerprint = await stable_browser_evidence(session, action, settle_interval=0.05)
     validate_url(before.url, config["allowed_hosts"])
     await request_exact_approval(config, action, {"url": before.url, "snapshot": fingerprint}, sequence)
     after, updated = await fresh_browser_evidence(session, action, "after_approval")
