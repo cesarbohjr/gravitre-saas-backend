@@ -245,3 +245,60 @@ async def test_sdk_send_retry_reconnect_resets_provider_turn_indices():
         service._websocket = None
         await strategy.cleanup()
         await service.cleanup()
+
+
+@pytest.mark.asyncio
+async def test_explicit_cancel_partial_precedes_slow_sdk_update_callback():
+    """The control frame must not queue behind the SDK's update callback."""
+    from unittest.mock import patch
+    from pipecat.services.deepgram.flux.stt import DeepgramFluxSTTService
+
+    service, strategy, recorder, emitted = await connected_strategy()
+    callback_started = asyncio.Event()
+    callback_release = asyncio.Event()
+
+    async def delayed_sdk_update(_self, _transcript):
+        callback_started.set()
+        await callback_release.wait()
+
+    try:
+        service._user_is_speaking = True
+        with patch.object(DeepgramFluxSTTService, '_handle_update', delayed_sdk_update):
+            task = asyncio.create_task(service._handle_update('cancel it'))
+            await asyncio.wait_for(callback_started.wait(), timeout=1)
+            assert [f.text for f in emitted if isinstance(f, InterimTranscriptionFrame)] == ['cancel it']
+            callback_release.set()
+            await asyncio.wait_for(task, timeout=1)
+            assert [f.text for f in emitted if isinstance(f, InterimTranscriptionFrame)] == ['cancel it']
+    finally:
+        callback_release.set()
+        await strategy.cleanup()
+        await service.cleanup()
+
+
+@pytest.mark.asyncio
+async def test_non_cancel_update_still_waits_for_sdk_callback():
+    from unittest.mock import patch
+    from pipecat.services.deepgram.flux.stt import DeepgramFluxSTTService
+
+    service, strategy, recorder, emitted = await connected_strategy()
+    callback_started = asyncio.Event()
+    callback_release = asyncio.Event()
+
+    async def delayed_sdk_update(_self, _transcript):
+        callback_started.set()
+        await callback_release.wait()
+
+    try:
+        service._user_is_speaking = True
+        with patch.object(DeepgramFluxSTTService, '_handle_update', delayed_sdk_update):
+            task = asyncio.create_task(service._handle_update('ordinary question'))
+            await asyncio.wait_for(callback_started.wait(), timeout=1)
+            assert not emitted
+            callback_release.set()
+            await asyncio.wait_for(task, timeout=1)
+            assert [f.text for f in emitted if isinstance(f, InterimTranscriptionFrame)] == ['ordinary question']
+    finally:
+        callback_release.set()
+        await strategy.cleanup()
+        await service.cleanup()
