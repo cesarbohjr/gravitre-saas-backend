@@ -53,6 +53,7 @@ jobs:
             tests/native_runtime/test_fallback_journal.py \
             tests/native_runtime/test_fallback_policy.py \
             tests/native_runtime/test_broker_process_contract.py \
+            tests/native_runtime/test_gateway_checkpoint_route.py \
             tests/native_runtime/test_fallback_certification.py \
             tests/native_runtime/test_playwright_recovery_contract.py \
             --junitxml=../recovery-evidence/junit.xml
