@@ -125,7 +125,7 @@ class Model:
                 # the Interactive elements section. The prior test model missed
                 # that readback, proposed a second click and left it pending.
                 # Never propose the same externally mutating click twice.
-                observed_written=same and bool(re.search(r'\\bWritten\\b',state))
+                observed_written=same and bool(re.search(r'\bWritten\b',state))
                 if observed_written:
                     action=[{'done':{'text':'Owned fixture readback complete','success':True}}]
                 elif same and owner.click_proposed_for==owner.url:
