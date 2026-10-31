@@ -103,7 +103,9 @@ class Handler(BaseHTTPRequestHandler):
         remote=None;stage='connect_destination'
         try:
             u=urlsplit('//'+self.path)
-            if u.hostname not in CONFIG['allowed_hosts'] or u.port!=443 or u.username or u.password:raise ValueError('scope')
+            if u.hostname not in CONFIG['allowed_hosts'] or u.port!=443 or u.username or u.password:
+                print(json.dumps({'gateway_connect_diagnostic':{'host_allowed':u.hostname in CONFIG['allowed_hosts'],'port_443':u.port==443,'userinfo_present':bool(u.username or u.password)}}),file=sys.stderr,flush=True)
+                raise ValueError('scope')
             stage='connect_authority';control('authorize',{})
             stage='connect_dns'
             addresses=public_addresses(u.hostname)
