@@ -411,7 +411,11 @@ def run():
                         raise
                     expected=1 if case in ('approved','broker_crash_after_effect','lost_submit_ack','lost_approval_ack') else 0
                     assert fixture.count(case_cap)-before==expected
-                    if crash:assert result['state']=='uncertain'
+                    if crash or case=='gateway_crash':
+                        # A disconnected gateway with an unresolved approval
+                        # must reconcile; it cannot be classified as a safe
+                        # failure or silently replay a possible side effect.
+                        assert result['state']=='uncertain'
                     elif expected:assert result['state']=='completed'
                     elif case in ('denied','cancelled'):assert result['state']=='cancelled'
                     else:assert result['state']=='failed'
