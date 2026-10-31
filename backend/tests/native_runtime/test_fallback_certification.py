@@ -8,6 +8,7 @@ provider revocation; those require the native worker live acceptance job.
 from __future__ import annotations
 from concurrent.futures import ThreadPoolExecutor
 import json
+import os
 from pathlib import Path
 import sys
 import time
@@ -34,6 +35,20 @@ def setup_job(tmp_path):
         "url":"https://example.com/","page_fingerprint":"a"*64})
     assert j.fence_browser_for_fallback(old,checkpoint_before_effect=True)
     return j,scope,jid,old
+
+
+def record_audit(case, actual_writes, expected_writes, *, restarted, blocked_replay):
+    """Persist receiver-owned counts for certification artifacts, not SDK claims."""
+    target=os.environ.get("RECOVERY_AUDIT_PATH")
+    if not target:return
+    root=Path(target)
+    root.mkdir(parents=True,exist_ok=True)
+    result={"case":case,"actual_external_writes":actual_writes,
+            "expected_external_writes":expected_writes,
+            "unauthorized_or_duplicate_writes":max(0,actual_writes-expected_writes),
+            "broker_restarted":restarted,"stale_replay_blocked":blocked_replay,
+            "passed":actual_writes==expected_writes and blocked_replay}
+    (root/(case+".json")).write_text(json.dumps(result,sort_keys=True))
 
 
 def post(fixture, capability):
@@ -125,6 +140,8 @@ def test_real_sigkill_never_replays_independent_effect(tmp_path,crash_after_effe
             post(receiver,"stale-or-unscoped")
         assert denied.value.code==403
         assert receiver.writes==expected_writes
+        record_audit("sigkill_"+("after" if crash_after_effect else "before")+"_effect",
+            receiver.writes,expected_writes,restarted=True,blocked_replay=not broker.authorized())
     finally:
         broker.close()
         receiver.close()
@@ -157,6 +174,8 @@ def test_lost_submit_ack_does_not_authorize_second_write(tmp_path):
         thread.join(timeout=5)
         assert not thread.is_alive()
         assert receiver.writes==1
+        record_audit("lost_submit_ack",receiver.writes,1,
+                     restarted=True,blocked_replay=not broker.authorized())
     finally:
         receiver.hold=False
         broker.close()
