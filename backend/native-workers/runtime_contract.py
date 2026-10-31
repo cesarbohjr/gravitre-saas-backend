@@ -291,7 +291,8 @@ def run():
                         return {'state':'approved'}
                     try:
                         try:
-                            tested_runner.execute(controlled_job,guard=safety_guard,action_gate=review_submit)
+                            checkpoint_args=({'checkpoint_gate':lambda sequence,marker:journal.save_browser_checkpoint(controlled_job,sequence,marker)} if adapter_name=='browser_use' else {})
+                            tested_runner.execute(controlled_job,guard=safety_guard,action_gate=review_submit,**checkpoint_args)
                         except (LeaseLost,PermissionError,RuntimeError):
                             assert requested==[0,1], 'Worker failed before the reviewed submit boundary'
                         else:
@@ -338,7 +339,8 @@ def run():
                     return {'state':'approved'}
                 try:
                     try:
-                        tested_runner.execute(revoked_job,guard=revoked_guard,action_gate=revoke_on_approval)
+                        checkpoint_args=({'checkpoint_gate':lambda sequence,marker: (sequence==0 and marker.get('before_effect') is True) or (_ for _ in ()).throw(AssertionError('Invalid revoked checkpoint'))} if adapter_name=='browser_use' else {})
+                        tested_runner.execute(revoked_job,guard=revoked_guard,action_gate=revoke_on_approval,**checkpoint_args)
                     except (PermissionError,RuntimeError):
                         assert action_calls==[0], 'Revocation did not pass through the shared review gate'
                     else:
@@ -378,7 +380,8 @@ def run():
                             if not journal.active(crashed_job):
                                 raise LeaseLost('crashed_job_lease_lost')
                             return route
-                        tested_runner.execute(crashed_job,guard=crash_guard,action_gate=crash_on_approval)
+                        checkpoint_args=({'checkpoint_gate':lambda sequence,marker:journal.save_browser_checkpoint(crashed_job,sequence,marker)} if adapter_name=='browser_use' else {})
+                        tested_runner.execute(crashed_job,guard=crash_guard,action_gate=crash_on_approval,**checkpoint_args)
                     except (PermissionError,RuntimeError,subprocess.CalledProcessError):
                         assert approvals==[0], 'Engine crash did not reach the approval boundary'
                     else:
