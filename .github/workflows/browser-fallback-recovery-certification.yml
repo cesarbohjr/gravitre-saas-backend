@@ -94,6 +94,8 @@ jobs:
               case['passed'] and case['unauthorized_or_duplicate_writes']==0 for case in cases)
           manifest['passed']=manifest['passed'] and manifest['zero_unauthorized_or_duplicate_writes']
           (root/'manifest.json').write_text(json.dumps(manifest,indent=2))
+          if not manifest['passed']:
+              raise SystemExit('Recovery certification missing or failed required evidence')
           PY
       - name: Upload evidence
         if: always()
