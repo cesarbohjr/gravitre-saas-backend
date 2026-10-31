@@ -328,6 +328,83 @@ def run():
             evidence['live_handoff_latency']=handoff_summary
             print(json.dumps({'live_handoff_latency':handoff_summary},sort_keys=True))
             print(json.dumps({'completed_runtime_checks':evidence},sort_keys=True))
+            # Coordinator-level benchmark: fail the source at a durable,
+            # before-effect checkpoint; run the actual NativeRuntime.tick
+            # transition and a fresh gVisor Playwright executor. The injected
+            # disconnect is synthetic, so OS failure detection is not measured.
+            from app.services.native_runtime.runtime import NativeRuntime
+            auto_trials=[]
+            for trial_number in range(12):
+                state.update(kind='playwright_recovery',calls=0)
+                auto_root=root/('coordinator-auto-'+str(trial_number))
+                auto_root.mkdir(mode=0o700)
+                auto_journal=Journal(str(auto_root/'journal.sqlite3'),Fernet.generate_key())
+                auto_scope=AdapterScope('fixture-org','fixture-agent','coordinator-'+str(trial_number))
+                auto_url='https://www.selenium.dev/selenium/web/web-form.html'
+                payload=job('browser_use')['payload']
+                payload['claims']={'scope':{'org_id':auto_scope.org_id,
+                    'agent_id':auto_scope.agent_id,'run_id':auto_scope.run_id},
+                    'actor':'fixture','engine':'browser_use'}
+                auto_id=auto_journal.enqueue(auto_scope,'browser_use',
+                    'coordinator-fault',payload,ttl=3600,max_attempts=1)
+                observed={'fault_ns':None,'review_ns':None,'actions':[]}
+                class CoordinatorRunner:
+                    supports_browser_checkpoint=True
+                    def cleanup(self,job_id):
+                        candidate_runner.cleanup(job_id)
+                    def execute(self,job,*,guard,action_gate,checkpoint_gate=None):
+                        if job.get('phase')!='fallback_playwright':
+                            assert checkpoint_gate is not None
+                            checkpoint_gate(0,{'before_effect':True,'url':auto_url,
+                                'page_fingerprint':'a'*64})
+                            observed['fault_ns']=time.perf_counter_ns()
+                            raise ConnectionError('injected_source_transport_disconnect')
+                        def approved_action(sequence,details):
+                            request=action_gate(sequence,details)
+                            auto_journal.approve(auto_scope,auto_id,
+                                request['id'],request['digest'],True)
+                            observed['actions'].append(sequence)
+                            if sequence==0:observed['review_ns']=time.perf_counter_ns()
+                            return action_gate(sequence,details)
+                        return candidate_runner.execute(job,guard=guard,action_gate=approved_action)
+                runtime=NativeRuntime(auto_journal,None,None,CoordinatorRunner(),lambda _:route)
+                runtime.authorize=lambda _:route
+                timing=[]
+                runtime.fallback_timing_sink=timing.append
+                outcome=runtime.tick('browser_use')
+                terminal_ns=time.perf_counter_ns()
+                assert outcome=='fallback_playwright_completed',outcome
+                assert observed['actions']==[0,1] and observed['review_ns']
+                assert len(timing)==1 and timing[0]['outcome']=='completed'
+                assert not auto_journal.active({'id':auto_id,'lease':'stale'})
+                assert auto_journal.get(auto_scope,auto_id)['state']=='completed'
+                clean(auto_id)
+                auto_trials.append({'trial':trial_number+1,
+                    'fault_detected_to_first_review_ms':round(
+                        (observed['review_ns']-observed['fault_ns'])/1e6,2),
+                    'fault_detected_to_review_completion_ms':round(
+                        (terminal_ns-observed['fault_ns'])/1e6,2),
+                    'source_cleanup_ms':timing[0]['durations_ms']['source_cleanup'],
+                    'lease_transition_ms':timing[0]['durations_ms']['lease_transition'],
+                    'playwright_execute_ms':timing[0]['durations_ms']['playwright_execute_through_result']})
+            auto_summary={
+                'measurement':'injected_source_disconnect_to_actual_coordinator_recovery',
+                'source_failure':'injected ConnectionError after durable pre-effect checkpoint',
+                'real_gvisor_playwright_execution':True,
+                'real_os_failure_detection':False,
+                'sample_count':len(auto_trials),'trials':auto_trials,
+                'first_review_p50_ms':handoff_percentile(
+                    [x['fault_detected_to_first_review_ms'] for x in auto_trials],.5),
+                'first_review_p95_ms':handoff_percentile(
+                    [x['fault_detected_to_first_review_ms'] for x in auto_trials],.95),
+                'completion_p50_ms':handoff_percentile(
+                    [x['fault_detected_to_review_completion_ms'] for x in auto_trials],.5),
+                'completion_p95_ms':handoff_percentile(
+                    [x['fault_detected_to_review_completion_ms'] for x in auto_trials],.95)}
+            assert auto_summary['sample_count']==12
+            evidence['coordinator_recovery_latency']=auto_summary
+            evidence['real_coordinator_to_gvisor_playwright_recovery']='PASS'
+            print(json.dumps({'coordinator_recovery_latency':auto_summary},sort_keys=True))
             candidate=job('browser_use')
             denied=[]
             def deny_candidate(sequence,action):
