@@ -41,3 +41,27 @@ def test_gateway_checkpoint_routes_only_under_engine_capability(monkeypatch):
         server.shutdown()
         server.server_close()
         thread.join(timeout=3)
+
+
+def test_pre_navigation_checkpoint_records_reviewed_target_without_dispatch():
+    from app.services.native_runtime.engine import checkpoint_destination
+    host=["www.selenium.dev"]
+    target="https://www.selenium.dev/selenium/web/web-form.html"
+    assert checkpoint_destination("about:blank",{"navigate":{"url":target}},host)==target
+    assert checkpoint_destination(target,{"click":{"index":1}},host)==target
+
+
+@pytest.mark.parametrize("intent",[
+    {"navigate":{"url":"http://www.selenium.dev"}},
+    {"navigate":{"url":"https://localhost/"}},
+    {"navigate":{"url":"https://www.selenium.dev.evil.example/"}},
+    {"navigate":{"url":"https://user@www.selenium.dev/"}},
+    {"navigate":{"url":"https://www.selenium.dev:8443/"}},
+    {"navigate":{"url":"https://www.selenium.dev/#fragment"}},
+    {"navigate":{"url":"https://www.selenium.dev/"},"click":{"index":1}},
+    {"click":{"index":1}},
+])
+def test_pre_navigation_checkpoint_rejects_unsafe_destination(intent):
+    from app.services.native_runtime.engine import checkpoint_destination
+    with pytest.raises(PermissionError):
+        checkpoint_destination("about:blank",intent,["www.selenium.dev"])
