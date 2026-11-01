@@ -3,6 +3,7 @@ on:
   pull_request:
     paths:
       - 'scripts/pr587_kws_qualification.py'
+      - 'scripts/pr587_openwakeword_replay.py'
       - 'tests/test_pr587_kws_qualification.py'
       - '.github/workflows/pr587-local-acoustic.yml'
   workflow_dispatch:
@@ -20,8 +21,21 @@ jobs:
           python-version: '3.12'
       - name: Verify fail-closed KWS configuration and score rules
         run: python -m unittest discover -s tests -p test_pr587_kws_qualification.py
-      - name: Qualify candidate only if a pinned local model and full corpus exist
+      - name: Verify custom model and complete audio corpus are available
         run: python scripts/pr587_kws_qualification.py --output acceptance-results/pr587-kws-qualification.json
+      - name: Install local acoustic engine (only with supplied trained assets)
+        if: ${{ hashFiles('acceptance-assets/pr587-kws-manifest.json') != '' }}
+        run: python -m pip install --no-cache-dir 'openwakeword==0.6.0' 'onnxruntime' 'numpy'
+      - name: Run actual repeated custom-model acoustic inference
+        if: ${{ hashFiles('acceptance-assets/pr587-kws-manifest.json') != '' }}
+        run: python scripts/pr587_openwakeword_replay.py --manifest acceptance-assets/pr587-kws-manifest.json
+      - name: Publish actual acoustic replay output
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pr587-custom-acoustic-results
+          path: acceptance-results/pr587-kws-acoustic-results.json
+          if-no-files-found: ignore
       - name: Publish blocked or qualified evidence
         if: always()
         uses: actions/upload-artifact@v4
