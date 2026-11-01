@@ -338,7 +338,7 @@ def run():
             # failover through a fresh isolated Playwright container.
             from app.services.native_runtime.runtime import NativeRuntime
             auto_trials=[]
-            for trial_number in range(6):
+            for trial_number in range(30):
                 state.update(kind='browser_use',calls=0,browser_page_observed=False,browser_submitted=False,browser_context_checks=[])
                 auto_root=root/('coordinator-auto-'+str(trial_number))
                 auto_root.mkdir(mode=0o700)
@@ -438,7 +438,24 @@ def run():
                     [x['fault_detected_to_review_completion_ms'] for x in auto_trials],.5),
                 'completion_p95_ms':handoff_percentile(
                     [x['fault_detected_to_review_completion_ms'] for x in auto_trials],.95)}
-            assert auto_summary['sample_count']==6
+            # Provisional performance acceptance gate: 30 independent real
+            # SIGKILL-to-resumption samples with unchanged isolation and review.
+            # The sample and p95 thresholds are intentionally fixed before the
+            # run rather than chosen after reading its timings.
+            auto_summary['acceptance']={
+                'required_trials':30,
+                'first_review_p95_budget_ms':5000.0,
+                'completion_p95_budget_ms':7500.0,
+                'passed':(
+                    auto_summary['sample_count']==30
+                    and auto_summary['first_review_p95_ms']<=5000.0
+                    and auto_summary['completion_p95_ms']<=7500.0
+                    and all(x['source_os_sigkill_confirmed'] for x in auto_trials)
+                ),
+                'scope':'isolated gVisor fixture; not production service SLO'
+            }
+            assert auto_summary['sample_count']==30
+            assert auto_summary['acceptance']['passed'],('real_os_crash_latency_budget_failed',auto_summary['acceptance'])
             evidence['coordinator_recovery_latency']=auto_summary
             evidence['real_coordinator_to_gvisor_playwright_recovery']='PASS'
             print(json.dumps({'coordinator_recovery_latency':auto_summary},sort_keys=True))
