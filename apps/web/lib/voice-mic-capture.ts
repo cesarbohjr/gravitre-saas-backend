@@ -391,8 +391,9 @@ export type VoiceMicProcessorOptions = {
   silentTapV2?: boolean
 }
 
-/** Same block size as the old ScriptProcessor, so level/barge-in tuning is unchanged. */
-const MIC_BLOCK_FRAMES = 4096
+/** ~43 ms at 48 kHz (formerly ~85 ms). Cut capture wait without batching
+ * extra microphone audio before the 16 kHz PCM is streamed to Flux. */
+const MIC_BLOCK_FRAMES = 2048
 const MIC_WIRE_RATE = 16000
 
 /**
