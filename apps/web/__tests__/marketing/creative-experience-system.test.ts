@@ -434,7 +434,7 @@ describe("CES 2.0 KF-A normalize (decision A)", () => {
   })
 })
 
-describe("CES 2.0 Pilot 1 mobile topology", () => {
+describe("CES 2.0 Pilot 1 mobile hub", () => {
   it("does not use ring-spin in mobile core", async () => {
     const { readFileSync } = await import("node:fs")
     const { resolve } = await import("node:path")
@@ -445,8 +445,7 @@ describe("CES 2.0 Pilot 1 mobile topology", () => {
       ),
       "utf8",
     )
-    expect(src).toMatch(/topologyForCoreState/)
-    expect(src).toMatch(/mobile-topology-svg/)
+    expect(src).toMatch(/mobile-hub-core/)
     expect(src).not.toMatch(/animate-spin/)
   })
 })
@@ -508,7 +507,7 @@ describe("CES 2.0 product doc links", () => {
 })
 
 describe("CES 2.0 technology production", () => {
-  it("thins the technology page and mounts the KF-A workbench", async () => {
+  it("thins the technology page without the KF-A workbench", async () => {
     const { readFileSync } = await import("node:fs")
     const { resolve } = await import("node:path")
     const src = readFileSync(
@@ -516,12 +515,10 @@ describe("CES 2.0 technology production", () => {
       "utf8",
     )
     expect(src).toMatch(/data-technology-legacy="0"/)
-    expect(src).toMatch(/data-kf-production="workbench"/)
-    expect(src).toMatch(/EntityConvergenceWorkbenchField/)
+    expect(src).not.toMatch(/EntityConvergenceWorkbenchField/)
     expect(src).not.toMatch(/FeaturesLegacyContent/)
     expect(src).not.toMatch(/EntityConvergenceField/)
     expect(src).toMatch(/\/docs\/guides\/how-to\/org-learning/)
-    expect(src).toMatch(/\/docs\/guides\/how-to\/sources/)
     expect(src).not.toMatch(/TRAINED/)
   })
 })

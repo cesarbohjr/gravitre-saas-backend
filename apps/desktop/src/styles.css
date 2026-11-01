@@ -56,7 +56,7 @@ body{background:#f4f4f1}
 .g .kbd{font-family:'Geist Mono Variable','Geist Mono',ui-monospace,monospace;font-size:11px;padding:1px 5px;border-radius:5px;border:1px solid var(--bd);background:var(--s2);color:var(--t2)}
 .g .logo{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:6px;font-size:9px;font-weight:700;flex:none;border:1px solid var(--bd);background:var(--s2);color:var(--t2)}
 .g .sub{font-size:12px;color:var(--t3)}
-.g .mark{width:24px;height:24px;border-radius:6px;background:var(--carbon);display:inline-flex;align-items:center;justify-content:center;flex:none;box-shadow:0 0 0 1px var(--bd)}
+.g .mark{width:24px;height:24px;border-radius:6px;background:#16a374;display:inline-flex;align-items:center;justify-content:center;flex:none}
 .g .count{min-width:20px;height:20px;padding:0 6px;border-radius:10px;background:var(--ap);color:#3a2604;font-size:11px;font-weight:600;display:inline-flex;align-items:center;justify-content:center}
 .g .ell{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .g h3{margin:0;font-size:13px;font-weight:600;color:var(--t2)}

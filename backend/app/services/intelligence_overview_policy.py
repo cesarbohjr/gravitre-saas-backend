@@ -9,15 +9,23 @@ from typing import Any
 
 VALID = frozenset({"conservative", "balanced", "proactive"})
 CAPABILITIES = ("contextual", "sentiment", "causal", "temporal", "relational", "adaptive", "predictive")
+# Abilities an admin may turn off: without them answers get less rich, never wrong
+# or unsafe. Context, time and relationships always stay on.
+CAN_TURN_OFF = frozenset({"sentiment", "causal", "predictive", "adaptive"})
+OFF = "off"
 
 
 def normalize_policy(raw: Any) -> dict[str, str]:
+    """Mode per ability; ``"off"`` when an admin turned a safe ability off."""
     stored = raw if isinstance(raw, dict) else {}
-    return {name: (
-        str((stored.get(name) or {}).get("mode"))
-        if isinstance(stored.get(name), dict) and (stored.get(name) or {}).get("mode") in VALID
-        else "balanced"
-    ) for name in CAPABILITIES}
+    policy: dict[str, str] = {}
+    for name in CAPABILITIES:
+        slot = stored.get(name) if isinstance(stored.get(name), dict) else {}
+        if name in CAN_TURN_OFF and slot.get("enabled") is False:
+            policy[name] = OFF
+        else:
+            policy[name] = str(slot.get("mode")) if slot.get("mode") in VALID else "balanced"
+    return policy
 
 
 def include_optional_evidence(capability: str, mode: str, classification: dict[str, Any]) -> bool:
@@ -71,6 +79,12 @@ def apply_response_sensitivity(result: dict[str, Any], policy: dict[str, str]) -
         mode = policy.get(name, "balanced")
         item = dict(slot)
         item["sensitivity_mode"] = mode
+        if mode == OFF:
+            item.pop("data", None)
+            item["evidence_suppressed"] = True
+            item["suppression_reason"] = "turned_off"
+            adjusted[name] = item
+            continue
         item["runtime_effect"] = "optional_enrichment_eligibility_and_evidence_threshold"
         minimum = evidence_threshold(name, mode)
         item["surfacing_threshold"] = minimum
@@ -99,6 +113,7 @@ def select_enrichment_work(
     Explicit user intent is always eligible, irrespective of sensitivity mode.
     Proactive mode expands candidate work only when relevant *authorized*
     classification evidence exists. No mode changes permissions or write gates.
+    An ability an admin turned off does no work at all.
     """
     deferred = context.get("defer_optional") is True
     department = bool(classification.get("department"))
@@ -109,7 +124,7 @@ def select_enrichment_work(
         "relational": bool(classification.get("requires_graph")),
         "adaptive": department or bool(context.get("retrieval_plan")) or bool(context.get("catalog_model_inputs")) or any(bool(classification.get(key)) for key in ("requires_prediction", "requires_causal", "requires_graph")),
     }
-    return {
+    eligible = {
         "causal": not deferred and requested["causal"],
         "predictive": not deferred and (
             requested["predictive"] or (policy.get("predictive") == "proactive" and
@@ -120,6 +135,7 @@ def select_enrichment_work(
             requested["adaptive"] or (policy.get("adaptive") == "proactive"
                                       and bool(context.get("understanding")))),
     }
+    return {name: on and policy.get(name) != OFF for name, on in eligible.items()}
 
 
 def evidence_threshold(capability: str, mode: str) -> float:

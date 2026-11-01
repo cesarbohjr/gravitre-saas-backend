@@ -1,5 +1,6 @@
 "use client"
 
+import { INTEL } from "@/components/intelligence/shell/intel-ui"
 import { Suspense, useCallback, useEffect, useState } from "react"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { AppShell } from "@/components/gravitre/app-shell"
@@ -14,7 +15,6 @@ import {
   resolveKnowledgeView,
   type KnowledgeView,
 } from "@/components/intelligence/knowledge/knowledge-view"
-import { Button } from "@/components/ui/button"
 import { useAuth } from "@/lib/auth-context"
 import { ApiError } from "@/lib/fetcher"
 import { INTELLIGENCE_PAGE_FRAME } from "@/lib/design-system"
@@ -100,11 +100,12 @@ function IntelligenceLearningInner() {
           icon={<NucleoIntelligence className="h-5 w-5" />}
           actions={
             <div className="flex flex-wrap gap-2">
-              <Button variant="outline" className="min-h-10" onClick={() => setAuditOpen(true)}>
+              <button type="button" className={INTEL.outlineButton} onClick={() => setAuditOpen(true)}>
                 Audit trail
-              </Button>
-              <Button
-                className="min-h-10"
+              </button>
+              <button
+                type="button"
+                className={INTEL.primaryButton}
                 title="Opens Ask Gravitre so you can say what to remember."
                 onClick={() =>
                   summonWorkspace({
@@ -115,7 +116,7 @@ function IntelligenceLearningInner() {
                 }
               >
                 Add a memory
-              </Button>
+              </button>
             </div>
           }
         />

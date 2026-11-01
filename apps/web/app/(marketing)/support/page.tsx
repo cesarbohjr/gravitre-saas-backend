@@ -15,6 +15,7 @@ import {
 } from "lucide-react"
 import { SUPPORT_CATEGORY_LINKS, SUPPORT_POPULAR_ARTICLES } from "@/lib/marketing-guide-links"
 import { DivideX } from "@/components/marketing/nodus/divide"
+import { MarketingScene } from "@/components/marketing/nodus/scene"
 import {
   MarketingPageEndCta,
   MarketingPageHero,
@@ -170,7 +171,15 @@ export default function SupportPage() {
       <DivideX />
 
       <MarketingRails>
-        <div className="mx-auto max-w-3xl">
+        <div className="grid items-center gap-10 md:grid-cols-2">
+          <MarketingScene
+            name="marketing/support"
+            alt="Guides and a support ticket coming together into one answer"
+            width={400}
+            height={300}
+            className="w-full"
+          />
+          <div>
           <GravitreReveal className="mb-8">
             <h2 className="text-2xl font-semibold text-foreground">Popular articles</h2>
           </GravitreReveal>
@@ -187,6 +196,7 @@ export default function SupportPage() {
                 </a>
               </GravitreFlow>
             ))}
+          </div>
           </div>
         </div>
       </MarketingRails>

@@ -108,7 +108,7 @@ export function GravitreDepartmentNetwork({
             aria-hidden
             preserveAspectRatio="xMidYMid meet"
           >
-            {DEPARTMENT_EDGE_KEYS.map(({ dept, d }) => {
+            {DEPARTMENT_EDGE_KEYS.map(({ dept, d }, i) => {
               const ek = edgeKey(dept, "core")
               const kind = state.activeEdges.get(ek) ?? null
               const muted = state.mutedDepts.has(dept) && !kind
@@ -121,6 +121,7 @@ export function GravitreDepartmentNetwork({
                   muted={muted}
                   learned={learned}
                   reduced={reduced}
+                  delay={i * 1.6}
                 />
               )
             })}

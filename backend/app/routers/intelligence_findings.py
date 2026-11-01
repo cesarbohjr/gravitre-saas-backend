@@ -15,6 +15,12 @@ from app.services.intelligence_share_service import (
     share_finding,
     share_options,
 )
+from app.services.intelligence_forecast_snooze_service import (
+    SnoozeInputError,
+    list_snoozes,
+    snooze_forecast,
+    unsnooze_forecast,
+)
 from app.services.revenue_opportunities_service import get_revenue_opportunities
 from app.workflows.repository import get_supabase_client
 
@@ -30,6 +36,16 @@ class ShareRequest(BaseModel):
     note: str = Field(default="", max_length=2000)
     path: str | None = Field(default=None, max_length=400)
     findingId: str | None = Field(default=None, max_length=200)
+
+
+class SnoozeRequest(BaseModel):
+    key: str = Field(..., min_length=1, max_length=200)
+    title: str = Field(default="", max_length=400)
+    days: int = Field(default=7)
+
+
+class UnsnoozeRequest(BaseModel):
+    key: str = Field(..., min_length=1, max_length=200)
 
 
 def _user_id(user: dict[str, Any]) -> str:
@@ -99,3 +115,54 @@ async def share_route(
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)) from exc
     except ShareDeliveryError as exc:
         raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(exc)) from exc
+
+
+@router.get("/forecasts/snoozes")
+async def forecast_snoozes(
+    member: Annotated[tuple, Depends(require_org_member)],
+    settings: Settings = Depends(get_settings),
+) -> dict[str, Any]:
+    _user, org_id, _role = member
+    client = get_supabase_client(settings)
+    return {"snoozes": await asyncio.to_thread(list_snoozes, client, org_id)}
+
+
+@router.post("/forecasts/snooze")
+async def forecast_snooze(
+    body: SnoozeRequest,
+    member: Annotated[tuple, Depends(require_org_member)],
+    settings: Settings = Depends(get_settings),
+) -> dict[str, Any]:
+    user, org_id, _role = member
+    client = get_supabase_client(settings)
+    try:
+        return await asyncio.to_thread(
+            lambda: snooze_forecast(
+                client,
+                org_id,
+                key=body.key,
+                title=body.title,
+                days=body.days,
+                user_id=_user_id(user),
+                user_name=_display_name(client, user),
+            )
+        )
+    except SnoozeInputError as exc:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)) from exc
+
+
+@router.post("/forecasts/unsnooze")
+async def forecast_unsnooze(
+    body: UnsnoozeRequest,
+    member: Annotated[tuple, Depends(require_org_member)],
+    settings: Settings = Depends(get_settings),
+) -> dict[str, Any]:
+    user, org_id, _role = member
+    client = get_supabase_client(settings)
+    try:
+        removed = await asyncio.to_thread(
+            lambda: unsnooze_forecast(client, org_id, key=body.key, user_id=_user_id(user))
+        )
+    except SnoozeInputError as exc:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(exc)) from exc
+    return {"removed": removed}

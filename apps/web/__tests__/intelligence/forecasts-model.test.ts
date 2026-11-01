@@ -61,11 +61,28 @@ describe("Forecasts model", () => {
     expect(parseHorizonDays("next_run")).toBe(0)
     expect(parseHorizonDays(undefined)).toBeNull()
     expect(horizonToX(0)).toBe(0)
-    expect(horizonToX(14)).toBe(24)
-    expect(horizonToX(30)).toBe(48)
+    expect(horizonToX(14)).toBe(25)
+    expect(horizonToX(30)).toBe(50)
     expect(horizonToX(null)).toBe(90)
     const dots = layoutTimeline(buildForecasts({ failureAlerts: [authAlert] }))
     expect(dots).toHaveLength(1)
     expect(dots[0].side).toBe("above")
+  })
+
+  it("never stacks two chips on the same spot when many risks share a date", () => {
+    const rows = buildForecasts({
+      failureAlerts: [1, 2, 3, 4, 5].map((n) => ({ ...authAlert, id: `alert_${n}`, workflowId: `wf_${n}`, connectorId: `conn_${n}` })),
+    })
+    expect(rows).toHaveLength(5)
+    const dots = layoutTimeline(rows)
+    expect(dots).toHaveLength(5)
+    for (const a of dots) {
+      for (const b of dots) {
+        if (a === b || a.lane !== b.lane || a.side !== b.side) continue
+        const [a0, a1] = a.flip ? [a.x - 26, a.x] : [a.x, a.x + 26]
+        const [b0, b1] = b.flip ? [b.x - 26, b.x] : [b.x, b.x + 26]
+        expect(a1 <= b0 || a0 >= b1).toBe(true)
+      }
+    }
   })
 })

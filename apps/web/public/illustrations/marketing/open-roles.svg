@@ -1,0 +1,104 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300" width="400" height="300">
+<style>@keyframes gi-drift-y { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-6px)} }
+@keyframes gi-drift-x { 0%,100%{transform:translateX(0)} 50%{transform:translateX(5px)} }
+@keyframes gi-pulse-op { 0%,100%{opacity:1} 50%{opacity:0.55} }
+@keyframes gi-stamp-in { 0%{transform:scale(1.4);opacity:0} 15%{transform:scale(0.9);opacity:1} 25%{transform:scale(1)} 100%{transform:scale(1)} }
+@keyframes gi-slide-right { 0%{transform:translateX(-18px);opacity:0} 20%{transform:translateX(0);opacity:1} 80%{transform:translateX(0);opacity:1} 100%{transform:translateX(18px);opacity:0} }
+@keyframes gi-travel-line { 0%{stroke-dashoffset:60} 100%{stroke-dashoffset:0} }
+@keyframes gi-bob { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-4px)} }
+@keyframes gi-fade-cycle { 0%,15%{opacity:0} 25%,75%{opacity:1} 85%,100%{opacity:0} }
+@keyframes gi-grow-bar { from{transform:scaleY(0)} to{transform:scaleY(1)} }
+@keyframes gi-rise-bar { 0%,100%{transform:scaleY(0.4)} 50%{transform:scaleY(1)} }
+@keyframes gi-spin-slow { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
+@keyframes gi-blink { 0%,90%,100%{opacity:1} 95%{opacity:0} }
+@keyframes gi-type { 0%{transform:scaleX(0)} 22%,82%{transform:scaleX(1);opacity:1} 92%,100%{transform:scaleX(1);opacity:0} }
+@keyframes gi-caret { 0%{transform:translateX(0)} 22%{transform:translateX(56px)} 82%{transform:translateX(56px)} 92%,100%{transform:translateX(0)} }
+@keyframes gi-sway { 0%,100%{transform:rotate(-5deg)} 50%{transform:rotate(5deg)} }
+@keyframes gi-twinkle { 0%,100%{transform:scale(1) rotate(0deg)} 50%{transform:scale(1.35) rotate(90deg)} }
+@keyframes gi-drop { 0%,10%{transform:translateY(-46px);opacity:0} 22%{opacity:1} 50%{transform:translateY(0);opacity:1} 62%,100%{transform:translateY(6px);opacity:0} }
+@keyframes gi-inbox-dot { 0%,48%{fill:#F4F4F5} 54%,88%{fill:#19C37D} 96%,100%{fill:#F4F4F5} }
+@keyframes gi-door { 0%,100%{transform:scaleX(1)} 40%,60%{transform:scaleX(0.55)} }
+
+
+[style*="gi-stamp-in"],[style*="gi-grow-bar"],[style*="gi-rise-bar"],[style*="gi-twinkle"]{transform-box:fill-box;transform-origin:center}
+[style*="gi-type"],[style*="gi-door"]{transform-box:fill-box;transform-origin:left center}
+[style*="gi-sway"]{transform-box:fill-box;transform-origin:center bottom}
+[style*="gi-grow-bar"],[style*="gi-rise-bar"]{transform-origin:center bottom}
+@media (prefers-reduced-motion: reduce){*{animation:none!important}}
+rect[fill="#FFFFFF"][stroke]{filter:drop-shadow(0 1px 1px rgba(0,0,0,0.04)) drop-shadow(0 3px 8px rgba(0,0,0,0.05))}
+</style><defs>
+  <filter id="grain9"><feTurbulence type="fractalNoise" baseFrequency="0.65" numOctaves="3" stitchTiles="stitch" /><feColorMatrix type="saturate" values="0" /><feBlend in="SourceGraphic" mode="overlay" /><feComposite in2="SourceGraphic" operator="in" /></filter>
+  <radialGradient id="b9a" cx="50%" cy="50%" r="55%"><stop offset="0%" stop-color="#CFDCCB" stop-opacity="0.6" /><stop offset="100%" stop-color="#CFDCCB" stop-opacity="0" /></radialGradient>
+  <pattern id="d9" width="14" height="14" patternUnits="userSpaceOnUse"><circle cx="7" cy="7" r="0.7" fill="#2A2B28" opacity="0.13" /></pattern>
+</defs>
+
+
+<rect x="40" y="210" width="280" height="14" rx="4" fill="#C98F5B" />
+
+<rect x="50" y="224" width="10" height="60" rx="3" fill="#C98F5B" />
+<rect x="300" y="224" width="10" height="60" rx="3" fill="#C98F5B" />
+
+
+<g transform="translate(142,80)">
+  <g style="animation:gi-bob 6s ease-in-out infinite 0s"><rect x="0" y="0" width="120" height="80" rx="8" fill="#2A2B28" />
+  <rect x="4" y="4" width="112" height="72" rx="5" fill="#1A2020" />
+  
+  <rect x="20" y="16" width="80" height="6" rx="2" fill="#3C5246" style="animation:gi-type 6s ease-out infinite 0s" />
+  <rect x="20" y="28" width="55" height="6" rx="2" fill="#2F4238" style="animation:gi-type 6s ease-out infinite 0.6s" />
+  <rect x="20" y="42" width="56" height="6" rx="2" fill="#19C37D" opacity="0.85" style="animation:gi-type 6s ease-out infinite 1.2s" />
+  <g style="animation:gi-caret 6s ease-out infinite 1.2s"><rect x="20" y="40" width="2" height="10" rx="1" fill="#19C37D" style="animation:gi-blink 1.4s step-end infinite" /></g>
+  
+  <rect x="52" y="80" width="16" height="18" rx="2" fill="#2A2B28" />
+  <rect x="40" y="96" width="40" height="6" rx="3" fill="#2A2B28" />
+</g></g>
+
+
+<g transform="translate(300,130)">
+  
+  <g style="animation:gi-bob 7s ease-in-out infinite 1s"><path d="M8,60 L4,80 L36,80 L32,60 Z" fill="#C98F5B" />
+  <ellipse cx="20" cy="60" rx="16" ry="5" fill="#B5654A" />
+  
+  <ellipse cx="20" cy="60" rx="12" ry="3" fill="#2A2B28" />
+  
+  <g style="animation:gi-sway 4s ease-in-out infinite"><path d="M20,58 Q14,42 8,30" stroke="#7E9A7B" stroke-width="2.5" fill="none" />
+  <path d="M20,58 Q22,40 28,25" stroke="#7E9A7B" stroke-width="2.5" fill="none" />
+  <path d="M20,58 Q26,48 34,40" stroke="#7E9A7B" stroke-width="2.5" fill="none" />
+  
+  <ellipse cx="8" cy="28" rx="10" ry="7" fill="#7E9A7B" transform="rotate(-20 8 28)" />
+  <ellipse cx="28" cy="23" rx="10" ry="7" fill="#7E9A7B" transform="rotate(15 28 23)" />
+  <ellipse cx="36" cy="38" rx="8" ry="6" fill="#F4F4F5" transform="rotate(40 36 38)" /></g>
+</g></g>
+
+
+<g transform="translate(44,138)">
+  <g style="animation:gi-bob 5s ease-in-out infinite 2s"><rect x="0" y="0" width="90" height="64" rx="6" fill="#FFFFFF" stroke="#E4E4E7" stroke-width="1.2" />
+  <rect x="10" y="10" width="70" height="4" rx="2" fill="#F4F4F5" />
+  
+  <text x="45" y="34" font-family="DM Sans,system-ui" font-size="18" fill="#19C37D" text-anchor="middle" style="animation:gi-twinkle 3s ease-in-out infinite">✦</text>
+  <rect x="10" y="44" width="50" height="4" rx="2" fill="#E4E4E7" />
+  <rect x="10" y="52" width="35" height="4" rx="2" fill="#E4E4E7" />
+</g></g>
+
+
+<g transform="translate(248,150)">
+  <g style="animation:gi-drop 4s ease-in infinite"><rect x="0" y="0" width="26" height="18" rx="3" fill="#FFFFFF" stroke="#E4E4E7" stroke-width="1.2" />
+  <path d="M2,3 L13,10 L24,3" stroke="#D4D4D8" stroke-width="1.2" fill="none" /></g>
+</g>
+
+<g transform="translate(226,170)">
+  <g style="animation:gi-bob 5.5s ease-in-out infinite 0.5s"><path d="M0,30 L0,10 Q0,0 10,0 L60,0 Q70,0 70,10 L70,30 Z" fill="#FFFFFF" stroke="#E4E4E7" stroke-width="1.2" />
+  <line x1="0" y1="18" x2="70" y2="18" stroke="#E4E4E7" stroke-width="1" />
+  <text x="35" y="12" font-family="DM Sans,system-ui" font-size="8" fill="#D4D4D8" text-anchor="middle">Inbox</text>
+  
+  <circle cx="35" cy="26" r="5" fill="#F4F4F5" style="animation:gi-inbox-dot 4s ease-in-out infinite" />
+</g></g>
+
+
+<g transform="translate(4,40)" opacity="0.5">
+  <rect x="0" y="0" width="36" height="160" rx="4" fill="#F4F4F5" />
+  <g style="animation:gi-door 8s ease-in-out infinite"><rect x="2" y="2" width="32" height="158" rx="3" fill="#E4E4E7" />
+  <circle cx="28" cy="80" r="3" fill="#C98F5B" /></g>
+  
+  <path d="M2,2 Q18,-14 34,2" fill="#F4F4F5" />
+</g>
+</svg>

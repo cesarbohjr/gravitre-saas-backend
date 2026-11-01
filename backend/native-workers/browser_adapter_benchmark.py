@@ -12,6 +12,7 @@ import contextlib
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import json
 import os
+import resource
 from pathlib import Path
 from statistics import median
 import subprocess
@@ -96,8 +97,8 @@ class PlaywrightSession:
 
     async def get_browser_state_summary(self, **_):
         value = await self.page.evaluate('''() => ({url:location.href,title:document.title,
-            dom:document.body.innerText,buttons:[...document.querySelectorAll('button')].map(b=>({id:b.id,label:b.textContent}))})''')
-        nodes = {i + 1: SimpleNamespace(node_name='BUTTON', attributes={'id': b['id'], 'aria-label': b['label']})
+            dom:document.body.innerText,buttons:[...document.querySelectorAll('button')].map(b=>({id:b.id,label:b.textContent,type:b.getAttribute('type')}))})''')
+        nodes = {i + 1: SimpleNamespace(node_name='BUTTON', attributes={'id': b['id'], 'aria-label': b['label'], 'type': b.get('type')})
                  for i, b in enumerate(value['buttons'])}
         return SimpleNamespace(url=value['url'], title=value['title'], screenshot=None,
                                dom_state=SimpleNamespace(selector_map=nodes, llm_representation=lambda: value['dom']))
@@ -123,28 +124,42 @@ def action_for(state):
     raise AssertionError('Fixture action absent from observed DOM')
 
 
-async def reviewed_click(session, action, execute, *, approved, cancelled=False, mutate=None):
-    _, before = await stable_browser_evidence(session, action)
+async def reviewed_click(session, action, execute, *, approved, cancelled=False, mutate=None, authority=None):
+    before_state, before = await stable_browser_evidence(session, action)
     if mutate is not None:
         mutate()
         await wait_state(session, 'Changed')
     if not approved or cancelled:
         raise PermissionError('Fixture authority denied')
-    _, after = await fresh_browser_evidence(session, action, 'after_approval')
+    if authority is not None:
+        await authority(action, before)
+    after_state, after = await fresh_browser_evidence(session, action, 'after_approval')
     if before != after:
-        raise PermissionError('Fixture context changed after review')
+        error = PermissionError('Fixture context changed after review')
+        # Fixed boolean diagnostics only: no DOM, URL, pixels or exception text.
+        error.evidence_changes = {
+            'url': before_state.url != after_state.url,
+            'dom': before_state.dom_state.llm_representation() != after_state.dom_state.llm_representation(),
+            'title': before.get('page_title') != after.get('page_title'),
+            'targets': before.get('targets') != after.get('targets'),
+            'fingerprint': before.get('page_fingerprint') != after.get('page_fingerprint'),
+        }
+        raise error
     await execute(action)
 
 
 async def trial(adapter, number):
-    fixture = Fixture()
+    from broker_process_contract import IndependentFixture, CrashBroker
+    fixture = None
     child = None
     session = None
     driver = None
     connection = None
     stage = 'chromium_start'
     started = time.monotonic()
+    initial_usage = resource.getrusage(resource.RUSAGE_CHILDREN)
     with tempfile.TemporaryDirectory(prefix='adapter-', dir='/workspace') as profile:
+        fixture = IndependentFixture(Path(profile)/'write-counter.sqlite3', PAGE)
         try:
             # Both adapters attach to Chromium started with exactly these flags.
             # Chromium's sandbox stays enabled; no --no-sandbox fallback exists.
@@ -207,6 +222,11 @@ async def trial(adapter, number):
             assert state.url == fixture.origin + '/page' and state.title == 'Adapter fixture'
             navigation_ms = (time.monotonic() - before_navigation) * 1000
             action = action_for(state)
+            # Initial navigation/readback is not the same as a settled viewport.
+            # The fixture's asynchronously rendered Ready label has completed;
+            # give Chromium one bounded paint interval before capturing the
+            # unmodified production-grade stable evidence twice.
+            await asyncio.sleep(0.5)
             snapshot_started = time.monotonic()
             stage = 'stable_snapshot'
             _, evidence = await stable_browser_evidence(session, action)
@@ -228,10 +248,58 @@ async def trial(adapter, number):
                 else:
                     raise AssertionError('Unapproved, cancelled or stale action executed')
                 assert fixture.writes == 1
-            return {'adapter': adapter, 'trial': number, 'passed': True, 'setup_ms': setup_ms,
+            # The browser and broker cannot edit the server-owned SQLite counter.
+            # Kill the actual journal-owning OS process after its approval reply.
+            recovery = None
+            if number == 0:
+                stage = 'broker_process_crash_restart'
+                fixture.mutated = False
+                await wait_state(session, 'Original')
+                broker = None
+                guarded = []
+                async def crash_authority(requested_action, fingerprint):
+                    nonlocal broker, recovery, stage
+                    stage='broker_spawn_and_initial_lease'
+                    broker = CrashBroker(Path(profile)/'private-broker')
+                    stage='broker_original_approval'
+                    request = broker.approve({'actions':requested_action, **fingerprint})
+                    assert request['state'] == 'approved'
+                    stage='broker_sigkill_and_durable_restart'
+                    recovery = await asyncio.to_thread(broker.kill_and_restart)
+                    stage='broker_restarted_lease_fence'
+                async def fenced_execute(requested_action):
+                    nonlocal stage
+                    stage='broker_stale_action_authority'
+                    guarded.append(True)
+                    if not broker.authorized():
+                        raise PermissionError('Restarted broker rejected stale approval')
+                    stage='broker_unexpected_effect_dispatch'
+                    await execute(requested_action)
+                try:
+                    try:
+                        await reviewed_click(session, action, fenced_execute, approved=True, authority=crash_authority)
+                    except PermissionError:
+                        stage='broker_fenced_action_postconditions'
+                        assert guarded == [True] and recovery is not None
+                    else:
+                        raise AssertionError('Crashed broker approval executed')
+                    assert fixture.writes == 1
+                    recovery['independent_writes_before'] = 1
+                    recovery['independent_writes_after'] = fixture.writes
+                    recovery['unauthorized_writes'] = fixture.writes - 1
+                finally:
+                    if broker is not None:broker.close()
+            final_usage = resource.getrusage(resource.RUSAGE_CHILDREN)
+            return {'adapter': adapter, 'trial': number, 'passed': True,
+                'independent_server_process': True, 'unauthorized_writes': fixture.writes - 1,
+                'broker_process_recovery': recovery,
+                'total_elapsed_ms': (time.monotonic() - started) * 1000,
+                'child_cpu_ms': max(0.0, (final_usage.ru_utime + final_usage.ru_stime - initial_usage.ru_utime - initial_usage.ru_stime) * 1000),
+                'child_peak_rss_kib': final_usage.ru_maxrss,
+                'setup_ms': setup_ms,
                 'navigation_ms': navigation_ms, 'snapshot_ms': snapshot_ms, 'approved_click_ms': click_ms,
                 'checks': ['redirect', 'dynamic_dom', 'url_title_readback', 'actual_screenshot',
-                           'approved_click_readback', 'denial_no_write', 'cancelled_no_write', 'stale_no_write']}
+                           'approved_click_readback', 'denial_no_write', 'cancelled_no_write', 'stale_no_write', 'independent_server_write_counter']}
         except Exception as error:
             error.benchmark_stage = stage
             raise
@@ -261,7 +329,7 @@ async def trial(adapter, number):
                         os.killpg(child.pid, signal.SIGKILL)
                     except ProcessLookupError:
                         pass
-                fixture.close()
+                if fixture is not None:fixture.close()
 
 
 async def run():
@@ -276,13 +344,14 @@ async def run():
                 # No SDK exception body, page content or process log is exported.
                 rows.append({'adapter': adapter, 'trial': number, 'passed': False,
                              'failure_class': type(error).__name__,
+                             'evidence_changes': getattr(error, 'evidence_changes', {}),
                              'failure_stage': getattr(error, 'benchmark_stage', 'trial_timeout')})
     summary = {}
     for adapter in ('browser_use', 'playwright'):
         successful = [row for row in rows if row['adapter'] == adapter and row['passed']]
         summary[adapter] = {'completed': len(successful), 'attempted': TRIALS,
             **{key: median(row[key] for row in successful) if successful else None
-               for key in ('setup_ms', 'navigation_ms', 'snapshot_ms', 'approved_click_ms')}}
+               for key in ('setup_ms', 'navigation_ms', 'snapshot_ms', 'approved_click_ms', 'total_elapsed_ms', 'child_cpu_ms')}}
     import hashlib
     import importlib.metadata
     return {'schema_version': 1, 'evidence_kind': 'real_chromium_adapter_microbenchmark',
@@ -292,12 +361,18 @@ async def run():
         'harness_sha256': hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
         'engine_sha256': hashlib.sha256(Path(__file__).with_name('engine.py').read_bytes()).hexdigest(),
         'fixture_sha256': __import__('hashlib').sha256(PAGE).hexdigest(),
+        'measurement_limits': {'cpu': 'RUSAGE_CHILDREN cumulative differential; excludes parent and fixture server',
+            'peak_rss': 'RUSAGE_CHILDREN process-high-water mark is cumulative across trials; not an attributable per-trial memory delta',
+            'cost': 'No pricing or infrastructure utilization data supplied; monetary cost unmeasured',
+            'reliability': 'Five fixture trials per adapter are diagnostic, not a statistically representative reliability estimate'},
         'thresholds': {'trials_per_adapter': TRIALS, 'required_correctness_rate': 1.0,
                        'allowed_unauthorized_writes': 0, 'per_trial_timeout_seconds': 90},
         'rows': rows, 'summary': summary, 'microbenchmark_passed': all(r['passed'] for r in rows),
         'production_adapter_selection': 'BLOCKED_PENDING_FULL_GATEWAY_AND_RUNTIME_COMPARISON',
         'unmeasured': ['production_gateway_parity', 'tenant_authorization', 'crash_recovery',
-                       'provider_quality', 'operating_cost', 'maintenance_cost'],
+                       'provider_quality', 'operating_cost', 'maintenance_cost', 'representative_reliability'],
+        'process_contract_scope': 'Owned guest-local server and real journal broker child; not production worker lifecycle or live tenant gateway',
+        'broker_process_contract_sha256': hashlib.sha256(Path(__file__).with_name('broker_process_contract.py').read_bytes()).hexdigest(),
         'production_certified': False}
 
 

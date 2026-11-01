@@ -1,5 +1,6 @@
 "use client"
 
+import { INTEL } from "@/components/intelligence/shell/intel-ui"
 import { Suspense, useEffect, useRef, useState } from "react"
 import Link from "next/link"
 import { INTELLIGENCE_PAGE_FRAME, TYPE } from "@/lib/design-system"
@@ -7,7 +8,6 @@ import { AppShell } from "@/components/gravitre/app-shell"
 import { NucleoIntelligence } from "@/components/icons/nucleo/semantic"
 import { EmptyState } from "@/components/gravitre/empty-state"
 import { GravitrePageHeader } from "@/components/gravitre/nodus-product"
-import { Button } from "@/components/ui/button"
 import { IntelligenceShell } from "@/components/intelligence/shell"
 import { FindDataSection } from "@/components/intelligence/data/find-data-section"
 import { TrainingDatasetsTable } from "@/components/intelligence/data/training-datasets-table"
@@ -68,12 +68,12 @@ export default function IntelligenceDataPage() {
           icon={<NucleoIntelligence className="h-5 w-5" />}
           actions={
             <div className="flex flex-wrap items-center gap-2">
-              <Button variant="outline" className="min-h-11" onClick={() => setUploadOpen(true)}>
+              <button type="button" className={INTEL.outlineButton} onClick={() => setUploadOpen(true)}>
                 Upload a file
-              </Button>
-              <Button asChild className="min-h-11">
-                <Link href={APP_ROUTES.connectors}>Connect a source</Link>
-              </Button>
+              </button>
+              <Link href={APP_ROUTES.connectors} className={INTEL.primaryButton}>
+                Connect a source
+              </Link>
             </div>
           }
         />

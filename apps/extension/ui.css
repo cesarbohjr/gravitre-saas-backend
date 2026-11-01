@@ -59,7 +59,7 @@ a{color:var(--sig)}
 .aav{background:var(--s1);border:1px solid var(--bd)}
 .pav{background:var(--s3);color:var(--t2);border:0}
 .wstile{display:inline-flex;align-items:center;justify-content:center;border-radius:6px;color:#fff;font-weight:700;flex:none}
-.mark{display:inline-flex;align-items:center;justify-content:center;border-radius:7px;background:var(--carbon);color:#fff;flex:none}
+.mark{display:inline-flex;align-items:center;justify-content:center;border-radius:7px;background:#16a374;color:#e0f3ec;flex:none}
 .logo{display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:18px;padding:0 3px;border-radius:5px;font-size:8px;font-weight:700;flex:none;border:1px solid var(--bd);background:var(--s2);color:var(--t2)}
 .vlogo{display:inline-flex;align-items:center;justify-content:center;flex:none;border-radius:5px;border:1px solid var(--bd);background:var(--s1);padding:2px}
 .vlogo img{width:100%;height:100%;object-fit:contain;display:block}

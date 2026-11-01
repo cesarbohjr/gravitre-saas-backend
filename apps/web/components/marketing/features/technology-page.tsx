@@ -9,12 +9,10 @@ import {
 } from "@/components/icons/nucleo/semantic"
 import { Button } from "@/components/marketing/nodus/button"
 import { DivideX } from "@/components/marketing/nodus/divide"
+import { HeroImage } from "@/components/marketing/nodus/hero-image"
 import { MarketingPageEndCta, MarketingPageHero } from "@/components/marketing/nodus/page-shell"
-import {
-  AgentOrchestrationField,
-  EntityConvergenceWorkbenchField,
-  GibeLearningField,
-} from "@/components/marketing/creative"
+import { AgentOrchestrationField } from "@/components/marketing/creative"
+import { ProductScreenshot } from "@/components/marketing/product-screenshot"
 import { GravitreReveal, GravitreTrace } from "@/components/marketing/system/motion"
 import { GravitreSection, GravitreSectionHeader } from "@/components/marketing/system/section"
 
@@ -31,7 +29,7 @@ const specPills = [
  */
 export function TechnologyPage() {
   return (
-    <div className="bg-[color:var(--g-marketing-canvas)]" data-technology-legacy="0" data-kf-production="workbench">
+    <div className="bg-[color:var(--g-marketing-canvas)]" data-technology-legacy="0">
       <MarketingPageHero
         badge="Platform technology"
         title={
@@ -66,18 +64,33 @@ export function TechnologyPage() {
       </MarketingPageHero>
 
       <DivideX />
+      <HeroImage
+        src="/product/app-connectors-hub.png"
+        title="Connectors"
+        chips={[
+          { label: "Live auth and health checks", at: "top-right" },
+          { label: "Executability checked before runs", at: "bottom-left", tone: "slate" },
+        ]}
+        alt="Gravitre Connectors: each system from connected to ready for agents"
+        width={2880}
+        height={1620}
+      />
+      <DivideX />
 
       <GravitreSection>
         <GravitreSectionHeader
           align="center"
-          badge="GIBE path"
+          badge="Intelligence layer"
           title="Observe, recommend, then human approve"
-          description="An illustrative GIBE learning loop — action, observe, evaluate, advisory recommend, approve, retain. Not auto policy rewrite."
+          description="GIBE watches real work across your stack, explains what it found step by step, and traces every number back to its source. Recommendations stay advisory until a person approves them."
           className="mb-6"
         />
-        <GravitreTrace>
-          <GibeLearningField />
-        </GravitreTrace>
+        <ProductScreenshot
+          src="/product/app-intelligence-overview.png"
+          alt="Gravitre Intelligence overview: data readiness, this week's results, what Gravitre is learning, and what needs attention"
+          chromeLabel="Intelligence"
+          className="mx-auto max-w-5xl"
+        />
         <p className="mt-4 text-center text-[11px] text-[color:var(--g-text-muted)]">
           <Link className="underline underline-offset-2" href="/docs/guides/how-to/org-learning">
             How org learning works
@@ -98,26 +111,6 @@ export function TechnologyPage() {
         <GravitreTrace>
           <AgentOrchestrationField />
         </GravitreTrace>
-      </GravitreSection>
-
-      <DivideX />
-
-      <GravitreSection>
-        <GravitreSectionHeader
-          align="center"
-          badge="Knowledge Fabric"
-          title="Mentions converge when the match is exact"
-          description="An illustrative Entity Convergence field — normalize, exact-match, and evidence. Not fuzzy person matching. Not a live org graph."
-          className="mb-6"
-        />
-        <GravitreTrace>
-          <EntityConvergenceWorkbenchField />
-        </GravitreTrace>
-        <p className="mt-4 text-center text-[11px] text-[color:var(--g-text-muted)]">
-          <Link className="underline underline-offset-2" href="/docs/guides/how-to/sources">
-            How sources feed the fabric
-          </Link>
-        </p>
       </GravitreSection>
 
       <MarketingPageEndCta />

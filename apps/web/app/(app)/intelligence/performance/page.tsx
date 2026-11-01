@@ -1,12 +1,12 @@
 "use client"
 
+import { INTEL } from "@/components/intelligence/shell/intel-ui"
+import { cn } from "@/lib/utils"
 import { useCallback, useState } from "react"
 import useSWR from "swr"
 import { AppShell } from "@/components/gravitre/app-shell"
 import { EmptyState, ErrorState } from "@/components/gravitre/empty-state"
-import { SegmentedControl } from "@/components/gravitre/filter-chip"
 import { GravitrePageHeader } from "@/components/gravitre/nodus-product"
-import { Button } from "@/components/ui/button"
 import { IntelligenceShell } from "@/components/intelligence/shell"
 import { PerformanceStage } from "@/components/intelligence/pages/performance-stage"
 import {
@@ -110,21 +110,32 @@ export default function IntelligencePerformancePage() {
           icon={<NucleoIntelligence className="h-5 w-5" />}
           actions={
             <div className="flex flex-wrap items-center gap-2">
-              <SegmentedControl
-                ariaLabel="Period"
-                options={PERIOD_OPTIONS}
-                value={String(period) as `${ImpactPeriod}`}
-                onChange={(id) => setPeriod(Number(id) as ImpactPeriod)}
-              />
-              <Button
-                variant="outline"
-                size="sm"
+              <div role="radiogroup" aria-label="Period" className={INTEL.segment}>
+                {PERIOD_OPTIONS.map((option) => {
+                  const on = option.id === String(period)
+                  return (
+                    <button
+                      key={option.id}
+                      type="button"
+                      role="radio"
+                      aria-checked={on}
+                      onClick={() => setPeriod(Number(option.id) as ImpactPeriod)}
+                      className={cn(INTEL.segmentItem, on && INTEL.segmentItemOn)}
+                    >
+                      {option.label}
+                    </button>
+                  )
+                })}
+              </div>
+              <button
+                type="button"
+                className={INTEL.outlineButton}
                 onClick={exportCsv}
                 disabled={!roiForPeriod}
                 title={roiForPeriod ? `Download the last ${period} days as CSV` : "Available once this period has loaded"}
               >
                 Export
-              </Button>
+              </button>
             </div>
           }
         />

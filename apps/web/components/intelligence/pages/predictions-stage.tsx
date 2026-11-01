@@ -11,9 +11,10 @@
  * records through `POST /api/assistant/recommendation-feedback`.
  */
 import { useEffect, useMemo, useState } from "react"
+import useSWR from "swr"
 import { toast } from "@/components/intelligence/overlays/toast"
 import { ShareFindingDialog, type ShareableFinding } from "@/components/intelligence/overlays/share-finding-dialog"
-import { GravitreMetric } from "@/components/gravitre/nodus-product"
+import { IntelStat } from "@/components/intelligence/shell/intel-stat"
 import { Button } from "@/components/ui/button"
 import { PredictionRiskOpportunityTopology } from "@/components/intelligence/prediction-risk-opportunity-topology"
 import {
@@ -29,7 +30,7 @@ import {
   type FailureAlertWithEvidence,
   type Forecast,
 } from "@/components/intelligence/forecasts/forecast-model"
-import { assistantApi, workflowsApi, type IntelligencePageContextResponse } from "@/lib/api"
+import { assistantApi, intelligenceFindingsApi, workflowsApi, type IntelligencePageContextResponse } from "@/lib/api"
 import { APP_ROUTES } from "@/lib/app-routes"
 import { isSnapshotMetricsReady, type SnapshotLoadState } from "@/lib/intelligence/snapshot-state"
 import { TYPE } from "@/lib/design-system"
@@ -64,13 +65,30 @@ export function PredictionsStage({
   const metricsReady = isSnapshotMetricsReady(loadState)
   const isLoading = !metricsReady && !failureAlertsLoaded
 
-  const forecasts = useMemo(
+  const { data: snoozeData, mutate: refreshSnoozes } = useSWR(
+    "intelligence/forecast-snoozes",
+    () => intelligenceFindingsApi.forecastSnoozes(),
+    { revalidateOnFocus: false },
+  )
+  const snoozes = useMemo(() => snoozeData?.snoozes ?? [], [snoozeData])
+  const [snoozingKey, setSnoozingKey] = useState<string | null>(null)
+
+  const allForecasts = useMemo(
     () =>
       buildForecasts({
         predictions: pageContext?.snapshot.predictions,
         failureAlerts,
       }),
     [pageContext?.snapshot.predictions, failureAlerts],
+  )
+  // Snoozed forecasts stay off the page until their date, then return on their own.
+  const forecasts = useMemo(() => {
+    const hidden = new Set(snoozes.map((row) => row.key))
+    return allForecasts.filter((row) => !hidden.has(row.key))
+  }, [allForecasts, snoozes])
+  const snoozedHere = useMemo(
+    () => snoozes.filter((row) => allForecasts.some((f) => f.key === row.key)),
+    [snoozes, allForecasts],
   )
   const summary = useMemo(() => summarizeForecasts(forecasts), [forecasts])
   const areas = useMemo(() => forecastAreas(forecasts), [forecasts])
@@ -123,6 +141,32 @@ export function PredictionsStage({
     }
   }
 
+  const unsnooze = async (key: string) => {
+    try {
+      await intelligenceFindingsApi.unsnoozeForecast(key)
+      await refreshSnoozes()
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Couldn't bring it back. Try again.")
+    }
+  }
+
+  const snooze = async (forecast: Forecast) => {
+    setSnoozingKey(forecast.key)
+    try {
+      const saved = await intelligenceFindingsApi.snoozeForecast({ key: forecast.key, title: forecast.title, days: 7 })
+      await refreshSnoozes()
+      const back = new Date(saved.until).toLocaleDateString("en-US", { month: "short", day: "numeric" })
+      toast.success(`Snoozed until ${back}`, {
+        description: "Hidden for your whole team. It comes back on its own if it's still open.",
+        action: { label: "Undo", onClick: () => void unsnooze(forecast.key) },
+      })
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Couldn't snooze that. Try again.")
+    } finally {
+      setSnoozingKey(null)
+    }
+  }
+
   const recordOutcome = async (forecast: Forecast, outcome: ForecastOutcome) => {
     setSavingOutcome(true)
     try {
@@ -148,18 +192,18 @@ export function PredictionsStage({
   ].join(" · ")
 
   return (
-    <div className="space-y-6">
-      <section aria-label="Forecast summary" className="grid grid-cols-2 gap-[var(--np-kpi-gap)] lg:grid-cols-4">
-        <GravitreMetric
+    <div className="space-y-[22px]">
+      <section aria-label="Forecast summary" className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <IntelStat
           label="Active forecasts"
           value={isLoading ? "—" : summary.active}
           hint={isLoading ? "Loading forecasts…" : split}
         />
-        <GravitreMetric
+        <IntelStat
           label="Need you now"
           value={
             failureAlertsLoaded ? (
-              <span className={summary.needYouNow > 0 ? "text-[color:var(--g-danger)]" : undefined}>
+              <span className={summary.needYouNow > 0 ? "text-[#a3333d] dark:text-[color:var(--g-danger)]" : undefined}>
                 {summary.needYouNow}
               </span>
             ) : (
@@ -168,7 +212,7 @@ export function PredictionsStage({
           }
           hint={failureAlertsLoaded ? "Due before the next run" : "Loading forecasts…"}
         />
-        <GravitreMetric
+        <IntelStat
           label="Need more evidence"
           value={isLoading ? "—" : summary.needEvidence}
           hint={
@@ -179,7 +223,7 @@ export function PredictionsStage({
                 : "Missing evidence or a connected source"
           }
         />
-        <GravitreMetric
+        <IntelStat
           label="Track record"
           value="Not scored yet"
           hint={
@@ -201,7 +245,7 @@ export function PredictionsStage({
 
       {isLoading ? (
         <p className={TYPE.bodyMuted}>Loading forecasts…</p>
-      ) : forecasts.length === 0 ? (
+      ) : forecasts.length === 0 && snoozedHere.length === 0 ? (
         <div className="rounded-[var(--np-radius-lg)] border border-dashed border-divide bg-[color:var(--g-surface-2)]/50 px-5 py-10 text-center">
           <p className="text-sm font-medium text-foreground">No forecasts yet</p>
           <p className={cn(TYPE.meta, "mx-auto mt-1 max-w-md")}>
@@ -213,7 +257,7 @@ export function PredictionsStage({
           </Button>
         </div>
       ) : (
-        <div className="grid gap-6 lg:grid-cols-[minmax(0,1.55fr)_minmax(0,1fr)] lg:items-start">
+        <div className="grid gap-4 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)] lg:items-start">
           {selected ? (
             <ForecastDetail
               key={selected.key}
@@ -221,6 +265,8 @@ export function PredictionsStage({
               rejecting={rejectingKey === selected.key}
               rejected={rejected.has(selected.key)}
               onReject={() => void reject(selected)}
+              snoozing={snoozingKey === selected.key}
+              onSnooze={() => void snooze(selected)}
               onShare={() =>
                 setSharing({
                   id: selected.key,
@@ -233,8 +279,14 @@ export function PredictionsStage({
           ) : (
             <div />
           )}
-          <div className="space-y-6">
-            <ForecastList forecasts={visible} selectedKey={selected?.key ?? null} onSelect={setSelectedKey} />
+          <div className="space-y-4">
+            <ForecastList
+              forecasts={visible}
+              selectedKey={selected?.key ?? null}
+              onSelect={setSelectedKey}
+              snoozed={snoozedHere}
+              onUnsnooze={(key) => void unsnooze(key)}
+            />
             <ForecastOutcomeCard
               forecast={selected}
               recorded={selected ? outcomes[selected.key] : undefined}

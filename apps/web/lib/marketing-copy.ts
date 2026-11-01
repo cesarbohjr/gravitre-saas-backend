@@ -191,6 +191,11 @@ export const MARKETING_COPY = {
         "Execute tracked work, chat with context, or search records — routed to the right engine with live connector checks.",
     },
     {
+      title: "Desktop and voice",
+      description:
+        "Ask, approve, and talk to Gravitre from the desktop app — push-to-talk from any app, the same approvals as the web.",
+    },
+    {
       title: "Browser extension",
       description:
         "Enrich LinkedIn, Gmail, Outlook, and more in Chrome, Edge, or Brave — approve catalog writes, see them in Outcomes.",

@@ -1,5 +1,6 @@
 "use client"
 
+import type { ReactNode } from "react"
 import { cn } from "@/lib/utils"
 import {
   useGravitreAIWorkspace,
@@ -12,11 +13,14 @@ export function AskGravitreSummonButton({
   className,
   label = "Ask Gravitre",
   prompt,
+  icon,
 }: {
   selected?: GravitreAISelectedEntity | null
   className?: string
   label?: string
   prompt?: string
+  /** Shown before the label (the Models header uses a sparkle). */
+  icon?: ReactNode
 }) {
   const { summonWorkspace, pageContext } = useGravitreAIWorkspace()
 
@@ -38,6 +42,7 @@ export function AskGravitreSummonButton({
         })
       }
     >
+      {icon}
       {label}
     </button>
   )

@@ -3,8 +3,10 @@ import { Badge } from "@/components/marketing/nodus/badge"
 import { Button } from "@/components/marketing/nodus/button"
 import { Container } from "@/components/marketing/nodus/container"
 import { CTA } from "@/components/marketing/nodus/cta"
+import { MarketingScene } from "@/components/marketing/nodus/scene"
 import { DivideX } from "@/components/marketing/nodus/divide"
 import { Heading } from "@/components/marketing/nodus/heading"
+import { HeroImage } from "@/components/marketing/nodus/hero-image"
 import { SectionHeading } from "@/components/marketing/nodus/seciton-heading"
 import { SubHeading } from "@/components/marketing/nodus/subheading"
 import {
@@ -56,6 +58,18 @@ export default function AboutPage() {
       </Container>
 
       <DivideX />
+      <HeroImage
+        src="/product/app-workflow-builder.png"
+        alt="Gravitre workflow builder: Salesforce, a validation agent and PostgreSQL wired into one workflow, with a decision step and a quality gate before the write"
+        width={2880}
+        height={1800}
+        title="Workflows · Editor"
+        chips={[
+          { label: "Connectors wired into one workflow", at: "top-right" },
+          { label: "Approval gate before every write", at: "bottom-left", tone: "amber" },
+        ]}
+      />
+      <DivideX />
 
       <GravitreSection>
         <GravitreSectionHeader
@@ -97,8 +111,15 @@ export default function AboutPage() {
 
       <DivideX />
 
-      <Container className="border-divide flex flex-col items-start border-x px-4 py-16 md:flex-row md:items-center md:justify-between md:px-8 md:py-20">
-        <div>
+      <Container className="border-divide grid grid-cols-1 items-center gap-10 border-x px-4 py-16 md:grid-cols-2 md:px-8 md:py-20">
+        <MarketingScene
+          name="marketing/build-with-us"
+          alt="Workflow cards being assembled on a workbench"
+          width={400}
+          height={300}
+          className="md:order-2"
+        />
+        <div className="md:order-1">
           <Badge text="Careers" />
           <SectionHeading className="mt-4 text-left">
             Build with us
@@ -106,10 +127,10 @@ export default function AboutPage() {
           <SubHeading className="mt-4 max-w-md text-left">
             Join the team working on one AI brain for business.
           </SubHeading>
+          <Button as={Link} href="/careers" className="mt-8">
+            View careers
+          </Button>
         </div>
-        <Button as={Link} href="/careers" className="mt-8 md:mt-0">
-          View careers
-        </Button>
       </Container>
 
       <CTA />

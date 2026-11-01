@@ -1,5 +1,6 @@
 "use client"
 
+import { INTEL } from "@/components/intelligence/shell/intel-ui"
 import { Suspense, useEffect, useMemo, useRef, useState } from "react"
 import useSWR from "swr"
 import Link from "next/link"
@@ -272,16 +273,17 @@ export default function ModelsPage() {
           actions={
             <div className="flex flex-wrap items-center gap-2">
               <AskGravitreSummonButton
-                className="text-[13px]"
+                className="inline-flex items-center gap-1.5 px-2 py-2.5 text-[13px] underline underline-offset-2"
+                icon={<NucleoIntelligence className="h-3.5 w-3.5" aria-hidden />}
                 prompt="Look at our models: which ones are in production, which need attention, and what should we improve or retrain next? Use only real registry evidence."
               />
-              <Button variant="outline" onClick={() => void refresh()} disabled={isValidating}>
-                <RefreshCw className={cn("h-4 w-4", isValidating && "animate-spin")} aria-hidden />
+              <button type="button" className={INTEL.outlineButton} onClick={() => void refresh()} disabled={isValidating}>
+                <RefreshCw className={cn("h-3.5 w-3.5", isValidating && "animate-spin")} aria-hidden />
                 Refresh
-              </Button>
-              <Button asChild>
-                <Link href={APP_ROUTES.intelligenceModelStudio}>New model</Link>
-              </Button>
+              </button>
+              <Link href={APP_ROUTES.intelligenceModelStudio} className={INTEL.primaryButton}>
+                New model
+              </Link>
             </div>
           }
         />

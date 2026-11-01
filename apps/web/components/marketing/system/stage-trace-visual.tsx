@@ -5,8 +5,10 @@
  * No TRAINED badges, prices, or entitlement claims.
  */
 
+import { useEffect, useState } from "react"
 import { motion, useReducedMotion } from "framer-motion"
 import { cn } from "@/lib/utils"
+import { NodusDotField } from "@/components/marketing/nodus/dot-field"
 
 export type TraceStage = {
   id: string
@@ -18,17 +20,30 @@ type Props = {
   caption?: string
   ariaLabel: string
   className?: string
+  /** Kept for callers; the trace no longer uses an SVG gradient. */
   gradientId?: string
+  /** Optional item names; one rides the signal per loop as a small card. */
+  payloads?: readonly string[]
 }
+
+/** One signal loop: TRAVEL is the share of the loop spent moving, the rest is the fade. */
+const LOOP = 4.2
+const TRAVEL = 0.78
 
 export function StageTraceVisual({
   stages,
   caption,
   ariaLabel,
   className,
-  gradientId = "stage-trace-stroke",
+  payloads,
 }: Props) {
   const reduce = useReducedMotion()
+  const [payloadIndex, setPayloadIndex] = useState(0)
+  useEffect(() => {
+    if (reduce || !payloads?.length) return
+    const id = window.setInterval(() => setPayloadIndex((i) => (i + 1) % payloads.length), LOOP * 1000)
+    return () => window.clearInterval(id)
+  }, [reduce, payloads])
   const count = stages.length
   const width = 880
   const y = 120
@@ -38,75 +53,178 @@ export function StageTraceVisual({
 
   return (
     <div className={cn("relative mx-auto w-full max-w-4xl", className)}>
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-0 rounded-[var(--g-marketing-radius)]"
-        style={{
-          background:
-            "radial-gradient(ellipse at 50% 40%, color-mix(in oklch, var(--g-intelligence) 8%, transparent), transparent 65%)",
-        }}
-      />
+      <NodusDotField className="-inset-x-8 -inset-y-6" />
       <svg
         viewBox={`0 0 ${width} 220`}
         className="relative h-auto w-full"
         role="img"
         aria-label={ariaLabel}
       >
-        <defs>
-          <linearGradient id={gradientId} x1="0" y1="0" x2="1" y2="0">
-            <stop offset="0%" stopColor="color-mix(in srgb, var(--primary) 40%, var(--line))" />
-            <stop offset="55%" stopColor="color-mix(in oklch, var(--g-intelligence) 55%, var(--line))" />
-            <stop offset="100%" stopColor="var(--primary)" />
-          </linearGradient>
-        </defs>
-
-        <motion.path
-          d={`M ${xs[0]} ${y} L ${xs[count - 1]} ${y}`}
-          stroke={`url(#${gradientId})`}
-          strokeWidth="var(--g-graphic-line)"
+        {/* Rail: always visible, so the stages read as connected even at rest. */}
+        <line
+          x1={xs[0]}
+          y1={y}
+          x2={xs[count - 1]}
+          y2={y}
+          stroke="var(--color-line, #e4e4df)"
+          strokeWidth={2}
           strokeLinecap="round"
-          fill="none"
-          initial={reduce ? false : { pathLength: 0, opacity: 0.35 }}
-          whileInView={reduce ? undefined : { pathLength: 1, opacity: 1 }}
-          viewport={{ once: true, amount: 0.4 }}
-          transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1] }}
         />
 
-        {stages.map((stage, index) => (
-          <g key={stage.id}>
+        {/* Signal: a green trail runs stage to stage on a loop, lighting each node as it passes. */}
+        {reduce ? (
+          <line
+            x1={xs[0]}
+            y1={y}
+            x2={xs[count - 1]}
+            y2={y}
+            stroke="var(--color-brand, #0b8a5c)"
+            strokeWidth={2}
+            strokeLinecap="round"
+          />
+        ) : (
+          <>
+            <motion.line
+              x1={xs[0]}
+              y1={y}
+              y2={y}
+              stroke="var(--color-brand, #0b8a5c)"
+              strokeWidth={2}
+              strokeLinecap="round"
+              initial={{ x2: xs[0], opacity: 0 }}
+              animate={{ x2: [xs[0], xs[count - 1], xs[count - 1]], opacity: [1, 1, 0] }}
+              transition={{ duration: LOOP, times: [0, TRAVEL, 1], ease: "easeInOut", repeat: Infinity }}
+            />
             <motion.circle
-              cx={xs[index]}
               cy={y}
-              r={14}
+              r={4}
+              fill="var(--color-brand, #0b8a5c)"
+              initial={{ cx: xs[0], opacity: 0 }}
+              animate={{ cx: [xs[0], xs[count - 1], xs[count - 1]], opacity: [1, 1, 0] }}
+              transition={{ duration: LOOP, times: [0, TRAVEL, 1], ease: "easeInOut", repeat: Infinity }}
+            />
+          </>
+        )}
+
+        {!reduce && payloads?.length ? (
+          <motion.g
+            initial={{ x: xs[0], opacity: 0 }}
+            animate={{ x: [xs[0], xs[count - 1], xs[count - 1]], opacity: [1, 1, 0] }}
+            transition={{ duration: LOOP, times: [0, TRAVEL, 1], ease: "easeInOut", repeat: Infinity }}
+          >
+            <rect
+              x={-76}
+              y={y - 58}
+              width={152}
+              height={30}
+              rx={8}
               fill="var(--card)"
-              stroke={
-                index === count - 1
-                  ? "var(--primary)"
-                  : "color-mix(in oklch, var(--g-intelligence) 45%, var(--line))"
-              }
-              strokeWidth="1.5"
-              initial={reduce ? false : { scale: 0.7, opacity: 0 }}
-              whileInView={reduce ? undefined : { scale: 1, opacity: 1 }}
-              viewport={{ once: true }}
-              transition={{ delay: 0.12 + index * 0.1, duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+              stroke="var(--color-line, #e4e4df)"
+              style={{ filter: "drop-shadow(0 2px 6px rgba(0,0,0,0.08))" }}
             />
-            <circle
-              cx={xs[index]}
-              cy={y}
-              r={5}
-              fill={index === count - 1 ? "var(--primary)" : "var(--g-intelligence)"}
-            />
+            <circle cx={-62} cy={y - 43} r={3.5} fill="var(--color-brand, #0b8a5c)" />
             <text
-              x={xs[index]}
-              y={y + 42}
-              textAnchor="middle"
-              className="fill-[color:var(--g-text-secondary)]"
-              style={{ fontSize: 12, fontWeight: 500 }}
+              x={-52}
+              y={y - 39}
+              className="fill-[color:var(--g-text-primary,#1f2421)]"
+              style={{ fontSize: 11, fontWeight: 500 }}
             >
-              {stage.label}
+              {payloads[payloadIndex]}
             </text>
-          </g>
-        ))}
+            <line x1={0} y1={y - 28} x2={0} y2={y - 6} stroke="var(--color-line, #e4e4df)" strokeDasharray="2 3" />
+          </motion.g>
+        ) : null}
+
+        {stages.map((stage, index) => {
+          const at = count === 1 ? 0 : (TRAVEL * index) / (count - 1)
+          const last = index === count - 1
+          return (
+            <g key={stage.id}>
+              {reduce ? null : (
+                <motion.circle
+                  cx={xs[index]}
+                  cy={y}
+                  fill="none"
+                  stroke="var(--color-brand, #0b8a5c)"
+                  strokeWidth={1.5}
+                  initial={{ r: 20, opacity: 0 }}
+                  animate={{ r: [20, 20, 22, 30, 30], opacity: [0, 0, 0.55, 0, 0] }}
+                  transition={{
+                    duration: LOOP,
+                    times: [0, at, Math.min(at + 0.04, 1), Math.min(at + 0.16, 1), 1],
+                    repeat: Infinity,
+                  }}
+                />
+              )}
+              <motion.rect
+                x={xs[index] - 17}
+                y={y - 17}
+                width={34}
+                height={34}
+                rx={9}
+                fill="var(--card)"
+                stroke={last ? "var(--color-brand, #0b8a5c)" : "var(--color-line, #e4e4df)"}
+                strokeWidth="1.25"
+                style={{
+                  filter: "drop-shadow(0 1px 1px rgba(0,0,0,0.05)) drop-shadow(0 4px 10px rgba(0,0,0,0.06))",
+                  transformBox: "fill-box",
+                  transformOrigin: "center",
+                }}
+                initial={reduce ? false : { scale: 0.7, opacity: 0 }}
+                whileInView={reduce ? undefined : { scale: 1, opacity: 1 }}
+                viewport={{ once: true }}
+                transition={{ delay: 0.12 + index * 0.1, duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+              />
+              {reduce || last ? (
+                <circle
+                  cx={xs[index]}
+                  cy={y}
+                  r={5}
+                  fill={last ? "var(--color-brand, #0b8a5c)" : "var(--color-charcoal-700, #3f4b45)"}
+                />
+              ) : (
+                <motion.circle
+                  cx={xs[index]}
+                  cy={y}
+                  r={5}
+                  initial={{ fill: "var(--color-charcoal-700, #3f4b45)" }}
+                  animate={{
+                    fill: [
+                      "var(--color-charcoal-700, #3f4b45)",
+                      "var(--color-charcoal-700, #3f4b45)",
+                      "var(--color-brand, #0b8a5c)",
+                      "var(--color-brand, #0b8a5c)",
+                      "var(--color-charcoal-700, #3f4b45)",
+                    ],
+                  }}
+                  transition={{
+                    duration: LOOP,
+                    times: [0, at, Math.min(at + 0.03, 1), 0.92, 1],
+                    repeat: Infinity,
+                  }}
+                />
+              )}
+              <text
+                x={xs[index]}
+                y={y + 42}
+                textAnchor="middle"
+                className="fill-[color:var(--g-text-primary,#1f2421)]"
+                style={{ fontSize: 12.5, fontWeight: 500 }}
+              >
+                {stage.label}
+              </text>
+              <text
+                x={xs[index]}
+                y={y + 58}
+                textAnchor="middle"
+                className="fill-gray-500 font-mono"
+                style={{ fontSize: 10 }}
+              >
+                {String(index + 1).padStart(2, "0")}
+              </text>
+            </g>
+          )
+        })}
       </svg>
       {caption ? (
         <p className="mt-2 text-center text-sm text-gray-600">{caption}</p>

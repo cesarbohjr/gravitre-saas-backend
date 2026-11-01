@@ -1,5 +1,6 @@
 "use client"
 
+import { INTEL } from "@/components/intelligence/shell/intel-ui"
 import { useState } from "react"
 import useSWR from "swr"
 import { toast } from "@/components/intelligence/overlays/toast"
@@ -7,7 +8,6 @@ import { AppShell } from "@/components/gravitre/app-shell"
 import { DataFreshness } from "@/components/gravitre/data-freshness"
 import { EmptyState, ErrorState } from "@/components/gravitre/empty-state"
 import { GravitrePageHeader } from "@/components/gravitre/nodus-product"
-import { Button } from "@/components/ui/button"
 import { IntelligenceShell } from "@/components/intelligence/shell"
 import { PredictionsStage } from "@/components/intelligence/pages/predictions-stage"
 import { RecommendationFeedPanel } from "@/components/accounts/recommendation-feed-panel"
@@ -97,16 +97,16 @@ export default function PredictiveOpsPage() {
           description={copy.description}
           icon={<NucleoIntelligence className="h-5 w-5" />}
           actions={
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
               <DataFreshness label="Updated" updatedAt={generatedAt} isRefreshing={refreshing} />
-              <Button variant="outline" size="sm" onClick={refresh} disabled={refreshing}>
+              <button type="button" className={INTEL.outlineButton} onClick={refresh} disabled={refreshing}>
                 <ArrowsClockwise
-                  className={`mr-2 h-4 w-4 ${refreshing ? "animate-spin" : ""}`}
+                  className={`h-3.5 w-3.5 ${refreshing ? "animate-spin" : ""}`}
                   weight="bold"
                   aria-hidden
                 />
                 Refresh
-              </Button>
+              </button>
             </div>
           }
         />

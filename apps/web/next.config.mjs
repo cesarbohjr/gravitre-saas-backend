@@ -38,6 +38,14 @@ const securityHeaders = [
 ]
 
 const nextConfig = {
+  // Compile-time gate: normal production functions do not need desktop or
+  // extension preview files. Explicit E2E builds keep the existing preview.
+  env: {
+    GRAVITRE_STATIC_PREVIEW_ENABLED:
+      process.env.NODE_ENV !== "production" ||
+      process.env.NEXT_PUBLIC_PLAYWRIGHT_E2E === "1" ||
+      process.env.PLAYWRIGHT_E2E === "1" ? "1" : "0",
+  },
   // Type errors now fail the build (tsc is clean). Keep it that way via CI + typecheck.
   // The dev-tools "N" badge sits over the sidebar and AI dock in dev captures; it never ships.
   devIndicators: false,
