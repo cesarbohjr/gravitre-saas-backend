@@ -304,8 +304,7 @@ def checkpoint_destination(current_url, requested, allowed_hosts):
         raise PermissionError('Checkpoint requires a reviewed HTTPS destination')
     parsed=urlsplit(candidate)
     if (parsed.scheme!='https' or parsed.hostname not in allowed_hosts
-            or parsed.username or parsed.password or parsed.port not in (None,443)
-            or parsed.fragment):
+            or parsed.username or parsed.password or parsed.port not in (None,443)):
         raise PermissionError('Checkpoint destination outside reviewed HTTPS scope')
     return candidate
 
