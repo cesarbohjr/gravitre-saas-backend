@@ -1,5 +1,5 @@
 """Failure-injection coverage for the flagged durable Stripe meter dispatcher."""
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
@@ -8,8 +8,12 @@ import pytest
 
 from app.billing.stripe_meter_outbox import report_meter_intents
 
-START = date(2026, 10, 1)
-END = date(2026, 10, 31)
+# Outbox dispatch intentionally rejects closed billing periods. Keep the
+# normal-path unit fixture inside the current UTC month across calendar rollovers.
+TODAY = datetime.now(timezone.utc).date()
+START = TODAY.replace(day=1)
+END = (START.replace(month=START.month + 1, day=1)
+       if START.month < 12 else START.replace(year=START.year + 1, month=1, day=1)) - timedelta(days=1)
 
 
 def _client(*, acknowledgement=True):
