@@ -31,7 +31,7 @@ export function evaluateLocalCancelCandidate(
 ): CancellationVerdict {
   if (!workActive) return { status: "rejected", reason: "no_active_work" }
   if (observation.source !== "local_kws") return { status: "rejected", reason: "untrusted_source" }
-  if (observation.phrase.trim().toLowerCase().replace(/\\s+/g, " ") !== CANDIDATE_PHRASE)
+  if (observation.phrase.trim().toLowerCase().replace(/\s+/g, " ") !== CANDIDATE_PHRASE)
     return { status: "rejected", reason: "noncanonical_phrase" }
   if (![observation.audioStartMs, observation.detectedAtMs, observation.confidence].every(Number.isFinite))
     return { status: "rejected", reason: "invalid_timing_or_score" }
