@@ -258,20 +258,28 @@ async def trial(adapter, number):
                 broker = None
                 guarded = []
                 async def crash_authority(requested_action, fingerprint):
-                    nonlocal broker, recovery
+                    nonlocal broker, recovery, stage
+                    stage='broker_spawn_and_initial_lease'
                     broker = CrashBroker(Path(profile)/'private-broker')
+                    stage='broker_original_approval'
                     request = broker.approve({'actions':requested_action, **fingerprint})
                     assert request['state'] == 'approved'
+                    stage='broker_sigkill_and_durable_restart'
                     recovery = await asyncio.to_thread(broker.kill_and_restart)
+                    stage='broker_restarted_lease_fence'
                 async def fenced_execute(requested_action):
+                    nonlocal stage
+                    stage='broker_stale_action_authority'
                     guarded.append(True)
                     if not broker.authorized():
                         raise PermissionError('Restarted broker rejected stale approval')
+                    stage='broker_unexpected_effect_dispatch'
                     await execute(requested_action)
                 try:
                     try:
                         await reviewed_click(session, action, fenced_execute, approved=True, authority=crash_authority)
                     except PermissionError:
+                        stage='broker_fenced_action_postconditions'
                         assert guarded == [True] and recovery is not None
                     else:
                         raise AssertionError('Crashed broker approval executed')

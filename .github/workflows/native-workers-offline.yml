@@ -110,8 +110,8 @@ jobs:
       - name: Start immutable local certification registry
         timeout-minutes: 3
         run: docker run -d --name native-cert-registry -p 127.0.0.1:5050:5000 mirror.gcr.io/library/registry@sha256:a3d8aaa63ed8681a604f1dea0aa03f100d5895b6a58ace528858a7b332415373
-      - name: Install durable journal encryption dependency
-        run: python -m pip install "cryptography>=49.0.0,<51.0"
+      - name: Install native coordinator and acceptance dependencies
+        run: python -m pip install -r backend/requirements-dev.txt
       - name: Certify real isolated SDK execution and failure controls
         env:
           NATIVE_CERT_EVIDENCE: native-runtime-evidence.json

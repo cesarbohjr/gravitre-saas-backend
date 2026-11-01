@@ -105,6 +105,19 @@ def browser_error_diagnostic(history):
     codes+=sorted({code.lower() for code in ('ERR_TUNNEL_CONNECTION_FAILED','ERR_NAME_NOT_RESOLVED','ERR_CERT_AUTHORITY_INVALID','ERR_PROXY_CONNECTION_FAILED','ERR_CONNECTION_REFUSED','ERR_CONNECTION_CLOSED','ERR_CONNECTION_RESET','ERR_CONNECTION_TIMED_OUT') if any(code in error for error in errors)})
     known_classes={'ValueError','ValidationError','RuntimeError','TimeoutError','PermissionError','ConnectionError','BrowserError','BrowserClosedError','CancelledError','HTTPStatusError'}
     classes=sorted({match.group(1) for error in errors for match in re.finditer(r'\b([A-Za-z_][A-Za-z0-9_]*(?:Error|Exception)):',error) if match.group(1) in known_classes})
+    categories={
+        'missing_required_field':('field required','missing required'),
+        'extra_field':('extra inputs are not permitted','extra_forbidden'),
+        'invalid_action':('invalid action','action not found','unknown action'),
+        'invalid_model_json':('invalid json','json_invalid','json decode'),
+        'invalid_schema':('validation error','invalid schema','schema validation'),
+        'invalid_url':('invalid url','not allowed to navigate','domain not allowed'),
+        'invalid_browser_state':('state_error','browser state error','invalid browser state'),
+        'llm_parse_failed':('parse failed','parse error','failed to parse'),
+    }
+    fixed=sorted(key for key,phrases in categories.items()
+                 if any(phrase in error.lower() for error in errors for phrase in phrases))
+    print(json.dumps({'browser_model_validation_categories':fixed}),file=sys.stderr,flush=True)
     print(json.dumps({'browser_error_codes':codes,'browser_error_classes':classes}),file=sys.stderr,flush=True)
 
 
@@ -146,7 +159,7 @@ async def fresh_browser_evidence(browser_session,requested,phase):
         raise
 
 
-async def stable_browser_evidence(browser_session,requested):
+async def stable_browser_evidence(browser_session,requested,*,settle_interval=0.25):
     # Initial paint can lag the DOM. Obtain two identical fresh captures before
     # presenting a review; never retry or refresh an already approved action.
     previous=None
@@ -154,7 +167,7 @@ async def stable_browser_evidence(browser_session,requested):
         state,evidence=await fresh_browser_evidence(browser_session,requested,'before_approval')
         if evidence==previous:return state,evidence
         previous=evidence
-        await asyncio.sleep(0.25)
+        await asyncio.sleep(settle_interval)
     raise PermissionError('Browser viewport did not stabilize before approval')
 
 
@@ -272,6 +285,30 @@ async def browser_page_diagnostic(browser):
         print(json.dumps({'browser_page_diagnostic':{'unavailable':True}}),file=sys.stderr,flush=True)
 
 
+def checkpoint_destination(current_url, requested, allowed_hosts):
+    """Choose an approved-host *candidate*, never execute its navigation.
+
+    Before the first browser navigation the observed URL can be about:blank.
+    A single proposed HTTPS navigation may be checkpointed for later fresh
+    authorization, but no checkpoint grants authority to navigate or write.
+    """
+    from urllib.parse import urlsplit
+    if not isinstance(requested,dict):
+        raise PermissionError('Invalid browser checkpoint action')
+    candidate=current_url
+    if 'navigate' in requested:
+        if set(requested)!={'navigate'} or not isinstance(requested['navigate'],dict):
+            raise PermissionError('Checkpoint requires one bounded navigation intent')
+        candidate=requested['navigate'].get('url')
+    if not isinstance(candidate,str):
+        raise PermissionError('Checkpoint requires a reviewed HTTPS destination')
+    parsed=urlsplit(candidate)
+    if (parsed.scheme!='https' or parsed.hostname not in allowed_hosts
+            or parsed.username or parsed.password or parsed.port not in (None,443)):
+        raise PermissionError('Checkpoint destination outside reviewed HTTPS scope')
+    return candidate
+
+
 async def browse(config):
     from browser_use import Agent,Browser,ChatOpenAI,Tools
     from browser_use.browser.profile import BrowserProfile
@@ -291,6 +328,16 @@ async def browse(config):
             before_url=before.url
             before_pixels=hashlib.sha256(before.screenshot.encode()).hexdigest()
             before_dom=hashlib.sha256(before.dom_state.llm_representation().encode()).hexdigest()
+            # Persist only a pre-effect marker. This is not a resumable browser
+            # session; a new adapter must independently verify page state.
+            if self.sequence==0:
+                # A fresh tab may still be about:blank. Store only the
+                # validated *proposed* navigation destination; the recovery
+                # worker must obtain a new approval before visiting it.
+                destination=checkpoint_destination(before.url,requested,config['allowed_hosts'])
+                await asyncio.to_thread(gateway,config,'/checkpoint',{
+                    'sequence':0,'checkpoint':{'before_effect':True,
+                        'url':destination,'page_fingerprint':evidence['page_fingerprint']}})
             details={'actions':requested,'url':before.url,**evidence}
             sequence=self.sequence
             deadline=time.monotonic()+config['max_seconds']
