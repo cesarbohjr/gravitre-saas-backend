@@ -7,6 +7,8 @@ on:
       - 'backend/requirements-voice-comparison.txt'
       - 'scripts/voice_livekit_connected_smoke.py'
       - '.github/workflows/voice-livekit-candidate.yml'
+      - 'backend/tests/services/pipecat_voice/test_livekit_write_fence.py'
+      - 'backend/tests/services/pipecat_voice/test_flux_partial_bridge.py'
   workflow_dispatch:
 permissions:
   contents: read
