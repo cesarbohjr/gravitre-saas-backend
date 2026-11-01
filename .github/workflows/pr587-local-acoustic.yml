@@ -1,0 +1,43 @@
+name: PR587 local acoustic model candidate (no provider credits)
+on:
+  pull_request:
+    paths:
+      - 'scripts/pr587_local_acoustic_candidate.py'
+      - '.github/workflows/pr587-local-acoustic.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+jobs:
+  acoustic-negative-and-latency-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install open source offline acoustic decoder
+        run: python -m pip install --no-cache-dir vosk==0.3.45
+      - name: Acquire SHA256-pinned Vosk model (no API usage)
+        run: |
+          curl -fsSL --retry 2 https://alphacephei.com/vosk/models/vosk-model-small-en-us-0.15.zip -o /tmp/vosk-model.zip
+          echo '30f26242c4eb449f948e42cb302dd7a686cb29a3423a8367f99ff41780942498  /tmp/vosk-model.zip' | sha256sum --check
+          unzip -q /tmp/vosk-model.zip -d /tmp
+      - name: Reuse previously retained WAV evidence without making provider requests
+        uses: actions/download-artifact@v4
+        with:
+          name: paired-runtime-readiness
+          run-id: 41134456513
+          github-token: ${{ github.token }}
+          path: /tmp/voice-acoustic-recordings
+      - name: Run causally paced acoustic decoder and strict negative corpus
+        run: |
+          python scripts/pr587_local_acoustic_candidate.py --model /tmp/vosk-model-small-en-us-0.15 --recordings /tmp/voice-acoustic-recordings
+      - name: Publish measured evidence even on candidate rejection
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pr587-local-acoustic-candidate
+          path: acceptance-results/local-acoustic-candidate.json
+          if-no-files-found: warn
