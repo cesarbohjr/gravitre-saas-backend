@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest"
 import {
   AudioPreRollBuffer,
+  MIC_BLOCK_FRAMES,
   concatPcm16,
   EchoLeakMonitor,
   resolveMicCaptureTuning,
@@ -101,5 +102,20 @@ describe("mic field profile inference", () => {
   })
   it("classifies built-in as far field", () => {
     expect(inferFromDevices("Built-in Microphone (Realtek)")).toBe("far_field")
+  })
+})
+
+
+describe("mic streaming deadline", () => {
+  it("limits capture batching to less than 50 ms at common browser rates", () => {
+    for (const rate of [44100, 48000]) {
+      expect((MIC_BLOCK_FRAMES / rate) * 1000).toBeLessThan(50)
+    }
+  })
+  it("captures the leading speech block once in the pre-roll snapshot", () => {
+    const buf = new AudioPreRollBuffer(300, 16000)
+    buf.push(new Int16Array([101, 102]))
+    buf.push(new Int16Array([201, 202]))
+    expect(Array.from(buf.snapshot())).toEqual([101, 102, 201, 202])
   })
 })
