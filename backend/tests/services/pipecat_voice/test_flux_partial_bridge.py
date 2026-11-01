@@ -302,3 +302,25 @@ async def test_non_cancel_update_still_waits_for_sdk_callback():
         callback_release.set()
         await strategy.cleanup()
         await service.cleanup()
+
+
+@pytest.mark.asyncio
+async def test_cancel_control_timing_is_monotonic_sanitized_and_reconnect_scoped():
+    service, strategy, recorder, emitted = await connected_strategy()
+    try:
+        await service._handle_turn_info(dict(event='Update', turn_index=0, transcript='cancel it'))
+        sample = service.control_timing
+        assert sample is not None
+        assert set(sample) == {'turn_index', 'provider_cancel_received_ns', 'control_partial_dispatched_ns'}
+        assert sample['turn_index'] == 0
+        assert sample['provider_cancel_received_ns'] <= sample['control_partial_dispatched_ns']
+        assert sample['control_partial_dispatched_ns'] - sample['provider_cancel_received_ns'] < 500_000_000
+        await service._handle_turn_info(dict(event='EndOfTurn', turn_index=0, transcript='cancel it'))
+        from unittest.mock import patch
+        from pipecat.services.deepgram.flux.stt import DeepgramFluxSTTService
+        with patch.object(DeepgramFluxSTTService, '_connect_websocket', new_callable=AsyncMock):
+            await service._connect_websocket()
+        assert service.control_timing is None
+    finally:
+        await strategy.cleanup()
+        await service.cleanup()
