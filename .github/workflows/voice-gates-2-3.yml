@@ -46,15 +46,21 @@ on:
       - 'scripts/verify_elevenlabs_account.py'
       - 'tests/test_elevenlabs_account_probe.py'
   workflow_dispatch:
+    inputs:
+      run_paid_voice_acceptance:
+        description: 'Explicitly authorize paid voice-provider acceptance (never enabled on PR pushes)'
+        type: boolean
+        required: true
+        default: false
 permissions:
   contents: read
   actions: read
 jobs:
   standing-batteries:
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.run_paid_voice_acceptance == true }}
     needs: [paired-runtime-readiness, live-provider]
     # Intelligence uses Anthropic, not ElevenLabs. A failed voice-provider
     # preflight must not hide these independently isolated battery results.
-    if: ${{ always() && needs.paired-runtime-readiness.result != 'cancelled' && needs.live-provider.result != 'cancelled' }}
     runs-on: ubuntu-latest
     timeout-minutes: 120
     environment: acceptance
@@ -103,6 +109,9 @@ jobs:
           name: isolated-standing-batteries
           path: acceptance-results/standing-batteries
   paired-runtime-readiness:
+    # Paid provider certification is an explicit manual opt-in only.
+    # Skipped must never be treated as a passing voice certification gate.
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.run_paid_voice_acceptance == true }}
     # Avoid consuming more audio quota after a failed bounded provider probe.
     needs: live-provider
     runs-on: ubuntu-latest
@@ -176,60 +185,16 @@ jobs:
               raise SystemExit('Smoke token identity verification failed')
           print('AUTHENTICATED_SMOKE_ACTOR_VERIFIED: Auth API identity matches isolated membership')
           PY
-      - name: Authenticate and run bounded live Anthropic inference
-        env:
-          ACCEPTANCE_ANTHROPIC_API_KEY: ${{ secrets.ACCEPTANCE_ANTHROPIC_API_KEY }}
+      - name: Record Anthropic inference as skipped (credits exhausted)
         run: |
+          mkdir -p acceptance-results
           python - <<'PY'
-          import json, os, pathlib, time, urllib.request, urllib.error
-          path = pathlib.Path('acceptance-results/anthropic-inference.json')
-          result = {'status': 'NOT RUN', 'provider': 'anthropic', 'certified': False}
-          key = os.environ.get('ACCEPTANCE_ANTHROPIC_API_KEY')
-          if not key:
-              result['blocker'] = 'missing:ACCEPTANCE_ANTHROPIC_API_KEY'
-              path.write_text(json.dumps(result, indent=2))
-              raise SystemExit('Dedicated acceptance Anthropic key unavailable to this job')
-          print('Dedicated acceptance key available; value withheld')
-          request = urllib.request.Request('https://api.anthropic.com/v1/messages',
-              data=json.dumps({'model': 'claude-haiku-4-5-20251001', 'max_tokens': 16,
-                               'messages': [{'role': 'user', 'content': 'Reply with exactly ACCEPTANCE_OK.'}]}).encode(),
-              headers={'x-api-key': key, 'anthropic-version': '2023-06-01', 'content-type': 'application/json'})
-          start = time.monotonic()
-          try:
-              with urllib.request.urlopen(request, timeout=45) as response:
-                  payload = json.load(response)
-                  answer = ''.join(x.get('text', '') for x in payload.get('content', []) if x.get('type') == 'text').strip()
-                  result.update(status='PASS' if answer == 'ACCEPTANCE_OK' else 'FAIL',
-                                http_status=response.status, elapsed_ms=round((time.monotonic()-start)*1000, 2),
-                                model=payload.get('model'), usage=payload.get('usage'), exact_response=answer == 'ACCEPTANCE_OK')
-          except urllib.error.HTTPError as error:
-              # Capture only bounded provider error categories, never the
-              # raw response, request body, key, prompt, or generated text.
-              category = 'unclassified'
-              try:
-                  body = json.loads(error.read(8192))
-                  provider_error = body.get('error') if isinstance(body, dict) else None
-                  if isinstance(provider_error, dict):
-                      candidate = provider_error.get('type')
-                      if candidate in ('invalid_request_error', 'authentication_error',
-                                       'permission_error', 'not_found_error',
-                                       'rate_limit_error', 'api_error', 'overloaded_error'):
-                          category = candidate
-                      message = str(provider_error.get('message', '')).lower()
-                      if 'model' in message:
-                          result['diagnostic_hint'] = 'model_parameter'
-                      elif 'credit' in message or 'balance' in message:
-                          result['diagnostic_hint'] = 'account_billing'
-                      elif 'max_tokens' in message:
-                          result['diagnostic_hint'] = 'token_limit'
-              except (ValueError, TypeError, AttributeError):
-                  pass
-              result.update(status='FAIL', http_status=error.code, provider_error_type=category)
-          except Exception as error:
-              result.update(status='FAIL', error_type=type(error).__name__)
-          path.write_text(json.dumps(result, indent=2))
+          import json, pathlib
+          result = {'status': 'NOT_RUN', 'provider': 'anthropic',
+                    'reason': 'user_disabled_paid_inference_due_to_exhausted_credits',
+                    'certified': False}
+          pathlib.Path('acceptance-results/anthropic-inference.json').write_text(json.dumps(result, indent=2))
           print(json.dumps(result))
-          if result['status'] != 'PASS': raise SystemExit(2)
           PY
       - name: Install production voice pipeline and isolated transport dependencies
         run: python -m pip install -r backend/requirements-dev.txt -r backend/requirements-voice-comparison.txt 'livekit-api==1.2.2'
@@ -327,6 +292,7 @@ jobs:
             acceptance-results/paired-native-assignment
             acceptance-results/repeated-paired
   live-provider:
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.run_paid_voice_acceptance == true }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     environment: acceptance
