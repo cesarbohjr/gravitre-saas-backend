@@ -41,6 +41,16 @@ describe("PR587 local KWS candidate is not an authorization bypass", () => {
       })
     }
   })
+  it("normalizes spoken phrase whitespace without widening the accepted command", () => {
+    for (const phrase of ["  GRAVITRE   cancel task  ", "gravitre\t cancel\n task"]) {
+      expect(evaluateLocalCancelCandidate({ ...valid, phrase }, true)).toEqual({
+        status: "observed", latencyMs: 300,
+      })
+    }
+    expect(evaluateLocalCancelCandidate({ ...valid, phrase: "don't gravitre cancel task" }, true)).toEqual({
+      status: "rejected", reason: "noncanonical_phrase",
+    })
+  })
   it("does not accept an invalid score", () => {
     expect(evaluateLocalCancelCandidate({ ...valid, confidence: 2 }, true)).toEqual({
       status: "rejected", reason: "invalid_score",
