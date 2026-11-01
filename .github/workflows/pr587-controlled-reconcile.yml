@@ -1,5 +1,9 @@
 name: PR587 controlled main reconciliation
 on:
+  push:
+    branches: [feat/phase2-dialogue-intelligence]
+    paths:
+      - '.github/workflows/pr587-controlled-reconcile.yml'
   pull_request:
     paths:
       - '.github/workflows/pr587-controlled-reconcile.yml'
