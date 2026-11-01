@@ -311,9 +311,12 @@ async def test_cancel_control_timing_is_monotonic_sanitized_and_reconnect_scoped
         await service._handle_turn_info(dict(event='Update', turn_index=0, transcript='cancel it'))
         sample = service.control_timing
         assert sample is not None
-        assert set(sample) == {'turn_index', 'provider_cancel_received_ns', 'control_partial_dispatched_ns'}
+        assert set(sample) == {'turn_index', 'provider_cancel_received_ns', 'control_partial_dispatched_ns', 'pre_start_proposal_dispatched_ns'}
         assert sample['turn_index'] == 0
-        assert sample['provider_cancel_received_ns'] <= sample['control_partial_dispatched_ns']
+        assert sample['provider_cancel_received_ns'] <= sample['pre_start_proposal_dispatched_ns'] <= sample['control_partial_dispatched_ns']
+        first_dispatch = sample['control_partial_dispatched_ns']
+        await service._handle_turn_info(dict(event='Update', turn_index=0, transcript='cancel it'))
+        assert service.control_timing['control_partial_dispatched_ns'] == first_dispatch
         assert sample['control_partial_dispatched_ns'] - sample['provider_cancel_received_ns'] < 500_000_000
         await service._handle_turn_info(dict(event='EndOfTurn', turn_index=0, transcript='cancel it'))
         from unittest.mock import patch
