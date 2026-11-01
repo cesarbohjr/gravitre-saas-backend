@@ -51,7 +51,8 @@ class InterimAwareFluxSTTService(DeepgramFluxSTTService):
             if self.control_timing is None or self.control_timing.get('turn_index') != self._dispatch_turn_index:
                 self.control_timing = {'turn_index': self._dispatch_turn_index,
                                        'provider_cancel_received_ns': time.monotonic_ns(),
-                                       'control_partial_dispatched_ns': None}
+                                       'control_partial_dispatched_ns': None,
+                                       'pre_start_proposal_dispatched_ns': None}
 
         if (event == 'Update' and not self._user_is_speaking
                 and self.partial_control_enabled()
@@ -66,6 +67,8 @@ class InterimAwareFluxSTTService(DeepgramFluxSTTService):
             if self._early_control_turn_index != index:
                 self._early_control_turn_index = index
                 await self.broadcast_frame(ProposedUserStartedSpeakingFrame)
+                if self.control_timing is not None:
+                    self.control_timing['pre_start_proposal_dispatched_ns'] = time.monotonic_ns()
             await self._push_partial(transcript, before_native_start=True)
         await super()._handle_turn_info(data)
         if event == 'EndOfTurn':
@@ -85,7 +88,8 @@ class InterimAwareFluxSTTService(DeepgramFluxSTTService):
             await self.push_frame(frame)
             if (classify_interrupt_intent(transcript) is InterruptIntent.TASK_CANCEL
                     and self.control_timing is not None):
-                self.control_timing['control_partial_dispatched_ns'] = time.monotonic_ns()
+                if self.control_timing['control_partial_dispatched_ns'] is None:
+                    self.control_timing['control_partial_dispatched_ns'] = time.monotonic_ns()
 
     async def _handle_start_of_turn(self, transcript: str):
         if (self._dispatch_turn_index is not None
