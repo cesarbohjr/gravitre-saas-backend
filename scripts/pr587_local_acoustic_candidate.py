@@ -11,6 +11,7 @@ import math
 import os
 from pathlib import Path
 import re
+import subprocess
 import time
 import wave
 
@@ -45,39 +46,42 @@ def cancel_decision(text):
 
 def replay(path, model, clock=time.monotonic):
     from vosk import KaldiRecognizer
-    with wave.open(str(path), "rb") as wav:
-        if wav.getnchannels() != 1 or wav.getsampwidth() != 2 or wav.getframerate() != RATE:
-            raise ValueError("Expected mono signed 16-bit PCM at 16 kHz")
-        recognizer = KaldiRecognizer(model, RATE, json.dumps(GRAMMAR))
-        frames_per_step = RATE * FRAME_MS // 1000
-        start = clock()
-        total = 0
-        first = None
-        recognized = None
-        while True:
-            data = wav.readframes(frames_per_step)
-            if not data:
-                break
-            total += len(data) // 2
-            # This is *real-time paced*, not an inflated speed offline decode.
-            target = start + total / RATE
-            delay = target - clock()
-            if delay > 0:
-                time.sleep(delay)
-            if recognizer.AcceptWaveform(data):
-                payload = json.loads(recognizer.Result())
-                text = payload.get("text", "")
-            else:
-                payload = json.loads(recognizer.PartialResult())
-                text = payload.get("partial", "")
-            if cancel_decision(text) and first is None:
-                first = round((clock() - start) * 1000, 3)
-                recognized = text
-        if first is None:
-            text = json.loads(recognizer.FinalResult()).get("text", "")
-            if cancel_decision(text):
-                first = round((clock() - start) * 1000, 3)
-                recognized = text
+    # Archived WAVs can contain float PCM, stereo, or non-16 kHz audio.
+    # Decode deterministically with local ffmpeg; never alter the source WAV.
+    pcm = subprocess.run(
+        ["ffmpeg", "-nostdin", "-hide_banner", "-loglevel", "error", "-i", str(path),
+         "-f", "s16le", "-acodec", "pcm_s16le", "-ac", "1", "-ar", str(RATE), "pipe:1"],
+        capture_output=True, check=True, timeout=90,
+    ).stdout
+    if not pcm or len(pcm) % 2:
+        raise ValueError("empty_or_odd_pcm")
+    recognizer = KaldiRecognizer(model, RATE, json.dumps(GRAMMAR))
+    frames_per_step = RATE * FRAME_MS // 1000
+    start = clock()
+    total = 0
+    first = None
+    recognized = None
+    for offset in range(0, len(pcm), frames_per_step * 2):
+        data = pcm[offset:offset + frames_per_step * 2]
+        total += len(data) // 2
+        target = start + total / RATE
+        delay = target - clock()
+        if delay > 0:
+            time.sleep(delay)
+        if recognizer.AcceptWaveform(data):
+            payload = json.loads(recognizer.Result())
+            text = payload.get("text", "")
+        else:
+            payload = json.loads(recognizer.PartialResult())
+            text = payload.get("partial", "")
+        if cancel_decision(text) and first is None:
+            first = round((clock() - start) * 1000, 3)
+            recognized = text
+    if first is None:
+        text = json.loads(recognizer.FinalResult()).get("text", "")
+        if cancel_decision(text):
+            first = round((clock() - start) * 1000, 3)
+            recognized = text
     return {"recognition_wall_ms": first, "audio_duration_ms": round(total / RATE * 1000, 3),
             "cancel_observed": first is not None, "recognized_cancel": recognized is not None}
 
@@ -120,7 +124,10 @@ def main():
     candidate_pass = bool(positives and negatives and all(coverage.values())
                           and not false_cancels and not misses and not errors)
     result = {"status": "ACOUSTIC_CANDIDATE_PASS_NOT_RUNTIME_CERTIFIED" if candidate_pass else "BLOCKED",
-              "model": "vosk-model-small-en-us-0.15", "recognition_target_ms": RECOGNITION_TARGET_MS,
+              "model": "vosk-model-small-en-us-0.15", "model_archive_sha256": MODEL_SHA256,
+              "configuration": {"sample_rate": RATE, "frame_ms": FRAME_MS, "grammar": GRAMMAR,
+                                "decoder": "vosk==0.3.45", "input_normalizer": "ffmpeg_s16le_mono_16000"},
+              "recognition_target_ms": RECOGNITION_TARGET_MS,
               "end_to_end_limit_ms": DEADLINE_MS, "certified": False, "runtime_changed": False,
               "provider_calls": 0, "e2e_write_fence_latency_ms": None,
               "physical_audio_cutoff_ms": None, "positive_count": len(positives),
@@ -131,6 +138,8 @@ def main():
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(result, indent=2))
     print(json.dumps({k: v for k, v in result.items() if k != "trials"}))
+    print(json.dumps({"trial_diagnostics": [{"fixture": x["fixture"], "error_type": x.get("error_type"),
+              "recognition_wall_ms": x.get("recognition_wall_ms")} for x in rows]}))
     return 0 if candidate_pass else 1
 
 
