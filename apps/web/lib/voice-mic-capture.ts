@@ -444,7 +444,9 @@ function createMicBlockHandler(options: VoiceMicProcessorOptions) {
       if (speechGate.active && !speechGate.prerollFlushed) {
         const snap = preroll.snapshot()
         speechGate = { ...speechGate, prerollFlushed: true }
-        options.onPcm(concatPcm16(snap, pcm))
+        // The rolling pre-roll already includes this block: appending it again
+        // duplicates the user's first phonemes and inflates the wire payload.
+        options.onPcm(snap)
         return
       }
     }
