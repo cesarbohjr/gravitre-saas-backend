@@ -48,8 +48,13 @@ describe("listing identity", () => {
 })
 
 describe("listing readiness", () => {
+  it("installs agents without connections while preserving binding review", () => {
+    const agent = { ...base, connectorChecklist: [app("HubSpot", false)] }
+    expect(listingReadiness(agent, {canInstall: true}).action.kind).toBe("install")
+    expect(listingReadiness({...agent, installReadyErrors: [{code: "binding.invalid", message:"Invalid binding"}]}, {canInstall:true}).state).toBe("review")
+  })
   it("asks to connect the missing app, with a typed connect link", () => {
-    const readiness = listingReadiness({ ...base, connectorChecklist: [app("HubSpot", false)] }, { canInstall: true })
+    const readiness = listingReadiness({ ...base, assetType: "workflow", connectorChecklist: [app("HubSpot", false)] }, { canInstall: true })
     expect(readiness.state).toBe("connect")
     expect(readiness.label).toBe("Needs HubSpot")
     expect(readiness.action).toEqual({ kind: "connect", label: "Connect", href: "/connectors?connect=hubspot" })
@@ -57,7 +62,7 @@ describe("listing readiness", () => {
 
   it("asks for review when a connected app reports a plan limitation", () => {
     const readiness = listingReadiness(
-      { ...base, connectorChecklist: [app("Apollo", true, { discoveryLimitation: "needs search API" })] },
+      { ...base, assetType: "workflow", connectorChecklist: [app("Apollo", true, { discoveryLimitation: "needs search API" })] },
       { canInstall: true },
     )
     expect(readiness.state).toBe("review")

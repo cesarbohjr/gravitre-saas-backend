@@ -4,6 +4,13 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
+from app.capabilities.agency_enrichment import render_agency_enrichment
+from app.capabilities.operations_roles import render_operations_role
+from app.capabilities.software_roles import render_software_role
+from app.capabilities.paid_media import render_paid_media
+from app.services.agent_connector_profile import prompt_section as agent_connector_prompt
+from app.capabilities.agent_manifest import render_agent_guidance
+
 DEFAULT_HANDOFF_FORMAT = (
     "Handoff JSON fields: summary, decision (object), recommended_actions (string[]), confidence (0-100)."
 )
@@ -574,6 +581,24 @@ def build_agent_instructions_section(agent: dict[str, Any] | None, *, max_custom
     custom = str(config.get("system_prompt") or config.get("systemPrompt") or "").strip()
     if custom:
         lines.append(f"Agent-specific instructions:\n{custom[:max_custom_chars]}")
+    role_guidance = render_agent_guidance(agent.get("role"))
+    if role_guidance:
+        lines.append(role_guidance)
+    connector_guidance = agent_connector_prompt(agent)
+    if connector_guidance:
+        lines.append(connector_guidance)
+    software_guidance = render_software_role(agent)
+    if software_guidance:
+        lines.append(software_guidance)
+    operations_guidance = render_operations_role(agent)
+    if operations_guidance:
+        lines.append(operations_guidance)
+    paid_media = render_paid_media(agent)
+    if paid_media:
+        lines.append(paid_media)
+    enrichment = render_agency_enrichment(agent)
+    if enrichment:
+        lines.append(enrichment)
     if not lines:
         return ""
     return "## Agent instructions\n" + "\n".join(lines)
@@ -657,6 +682,24 @@ def build_agent_system_prompt(
         custom = (config.get("system_prompt") or config.get("systemPrompt") or "").strip()
         if custom:
             lines.append(f"Agent-specific instructions:\n{custom}")
+    role_guidance = render_agent_guidance(agent.get("role"))
+    if role_guidance:
+        lines.append(role_guidance)
+    connector_guidance = agent_connector_prompt(agent)
+    if connector_guidance:
+        lines.append(connector_guidance)
+    software_guidance = render_software_role(agent)
+    if software_guidance:
+        lines.append(software_guidance)
+    operations_guidance = render_operations_role(agent)
+    if operations_guidance:
+        lines.append(operations_guidance)
+    paid_media = render_paid_media(agent)
+    if paid_media:
+        lines.append(paid_media)
+    enrichment = render_agency_enrichment(agent)
+    if enrichment:
+        lines.append(enrichment)
     return "\n".join(lines)
 
 

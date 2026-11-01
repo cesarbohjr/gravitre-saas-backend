@@ -62,7 +62,7 @@ export function PackPreviewSheet({
           ) : null}
 
           {asset.connectorChecklist?.length ? (
-            <div className="rounded-[10px] bg-[color:var(--g-surface-1)] p-4"><ConnectorChecklist items={asset.connectorChecklist} /></div>
+            <div className="rounded-[10px] bg-[color:var(--g-surface-1)] p-4"><ConnectorChecklist items={asset.connectorChecklist} profile={asset.connectorProfile} /></div>
           ) : null}
 
           <div className="flex flex-wrap gap-2 pt-2">

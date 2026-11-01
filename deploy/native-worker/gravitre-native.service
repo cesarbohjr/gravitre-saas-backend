@@ -1,0 +1,31 @@
+[Unit]
+Description=Gravitre governed native worker broker
+After=network-online.target docker.service
+Requires=docker.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=gravitre-native
+Group=gravitre-native
+SupplementaryGroups=docker
+WorkingDirectory=/opt/gravitre/backend
+EnvironmentFile=/etc/gravitre-native/runtime.env
+ExecStartPre=/opt/gravitre-native/venv/bin/python /opt/gravitre/deploy/native-worker/preflight.py
+ExecStart=/opt/gravitre-native/venv/bin/python -m uvicorn app.services.native_runtime.worker:build_app --factory --host 127.0.0.1 --port 8091 --workers 1
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=60
+UMask=0077
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+ReadWritePaths=/var/lib/gravitre-native
+
+[Install]
+WantedBy=multi-user.target

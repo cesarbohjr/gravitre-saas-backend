@@ -6,6 +6,7 @@ import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "rea
 import Link from "next/link"
 import { useParams, useRouter, useSearchParams } from "next/navigation"
 import useSWR from "swr"
+import { AgentConnectorRecommendations } from "@/components/connectors/agent-connector-recommendations"
 import { MarketplaceDecisionDialog } from "@/components/marketplace/marketplace-decision-dialog"
 import { WorkSectionErrorCard } from "@/components/gravitre/work-section-error-card"
 import { AppShell } from "@/components/gravitre/app-shell"
@@ -668,7 +669,9 @@ function MarketplaceAssetDetailContent() {
                     ) : null}
                   </div>
 
-                  {apps.length > 0 ? (
+                  {asset.connectorProfile ? (
+                    <div className="gv-card td-panel"><AgentConnectorRecommendations profile={asset.connectorProfile} /></div>
+                  ) : apps.length > 0 ? (
                     <div className="gv-card td-panel">
                       <div className="gv-eyebrow">Apps</div>
                       {apps.map((item) => (

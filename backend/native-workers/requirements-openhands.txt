@@ -1,0 +1,2 @@
+openhands-sdk @ git+https://github.com/OpenHands/software-agent-sdk.git@47bbc5e8392c4c75b7f77a1da38bed4a9f53d6a5#subdirectory=openhands-sdk
+openhands-tools @ git+https://github.com/OpenHands/software-agent-sdk.git@47bbc5e8392c4c75b7f77a1da38bed4a9f53d6a5#subdirectory=openhands-tools

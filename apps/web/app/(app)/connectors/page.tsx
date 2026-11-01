@@ -1,5 +1,7 @@
 "use client"
 
+import { InstalledAgentConnectorRecommendations } from "@/components/connectors/agent-connector-recommendations"
+
 // Connectors Page - Integration Hub with Network Topology View
 import { Suspense, startTransition, useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
@@ -2893,6 +2895,7 @@ function ConnectorsPageContent() {
       <ConnectorsOverlaysProvider>
         <div className="gv-ws" data-testid="connectors-hub-b" data-composition="manage" style={{ minHeight: "100%", background: "var(--gv-canvas)" }}>
           <div className="cn-page">
+            {searchParams.get("agentId") ? <InstalledAgentConnectorRecommendations agentId={searchParams.get("agentId")!} /> : null}
             {isLoading && connectors.length === 0 ? (
               <div className="cn-card cn-pad" style={{ alignItems: "center", padding: "72px 18px" }}>
                 <Spinner size="lg" />

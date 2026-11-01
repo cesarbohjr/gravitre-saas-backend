@@ -505,6 +505,7 @@ export interface AgentKnowledgeAssignment {
 }
 
 export interface AgentCapabilityProfile {
+  connectorProfile?: import("@/types/api").AgentConnectorProfile
   agentId: string
   capabilities?: string[]
   allowedConnectors?: string[]

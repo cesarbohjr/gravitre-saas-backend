@@ -263,6 +263,47 @@ def patch_agent_streaming_dialogue_pipeline() -> Iterator[None]:
     with ExitStack() as stack:
         for target in patch_targets:
             stack.enter_context(patch(target, mock_load))
+        # Streaming unit tests exercise the injected ReAct response, not live
+        # perception/classification. New shared perception previously escaped
+        # this helper and could call OpenAI/Google before the fake ReAct ran.
+        stack.enter_context(patch(
+            "app.services.contextual_understanding_service.perceive_turn",
+            AsyncMock(return_value=(
+                _DEFAULT_DIALOGUE_SETTINGS,
+                {"recommended_adaptation": "none", "status": "test"},
+                {"intent": "informational", "domain": {}, "goal": "test"},
+            )),
+        ))
+        classifier = MagicMock()
+        classifier.classify = AsyncMock(return_value={
+            "intent": "informational", "task_type": "question_answering",
+            "requires_action": False, "classification_confidence": 1.0,
+        })
+        stack.enter_context(patch(
+            "app.services.task_classifier.get_task_classifier", return_value=classifier,
+        ))
+        stack.enter_context(patch(
+            "app.services.hybrid_memory_service.HybridMemoryService.query_all_memory",
+            AsyncMock(return_value={"episodic_memories": [], "graph_context": []}),
+        ))
+        # Transport/SSE unit tests do not certify audit persistence; its own
+        # suites cover the writer. Prevent off-loop audit workers from creating
+        # a separate real Supabase client behind the injected mock client.
+        for target in (
+            "app.operators.agent_intelligence.submit_audit_off_loop",
+            "app.services.response_composer.submit_audit_off_loop",
+            "app.workflows.audit.submit_audit_off_loop",
+        ):
+            stack.enter_context(patch(target, MagicMock()))
+        stack.enter_context(patch("app.services.outcome_tracker.OutcomeTracker.track", MagicMock()))
+        stack.enter_context(patch(
+            "app.services.proactive_guidance_service.ProactiveGuidanceService.get_suggestions",
+            AsyncMock(return_value=[]),
+        ))
+        stack.enter_context(patch(
+            "app.services.execution_memory_service.ExecutionMemoryService.find_similar_patterns",
+            AsyncMock(return_value=[]),
+        ))
         stack.enter_context(
             patch(
                 "app.services.persona_service.PersonaService._load_user_preference",

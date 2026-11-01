@@ -607,6 +607,9 @@ class Settings(BaseSettings):
     # Marketplace v2 (STA-96): platform fee on partner connector usage (basis points, 2000 = 20%)
     marketplace_platform_fee_bps: int = 2000
     # Private connector runtime (STA-98): signed org bundles executed in subprocess sandbox
+    # Private native worker broker; absent configuration leaves execution unavailable.
+    native_worker_url: str = ""
+    native_worker_signing_key: str = ""
     private_connector_runtime_enabled: bool = True
     private_connector_sandbox_timeout_sec: int = 10
     # Shared secret for internal cron endpoints (e.g. usage sync). Not a user JWT.

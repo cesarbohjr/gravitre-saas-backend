@@ -1,5 +1,21 @@
 {
   "actions": {
+    "assistant.run_openhands": {
+      "mode": "accepted_async",
+      "reason": "Queue acceptance or an approval record is not execution or delivery proof. Read the actor-scoped durable native_job_status; software/browser results require review, and Langfuse delivered requires exact remote observation readback. Generic verification remains unconfirmed."
+    },
+    "assistant.run_browser_use": {
+      "mode": "accepted_async",
+      "reason": "Queue acceptance or an approval record is not execution or delivery proof. Read the actor-scoped durable native_job_status; software/browser results require review, and Langfuse delivered requires exact remote observation readback. Generic verification remains unconfirmed."
+    },
+    "assistant.approve_native_action": {
+      "mode": "accepted_async",
+      "reason": "Queue acceptance or an approval record is not execution or delivery proof. Read the actor-scoped durable native_job_status; software/browser results require review, and Langfuse delivered requires exact remote observation readback. Generic verification remains unconfirmed."
+    },
+    "assistant.export_evaluation_metrics": {
+      "mode": "accepted_async",
+      "reason": "Queue acceptance or an approval record is not execution or delivery proof. Read the actor-scoped durable native_job_status; software/browser results require review, and Langfuse delivered requires exact remote observation readback. Generic verification remains unconfirmed."
+    },
     "assistant.generate_image": {
       "mode": "accepted_async",
       "reason": "Executor independently reads private artifact bytes and verifies SHA256 before returning artifact_verified. Generic follow-up remains conservative; a missing inline proof cannot report completion."

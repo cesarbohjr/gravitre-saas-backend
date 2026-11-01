@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from app.capabilities.agent_manifest import resolve_agent_manifest
 from app.config import Settings, get_settings
 from app.operators.agent_prompts import (
     AGENT_PERSONAS,
@@ -57,6 +58,15 @@ class AgentSelector:
             "requires_swarm": requires_action and task_type in SWARM_ELIGIBLE_TASKS,
         }
         routed = apply_agent_selection_policy(result, classification)
+        # The manifest is descriptive metadata, never an IAM or tool grant.
+        # Resolve only an explicitly selected specialist role; do not infer a
+        # privileged role from free-form task text or model output.
+        role = classification.get("agent_manifest_role")
+        manifest = resolve_agent_manifest(role)
+        if manifest is not None:
+            routed["agent_manifest"] = manifest.as_dict()
+        elif role is not None:
+            routed["agent_manifest_error"] = "unknown_role"
         from app.services.meta_learning_service import get_meta_learning_service
 
         meta = get_meta_learning_service(self.settings)

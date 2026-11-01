@@ -9,7 +9,10 @@ from app.marketplace.seed_service import upsert_catalog_asset
 
 @patch("app.marketplace.seed_service.fetch_publisher_id", return_value="pub-1")
 def test_rerunning_seed_does_not_duplicate_assets(mock_publisher):
-    asset = list_catalog_assets()[0]
+    # This contract covers ordinary unversioned seed refresh. Marketing Analyst
+    # now uses the approved versioned enrichment path, tested with real filters
+    # in test_paid_media.py. Select an unchanged asset explicitly.
+    asset = next(a for a in list_catalog_assets() if a.slug == "product-icp-strategist")
     table = MagicMock()
     table.select.return_value = table
     table.eq.return_value = table

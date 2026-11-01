@@ -505,7 +505,7 @@ function InstallStepperSession({
           !check?.canInstall ? (
             <>
               <BlockerList blockers={blockers} />
-              <ConnectorChecklist items={checklist} />
+              <ConnectorChecklist items={checklist} profile={check?.connectorProfile ?? asset?.connectorProfile} />
               {check?.requiresPayment &&
               !check?.hasEntitlement &&
               asset &&
@@ -526,9 +526,11 @@ function InstallStepperSession({
               <div className="rounded-[10px] border border-divide bg-[color:var(--g-surface-1)] p-4 text-sm text-muted-foreground">
                 {asset?.assetType === "capability_package"
                   ? "Confirm to add this reviewed capability snapshot in quarantine. An org admin must approve it before the skill can be used; imported scripts remain inert and MCP dependencies are not activated automatically."
-                  : "Required apps are connected. Confirm to add this pack to your org — agents and workflows will appear immediately."}
+                  : asset?.assetType === "ai_agent"
+                    ? "Start using this agent now. Connect recommended apps whenever you need live data or actions."
+                    : "Required apps are connected. Confirm to add this pack to your org — agents and workflows will appear immediately."}
               </div>
-              <ConnectorChecklist items={checklist} />
+              <ConnectorChecklist items={checklist} profile={check?.connectorProfile ?? asset?.connectorProfile} />
               <PackContentsPreview
                 items={asset?.packItems}
                 compact

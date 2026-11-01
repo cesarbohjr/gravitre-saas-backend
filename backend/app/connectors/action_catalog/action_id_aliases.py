@@ -6,6 +6,13 @@ from __future__ import annotations
 
 # short / legacy → canonical vendor.resource.verb
 ACTION_ID_ALIASES: dict[str, str] = {
+    "assistant.run_openhands": "assistant.native.run_openhands",
+    "assistant.run_browser_use": "assistant.native.run_browser_use",
+    "assistant.native_job_status": "assistant.native.job_status",
+    "assistant.cancel_native_job": "assistant.native.cancel_job",
+    "assistant.approve_native_action": "assistant.native.approve_action",
+    "assistant.export_evaluation_metrics": "assistant.telemetry.export_metrics",
+    "assistant.withdraw_evaluation_metrics": "assistant.telemetry.withdraw_metrics",
     "assistant.generate_image": "assistant.images.generate",
     "email.send": "email.messages.send",
     "webhook.post": "webhook.http.post",

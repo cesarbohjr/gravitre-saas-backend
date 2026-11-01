@@ -84,7 +84,10 @@ class AgentCapabilityProfileService:
                 key="confidenceScore",
             )
 
+        from app.services.agent_connector_profile import load_profile
+
         return {
+            "connectorProfile": load_profile(client, org_id, agent),
             "agentId": agent_id,
             "department": agent.get("department"),
             "capabilities": capabilities,

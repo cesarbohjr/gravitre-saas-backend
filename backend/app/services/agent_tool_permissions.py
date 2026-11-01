@@ -473,3 +473,16 @@ def default_demo_scopes_for_system(system: str) -> list[str]:
         scopes.add(f"{system}:*")
         return sorted(scopes)
     return [f"{system}:*"]
+
+
+# Explicit native grants are additionally enforced by the worker intake; legacy
+# platform:* grants never activate these runtimes.
+ACTION_REQUIRED_SCOPES.update({
+    "assistant.run_openhands": ["platform:native:execute"],
+    "assistant.run_browser_use": ["platform:native:execute"],
+    "assistant.native_job_status": ["platform:native:read"],
+    "assistant.cancel_native_job": ["platform:native:read"],
+    "assistant.approve_native_action": ["platform:native:execute"],
+    "assistant.export_evaluation_metrics": ["platform:telemetry:export"],
+    "assistant.withdraw_evaluation_metrics": ["platform:telemetry:export"],
+})

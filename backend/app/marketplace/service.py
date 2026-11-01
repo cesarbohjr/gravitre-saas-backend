@@ -183,6 +183,7 @@ def validate_connectors_for_asset(
     probe_apollo_discovery: bool = True,
     active_types: set[str] | None = None,
     staged_types: set[str] | None = None,
+    asset: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Return ``{can_install, blockers, checklist}`` (MKT-9.1 shape).
 
@@ -324,7 +325,13 @@ def validate_connectors_for_asset(
                     "needsConnection": needs_connection,
                 }
             )
+    profile = {}
+    if asset and asset.get("asset_type") == "ai_agent":
+        from app.services.agent_connector_profile import load_profile
+
+        profile["connectorProfile"] = load_profile(client, org_id, asset, environment_name=environment_name)
     return {
+        **profile,
         "can_install": len(blockers) == 0,
         "blockers": blockers,
         "checklist": checklist,
@@ -366,6 +373,67 @@ def _assert_asset_installable(asset: dict[str, Any]) -> None:
         raise MarketplaceError("Asset visibility is invalid", code="VALIDATION_ERROR")
 
 
+def _assert_asset_org_scope(asset: dict[str, Any], org_id: str) -> None:
+    """The service client bypasses RLS; enforce tenant scope before any probes.
+
+    Public catalog assets are shared. Internal/private assets may only be
+    previewed or installed by their owning organization, including force paths.
+    """
+    if asset.get("visibility") == "public":
+        return
+    if not org_id or str(asset.get("org_id") or "") != org_id:
+        raise MarketplaceError("Marketplace asset not found", code="NOT_FOUND")
+
+
+def _assert_enrichment_snapshot_published(client: Any, asset: dict[str, Any]) -> None:
+    """An interrupted seed cannot activate an unpublished enrichment snapshot."""
+    config = safe_normalize_stored_dict(asset.get("config"))
+    nested = safe_normalize_stored_dict(config.get("config"))
+    if asset.get("asset_type") != "ai_agent" or not ({"agency_enrichment", "paid_media_guidance", "operations_guidance", "software_guidance"} & nested.keys()):
+        return
+    rows = (
+        client.table("marketplace_asset_versions").select("*")
+        .eq("asset_id", asset["id"]).eq("version_number", int(asset.get("current_version") or 1))
+        .limit(1).execute()
+    ).data
+    fields = ("config", "required_connectors", "required_permissions", "install_variables")
+    if not rows or not rows[0].get("published_at") or any(rows[0].get(k) != asset.get(k) for k in fields):
+        raise MarketplaceError("Enrichment snapshot publication is incomplete", code="NOT_PUBLISHED")
+
+
+def _resolve_agent_install_version(client: Any, asset: dict[str, Any], version_number: int | None) -> dict[str, Any]:
+    """Select a published prior agent snapshot without changing the shared listing.
+
+    Entitlement is checked on the current listing before calling this helper;
+    snapshot config can never downgrade pricing or change tenant visibility.
+    """
+    if version_number is None:
+        _assert_enrichment_snapshot_published(client, asset)
+        return asset
+    current = int(asset.get("current_version") or 1)
+    if type(version_number) is not int or version_number < 1 or version_number > current:
+        raise MarketplaceError("Invalid or unpublished asset version", code="VALIDATION_ERROR")
+    if asset.get("asset_type") != "ai_agent":
+        raise MarketplaceError("Version selection is supported for agent installs only", code="VALIDATION_ERROR")
+    if version_number == current:
+        _assert_enrichment_snapshot_published(client, asset)
+        return asset
+    rows = (
+        client.table("marketplace_asset_versions").select("*")
+        .eq("asset_id", asset["id"]).eq("version_number", version_number).limit(1).execute()
+    ).data
+    if not rows or not rows[0].get("published_at"):
+        raise MarketplaceError("Published asset version not found", code="NOT_FOUND")
+    snapshot = rows[0]
+    return {
+        **asset, "current_version": version_number,
+        "config": snapshot.get("config") or {},
+        "required_connectors": snapshot.get("required_connectors") or [],
+        "required_permissions": snapshot.get("required_permissions") or [],
+        "install_variables": snapshot.get("install_variables") or [],
+    }
+
+
 def _resolve_asset_payload(
     asset: dict[str, Any],
     install_values: dict[str, str] | None,
@@ -386,13 +454,18 @@ def _resolve_asset_payload(
     }
 
 
-def _check_plan_limits(client: Any, org_id: str, asset_type: str) -> None:
+def _check_plan_limits(
+    client: Any, org_id: str, asset_type: str, *, replacing_operator_id: str | None = None,
+) -> None:
     from app.billing.entitlement_service import PlanLimitExceededError
 
     plan = get_plan_for_org(client, org_id)
     if asset_type in {"ai_agent", "department_pack", "outcome_pack"}:
         limit = plan.get("agents_limit")
-        current = len(list_operators(client, org_id))
+        operators = list_operators(client, org_id)
+        current = len(operators)
+        if replacing_operator_id and any(str(item.get("id")) == replacing_operator_id for item in operators):
+            current -= 1
         if limit is not None and current >= int(limit):
             raise PlanLimitExceededError(
                 limit_type="agent_count",
@@ -505,6 +578,12 @@ def _install_ai_agent(
 ) -> dict[str, Any]:
     seed = config.seed_label or "agent"
     entity_id = marketplace_entity_id(org_id, str(asset["id"]), seed)
+    # Reinstall/upgrade/rollback replaces the same agent. Preserve any admin
+    # reductions or revocations rather than re-granting demo connector scopes.
+    existing = (
+        client.table("operators").select("id").eq("id", entity_id)
+        .eq("org_id", org_id).limit(1).execute()
+    )
     operator = create_operator(
         client,
         org_id,
@@ -521,7 +600,7 @@ def _install_ai_agent(
         created_by=actor_id,
     )
     _mirror_agent_row(client, org_id, agent_id=entity_id, config=config, asset_id=str(asset["id"]))
-    for system in config.systems:
+    for system in (() if existing.data else config.systems):
         upsert_agent_tool_permission(
             client,
             org_id,
@@ -1836,18 +1915,22 @@ def install_asset(
     environment_name: str = "production",
     install_variables: dict[str, str] | None = None,
     force: bool = False,
+    version_number: int | None = None,
 ) -> dict[str, Any]:
     """
     Install a published marketplace asset into an org via existing creation paths.
 
-    Raises ``MarketplaceError`` with ``blockers`` when connectors are missing.
+    AI agents install without connectors; connector-dependent execution stays gated.
+    Non-agent assets retain their connector installation prerequisites.
     """
     asset = fetch_marketplace_asset(client, asset_id)
     _assert_asset_installable(asset)
+    _assert_asset_org_scope(asset, org_id)
 
     from app.marketplace.entitlements import assert_install_entitlement
 
     assert_install_entitlement(client, org_id, asset)
+    asset = _resolve_agent_install_version(client, asset, version_number)
 
     legacy_pack = get_pack_spec(str(asset.get("slug") or ""))
     config_payload = asset.get("config") or {}
@@ -1873,6 +1956,7 @@ def install_asset(
         environment_name=environment_name,
         settings=None,
         probe_apollo_discovery=False,
+        asset=asset,
     )
     from app.marketplace.install_ready import merge_install_ready
 
@@ -1880,14 +1964,14 @@ def install_asset(
         connector_can_install=bool(connector_validation["can_install"]),
         asset=asset,
     )
-    if not connector_validation["can_install"] and not force:
+    if asset.get("asset_type") != "ai_agent" and not connector_validation["can_install"] and not force:
         raise MarketplaceError(
             "Connect required apps before installing this asset",
             code="CONNECTORS_NOT_READY",
             blockers=connector_validation["blockers"],
             details={"checklist": connector_validation["checklist"]},
         )
-    if not ready["installReady"] and ready["installReadyErrors"] and not force:
+    if not ready["installReady"] and ready["installReadyErrors"] and (asset.get("asset_type") == "ai_agent" or not force):
         raise MarketplaceError(
             "This asset has broken or ambiguous workflow bindings and is not install-ready",
             code="BINDINGS_NOT_READY",
@@ -1899,7 +1983,6 @@ def install_asset(
             },
         )
 
-    _check_plan_limits(client, org_id, str(asset["asset_type"]))
     resolved = _resolve_asset_payload(asset, install_variables)
     try:
         parsed = parse_asset_config(str(asset["asset_type"]), resolved["config"], publish=True)
@@ -1909,6 +1992,10 @@ def install_asset(
             code="VALIDATION_ERROR",
             details={"errors": exc.errors},
         ) from exc
+    replacement_id = None
+    if asset["asset_type"] == "ai_agent":
+        replacement_id = marketplace_entity_id(org_id, str(asset["id"]), parsed.seed_label or "agent")
+    _check_plan_limits(client, org_id, str(asset["asset_type"]), replacing_operator_id=replacement_id)
     connector_ids = {
         item["connectorType"]: _find_active_connector_id(
             client,
@@ -2050,6 +2137,7 @@ def install_asset(
             "entityType": installed["entityType"],
             "entityId": installed["entityId"],
             "installId": install_row.get("id"),
+            "assetVersion": asset.get("current_version") or 1,
         },
     )
     from app.marketplace.support import build_install_deep_links
@@ -2080,6 +2168,7 @@ def install_asset(
         "entities": installed,
         "deepLinks": deep_links,
         "connectorChecklist": connector_validation["checklist"],
+        **({"connectorProfile": connector_validation["connectorProfile"]} if "connectorProfile" in connector_validation else {}),
     }
 
 
@@ -2092,6 +2181,8 @@ def preview_install(
     settings: Any | None = None,
 ) -> dict[str, Any]:
     asset = fetch_marketplace_asset(client, asset_id)
+    _assert_asset_org_scope(asset, org_id)
+    _assert_enrichment_snapshot_published(client, asset)
     if settings is None:
         try:
             from app.config import get_settings
@@ -2106,6 +2197,7 @@ def preview_install(
         environment_name=environment_name,
         settings=settings,
         probe_apollo_discovery=True,
+        asset=asset,
     )
     from app.marketplace.entitlements import get_entitlement_status
     from app.marketplace.install_ready import merge_install_ready
@@ -2141,7 +2233,9 @@ def preview_install(
         "requiresReviewAfterInstall": capability_requires_review,
         "installReadyErrors": ready["installReadyErrors"],
         "manualSetupRequired": ready["manualSetupRequired"],
-        "blockers": validation["blockers"] + payment_blockers + ready["bindingBlockers"],
+        "blockers": ([] if asset.get("asset_type") == "ai_agent" else validation["blockers"]) + payment_blockers + ready["bindingBlockers"],
+        "capabilityBlockers": validation["blockers"],
         "connectorChecklist": validation["checklist"],
+        **({"connectorProfile": validation["connectorProfile"]} if "connectorProfile" in validation else {}),
         **entitlement,
     }

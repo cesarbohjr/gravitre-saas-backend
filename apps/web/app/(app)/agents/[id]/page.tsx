@@ -156,6 +156,7 @@ export default function AgentProfilePage({
   const { data: capabilityProfile, error: capabilityError, mutate: mutateCapabilities } = useSWR(
     user && id ? `agent/${id}/capabilities` : null,
     () => agentKnowledgeApi.getCapabilities(id),
+    { refreshInterval: 30_000 },
   )
 
   usePublishGravitreAISelection(
@@ -307,6 +308,7 @@ export default function AgentProfilePage({
                   </div>
 
                   <AgentCapabilitiesCard
+                    connectorProfile={capabilityProfile?.connectorProfile}
                     capabilities={capabilityProfile?.availableReadActions ?? apiAgent.capabilities}
                     permissions={capabilityProfile?.availableWriteActions}
                     systems={capabilityProfile?.allowedConnectors}

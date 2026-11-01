@@ -6,6 +6,104 @@
   "generator_model": "gpt-4o-mini",
   "taxonomy_version": 1,
   "actions": {
+    "assistant.run_openhands": {
+      "examples": [
+        "Prepare a draft patch for these supplied source files in the approved software sandbox",
+        "Review this software task with the configured OpenHands worker",
+        "Start an approved isolated coding job and return a patch for review"
+      ],
+      "tags": [
+        "platform",
+        "native",
+        "approval",
+        "durable",
+        "sandbox"
+      ]
+    },
+    "assistant.run_browser_use": {
+      "examples": [
+        "Start an approved guest browser task on these exact HTTPS hosts",
+        "Research this allowed website in an isolated browser session",
+        "Use the governed browser worker and ask before each consequential interaction"
+      ],
+      "tags": [
+        "platform",
+        "native",
+        "approval",
+        "durable",
+        "sandbox"
+      ]
+    },
+    "assistant.native_job_status": {
+      "examples": [
+        "Check the current state of my native job",
+        "Show the draft and pending browser approval for this job",
+        "Check whether my metrics delivery was remotely acknowledged"
+      ],
+      "tags": [
+        "platform",
+        "native",
+        "approval",
+        "durable",
+        "sandbox"
+      ]
+    },
+    "assistant.cancel_native_job": {
+      "examples": [
+        "Cancel my native software job",
+        "Stop my isolated browser task",
+        "Fence further execution for this native job"
+      ],
+      "tags": [
+        "platform",
+        "native",
+        "approval",
+        "durable",
+        "sandbox"
+      ]
+    },
+    "assistant.approve_native_action": {
+      "examples": [
+        "Approve this exact pending browser interaction after human review",
+        "Refuse the displayed browser action and stop the job",
+        "Record my human decision for this browser action digest"
+      ],
+      "tags": [
+        "platform",
+        "native",
+        "approval",
+        "durable",
+        "sandbox"
+      ]
+    },
+    "assistant.export_evaluation_metrics": {
+      "examples": [
+        "Opt in this run to metrics-only evaluation delivery",
+        "Queue this evaluation receipt for governed Langfuse delivery",
+        "Export only the approved bounded counts and timing for this run"
+      ],
+      "tags": [
+        "platform",
+        "native",
+        "approval",
+        "durable",
+        "telemetry"
+      ]
+    },
+    "assistant.withdraw_evaluation_metrics": {
+      "examples": [
+        "Withdraw metrics consent for this run",
+        "Request verified deletion of this run’s exported evaluation metrics",
+        "Stop further telemetry delivery and reconcile remote deletion"
+      ],
+      "tags": [
+        "platform",
+        "native",
+        "approval",
+        "durable",
+        "telemetry"
+      ]
+    },
     "assistant.generate_image": {
       "examples": [
         "Generate one private draft image from this approved prompt",

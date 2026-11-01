@@ -20,12 +20,24 @@ def test_build_mcp_vendor_catalog_splits_read_write():
 
 
 def test_sync_registers_extension_in_catalog():
+    from app.connectors.action_catalog import extensions
+    from app.connectors.action_catalog.registry import clear_action_spec_cache
+
+    original = extensions.VENDOR_CATALOG_EXTENSIONS
     get_vendor_catalog.cache_clear()
-    vendor = sync_mcp_server_to_catalog(
-        server_name="Partner",
-        server_id="srv-2",
-        tools=[{"tool_name": "fetch", "capability_tier": "read"}],
-    )
-    catalog = get_vendor_catalog()
-    assert vendor in catalog
-    assert len(catalog[vendor].v1) == 1
+    try:
+        vendor = sync_mcp_server_to_catalog(
+            server_name="Partner",
+            server_id="srv-2",
+            tools=[{"tool_name": "fetch", "capability_tier": "read"}],
+        )
+        catalog = get_vendor_catalog()
+        assert vendor in catalog
+        assert len(catalog[vendor].v1) == 1
+    finally:
+        # This test's runtime-only vendor must not become shipped catalog debt
+        # for subsequent schema/retrieval checks in combined suite orderings.
+        extensions.VENDOR_CATALOG_EXTENSIONS = original
+        get_vendor_catalog.cache_clear()
+        clear_action_spec_cache()
+        extensions._invalidate_schema_caches()

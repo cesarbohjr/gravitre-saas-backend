@@ -1,0 +1,9 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "git": {
+    "deploymentEnabled": {
+      "feat/phase2-dialogue-intelligence": false,
+      "feature/unified-agent-capability-manifest-recovery": false
+    }
+  }
+}

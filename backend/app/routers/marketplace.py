@@ -253,6 +253,7 @@ class AssetCheckoutRequest(BaseModel):
 
 class InstallAssetRequest(BaseModel):
     install_variables: dict[str, str] = Field(default_factory=dict, alias="installVariables")
+    version_number: int | None = Field(default=None, ge=1, strict=True, alias="versionNumber")
 
     model_config = {"populate_by_name": True}
 
@@ -1907,6 +1908,7 @@ def marketplace_asset_install(
             actor_id=user["user_id"],
             environment_name=environment_name,
             install_variables=(body.install_variables if body else None),
+            version_number=(body.version_number if body else None),
         )
     except MarketplaceError as exc:
         raise _marketplace_http_error(exc) from exc

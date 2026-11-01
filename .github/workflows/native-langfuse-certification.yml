@@ -1,0 +1,93 @@
+name: Native Langfuse delivery certification
+on:
+  pull_request:
+    paths:
+      - 'backend/app/services/native_runtime/**'
+      - 'backend/app/services/native_agent_adapters.py'
+      - 'backend/native-workers/langfuse*.py'
+      - 'backend/native-workers/requirements-langfuse.txt'
+      - '.github/workflows/native-langfuse-certification.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: native-langfuse-${{ github.ref }}
+  # Preserve an active real delivery/deletion check across unrelated updates.
+  cancel-in-progress: false
+jobs:
+  real-delivery:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      TELEMETRY_ENABLED: 'false'
+      OTEL_SDK_DISABLED: 'true'
+      LANGFUSE_INIT_ORG_ID: native-fixture-org
+      LANGFUSE_INIT_ORG_NAME: Isolated CI fixture
+      LANGFUSE_INIT_PROJECT_ID: native-fixture-project
+      LANGFUSE_INIT_PROJECT_NAME: Synthetic metrics only
+      LANGFUSE_INIT_PROJECT_PUBLIC_KEY: pk-lf-native-fixture
+      LANGFUSE_INIT_PROJECT_SECRET_KEY: sk-lf-native-fixture-local-only
+      LANGFUSE_INIT_USER_EMAIL: native-fixture@example.invalid
+      LANGFUSE_INIT_USER_PASSWORD: isolated-fixture-not-a-live-credential
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: backend/native-workers/requirements-langfuse.txt
+      - name: Install application transport dependencies
+        run: pip install -r backend/native-workers/requirements-langfuse.txt
+      - name: Prepare pinned isolated actual Langfuse server
+        run: |
+          curl --fail --location --silent --show-error https://raw.githubusercontent.com/langfuse/langfuse/d89f49b82620dc9a773bd2f97449289f4f6c199e/docker-compose.yml -o "$RUNNER_TEMP/langfuse-upstream.yml"
+          python - <<'PY'
+          import os,pathlib,yaml
+          source=pathlib.Path(os.environ['RUNNER_TEMP'])/'langfuse-upstream.yml'
+          config=yaml.safe_load(source.read_text())
+          for name,service in config['services'].items():
+              service['ports']=[p if p.startswith('127.0.0.1:') else '127.0.0.1:'+p for p in service.get('ports',[])]
+              if name in ('langfuse-web','langfuse-worker'):
+                  service['image']=service['image'].rsplit(':',1)[0]+':4.71.0'
+          config['networks']={'default':{'internal':True}}
+          (source.parent/'langfuse-cert.yml').write_text(yaml.safe_dump(config))
+          PY
+          docker compose -p native-langfuse-cert -f "$RUNNER_TEMP/langfuse-cert.yml" up -d
+          python - <<'PYHOST'
+          import ipaddress,json,os,pathlib,subprocess
+          config=pathlib.Path(os.environ['RUNNER_TEMP'])/'langfuse-cert.yml'
+          container=subprocess.check_output(['docker','compose','-p','native-langfuse-cert','-f',str(config),'ps','-q','langfuse-web'],text=True).strip()
+          networks=json.loads(subprocess.check_output(['docker','inspect','--format','{{json .NetworkSettings.Networks}}',container],text=True))
+          address=ipaddress.ip_address(networks['native-langfuse-cert_default']['IPAddress'])
+          assert address.version==4 and address.is_private and not address.is_loopback
+          # Internal-only bridges have no published ports. On Linux the host
+          # can reach this private interface without granting server egress.
+          with open(os.environ['GITHUB_ENV'],'a') as env:env.write(f'LANGFUSE_CERT_HTTP_HOST={address}\n')
+          PYHOST
+      - name: Wait for the actual application
+        run: |
+          python - <<'PY'
+          import os,time,urllib.request
+          opener=urllib.request.build_opener(urllib.request.ProxyHandler({}))
+          deadline=time.monotonic()+420
+          while time.monotonic()<deadline:
+              try:
+                  with opener.open('http://'+os.environ['LANGFUSE_CERT_HTTP_HOST']+':3000/api/public/health',timeout=5) as r:
+                      if r.status==200:break
+              except Exception:pass
+              time.sleep(3)
+          else:raise SystemExit('Isolated Langfuse did not become healthy')
+          PY
+      - name: Verify real durable OTLP acknowledgement and deletion
+        run: python backend/native-workers/langfuse_contract.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: langfuse-delivery-certification
+          path: langfuse-runtime-evidence.json
+          if-no-files-found: error
+      - name: Diagnose isolated startup or delivery failure without payloads
+        if: failure()
+        run: python backend/native-workers/langfuse_diagnostics.py
+      - name: Remove only this job's disposable services and volumes
+        if: always()
+        run: docker compose -p native-langfuse-cert -f "$RUNNER_TEMP/langfuse-cert.yml" down --volumes --remove-orphans

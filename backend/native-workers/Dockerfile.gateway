@@ -1,0 +1,6 @@
+FROM python:3.12.12-slim
+RUN useradd --uid 10001 --create-home runner
+COPY app/services/native_runtime/gateway.py app/services/native_runtime/network.py app/services/native_runtime/http_server.py /runner/
+USER 10001:10001
+WORKDIR /runner
+CMD ["python", "/runner/gateway.py"]

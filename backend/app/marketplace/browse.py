@@ -90,6 +90,7 @@ def _checklist_summary(
         "installReadyErrors": ready["installReadyErrors"],
         "manualSetupRequired": ready["manualSetupRequired"],
         "connectorChecklist": checklist,
+        **({"connectorProfile": validation["connectorProfile"]} if "connectorProfile" in validation else {}),
         "requiredConnectors": required_connectors or [],
     }
 
@@ -389,6 +390,7 @@ def list_marketplace_assets(
             environment_name=environment_name,
             active_types=active_types,
             staged_types=staged_types,
+            asset=row,
         )
         connector_summary = _checklist_summary(row.get("required_connectors"), validation, asset=row)
         asset_id = str(row["id"])
@@ -465,6 +467,7 @@ def get_marketplace_asset(
         client,
         org_id,
         row.get("required_connectors") or [],
+        asset=row,
         environment_name=environment_name,
     )
     connector_summary = _checklist_summary(row.get("required_connectors"), validation, asset=row)

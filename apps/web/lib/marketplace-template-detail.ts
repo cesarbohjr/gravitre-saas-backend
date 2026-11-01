@@ -214,8 +214,9 @@ export function templateCadence(asset: Pick<MarketplaceAssetDetail, "config">): 
 
 /** Pill copy for required apps, or null when the checklist was not reported. */
 export function requiredAppsLabel(
-  asset: Pick<MarketplaceAssetDetail, "connectorChecklist">,
+  asset: Pick<MarketplaceAssetDetail, "connectorChecklist"> & Partial<Pick<MarketplaceAssetDetail, "assetType">>,
 ): string | null {
+  if (asset.assetType === "ai_agent") return "No connectors needed"
   if (!Array.isArray(asset.connectorChecklist)) return null
   const required = asset.connectorChecklist.filter((item) => item.required).length
   if (required === 0) return "No required apps"

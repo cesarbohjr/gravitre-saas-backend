@@ -24,7 +24,7 @@ export function MarketplaceAssetOverview({ asset, needsPurchase, isAdmin, action
         {needsPurchase && isAdmin ? <p className="mt-3 text-sm text-muted-foreground">Purchase ({formatAssetPrice(asset)}) unlocks install into your workspace.</p> : null}
         <dl className="mt-5 space-y-3 text-sm">
           {asset.packItems?.length ? <div><dt className="text-xs text-muted-foreground">Included components</dt><dd className="mt-1 tabular-nums">{asset.packItems.length}</dd></div> : null}
-          {asset.connectorChecklist?.length ? <div><dt className="text-xs text-muted-foreground">Required apps connected</dt><dd className="mt-1 tabular-nums">{asset.requiredConnectorsConnected} / {asset.requiredConnectorsTotal}</dd></div> : null}
+          {asset.assetType === "ai_agent" ? <div><dt className="text-xs text-muted-foreground">Advisory and drafting</dt><dd className="mt-1">No connectors needed</dd></div> : asset.connectorChecklist?.length ? <div><dt className="text-xs text-muted-foreground">Required apps connected</dt><dd className="mt-1 tabular-nums">{asset.requiredConnectorsConnected} / {asset.requiredConnectorsTotal}</dd></div> : null}
           {asset.estimatedHoursSaved != null ? <div><dt className="text-xs text-muted-foreground">{ESTIMATED_HOURS_SAVED_MONTHLY}</dt><dd className="mt-1 tabular-nums">{asset.estimatedHoursSaved}h</dd></div> : null}
         </dl>
         {actions ? <div className="mt-5">{actions}</div> : null}
