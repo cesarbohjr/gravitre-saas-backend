@@ -1,5 +1,6 @@
 """Failure-injection coverage for the flagged durable Stripe meter dispatcher."""
 from datetime import date, datetime, timezone
+from calendar import monthrange
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
@@ -8,8 +9,12 @@ import pytest
 
 from app.billing.stripe_meter_outbox import report_meter_intents
 
-START = date(2026, 10, 1)
-END = date(2026, 10, 31)
+# Keep these dispatcher tests inside the current, still-open billing period.
+# Fixed historical dates silently become closed periods and trigger the
+# production reconciliation guard before the behavior under test is reached.
+_NOW = datetime.now(timezone.utc).date()
+START = date(_NOW.year, _NOW.month, 1)
+END = date(_NOW.year, _NOW.month, monthrange(_NOW.year, _NOW.month)[1])
 
 
 def _client(*, acknowledgement=True):
