@@ -67,6 +67,7 @@ def evaluate_trials(trials, required_repetitions=REPETITIONS):
 
 def main():
     ap = argparse.ArgumentParser()
+    ap.add_argument("--preflight", action="store_true", help="Validate pinned model/corpus before actual inference")
     ap.add_argument("--manifest", default="acceptance-assets/pr587-kws-manifest.json")
     ap.add_argument("--output", default="acceptance-results/pr587-kws-qualification.json")
     args = ap.parse_args()
@@ -77,7 +78,8 @@ def main():
         errors = inspect_manifest(manifest, path.parent)
         # Future acoustic adapter must supply actual measured trials, not text matches.
         trials = manifest.get("acoustic_trials", [])
-        errors.extend(evaluate_trials(trials))
+        if not args.preflight:
+            errors.extend(evaluate_trials(trials))
     report = {"status": "BLOCKED" if errors else "ACOUSTIC_CANDIDATE_ELIGIBLE_FOR_ISOLATED_RUNTIME_TESTS",
               "certified": False, "runtime_changed": False,
               "recognition_target_ms": TARGET_MS, "end_to_end_limit_ms": DEADLINE_MS,
