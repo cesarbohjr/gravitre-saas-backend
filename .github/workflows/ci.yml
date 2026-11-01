@@ -38,6 +38,9 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Vercel frontend build selection
+        run: node --test scripts/vercel-ignore-build.test.mjs
+
       - name: Run unit tests
         run: pnpm test
 
@@ -191,7 +194,8 @@ jobs:
   backend:
     name: Backend (pytest)
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    # Match main's bounded full-suite ceiling without skipping acceptance coverage.
+    timeout-minutes: 45
     defaults:
       run:
         working-directory: backend
