@@ -112,14 +112,20 @@ def main():
     misses = [x for x in positives if x.get("recognition_wall_ms") is None
               or x["recognition_wall_ms"] > RECOGNITION_TARGET_MS]
     errors = [x for x in rows if "error_type" in x]
-    candidate_pass = bool(positives and negatives and not false_cancels and not misses and not errors)
+    # Require explicit spoken confusables/negations; generic baseline files do not
+    # establish that a prefix like "cancel" is safe before the utterance ends.
+    required_negative_classes = ("negation", "speech_stop", "backchannel")
+    coverage = {label: any(label in x["fixture"].lower() for x in negatives)
+                for label in required_negative_classes}
+    candidate_pass = bool(positives and negatives and all(coverage.values())
+                          and not false_cancels and not misses and not errors)
     result = {"status": "ACOUSTIC_CANDIDATE_PASS_NOT_RUNTIME_CERTIFIED" if candidate_pass else "BLOCKED",
               "model": "vosk-model-small-en-us-0.15", "recognition_target_ms": RECOGNITION_TARGET_MS,
               "end_to_end_limit_ms": DEADLINE_MS, "certified": False, "runtime_changed": False,
               "provider_calls": 0, "e2e_write_fence_latency_ms": None,
               "physical_audio_cutoff_ms": None, "positive_count": len(positives),
               "negative_count": len(negatives), "false_cancellation_count": len(false_cancels),
-              "missed_or_late_count": len(misses), "errors": len(errors),
+              "missed_or_late_count": len(misses), "errors": len(errors), "required_negative_coverage": coverage,
               "trials": rows}
     out = Path(args.output)
     out.parent.mkdir(parents=True, exist_ok=True)
