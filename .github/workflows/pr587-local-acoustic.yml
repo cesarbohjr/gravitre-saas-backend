@@ -3,6 +3,7 @@ on:
   pull_request:
     paths:
       - 'scripts/pr587_local_acoustic_candidate.py'
+      - 'tests/test_pr587_local_acoustic_candidate.py'
       - '.github/workflows/pr587-local-acoustic.yml'
   workflow_dispatch:
 permissions:
@@ -17,6 +18,8 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+      - name: Verify cancellation and confusable-phrase policy without provider credentials
+        run: python -m unittest discover -s tests -p test_pr587_local_acoustic_candidate.py
       - name: Install open source offline acoustic decoder
         run: python -m pip install --no-cache-dir vosk==0.3.45
       - name: Acquire SHA256-pinned Vosk model (no API usage)
