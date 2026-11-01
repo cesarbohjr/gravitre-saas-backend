@@ -5,6 +5,8 @@ backchannel strategy consumes InterimTranscriptionFrame, so without this bridge
 an unambiguous stop waits for EndOfTurn. These ordered hooks emit interims only;
 the SDK retains sole ownership of final transcription and turn commitment.
 """
+import time
+
 from pipecat.frames.frames import InterimTranscriptionFrame, ProposedUserStartedSpeakingFrame
 from pipecat.services.deepgram.flux.stt import DeepgramFluxSTTService
 from pipecat.utils.time import time_now_iso8601
@@ -23,6 +25,9 @@ class InterimAwareFluxSTTService(DeepgramFluxSTTService):
         self._early_control_turn_index = None
         self._dispatch_turn_index = None
         self._committed_turn_index = -1
+        # Sanitized monotonic timing markers, scoped to this socket/session.
+        # Neither raw transcripts nor user audio are retained here.
+        self.control_timing = None
 
     async def _connect_websocket(self):
         # SDK send_with_retry reconnects at this lower-level hook without
@@ -32,12 +37,22 @@ class InterimAwareFluxSTTService(DeepgramFluxSTTService):
             self._early_control_turn_index = None
             self._dispatch_turn_index = None
             self._committed_turn_index = -1
+            self.control_timing = None
         await super()._connect_websocket()
 
     async def _handle_turn_info(self, data):
         index = data.get('turn_index')
         self._dispatch_turn_index = index if type(index) is int and index >= 0 else None
         event, transcript = data.get('event'), data.get('transcript', '')
+        if (event in ('Update', 'StartOfTurn') and isinstance(transcript, str)
+                and classify_interrupt_intent(transcript) is InterruptIntent.TASK_CANCEL
+                and self.partial_control_enabled()
+                and (self._dispatch_turn_index is None or index > self._committed_turn_index)):
+            if self.control_timing is None or self.control_timing.get('turn_index') != self._dispatch_turn_index:
+                self.control_timing = {'turn_index': self._dispatch_turn_index,
+                                       'provider_cancel_received_ns': time.monotonic_ns(),
+                                       'control_partial_dispatched_ns': None}
+
         if (event == 'Update' and not self._user_is_speaking
                 and self.partial_control_enabled()
                 and self._dispatch_turn_index is not None
@@ -68,6 +83,9 @@ class InterimAwareFluxSTTService(DeepgramFluxSTTService):
             # of speculative generation or retrieval during ordinary listening.
             frame.gravitre_turn_control_only = True
             await self.push_frame(frame)
+            if (classify_interrupt_intent(transcript) is InterruptIntent.TASK_CANCEL
+                    and self.control_timing is not None):
+                self.control_timing['control_partial_dispatched_ns'] = time.monotonic_ns()
 
     async def _handle_start_of_turn(self, transcript: str):
         if (self._dispatch_turn_index is not None
