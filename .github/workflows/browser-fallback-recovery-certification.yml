@@ -3,6 +3,7 @@ name: Browser fallback recovery certification
 on:
   pull_request:
     branches:
+      - main
       - feature/unified-agent-capability-manifest-recovery
     paths:
       - 'backend/app/services/native_runtime/**'
