@@ -49,6 +49,8 @@ def test_pre_navigation_checkpoint_records_reviewed_target_without_dispatch():
     target="https://www.selenium.dev/selenium/web/web-form.html"
     assert checkpoint_destination("about:blank",{"navigate":{"url":target}},host)==target
     assert checkpoint_destination(target,{"click":{"index":1}},host)==target
+    tenant_target=target+"#isolated-case-capability"
+    assert checkpoint_destination("about:blank",{"navigate":{"url":tenant_target}},host)==tenant_target
 
 
 @pytest.mark.parametrize("intent",[
@@ -57,7 +59,6 @@ def test_pre_navigation_checkpoint_records_reviewed_target_without_dispatch():
     {"navigate":{"url":"https://www.selenium.dev.evil.example/"}},
     {"navigate":{"url":"https://user@www.selenium.dev/"}},
     {"navigate":{"url":"https://www.selenium.dev:8443/"}},
-    {"navigate":{"url":"https://www.selenium.dev/#fragment"}},
     {"navigate":{"url":"https://www.selenium.dev/"},"click":{"index":1}},
     {"click":{"index":1}},
 ])
