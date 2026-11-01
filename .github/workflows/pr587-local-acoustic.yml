@@ -1,11 +1,7 @@
 name: PR587 local cancellation acoustic qualification (no provider credits)
+# Dedicated issue #594 research: manual-only until a trained model and corpus exist.
+# Do not automatically block PR #587 core voice CI on unavailable R&D assets.
 on:
-  pull_request:
-    paths:
-      - 'scripts/pr587_kws_qualification.py'
-      - 'scripts/pr587_openwakeword_replay.py'
-      - 'tests/test_pr587_kws_qualification.py'
-      - '.github/workflows/pr587-local-acoustic.yml'
   workflow_dispatch:
 permissions:
   contents: read
