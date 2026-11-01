@@ -203,7 +203,28 @@ jobs:
                                 http_status=response.status, elapsed_ms=round((time.monotonic()-start)*1000, 2),
                                 model=payload.get('model'), usage=payload.get('usage'), exact_response=answer == 'ACCEPTANCE_OK')
           except urllib.error.HTTPError as error:
-              result.update(status='FAIL', http_status=error.code)
+              # Capture only bounded provider error categories, never the
+              # raw response, request body, key, prompt, or generated text.
+              category = 'unclassified'
+              try:
+                  body = json.loads(error.read(8192))
+                  provider_error = body.get('error') if isinstance(body, dict) else None
+                  if isinstance(provider_error, dict):
+                      candidate = provider_error.get('type')
+                      if candidate in ('invalid_request_error', 'authentication_error',
+                                       'permission_error', 'not_found_error',
+                                       'rate_limit_error', 'api_error', 'overloaded_error'):
+                          category = candidate
+                      message = str(provider_error.get('message', '')).lower()
+                      if 'model' in message:
+                          result['diagnostic_hint'] = 'model_parameter'
+                      elif 'credit' in message or 'balance' in message:
+                          result['diagnostic_hint'] = 'account_billing'
+                      elif 'max_tokens' in message:
+                          result['diagnostic_hint'] = 'token_limit'
+              except (ValueError, TypeError, AttributeError):
+                  pass
+              result.update(status='FAIL', http_status=error.code, provider_error_type=category)
           except Exception as error:
               result.update(status='FAIL', error_type=type(error).__name__)
           path.write_text(json.dumps(result, indent=2))
