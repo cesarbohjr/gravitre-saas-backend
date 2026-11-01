@@ -9,7 +9,7 @@ import pytest
 
 from app.billing.stripe_meter_outbox import report_meter_intents
 
-# Keep these dispatcher tests inside the current, still-open billing period.
+# Reconciled with main: preserve the production closed-period guard and\n# keep test fixtures in the current UTC billing month.\n# Keep these dispatcher tests inside the current, still-open billing period.
 # Fixed historical dates silently become closed periods and trigger the
 # production reconciliation guard before the behavior under test is reached.
 _NOW = datetime.now(timezone.utc).date()
