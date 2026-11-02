@@ -1,0 +1,31 @@
+name: PR597 controlled main reconciliation
+on:
+  push:
+    branches: [feature/autonomous-agents-full-suite]
+    paths:
+      - .github/workflows/pr597-reconcile.yml
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  reconcile:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: true
+      - name: Merge latest main without force push
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git fetch origin main
+          echo "original_head=$(git rev-parse HEAD)"
+          echo "main_head=$(git rev-parse origin/main)"
+          git merge --no-ff --no-edit origin/main -m "merge: reconcile PR #597 with current main"
+          git rm .github/workflows/pr597-reconcile.yml
+          git commit -m "chore: remove one-shot PR #597 reconciliation workflow"
+          git push origin HEAD:feature/autonomous-agents-full-suite
