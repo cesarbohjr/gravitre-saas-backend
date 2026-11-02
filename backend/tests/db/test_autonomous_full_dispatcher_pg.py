@@ -1,4 +1,3 @@
-from contextlib import ExitStack
 """Disposable actual worker -> handler -> invoke_tool -> PostgreSQL claim -> HTTP receiver.
 
 Kills a worker process either before the effect or after the independent receiver
@@ -6,6 +5,7 @@ commits it but before an acknowledgement. Restart uses a fresh worker with the
 same durable PostgreSQL ledger. External provider adapter is a test HTTP fixture.
 """
 from __future__ import annotations
+from contextlib import ExitStack
 import json
 import os
 from pathlib import Path
