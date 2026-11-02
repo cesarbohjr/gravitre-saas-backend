@@ -36,3 +36,18 @@ def test_marketplace_staging_is_non_publishable_and_complete():
     )
     assert all(row["preview_only"] and not row["publishable"] for row in plan["previews"])
     assert all(row["required_connectors"] == [] for row in plan["previews"])
+
+
+def test_unapproved_agency_slug_cannot_publish_even_with_stripped_metadata():
+    from unittest.mock import MagicMock
+    from app.marketplace.agency_agents_catalog import preview_marketplace_candidates
+    from app.marketplace.seed_service import upsert_catalog_asset
+    from dataclasses import replace
+    import pytest
+
+    candidate = preview_marketplace_candidates()[0]
+    stripped = replace(candidate, config={**candidate.config, "config": {}})
+    client = MagicMock()
+    with pytest.raises(PermissionError, match="product approval"):
+        upsert_catalog_asset(client, "publisher", stripped)
+    client.table.assert_not_called()
