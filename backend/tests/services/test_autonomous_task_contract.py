@@ -26,7 +26,7 @@ def test_read_then_approved_write_is_valid():
     (AutonomousStep("b", "crm.read", "read", ("missing",)),),
     (AutonomousStep("a", "crm.read", "read"), AutonomousStep("a", "crm.read", "read")),
     (AutonomousStep("a", "crm.read", "read", ("a",)),),
-    (AutonomousStep("a", "crm.read", "read", action_type="execute"),),
+    (AutonomousStep("a", "crm.read", "execute"),),
 ])
 def test_invalid_plans_fail_closed(invalid):
     with pytest.raises(InvalidAutonomousTask):
