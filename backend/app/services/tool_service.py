@@ -313,6 +313,13 @@ def write_retry_is_safe(exc: BaseException, tool_exc: ToolError | None = None) -
     return False
 
 
+def _invoke_attempt_budget(ctx: ToolContext, action: str) -> int:
+    """Autonomous side effects have no automatic provider resend allowance."""
+    if _is_write_invoke(action) and getattr(ctx, "autonomous_write_guarded", False):
+        return 1
+    return _MAX_RETRIES + 1
+
+
 def _is_write_invoke(action: str) -> bool:
     from app.services.outcome_verification import is_write_action
 
@@ -5378,9 +5385,7 @@ def invoke_tool(ctx: ToolContext, action: str, params: dict[str, Any] | None = N
     # A single autonomous claim may invoke the provider at most once. Even a
     # seemingly pre-send transport failure is not sufficient evidence to issue
     # another request under the same durable authorization without reconciliation.
-    attempts = 1 if (
-        _is_write_invoke(action) and getattr(ctx, "autonomous_write_guarded", False)
-    ) else _MAX_RETRIES + 1
+    attempts = _invoke_attempt_budget(ctx, action)
     for attempt in range(attempts):
         started = time.perf_counter()
         try:
