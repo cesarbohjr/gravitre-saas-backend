@@ -6,7 +6,8 @@
  */
 
 import { useEffect, useState } from "react"
-import { motion, useReducedMotion } from "framer-motion"
+import { motion } from "framer-motion"
+import { useReducedMotion } from "@/lib/use-reduced-motion"
 import { cn } from "@/lib/utils"
 import { NodusDotField } from "@/components/marketing/nodus/dot-field"
 
@@ -171,7 +172,7 @@ export function StageTraceVisual({
                   transformOrigin: "center",
                 }}
                 initial={reduce ? false : { scale: 0.7, opacity: 0 }}
-                whileInView={reduce ? undefined : { scale: 1, opacity: 1 }}
+                whileInView={{ scale: 1, opacity: 1 }}
                 viewport={{ once: true }}
                 transition={{ delay: 0.12 + index * 0.1, duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
               />

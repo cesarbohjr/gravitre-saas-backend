@@ -1,6 +1,7 @@
 "use client"
 
-import { motion, useReducedMotion } from "framer-motion"
+import { motion } from "framer-motion"
+import { useReducedMotion } from "@/lib/use-reduced-motion"
 import { NodusDotField } from "./dot-field"
 
 /**
@@ -65,7 +66,7 @@ export function UseCasesNetwork({ className }: { className?: string }) {
                 strokeWidth={1.5}
                 fill="none"
                 initial={reduce ? false : { pathLength: 0 }}
-                whileInView={reduce ? undefined : { pathLength: 1 }}
+                whileInView={{ pathLength: 1 }}
                 viewport={seen}
                 transition={{ delay: delay + 0.15, duration: 0.6, ease: "easeOut" }}
               />
@@ -98,7 +99,7 @@ export function UseCasesNetwork({ className }: { className?: string }) {
 
         <motion.g
           initial={reduce ? false : { opacity: 0, scale: 0.7 }}
-          whileInView={reduce ? undefined : { opacity: 1, scale: 1 }}
+          whileInView={{ opacity: 1, scale: 1 }}
           viewport={seen}
           transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
           style={{ transformBox: "fill-box", transformOrigin: "center" }}
@@ -116,7 +117,7 @@ export function UseCasesNetwork({ className }: { className?: string }) {
           <motion.g
             key={d.label}
             initial={reduce ? false : { opacity: 0, scale: 0.85, y: 10 }}
-            whileInView={reduce ? undefined : { opacity: 1, scale: 1, y: 0 }}
+            whileInView={{ opacity: 1, scale: 1, y: 0 }}
             viewport={seen}
             transition={{ delay: START + i * POP, duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
             style={{ transformBox: "fill-box", transformOrigin: "center" }}

@@ -6,7 +6,8 @@
  * Brand green pinned to CREATIVE_BRAND (#16a374) for footer continuity.
  */
 
-import { motion, useReducedMotion } from "framer-motion"
+import { motion } from "framer-motion"
+import { useReducedMotion } from "@/lib/use-reduced-motion"
 import { cn } from "@/lib/utils"
 import { CREATIVE_BRAND } from "@/components/marketing/creative/core/tokens"
 

@@ -62,7 +62,7 @@ export function GravitreDepartmentNode({
     <motion.div
       className={cn(align === "end" ? "ml-auto" : "mr-auto")}
       initial={reduced ? false : { opacity: 0, y: 14, scale: 0.94 }}
-      whileInView={reduced ? undefined : { opacity: 1, y: 0, scale: 1 }}
+      whileInView={{ opacity: 1, y: 0, scale: 1 }}
       viewport={{ once: true, amount: 0.5 }}
       transition={{ delay: m.pop, duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
     >
