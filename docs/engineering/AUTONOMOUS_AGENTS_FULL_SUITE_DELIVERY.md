@@ -29,3 +29,9 @@ Commit SHA; action schema provenance; per-test outputs and failure categories; i
 
 ## Boundaries
 Do not re-own Agency Agents packaging, PR #581 native runtime, PR #587 One Brain, or PR #590 Qualified Prospecting. Do not merge or deploy without passing applicable certification and review.
+
+## PR #597 merge-reconciliation checkpoint (2026-11-02)
+- Merged latest `main` into the PR branch without a force push; preserve frontend marketing changes and autonomous backend certification code.
+- The isolated PostgreSQL/Redis and independent-receiver recovery gate passed on pre-reconciliation SHA `665b5b3dc92827d8f8ba4531e4f73f35c0bf98a2`.
+- Certification must be rerun against the new reconciled head. A queued, skipped, or approval-blocked run is not evidence of a pass.
+- Full product/UX and live-provider certification remain distinct from these isolated test gates; no production deployment or merge is authorized by this checkpoint.
