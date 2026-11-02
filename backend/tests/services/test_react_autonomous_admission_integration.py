@@ -52,3 +52,26 @@ def test_autonomous_runtime_rejects_unplanned_dynamic_tools():
     runtime.plan.steps.clear()
     with pytest.raises(RuntimeError, match="unplanned_autonomous_step"):
         runtime.next_step_id("crm.search", 0)
+
+
+def test_cancelled_autonomous_task_denies_dispatch_before_admission():
+    runtime = _runtime("write")
+    runtime.plan.terminal_status = "cancelled"
+    with pytest.raises(RuntimeError, match="cancelled"):
+        runtime.next_step_id(
+            "crm.update", 0, is_write=True, tenant_id="tenant-1",
+            actor_id="actor-1", fresh_permission_granted=True,
+            fresh_approval_granted=True,
+        )
+    assert not runtime.dispatched_steps
+
+
+def test_revoked_autonomous_permission_denies_dispatch_without_side_effect():
+    runtime = _runtime("write")
+    with pytest.raises(RuntimeError, match="permission_denied"):
+        runtime.next_step_id(
+            "crm.update", 0, is_write=True, tenant_id="tenant-1",
+            actor_id="actor-1", fresh_permission_granted=False,
+            fresh_approval_granted=True,
+        )
+    assert not runtime.dispatched_steps
