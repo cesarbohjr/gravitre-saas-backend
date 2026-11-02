@@ -49,3 +49,46 @@ def build_release_review() -> dict[str, Any]:
         "production_publication_authorized": False,
         "roles": roles,
     }
+
+
+def build_marketplace_staging_plan() -> dict[str, Any]:
+    """Reconcile review-only Marketplace previews against the pinned release report.
+
+    This is consumed by release tooling as a dry-run projection, never by the
+    published catalog, seed_service or install endpoints.
+    """
+    from app.marketplace.agency_agents_catalog import preview_marketplace_candidates
+    from app.marketplace.seed_catalog import list_catalog_assets
+
+    report = build_release_review()
+    roles = {role["slug"]: role for role in report["roles"]}
+    catalog_slugs = {asset.slug for asset in list_catalog_assets()}
+    previews = preview_marketplace_candidates()
+    staged = []
+    for asset in previews:
+        role = roles[asset.slug]
+        if asset.slug in catalog_slugs:
+            raise ValueError("agency_marketplace_slug_collision")
+        provenance = asset.config["config"]
+        if (provenance["source_sha256"] != role["source_sha256"]
+                or provenance["source_revision"] != role["source_commit"]):
+            raise ValueError("agency_marketplace_provenance_mismatch")
+        if asset.required_connectors or asset.config.get("systems") or asset.config.get("capabilities"):
+            raise ValueError("unapproved_agency_tool_authority")
+        staged.append({
+            "slug": asset.slug,
+            "division": role["division"],
+            "target_pack": role["target_pack"],
+            "required_connectors": [],
+            "preview_only": True,
+            "publishable": False,
+            "review_status": role["review_status"],
+        })
+    if len(staged) != sum(r["disposition"] == "marketplace_agent" for r in roles.values()):
+        raise ValueError("incomplete_agency_marketplace_staging")
+    return {
+        "source_commit": report["source_commit"],
+        "preview_count": len(staged),
+        "publication_enabled": False,
+        "previews": staged,
+    }
