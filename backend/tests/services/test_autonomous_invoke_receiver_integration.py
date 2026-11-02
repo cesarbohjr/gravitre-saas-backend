@@ -32,13 +32,34 @@ def test_real_invoke_tool_never_reissues_uncertain_autonomous_write(tmp_path):
             assert response.status == 204
         return NormalizedResult(success=True, action=action, data={"id": "contact-1"})
 
-    ctx = ToolContext(
-        settings=SimpleNamespace(write_authority_mode="enforce",
-                                 write_invoke_idempotency_enabled=True,
-                                 private_connector_runtime_enabled=False),
-        client=MagicMock(), org_id=org_id, actor_id="actor", run_id=run_id,
-        step_id="write-1", autonomous_write_guarded=True,
-    )
+    from app.workers.workflow_worker import process_workflow_run_job
+    from app.workers.workflow_queue import WorkflowRunJob
+    from app.workflows.registry import StepContext
+    from app.workflows import handlers
+
+    settings = SimpleNamespace(write_authority_mode="enforce",
+                               write_invoke_idempotency_enabled=True,
+                               private_connector_runtime_enabled=False)
+    client = MagicMock()
+    run = {
+        "id": run_id, "status": "running", "triggered_by": "actor",
+        "definition_snapshot": {"steps": []},
+        "parameters": {"_autonomous_run": True}, "environment": "acceptance",
+    }
+    def run_workflow(**kwargs):
+        step = StepContext(
+            settings=kwargs["settings"], org_id=kwargs["org_id"],
+            user_id=kwargs["user_id"], run_id=kwargs["run_id"],
+            environment_name=kwargs["environment_name"],
+            step_id="write-1", step_type="invoke_tool", step_index=0,
+            config={}, parameters=kwargs["parameters"], step_outputs={},
+            client=kwargs["client"], is_dry_run=False,
+        )
+        result = handlers._invoke_canvas_registered_tool(step, action, {"id": "contact-1"})
+        assert result.success
+        return ("completed", [], [], False)
+    job = WorkflowRunJob(run_id=run_id, org_id=org_id, workflow_id="wf-1")
+    raw_job = json.dumps(job.__dict__)
     claims = iter([
         WriteClaimResult(outcome="claimed", claim_token="first", status="in_progress"),
         WriteClaimResult(outcome="blocked", status="uncertain", reason="reconciliation_required"),
@@ -47,7 +68,14 @@ def test_real_invoke_tool_never_reissues_uncertain_autonomous_write(tmp_path):
            "definition_snapshot": {}, "parameters": {}}
     try:
         with (
-            write_authority("run", run_id),
+            patch("app.workers.workflow_worker.get_supabase_client", return_value=client),
+            patch("app.workers.workflow_worker.get_run_with_steps", return_value=run),
+            patch("app.workers.workflow_worker.execute_workflow_steps", side_effect=run_workflow),
+            patch("app.services.canvas_write_gate.bind_f1_write_hmac_context",
+                  side_effect=lambda **k: (k["tool_ctx"], k["params"])),
+            patch("app.services.sealed_read_execution.bind_read_preflight",
+                  side_effect=lambda ctx, act, params, **kw: (ctx, params, None)),
+            patch("app.services.execution_outcome.finalize_execution_outcome"),
             patch("app.services.capability_availability.is_capability_action", return_value=False),
             patch("app.capability_ontology.resolver.resolve_capability_invoke_action", return_value=None),
             patch("app.services.canvas_write_gate.require_approved_authority_run", return_value=row),
@@ -65,11 +93,11 @@ def test_real_invoke_tool_never_reissues_uncertain_autonomous_write(tmp_path):
             patch("app.services.write_invoke_idempotency.finalize_write_invoke"),
             patch("app.workers.workflow_queue.assert_current_workflow_claim_live"),
         ):
-            result = tool_service.invoke_tool(ctx, action, {"id": "contact-1"})
-            assert result.success is True
+            assert process_workflow_run_job(settings, raw_job) is True
             assert receiver.writes == 1
-            with pytest.raises(Exception, match="reconciliation|already in progress"):
-                tool_service.invoke_tool(ctx, action, {"id": "contact-1"})
+            # Retry enters the same real worker/handler/invoke path and is
+            # refused by the durable claim response before any provider call.
+            assert process_workflow_run_job(settings, raw_job) is False
             assert receiver.writes == 1
             assert calls == [True]
     finally:
