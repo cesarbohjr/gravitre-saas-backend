@@ -5659,6 +5659,9 @@ def tool_context_from_step(context: Any) -> ToolContext:
         connector_id=(context.config or {}).get("connector_id"),
         conversation_id=str(conversation_id) if conversation_id else None,
         cognitive_invoke=False,
+        # An autonomous workflow must retain strict atomic approval/claim fencing
+        # when crossing the workflow handler -> shared provider invoke boundary.
+        autonomous_write_guarded=bool(params.get("_autonomous_run") and context.run_id),
     )
 
 
