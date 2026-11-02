@@ -1,3 +1,4 @@
+from contextlib import ExitStack
 """Exercise production invoke_tool with an independent process side-effect receiver.
 
 This is a real invoke spine test with a simulated approval ledger. The separate
@@ -67,32 +68,29 @@ def test_real_invoke_tool_never_reissues_uncertain_autonomous_write(tmp_path):
     row = {"approval_status": "approved", "required_approvals": 1,
            "definition_snapshot": {}, "parameters": {}}
     try:
-        with (
-            patch("app.workers.workflow_worker.get_supabase_client", return_value=client),
-            patch("app.workers.workflow_worker.get_run_with_steps", return_value=run),
-            patch("app.workers.workflow_worker.execute_workflow_steps", side_effect=run_workflow),
-            patch("app.services.canvas_write_gate.bind_f1_write_hmac_context",
-                  side_effect=lambda **k: (k["tool_ctx"], k["params"])),
-            patch("app.services.sealed_read_execution.bind_read_preflight",
-                  side_effect=lambda ctx, act, params, **kw: (ctx, params, None)),
-            patch("app.services.execution_outcome.finalize_execution_outcome"),
-            patch("app.services.capability_availability.is_capability_action", return_value=False),
-            patch("app.capability_ontology.resolver.resolve_capability_invoke_action", return_value=None),
-            patch("app.services.canvas_write_gate.require_approved_authority_run", return_value=row),
-            patch("app.services.conversation_write_guard.assert_org_write_allowed"),
-            patch("app.services.agent_interrupt_service.enforce_interrupt"),
-            patch("app.services.write_preflight.enforce_invoke_write_preflight", side_effect=lambda ctx,act,params:params),
-            patch.object(tool_service, "_resolve_tool_executor", return_value=executor),
-            patch("app.services.hipaa_service.enforce_hipaa_for_tool_invoke"),
-            patch("app.services.agent_guardrail_limits.enforce_agent_guardrail_limits"),
-            patch.object(tool_service, "assert_agent_tool_permission"),
-            patch.object(tool_service, "_write_tool_audit"),
-            patch("app.services.workflow_approval_scope.block_invoke_by_approval_scope", return_value=None),
-            patch("app.services.compensation_service.should_track_compensation", return_value=False),
-            patch("app.services.write_invoke_idempotency.claim_approved_autonomous_write", side_effect=lambda *a,**k:next(claims)),
-            patch("app.services.write_invoke_idempotency.finalize_write_invoke"),
-            patch("app.workers.workflow_queue.assert_current_workflow_claim_live"),
-        ):
+        with ExitStack() as stack:
+            stack.enter_context(patch("app.workers.workflow_worker.get_supabase_client", return_value=client))
+            stack.enter_context(patch("app.workers.workflow_worker.get_run_with_steps", return_value=run))
+            stack.enter_context(patch("app.workers.workflow_worker.execute_workflow_steps", side_effect=run_workflow))
+            stack.enter_context(patch("app.services.canvas_write_gate.bind_f1_write_hmac_context", side_effect=lambda **k: (k["tool_ctx"], k["params"])))
+            stack.enter_context(patch("app.services.sealed_read_execution.bind_read_preflight", side_effect=lambda ctx, act, params, **kw: (ctx, params, None)))
+            stack.enter_context(patch("app.services.execution_outcome.finalize_execution_outcome"))
+            stack.enter_context(patch("app.services.capability_availability.is_capability_action", return_value=False))
+            stack.enter_context(patch("app.capability_ontology.resolver.resolve_capability_invoke_action", return_value=None))
+            stack.enter_context(patch("app.services.canvas_write_gate.require_approved_authority_run", return_value=row))
+            stack.enter_context(patch("app.services.conversation_write_guard.assert_org_write_allowed"))
+            stack.enter_context(patch("app.services.agent_interrupt_service.enforce_interrupt"))
+            stack.enter_context(patch("app.services.write_preflight.enforce_invoke_write_preflight", side_effect=lambda ctx,act,params:params))
+            stack.enter_context(patch.object(tool_service, "_resolve_tool_executor", return_value=executor))
+            stack.enter_context(patch("app.services.hipaa_service.enforce_hipaa_for_tool_invoke"))
+            stack.enter_context(patch("app.services.agent_guardrail_limits.enforce_agent_guardrail_limits"))
+            stack.enter_context(patch.object(tool_service, "assert_agent_tool_permission"))
+            stack.enter_context(patch.object(tool_service, "_write_tool_audit"))
+            stack.enter_context(patch("app.services.workflow_approval_scope.block_invoke_by_approval_scope", return_value=None))
+            stack.enter_context(patch("app.services.compensation_service.should_track_compensation", return_value=False))
+            stack.enter_context(patch("app.services.write_invoke_idempotency.claim_approved_autonomous_write", side_effect=lambda *a,**k:next(claims)))
+            stack.enter_context(patch("app.services.write_invoke_idempotency.finalize_write_invoke"))
+            stack.enter_context(patch("app.workers.workflow_queue.assert_current_workflow_claim_live"))
             assert process_workflow_run_job(settings, raw_job) is True
             assert receiver.writes == 1
             # Retry enters the same real worker/handler/invoke path and is
