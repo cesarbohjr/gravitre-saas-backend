@@ -15,6 +15,7 @@ on:
       - 'backend/tests/services/test_autonomous_workflow_context.py'
       - 'backend/tests/services/test_autonomous_worker_dispatch_boundary.py'
       - 'backend/tests/services/test_autonomous_invoke_receiver_integration.py'
+      - 'backend/tests/db/test_autonomous_full_dispatcher_pg.py'
       - '.github/workflows/autonomous-write-certification.yml'
   workflow_dispatch:
 
@@ -72,6 +73,7 @@ jobs:
           python -m pytest -q --no-header \
             tests/db/test_autonomous_independent_write_pg.py \
             tests/db/test_autonomous_atomic_approval_pg.py \
+            tests/db/test_autonomous_full_dispatcher_pg.py \
             tests/db/test_write_invoke_idempotency_pg.py \
             tests/services/test_autonomous_final_write_authority.py \
             tests/services/test_autonomous_write_attempt_budget.py \
@@ -110,6 +112,14 @@ jobs:
                                 for key in ("tests","failures","errors","skipped")}
           redis_ok=redis_counts.get("tests",0)>=8 and not any(
               redis_counts.get(k,0) for k in ("failures","errors","skipped"))
+          dispatcher_cases=[json.loads(p.read_text()) for p in sorted((root/"full-dispatcher").glob("*.json"))]
+          dispatcher_required={"crash_before_effect","crash_after_effect"}
+          dispatcher_ok={c.get("case") for c in dispatcher_cases}==dispatcher_required and all(
+              c.get("passed") and c.get("worker_killed") and c.get("worker_restarted")
+              and c.get("claim_status")=="uncertain"
+              and c.get("unauthorized_or_duplicate_writes")==0
+              and c.get("observed_committed_writes")==c.get("expected_committed_writes")
+              for c in dispatcher_cases)
           audit_ok={c.get("case") for c in cases}==required and all(
               c.get("passed") and c.get("unauthorized_or_duplicate_writes")==0
               and c.get("receiver_pid") for c in cases)
@@ -120,14 +130,16 @@ jobs:
               "scope":"postgres_rpc_and_independent_process_receiver",
               "counts":counts,"redis_counts":redis_counts,"redis_queue_certified":bool(redis_ok),"cases":cases,
               "independent_receiver_audit_passed":bool(audit_ok),
+              "full_dispatcher_cases":dispatcher_cases,
+              "full_dispatcher_certified":bool(dispatcher_ok),
               "all_tests_passed":bool(tests_ok),
-              "passed":bool(audit_ok and tests_ok and redis_ok),
+              "passed":bool(audit_ok and tests_ok and redis_ok and dispatcher_ok),
               "limitations":[
                   "not a live provider end-to-end test",
                   "denial cases test the dispatch boundary without executing the real ReAct caller",
-                  "crash cases simulate missing acknowledgements; no SIGKILL of the production worker",
+                  "isolated real worker SIGKILL tests use test HTTP adapter, not customer provider",
                   "PostgreSQL restart is graceful, not an OS power loss",
-                  "full production approval revocation and journal crash/restart remain uncertified"
+                  "production provider behavior and deployment remain uncertified"
               ]
           }
           root.mkdir(exist_ok=True)
