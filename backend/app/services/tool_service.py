@@ -5386,6 +5386,14 @@ def invoke_tool(ctx: ToolContext, action: str, params: dict[str, Any] | None = N
                     assert_current_workflow_claim_live()
                 except Exception as exc:
                     raise ToolValidationError("Workflow execution ownership was lost; write refused", code="workflow_claim_lost") from exc
+            if _is_write_invoke(action) and getattr(ctx, "autonomous_write_guarded", False):
+                # Close the time-of-check/time-of-use window: re-read the
+                # tenant-scoped approval immediately before the provider call.
+                from app.services.canvas_write_gate import require_approved_authority_run
+                require_approved_authority_run(
+                    client=ctx.client, org_id=ctx.org_id, run_id=ctx.run_id,
+                    authority_ref=declared_authority.ref,
+                )
             result = executor(ctx, params)
             finish_write_effect(write_effect, "completed" if result.success else "failed")
             result.latency_ms = result.latency_ms or int((time.perf_counter() - started) * 1000)
