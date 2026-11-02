@@ -6,9 +6,8 @@
  */
 
 import { AnimatePresence, motion } from "framer-motion"
-import { LogoSVG } from "@/components/marketing/nodus/logo"
+import { NodusHub } from "@/components/marketing/nodus/scenes/kit"
 import { CORE_STATE_LABEL, type CoreState } from "./types"
-import { cn } from "@/lib/utils"
 
 export function GravitreIntelligenceCore({
   state = "idle",
@@ -29,12 +28,8 @@ export function GravitreIntelligenceCore({
         initial={false}
         animate={{ scale: busy ? 1.04 : 1 }}
         transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
-        className={cn(
-          "relative flex size-[5.5rem] items-center justify-center rounded-2xl border bg-card shadow-[var(--shadow-aceternity)]",
-          resolved ? "border-brand" : "border-line",
-        )}
       >
-        <LogoSVG className="size-9 text-foreground" />
+        <NodusHub />
       </motion.div>
 
       <AnimatePresence mode="wait">
@@ -44,7 +39,7 @@ export function GravitreIntelligenceCore({
             initial={reduced ? false : { opacity: 0, y: 4 }}
             animate={{ opacity: 1, y: 0 }}
             exit={reduced ? undefined : { opacity: 0 }}
-            className="relative z-30 rounded-md border border-line bg-card px-2.5 py-1 text-[10px] font-semibold text-brand shadow-sm"
+            className="relative z-30 rounded-sm border border-brand bg-brand/10 px-2 py-0.5 text-xs text-brand"
           >
             {label}
           </motion.span>

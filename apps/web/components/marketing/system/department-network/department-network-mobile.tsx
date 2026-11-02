@@ -2,13 +2,13 @@
 
 /**
  * Mobile converge story — one relationship at a time (not a shrunk radial).
- * Core is the Nodus hub tile — no ring-spin.
+ * Core is the Nodus hub (white tile, black mark, spinning rim).
  */
 
 import { useEffect, useState } from "react"
 import { AnimatePresence, motion } from "framer-motion"
 import { DepartmentIcon } from "@/components/agents/department-icon"
-import { LogoSVG } from "@/components/marketing/nodus/logo"
+import { NodusHub } from "@/components/marketing/nodus/scenes/kit"
 import { cn } from "@/lib/utils"
 import type { CoreState, DepartmentId } from "./types"
 
@@ -76,7 +76,7 @@ function MobileNode({
     <div
       className={cn(
         "w-full max-w-[15rem] overflow-hidden rounded-xl border bg-card shadow-[var(--shadow-aceternity)]",
-        active && "border-brand",
+        active && "border-brand/25 bg-[color:color-mix(in_srgb,var(--brand)_6%,var(--card))]",
         resolved && "border-[color:var(--info)]",
         !active && !resolved && "border-line",
       )}
@@ -97,19 +97,10 @@ function MobileNode({
 }
 
 function MobileCore({ label, coreState }: { label: string; coreState: CoreState }) {
-  const learned = coreState === "learned"
-
   return (
     <div className="flex flex-col items-center gap-2" data-testid="mobile-hub-core" data-core-state={coreState}>
-      <div
-        className={cn(
-          "flex size-16 items-center justify-center rounded-2xl border bg-card shadow-[var(--shadow-aceternity)]",
-          learned ? "border-brand" : "border-line",
-        )}
-      >
-        <LogoSVG className="size-7 text-foreground" />
-      </div>
-      <span className="rounded-md border border-line bg-card px-2 py-0.5 text-[10px] font-semibold text-brand">
+      <NodusHub />
+      <span className="rounded-sm border border-brand bg-brand/10 px-2 py-0.5 text-xs text-brand">
         {label}
       </span>
     </div>

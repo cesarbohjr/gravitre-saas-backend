@@ -62,7 +62,7 @@ export function GravitreDepartmentNode({
     <motion.div
       className={cn(align === "end" ? "ml-auto" : "mr-auto")}
       initial={reduced ? false : { opacity: 0, y: 14, scale: 0.94 }}
-      whileInView={reduced ? undefined : { opacity: 1, y: 0, scale: 1 }}
+      whileInView={{ opacity: 1, y: 0, scale: 1 }}
       viewport={{ once: true, amount: 0.5 }}
       transition={{ delay: m.pop, duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
     >
@@ -82,7 +82,7 @@ export function GravitreDepartmentNode({
           className={cn(
             "relative z-20 block w-[13.5rem] overflow-hidden rounded-xl border bg-card text-left shadow-[var(--shadow-aceternity)] transition-[border-color,opacity] duration-300",
             "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/40",
-            isActive ? "border-brand" : isResolved ? "border-[color:var(--info)]" : "border-line",
+            isActive ? "border-brand/25 bg-[color:color-mix(in_srgb,var(--brand)_6%,var(--card))]" : isResolved ? "border-[color:color-mix(in_srgb,var(--info)_30%,transparent)]" : "border-line",
             isMuted && "opacity-50",
             !interactive && "cursor-default",
           )}

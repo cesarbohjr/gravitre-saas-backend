@@ -5,7 +5,8 @@
  * Used on docs/integrations (and optionally docs hub).
  */
 
-import { motion, useReducedMotion } from "framer-motion"
+import { motion } from "framer-motion"
+import { useReducedMotion } from "@/lib/use-reduced-motion"
 import { cn } from "@/lib/utils"
 
 const SPOKES = [
@@ -47,7 +48,7 @@ export function ConnectorHubVisual({ className }: { className?: string }) {
                 stroke="color-mix(in oklch, var(--g-intelligence) 35%, var(--line))"
                 strokeWidth="1.25"
                 initial={reduce ? false : { opacity: 0 }}
-                whileInView={reduce ? undefined : { opacity: 1 }}
+                whileInView={{ opacity: 1 }}
                 viewport={{ once: true }}
                 transition={{ delay: 0.08 * i, duration: 0.55 }}
               />
@@ -59,7 +60,7 @@ export function ConnectorHubVisual({ className }: { className?: string }) {
                 stroke="color-mix(in oklch, var(--g-intelligence) 40%, var(--line))"
                 strokeWidth="1.25"
                 initial={reduce ? false : { scale: 0.6, opacity: 0 }}
-                whileInView={reduce ? undefined : { scale: 1, opacity: 1 }}
+                whileInView={{ scale: 1, opacity: 1 }}
                 viewport={{ once: true }}
                 transition={{ delay: 0.1 + 0.08 * i, duration: 0.4 }}
               />
@@ -83,7 +84,7 @@ export function ConnectorHubVisual({ className }: { className?: string }) {
           stroke="var(--primary)"
           strokeWidth="1.75"
           initial={reduce ? false : { scale: 0.8, opacity: 0 }}
-          whileInView={reduce ? undefined : { scale: 1, opacity: 1 }}
+          whileInView={{ scale: 1, opacity: 1 }}
           viewport={{ once: true }}
           transition={{ delay: 0.35, duration: 0.45 }}
         />

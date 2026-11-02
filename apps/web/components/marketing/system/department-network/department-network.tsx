@@ -7,7 +7,8 @@
  */
 
 import { useEffect, useRef, useState } from "react"
-import { AnimatePresence, motion, useInView, useReducedMotion } from "framer-motion"
+import { AnimatePresence, motion, useInView } from "framer-motion"
+import { useReducedMotion } from "@/lib/use-reduced-motion"
 import { cn } from "@/lib/utils"
 import { GravitreDepartmentNode, type NodeVisualState } from "./department-node"
 import { GravitreIntelligenceCore } from "./intelligence-core"

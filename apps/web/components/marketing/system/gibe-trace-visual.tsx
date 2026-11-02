@@ -6,7 +6,8 @@
  * No TRAINED badges, prices, or entitlement claims.
  */
 
-import { motion, useReducedMotion } from "framer-motion"
+import { motion } from "framer-motion"
+import { useReducedMotion } from "@/lib/use-reduced-motion"
 import { cn } from "@/lib/utils"
 
 const STAGES = [
@@ -53,7 +54,7 @@ export function GibeTraceVisual({ className }: { className?: string }) {
           strokeLinecap="round"
           fill="none"
           initial={reduce ? false : { pathLength: 0, opacity: 0.35 }}
-          whileInView={reduce ? undefined : { pathLength: 1, opacity: 1 }}
+          whileInView={{ pathLength: 1, opacity: 1 }}
           viewport={{ once: true, amount: 0.4 }}
           transition={{ duration: 1.4, ease: [0.16, 1, 0.3, 1] }}
         />
@@ -81,7 +82,7 @@ export function GibeTraceVisual({ className }: { className?: string }) {
               }
               strokeWidth="1.5"
               initial={reduce ? false : { scale: 0.7, opacity: 0 }}
-              whileInView={reduce ? undefined : { scale: 1, opacity: 1 }}
+              whileInView={{ scale: 1, opacity: 1 }}
               viewport={{ once: true }}
               transition={{ delay: 0.15 + index * 0.12, duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
             />
@@ -93,7 +94,7 @@ export function GibeTraceVisual({ className }: { className?: string }) {
               initial={reduce ? false : { opacity: 0 }}
               whileInView={
                 reduce
-                  ? undefined
+                  ? { opacity: 1 }
                   : {
                       opacity: [0.45, 1, 0.45],
                     }

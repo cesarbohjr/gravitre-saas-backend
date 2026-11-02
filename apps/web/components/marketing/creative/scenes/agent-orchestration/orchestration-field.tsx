@@ -2,7 +2,8 @@
 
 import { useEffect, useRef, useState } from "react"
 import Link from "next/link"
-import { useInView, useReducedMotion } from "framer-motion"
+import { useInView } from "framer-motion"
+import { useReducedMotion } from "@/lib/use-reduced-motion"
 import {
   NucleoChat,
   NucleoError,
@@ -28,7 +29,7 @@ import {
   type OrchestrationPhase,
 } from "./storyboard"
 import { NodusDotField } from "@/components/marketing/nodus/dot-field"
-import { TesseractCore } from "./tesseract-core"
+import { OrchestrationCoreScene as TesseractCore } from "@/components/marketing/nodus/scenes/scenes"
 
 const ROLE_ICONS = {
   research: NucleoSearch,
