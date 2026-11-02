@@ -113,10 +113,11 @@ jobs:
           redis_ok=redis_counts.get("tests",0)>=8 and not any(
               redis_counts.get(k,0) for k in ("failures","errors","skipped"))
           dispatcher_cases=[json.loads(p.read_text()) for p in sorted((root/"full-dispatcher").glob("*.json"))]
-          dispatcher_required={"crash_before_effect","crash_after_effect"}
+          dispatcher_required={"crash_before_effect","crash_after_effect","revoked_before_claim"}
           dispatcher_ok={c.get("case") for c in dispatcher_cases}==dispatcher_required and all(
-              c.get("passed") and c.get("worker_killed") and c.get("worker_restarted")
-              and c.get("claim_status")=="uncertain"
+              c.get("passed")
+              and (c.get("case")=="revoked_before_claim" or (c.get("worker_killed") and c.get("worker_restarted")
+              and c.get("claim_status")=="uncertain"))
               and c.get("unauthorized_or_duplicate_writes")==0
               and c.get("observed_committed_writes")==c.get("expected_committed_writes")
               for c in dispatcher_cases)
