@@ -49,6 +49,19 @@ jobs:
           PGVER="$(ls /usr/lib/postgresql | sort -V | tail -1)"
           echo "GRAVITRE_PG_BIN=/usr/lib/postgresql/${PGVER}/bin" >> "$GITHUB_ENV"
           pip install -r requirements-dev.txt
+      - name: Start disposable Redis queue for real worker lease recovery
+        run: |
+          sudo apt-get install -y -q redis-server
+          redis-server --bind 127.0.0.1 --port 16379 --save '' --appendonly no --daemonize yes
+          redis-cli -p 16379 ping | grep -q PONG
+      - name: Real Redis claim SIGKILL and lost-ACK recovery
+        env:
+          REDIS_URL: redis://127.0.0.1:16379/15
+          GRAVITRE_REQUIRE_REDIS: '1'
+        run: |
+          python -m pytest -q --no-header \\
+            tests/workers/test_workflow_queue_redis_integration.py \\
+            --junitxml=../autonomous-write-evidence/redis-recovery-junit.xml
       - name: Run matched independent receiver and database acceptance
         run: |
           mkdir -p ../autonomous-write-evidence
