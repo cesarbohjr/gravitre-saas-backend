@@ -22,6 +22,7 @@ from app.marketplace.seed_service import (
 def _parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Seed marketplace_assets starter catalog (MKT-4).")
     parser.add_argument("--dry-run", action="store_true", help="Validate catalog only; no DB writes.")
+    parser.add_argument("--agency-review", action="store_true", help="Print pinned Agency Agents staging review; read-only, no publication.")
     parser.add_argument(
         "--backfill-legacy",
         action="store_true",
@@ -33,6 +34,16 @@ def _parse_args() -> argparse.Namespace:
 
 def main() -> int:
     args = _parse_args()
+    if args.agency_review:
+        if args.backfill_legacy:
+            parser_error = "--agency-review cannot backfill or publish catalog records"
+            print(parser_error, file=sys.stderr)
+            return 2
+        from app.marketplace.agency_agents_release_report import build_marketplace_staging_plan
+        summary = build_marketplace_staging_plan()
+        print(json.dumps(summary, indent=2))
+        return 0
+
     settings = get_settings()
 
     if args.dry_run:
