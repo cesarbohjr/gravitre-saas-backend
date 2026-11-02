@@ -154,6 +154,53 @@ def claim_write_invoke(
     )
 
 
+def claim_approved_autonomous_write(
+    client: Any, *, org_id: str, run_id: str | None,
+    idempotency_key: str, invoke_action: str,
+    logical_action_id_value: str | None,
+    lease_seconds: int = 300,
+) -> WriteClaimResult:
+    """Atomic workflow-approval check and write claim in PostgreSQL.
+
+    Never fall back to the non-atomic legacy claim when the migration is absent.
+    The database serializes approval revocations with this reservation.
+    """
+    if not run_id:
+        return WriteClaimResult(outcome="blocked", reason="missing_run_id")
+    try:
+        res = client.rpc("claim_approved_autonomous_write", {
+            "p_org_id": org_id,
+            "p_run_id": run_id,
+            "p_key": idempotency_key,
+            "p_invoke_action": invoke_action,
+            "p_logical_action_id": logical_action_id_value,
+            "p_lease_seconds": lease_seconds,
+        }).execute()
+    except Exception:
+        logger.exception("autonomous_atomic_claim_failed org_id=%s", org_id)
+        return WriteClaimResult(outcome="error", reason="atomic_claim_unavailable")
+    body = res.data if isinstance(res.data, dict) else {}
+    outcome = body.get("outcome")
+    if outcome == "claimed":
+        token = str(body.get("claim_token") or "") or None
+        if not token:
+            return WriteClaimResult(outcome="error", reason="missing_claim_token")
+        return WriteClaimResult(
+            outcome="claimed", claim_token=token, status="in_progress",
+            claim_generation=int(body["claim_generation"]) if body.get("claim_generation") is not None else None,
+        )
+    if outcome == "replay":
+        replay = _row_to_result(body.get("result"))
+        if replay and replay.success:
+            return WriteClaimResult(outcome="replay", status="completed", replay=replay)
+        return WriteClaimResult(outcome="blocked", reason="invalid_replay_payload")
+    return WriteClaimResult(
+        outcome="blocked" if outcome == "blocked" else "error",
+        status=str(body.get("status") or ""),
+        reason=str(body.get("reason") or outcome or "unknown"),
+    )
+
+
 def finalize_write_invoke(
     client: Any,
     *,
