@@ -104,6 +104,36 @@ class ReactPlanRuntime:
         self.dispatched_steps.setdefault((iteration, tool_name), []).append(step_id)
         return step_id
 
+    def _admit_autonomous_step(
+        self, step_id: str, tool_name: str, *, is_write: bool,
+        tenant_id: str | None, actor_id: str | None,
+        fresh_permission_granted: bool, fresh_approval_granted: bool,
+    ) -> None:
+        if self.autonomous_task is None:
+            return
+        from app.services.autonomous_task_contract import (
+            AutonomousTask, InvalidAutonomousTask, authorize_step_admission,
+        )
+        if not isinstance(self.autonomous_task, AutonomousTask):
+            raise RuntimeError("react_dispatch_blocked:invalid_autonomous_task")
+        completed = frozenset(
+            step.step_id for step in self.plan.steps if step.status == "completed"
+        )
+        try:
+            admitted = authorize_step_admission(
+                self.autonomous_task,
+                step_id=step_id,
+                tenant_id=tenant_id or "",
+                actor_id=actor_id or "",
+                completed_step_ids=completed,
+                fresh_permission_granted=fresh_permission_granted,
+                fresh_approval_granted=fresh_approval_granted,
+            )
+            if admitted.capability != tool_name or (admitted.action_type == "write") != is_write:
+                raise InvalidAutonomousTask("action_mismatch")
+        except InvalidAutonomousTask as exc:
+            raise RuntimeError(f"react_dispatch_blocked:{exc}") from exc
+
     def record_tool_observation(
         self,
         *,
