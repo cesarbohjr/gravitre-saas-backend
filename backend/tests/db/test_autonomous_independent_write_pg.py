@@ -7,6 +7,7 @@ provider adapters or the production ReAct call stack.
 from __future__ import annotations
 
 import json
+import multiprocessing as mp
 import os
 import subprocess
 import sys
@@ -36,6 +37,20 @@ def _post(receiver, token):
     )
     with urllib.request.urlopen(request, timeout=7) as response:
         assert response.status == 204
+
+
+def _post_child(origin, token):
+    payload = json.dumps({"cap": token}).encode()
+    request = urllib.request.Request(
+        origin + "/write", data=payload,
+        headers={"Content-Type": "application/json"}, method="POST",
+    )
+    with urllib.request.urlopen(request, timeout=15) as response:
+        assert response.status == 204
+
+
+def _wait_child(stop):
+    stop.wait(20)
 
 
 def _expired(pg, key):
@@ -94,22 +109,25 @@ def test_independent_receiver_and_pg_ledger_matched_cases(tmp_path):
                     assert _claim(pg, ORG_A, key)["outcome"] == "replay"
                     _evidence(case, receiver, 1, outcome="replayed_without_provider_call")
                 elif case == "crash_before_effect":
+                    context = mp.get_context("spawn")
+                    hold = context.Event()
+                    child = context.Process(target=_wait_child, args=(hold,))
+                    child.start()
+                    assert child.pid is not None and child.is_alive()
+                    child.kill()
+                    child.join(timeout=5)
+                    assert child.exitcode != 0
                     _expired(pg, key)
                     assert _claim(pg, ORG_A, key)["status"] == "uncertain"
-                    _evidence(case, receiver, 0, outcome="uncertain_blocks_replay")
+                    _evidence(case, receiver, 0, outcome="killed_before_effect_uncertain")
                 else:
                     # Receiver commits a real HTTP write before acknowledgement.
                     # A client timeout or worker death must never trigger retry.
-                    import threading
                     receiver.hold = True
-                    errors = []
-                    def send():
-                        try:
-                            _post(receiver, token)
-                        except Exception as exc:
-                            errors.append(str(exc))
-                    worker = threading.Thread(target=send, daemon=True)
+                    context = mp.get_context("spawn")
+                    worker = context.Process(target=_post_child, args=(receiver.origin, token))
                     worker.start()
+                    assert worker.pid is not None and worker.pid != receiver.pid
                     deadline = time.monotonic() + 5
                     while receiver.writes == 0 and time.monotonic() < deadline:
                         time.sleep(.04)
@@ -117,10 +135,19 @@ def test_independent_receiver_and_pg_ledger_matched_cases(tmp_path):
                     _expired(pg, key)
                     blocked = _claim(pg, ORG_A, key)
                     assert blocked["outcome"] == "blocked" and blocked["status"] == "uncertain"
-                    receiver.hold = False
-                    worker.join(timeout=5)
-                    assert not worker.is_alive() and not errors
-                    _evidence(case, receiver, 1, outcome="uncertain_blocks_replay")
+                    if case == "crash_after_effect":
+                        worker.kill()
+                        worker.join(timeout=5)
+                        assert worker.exitcode != 0
+                    else:
+                        receiver.hold = False
+                        worker.join(timeout=5)
+                        assert worker.exitcode == 0
+                    _evidence(
+                        case, receiver, 1,
+                        outcome="killed_after_effect_uncertain" if case == "crash_after_effect"
+                        else "lost_ack_uncertain",
+                    )
             finally:
                 receiver.hold = False
                 receiver.close()
