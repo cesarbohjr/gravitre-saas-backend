@@ -93,6 +93,16 @@ jobs:
               node=node.find("testsuite") if node.tag!="testsuite" else node
               if node is not None:
                   counts={key:int(node.attrib.get(key,0)) for key in ("tests","failures","errors","skipped")}
+          redis_xml=root/"redis-recovery-junit.xml"
+          redis_counts={}
+          if redis_xml.exists():
+              redis_root=ET.parse(redis_xml).getroot()
+              redis_suite=redis_root.find("testsuite") if redis_root.tag!="testsuite" else redis_root
+              if redis_suite is not None:
+                  redis_counts={key:int(redis_suite.attrib.get(key,0))
+                                for key in ("tests","failures","errors","skipped")}
+          redis_ok=redis_counts.get("tests",0)>=8 and not any(
+              redis_counts.get(k,0) for k in ("failures","errors","skipped"))
           audit_ok={c.get("case") for c in cases}==required and all(
               c.get("passed") and c.get("unauthorized_or_duplicate_writes")==0
               and c.get("receiver_pid") for c in cases)
@@ -101,10 +111,10 @@ jobs:
               "pr_head_sha":os.getenv("PR_HEAD_SHA") or os.getenv("WORKFLOW_SHA"),
               "workflow_sha":os.getenv("WORKFLOW_SHA"),
               "scope":"postgres_rpc_and_independent_process_receiver",
-              "counts":counts,"cases":cases,
+              "counts":counts,"redis_counts":redis_counts,"redis_queue_certified":bool(redis_ok),"cases":cases,
               "independent_receiver_audit_passed":bool(audit_ok),
               "all_tests_passed":bool(tests_ok),
-              "passed":bool(audit_ok and tests_ok),
+              "passed":bool(audit_ok and tests_ok and redis_ok),
               "limitations":[
                   "not a live provider end-to-end test",
                   "denial cases test the dispatch boundary without executing the real ReAct caller",
