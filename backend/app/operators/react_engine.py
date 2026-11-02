@@ -1100,7 +1100,21 @@ class ReActEngine:
         )
         if plan_runtime is not None:
             try:
-                step_id = plan_runtime.next_step_id(tool_name, iteration, is_write=requires_write)
+                step_id = plan_runtime.next_step_id(
+                    tool_name, iteration, is_write=requires_write,
+                    tenant_id=str(ctx.org_id or ""),
+                    actor_id=str(ctx.actor_id or ""),
+                    # Only an explicit server-supplied allowlist establishes
+                    # tool admission. Never treat model args as authorization.
+                    fresh_permission_granted=(
+                        allowed_tool_names is not None
+                        and tool_name in allowed_tool_names
+                    ),
+                    # Existing canonical write gates run downstream, but they
+                    # cannot retroactively authorize an autonomous task step.
+                    # Until a verified approval proof is plumbed here, deny it.
+                    fresh_approval_granted=False,
+                )
             except RuntimeError as exc:
                 if not str(exc).startswith("react_dispatch_blocked:"):
                     raise
