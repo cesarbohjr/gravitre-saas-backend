@@ -32,7 +32,10 @@ export type CTAOrbitProps = {
 export const CTA = () => {
   return (
     <Container className="border-divide relative flex min-h-60 flex-col items-center justify-center overflow-hidden md:border-x px-4 py-4 md:min-h-120">
-      <CTAOrbit className="absolute inset-x-0 -top-120 mask-b-from-30%" />
+      {/* Phones get the whole orbit above the heading (Nodus stacks on small
+          screens); from md up it sits behind the heading as before. */}
+      <CTAOrbit size={340} className="relative mt-4 mb-6 md:hidden" />
+      <CTAOrbit className="absolute inset-x-0 -top-120 hidden mask-b-from-30% md:flex" />
       <SectionHeading className="relative z-10 text-center lg:text-6xl">
         Connect your stack. <br /> Put Gravitre to work.
       </SectionHeading>
@@ -124,7 +127,8 @@ export const CTAOrbit: React.FC<CTAOrbitProps> = ({
           {
             width: diameter,
             height: diameter,
-            "--duration": `${duration}s`,
+            // Inline: a var() inside the @theme token resolves on :root, not here.
+            animationDuration: `${duration}s`,
           } as CSSProperties
         }
       >
@@ -146,7 +150,7 @@ export const CTAOrbit: React.FC<CTAOrbitProps> = ({
                       "shadow-aceternity flex size-14 items-center justify-center rounded-md bg-card",
                       reverse ? "animate-orbit" : "animate-counter-orbit",
                     )}
-                    style={{ "--duration": `${duration}s` } as CSSProperties}
+                    style={{ animationDuration: `${duration}s` }}
                   >
                     <Logo className="size-8 shrink-0" />
                   </div>
@@ -162,7 +166,7 @@ export const CTAOrbit: React.FC<CTAOrbitProps> = ({
   return (
     <div
       className={cn(
-        "relative mx-auto flex items-center justify-center",
+        "mk-ambient relative mx-auto flex items-center justify-center",
         className,
       )}
       style={{ width: size, height: size }}

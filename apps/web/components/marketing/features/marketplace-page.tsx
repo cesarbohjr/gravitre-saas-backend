@@ -1,4 +1,5 @@
 "use client"
+import { MarketplaceScene } from "@/components/marketing/nodus/scenes/scenes"
 
 import { useState, type ComponentType } from "react"
 import Link from "next/link"
@@ -20,7 +21,6 @@ import {
 import { MARKETING_COPY } from "@/lib/marketing-copy"
 import { marketArtFor, type MarketArtName } from "@/lib/marketplace-category-art"
 import { DivideX } from "@/components/marketing/nodus/divide"
-import { MarketingScene } from "@/components/marketing/nodus/scene"
 import {
   MarketingPageEndCta,
   MarketingPageHero,
@@ -294,13 +294,9 @@ export function MarketplacePage() {
       <DivideX />
 
       <MarketingRails>
-          <MarketingScene
-            name="marketing/marketplace"
-            alt="A shelf of agent and workflow templates, one being installed"
-            width={400}
-            height={300}
-            className="mx-auto mb-10 max-w-xl"
-          />
+          <div className="mx-auto mb-10 max-w-xl" role="img" aria-label="Marketplace listings passing a readiness check before install">
+            <MarketplaceScene />
+          </div>
           <div className="grid gap-4 sm:grid-cols-3">
             {WHY_STATS.map((stat, i) => (
               <GravitreReveal

@@ -2,7 +2,8 @@
 
 import { useEffect, useRef, useState } from "react"
 import Link from "next/link"
-import { useInView, useReducedMotion } from "framer-motion"
+import { useInView } from "framer-motion"
+import { useReducedMotion } from "@/lib/use-reduced-motion"
 import {
   NucleoChat,
   NucleoError,
@@ -28,7 +29,7 @@ import {
   type OrchestrationPhase,
 } from "./storyboard"
 import { NodusDotField } from "@/components/marketing/nodus/dot-field"
-import { TesseractCore } from "./tesseract-core"
+import { OrchestrationCoreScene as TesseractCore } from "@/components/marketing/nodus/scenes/scenes"
 
 const ROLE_ICONS = {
   research: NucleoSearch,
@@ -223,7 +224,7 @@ function AgentOrchestrationFieldImpl({ className }: { className?: string }) {
           >
             <NodusDotField className="-z-10" />
             <p className="text-sm font-medium">{ILLUSTRATIVE_REQUEST}</p>
-            <TesseractCore settled={settled} className="mx-auto w-52" />
+            <TesseractCore settled={settled} className="mx-auto w-full max-w-[320px]" />
             {showPlan ? (
               <ul className="space-y-1 text-xs text-[color:var(--g-text-secondary)]">
                 {PLAN_CHIPS.map((c) => (

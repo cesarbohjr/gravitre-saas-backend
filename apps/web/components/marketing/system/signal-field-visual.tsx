@@ -4,7 +4,8 @@
  * Soft signal field — Contact page ambient (calm, not a second hero).
  */
 
-import { motion, useReducedMotion } from "framer-motion"
+import { motion } from "framer-motion"
+import { useReducedMotion } from "@/lib/use-reduced-motion"
 import { cn } from "@/lib/utils"
 
 export function SignalFieldVisual({ className }: { className?: string }) {

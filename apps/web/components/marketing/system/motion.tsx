@@ -7,7 +7,8 @@
  */
 
 import { type ReactNode } from "react"
-import { motion, useReducedMotion, type HTMLMotionProps } from "framer-motion"
+import { motion, type HTMLMotionProps } from "framer-motion"
+import { useReducedMotion } from "@/lib/use-reduced-motion"
 import { cn } from "@/lib/utils"
 
 type MotionKind = "reveal" | "flow" | "trace" | "pulse" | "resolve" | "focus"

@@ -5,10 +5,12 @@
  * No TRAINED badges, prices, or entitlement claims.
  */
 
-import { useEffect, useState } from "react"
-import { motion, useReducedMotion } from "framer-motion"
+import { useEffect, useId, useState } from "react"
+import { motion } from "framer-motion"
+import { useReducedMotion } from "@/lib/use-reduced-motion"
 import { cn } from "@/lib/utils"
 import { NodusDotField } from "@/components/marketing/nodus/dot-field"
+import { NodusBeam } from "@/components/marketing/nodus/scenes/kit"
 
 export type TraceStage = {
   id: string
@@ -44,6 +46,7 @@ export function StageTraceVisual({
     const id = window.setInterval(() => setPayloadIndex((i) => (i + 1) % payloads.length), LOOP * 1000)
     return () => window.clearInterval(id)
   }, [reduce, payloads])
+  const gid = `trace-${useId().replace(/:/g, "")}`
   const count = stages.length
   const width = 880
   const y = 120
@@ -52,59 +55,34 @@ export function StageTraceVisual({
   const xs = stages.map((_, i) => (count === 1 ? width / 2 : pad + (span * i) / (count - 1)))
 
   return (
-    <div className={cn("relative mx-auto w-full max-w-4xl", className)}>
+    <div className={cn("@container relative mx-auto w-full max-w-4xl", className)}>
       <NodusDotField className="-inset-x-8 -inset-y-6" />
+      <VerticalTrace stages={stages} ariaLabel={ariaLabel} />
       <svg
         viewBox={`0 0 ${width} 220`}
-        className="relative h-auto w-full"
+        className="relative hidden h-auto w-full @min-[620px]:block"
         role="img"
         aria-label={ariaLabel}
       >
-        {/* Rail: always visible, so the stages read as connected even at rest. */}
-        <line
-          x1={xs[0]}
-          y1={y}
-          x2={xs[count - 1]}
-          y2={y}
-          stroke="var(--color-line, #e4e4df)"
-          strokeWidth={2}
-          strokeLinecap="round"
-        />
-
-        {/* Signal: a green trail runs stage to stage on a loop, lighting each node as it passes. */}
-        {reduce ? (
-          <line
-            x1={xs[0]}
-            y1={y}
-            x2={xs[count - 1]}
-            y2={y}
-            stroke="var(--color-brand, #0b8a5c)"
-            strokeWidth={2}
-            strokeLinecap="round"
-          />
-        ) : (
-          <>
-            <motion.line
-              x1={xs[0]}
-              y1={y}
-              y2={y}
-              stroke="var(--color-brand, #0b8a5c)"
-              strokeWidth={2}
-              strokeLinecap="round"
-              initial={{ x2: xs[0], opacity: 0 }}
-              animate={{ x2: [xs[0], xs[count - 1], xs[count - 1]], opacity: [1, 1, 0] }}
-              transition={{ duration: LOOP, times: [0, TRAVEL, 1], ease: "easeInOut", repeat: Infinity }}
-            />
-            <motion.circle
-              cy={y}
-              r={4}
-              fill="var(--color-brand, #0b8a5c)"
-              initial={{ cx: xs[0], opacity: 0 }}
-              animate={{ cx: [xs[0], xs[count - 1], xs[count - 1]], opacity: [1, 1, 0] }}
-              transition={{ duration: LOOP, times: [0, TRAVEL, 1], ease: "easeInOut", repeat: Infinity }}
-            />
-          </>
-        )}
+        {/* Nodus rail: a hairline with the Nodus travelling pulse (same as the
+            home skeleton connectors). Ambient, so it keeps running under
+            Reduce Motion by Cesar's call (2026-11-02). */}
+        <line x1={xs[0]} y1={y} x2={xs[count - 1]} y2={y} stroke="var(--color-line, #e4e4df)" strokeLinecap="round" />
+        <line x1={xs[0]} y1={y} x2={xs[count - 1]} y2={y} stroke={`url(#${gid})`} strokeLinecap="round" />
+        <defs>
+          <motion.linearGradient
+            id={gid}
+            gradientUnits="userSpaceOnUse"
+            initial={{ x1: xs[0] - 160, x2: xs[0], y1: y, y2: y }}
+            animate={{ x1: xs[count - 1], x2: xs[count - 1] + 160, y1: y, y2: y }}
+            transition={{ duration: LOOP * TRAVEL, repeat: Infinity, repeatType: "loop", ease: "easeInOut", repeatDelay: LOOP * (1 - TRAVEL) }}
+          >
+            <stop stopColor="var(--color-line, #e4e4df)" />
+            <stop offset="0.33" stopColor="var(--brand)" />
+            <stop offset="0.66" stopColor="var(--brand)" />
+            <stop offset="1" stopColor="var(--color-line, #e4e4df)" />
+          </motion.linearGradient>
+        </defs>
 
         {!reduce && payloads?.length ? (
           <motion.g
@@ -136,77 +114,37 @@ export function StageTraceVisual({
         ) : null}
 
         {stages.map((stage, index) => {
-          const at = count === 1 ? 0 : (TRAVEL * index) / (count - 1)
           const last = index === count - 1
           return (
             <g key={stage.id}>
-              {reduce ? null : (
-                <motion.circle
-                  cx={xs[index]}
-                  cy={y}
-                  fill="none"
-                  stroke="var(--color-brand, #0b8a5c)"
-                  strokeWidth={1.5}
-                  initial={{ r: 20, opacity: 0 }}
-                  animate={{ r: [20, 20, 22, 30, 30], opacity: [0, 0, 0.55, 0, 0] }}
-                  transition={{
-                    duration: LOOP,
-                    times: [0, at, Math.min(at + 0.04, 1), Math.min(at + 0.16, 1), 1],
-                    repeat: Infinity,
-                  }}
-                />
-              )}
               <motion.rect
-                x={xs[index] - 17}
-                y={y - 17}
-                width={34}
-                height={34}
-                rx={9}
-                fill="var(--card)"
-                stroke={last ? "var(--color-brand, #0b8a5c)" : "var(--color-line, #e4e4df)"}
-                strokeWidth="1.25"
+                x={xs[index] - 20}
+                y={y - 20}
+                width={40}
+                height={40}
+                rx={6}
+                fill={last ? "color-mix(in srgb, var(--brand) 6%, var(--card))" : "var(--card)"}
+                stroke={last ? "color-mix(in srgb, var(--brand) 25%, transparent)" : "var(--border)"}
+                strokeWidth="1"
                 style={{
                   filter: "drop-shadow(0 1px 1px rgba(0,0,0,0.05)) drop-shadow(0 4px 10px rgba(0,0,0,0.06))",
                   transformBox: "fill-box",
                   transformOrigin: "center",
                 }}
                 initial={reduce ? false : { scale: 0.7, opacity: 0 }}
-                whileInView={reduce ? undefined : { scale: 1, opacity: 1 }}
+                whileInView={{ scale: 1, opacity: 1 }}
                 viewport={{ once: true }}
                 transition={{ delay: 0.12 + index * 0.1, duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
               />
-              {reduce || last ? (
-                <circle
-                  cx={xs[index]}
-                  cy={y}
-                  r={5}
-                  fill={last ? "var(--color-brand, #0b8a5c)" : "var(--color-charcoal-700, #3f4b45)"}
-                />
-              ) : (
-                <motion.circle
-                  cx={xs[index]}
-                  cy={y}
-                  r={5}
-                  initial={{ fill: "var(--color-charcoal-700, #3f4b45)" }}
-                  animate={{
-                    fill: [
-                      "var(--color-charcoal-700, #3f4b45)",
-                      "var(--color-charcoal-700, #3f4b45)",
-                      "var(--color-brand, #0b8a5c)",
-                      "var(--color-brand, #0b8a5c)",
-                      "var(--color-charcoal-700, #3f4b45)",
-                    ],
-                  }}
-                  transition={{
-                    duration: LOOP,
-                    times: [0, at, Math.min(at + 0.03, 1), 0.92, 1],
-                    repeat: Infinity,
-                  }}
-                />
-              )}
+              <circle
+                cx={xs[index]}
+                cy={y}
+                r={4}
+                fill={last ? "var(--color-brand, #0b8a5c)" : "var(--color-gray-400, #cbcbc3)"}
+              />
               <text
                 x={xs[index]}
-                y={y + 42}
+                y={y + 46}
                 textAnchor="middle"
                 className="fill-[color:var(--g-text-primary,#1f2421)]"
                 style={{ fontSize: 12.5, fontWeight: 500 }}
@@ -215,7 +153,7 @@ export function StageTraceVisual({
               </text>
               <text
                 x={xs[index]}
-                y={y + 58}
+                y={y + 62}
                 textAnchor="middle"
                 className="fill-gray-500 font-mono"
                 style={{ fontSize: 10 }}
@@ -229,6 +167,55 @@ export function StageTraceVisual({
       {caption ? (
         <p className="mt-2 text-center text-sm text-gray-600">{caption}</p>
       ) : null}
+    </div>
+  )
+}
+
+/**
+ * Phone layout: the same trace stacked top to bottom, so the 40px Nodus tiles
+ * and labels stay full size instead of shrinking with the 880px-wide SVG.
+ */
+const ROW = 64
+const TILE = 40
+
+function VerticalTrace({ stages, ariaLabel }: { stages: readonly TraceStage[]; ariaLabel: string }) {
+  const count = stages.length
+  const rail = ROW * (count - 1)
+  return (
+    <div role="img" aria-label={ariaLabel} className="relative mx-auto w-fit py-2 @min-[620px]:hidden">
+      {count > 1 ? (
+        <NodusBeam
+          d={`M0.5,0.5 L0.5,${rail + 0.5}`}
+          width={2}
+          height={rail + 1}
+          axis="y"
+          tone="brand"
+          duration={LOOP * TRAVEL}
+          style={{ left: TILE / 2 - 0.5, top: 8 + TILE / 2 }}
+        />
+      ) : null}
+      <ol className="relative flex flex-col" style={{ gap: ROW - TILE }}>
+        {stages.map((stage, index) => {
+          const last = index === count - 1
+          return (
+            <li key={stage.id} className="flex items-center gap-4">
+              <span
+                className={cn(
+                  "flex shrink-0 items-center justify-center rounded-md border shadow-md",
+                  last ? "border-brand/25 bg-[color:color-mix(in_srgb,var(--brand)_6%,var(--card))]" : "border-border bg-card",
+                )}
+                style={{ width: TILE, height: TILE }}
+              >
+                <span className={cn("size-2 rounded-full", last ? "bg-brand" : "bg-gray-400")} />
+              </span>
+              <span className="flex min-w-24 items-baseline gap-3">
+                <span className="text-charcoal-700 text-sm font-medium">{stage.label}</span>
+                <span className="font-mono text-xs text-gray-500">{String(index + 1).padStart(2, "0")}</span>
+              </span>
+            </li>
+          )
+        })}
+      </ol>
     </div>
   )
 }

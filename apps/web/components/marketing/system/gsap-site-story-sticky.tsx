@@ -9,7 +9,7 @@
 import { useEffect, useRef, useState } from "react"
 import gsap from "gsap"
 import { ScrollTrigger } from "gsap/ScrollTrigger"
-import { useReducedMotion } from "framer-motion"
+import { useReducedMotion } from "@/lib/use-reduced-motion"
 import { GravitreSection, GravitreSectionHeader } from "@/components/marketing/system/section"
 import { cn } from "@/lib/utils"
 

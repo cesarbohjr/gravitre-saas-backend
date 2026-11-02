@@ -14,7 +14,7 @@ import {
 } from "@/components/marketing/nodus-icons/card-icons";
 import { Scale } from "./scale";
 import { motion } from "framer-motion";
-import { UseCasesNetwork } from "./use-cases-network";
+import { UseCasesScene } from "./scenes/scenes";
 
 export const UseCases = () => {
   const useCases = [
@@ -69,7 +69,9 @@ export const UseCases = () => {
           departments, with governance and audit trails on every action.
         </SubHeading>
 
-        <UseCasesNetwork className="mt-12 w-full" />
+        <div className="mt-12 w-full" role="img" aria-label="Engineering, Sales, Marketing, Support, Finance and Operations wired to one Gravitre hub">
+          <UseCasesScene />
+        </div>
 
         <div className="mt-12 grid grid-cols-1 gap-10 md:grid-cols-2 lg:grid-cols-3">
           {useCases.map((useCase, index) => (

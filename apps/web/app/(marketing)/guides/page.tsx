@@ -1,4 +1,5 @@
 "use client"
+import { GuideScene, type GuideSceneKind } from "@/components/marketing/nodus/scenes/scenes"
 
 import Link from "next/link"
 import {
@@ -14,7 +15,6 @@ import {
 import { useState } from "react"
 import { guideHref } from "@/lib/marketing-guide-links"
 import { DivideX } from "@/components/marketing/nodus/divide"
-import { MarketingScene } from "@/components/marketing/nodus/scene"
 import {
   MarketingPageEndCta,
   MarketingPageHero,
@@ -31,11 +31,11 @@ import {
 } from "@/components/marketing/system"
 
 /** App illustrations (no people) used as featured-guide thumbnails. */
-const GUIDE_ART: Record<string, string> = {
-  "Install the Chrome browser extension": "market-site-health",
-  "Create Your First AI Agent": "market-leads",
-  "Understanding Agent Capabilities": "market-campaigns",
-  "Building Multi-Step Workflows": "market-pipeline",
+const GUIDE_ART: Record<string, GuideSceneKind> = {
+  "Install the Chrome browser extension": "extension",
+  "Create Your First AI Agent": "agent",
+  "Understanding Agent Capabilities": "capabilities",
+  "Building Multi-Step Workflows": "workflows",
 }
 
 const categories = [
@@ -283,13 +283,9 @@ export default function GuidesPage() {
                 href={guideHref(guide.title)}
                 className="group relative block overflow-hidden rounded-2xl border border-border bg-card transition-all hover:border-primary/30 hover:shadow-lg"
               >
-                <MarketingScene
-                  name={GUIDE_ART[guide.title] ?? "spot-reports"}
-                  width={300}
-                  height={190}
-                  aspect="aspect-video"
-                  className="rounded-none border-0 border-b"
-                />
+                <div className="border-b border-border">
+                  <GuideScene kind={GUIDE_ART[guide.title] ?? "reports"} />
+                </div>
                 <div className="p-6">
                   <div className="flex items-center gap-3 mb-3">
                     <span
