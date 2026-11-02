@@ -74,7 +74,14 @@ export function NodusBeam({
           gradientUnits="userSpaceOnUse"
           initial={{ ...across, [along[0]]: from[0], [along[1]]: from[1] }}
           animate={{ ...across, [along[0]]: to[0], [along[1]]: to[1] }}
-          transition={{ duration, delay, repeat: Infinity, repeatType: "loop", ease: "easeInOut", repeatDelay: 1 }}
+          transition={{
+            duration,
+            delay,
+            repeat: Infinity,
+            repeatType: "loop",
+            ease: "easeInOut",
+            repeatDelay: 1,
+          }}
         >
           <stop stopColor="var(--color-line)" />
           <stop offset="0.33" stopColor={TONE_VAR[tone]} />
@@ -147,15 +154,7 @@ export function NodusHub({ size = 64, className, style }: { size?: number; class
 }
 
 /** Nodus IconBlock: 48px white tile, hairline border, soft shadow. */
-export function NodusTile({
-  children,
-  className,
-  style,
-}: {
-  children: ReactNode
-  className?: string
-  style?: CSSProperties
-}) {
+export function NodusTile({ children, className, style }: { children: ReactNode; className?: string; style?: CSSProperties }) {
   return (
     <div
       className={cn(
@@ -220,10 +219,7 @@ export function NodusWindow({
   style?: CSSProperties
 }) {
   return (
-    <div
-      className={cn("shadow-aceternity relative rounded-xl bg-card p-3", className)}
-      style={style}
-    >
+    <div className={cn("shadow-aceternity relative rounded-xl bg-card p-3", className)} style={style}>
       <div className="mb-3 flex items-center gap-1.5">
         <span className="size-2.5 rounded-full bg-destructive" />
         <span className="size-2.5 rounded-full bg-warning" />
@@ -281,8 +277,32 @@ export function NodusBars({ widths = [70, 45], className }: { widths?: number[];
 }
 
 /**
+ * Container width (px) under which a stage with a `mobile` layout swaps to it.
+ * Container queries, not viewport breakpoints, so a scene in a half-width
+ * tablet column stacks too. Literal classes so Tailwind can see them.
+ */
+export type NodusSwapAt = 440 | 760
+
+const SWAP: Record<NodusSwapAt, [wide: string, narrow: string]> = {
+  440: ["hidden @min-[440px]:block", "@min-[440px]:hidden"],
+  760: ["hidden @min-[760px]:block", "@min-[760px]:hidden"],
+}
+
+/** A stacked phone composition for a scene (Nodus stacks on small screens). */
+export type NodusMobileLayout = {
+  width: number
+  height: number
+  children: ReactNode
+  /** Container width where the wide layout takes over. Default 440. */
+  swapAt?: NodusSwapAt
+}
+
+/**
  * Fixed-size stage scaled to its container's width, so a scene keeps its exact
- * Nodus geometry (48px tiles, 64px hub) at any column width.
+ * Nodus geometry (48px tiles, 64px hub) at any column width. Wide scenes pass
+ * a `mobile` layout: a narrower, stacked composition shown in narrow columns
+ * so tiles and text stay full size instead of shrinking with the stage. Both
+ * are in the markup and swapped with CSS, so there is no hydration flash.
  */
 export function NodusStage({
   width,
@@ -290,19 +310,58 @@ export function NodusStage({
   children,
   className,
   dots = true,
+  mobile,
 }: {
   width: number
   height: number
   children: ReactNode
   className?: string
   dots?: boolean
+  mobile?: NodusMobileLayout
+}) {
+  if (!mobile) {
+    return (
+      <ScaledStage width={width} height={height} className={className} dots={dots}>
+        {children}
+      </ScaledStage>
+    )
+  }
+  const [wide, narrow] = SWAP[mobile.swapAt ?? 440]
+  return (
+    <div className="@container w-full">
+      <ScaledStage width={width} height={height} className={cn(wide, className)} dots={dots}>
+        {children}
+      </ScaledStage>
+      <ScaledStage width={mobile.width} height={mobile.height} className={cn(narrow, className)} dots={dots}>
+        {mobile.children}
+      </ScaledStage>
+    </div>
+  )
+}
+
+function ScaledStage({
+  width,
+  height,
+  children,
+  className,
+  dots,
+}: {
+  width: number
+  height: number
+  children: ReactNode
+  className?: string
+  dots: boolean
 }) {
   const ref = useRef<HTMLDivElement>(null)
   const [scale, setScale] = useState(1)
   useEffect(() => {
     const el = ref.current
     if (!el || typeof ResizeObserver === "undefined") return
-    const update = () => setScale(Math.min(1, el.getBoundingClientRect().width / width))
+    const update = () => {
+      const w = el.getBoundingClientRect().width
+      // Hidden (display:none) copies report 0; keep their last scale.
+      if (w > 0) setScale(Math.min(1, w / width))
+    }
     update()
     const ro = new ResizeObserver(update)
     ro.observe(el)
@@ -315,10 +374,7 @@ export function NodusStage({
       style={{ aspectRatio: `${width} / ${height}`, maxWidth: width }}
     >
       {dots ? <NodusDotField className="-z-10" /> : null}
-      <div
-        className="absolute top-0 left-1/2 origin-top"
-        style={{ width, height, transform: `translateX(-50%) scale(${scale})` }}
-      >
+      <div className="absolute top-0 left-1/2 origin-top" style={{ width, height, transform: `translateX(-50%) scale(${scale})` }}>
         {children}
       </div>
     </div>

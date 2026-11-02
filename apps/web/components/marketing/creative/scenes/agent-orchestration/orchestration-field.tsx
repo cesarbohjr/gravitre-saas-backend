@@ -224,7 +224,7 @@ function AgentOrchestrationFieldImpl({ className }: { className?: string }) {
           >
             <NodusDotField className="-z-10" />
             <p className="text-sm font-medium">{ILLUSTRATIVE_REQUEST}</p>
-            <TesseractCore settled={settled} className="mx-auto w-52" />
+            <TesseractCore settled={settled} className="mx-auto w-full max-w-[320px]" />
             {showPlan ? (
               <ul className="space-y-1 text-xs text-[color:var(--g-text-secondary)]">
                 {PLAN_CHIPS.map((c) => (

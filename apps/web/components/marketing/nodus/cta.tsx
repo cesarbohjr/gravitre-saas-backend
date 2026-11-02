@@ -32,7 +32,10 @@ export type CTAOrbitProps = {
 export const CTA = () => {
   return (
     <Container className="border-divide relative flex min-h-60 flex-col items-center justify-center overflow-hidden md:border-x px-4 py-4 md:min-h-120">
-      <CTAOrbit className="absolute inset-x-0 -top-120 mask-b-from-30%" />
+      {/* Phones get the whole orbit above the heading (Nodus stacks on small
+          screens); from md up it sits behind the heading as before. */}
+      <CTAOrbit size={340} className="relative mt-4 mb-6 md:hidden" />
+      <CTAOrbit className="absolute inset-x-0 -top-120 hidden mask-b-from-30% md:flex" />
       <SectionHeading className="relative z-10 text-center lg:text-6xl">
         Connect your stack. <br /> Put Gravitre to work.
       </SectionHeading>
