@@ -143,7 +143,7 @@ def test_flux_turn_sensitivity_applies_preset():
         def __init__(self, **kwargs):
             pass
 
-    with patch("pipecat.services.deepgram.flux.stt.DeepgramFluxSTTService", FakeFlux), patch(
+    with patch("app.services.pipecat_voice.flux_stt.InterimAwareFluxSTTService", FakeFlux), patch(
         "app.services.pipecat_voice.stt_factory.resolve_pipecat_stt_provider", return_value=STT_FLUX
     ):
         _stt, meta = build_pipecat_stt(_stt_settings("flux"), language="en", turn_sensitivity="patient")
@@ -164,7 +164,7 @@ def test_flux_eager_threshold_turns_on_eager_end_of_turn():
         def __init__(self, **kwargs):
             captured_service.update(kwargs)
 
-    with patch("pipecat.services.deepgram.flux.stt.DeepgramFluxSTTService", FakeFlux), patch(
+    with patch("app.services.pipecat_voice.flux_stt.InterimAwareFluxSTTService", FakeFlux), patch(
         "app.services.pipecat_voice.stt_factory.resolve_pipecat_stt_provider", return_value=STT_FLUX
     ):
         _stt, meta = build_pipecat_stt(_stt_settings("flux"), language="en", turn_sensitivity="patient")
@@ -183,7 +183,7 @@ def test_flux_normal_sensitivity_keeps_deployment_thresholds():
         def __init__(self, **kwargs):
             pass
 
-    with patch("pipecat.services.deepgram.flux.stt.DeepgramFluxSTTService", FakeFlux), patch(
+    with patch("app.services.pipecat_voice.flux_stt.InterimAwareFluxSTTService", FakeFlux), patch(
         "app.services.pipecat_voice.stt_factory.resolve_pipecat_stt_provider", return_value=STT_FLUX
     ):
         _stt, meta = build_pipecat_stt(_stt_settings("flux"), turn_sensitivity="normal")

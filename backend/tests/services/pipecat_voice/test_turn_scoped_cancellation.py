@@ -441,7 +441,14 @@ def test_a_stopped_turn_says_nothing_left_over() -> None:
             return [{"role": "user", "content": "how is revenue"}]
 
     intelligence = SimpleNamespace(execute_task_streaming=_stream)
-    with patch("app.operators.agent_intelligence.get_agent_intelligence", return_value=intelligence):
+    # Only cancellation/output buffering is under test. Do not send the
+    # synthetic utterance through real provider moderation or DB prompt reads.
+    with (
+        patch("app.operators.agent_intelligence.get_agent_intelligence", return_value=intelligence),
+        patch("app.services.shared_turn_preparation.build_turn_system_prompt", return_value="LOCAL TEST PROMPT"),
+        patch("app.services.shared_turn_preparation.guard_spoken_turn", new_callable=AsyncMock) as guard,
+    ):
         asyncio.run(service._run_gravitre_turn(_Context()))
+    guard.assert_awaited_once()
 
     assert spoken == [], "the buffered 'Your revenue was up' is dropped, not flushed"

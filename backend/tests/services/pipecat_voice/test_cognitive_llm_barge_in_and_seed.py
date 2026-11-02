@@ -5,6 +5,8 @@ SpeculativePrefetchProcessor against ``FakeSupabase`` (filters honoured).
 """
 from __future__ import annotations
 
+
+
 import asyncio
 import threading
 from types import SimpleNamespace
@@ -30,6 +32,9 @@ from app.services.pipecat_voice.interrupt_reporter import ElevenLabsInterruptRep
 from app.services.pipecat_voice.speculative_generation import SpeculativeGenerationCoordinator
 from app.services.pipecat_voice.speculative_prefetch import SpeculativePrefetchProcessor
 from tests.support.fake_supabase import FakeQuery, FakeSupabase
+
+# Scripted brain events; provider policy/budget data is supplied by an explicit offline fixture.
+pytestmark = pytest.mark.usefixtures("scripted_voice_external_sources")
 
 ORG = "00000000-0000-4000-8000-0000000000a1"
 USER = "00000000-0000-4000-8000-0000000000c3"

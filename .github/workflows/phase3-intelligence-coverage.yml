@@ -5,10 +5,15 @@ on:
       - 'backend/app/services/intelligence_router.py'
       - 'backend/app/services/operational_intelligence_layer.py'
       - 'backend/app/operators/**'
+      - 'backend/app/plays/**'
+      - 'backend/app/workflows/**'
       - 'backend/app/services/**'
       - 'backend/scripts/phase3_intelligence_coverage.py'
       - 'backend/scripts/phase3_intelligence_scenario_bundles.py'
       - 'backend/tests/test_phase3_intelligence_coverage.py'
+      - 'backend/tests/services/test_phase3*.py'
+      - 'backend/tests/e2e/test_intelligence*.py'
+      - 'backend/tests/e2e/test_phase3*.py'
       - 'docs/testing/PHASE3_SEVEN_LAYER_CERTIFICATION.md'
       - '.github/workflows/phase3-intelligence-coverage.yml'
   workflow_dispatch:
@@ -33,6 +38,11 @@ jobs:
           cd backend
           python -m pytest -q tests/test_phase3_intelligence_coverage.py
           python scripts/phase3_intelligence_coverage.py --output ../phase3-evidence/intelligence-coverage.json
+      - name: Shared One Brain handoff and governed execution contracts
+        working-directory: backend
+        run: |
+          python -m pytest -q -p tests.offline_network_guard -o junit_family=xunit1 --junitxml=../phase3-evidence/shared-runtime.xml tests/services/test_phase3_one_brain_contract.py tests/services/test_phase3_read_execution_integrity.py tests/services/test_phase3_measured_feedback.py tests/services/test_execution_intelligence_context.py tests/test_msp_delegation_policy.py tests/test_msp_delegation_preflight.py tests/services/test_agent_tool_permissions.py tests/services/pipecat_voice/test_phase3_provider_commit_gate.py tests/services/test_outcome_ownership_learning_contamination.py tests/services/test_react_write_gate_catalog_authority.py tests/services/test_write_invoke_idempotency.py tests/services/test_compensation_service.py tests/e2e/test_phase3_required_play_routing.py tests/e2e/test_intelligence_evidence_play_handoff.py tests/e2e/test_intelligence_recommendation_full_lifecycle.py tests/e2e/test_intelligence_tenant_recovery_regression.py
+          python scripts/phase3_intelligence_coverage.py --junit ../phase3-evidence/shared-runtime.xml --require-offline --output ../phase3-evidence/shared-runtime-coverage.json
       - name: Run three offline business-domain contract bundles
         run: |
           cd backend

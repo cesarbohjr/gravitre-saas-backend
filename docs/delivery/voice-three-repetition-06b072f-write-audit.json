@@ -1,0 +1,240 @@
+{
+  "source_sha": "06b072f57b547b9ac8b1b4cc51117b9789740d17",
+  "run_id": 41155311334,
+  "artifact_id": 13025134525,
+  "artifact_zip_sha256": "284f6a6836ddb90f6574bb17fe218ed4e92d194602b2094be7363a3e91d669ff",
+  "project_id": "aadnwmjzrmbvadszroqt",
+  "read_at_utc": "2026-10-31T02:05:26.336Z",
+  "native_conversation_audit": [
+    {
+      "id": "ed50f486-91ef-43e1-b281-e6a9577e8548",
+      "created_at": "2026-10-31 01:37:23.806633+00",
+      "pending_status": null,
+      "jobs": 0,
+      "creation_audits": 0,
+      "job_ids": [],
+      "creation_audit_ids": []
+    },
+    {
+      "id": "a251751d-112a-4586-80d8-0586a577782a",
+      "created_at": "2026-10-31 01:38:31.7667+00",
+      "pending_status": "executed",
+      "jobs": 1,
+      "creation_audits": 1,
+      "job_ids": [
+        "1bd99af4-9f1b-44ad-93c5-f80bcccf6e6a"
+      ],
+      "creation_audit_ids": [
+        "d112d49f-a02f-4beb-8789-d26ce15c49d5"
+      ]
+    },
+    {
+      "id": "5f3d4f5c-e42a-46db-8f2e-75b0cfd188fe",
+      "created_at": "2026-10-31 01:39:52.698027+00",
+      "pending_status": null,
+      "jobs": 0,
+      "creation_audits": 0,
+      "job_ids": [],
+      "creation_audit_ids": []
+    },
+    {
+      "id": "70d6ce1f-825a-42d7-9a6d-afdf542a894c",
+      "created_at": "2026-10-31 01:40:57.592269+00",
+      "pending_status": "executed",
+      "jobs": 1,
+      "creation_audits": 1,
+      "job_ids": [
+        "3e72cef9-09b3-4e17-a08c-4a02b8d4c846"
+      ],
+      "creation_audit_ids": [
+        "89bb050a-0f88-47d6-a236-8565f9c76a72"
+      ]
+    },
+    {
+      "id": "44ac09d2-ffbf-4d5a-a98a-eeba1e3f121e",
+      "created_at": "2026-10-31 01:47:26.228606+00",
+      "pending_status": null,
+      "jobs": 0,
+      "creation_audits": 0,
+      "job_ids": [],
+      "creation_audit_ids": []
+    },
+    {
+      "id": "1b680b38-db1a-41b6-bfc8-b6b2478608e1",
+      "created_at": "2026-10-31 01:48:35.550522+00",
+      "pending_status": "executed",
+      "jobs": 1,
+      "creation_audits": 1,
+      "job_ids": [
+        "a5d360ba-5502-4060-8c4c-6b0e3b51fe86"
+      ],
+      "creation_audit_ids": [
+        "56a5d593-c750-4cc8-856b-cf97f9b6443f"
+      ]
+    },
+    {
+      "id": "b56f4203-b566-4bbb-83a3-d18f74fe4af2",
+      "created_at": "2026-10-31 01:49:56.15333+00",
+      "pending_status": null,
+      "jobs": 0,
+      "creation_audits": 0,
+      "job_ids": [],
+      "creation_audit_ids": []
+    },
+    {
+      "id": "a1725da5-2fc3-49d8-bc0b-e7c024cc0577",
+      "created_at": "2026-10-31 01:51:03.405064+00",
+      "pending_status": "executed",
+      "jobs": 1,
+      "creation_audits": 1,
+      "job_ids": [
+        "d72d2e4d-89e3-41c5-a5dd-392c83f4f39a"
+      ],
+      "creation_audit_ids": [
+        "9a83f712-dc9c-405a-8260-77d6c55db4d3"
+      ]
+    },
+    {
+      "id": "b0bfb089-658d-4365-bf2e-4cd9744cfc88",
+      "created_at": "2026-10-31 01:57:22.869744+00",
+      "pending_status": null,
+      "jobs": 0,
+      "creation_audits": 0,
+      "job_ids": [],
+      "creation_audit_ids": []
+    },
+    {
+      "id": "01a8505d-a3eb-42db-88ca-8cb93f9f77cb",
+      "created_at": "2026-10-31 01:58:31.970685+00",
+      "pending_status": "executed",
+      "jobs": 1,
+      "creation_audits": 1,
+      "job_ids": [
+        "c5045040-46c6-4eed-8eca-8c749db31e20"
+      ],
+      "creation_audit_ids": [
+        "d882b2e9-335f-4fa8-8dc5-8ab7c447e022"
+      ]
+    },
+    {
+      "id": "282f3a98-2fca-4ea8-b415-e74dfb451612",
+      "created_at": "2026-10-31 01:59:52.186599+00",
+      "pending_status": null,
+      "jobs": 0,
+      "creation_audits": 0,
+      "job_ids": [],
+      "creation_audit_ids": []
+    },
+    {
+      "id": "cae65874-2828-4a79-9305-d9417265f2af",
+      "created_at": "2026-10-31 02:00:57.448732+00",
+      "pending_status": "executed",
+      "jobs": 1,
+      "creation_audits": 1,
+      "job_ids": [
+        "f71d4f9a-9dbd-4ca1-a399-c94bfbd88c83"
+      ],
+      "creation_audit_ids": [
+        "a410b3c3-a5d5-4489-b288-bdd201eb4d4f"
+      ]
+    }
+  ],
+  "stop_probe_audit": [
+    {
+      "id": "2137345e-2cc2-419d-b509-4a095427be5b",
+      "native_probe_rows": 0
+    },
+    {
+      "id": "2aa807fc-bf82-4204-8d55-3d343ad303a7",
+      "native_probe_rows": 0
+    },
+    {
+      "id": "334993af-da10-4c7b-816d-d20dc5b7ccaf",
+      "native_probe_rows": 0
+    },
+    {
+      "id": "48c74f63-5f11-4afa-a032-86c7ddd97ca8",
+      "native_probe_rows": 0
+    },
+    {
+      "id": "701acb4b-a96c-424f-89af-f2b879fdeb7a",
+      "native_probe_rows": 0
+    },
+    {
+      "id": "9a222cf9-2713-4d01-b846-1ffeb99a034b",
+      "native_probe_rows": 0
+    },
+    {
+      "id": "9f5efd92-c3cc-4ae8-ad51-3aadb9dba557",
+      "native_probe_rows": 0
+    },
+    {
+      "id": "aa0930e1-77c4-431b-8bf8-4344e70327de",
+      "native_probe_rows": 0
+    },
+    {
+      "id": "c8859733-6041-4526-a9da-40fe9b4a30f5",
+      "native_probe_rows": 0
+    },
+    {
+      "id": "d141efec-66e0-4941-82e8-227a13ddfa01",
+      "native_probe_rows": 0
+    },
+    {
+      "id": "da148208-5fbb-4a73-9b13-4325af2167eb",
+      "native_probe_rows": 0
+    },
+    {
+      "id": "ec1d33a9-97b2-4e57-bbef-613cac7f1305",
+      "native_probe_rows": 0
+    }
+  ],
+  "sqlite_ledgers": [
+    {
+      "repetition": 1,
+      "integrity": "ok",
+      "attempts": [
+        [
+          "positive-control",
+          200
+        ]
+      ],
+      "effects": [
+        [
+          "positive-control"
+        ]
+      ]
+    },
+    {
+      "repetition": 2,
+      "integrity": "ok",
+      "attempts": [
+        [
+          "positive-control",
+          200
+        ]
+      ],
+      "effects": [
+        [
+          "positive-control"
+        ]
+      ]
+    },
+    {
+      "repetition": 3,
+      "integrity": "ok",
+      "attempts": [
+        [
+          "positive-control",
+          200
+        ]
+      ],
+      "effects": [
+        [
+          "positive-control"
+        ]
+      ]
+    }
+  ],
+  "certified": false
+}

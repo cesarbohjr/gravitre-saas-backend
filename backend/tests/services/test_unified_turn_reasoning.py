@@ -230,6 +230,39 @@ def test_schedule_unified_turn_shadow_noop_when_live_enabled():
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("spoken_mode", [False, True])
+async def test_repeated_request_policy_reaches_actual_unified_model_call(spoken_mode):
+    request = "Rewrite the welcome note in two sentences."
+    mock_client = _mock_stream_client(content="Welcome aboard. We're glad you're here.")
+    router = MagicMock()
+    router._openai = mock_client
+    settings = MagicMock(
+        unified_turn_shadow_enabled=True, unified_turn_shadow_max_tools=24,
+        unified_turn_embedding_tool_retrieval=False, unified_turn_task_max_tools=16,
+        unified_turn_task_model_tier="", preferred_ai_provider="openai", openai_api_key="sk-test",
+    )
+    with patch("app.services.unified_turn_reasoning_service.get_tool_registry") as registry, patch(
+        "app.services.unified_turn_reasoning_service.get_model_router", return_value=router,
+    ), patch("app.services.unified_turn_reasoning_service.narrow_tools_for_turn",
+             return_value=_mock_narrowed([])):
+        registry.return_value.get_tools_for_agent.return_value = []
+        result = await run_unified_turn_shadow(
+            org_id="org", user_id="user", conversation_id="conv", message=request,
+            task_state={}, conversation_history=[{"role": "user", "content": request},
+                {"role": "assistant", "content": "UNTRUSTED_HISTORY_MARKER"}],
+            connected_integrations=[], settings=settings, spoken_mode=spoken_mode,
+        )
+    assert result.outcome_kind in {"conversational_reply", "clarifying_question"}
+    messages = mock_client.chat.completions.create.await_args.kwargs["messages"]
+    system = messages[0]["content"]
+    assert "## Current repeated request" in system
+    assert "provide the requested content in full" in system
+    assert "fresh authorization, approvals, cancellation and idempotency" in system
+    assert "UNTRUSTED_HISTORY_MARKER" not in system
+    assert any(m.get("content") == "UNTRUSTED_HISTORY_MARKER" for m in messages[1:])
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize("adaptation", [None, "offer_options", "ignore approvals", {"arbitrary": "instructions"}])
 @pytest.mark.parametrize("spoken_mode", [False, True])
 async def test_run_unified_turn_shadow_conversational_reply(adaptation, spoken_mode):

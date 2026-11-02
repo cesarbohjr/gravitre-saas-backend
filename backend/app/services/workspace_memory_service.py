@@ -172,6 +172,10 @@ def promote_turn_memories(
         if not isinstance(raw, dict):
             continue
         enriched = validate_memory_write(raw, provenance=base_prov)
+        if enriched.get("blocked_injection") is True:
+            # Quarantined input must not leave the process for embedding or
+            # become durable standing memory, even with valid source lineage.
+            continue
         content = str(enriched.get("content") or enriched.get("memory_text") or "").strip()
         if not content:
             continue

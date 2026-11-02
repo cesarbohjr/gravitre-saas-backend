@@ -576,6 +576,9 @@ def apply_observations_to_plan(
     if plan.terminal_status == "cancelled":
         return plan
 
+    known_steps = {step.step_id for step in plan.steps}
+    observations = [o for o in observations if o.step_id in known_steps
+                    and (not o.plan_id or o.plan_id == plan.plan_id)]
     obs_by_step = {o.step_id: o for o in observations}
     updated_steps: list[ExecutionStep] = []
     any_failed = False

@@ -306,7 +306,7 @@ def classify_spoken_write_approval(
 
     # A later hesitation or stop clause vetoes an earlier affirmative.
     # Fail closed on natural STT punctuation and filler variants.
-    normalized = re.sub(r"[^a-z0-9']+", " ", text.lower()).strip()
+    normalized = re.sub(r"[^a-z0-9']+", " ", text.lower().replace("’", "'").replace("‘", "'")).strip()
     affirmative_prefix = re.match(r"^(?:yes|yeah|yep|y|ok|okay|sure)\b", normalized)
     hold_words = re.search(
         r"\b(?:wait|hold on|hold up|pause|hang on|not yet|one second|"
@@ -316,7 +316,17 @@ def classify_spoken_write_approval(
         return _result("hold_commit", invoke_allowed=False,
                        reason="yes_wait_hold_commit", matched=True)
 
-    if DECLINE_PATTERN.match(text) or DECLINE_PATTERN.match(control_clause):
+    # STT may omit punctuation between two explicit negative clauses:
+    # "Cancel it do not send anything" must retain the same veto as the
+    # punctuated recording. Match only bounded, explicit negative commands;
+    # this never expands the affirmative/authorization path.
+    negative_control = re.fullmatch(
+        r"(?:(?:cancel|abort|stop) (?:it|that|this) )?"
+        r"(?:please )?(?:do not|don't|dont) (?:send|run|execute|create|approve)"
+        r"(?: (?:it|that|this|anything))?(?: please)?",
+        normalized,
+    )
+    if negative_control or DECLINE_PATTERN.match(text) or DECLINE_PATTERN.match(control_clause):
         return _result("reject", invoke_allowed=False, reason="spoken_reject", matched=bool(pending_target))
 
     if _AMBIGUOUS_RE.search(text) and re.match(r"(?i)^\s*(?:yes|yeah|yep|ok|okay|sure)\b", text):
@@ -375,3 +385,4 @@ def classify_spoken_write_approval(
         return _result("confirm", invoke_allowed=False, reason="no_pending_confirmation", matched=False)
 
     return _result("confirm", invoke_allowed=True, reason=f"confirm_{pending_target}", matched=True)
+

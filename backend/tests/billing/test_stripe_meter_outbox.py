@@ -1,5 +1,6 @@
 """Failure-injection coverage for the flagged durable Stripe meter dispatcher."""
-from datetime import date, datetime, timedelta, timezone
+from datetime import date, datetime, timezone
+from calendar import monthrange
 from types import SimpleNamespace
 from unittest.mock import MagicMock
 
@@ -8,12 +9,12 @@ import pytest
 
 from app.billing.stripe_meter_outbox import report_meter_intents
 
-# Outbox dispatch intentionally rejects closed billing periods. Keep the
-# normal-path unit fixture inside the current UTC month across calendar rollovers.
-TODAY = datetime.now(timezone.utc).date()
-START = TODAY.replace(day=1)
-END = (START.replace(month=START.month + 1, day=1)
-       if START.month < 12 else START.replace(year=START.year + 1, month=1, day=1)) - timedelta(days=1)
+# Reconciled with main: preserve the production closed-period guard and\n# keep test fixtures in the current UTC billing month.\n# Keep these dispatcher tests inside the current, still-open billing period.
+# Fixed historical dates silently become closed periods and trigger the
+# production reconciliation guard before the behavior under test is reached.
+_NOW = datetime.now(timezone.utc).date()
+START = date(_NOW.year, _NOW.month, 1)
+END = date(_NOW.year, _NOW.month, monthrange(_NOW.year, _NOW.month)[1])
 
 
 def _client(*, acknowledgement=True):

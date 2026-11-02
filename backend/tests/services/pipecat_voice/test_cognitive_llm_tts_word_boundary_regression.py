@@ -34,6 +34,9 @@ own aggregator will actually do with them.
 """
 from __future__ import annotations
 
+import pytest
+
+
 from pipecat.frames.frames import AggregatedTextFrame
 
 import asyncio
@@ -43,6 +46,9 @@ from unittest.mock import AsyncMock, patch
 
 from app.operators.stream_events import AssistantStreamComplete, AssistantStreamEvent
 from app.services.pipecat_voice.cognitive_llm import GravitreCognitiveLLMService
+
+# Scripted brain events; provider policy/budget data is supplied by an explicit offline fixture.
+pytestmark = pytest.mark.usefixtures("scripted_voice_external_sources")
 
 # Matches the exact defect class: sentence-ending punctuation directly
 # followed by a letter/digit with no whitespace between them, e.g.

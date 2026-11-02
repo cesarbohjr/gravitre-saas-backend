@@ -5,7 +5,7 @@ from datetime import datetime, timedelta, timezone
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, StrictBool, StrictInt
 
 from app.auth.dependencies import get_org_context, require_admin
 from app.config import Settings, get_settings
@@ -32,6 +32,8 @@ class DialogueSettingsUpdate(BaseModel):
     consensus_enabled: bool | None = None
     sentiment_detection_enabled: bool | None = None
     memory_retention_days: int | None = Field(default=None, ge=1, le=365)
+    evaluation_feedback_enabled: StrictBool | None = None
+    evaluation_feedback_retention_days: StrictInt | None = Field(default=None, ge=1, le=90)
 
 
 @router.get("/personas")
@@ -142,3 +144,26 @@ async def get_conversation_health(
         "sample_size": len(rows),
         "quality_sample_size": len(qualities),
     }
+
+
+@router.get("/evaluation-feedback")
+async def get_evaluation_feedback(
+    org_id: Annotated[str, Depends(get_org_context)],
+    _admin: Annotated[tuple, Depends(require_admin)],
+    settings: Settings = Depends(get_settings),
+) -> dict[str, Any]:
+    """Metrics-only review input; never an automatic prompt training endpoint."""
+    loaded = await load_chat_dialogue_settings(org_id, settings)
+    if loaded.get("evaluation_feedback_enabled") is not True:
+        return {"status": "disabled", "automatic_promotion": False}
+    from app.core.io_pool import run_io
+    from app.services.dialogue_evaluation_feedback import feedback_summary
+
+    try:
+        client = get_supabase_client(settings)
+        summary = await run_io(lambda: feedback_summary(
+            client, org_id, retention_days=loaded.get("evaluation_feedback_retention_days", 30),
+        ))
+    except Exception:
+        return {"status": "unavailable", "automatic_promotion": False}
+    return {"status": "available", **summary}

@@ -15,6 +15,9 @@ between a specific tool's `tool-input-available` and its matching
 """
 from __future__ import annotations
 
+import pytest
+
+
 import asyncio
 import logging
 import time
@@ -23,6 +26,9 @@ from unittest.mock import AsyncMock, patch
 
 from app.operators.stream_events import AssistantStreamComplete, AssistantStreamEvent
 from app.services.pipecat_voice.cognitive_llm import GravitreCognitiveLLMService
+
+# Scripted brain events; provider policy/budget data is supplied by an explicit offline fixture.
+pytestmark = pytest.mark.usefixtures("scripted_voice_external_sources")
 
 
 def _drive_with_logs(events_and_delays: list[tuple[Any, float]], caplog: Any) -> list[str]:

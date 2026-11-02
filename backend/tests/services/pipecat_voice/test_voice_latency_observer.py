@@ -51,6 +51,19 @@ async def _observer() -> GravitreVoiceLatencyObserver:
     return obs
 
 
+@pytest.mark.asyncio
+async def test_optional_interruption_trace_deduplicates_without_retaining_words():
+    from pipecat.frames.frames import InterimTranscriptionFrame
+    records = []
+    session = SimpleNamespace(interruption_timing_sink=lambda stage, details: records.append((stage, details)))
+    observer = GravitreVoiceLatencyObserver(voice_session=session)
+    frame = InterimTranscriptionFrame('private synthetic words', '', '2026-10-30T00:00:00Z')
+    await observer.on_push_frame(_pushed(frame))
+    await observer.on_push_frame(_pushed(frame))
+    assert records == [('pipeline.InterimTranscriptionFrame', {'characters': 23})]
+    assert 'private' not in str(records)
+
+
 class TestFluxPathStartsTheClock:
     @pytest.mark.asyncio
     async def test_proposed_user_stopped_speaking_starts_measurement_stock_class_misses(self):

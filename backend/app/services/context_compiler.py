@@ -38,11 +38,15 @@ def merge_kernel_sections(turn_ctx: Any, cognitive_ctx: Any) -> bool:
             turn_ctx.retrieval.memory_section = "\n\n".join(
                 p for p in (prior, sections["memory_section"]) if p
             ).strip()
-        if sections.get("knowledge_section"):
+        knowledge_and_dialogue = "\n\n".join(
+            sections.get(key) or "" for key in ("knowledge_section", "dialogue_section", "session_continuity_section", "intelligence_section")
+            if sections.get(key)
+        )
+        if knowledge_and_dialogue:
             prior_k = getattr(turn_ctx, "entity_relationship_section", None) or ""
             if hasattr(turn_ctx, "entity_relationship_section"):
                 turn_ctx.entity_relationship_section = "\n\n".join(
-                    p for p in (prior_k, sections["knowledge_section"]) if p
+                    p for p in (prior_k, knowledge_and_dialogue) if p
                 ).strip()
         bias = (sections.get("outcome_bias_section") or "").strip()
         if bias and hasattr(turn_ctx, "retrieval"):
@@ -418,6 +422,18 @@ async def compile_unified_reasoning_context(
         _record("cognitive_kernel", "EXCLUDE", "remind_me_turn")
     else:
         _record("cognitive_kernel", "EXCLUDE", "no_cognitive_context")
+
+    intelligence = cognitive_prompt_sections.get("intelligence_section") or ""
+    if intelligence:
+        _add_part("kernel_intelligence", intelligence)
+    dialogue_section = cognitive_prompt_sections.get("dialogue_section") or ""
+    continuity = cognitive_prompt_sections.get("session_continuity_section") or ""
+    if continuity:
+        _add_part("session_continuity", continuity)
+        _record("session_continuity", "INCLUDE", "authorized_current_session")
+    if dialogue_section:
+        _add_part("dialogue_interpretation", dialogue_section)
+        _record("dialogue_interpretation", "INCLUDE", "advisory_kernel_cues")
 
     # "What changed in my workspace since yesterday?": read the workspace's own
     # dated records instead of searching documents (and the web) for them.

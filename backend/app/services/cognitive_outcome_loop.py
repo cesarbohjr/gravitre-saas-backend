@@ -1,6 +1,8 @@
 """Closed outcome loop helpers for CognitiveTurnKernel PLAN bias + LEARN."""
 from __future__ import annotations
 
+import re
+
 from typing import Any
 
 from app.config import Settings, get_settings
@@ -69,8 +71,11 @@ def bias_notes_from_event_rows(rows: list[Any], query: str = "") -> dict[str, An
             continue
         entity = str(row.get("entity_id") or row.get("recommendation_id") or "")
         note = f"Prior {layer} {event}" + (f" on {entity[:48]}" if entity else "")
-        if not needle or needle in note.lower() or needle in entity.lower():
-            bias_notes.append(note)
+        relevant = (not needle or needle in note.lower() or needle in entity.lower()
+                    or bool(entity and re.search(r"(?<!\w)" + re.escape(entity.lower()) + r"(?!\w)", needle)))
+        if not relevant:
+            continue
+        bias_notes.append(note)
         if event in POSITIVE_EVENTS or event in {"business_metric_improved"}:
             positive += 1
         elif event in BUSINESS_IMPACT_EVENTS or event in {

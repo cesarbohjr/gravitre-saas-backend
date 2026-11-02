@@ -24,6 +24,8 @@ async def execute_read_steps_parallel(
     """Run pending READ/evidence steps concurrently. WRITEs are never included."""
     from app.services.reasoning_evidence_pipeline import parallel_safe_steps
 
+    if plan.terminal_status == "cancelled":
+        return []
     read_steps = [s for s in parallel_safe_steps(plan) if s.status == "pending"]
     if not read_steps:
         return []
@@ -34,22 +36,22 @@ async def execute_read_steps_parallel(
         async with sem:
             try:
                 obs = await handler(step, context)
+                if (obs.step_id != step.step_id
+                        or (obs.plan_id and obs.plan_id != plan.plan_id)
+                        or (step.connector_id and obs.connector_id != step.connector_id)):
+                    return ExecutionObservation(
+                        step_id=step.step_id, connector_id=str(step.connector_id or "unknown"),
+                        success=False, summary="Read returned mismatched execution identity",
+                        error="observation_identity_mismatch", plan_id=plan.plan_id,
+                    )
                 obs.plan_id = obs.plan_id or plan.plan_id
                 return obs
             except Exception as exc:  # noqa: BLE001
-                logger.warning(
-                    "execution_step_failed step_id=%s connector=%s error=%s",
-                    step.step_id,
-                    step.connector_id,
-                    exc,
-                )
-        return ExecutionObservation(
-                    step_id=step.step_id,
-                    connector_id=str(step.connector_id or "unknown"),
-                    success=False,
-                    summary=f"Step failed: {exc}",
-                    error=str(exc)[:300],
-                    plan_id=plan.plan_id,
+                logger.warning("execution_read_step_failed error_type=%s", type(exc).__name__)
+                return ExecutionObservation(
+                    step_id=step.step_id, connector_id=str(step.connector_id or "unknown"),
+                    success=False, summary="Read step could not be completed",
+                    error="read_execution_failed", plan_id=plan.plan_id,
                 )
 
     results = await asyncio.gather(*(_run(step) for step in read_steps))
@@ -82,30 +84,7 @@ def apply_observations_to_plan(
     plan: ExecutionPlan,
     observations: list[ExecutionObservation],
 ) -> ExecutionPlan:
-    """Mark steps completed/failed from observation results."""
-    by_step = {o.step_id: o for o in observations}
-    updated_steps: list[ExecutionStep] = []
-    for step in plan.steps:
-        obs = by_step.get(step.step_id)
-        if obs is None:
-            updated_steps.append(step)
-            continue
-        status = "completed" if obs.success else "failed"
-        updated_steps.append(
-            ExecutionStep(
-                step_id=step.step_id,
-                title=step.title,
-                kind=step.kind,
-                connector_id=step.connector_id,
-                capability_id=step.capability_id,
-                action_key=step.action_key,
-                status=status,
-                meta={**step.meta, "observation_summary": obs.summary[:200]},
-            )
-        )
-    plan.steps = updated_steps
-    if observations and all(o.success for o in observations):
-        plan.terminal_status = "completed"
-    elif observations and any(not o.success for o in observations):
-        plan.terminal_status = "partial" if any(o.success for o in observations) else "failed"
-    return plan
+    """Reuse the canonical verifier, cancellation and whole-plan terminal policy."""
+    from app.services.execution_plan_service import apply_observations_to_plan as reconcile
+
+    return reconcile(plan, observations)

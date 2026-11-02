@@ -262,6 +262,8 @@ def create_agent_memory(
         # A signed-in person typing a memory through the CRUD API.
         candidate["user_direct"] = True
     guarded = validate_memory_write(candidate, provenance=prov or "")
+    if guarded.get("blocked_injection") is True:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="External memory candidate is quarantined")
     lineage = memory_source_lineage(
         {"source_connector_id": source_connector_id, "source_record_ref": source_record_ref},
         settings=settings,

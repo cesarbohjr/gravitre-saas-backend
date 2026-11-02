@@ -1,0 +1,41 @@
+name: PR587 local cancellation acoustic qualification (no provider credits)
+# Dedicated issue #594 research: manual-only until a trained model and corpus exist.
+# Do not automatically block PR #587 core voice CI on unavailable R&D assets.
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+jobs:
+  kws-qualification:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Verify fail-closed KWS configuration and score rules
+        run: python -m unittest discover -s tests -p test_pr587_kws_qualification.py
+      - name: Verify custom model and complete audio corpus are available
+        run: python scripts/pr587_kws_qualification.py --preflight --output acceptance-results/pr587-kws-qualification.json
+      - name: Install local acoustic engine (only with supplied trained assets)
+        if: ${{ hashFiles('acceptance-assets/pr587-kws-manifest.json') != '' }}
+        run: python -m pip install --no-cache-dir 'openwakeword==0.6.0' 'onnxruntime' 'numpy'
+      - name: Run actual repeated custom-model acoustic inference
+        if: ${{ hashFiles('acceptance-assets/pr587-kws-manifest.json') != '' }}
+        run: python scripts/pr587_openwakeword_replay.py --manifest acceptance-assets/pr587-kws-manifest.json
+      - name: Publish actual acoustic replay output
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pr587-custom-acoustic-results
+          path: acceptance-results/pr587-kws-acoustic-results.json
+          if-no-files-found: ignore
+      - name: Publish blocked or qualified evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pr587-kws-qualification
+          path: acceptance-results/pr587-kws-qualification.json
+          if-no-files-found: error

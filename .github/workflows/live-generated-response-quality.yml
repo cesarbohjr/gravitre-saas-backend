@@ -1,0 +1,62 @@
+name: Live generated-response quality (manual post-deploy)
+on:
+  workflow_dispatch:
+    inputs:
+      deployed_sha:
+        description: "Production backend Git SHA to certify (must equal checked-out main HEAD)"
+        required: true
+        type: string
+permissions:
+  contents: read
+jobs:
+  generated-response-quality:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    environment: production-evaluation
+    env:
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      SOCIAL_EVAL_MODEL: claude-sonnet-4-6
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Verify evaluated revision is deployed
+        shell: bash
+        env:
+          DEPLOYED_SHA: ${{ inputs.deployed_sha }}
+        run: |
+          test "$DEPLOYED_SHA" = "$(git rev-parse HEAD)" || { echo "Production SHA does not match main; refusing certification"; exit 1; }
+          python - <<'PYHEALTH'
+          import json, os, urllib.request
+          with urllib.request.urlopen("https://api.gravitre.app/health", timeout=20) as response:
+              health = json.load(response)
+          if health.get("git_sha") != os.environ["DEPLOYED_SHA"]:
+              raise SystemExit("Live backend SHA does not match evaluated source; refusing certification")
+          print("Live backend revision matches evaluated source")
+          PYHEALTH
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Install backend prompt-builder dependencies
+        run: pip install -r backend/requirements.txt
+      - name: Offline evaluator contracts
+        run: node --test scripts/social_intelligence/evaluator.test.ts scripts/social_intelligence/durable_results.test.ts
+      - name: Freeze actual prompt builders (synthetic data only)
+        run: python scripts/social_intelligence/build_bundle.py --output /tmp/social-eval-bundle.json
+      - name: Evaluate all roles, paths, channels and adversarial cases
+        shell: bash
+        run: |
+          if [ -z "$ANTHROPIC_API_KEY" ]; then echo "Missing GitHub Actions ANTHROPIC_API_KEY secret"; exit 1; fi
+          node scripts/social_intelligence/run_github_eval.mjs /tmp/social-eval-bundle.json /tmp/social-eval-report.json
+      - name: Upload synthetic evaluation evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: generated-response-quality-${{ github.sha }}
+          path: /tmp/social-eval-report.json
+          if-no-files-found: ignore
+          retention-days: 14

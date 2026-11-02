@@ -1,0 +1,19 @@
+{
+  "scope": "read_only_aggregate_audit_diagnosis",
+  "project_ref": "aadnwmjzrmbvadszroqt",
+  "project_name": "gravitre-acceptance",
+  "org_id": "f07e57c0-1501-4000-8000-c04e57a00001",
+  "source_sha": "5e766f352dd795b0617638b170a1930ad464669a",
+  "window_start": "2026-10-31T16:34:43Z",
+  "window_end": "2026-10-31T17:10:48Z",
+  "required_test_flags_verified": true,
+  "unified_live_fallthrough": 38,
+  "outcome_error_exact_openai_not_configured": 36,
+  "pending_family_classical_resume": 2,
+  "unified_live_completed": 15,
+  "response_composer_completed": 112,
+  "credentials_read": false,
+  "raw_prompts_or_replies_read": false,
+  "database_mutations": 0,
+  "certified": false
+}

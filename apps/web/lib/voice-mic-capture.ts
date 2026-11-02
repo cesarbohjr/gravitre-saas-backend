@@ -391,8 +391,9 @@ export type VoiceMicProcessorOptions = {
   silentTapV2?: boolean
 }
 
-/** Same block size as the old ScriptProcessor, so level/barge-in tuning is unchanged. */
-const MIC_BLOCK_FRAMES = 4096
+/** ~43 ms at 48 kHz (formerly ~85 ms). Cut capture wait without batching
+ * extra microphone audio before the 16 kHz PCM is streamed to Flux. */
+export const MIC_BLOCK_FRAMES = 2048
 const MIC_WIRE_RATE = 16000
 
 /**
@@ -444,7 +445,9 @@ function createMicBlockHandler(options: VoiceMicProcessorOptions) {
       if (speechGate.active && !speechGate.prerollFlushed) {
         const snap = preroll.snapshot()
         speechGate = { ...speechGate, prerollFlushed: true }
-        options.onPcm(concatPcm16(snap, pcm))
+        // The rolling pre-roll already includes this block: appending it again
+        // duplicates the user's first phonemes and inflates the wire payload.
+        options.onPcm(snap)
         return
       }
     }

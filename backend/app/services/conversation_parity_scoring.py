@@ -60,7 +60,11 @@ def parity_gate(
     invariant_floor: float = 0.90,
     max_quality_gap: float = 0.5,
 ) -> bool:
-    """Gate uses same-run competitor evidence; it does not assume vendor latency/quality."""
+    """Low-level metric arithmetic, not product certification or evidence validation.
+
+    Release comparisons must use conversation_benchmark_evidence.evaluate to
+    require recorded text/voice/execution evidence, complete pairs and review.
+    """
     return (
         float(gravitre.get("invariant_rate", 0.0)) >= invariant_floor
         and float(gravitre.get("mean_dimension_score", 0.0))

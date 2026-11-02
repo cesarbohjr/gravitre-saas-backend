@@ -10,6 +10,9 @@ stream already proven for the text plan-bar, not a hand-rolled shortcut.
 """
 from __future__ import annotations
 
+import pytest
+
+
 from pipecat.frames.frames import AggregatedTextFrame
 
 import asyncio
@@ -23,6 +26,9 @@ from unittest.mock import AsyncMock, patch
 import app.routers.assistant  # noqa: F401
 from app.operators.stream_events import AssistantStreamComplete, AssistantStreamEvent
 from app.services.pipecat_voice.cognitive_llm import GravitreCognitiveLLMService
+
+# Scripted brain events; provider policy/budget data is supplied by an explicit offline fixture.
+pytestmark = pytest.mark.usefixtures("scripted_voice_external_sources")
 
 
 def _drive(events: list[Any], **settings: Any) -> tuple[list[str], list[str]]:

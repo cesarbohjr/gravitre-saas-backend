@@ -1,0 +1,135 @@
+{
+  "all_labels_detected": true,
+  "conversational_judgment_validity": "NOT_RUN",
+  "dataset_sha256": "5579a4207d25e481f454b7cc255bd80d978ea80cc5766e2fb8511df18078062b",
+  "deepeval_version": "4.3.2",
+  "existing_fixed_baseline_quality_comparison": "NOT_RUN",
+  "framework_selection": "BLOCKED_PENDING_FULL_COMPARISON",
+  "harness_sha256": "b668570aa86ea4336568732de344ec2779de70158c09a06e9aa63e2bd7144950",
+  "independent_human_review": false,
+  "inference_calls": 0,
+  "lock_sha256": "0a4b90fe0aede6c9884a193876aa0095b6442ad4a49bc0125a3949111f09fca0",
+  "network_attempts": 0,
+  "production_certified": false,
+  "reference_kind": "strict_exact_trace_reference_not_conversational_judge",
+  "rows": [
+    {
+      "agreement": true,
+      "case_id": "correct-read",
+      "deepeval_ms": 7.524449999891658,
+      "deepeval_pass": true,
+      "label_pass": true,
+      "reference_ms": 0.0025439999262744095,
+      "reference_pass": true
+    },
+    {
+      "agreement": true,
+      "case_id": "wrong-tenant",
+      "deepeval_ms": 0.13495099983629189,
+      "deepeval_pass": false,
+      "label_pass": false,
+      "reference_ms": 0.0027659998522722162,
+      "reference_pass": false
+    },
+    {
+      "agreement": true,
+      "case_id": "cancelled-no-write",
+      "deepeval_ms": 0.057376999848202104,
+      "deepeval_pass": true,
+      "label_pass": true,
+      "reference_ms": 0.0003710001692525111,
+      "reference_pass": true
+    },
+    {
+      "agreement": true,
+      "case_id": "cancelled-write",
+      "deepeval_ms": 2.5584879999769328,
+      "deepeval_pass": false,
+      "label_pass": false,
+      "reference_ms": 0.00032200023269979283,
+      "reference_pass": false
+    },
+    {
+      "agreement": true,
+      "case_id": "missing-call",
+      "deepeval_ms": 0.10023599998021382,
+      "deepeval_pass": false,
+      "label_pass": false,
+      "reference_ms": 0.0006579998625966255,
+      "reference_pass": false
+    },
+    {
+      "agreement": true,
+      "case_id": "unexpected-call",
+      "deepeval_ms": 0.059781000345537905,
+      "deepeval_pass": false,
+      "label_pass": false,
+      "reference_ms": 0.0007339999683608767,
+      "reference_pass": false
+    },
+    {
+      "agreement": true,
+      "case_id": "correct-order",
+      "deepeval_ms": 0.059979000070597976,
+      "deepeval_pass": true,
+      "label_pass": true,
+      "reference_ms": 0.001701999735814752,
+      "reference_pass": true
+    },
+    {
+      "agreement": true,
+      "case_id": "wrong-order",
+      "deepeval_ms": 0.05229700036579743,
+      "deepeval_pass": false,
+      "label_pass": false,
+      "reference_ms": 0.0005030001375416759,
+      "reference_pass": false
+    },
+    {
+      "agreement": true,
+      "case_id": "duplicate-write",
+      "deepeval_ms": 0.09582900020177476,
+      "deepeval_pass": false,
+      "label_pass": false,
+      "reference_ms": 0.0003069999365834519,
+      "reference_pass": false
+    },
+    {
+      "agreement": true,
+      "case_id": "wrong-amount",
+      "deepeval_ms": 0.08039099975576391,
+      "deepeval_pass": false,
+      "label_pass": false,
+      "reference_ms": 0.0010310000106983352,
+      "reference_pass": false
+    },
+    {
+      "agreement": true,
+      "case_id": "extra-argument",
+      "deepeval_ms": 0.07762500035823905,
+      "deepeval_pass": false,
+      "label_pass": false,
+      "reference_ms": 0.0165180003932619,
+      "reference_pass": false
+    },
+    {
+      "agreement": true,
+      "case_id": "correct-correction",
+      "deepeval_ms": 0.1516790002824564,
+      "deepeval_pass": true,
+      "label_pass": true,
+      "reference_ms": 0.0036999999792897142,
+      "reference_pass": true
+    }
+  ],
+  "schema_version": 1,
+  "scope": "synthetic_exact_tool_trace_detection_only",
+  "sdk_metric_sha256": "1af12c5510865f66a42a72e5bf9eb5f4e0a408c7683a70f2d9818170b59ed05b",
+  "summary": {
+    "count": 12,
+    "deepeval_accuracy": 1.0,
+    "deepeval_p50_ms": 0.08810999997876934,
+    "reference_accuracy": 1.0,
+    "reference_p50_ms": 0.000882499989529606
+  }
+}

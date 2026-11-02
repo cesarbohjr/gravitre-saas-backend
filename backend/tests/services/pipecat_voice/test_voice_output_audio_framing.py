@@ -33,8 +33,8 @@ class _ListQueue:
         self.items.append(item)
 
 
-def _sender(rate: int):
-    params = TransportParams(audio_out_enabled=True, audio_out_sample_rate=rate)
+def _sender(rate: int, chunks: int):
+    params = TransportParams(audio_out_enabled=True, audio_out_sample_rate=rate, audio_out_10ms_chunks=chunks)
     chunk = int(rate / 100) * 2 * params.audio_out_10ms_chunks
     sender = BaseOutputTransport.MediaSender(
         MagicMock(), destination=None, sample_rate=rate, audio_chunk_size=chunk, params=params
@@ -43,9 +43,10 @@ def _sender(rate: int):
     return sender, chunk
 
 
-def test_odd_tts_chunks_leave_the_transport_as_even_whole_samples():
+@pytest.mark.parametrize('chunks', [1, 4])
+def test_odd_tts_chunks_leave_the_transport_as_even_whole_samples(chunks):
     rate = LIVE_VOICE_OUTPUT_SAMPLE_RATE
-    sender, chunk = _sender(rate)
+    sender, chunk = _sender(rate, chunks)
     assert chunk % 2 == 0
     pcm = bytes((i * 37) % 256 for i in range(2 * 4001))
     # ElevenLabs-style uneven pieces, several of them odd-length.

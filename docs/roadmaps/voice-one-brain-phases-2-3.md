@@ -29,6 +29,8 @@ Deliver a shared, configurable dialogue layer across four agent roles:
 Deliver as small, reviewable PRs. Acceptance: role-by-role scenario matrix covering normal, ambiguous, adversarial, multilingual, interruption, memory, boundary, escalation and recovery paths. Include privacy/security and performance regression tests.
 
 ## Phase 3 — One Brain, seven layers, actions and workflows
+
+Current source integration and scoped offline evidence: [Phase 3 implementation](../delivery/phase3-one-brain-integration.md). This does not replace the live certification requirements below.
 Connect Phase 2 interaction channels and all four agent roles to the existing seven intelligence layers through **One Brain**. Preserve the actual canonical layer names and contracts from the repository; do not invent or rename layers.
 
 End-to-end flow: spoken/text input -> dialogue interpretation -> role-specific agent -> One Brain -> seven-layer intelligence context/recommendation -> governed authorization and approval -> Play/workflow/action/connector execution -> audited result -> feedback to One Brain and seven-layer learning loop.

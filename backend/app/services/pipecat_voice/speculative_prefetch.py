@@ -168,7 +168,7 @@ class SpeculativePrefetchProcessor(FrameProcessor):
 
     async def process_frame(self, frame: Frame, direction: FrameDirection):
         await super().process_frame(frame, direction)
-        if isinstance(frame, InterimTranscriptionFrame):
+        if isinstance(frame, InterimTranscriptionFrame) and not getattr(frame, "gravitre_turn_control_only", False):
             text = (frame.text or "").strip()
             if len(text) >= self._min_chars and text != self._last_partial:
                 self._last_partial = text

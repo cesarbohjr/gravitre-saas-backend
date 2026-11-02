@@ -9,6 +9,8 @@ on:
       - 'backend/app/services/native_runtime/**'
       - 'backend/native-workers/**'
       - 'backend/tests/native_runtime/**'
+      - 'backend/tests/services/pipecat_voice/test_livekit_write_fence.py'
+      - 'backend/tests/services/pipecat_voice/test_turn_scoped_cancellation.py'
       - '.github/workflows/browser-fallback-recovery-certification.yml'
   workflow_dispatch:
 

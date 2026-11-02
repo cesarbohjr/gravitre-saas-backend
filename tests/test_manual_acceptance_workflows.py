@@ -39,3 +39,13 @@ def test_database_preparation_is_explicitly_read_only():
     assert "scripts/check_acceptance_remote_readonly.py" in workflow
     assert "supabase db push" not in workflow
     assert "psql " not in workflow
+
+
+def test_generated_quality_stays_manual_and_checks_actual_production_revision():
+    workflow = (ROOT / "live-generated-response-quality.yml").read_text()
+    assert "workflow_dispatch:" in workflow
+    assert "pull_request:" not in workflow
+    assert "github.ref == 'refs/heads/main'" in workflow
+    assert 'https://api.gravitre.app/health' in workflow
+    assert 'health.get("git_sha") != os.environ["DEPLOYED_SHA"]' in workflow
+    assert "environment: production-evaluation" in workflow

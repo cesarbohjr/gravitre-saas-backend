@@ -36,6 +36,7 @@ from isolated_conversation_org import (  # noqa: E402
     smoke_http_headers,
 )
 from unified_turn_audit_live import unified_turn_completed_action  # noqa: E402
+from live_battery_checkpoint import checkpoint  # noqa: E402
 
 BASE = os.environ.get("LIVE_API_BASE", "https://api.gravitre.app").rstrip("/")
 OUT = ROOT / "docs" / "delivery" / "unified-turn-persona-drift-live.json"
@@ -160,6 +161,7 @@ async def main() -> int:
         )
         cr.raise_for_status()
         conv_id = str(cr.json()["id"])
+        checkpoint(OUT, {"git_sha": tip, "health": health, "turns": TURNS, "results": rows_out})
 
         for i in range(TURNS):
             msg = PROMPTS[i % len(PROMPTS)]
@@ -236,6 +238,8 @@ async def main() -> int:
                     "shadow_preview": model_msg[:180],
                 }
             )
+            checkpoint(OUT, {"git_sha": tip, "health": health, "turns": TURNS,
+                             "results": rows_out, "passed": sum(r['ok'] for r in rows_out)})
 
     passed = sum(1 for r in rows_out if r["ok"])
     hard = [f for f in failures if "cheer" in f or "catalog" in f]

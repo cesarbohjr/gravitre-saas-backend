@@ -1,0 +1,26 @@
+name: PR587 offline cancellation safety gate
+on:
+  pull_request:
+    paths:
+      - 'scripts/pr587_offline_cancel_gate.py'
+      - 'docs/delivery/pr587-stt-control-latency-3980a8d.json'
+      - 'docs/delivery/pr587-local-control-decoder-rejections.json'
+      - '.github/workflows/pr587-offline-cancellation.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  inspect-without-paid-providers:
+    timeout-minutes: 10
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Evaluate real-audio evidence without network or provider credentials
+        run: python scripts/pr587_offline_cancel_gate.py | tee pr587-offline-decision.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: pr587-offline-decision
+          path: pr587-offline-decision.json

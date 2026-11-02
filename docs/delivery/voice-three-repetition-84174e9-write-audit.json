@@ -1,0 +1,322 @@
+{
+  "source_sha": "84174e9162107c04a04b8a1afe783edb3ff303f3",
+  "run_id": 41158495163,
+  "artifact_id": 13027515326,
+  "artifact_zip_sha256": "e236309c4c15e299a3705d60a1ac24710cf1abbd02d70304f42806de7d40b666",
+  "project_id": "aadnwmjzrmbvadszroqt",
+  "read_at_utc": "2026-10-31T04:18:23.774Z",
+  "database_rows": [
+    {
+      "id": "01986981-5957-45c8-8216-43bb5578c2c7",
+      "title": "Internal native voice acceptance",
+      "pending_status": "executed",
+      "assignment_rows": 1,
+      "stop_probe_rows": 0,
+      "creation_audits": 1,
+      "assignment_ids": [
+        "9c8ffe1b-82a5-478d-95bc-9218b67cea11"
+      ],
+      "creation_audit_ids": [
+        "a14af197-c66a-43f2-ac3a-a1a5f4cebfbb"
+      ]
+    },
+    {
+      "id": "04d2dba6-929f-481e-9c22-46a854ae9a0d",
+      "title": "Internal native voice acceptance",
+      "pending_status": "executed",
+      "assignment_rows": 1,
+      "stop_probe_rows": 0,
+      "creation_audits": 1,
+      "assignment_ids": [
+        "7ec4aeff-2f00-4dbf-97a6-feed51347b71"
+      ],
+      "creation_audit_ids": [
+        "9e14896a-bfde-458e-858f-e6491ca047ee"
+      ]
+    },
+    {
+      "id": "1bd83f13-0401-4f1b-9a21-70c6b7a6ba26",
+      "title": "Internal acceptance pipecat",
+      "pending_status": null,
+      "assignment_rows": 0,
+      "stop_probe_rows": 0,
+      "creation_audits": 0,
+      "assignment_ids": [],
+      "creation_audit_ids": []
+    },
+    {
+      "id": "1d51c231-6ed4-4897-816c-27310bee07c9",
+      "title": "Internal acceptance pipecat",
+      "pending_status": null,
+      "assignment_rows": 0,
+      "stop_probe_rows": 0,
+      "creation_audits": 0,
+      "assignment_ids": [],
+      "creation_audit_ids": []
+    },
+    {
+      "id": "35ae18f4-9583-4a03-9419-160cf5e9f8fb",
+      "title": "Internal native voice acceptance",
+      "pending_status": null,
+      "assignment_rows": 0,
+      "stop_probe_rows": 0,
+      "creation_audits": 0,
+      "assignment_ids": [],
+      "creation_audit_ids": []
+    },
+    {
+      "id": "54e1300a-f9f4-481d-abb2-5cabcf02f9ae",
+      "title": "Internal native voice acceptance",
+      "pending_status": null,
+      "assignment_rows": 0,
+      "stop_probe_rows": 0,
+      "creation_audits": 0,
+      "assignment_ids": [],
+      "creation_audit_ids": []
+    },
+    {
+      "id": "674ce9a5-63cd-4c15-95d6-a71796a9781a",
+      "title": "Internal acceptance livekit",
+      "pending_status": null,
+      "assignment_rows": 0,
+      "stop_probe_rows": 0,
+      "creation_audits": 0,
+      "assignment_ids": [],
+      "creation_audit_ids": []
+    },
+    {
+      "id": "6e9563ba-c476-4096-97bc-07c80d40f90a",
+      "title": "Internal acceptance pipecat",
+      "pending_status": null,
+      "assignment_rows": 0,
+      "stop_probe_rows": 0,
+      "creation_audits": 0,
+      "assignment_ids": [],
+      "creation_audit_ids": []
+    },
+    {
+      "id": "7878495a-a805-4e24-84ff-30ef6ceb62c7",
+      "title": "Internal native voice acceptance",
+      "pending_status": null,
+      "assignment_rows": 0,
+      "stop_probe_rows": 0,
+      "creation_audits": 0,
+      "assignment_ids": [],
+      "creation_audit_ids": []
+    },
+    {
+      "id": "7af04a90-b75d-42bf-94a1-978788dcbf80",
+      "title": "Internal native voice acceptance",
+      "pending_status": "executed",
+      "assignment_rows": 1,
+      "stop_probe_rows": 0,
+      "creation_audits": 1,
+      "assignment_ids": [
+        "df72a231-0dd0-4c21-b141-9b90ff9ab22d"
+      ],
+      "creation_audit_ids": [
+        "5ce31252-65b2-4c93-bc80-f7dfb3a15099"
+      ]
+    },
+    {
+      "id": "8fa1b77c-7688-477e-a956-19963d9ec465",
+      "title": "Internal native voice acceptance",
+      "pending_status": null,
+      "assignment_rows": 0,
+      "stop_probe_rows": 0,
+      "creation_audits": 0,
+      "assignment_ids": [],
+      "creation_audit_ids": []
+    },
+    {
+      "id": "93b80341-3eb3-488c-8d28-11f5026ebd36",
+      "title": "Internal acceptance livekit",
+      "pending_status": null,
+      "assignment_rows": 0,
+      "stop_probe_rows": 0,
+      "creation_audits": 0,
+      "assignment_ids": [],
+      "creation_audit_ids": []
+    },
+    {
+      "id": "9689a196-ffa9-46a9-adb8-c5c80b6aee11",
+      "title": "Internal acceptance livekit",
+      "pending_status": null,
+      "assignment_rows": 0,
+      "stop_probe_rows": 0,
+      "creation_audits": 0,
+      "assignment_ids": [],
+      "creation_audit_ids": []
+    },
+    {
+      "id": "9f8af81b-2af8-4056-b161-98bd573f315b",
+      "title": "Internal acceptance pipecat",
+      "pending_status": null,
+      "assignment_rows": 0,
+      "stop_probe_rows": 0,
+      "creation_audits": 0,
+      "assignment_ids": [],
+      "creation_audit_ids": []
+    },
+    {
+      "id": "9fbf95cc-8e77-4c1f-b917-a1aa080e680c",
+      "title": "Internal native voice acceptance",
+      "pending_status": null,
+      "assignment_rows": 0,
+      "stop_probe_rows": 0,
+      "creation_audits": 0,
+      "assignment_ids": [],
+      "creation_audit_ids": []
+    },
+    {
+      "id": "b0008099-7cf0-4338-9dc3-0ad695249977",
+      "title": "Internal acceptance livekit",
+      "pending_status": null,
+      "assignment_rows": 0,
+      "stop_probe_rows": 0,
+      "creation_audits": 0,
+      "assignment_ids": [],
+      "creation_audit_ids": []
+    },
+    {
+      "id": "b157f68d-6dc1-4b52-8463-880eca08ebbc",
+      "title": "Internal acceptance livekit",
+      "pending_status": null,
+      "assignment_rows": 0,
+      "stop_probe_rows": 0,
+      "creation_audits": 0,
+      "assignment_ids": [],
+      "creation_audit_ids": []
+    },
+    {
+      "id": "b74fd554-fb45-4985-874d-c9174f2fa3be",
+      "title": "Internal native voice acceptance",
+      "pending_status": null,
+      "assignment_rows": 0,
+      "stop_probe_rows": 0,
+      "creation_audits": 0,
+      "assignment_ids": [],
+      "creation_audit_ids": []
+    },
+    {
+      "id": "b90e678e-70e6-4fdf-8ea0-a3049011b490",
+      "title": "Internal native voice acceptance",
+      "pending_status": "executed",
+      "assignment_rows": 1,
+      "stop_probe_rows": 0,
+      "creation_audits": 1,
+      "assignment_ids": [
+        "a0d3de6d-a56f-4dbe-ba0b-ab8ceb19cf89"
+      ],
+      "creation_audit_ids": [
+        "e643cf32-927d-48e6-8baf-56bdcd4c555b"
+      ]
+    },
+    {
+      "id": "c487f5e5-8110-4783-a257-69981885ffdd",
+      "title": "Internal acceptance livekit",
+      "pending_status": null,
+      "assignment_rows": 0,
+      "stop_probe_rows": 0,
+      "creation_audits": 0,
+      "assignment_ids": [],
+      "creation_audit_ids": []
+    },
+    {
+      "id": "cb17e707-af03-47c8-be2c-fa1457118e47",
+      "title": "Internal acceptance pipecat",
+      "pending_status": null,
+      "assignment_rows": 0,
+      "stop_probe_rows": 0,
+      "creation_audits": 0,
+      "assignment_ids": [],
+      "creation_audit_ids": []
+    },
+    {
+      "id": "e61c0c03-c274-4bd8-b3f8-f1169bbdd8b3",
+      "title": "Internal acceptance pipecat",
+      "pending_status": null,
+      "assignment_rows": 0,
+      "stop_probe_rows": 0,
+      "creation_audits": 0,
+      "assignment_ids": [],
+      "creation_audit_ids": []
+    },
+    {
+      "id": "f560989a-cfb0-444c-91b9-573b5be2930c",
+      "title": "Internal native voice acceptance",
+      "pending_status": "executed",
+      "assignment_rows": 1,
+      "stop_probe_rows": 0,
+      "creation_audits": 1,
+      "assignment_ids": [
+        "e0871976-35a9-40aa-b6a1-9e321571cb40"
+      ],
+      "creation_audit_ids": [
+        "80630edb-f61b-4540-9c73-80e388b078d8"
+      ]
+    },
+    {
+      "id": "f77bd391-5296-4d13-b2e6-ce6597f95566",
+      "title": "Internal native voice acceptance",
+      "pending_status": "executed",
+      "assignment_rows": 1,
+      "stop_probe_rows": 0,
+      "creation_audits": 1,
+      "assignment_ids": [
+        "2df18701-2c4c-472b-9688-0759dd9b8bf3"
+      ],
+      "creation_audit_ids": [
+        "9e713032-ad2f-45f4-8321-ca2ecf560330"
+      ]
+    }
+  ],
+  "sqlite_ledgers": [
+    {
+      "repetition": 1,
+      "integrity": "ok",
+      "attempts": [
+        [
+          "positive-control",
+          200
+        ]
+      ],
+      "effects": [
+        [
+          "positive-control"
+        ]
+      ]
+    },
+    {
+      "repetition": 2,
+      "integrity": "ok",
+      "attempts": [
+        [
+          "positive-control",
+          200
+        ]
+      ],
+      "effects": [
+        [
+          "positive-control"
+        ]
+      ]
+    },
+    {
+      "repetition": 3,
+      "integrity": "ok",
+      "attempts": [
+        [
+          "positive-control",
+          200
+        ]
+      ],
+      "effects": [
+        [
+          "positive-control"
+        ]
+      ]
+    }
+  ],
+  "certified": false
+}

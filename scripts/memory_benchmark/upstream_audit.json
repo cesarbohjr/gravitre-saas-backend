@@ -1,0 +1,53 @@
+{
+  "schema": 1,
+  "sdk_imported": false,
+  "live_requests": 0,
+  "candidates": [
+    {
+      "id": "mem0",
+      "repository": "mem0ai/mem0",
+      "revision": "26cdefb46600c0fa5953c4b5ee5003c125539fc4",
+      "license": "Apache-2.0",
+      "runtime_status": "NOT_RUN",
+      "files": {
+        "mem0/memory/main.py": "f329ca4a17af1fbefb32ac10d4cc7ae7ddbdb7435a87eb74c30915cff98b8b7c",
+        "LICENSE": "0bbcbe931c353293a2fafce08326181dfeea0e568c566afd4ce8337a70f5e219"
+      },
+      "findings": [
+        "Current OSS search accepts query, top_k and filters; identity kwargs at the top level are rejected.",
+        "At least one entity filter is required upstream; Gravitre requires its full tenant/subject/agent scope.",
+        "Memory construction initializes embedder, vector store, LLM and history storage. Do not instantiate defaults during research.",
+        "add defaults infer to true; automatic extraction/update/delete is not authorized by this benchmark.",
+        "delete accepts an ID without tenant arguments; any future adapter must verify ownership before invoking it.",
+        "Telemetry, model/vector dependencies, retention semantics and deletion readback still require an isolated SDK assessment."
+      ]
+    },
+    {
+      "id": "letta",
+      "repository": "letta-ai/letta",
+      "revision": "8816d3a8516893bfdc0fa14bfb1235226012e295",
+      "license": "Apache-2.0",
+      "runtime_status": "NOT_RUN",
+      "files": {"README.md": "67ec50661bb95db1839101863f08eaaa3cae3f2cc804adb2250a058393e56417"},
+      "findings": ["The current repository redirects active work to letta-code and calls the archive branch's V1 API server retired."]
+    },
+    {
+      "id": "letta-code",
+      "repository": "letta-ai/letta-code",
+      "revision": "5dea67021b99810707ff753db35e4534f70ff1fd",
+      "license": "Apache-2.0",
+      "runtime_status": "NOT_RUN",
+      "files": {
+        "README.md": "7543b5df7349bb8fbdbf7f377a161c3163b6ff062a9c6f7b7430a5ca9a3d0abe",
+        "LICENSE": "036e78b9d7dd33ae5b378fdda973b4aad7901c8d8371a0ae40fae1f6659a89d0",
+        "src/memory-constraints.ts": "8a1dd24323b4c89315a9daa0a5f33802235b18088f53021a1626247e317f5da7"
+      },
+      "findings": [
+        "Current source is an agent harness with MemFS, self-editing memory/skills/prompts and cross-agent search. These behaviors are not adopted.",
+        "Memory tree validation has trusted configuration for read-only files, depth and character limits; it is not Gravitre tenant/subject consent enforcement.",
+        "Use only a future read-only scoped snapshot boundary for comparison; no old API endpoint is assumed and no second orchestrator is introduced.",
+        "Source review is architectural evidence, not a measured retrieval, deletion, latency or naturalness benchmark."
+      ]
+    }
+  ]
+}

@@ -834,7 +834,9 @@ class ConversationalExecutionService:
             if task_type == "create_agent":
                 result = await self._create_agent(org_id, user_id, clarified, client)
             elif task_type == "create_assignment":
-                result = await self._create_assignment(org_id, user_id, clarified, client)
+                result = await self._create_assignment(
+                    org_id, user_id, clarified, client, conversation_id=conversation_id,
+                )
             elif task_type == "create_workflow":
                 result = await self._create_workflow(org_id, user_id, clarified, client)
             elif task_type == "execute_workflow":
@@ -1029,6 +1031,7 @@ class ConversationalExecutionService:
 
     async def _create_assignment(
         self, org_id: str, user_id: str, clarified: dict[str, Any], client: Any,
+        *, conversation_id: str | None = None,
     ) -> ExecutionResult:
         from app.operators import agent_jobs as jobs
         from app.services.conversation_write_guard import assert_org_write_allowed
@@ -1046,7 +1049,10 @@ class ConversationalExecutionService:
         job = jobs.create_job(
             client, org_id, kind="operator_task", created_by=user_id,
             environment=str(clarified.get("environment_name") or "production"),
-            payload={"task": brief, "context": {"source": "approved_chat_assignment", "approved_brief": task}},
+            payload={"task": brief, "context": {
+                "source": "approved_chat_assignment", "approved_brief": task,
+                **({"conversation_id": conversation_id} if conversation_id else {}),
+            }},
         )
         job_id = str(job.get("id") or "")
         if not job_id:
@@ -1390,3 +1396,4 @@ def get_conversational_execution_service(
     if _conversational_execution_service is None or settings is not None:
         _conversational_execution_service = ConversationalExecutionService(settings)
     return _conversational_execution_service
+

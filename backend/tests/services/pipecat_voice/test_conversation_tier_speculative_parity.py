@@ -7,6 +7,8 @@ same final text and history. Synthetic contexts; the brain is faked.
 """
 from __future__ import annotations
 
+
+
 import asyncio
 from types import SimpleNamespace
 from typing import Any
@@ -30,6 +32,9 @@ from app.services.pipecat_voice.speculative_generation import (
 )
 from app.services.pipecat_voice.speculative_prefetch import SpeculativePrefetchProcessor
 from tests.services.pipecat_voice.speculation_helpers import state_reads_return_nothing
+
+# Scripted brain events; provider policy/budget data is supplied by an explicit offline fixture.
+pytestmark = pytest.mark.usefixtures("scripted_voice_external_sources")
 
 DURABLE = [
     {"role": "user", "content": "morning!"},

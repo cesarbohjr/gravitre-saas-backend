@@ -137,6 +137,7 @@ async def _run_turn(db: FakeSupabaseDB, scope: SpeculativeScope | None) -> Assis
         return uuid.UUID(hex="a" * 20 + suffix, version=4)
     with (
         patch("uuid.uuid4", side_effect=generated_uuid),
+        # These modules bind uuid4 at import time; patch the actual call sites.
         patch("app.services.cognitive_loop_controller.uuid4", side_effect=generated_uuid),
         patch("app.services.cognitive_turn_kernel.uuid4", side_effect=generated_uuid),
         patch("app.core.db.shared_service_client", return_value=db),

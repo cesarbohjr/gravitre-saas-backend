@@ -1,0 +1,142 @@
+{
+  "source_sha": "bb302a6c02ce48464b13161ba44f4c193589bc53",
+  "status": "OBSERVED",
+  "certified": false,
+  "scope": "provider_only_control_word_latency",
+  "cutoff_reference": "recording_input_start",
+  "runtime_changed": false,
+  "trials": [
+    {
+      "model": "flux",
+      "case": "cancel",
+      "repetition": 1,
+      "pcm_sha256": "cb59c58a686767cc7fc882ac6773dbd09beed5c22d420a229524f8a55a2c4936",
+      "status": "OBSERVED",
+      "first_speech_start_ms": 731.933,
+      "first_transcript_ms": 251.95,
+      "first_stop_word_ms": 492.5,
+      "max_send_lateness_ms": 1.935
+    },
+    {
+      "model": "nova3",
+      "case": "cancel",
+      "repetition": 1,
+      "pcm_sha256": "cb59c58a686767cc7fc882ac6773dbd09beed5c22d420a229524f8a55a2c4936",
+      "status": "OBSERVED",
+      "first_speech_start_ms": 90.019,
+      "first_transcript_ms": 1040.547,
+      "first_stop_word_ms": 1040.547,
+      "max_send_lateness_ms": 1.088
+    },
+    {
+      "model": "flux",
+      "case": "backchannel",
+      "repetition": 1,
+      "pcm_sha256": "91e37080c6122a0e5df30858e72bffcbeb34e4a4415597771f7fa78382bb2133",
+      "status": "OBSERVED",
+      "first_speech_start_ms": 492.564,
+      "first_transcript_ms": 492.564,
+      "first_stop_word_ms": null,
+      "max_send_lateness_ms": 1.091
+    },
+    {
+      "model": "nova3",
+      "case": "backchannel",
+      "repetition": 1,
+      "pcm_sha256": "91e37080c6122a0e5df30858e72bffcbeb34e4a4415597771f7fa78382bb2133",
+      "status": "OBSERVED",
+      "first_speech_start_ms": 125.309,
+      "first_transcript_ms": 725.226,
+      "first_stop_word_ms": null,
+      "max_send_lateness_ms": 1.088
+    },
+    {
+      "model": "nova3",
+      "case": "cancel",
+      "repetition": 2,
+      "pcm_sha256": "cb59c58a686767cc7fc882ac6773dbd09beed5c22d420a229524f8a55a2c4936",
+      "status": "OBSERVED",
+      "first_speech_start_ms": 89.065,
+      "first_transcript_ms": 1040.162,
+      "first_stop_word_ms": 1040.162,
+      "max_send_lateness_ms": 1.279
+    },
+    {
+      "model": "flux",
+      "case": "cancel",
+      "repetition": 2,
+      "pcm_sha256": "cb59c58a686767cc7fc882ac6773dbd09beed5c22d420a229524f8a55a2c4936",
+      "status": "OBSERVED",
+      "first_speech_start_ms": 734.25,
+      "first_transcript_ms": 254.371,
+      "first_stop_word_ms": 494.083,
+      "max_send_lateness_ms": 1.215
+    },
+    {
+      "model": "nova3",
+      "case": "backchannel",
+      "repetition": 2,
+      "pcm_sha256": "91e37080c6122a0e5df30858e72bffcbeb34e4a4415597771f7fa78382bb2133",
+      "status": "OBSERVED",
+      "first_speech_start_ms": 129.375,
+      "first_transcript_ms": 717.681,
+      "first_stop_word_ms": null,
+      "max_send_lateness_ms": 1.853
+    },
+    {
+      "model": "flux",
+      "case": "backchannel",
+      "repetition": 2,
+      "pcm_sha256": "91e37080c6122a0e5df30858e72bffcbeb34e4a4415597771f7fa78382bb2133",
+      "status": "OBSERVED",
+      "first_speech_start_ms": 493.486,
+      "first_transcript_ms": 493.486,
+      "first_stop_word_ms": null,
+      "max_send_lateness_ms": 1.106
+    },
+    {
+      "model": "flux",
+      "case": "cancel",
+      "repetition": 3,
+      "pcm_sha256": "cb59c58a686767cc7fc882ac6773dbd09beed5c22d420a229524f8a55a2c4936",
+      "status": "OBSERVED",
+      "first_speech_start_ms": 732.789,
+      "first_transcript_ms": 252.445,
+      "first_stop_word_ms": 492.574,
+      "max_send_lateness_ms": 1.149
+    },
+    {
+      "model": "nova3",
+      "case": "cancel",
+      "repetition": 3,
+      "pcm_sha256": "cb59c58a686767cc7fc882ac6773dbd09beed5c22d420a229524f8a55a2c4936",
+      "status": "OBSERVED",
+      "first_speech_start_ms": 94.651,
+      "first_transcript_ms": 1038.013,
+      "first_stop_word_ms": 1038.013,
+      "max_send_lateness_ms": 1.756
+    },
+    {
+      "model": "flux",
+      "case": "backchannel",
+      "repetition": 3,
+      "pcm_sha256": "91e37080c6122a0e5df30858e72bffcbeb34e4a4415597771f7fa78382bb2133",
+      "status": "OBSERVED",
+      "first_speech_start_ms": 493.292,
+      "first_transcript_ms": 493.292,
+      "first_stop_word_ms": null,
+      "max_send_lateness_ms": 1.094
+    },
+    {
+      "model": "nova3",
+      "case": "backchannel",
+      "repetition": 3,
+      "pcm_sha256": "91e37080c6122a0e5df30858e72bffcbeb34e4a4415597771f7fa78382bb2133",
+      "status": "OBSERVED",
+      "first_speech_start_ms": 99.248,
+      "first_transcript_ms": 697.818,
+      "first_stop_word_ms": null,
+      "max_send_lateness_ms": 1.094
+    }
+  ]
+}

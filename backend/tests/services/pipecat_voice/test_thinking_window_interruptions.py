@@ -168,7 +168,12 @@ def test_a_new_request_replaces_the_cancelled_one_instead_of_merging() -> None:
         "Email Sarah the deck from yesterday", "who owns the Acme account?", HISTORY
     )
     assert text == "who owns the Acme account?"
-    assert history == HISTORY
+    assert history == HISTORY[:2]
+    assert HISTORY[-1]["content"] == "Email Sarah the deck from yesterday"
+    from app.services.dialogue_session_continuity import build_session_continuity
+    continuity = build_session_continuity(org_id="org", user_id="user", conversation_id="conv", history=history, task_state={})
+    assert "Email Sarah" not in continuity.section
+    assert "hi" in continuity.section
 
 
 def test_a_fragment_still_completes_the_cancelled_request() -> None:
