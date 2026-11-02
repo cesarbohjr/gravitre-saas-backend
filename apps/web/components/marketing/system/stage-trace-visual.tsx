@@ -10,6 +10,7 @@ import { motion } from "framer-motion"
 import { useReducedMotion } from "@/lib/use-reduced-motion"
 import { cn } from "@/lib/utils"
 import { NodusDotField } from "@/components/marketing/nodus/dot-field"
+import { NodusBeam } from "@/components/marketing/nodus/scenes/kit"
 
 export type TraceStage = {
   id: string
@@ -54,11 +55,12 @@ export function StageTraceVisual({
   const xs = stages.map((_, i) => (count === 1 ? width / 2 : pad + (span * i) / (count - 1)))
 
   return (
-    <div className={cn("relative mx-auto w-full max-w-4xl", className)}>
+    <div className={cn("@container relative mx-auto w-full max-w-4xl", className)}>
       <NodusDotField className="-inset-x-8 -inset-y-6" />
+      <VerticalTrace stages={stages} ariaLabel={ariaLabel} />
       <svg
         viewBox={`0 0 ${width} 220`}
-        className="relative h-auto w-full"
+        className="relative hidden h-auto w-full @min-[620px]:block"
         role="img"
         aria-label={ariaLabel}
       >
@@ -165,6 +167,55 @@ export function StageTraceVisual({
       {caption ? (
         <p className="mt-2 text-center text-sm text-gray-600">{caption}</p>
       ) : null}
+    </div>
+  )
+}
+
+/**
+ * Phone layout: the same trace stacked top to bottom, so the 40px Nodus tiles
+ * and labels stay full size instead of shrinking with the 880px-wide SVG.
+ */
+const ROW = 64
+const TILE = 40
+
+function VerticalTrace({ stages, ariaLabel }: { stages: readonly TraceStage[]; ariaLabel: string }) {
+  const count = stages.length
+  const rail = ROW * (count - 1)
+  return (
+    <div role="img" aria-label={ariaLabel} className="relative mx-auto w-fit py-2 @min-[620px]:hidden">
+      {count > 1 ? (
+        <NodusBeam
+          d={`M0.5,0.5 L0.5,${rail + 0.5}`}
+          width={2}
+          height={rail + 1}
+          axis="y"
+          tone="brand"
+          duration={LOOP * TRAVEL}
+          style={{ left: TILE / 2 - 0.5, top: 8 + TILE / 2 }}
+        />
+      ) : null}
+      <ol className="relative flex flex-col" style={{ gap: ROW - TILE }}>
+        {stages.map((stage, index) => {
+          const last = index === count - 1
+          return (
+            <li key={stage.id} className="flex items-center gap-4">
+              <span
+                className={cn(
+                  "flex shrink-0 items-center justify-center rounded-md border shadow-md",
+                  last ? "border-brand/25 bg-[color:color-mix(in_srgb,var(--brand)_6%,var(--card))]" : "border-border bg-card",
+                )}
+                style={{ width: TILE, height: TILE }}
+              >
+                <span className={cn("size-2 rounded-full", last ? "bg-brand" : "bg-gray-400")} />
+              </span>
+              <span className="flex min-w-24 items-baseline gap-3">
+                <span className="text-charcoal-700 text-sm font-medium">{stage.label}</span>
+                <span className="font-mono text-xs text-gray-500">{String(index + 1).padStart(2, "0")}</span>
+              </span>
+            </li>
+          )
+        })}
+      </ol>
     </div>
   )
 }
