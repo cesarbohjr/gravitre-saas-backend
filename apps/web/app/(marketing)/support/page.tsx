@@ -1,4 +1,5 @@
 "use client"
+import { SupportScene } from "@/components/marketing/nodus/scenes/scenes"
 
 import Link from "next/link"
 import {
@@ -15,7 +16,6 @@ import {
 } from "lucide-react"
 import { SUPPORT_CATEGORY_LINKS, SUPPORT_POPULAR_ARTICLES } from "@/lib/marketing-guide-links"
 import { DivideX } from "@/components/marketing/nodus/divide"
-import { MarketingScene } from "@/components/marketing/nodus/scene"
 import {
   MarketingPageEndCta,
   MarketingPageHero,
@@ -172,13 +172,9 @@ export default function SupportPage() {
 
       <MarketingRails>
         <div className="grid items-center gap-10 md:grid-cols-2">
-          <MarketingScene
-            name="marketing/support"
-            alt="Guides and a support ticket coming together into one answer"
-            width={400}
-            height={300}
-            className="w-full"
-          />
+          <div className="w-full" role="img" aria-label="Guides, docs and contact routed through Gravitre into one resolved answer">
+            <SupportScene />
+          </div>
           <div>
           <GravitreReveal className="mb-8">
             <h2 className="text-2xl font-semibold text-foreground">Popular articles</h2>

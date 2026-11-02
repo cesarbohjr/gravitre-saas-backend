@@ -4,7 +4,7 @@ import Link from "next/link"
 import { Container } from "./container"
 import { SectionHeading } from "./seciton-heading"
 import { SubHeading } from "./subheading"
-import { MarketingScene } from "./scene"
+import { GovernedScene } from "@/components/marketing/nodus/scenes/scenes"
 
 /**
  * Security slot — Nodus layout density without shipping unverified compliance badges.
@@ -25,12 +25,9 @@ export function HomeSecurityNote() {
           Read security →
         </Link>
       </div>
-      <MarketingScene
-        name="marketing/governed"
-        alt="A request moving through review and approval into an immutable audit log, next to a permissions table"
-        width={400}
-        height={250}
-      />
+      <div className="w-full" role="img" aria-label="A request moving through review and approval into an immutable audit log">
+        <GovernedScene />
+      </div>
     </Container>
   )
 }

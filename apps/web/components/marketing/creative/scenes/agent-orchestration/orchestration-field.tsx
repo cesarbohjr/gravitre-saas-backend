@@ -29,7 +29,7 @@ import {
   type OrchestrationPhase,
 } from "./storyboard"
 import { NodusDotField } from "@/components/marketing/nodus/dot-field"
-import { TesseractCore } from "./tesseract-core"
+import { OrchestrationCoreScene as TesseractCore } from "@/components/marketing/nodus/scenes/scenes"
 
 const ROLE_ICONS = {
   research: NucleoSearch,

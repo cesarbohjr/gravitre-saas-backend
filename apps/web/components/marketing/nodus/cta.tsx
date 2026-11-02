@@ -124,7 +124,8 @@ export const CTAOrbit: React.FC<CTAOrbitProps> = ({
           {
             width: diameter,
             height: diameter,
-            "--duration": `${duration}s`,
+            // Inline: a var() inside the @theme token resolves on :root, not here.
+            animationDuration: `${duration}s`,
           } as CSSProperties
         }
       >
@@ -146,7 +147,7 @@ export const CTAOrbit: React.FC<CTAOrbitProps> = ({
                       "shadow-aceternity flex size-14 items-center justify-center rounded-md bg-card",
                       reverse ? "animate-orbit" : "animate-counter-orbit",
                     )}
-                    style={{ "--duration": `${duration}s` } as CSSProperties}
+                    style={{ animationDuration: `${duration}s` }}
                   >
                     <Logo className="size-8 shrink-0" />
                   </div>
@@ -162,7 +163,7 @@ export const CTAOrbit: React.FC<CTAOrbitProps> = ({
   return (
     <div
       className={cn(
-        "relative mx-auto flex items-center justify-center",
+        "mk-ambient relative mx-auto flex items-center justify-center",
         className,
       )}
       style={{ width: size, height: size }}

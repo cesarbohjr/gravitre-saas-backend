@@ -1,9 +1,9 @@
+import { OpenRolesScene } from "@/components/marketing/nodus/scenes/scenes"
 import Link from "next/link"
 import { Badge } from "@/components/marketing/nodus/badge"
 import { Button } from "@/components/marketing/nodus/button"
 import { Container } from "@/components/marketing/nodus/container"
 import { CTA } from "@/components/marketing/nodus/cta"
-import { MarketingScene } from "@/components/marketing/nodus/scene"
 import { DivideX } from "@/components/marketing/nodus/divide"
 import { SectionHeading } from "@/components/marketing/nodus/seciton-heading"
 import { SubHeading } from "@/components/marketing/nodus/subheading"
@@ -129,13 +129,9 @@ export default function CareersPage() {
           <SubHeading className="mx-auto mt-4 max-w-lg px-4 text-center">
             We are not listing invented openings. Reach out if you want to build with us.
           </SubHeading>
-          <MarketingScene
-            name="marketing/open-roles"
-            alt="An empty desk with a monitor, a plant and a welcome card"
-            width={400}
-            height={300}
-            className="mx-4 mt-10 w-[calc(100%-2rem)] max-w-xl"
-          />
+          <div className="mx-4 mt-10 w-[calc(100%-2rem)] max-w-xl" role="img" aria-label="Engineering, Design and Go-to-market teams wired to the Gravitre hub">
+            <OpenRolesScene />
+          </div>
           <Button as={Link} href="/contact" className="mt-8">
             Contact careers
           </Button>

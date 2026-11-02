@@ -3,7 +3,6 @@ import { Badge } from "@/components/marketing/nodus/badge"
 import { Button } from "@/components/marketing/nodus/button"
 import { Container } from "@/components/marketing/nodus/container"
 import { CTA } from "@/components/marketing/nodus/cta"
-import { MarketingScene } from "@/components/marketing/nodus/scene"
 import { DivideX } from "@/components/marketing/nodus/divide"
 import { Heading } from "@/components/marketing/nodus/heading"
 import { HeroImage } from "@/components/marketing/nodus/hero-image"
@@ -16,6 +15,7 @@ import {
   GravitreTrace,
 } from "@/components/marketing/system"
 import { MARKETING_COPY } from "@/lib/marketing-copy"
+import { BuildWithUsScene } from "@/components/marketing/nodus/scenes/scenes"
 
 /**
  * About — Nodus layout · Gravitre copy · Marketing System 4.0 converge signature.
@@ -112,13 +112,9 @@ export default function AboutPage() {
       <DivideX />
 
       <Container className="border-divide grid grid-cols-1 items-center gap-10 border-x px-4 py-16 md:grid-cols-2 md:px-8 md:py-20">
-        <MarketingScene
-          name="marketing/build-with-us"
-          alt="Workflow cards being assembled on a workbench"
-          width={400}
-          height={300}
-          className="md:order-2"
-        />
+        <div className="md:order-2" role="img" aria-label="Agents, workflows and connectors wired into the Gravitre hub">
+          <BuildWithUsScene />
+        </div>
         <div className="md:order-1">
           <Badge text="Careers" />
           <SectionHeading className="mt-4 text-left">

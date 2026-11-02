@@ -33,6 +33,7 @@
     transparent 1px
   );
   --repeat-gradient-size: 10px 10px;
+  /* Nodus: each CTA ring sets its own animation-duration inline (cta.tsx). */
   --animate-orbit: orbit 24s linear infinite;
   --animate-counter-orbit: counter-orbit 24s linear infinite;
 
@@ -1426,10 +1427,12 @@ html.chat-immersive body {
    scrolling to near-instant so motion never causes discomfort.
    framer-motion surfaces additionally use useMotionPrefs().
    ============================================================ */
+/* `.mk-ambient` (marketing logo orbit, Nodus hub rim) is slow ambient motion
+   Cesar chose to keep under Reduce Motion (2026-11-02); entrances still stop. */
 @media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
+  *:not(.mk-ambient, .mk-ambient *),
+  *:not(.mk-ambient, .mk-ambient *)::before,
+  *:not(.mk-ambient, .mk-ambient *)::after {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
@@ -1623,7 +1626,9 @@ details[open] > .g-disclosure > :first-child::after {
   [data-composition] a[role="button"] { min-height: 44px; }
 }
 @media (prefers-reduced-motion: reduce) {
-  [data-composition] *, [data-composition] *::before, [data-composition] *::after {
+  [data-composition] :not(.mk-ambient, .mk-ambient *),
+  [data-composition] :not(.mk-ambient, .mk-ambient *)::before,
+  [data-composition] :not(.mk-ambient, .mk-ambient *)::after {
     scroll-behavior: auto !important;
     animation-duration: .001ms !important;
     animation-iteration-count: 1 !important;

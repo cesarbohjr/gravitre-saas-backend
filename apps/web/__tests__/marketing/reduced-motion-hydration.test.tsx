@@ -59,3 +59,19 @@ describe("marketing reduced motion hydration", () => {
     expect(offenders).toEqual([])
   })
 })
+
+describe("marketing ambient motion under Reduce Motion", () => {
+  const css = readFileSync(join(process.cwd(), "app", "globals.css"), "utf8")
+
+  it("exempts .mk-ambient (logo orbit, Nodus hub rim) from the global reduce-motion kill switch", () => {
+    const block = css.slice(css.indexOf("@media (prefers-reduced-motion: reduce) {\n  *:not(.mk-ambient"))
+    expect(block.startsWith("@media (prefers-reduced-motion: reduce)")).toBe(true)
+    expect(css).toContain("[data-composition] :not(.mk-ambient, .mk-ambient *)")
+  })
+
+  it("lets each CTA orbit ring set its own speed, as in Nodus", () => {
+    const cta = readFileSync(join(process.cwd(), "components", "marketing", "nodus", "cta.tsx"), "utf8")
+    expect(cta).toContain('"mk-ambient relative mx-auto')
+    expect(cta.match(/animationDuration: `\$\{duration\}s`/g)?.length).toBe(2)
+  })
+})
