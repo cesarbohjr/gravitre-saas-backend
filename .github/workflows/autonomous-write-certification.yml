@@ -59,6 +59,7 @@ jobs:
           REDIS_URL: redis://127.0.0.1:16379/15
           GRAVITRE_REQUIRE_REDIS: '1'
         run: |
+          mkdir -p ../autonomous-write-evidence
           python -m pytest -q --no-header \
             tests/workers/test_workflow_queue_redis_integration.py \
             --junitxml=../autonomous-write-evidence/redis-recovery-junit.xml
