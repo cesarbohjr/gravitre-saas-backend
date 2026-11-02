@@ -23,3 +23,16 @@ def test_exclusions_remain_excluded_and_reviewable():
 
 def test_report_is_reproducible():
     assert build_release_review() == build_release_review()
+
+
+def test_marketplace_staging_is_non_publishable_and_complete():
+    from app.marketplace.agency_agents_release_report import build_marketplace_staging_plan
+    report = build_release_review()
+    plan = build_marketplace_staging_plan()
+    assert not plan["publication_enabled"]
+    assert plan["source_commit"] == report["source_commit"]
+    assert plan["preview_count"] == sum(
+        r["disposition"] == "marketplace_agent" for r in report["roles"]
+    )
+    assert all(row["preview_only"] and not row["publishable"] for row in plan["previews"])
+    assert all(row["required_connectors"] == [] for row in plan["previews"])
