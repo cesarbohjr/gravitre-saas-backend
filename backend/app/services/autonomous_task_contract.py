@@ -65,3 +65,34 @@ def validate_task(task: AutonomousTask) -> AutonomousTask:
             keys.add(step.idempotency_key)
         seen.add(step.step_id)
     return task
+
+
+def authorize_step_admission(
+    task: AutonomousTask,
+    *,
+    step_id: str,
+    tenant_id: str,
+    actor_id: str,
+    completed_step_ids: frozenset[str],
+    fresh_permission_granted: bool,
+    fresh_approval_granted: bool = False,
+) -> AutonomousStep:
+    """Pre-dispatch admission check; not a substitute for canonical tool IAM.
+
+    Callers must source permission and approval booleans from *fresh* trusted
+    runtime checks, never from LLM-supplied arguments or saved task metadata.
+    This function does not invoke tools or persist approval.
+    """
+    validate_task(task)
+    if tenant_id != task.tenant_id or actor_id != task.actor_id:
+        raise InvalidAutonomousTask("task_scope_mismatch")
+    step = next((item for item in task.steps if item.step_id == step_id), None)
+    if step is None:
+        raise InvalidAutonomousTask("unknown_step")
+    if not set(step.depends_on).issubset(completed_step_ids):
+        raise InvalidAutonomousTask("dependencies_not_completed")
+    if not fresh_permission_granted:
+        raise InvalidAutonomousTask("permission_denied")
+    if step.action_type == "write" and not fresh_approval_granted:
+        raise InvalidAutonomousTask("approval_not_granted")
+    return step
