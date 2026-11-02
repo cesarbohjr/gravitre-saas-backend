@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import logging
+import hashlib
 import time
 from typing import Any
 from urllib.parse import urlencode
@@ -29,6 +30,9 @@ SLACK_SCOPES = (
 SLACK_AUTHORIZE_URL = "https://slack.com/oauth/v2/authorize"
 SLACK_TOKEN_URL = "https://slack.com/api/oauth.v2.access"
 SLACK_AUTH_TEST_URL = "https://slack.com/api/auth.test"
+_REJECTED_TOKEN_TTL_SECONDS = 300
+_rejected_tokens: dict[tuple[str, str, bytes], float] = {}
+_TERMINAL_AUTH_ERRORS = {"invalid_auth", "token_revoked", "token_expired", "account_inactive", "not_authed"}
 
 
 def normalize_vendor(vendor: str) -> str:
@@ -203,20 +207,34 @@ def slack_connection_auth_status(
             token = str(oauth_tokens["access_token"])
     if not token:
         return "pending_auth"
+    # A revoked token cannot recover by polling every thirty seconds. The
+    # fingerprint is process-local only; a replacement token is checked at once.
+    cache_key = (org_id, connector_id, hashlib.sha256(token.encode()).digest())
+    now = time.monotonic()
+    if _rejected_tokens.get(cache_key, 0) > now:
+        return "auth_expired"
     try:
         with httpx.Client(timeout=15.0) as http:
             response = http.post(
                 SLACK_AUTH_TEST_URL,
                 headers={"Authorization": f"Bearer {token}"},
             )
+            response.raise_for_status()
             data = response.json()
             if data.get("ok"):
+                _rejected_tokens.pop(cache_key, None)
                 return "connected"
+            error = data.get("error")
+            if error not in _TERMINAL_AUTH_ERRORS:
+                return "temporarily_unavailable"
+            if len(_rejected_tokens) >= 512:
+                _rejected_tokens.clear()
+            _rejected_tokens[cache_key] = now + _REJECTED_TOKEN_TTL_SECONDS
             logger.info(
                 "slack_auth_test_failed connector_id=%s error=%s",
                 connector_id,
-                data.get("error", "unknown"),
+                error,
             )
-    except httpx.HTTPError:
-        pass
+    except (httpx.HTTPError, ValueError, AttributeError):
+        return "temporarily_unavailable"
     return "auth_expired"
