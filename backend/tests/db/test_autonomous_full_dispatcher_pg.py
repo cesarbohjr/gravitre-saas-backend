@@ -187,7 +187,9 @@ def test_real_worker_kill_restart_blocks_duplicate_dispatch(tmp_path, case, expe
             (AUDIT / (case + ".json")).write_text(json.dumps({
                 "case": case, "observed_committed_writes": receiver.writes,
                 "expected_committed_writes": expected,
-                "unauthorized_or_duplicate_writes": 0,
+                "unauthorized_or_duplicate_writes": max(0, receiver.writes - expected),
+                "receiver_pid": receiver.pid,
+                "worker_killed_pid": proc.pid,
                 "claim_status": "uncertain", "worker_killed": True,
                 "worker_restarted": True, "passed": True,
             }, indent=2))
