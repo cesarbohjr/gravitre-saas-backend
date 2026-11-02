@@ -5123,6 +5123,21 @@ def invoke_tool(ctx: ToolContext, action: str, params: dict[str, Any] | None = N
     except WriteAuthorityError as exc:
         raise ToolValidationError(str(exc), code=WriteAuthorityError.code) from exc
 
+    # Explicit autonomous writes cannot fall back to the global shadow policy.
+    # A fresh, same-tenant approved run is required at the shared invoke spine.
+    if _is_write_invoke(action) and getattr(ctx, "autonomous_write_guarded", False):
+        from app.services.canvas_write_gate import require_approved_authority_run
+        if (declared_authority is None or declared_authority.kind != "run"
+                or not ctx.run_id):
+            raise ToolValidationError(
+                "Autonomous write requires verified run approval",
+                code="autonomous_write_approval_required",
+            )
+        require_approved_authority_run(
+            client=ctx.client, org_id=ctx.org_id, run_id=ctx.run_id,
+            authority_ref=declared_authority.ref,
+        )
+
     approved_authority_run = None
     if declared_authority is not None and declared_authority.kind == "run":
         from app.services.canvas_write_gate import require_approved_authority_run
@@ -5314,8 +5329,9 @@ def invoke_tool(ctx: ToolContext, action: str, params: dict[str, Any] | None = N
     write_idempotency_key: str | None = None
     write_logical_action_id: str | None = None
     write_claim_token: str | None = None
-    idempotency_enabled = _is_write_invoke(action) and bool(
-        getattr(ctx.settings, "write_invoke_idempotency_enabled", False)
+    idempotency_enabled = _is_write_invoke(action) and (
+        bool(getattr(ctx, "autonomous_write_guarded", False))
+        or bool(getattr(ctx.settings, "write_invoke_idempotency_enabled", False))
     )
     if idempotency_enabled:
         from app.services.write_invoke_idempotency import (
