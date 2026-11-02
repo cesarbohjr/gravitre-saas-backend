@@ -12,6 +12,7 @@ on:
       - 'backend/tests/db/test_autonomous_atomic_approval_pg.py'
       - 'supabase/migrations/20261102095000_autonomous_atomic_write_claim.sql'
       - 'backend/tests/services/test_autonomous_write_attempt_budget.py'
+      - 'backend/tests/services/test_autonomous_workflow_context.py'
       - '.github/workflows/autonomous-write-certification.yml'
   workflow_dispatch:
 
@@ -72,6 +73,7 @@ jobs:
             tests/db/test_write_invoke_idempotency_pg.py \
             tests/services/test_autonomous_final_write_authority.py \
             tests/services/test_autonomous_write_attempt_budget.py \
+            tests/services/test_autonomous_workflow_context.py \
             tests/services/test_react_autonomous_admission_integration.py \
             --junitxml=../autonomous-write-evidence/junit.xml
       - name: Compile strict SHA-bound evidence manifest
