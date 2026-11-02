@@ -51,3 +51,31 @@ def test_atomic_claim_same_key_has_single_winner():
             rows=list(pool.map(lambda _: _call(pg, "race-1"),range(6)))
         assert sum(row["outcome"] == "claimed" for row in rows) == 1
         assert sum(row["outcome"] == "blocked" for row in rows) == 5
+
+def test_concurrent_revocation_wins_before_claim():
+    """An uncommitted revocation holds the run lock until commit."""
+    import threading
+    import time
+    with pg_cluster(BOOT, MIGRATION.read_text(), GRANTS.read_text(), ATOMIC.read_text()) as pg:
+        started = threading.Event()
+        errors = []
+        def revoke():
+            try:
+                # Signal before transaction start, then allow it to acquire
+                # the row lock before the claimant attempts the RPC.
+                started.set()
+                pg.psql(f"""BEGIN;
+UPDATE public.workflow_runs SET approval_status='revoked' WHERE id='{RUN}';
+SELECT pg_sleep(1);
+COMMIT;""")
+            except Exception as exc:
+                errors.append(str(exc))
+        thread=threading.Thread(target=revoke)
+        thread.start()
+        assert started.wait(timeout=2)
+        time.sleep(.25)
+        result=_call(pg, "concurrent-revoked")
+        thread.join(timeout=5)
+        assert not thread.is_alive() and not errors
+        assert result["outcome"] == "blocked", result
+        assert pg.value("SELECT count(*) FROM public.write_invoke_idempotency") == "0"
