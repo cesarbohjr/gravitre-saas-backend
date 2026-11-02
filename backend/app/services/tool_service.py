@@ -5375,7 +5375,12 @@ def invoke_tool(ctx: ToolContext, action: str, params: dict[str, Any] | None = N
     # voice turn reads to say what had already been done.
     write_effect = begin_write_effect(ctx, action)
     last_error: ToolError | None = None
-    attempts = _MAX_RETRIES + 1
+    # A single autonomous claim may invoke the provider at most once. Even a
+    # seemingly pre-send transport failure is not sufficient evidence to issue
+    # another request under the same durable authorization without reconciliation.
+    attempts = 1 if (
+        _is_write_invoke(action) and getattr(ctx, "autonomous_write_guarded", False)
+    ) else _MAX_RETRIES + 1
     for attempt in range(attempts):
         started = time.perf_counter()
         try:
