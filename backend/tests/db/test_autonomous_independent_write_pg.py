@@ -18,6 +18,9 @@ from pathlib import Path
 import pytest
 
 from tests.db.pg_harness import PG_BIN, MIGRATIONS, pg_cluster, requires_pg
+from app.services.autonomous_task_contract import (
+    AutonomousStep, AutonomousTask, InvalidAutonomousTask, authorize_step_admission,
+)
 from tests.db.test_write_invoke_idempotency_pg import BOOTSTRAP_SQL, ORG_A, ORG_B, _claim, _finalize
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "native-workers"))
@@ -92,7 +95,24 @@ def test_independent_receiver_and_pg_ledger_matched_cases(tmp_path):
             try:
                 assert receiver.pid != os.getpid()
                 if case in ("denied_dispatch", "cross_tenant_denied"):
-                    # A blocked admission never receives a write capability.
+                    # Invoke the real autonomous admission contract. The denied
+                    # step must never reach the independent receiver.
+                    planned = AutonomousTask(
+                        task_id="task-" + case, tenant_id=ORG_A, actor_id="actor-A",
+                        goal="Controlled test write",
+                        steps=(AutonomousStep(
+                            step_id="write-1", capability="hubspot.contacts.update",
+                            action_type="write", idempotency_key=key,
+                        ),),
+                    )
+                    with pytest.raises(InvalidAutonomousTask):
+                        authorize_step_admission(
+                            planned, step_id="write-1",
+                            tenant_id=ORG_B if case == "cross_tenant_denied" else ORG_A,
+                            actor_id="actor-A", completed_step_ids=frozenset(),
+                            fresh_permission_granted=True,
+                            fresh_approval_granted=(case == "cross_tenant_denied"),
+                        )
                     assert receiver.writes == 0
                     if case == "cross_tenant_denied":
                         # Same key in another tenant has an independent ledger
