@@ -1057,6 +1057,19 @@ class ReActEngine:
                 yield ReActStreamEvent(kind="text_delta", content=piece)
         yield ReActStreamEvent(kind="done", react_result=result)
 
+    @staticmethod
+    def _approved_autonomous_run(ctx: ToolContext) -> bool:
+        """Fresh tenant-scoped approval, not a cached model or task assertion."""
+        from app.services.canvas_write_gate import require_approved_authority_run
+        try:
+            require_approved_authority_run(
+                client=ctx.client, org_id=ctx.org_id,
+                run_id=ctx.run_id, authority_ref=str(ctx.run_id or ""),
+            )
+            return True
+        except Exception:
+            return False
+
     async def _execute_tool_call(
         self,
         ctx: ToolContext,
@@ -1113,7 +1126,10 @@ class ReActEngine:
                     # Existing canonical write gates run downstream, but they
                     # cannot retroactively authorize an autonomous task step.
                     # Until a verified approval proof is plumbed here, deny it.
-                    fresh_approval_granted=False,
+                    fresh_approval_granted=(
+                        bool(ctx.client and ctx.run_id and requires_write)
+                        and self._approved_autonomous_run(ctx)
+                    ),
                 )
             except RuntimeError as exc:
                 if not str(exc).startswith("react_dispatch_blocked:"):
@@ -1130,6 +1146,9 @@ class ReActEngine:
                 step_id=step_id,
                 cognitive_invoke=True,
                 capability_id=plan_runtime.plan.capability_id,
+                autonomous_write_guarded=(
+                    getattr(plan_runtime, "autonomous_task", None) is not None
+                ),
             )
         if requires_write:
             from app.workers.workflow_queue import assert_current_workflow_claim_live
