@@ -30,8 +30,9 @@ class ReactPlanRuntime:
     dispatched_steps: dict[tuple[int, str], list[str]] = field(default_factory=dict)
     started_at: float = field(default_factory=time.monotonic)
     iteration_budget: int = 8
+    autonomous_task: Any | None = None  # Explicit trusted runtime opt-in only.
 
-    def next_step_id(self, tool_name: str, iteration: int, *, is_write: bool = False) -> str:
+    def next_step_id(\n        self, tool_name: str, iteration: int, *, is_write: bool = False,\n        fresh_permission_granted: bool = False, fresh_approval_granted: bool = False,\n        tenant_id: str | None = None, actor_id: str | None = None,\n    ) -> str:
         # Gate new tool dispatch through the bounded observation policy. This
         # policy does not grant approval or execute tools; it can only stop or
         # pause a ReAct step when durable state prohibits continuation.
@@ -67,12 +68,16 @@ class ReactPlanRuntime:
         executable = [s for s in pending if s.kind in {"evidence", "read", "write"}]
         if executable:
             step_id = executable[0].step_id
+            self._admit_autonomous_step(\n                step_id, tool_name, is_write=is_write, tenant_id=tenant_id, actor_id=actor_id,\n                fresh_permission_granted=fresh_permission_granted,\n                fresh_approval_granted=fresh_approval_granted,\n            )
             self.dispatched_steps.setdefault((iteration, tool_name), []).append(step_id)
             return step_id
         if pending:
             step_id = pending[0].step_id
+            self._admit_autonomous_step(\n                step_id, tool_name, is_write=is_write, tenant_id=tenant_id, actor_id=actor_id,\n                fresh_permission_granted=fresh_permission_granted,\n                fresh_approval_granted=fresh_approval_granted,\n            )
             self.dispatched_steps.setdefault((iteration, tool_name), []).append(step_id)
             return step_id
+        if self.autonomous_task is not None:
+            raise RuntimeError("react_dispatch_blocked:unplanned_autonomous_step")
         step_id = f"react_{iteration}_{tool_name}"
         self.plan.steps.append(
             ExecutionStep(
