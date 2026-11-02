@@ -199,3 +199,36 @@ def test_real_worker_kill_restart_blocks_duplicate_dispatch(tmp_path, case, expe
                 proc.kill()
                 proc.communicate(timeout=5)
             receiver.close()
+
+
+def test_real_worker_revoked_before_atomic_claim_never_reaches_receiver(tmp_path):
+    with pg_cluster(BOOT, MIGRATION.read_text(), GRANTS.read_text(), ATOMIC.read_text()) as pg:
+        pg.psql(f"UPDATE public.workflow_runs SET approval_status='revoked' WHERE id='{RUN}';")
+        receiver = IndependentFixture(
+            tmp_path / "revoked.sqlite3", b"<h1>isolated</h1>",
+            capability="autonomous-full-dispatcher",
+        )
+        marker = tmp_path / "revoked-marker"
+        try:
+            worker = _start(pg, receiver.origin, "after", marker)
+            try:
+                _, stderr = worker.communicate(timeout=20)
+                assert worker.returncode == 0, stderr[-2500:]
+            finally:
+                if worker.poll() is None:
+                    worker.kill()
+                    worker.communicate(timeout=5)
+            actual = receiver.writes
+            assert actual == 0
+            assert pg.value("SELECT count(*) FROM public.write_invoke_idempotency") == "0"
+            AUDIT.mkdir(parents=True, exist_ok=True)
+            (AUDIT / "revoked_before_claim.json").write_text(json.dumps({
+                "case": "revoked_before_claim", "observed_committed_writes": actual,
+                "expected_committed_writes": 0,
+                "unauthorized_or_duplicate_writes": max(0, actual),
+                "receiver_pid": receiver.pid,
+                "worker_restarted": False, "worker_killed": False,
+                "claim_status": "denied_before_claim", "passed": True,
+            }, indent=2))
+        finally:
+            receiver.close()
