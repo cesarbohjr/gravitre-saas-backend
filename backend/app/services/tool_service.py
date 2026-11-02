@@ -5349,13 +5349,23 @@ def invoke_tool(ctx: ToolContext, action: str, params: dict[str, Any] | None = N
         )
 
         write_idempotency_key, write_logical_action_id = build_write_idempotency_key(ctx, action, params)
-        claim = claim_write_invoke(
-            ctx.client,
-            org_id=ctx.org_id,
-            idempotency_key=write_idempotency_key,
-            invoke_action=action,
-            logical_action_id_value=write_logical_action_id,
-        )
+        if getattr(ctx, "autonomous_write_guarded", False):
+            from app.services.write_invoke_idempotency import claim_approved_autonomous_write
+            claim = claim_approved_autonomous_write(
+                ctx.client,
+                org_id=ctx.org_id, run_id=ctx.run_id,
+                idempotency_key=write_idempotency_key,
+                invoke_action=action,
+                logical_action_id_value=write_logical_action_id,
+            )
+        else:
+            claim = claim_write_invoke(
+                ctx.client,
+                org_id=ctx.org_id,
+                idempotency_key=write_idempotency_key,
+                invoke_action=action,
+                logical_action_id_value=write_logical_action_id,
+            )
         if claim.outcome == "replay" and claim.replay is not None:
             _write_tool_audit(
                 ctx,
