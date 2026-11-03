@@ -313,6 +313,13 @@ def write_retry_is_safe(exc: BaseException, tool_exc: ToolError | None = None) -
     return False
 
 
+def _invoke_attempt_budget(ctx: ToolContext, action: str) -> int:
+    """Autonomous side effects have no automatic provider resend allowance."""
+    if _is_write_invoke(action) and getattr(ctx, "autonomous_write_guarded", False):
+        return 1
+    return _MAX_RETRIES + 1
+
+
 def _is_write_invoke(action: str) -> bool:
     from app.services.outcome_verification import is_write_action
 
@@ -5123,6 +5130,21 @@ def invoke_tool(ctx: ToolContext, action: str, params: dict[str, Any] | None = N
     except WriteAuthorityError as exc:
         raise ToolValidationError(str(exc), code=WriteAuthorityError.code) from exc
 
+    # Explicit autonomous writes cannot fall back to the global shadow policy.
+    # A fresh, same-tenant approved run is required at the shared invoke spine.
+    if _is_write_invoke(action) and getattr(ctx, "autonomous_write_guarded", False):
+        from app.services.canvas_write_gate import require_approved_authority_run
+        if (declared_authority is None or declared_authority.kind != "run"
+                or not ctx.run_id):
+            raise ToolValidationError(
+                "Autonomous write requires verified run approval",
+                code="autonomous_write_approval_required",
+            )
+        require_approved_authority_run(
+            client=ctx.client, org_id=ctx.org_id, run_id=ctx.run_id,
+            authority_ref=declared_authority.ref,
+        )
+
     approved_authority_run = None
     if declared_authority is not None and declared_authority.kind == "run":
         from app.services.canvas_write_gate import require_approved_authority_run
@@ -5314,8 +5336,9 @@ def invoke_tool(ctx: ToolContext, action: str, params: dict[str, Any] | None = N
     write_idempotency_key: str | None = None
     write_logical_action_id: str | None = None
     write_claim_token: str | None = None
-    idempotency_enabled = _is_write_invoke(action) and bool(
-        getattr(ctx.settings, "write_invoke_idempotency_enabled", False)
+    idempotency_enabled = _is_write_invoke(action) and (
+        bool(getattr(ctx, "autonomous_write_guarded", False))
+        or bool(getattr(ctx.settings, "write_invoke_idempotency_enabled", False))
     )
     if idempotency_enabled:
         from app.services.write_invoke_idempotency import (
@@ -5326,13 +5349,23 @@ def invoke_tool(ctx: ToolContext, action: str, params: dict[str, Any] | None = N
         )
 
         write_idempotency_key, write_logical_action_id = build_write_idempotency_key(ctx, action, params)
-        claim = claim_write_invoke(
-            ctx.client,
-            org_id=ctx.org_id,
-            idempotency_key=write_idempotency_key,
-            invoke_action=action,
-            logical_action_id_value=write_logical_action_id,
-        )
+        if getattr(ctx, "autonomous_write_guarded", False):
+            from app.services.write_invoke_idempotency import claim_approved_autonomous_write
+            claim = claim_approved_autonomous_write(
+                ctx.client,
+                org_id=ctx.org_id, run_id=ctx.run_id,
+                idempotency_key=write_idempotency_key,
+                invoke_action=action,
+                logical_action_id_value=write_logical_action_id,
+            )
+        else:
+            claim = claim_write_invoke(
+                ctx.client,
+                org_id=ctx.org_id,
+                idempotency_key=write_idempotency_key,
+                invoke_action=action,
+                logical_action_id_value=write_logical_action_id,
+            )
         if claim.outcome == "replay" and claim.replay is not None:
             _write_tool_audit(
                 ctx,
@@ -5359,7 +5392,10 @@ def invoke_tool(ctx: ToolContext, action: str, params: dict[str, Any] | None = N
     # voice turn reads to say what had already been done.
     write_effect = begin_write_effect(ctx, action)
     last_error: ToolError | None = None
-    attempts = _MAX_RETRIES + 1
+    # A single autonomous claim may invoke the provider at most once. Even a
+    # seemingly pre-send transport failure is not sufficient evidence to issue
+    # another request under the same durable authorization without reconciliation.
+    attempts = _invoke_attempt_budget(ctx, action)
     for attempt in range(attempts):
         started = time.perf_counter()
         try:
@@ -5370,6 +5406,14 @@ def invoke_tool(ctx: ToolContext, action: str, params: dict[str, Any] | None = N
                     assert_current_workflow_claim_live()
                 except Exception as exc:
                     raise ToolValidationError("Workflow execution ownership was lost; write refused", code="workflow_claim_lost") from exc
+            if _is_write_invoke(action) and getattr(ctx, "autonomous_write_guarded", False):
+                # Close the time-of-check/time-of-use window: re-read the
+                # tenant-scoped approval immediately before the provider call.
+                from app.services.canvas_write_gate import require_approved_authority_run
+                require_approved_authority_run(
+                    client=ctx.client, org_id=ctx.org_id, run_id=ctx.run_id,
+                    authority_ref=declared_authority.ref,
+                )
             result = executor(ctx, params)
             finish_write_effect(write_effect, "completed" if result.success else "failed")
             result.latency_ms = result.latency_ms or int((time.perf_counter() - started) * 1000)
@@ -5615,6 +5659,9 @@ def tool_context_from_step(context: Any) -> ToolContext:
         connector_id=(context.config or {}).get("connector_id"),
         conversation_id=str(conversation_id) if conversation_id else None,
         cognitive_invoke=False,
+        # An autonomous workflow must retain strict atomic approval/claim fencing
+        # when crossing the workflow handler -> shared provider invoke boundary.
+        autonomous_write_guarded=bool(params.get("_autonomous_run") and context.run_id),
     )
 
 

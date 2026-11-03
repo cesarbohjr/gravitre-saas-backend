@@ -30,8 +30,13 @@ class ReactPlanRuntime:
     dispatched_steps: dict[tuple[int, str], list[str]] = field(default_factory=dict)
     started_at: float = field(default_factory=time.monotonic)
     iteration_budget: int = 8
+    autonomous_task: Any | None = None  # Explicit trusted runtime opt-in only.
 
-    def next_step_id(self, tool_name: str, iteration: int, *, is_write: bool = False) -> str:
+    def next_step_id(
+        self, tool_name: str, iteration: int, *, is_write: bool = False,
+        fresh_permission_granted: bool = False, fresh_approval_granted: bool = False,
+        tenant_id: str | None = None, actor_id: str | None = None,
+    ) -> str:
         # Gate new tool dispatch through the bounded observation policy. This
         # policy does not grant approval or execute tools; it can only stop or
         # pause a ReAct step when durable state prohibits continuation.
@@ -67,12 +72,24 @@ class ReactPlanRuntime:
         executable = [s for s in pending if s.kind in {"evidence", "read", "write"}]
         if executable:
             step_id = executable[0].step_id
+            self._admit_autonomous_step(
+                step_id, tool_name, is_write=is_write, tenant_id=tenant_id, actor_id=actor_id,
+                fresh_permission_granted=fresh_permission_granted,
+                fresh_approval_granted=fresh_approval_granted,
+            )
             self.dispatched_steps.setdefault((iteration, tool_name), []).append(step_id)
             return step_id
         if pending:
             step_id = pending[0].step_id
+            self._admit_autonomous_step(
+                step_id, tool_name, is_write=is_write, tenant_id=tenant_id, actor_id=actor_id,
+                fresh_permission_granted=fresh_permission_granted,
+                fresh_approval_granted=fresh_approval_granted,
+            )
             self.dispatched_steps.setdefault((iteration, tool_name), []).append(step_id)
             return step_id
+        if self.autonomous_task is not None:
+            raise RuntimeError("react_dispatch_blocked:unplanned_autonomous_step")
         step_id = f"react_{iteration}_{tool_name}"
         self.plan.steps.append(
             ExecutionStep(
@@ -86,6 +103,36 @@ class ReactPlanRuntime:
         )
         self.dispatched_steps.setdefault((iteration, tool_name), []).append(step_id)
         return step_id
+
+    def _admit_autonomous_step(
+        self, step_id: str, tool_name: str, *, is_write: bool,
+        tenant_id: str | None, actor_id: str | None,
+        fresh_permission_granted: bool, fresh_approval_granted: bool,
+    ) -> None:
+        if self.autonomous_task is None:
+            return
+        from app.services.autonomous_task_contract import (
+            AutonomousTask, InvalidAutonomousTask, authorize_step_admission,
+        )
+        if not isinstance(self.autonomous_task, AutonomousTask):
+            raise RuntimeError("react_dispatch_blocked:invalid_autonomous_task")
+        completed = frozenset(
+            step.step_id for step in self.plan.steps if step.status == "completed"
+        )
+        try:
+            admitted = authorize_step_admission(
+                self.autonomous_task,
+                step_id=step_id,
+                tenant_id=tenant_id or "",
+                actor_id=actor_id or "",
+                completed_step_ids=completed,
+                fresh_permission_granted=fresh_permission_granted,
+                fresh_approval_granted=fresh_approval_granted,
+            )
+            if admitted.capability != tool_name or (admitted.action_type == "write") != is_write:
+                raise InvalidAutonomousTask("action_mismatch")
+        except InvalidAutonomousTask as exc:
+            raise RuntimeError(f"react_dispatch_blocked:{exc}") from exc
 
     def record_tool_observation(
         self,

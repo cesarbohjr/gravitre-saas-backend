@@ -90,6 +90,7 @@ class ToolContext:
     turn_id: str | None = None
     capability_id: str | None = None
     cognitive_invoke: bool = False
+    autonomous_write_guarded: bool = False
 
 
 @dataclass

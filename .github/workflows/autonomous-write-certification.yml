@@ -1,0 +1,158 @@
+name: Autonomous write independent-process certification
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'backend/app/services/autonomous_task_contract.py'
+      - 'backend/app/services/react_execution_strategy.py'
+      - 'backend/app/operators/react_engine.py'
+      - 'backend/app/services/tool_service.py'
+      - 'backend/app/services/tool_types.py'
+      - 'backend/tests/db/test_autonomous_independent_write_pg.py'
+      - 'backend/tests/db/test_autonomous_atomic_approval_pg.py'
+      - 'supabase/migrations/20261102095000_autonomous_atomic_write_claim.sql'
+      - 'backend/tests/services/test_autonomous_write_attempt_budget.py'
+      - 'backend/tests/services/test_autonomous_workflow_context.py'
+      - 'backend/tests/services/test_autonomous_worker_dispatch_boundary.py'
+      - 'backend/tests/services/test_autonomous_invoke_receiver_integration.py'
+      - 'backend/tests/db/test_autonomous_full_dispatcher_pg.py'
+      - '.github/workflows/autonomous-write-certification.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  independent-ledger-and-receiver:
+    name: PostgreSQL ledger and independent receiver
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: backend
+    env:
+      APP_ENV: dev
+      GRAVITRE_REQUIRE_PG: '1'
+      SUPABASE_URL: https://test.supabase.co
+      SUPABASE_ANON_KEY: anon-test
+      SUPABASE_SERVICE_ROLE_KEY: service-role-test
+      SUPABASE_JWT_SECRET: jwt-secret-test
+      OPENAI_API_KEY: sk-test-openai
+      AUTONOMOUS_WRITE_AUDIT_PATH: ../autonomous-write-evidence/cases
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: backend/requirements-dev.txt
+      - name: Install tests and PostgreSQL
+        run: |
+          sudo apt-get update -y -q
+          sudo apt-get install -y -q postgresql postgresql-client
+          PGVER="$(ls /usr/lib/postgresql | sort -V | tail -1)"
+          echo "GRAVITRE_PG_BIN=/usr/lib/postgresql/${PGVER}/bin" >> "$GITHUB_ENV"
+          pip install -r requirements-dev.txt
+      - name: Start disposable Redis queue for real worker lease recovery
+        run: |
+          sudo apt-get install -y -q redis-server
+          redis-server --bind 127.0.0.1 --port 16379 --save '' --appendonly no --daemonize yes
+          redis-cli -p 16379 ping | grep -q PONG
+      - name: Real Redis claim SIGKILL and lost-ACK recovery
+        env:
+          REDIS_URL: redis://127.0.0.1:16379/15
+          GRAVITRE_REQUIRE_REDIS: '1'
+        run: |
+          mkdir -p ../autonomous-write-evidence
+          python -m pytest -q --no-header \
+            tests/workers/test_workflow_queue_redis_integration.py \
+            --junitxml=../autonomous-write-evidence/redis-recovery-junit.xml
+      - name: Run matched independent receiver and database acceptance
+        run: |
+          mkdir -p ../autonomous-write-evidence
+          python -m pytest -q --no-header \
+            tests/db/test_autonomous_independent_write_pg.py \
+            tests/db/test_autonomous_atomic_approval_pg.py \
+            tests/db/test_autonomous_full_dispatcher_pg.py \
+            tests/db/test_write_invoke_idempotency_pg.py \
+            tests/services/test_autonomous_final_write_authority.py \
+            tests/services/test_autonomous_write_attempt_budget.py \
+            tests/services/test_autonomous_workflow_context.py \
+            tests/services/test_autonomous_worker_dispatch_boundary.py \
+            tests/services/test_autonomous_invoke_receiver_integration.py \
+            tests/services/test_react_autonomous_admission_integration.py \
+            --junitxml=../autonomous-write-evidence/junit.xml
+      - name: Compile strict SHA-bound evidence manifest
+        if: always()
+        working-directory: .
+        env:
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          WORKFLOW_SHA: ${{ github.sha }}
+        run: |
+          python - <<'PY'
+          import json, os, pathlib, xml.etree.ElementTree as ET
+          root=pathlib.Path("autonomous-write-evidence")
+          cases=[json.loads(p.read_text()) for p in sorted((root/"cases").glob("*.json"))]
+          required={"denied_dispatch","cross_tenant_denied","completed_replay","lost_ack",
+                    "crash_before_effect","crash_after_effect"}
+          xml=root/"junit.xml"
+          counts={}
+          if xml.exists():
+              node=ET.parse(xml).getroot()
+              node=node.find("testsuite") if node.tag!="testsuite" else node
+              if node is not None:
+                  counts={key:int(node.attrib.get(key,0)) for key in ("tests","failures","errors","skipped")}
+          redis_xml=root/"redis-recovery-junit.xml"
+          redis_counts={}
+          if redis_xml.exists():
+              redis_root=ET.parse(redis_xml).getroot()
+              redis_suite=redis_root.find("testsuite") if redis_root.tag!="testsuite" else redis_root
+              if redis_suite is not None:
+                  redis_counts={key:int(redis_suite.attrib.get(key,0))
+                                for key in ("tests","failures","errors","skipped")}
+          redis_ok=redis_counts.get("tests",0)>=8 and not any(
+              redis_counts.get(k,0) for k in ("failures","errors","skipped"))
+          dispatcher_cases=[json.loads(p.read_text()) for p in sorted((root/"full-dispatcher").glob("*.json"))]
+          dispatcher_required={"crash_before_effect","crash_after_effect","revoked_before_claim"}
+          dispatcher_ok={c.get("case") for c in dispatcher_cases}==dispatcher_required and all(
+              c.get("passed")
+              and (c.get("case")=="revoked_before_claim" or (c.get("worker_killed") and c.get("worker_restarted")
+              and c.get("claim_status")=="uncertain"))
+              and c.get("unauthorized_or_duplicate_writes")==0
+              and c.get("observed_committed_writes")==c.get("expected_committed_writes")
+              for c in dispatcher_cases)
+          audit_ok={c.get("case") for c in cases}==required and all(
+              c.get("passed") and c.get("unauthorized_or_duplicate_writes")==0
+              and c.get("receiver_pid") for c in cases)
+          tests_ok=bool(counts.get("tests")) and not any(counts.get(k,0) for k in ("failures","errors","skipped"))
+          report={
+              "pr_head_sha":os.getenv("PR_HEAD_SHA") or os.getenv("WORKFLOW_SHA"),
+              "workflow_sha":os.getenv("WORKFLOW_SHA"),
+              "scope":"postgres_rpc_and_independent_process_receiver",
+              "counts":counts,"redis_counts":redis_counts,"redis_queue_certified":bool(redis_ok),"cases":cases,
+              "independent_receiver_audit_passed":bool(audit_ok),
+              "full_dispatcher_cases":dispatcher_cases,
+              "full_dispatcher_certified":bool(dispatcher_ok),
+              "all_tests_passed":bool(tests_ok),
+              "passed":bool(audit_ok and tests_ok and redis_ok and dispatcher_ok),
+              "limitations":[
+                  "not a live provider end-to-end test",
+                  "denial cases test the dispatch boundary without executing the real ReAct caller",
+                  "isolated real worker SIGKILL tests use test HTTP adapter, not customer provider",
+                  "PostgreSQL restart is graceful, not an OS power loss",
+                  "production provider behavior and deployment remain uncertified"
+              ]
+          }
+          root.mkdir(exist_ok=True)
+          (root/"manifest.json").write_text(json.dumps(report,indent=2))
+          if not report["passed"]:
+              raise SystemExit("Missing or failed mandatory acceptance evidence")
+          PY
+      - name: Upload immutable evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: autonomous-write-cert-${{ github.sha }}
+          path: autonomous-write-evidence/
+          if-no-files-found: error
+          retention-days: 30
