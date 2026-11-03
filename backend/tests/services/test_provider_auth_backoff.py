@@ -103,7 +103,7 @@ class DispatchContracts(unittest.IsolatedAsyncioTestCase):
             with self.subTest(provider=provider):
                 gate = ProviderAuthBackoff()
                 adapters = {name: AsyncMock(side_effect=RejectedCredential()) for name in ["openai", "anthropic", "gemini"]}
-                call = load_dispatch(root / "providers/provider_tool_router.py", "complete_with_tools", {
+                call = load_dispatch(root / "providers/provider_tool_router.py", "_complete_with_tools_once", {
                     "time": time, "resolve_provider_for_model": lambda model: provider,
                     **{f"_complete_{name}_with_tools": adapter for name, adapter in adapters.items()},
                 })
@@ -123,7 +123,7 @@ class DispatchContracts(unittest.IsolatedAsyncioTestCase):
         def reject(*args, **kwargs):
             raise ValueError("tools_not_narrowed")
         narrowed.assert_tools_narrowed = reject
-        call = load_dispatch(root / "providers/provider_tool_router.py", "complete_with_tools", {})
+        call = load_dispatch(root / "providers/provider_tool_router.py", "_complete_with_tools_once", {})
         with patch.dict("sys.modules", {narrowed.__name__: narrowed}):
             with self.assertRaisesRegex(ValueError, "tools_not_narrowed"):
                 await call(SimpleNamespace(), model="test", messages=[], tools=[{}])
@@ -140,12 +140,13 @@ class DispatchContracts(unittest.IsolatedAsyncioTestCase):
         provider_module = types.ModuleType("app.services.providers.provider_tool_router")
         provider_module.resolve_provider_for_model = lambda model: "openai"
         provider_module.complete_with_tools = AsyncMock()
+        provider_module._complete_with_tools_once = AsyncMock()
         streaming = AsyncMock(side_effect=RejectedCredential("secret response"))
         classical = AsyncMock()
-        unified = load_dispatch(root / "unified_turn_reasoning_service.py", "_complete_unified_turn", {
+        unified = load_dispatch(root / "unified_turn_reasoning_service.py", "_complete_unified_turn_once", {
             "asyncio": asyncio, "time": time, "_complete_unified_turn_stream": streaming,
         })
-        tools = load_dispatch(root / "providers/provider_tool_router.py", "complete_with_tools", {
+        tools = load_dispatch(root / "providers/provider_tool_router.py", "_complete_with_tools_once", {
             "time": time, "resolve_provider_for_model": lambda model: "openai",
             "_complete_openai_with_tools": classical,
             "make_openai_compatible_response": lambda result: result,
