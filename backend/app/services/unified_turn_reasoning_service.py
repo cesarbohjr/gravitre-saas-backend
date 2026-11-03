@@ -405,7 +405,14 @@ async def _complete_unified_turn_once(
 
     provider = resolve_provider_for_model(model)
     if provider == "openai":
+        from app.services.providers.base import ProviderUnavailableError
         from app.services.providers.auth_backoff import provider_auth_backoff, provider_auth_scope
+
+        # A model can be configured while its client transport failed to
+        # initialize. Treat that as provider unavailability so the shared
+        # failover executor can try another authorized provider.
+        if openai_client is None:
+            raise ProviderUnavailableError("openai", "client_unavailable")
 
         credential, endpoint = provider_auth_scope(router, provider, openai_client=openai_client)
         with provider_auth_backoff.guard(provider, credential, endpoint):
