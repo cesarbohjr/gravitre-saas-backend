@@ -483,41 +483,45 @@ async def _complete_with_tools_once(
     settings = getattr(router, "settings", None)
     start = time.perf_counter()
 
-    if provider == "anthropic":
-        api_key = str(getattr(settings, "anthropic_api_key", None) or "")
-        if not api_key:
-            raise ProviderUnavailableError("anthropic", "ANTHROPIC_API_KEY is not configured")
-        result = await _complete_anthropic_with_tools(
-            api_key=api_key,
-            model=model,
-            messages=messages,
-            tools=tools,
-            tool_choice=tool_choice,
-            temperature=temperature,
-        )
-    elif provider == "gemini":
-        api_key = str(getattr(settings, "gemini_key", None) or getattr(settings, "gemini_api_key", None) or "")
-        if not api_key:
-            raise ProviderUnavailableError("gemini", "GEMINI_API_KEY is not configured")
-        result = await _complete_gemini_with_tools(
-            api_key=api_key,
-            model=model,
-            messages=messages,
-            tools=tools,
-            temperature=temperature,
-        )
-    else:
-        client = getattr(router, "_openai", None)
-        if client is None:
-            raise ProviderUnavailableError("openai", "OPENAI_API_KEY is not configured")
-        result = await _complete_openai_with_tools(
-            openai_client=client,
-            model=model,
-            messages=messages,
-            tools=tools,
-            tool_choice=tool_choice,
-            temperature=temperature,
-        )
+    from app.services.providers.auth_backoff import provider_auth_backoff, provider_auth_scope
+
+    credential, endpoint = provider_auth_scope(router, provider)
+    with provider_auth_backoff.guard(provider, credential, endpoint):
+        if provider == "anthropic":
+            api_key = str(getattr(settings, "anthropic_api_key", None) or "")
+            if not api_key:
+                raise ProviderUnavailableError("anthropic", "ANTHROPIC_API_KEY is not configured")
+            result = await _complete_anthropic_with_tools(
+                api_key=api_key,
+                model=model,
+                messages=messages,
+                tools=tools,
+                tool_choice=tool_choice,
+                temperature=temperature,
+            )
+        elif provider == "gemini":
+            api_key = str(getattr(settings, "gemini_key", None) or getattr(settings, "gemini_api_key", None) or "")
+            if not api_key:
+                raise ProviderUnavailableError("gemini", "GEMINI_API_KEY is not configured")
+            result = await _complete_gemini_with_tools(
+                api_key=api_key,
+                model=model,
+                messages=messages,
+                tools=tools,
+                temperature=temperature,
+            )
+        else:
+            client = getattr(router, "_openai", None)
+            if client is None:
+                raise ProviderUnavailableError("openai", "OPENAI_API_KEY is not configured")
+            result = await _complete_openai_with_tools(
+                openai_client=client,
+                model=model,
+                messages=messages,
+                tools=tools,
+                tool_choice=tool_choice,
+                temperature=temperature,
+            )
 
     elapsed_ms = int((time.perf_counter() - start) * 1000)
     logger.debug(
@@ -568,6 +572,10 @@ async def run_tool_failover(router: Any, *, model: str, complete: Any) -> Any:
                 result = await complete(candidate)
                 return result
             except Exception as exc:
+                from app.services.providers.auth_backoff import ProviderAuthenticationUnavailable
+
+                if isinstance(exc, ProviderAuthenticationUnavailable):
+                    raise ProviderUnavailableError(self.provider, exc.category) from None
                 status = getattr(exc, "status_code", None)
                 if status in {401, 403, 408, 429} or (
                     isinstance(status, int) and status >= 500
