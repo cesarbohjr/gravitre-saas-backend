@@ -173,7 +173,8 @@ def test_scan_workflow_failure_predictions_persists_alerts(mock_build, mock_vers
     )
 
     client = MagicMock()
-    client.table.return_value = alerts_table
+    legacy_parent = _table([{"id": "wf-1"}])
+    client.table.side_effect = lambda name: legacy_parent if name == "workflow_defs" else alerts_table
     settings = Settings()
 
     summary = scan_workflow_failure_predictions(
@@ -398,3 +399,49 @@ def test_scan_org_failure_predictions_aggregates_workflows(mock_list, mock_scan,
     assert summary["workflows"][0]["workflowName"] == "Onboarding"
     mock_scan.assert_called_once()
     mock_audit.assert_called_once()
+
+
+@patch("app.services.workflow_failure_prediction_service._build_predictive_alerts")
+@patch("app.services.workflow_failure_prediction_service.get_active_workflow_version")
+def test_contract_only_workflow_does_not_insert_alert_without_legacy_fk_parent(mock_version, mock_build):
+    mock_version.return_value = {"definition": {"steps": []}}
+    mock_build.return_value = [{
+        "org_id": "org-1", "workflow_id": "contract-only",
+        "alert_type": "connector_missing", "severity": "critical",
+        "title": "Connector permission unavailable", "message": "Reconnect",
+        "evidence": {}, "status": "open",
+    }]
+    parent_table = _table([])
+    alerts_table = _table([])
+    client = MagicMock()
+    client.table.side_effect = lambda name: parent_table if name == "workflow_defs" else alerts_table
+    summary = scan_workflow_failure_predictions(
+        client, Settings(), "org-1", "contract-only",
+        environment_name="production",
+    )
+    assert summary["persistenceStatus"] == "skipped_missing_fk_parent"
+    assert summary["alerts"][0]["persisted"] is False
+    assert summary["alertCount"] == 1
+    parent_table.select.assert_called_with("id")
+    alerts_table.insert.assert_not_called()
+    alerts_table.delete.assert_not_called()
+
+
+@patch("app.services.workflow_failure_prediction_service._build_predictive_alerts")
+@patch("app.services.workflow_failure_prediction_service.get_active_workflow_version")
+def test_legacy_parent_uses_existing_persistence_path(mock_version, mock_build):
+    mock_version.return_value = {"definition": {"steps": []}}
+    mock_build.return_value = [{
+        "org_id": "org-1", "workflow_id": "legacy",
+        "alert_type": "connector_missing", "severity": "critical",
+        "title": "Connector missing", "message": "Connect",
+        "evidence": {}, "status": "open",
+    }]
+    parent_table = _table([{"id": "legacy"}])
+    alerts_table = _table([])
+    client = MagicMock()
+    client.table.side_effect = lambda name: parent_table if name == "workflow_defs" else alerts_table
+    summary = scan_workflow_failure_predictions(client, Settings(), "org-1", "legacy")
+    assert summary.get("persistenceStatus") is None
+    alerts_table.delete.assert_called_once()
+    alerts_table.insert.assert_called_once()
