@@ -989,6 +989,22 @@ def dismiss_failure_alert(client: Any, org_id: str, alert_id: str) -> dict[str, 
     return _serialize_alert(row)
 
 
+def _workflow_has_alert_parent(client: Any, org_id: str, workflow_id: str) -> bool:
+    """Alerts still FK to legacy workflow_defs, while workflow listing includes
+    newer contract-only workflows from the separate workflows table.
+    Never attempt a destructive alert refresh for a missing FK parent.
+    """
+    rows = (
+        client.table("workflow_defs")
+        .select("id")
+        .eq("org_id", org_id)
+        .eq("id", workflow_id)
+        .limit(1)
+        .execute()
+    )
+    return bool(rows.data)
+
+
 def scan_workflow_failure_predictions(
     client: Any,
     settings: Settings,
@@ -1008,6 +1024,22 @@ def scan_workflow_failure_predictions(
         definition,
         environment_name=environment_name,
     )
+
+    if not _workflow_has_alert_parent(client, org_id, workflow_id):
+        # Incompatible storage schemas: this workflow lives in public.workflows,
+        # but workflow_failure_alerts.workflow_id still references workflow_defs.
+        # Preserve the prediction as explicit non-persisted evidence; do not
+        # delete alert rows, invent persisted IDs or retry an impossible insert.
+        logger.info("workflow_failure_prediction_alert_persist_skipped reason=missing_fk_parent")
+        return {
+            "workflowId": workflow_id,
+            "alertCount": len(alerts),
+            "riskScore": _compute_risk_score(alerts),
+            "alerts": [{**_serialize_alert(a), "persisted": False} for a in alerts],
+            "persistenceStatus": "skipped_missing_fk_parent",
+            "scannedAt": _now_iso(),
+            "environment": environment_name,
+        }
 
     try:
         client.table("workflow_failure_alerts").delete().eq("org_id", org_id).eq(
