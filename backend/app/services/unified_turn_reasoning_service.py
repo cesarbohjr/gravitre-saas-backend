@@ -1537,7 +1537,9 @@ async def run_unified_turn_shadow(
                 continue
             break
     except Exception as exc:  # noqa: BLE001
-        logger.warning("unified_turn_shadow model call failed: %s", exc)
+        # SDK exception bodies may echo key prefixes or user text; log only the
+        # failure class. Auth-backoff category is recorded separately below.
+        logger.warning("unified_turn_shadow model call failed class=%s", type(exc).__name__)
         from app.services.providers.auth_backoff import ProviderAuthenticationUnavailable
 
         if isinstance(exc, ProviderAuthenticationUnavailable):
