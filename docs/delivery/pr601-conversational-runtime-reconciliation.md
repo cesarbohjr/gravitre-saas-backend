@@ -13,8 +13,19 @@ Reconcile Gravitre's existing light/medium/deep, One Brain, voice, connector, an
 - PR #600: provider authentication backoff, contextual email discovery, clarification repair and PCM diagnostics.
 - Issue #594: separate acoustic cancellation certification.
 
+## Primary engineering directive: cohesion before redesign
+The purpose of PR #601 is **integration correctness of the existing system**, not re-engineering its intelligence, learning, model, voice or persona components by default. Treat each existing component as an established subsystem until a reproducible defect establishes otherwise.
+
+- Map the end-to-end **wiring contract** for each subsystem: producer, consumer, payload/schema, source-of-truth, ownership, trigger/activation, configuration, timing, fallback, error propagation and output evidence.
+- Test every handoff, including light→medium→deep escalation, intelligence→planner, planner→tools, connector inventory→tool dispatch, tool results→reasoning, model switch→task/history continuity, agent personality→composer→TTS, interruption→cancellation authority, and output audio→heard-history.
+- Identify disconnected, duplicate, misordered, silently skipped, incorrectly wired, stale, overridden or incompatible paths; inspect feature flags, environment variables, deployment SHAs and runtime precedence.
+- Require full-turn traces and integration tests showing a capability **actually changes the intended outcome**; unit tests proving isolated components exist are insufficient.
+- Repair broken contracts, configuration, handoffs and sequencing first. Re-engineer an individual component only after evidence proves its design itself is defective, with a documented reason and regression coverage.
+- Preserve existing authorization, tenant isolation, idempotency, approval, cost limits and deliberate fast-path optimization.
+- Completion criterion: one coherent agent experience across text and voice, with task continuity, natural expression, correct tools, honest recovery and verifiable results—not merely green component tests.
+
 ## Mandatory full-stack intelligence and personality scope
-This PR is not audit-only: implement and regression-test corrections to proven gaps, with all existing intelligence, learning, personality and voice capabilities in scope.
+This PR is not audit-only: implement and regression-test **integration repairs** for proven gaps. Existing intelligence, learning, personality and voice components remain intact unless an evidenced component-level defect requires a narrowly scoped change.
 
 ### Intelligence and learning
 - Inventory all **seven intelligence layers by their actual repository names**; record owner, inputs, outputs, feature flags, active runtime path, persistence, learning/update mechanism, telemetry and failure behavior. Do not assume the layer names or invent missing layers.
