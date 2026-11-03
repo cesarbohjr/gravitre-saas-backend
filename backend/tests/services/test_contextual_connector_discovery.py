@@ -142,7 +142,11 @@ class GatewayContracts(unittest.IsolatedAsyncioTestCase):
         path = Path(__file__).resolve().parents[2] / "app/services/intent_gateway.py"
         source = ast.parse(path.read_text())
         node = next(n for n in source.body if isinstance(n, ast.FunctionDef) and n.name == "response_cache_eligible")
-        namespace = {}
+        # An AST-extracted function has no module globals unless supplied.
+        # Supply the real regex module and an inert operator-task classifier;
+        # the cases here are all informational cache exclusions.
+        import re
+        namespace = {"re": re, "is_operator_task_shaped": lambda _text: False}
         exec(compile(ast.fix_missing_locations(ast.Module(body=[node], type_ignores=[])), str(path), "exec"), namespace)
         service = types.ModuleType("app.services.conversational_execution_service")
         import re
