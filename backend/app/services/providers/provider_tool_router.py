@@ -466,7 +466,7 @@ def _openai_cached_tokens(usage: Any) -> int | None:
         return None
 
 
-async def complete_with_tools(
+async def _complete_with_tools_once(
     router: Any,
     *,
     model: str,
@@ -479,9 +479,6 @@ async def complete_with_tools(
     from app.services.narrowed_tools import assert_tools_narrowed
 
     assert_tools_narrowed(tools, where="provider_tool_router.complete_with_tools")
-    from app.services.tool_model_metering import authorize_tool_model_call
-
-    await authorize_tool_model_call(router, model=model)
     provider = resolve_provider_for_model(model)
     settings = getattr(router, "settings", None)
     start = time.perf_counter()
@@ -531,4 +528,72 @@ async def complete_with_tools(
         len(result.tool_calls),
         elapsed_ms,
     )
-    return make_openai_compatible_response(result)
+    response = make_openai_compatible_response(result)
+    response.model = model
+    return response
+
+
+async def run_tool_failover(router: Any, *, model: str, complete: Any) -> Any:
+    """Use the canonical priority/breaker policy for a tool-model attempt.
+
+    The callback only performs inference, never connector execution. State and
+    narrowed schemas remain owned by the caller across provider attempts.
+    """
+    from app.config import MODEL_TIERS
+    from app.services.providers.base import CircuitBreaker, CompletionOptions
+    from app.services.providers.failover import build_priority, run_failover
+    from app.services.tool_model_metering import authorize_tool_model_call
+
+    settings = getattr(router, "settings", None)
+    primary = resolve_provider_for_model(model)
+    complexity = next((tier for tier in ("low", "medium", "high")
+                       if MODEL_TIERS.get(tier, {}).get(primary) == model), "medium")
+    priority = [(primary, model)]
+    if getattr(settings, "ai_failover_enabled", True) is True:
+        priority += [(p, m) for p, m in build_priority(
+            getattr(settings, "preferred_ai_provider", "openai"), complexity
+        ) if p != primary]
+
+    class ToolAttempt:
+        def __init__(self, provider: str):
+            self.provider = provider
+
+        def is_available(self) -> bool:
+            return provider_tools_configured(self.provider, settings)
+
+        async def complete(self, messages: Any, candidate: str, options: Any) -> Any:
+            # Authorization errors are deliberately outside exception mapping.
+            await authorize_tool_model_call(router, model=candidate)
+            try:
+                result = await complete(candidate)
+                return result
+            except Exception as exc:
+                status = getattr(exc, "status_code", None)
+                if status in {401, 403, 408, 429} or (
+                    isinstance(status, int) and status >= 500
+                ):
+                    # Never persist SDK error bodies, which may contain secrets.
+                    raise ProviderUnavailableError(self.provider, f"http_{status}") from exc
+                raise
+
+    breaker = getattr(router, "_breaker", None)
+    if not isinstance(breaker, CircuitBreaker):
+        breaker = CircuitBreaker()
+    result = await run_failover(
+        {p: ToolAttempt(p) for p, _ in priority}, priority, [], CompletionOptions(), breaker
+    )
+    return result.response
+
+
+async def complete_with_tools(
+    router: Any, *, model: str, messages: list[dict[str, Any]],
+    tools: list[dict[str, Any]], tool_choice: str = "auto",
+    temperature: float | None = 0.2,
+) -> Any:
+    """Classical and unified tool calls share provider recovery policy."""
+    async def attempt(candidate: str) -> Any:
+        return await _complete_with_tools_once(
+            router, model=candidate, messages=messages, tools=tools,
+            tool_choice=tool_choice, temperature=temperature,
+        )
+    return await run_tool_failover(router, model=model, complete=attempt)

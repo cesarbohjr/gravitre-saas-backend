@@ -196,6 +196,7 @@ class _StreamedCompletion:
     completion_tokens: int = 0
     cached_tokens: int = 0
     cache_write_tokens: int = 0
+    model_used: str = ""
 
 
 async def _complete_unified_turn_stream(
@@ -341,7 +342,50 @@ async def _complete_unified_turn_stream(
         raise TimeoutError(f"unified_turn_stream_timeout:{cap}") from exc
 
 
-async def _complete_unified_turn(
+async def _complete_unified_turn(router: Any, openai_client: Any, *, model: str,
+                                 kwargs: dict[str, Any], **options: Any) -> _StreamedCompletion:
+    from app.services.providers.provider_tool_router import run_tool_failover
+
+    async def attempt(candidate: str) -> _StreamedCompletion:
+        emitted = False
+        local_options = dict(options)
+        original_text = options.get("on_text_delta")
+        original_tool = options.get("on_tool_call_delta")
+
+        async def text_delta(piece: str) -> None:
+            nonlocal emitted
+            emitted = True
+            if original_text is not None:
+                result = original_text(piece)
+                if asyncio.iscoroutine(result):
+                    await result
+
+        def tool_delta() -> None:
+            nonlocal emitted
+            emitted = True
+            if original_tool is not None:
+                original_tool()
+
+        local_options.update(on_text_delta=text_delta, on_tool_call_delta=tool_delta)
+        candidate_kwargs = {**kwargs, "model": candidate}
+        if candidate != model:
+            candidate_kwargs.pop("reasoning_effort", None)
+        try:
+            result = await _complete_unified_turn_once(
+                router, openai_client, model=candidate, kwargs=candidate_kwargs, **local_options
+            )
+        except Exception as exc:
+            if emitted:
+                # Do not concatenate another provider's reply or replay tool deltas.
+                raise RuntimeError("unified_turn_partial_stream_failed") from exc
+            raise
+        result.model_used = candidate
+        return result
+
+    return await run_tool_failover(router, model=model, complete=attempt)
+
+
+async def _complete_unified_turn_once(
     router: Any,
     openai_client: Any,
     *,
@@ -355,15 +399,12 @@ async def _complete_unified_turn(
 ) -> _StreamedCompletion:
     """Dispatch tool completion to the agent's configured provider."""
     from app.services.providers.provider_tool_router import (
-        complete_with_tools,
+        _complete_with_tools_once as complete_with_tools,
         resolve_provider_for_model,
     )
 
     provider = resolve_provider_for_model(model)
     if provider == "openai":
-        from app.services.tool_model_metering import authorize_tool_model_call
-
-        await authorize_tool_model_call(router, model=model)
         return await _complete_unified_turn_stream(
             openai_client,
             kwargs=kwargs,
@@ -1422,6 +1463,7 @@ async def run_unified_turn_shadow(
                     on_text_delta=on_text_delta if prog_round == 0 else None,
                     on_tool_call_delta=on_tool_call_delta if prog_round == 0 else None,
                 )
+            model = completion.model_used or model
             from app.services.tool_model_metering import record_tool_model_call
 
             await record_tool_model_call(
