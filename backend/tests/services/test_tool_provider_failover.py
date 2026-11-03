@@ -14,6 +14,14 @@ class HTTPFailure(Exception):
         super().__init__("sensitive SDK body")
 
 
+@pytest.fixture(autouse=True)
+def isolated_provider_credential_backoff(monkeypatch):
+    # A simulated 401 is intentionally remembered; isolate that process-local
+    # circuit per test so test order cannot suppress unrelated provider calls.
+    from app.services.providers import auth_backoff
+    monkeypatch.setattr(auth_backoff, "provider_auth_backoff", auth_backoff.ProviderAuthBackoff())
+
+
 @pytest.fixture
 def router(monkeypatch):
     monkeypatch.setattr("app.services.tool_model_metering.authorize_tool_model_call", AsyncMock())
@@ -199,3 +207,29 @@ async def test_cancellation_is_not_a_provider_failure(router):
     with pytest.raises(asyncio.CancelledError):
         await tool_router.run_tool_failover(router, model="gpt-5.5", complete=attempt)
     assert attempt.await_count == 1
+
+
+@pytest.mark.asyncio
+async def test_integrated_credential_backoff_short_circuits_bad_openai_but_uses_healthy_alternative(router, monkeypatch):
+    from app.services.providers.tool_completion import ToolCompletionResult
+
+    transport = AsyncMock(side_effect=HTTPFailure(401))
+    alternate = AsyncMock(return_value=ToolCompletionResult(content="Found provider options.", tool_calls=[]))
+    router._openai = SimpleNamespace(
+        chat=SimpleNamespace(completions=SimpleNamespace(create=transport)),
+    )
+    monkeypatch.setattr(tool_router, "_complete_anthropic_with_tools", alternate)
+    messages = [
+        {"role": "system", "content": "Persona and active email task remain unchanged"},
+        {"role": "user", "content": "What other email provider can you use?"},
+    ]
+
+    one = await tool_router.complete_with_tools(router, model="gpt-5.5", messages=messages, tools=[])
+    two = await tool_router.complete_with_tools(router, model="gpt-5.5", messages=messages, tools=[])
+    assert one.choices[0].message.content == "Found provider options."
+    assert two.choices[0].message.content == "Found provider options."
+    transport.assert_awaited_once()  # repeated 401 suppressed rather than billed again
+    assert alternate.await_count == 2
+    for call in alternate.await_args_list:
+        assert call.kwargs["messages"] is messages
+        assert call.kwargs["tools"] == []
