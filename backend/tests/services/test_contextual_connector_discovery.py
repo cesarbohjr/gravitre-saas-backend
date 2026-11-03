@@ -196,8 +196,10 @@ class FullGatewayOutlookJourneyContracts(unittest.IsolatedAsyncioTestCase):
             org_id="acceptance-org", client=object(), settings=object(),
             connected_integrations=["gmail"],
         )
-        with patch.object(status, "_rows_from_get_connector_status", return_value=(rows, False)) as live, \\
-             patch.object(status, "_allowed_vendors", return_value=frozenset({"gmail", "microsoft365"})):
+        with (
+            patch.object(status, "_rows_from_get_connector_status", return_value=(rows, False)) as live,
+            patch.object(status, "_allowed_vendors", return_value=frozenset({"gmail", "microsoft365"})),
+        ):
             decision = await gateway.evaluate_intent_gateway(context)
         self.assertEqual(decision.action, "shortcut")
         self.assertEqual(decision.candidate_id, "connector_status")
@@ -218,9 +220,11 @@ class FullGatewayOutlookJourneyContracts(unittest.IsolatedAsyncioTestCase):
         )
         async def no_candidate(_ctx):
             return None
-        with patch.object(gateway, "_SYNC_CANDIDATES", ()), \\
-             patch.object(gateway, "_propose_channel_override", side_effect=no_candidate), \\
-             patch.object(gateway, "_propose_meta_capability", side_effect=no_candidate):
+        with (
+            patch.object(gateway, "_SYNC_CANDIDATES", ()),
+            patch.object(gateway, "_propose_channel_override", side_effect=no_candidate),
+            patch.object(gateway, "_propose_meta_capability", side_effect=no_candidate),
+        ):
             decision = await gateway.evaluate_intent_gateway(ctx)
         self.assertEqual(decision.action, "fallthrough")
         self.assertNotEqual(decision.candidate_id, "connector_status")
