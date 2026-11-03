@@ -233,3 +233,30 @@ async def test_integrated_credential_backoff_short_circuits_bad_openai_but_uses_
     for call in alternate.await_args_list:
         assert call.kwargs["messages"] is messages
         assert call.kwargs["tools"] == []
+
+
+@pytest.mark.asyncio
+async def test_unified_configured_key_with_missing_openai_transport_uses_healthy_alternative(router, monkeypatch):
+    """Exercise the actual streaming dispatcher, not a mocked fallback wrapper."""
+    import time
+    from app.services import unified_turn_reasoning_service as unified
+    from app.services.providers.tool_completion import ToolCompletionResult
+
+    alternate = AsyncMock(return_value=ToolCompletionResult(
+        content="Outlook is available subject to connector permissions.", tool_calls=[],
+    ))
+    monkeypatch.setattr(tool_router, "_complete_anthropic_with_tools", alternate)
+    messages = [
+        {"role": "system", "content": "Preserve the user's task and selected agent persona."},
+        {"role": "user", "content": "What other email provider can you use?"},
+    ]
+    started = time.perf_counter()
+    result = await unified._complete_unified_turn(
+        router, None, model="gpt-5.5",
+        kwargs={"messages": messages},
+        wall_start=started, model_start=started,
+    )
+    assert result.model_used.startswith("claude")
+    assert result.content.startswith("Outlook is available")
+    alternate.assert_awaited_once()
+    assert alternate.await_args.kwargs["messages"] == messages
