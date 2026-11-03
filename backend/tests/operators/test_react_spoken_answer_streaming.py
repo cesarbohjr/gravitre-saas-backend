@@ -218,3 +218,34 @@ def test_answer_stream_holds_partial_sentences_and_stops_on_tool_delta() -> None
     stream.tool_round()
     stream.feed(" you? Fine. ")
     assert stream.released == "Hello there. "
+
+
+@pytest.mark.asyncio
+async def test_spoken_stream_allows_fallback_without_openai_client() -> None:
+    """No configured OpenAI client must not preempt authorized provider routing.
+
+    Keep the real ReAct spoken adapter under test while stubbing only the
+    shared inference boundary. No external SDK or billable call is made.
+    """
+    from app.services.unified_turn_reasoning_service import _StreamedCompletion
+
+    engine = _engine(_FakeOpenAI([]))
+    engine.router._openai = None
+    stream = _SpokenAnswerStream()
+    messages = [
+        {"role": "system", "content": "Preserve agent persona and active task"},
+        {"role": "user", "content": "What other email provider can you use?"},
+    ]
+    completion = _StreamedCompletion(content="Microsoft 365 is an alternative.")
+    completion.model_used = "claude-sonnet-4-5"
+    with patch(
+        "app.services.unified_turn_reasoning_service._complete_unified_turn",
+        new_callable=AsyncMock,
+        return_value=completion,
+    ) as dispatch:
+        response = await engine._stream_chat_with_tools(messages, [], "gpt-4o-mini", stream)
+    dispatch.assert_awaited_once()
+    assert dispatch.await_args.args[1] is None
+    assert dispatch.await_args.kwargs["kwargs"]["messages"] is messages
+    assert response.model == "claude-sonnet-4-5"
+    assert response.choices[0].message.content == "Microsoft 365 is an alternative."
