@@ -1396,7 +1396,11 @@ class ReActEngine:
         model: str,
     ) -> Any:
         from app.services.providers.provider_tool_router import complete_with_tools
+        from app.services.narrowed_tools import assert_tools_narrowed
 
+        # Enforce the attach-time safety boundary before provider selection or
+        # failover; an unconfigured provider must not mask an unsafe tool list.
+        assert_tools_narrowed(tools, where="react_engine._chat_with_tools")
         temp = 0.2 if _supports_custom_temperature(model) else None
         return await complete_with_tools(
             self.router,
