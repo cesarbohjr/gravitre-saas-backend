@@ -64,14 +64,14 @@ class GravitrePcmPlayerProcessor extends AudioWorkletProcessor {
   reportProgress() {
     const played = this.queue.playedFrames - this.epochBase
     this.lastProgress = played
-    this.port.postMessage({ type: "progress", epoch: this.epoch, played, frame: currentFrame })
+    this.port.postMessage({ type: "progress", epoch: this.epoch, played, frame: currentFrame, underruns: this.queue.underruns, buffered_frames: this.queue.buffered })
   }
 
   reportActive() {
     const active = this.queue.isActive()
     if (active === this.active) return
     this.active = active
-    this.port.postMessage({ type: "active", active, underruns: this.queue.underruns, seq: this.seq })
+    this.port.postMessage({ type: "active", active, underruns: this.queue.underruns, seq: this.seq, epoch: this.epoch, buffered_frames: this.queue.buffered })
   }
 
   process(_inputs, outputs) {
@@ -97,3 +97,4 @@ class GravitrePcmPlayerProcessor extends AudioWorkletProcessor {
 }
 
 registerProcessor("gravitre-pcm-player", GravitrePcmPlayerProcessor)
+

@@ -352,6 +352,7 @@ export function useVoiceDuplexSession(options: Options) {
   const playbackTrackerRef = useRef(createPlaybackProgressTracker())
   const playbackReportsEnabledRef = useRef(false)
   const playbackReportTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const continuityLastSentRef = useRef(-Infinity)
   const lastUserFinalRef = useRef("")
   // Pipecat keeps one websocket alive across many turns. Completion is per turn,
   // not per socket. This guard prevents a close event from re-dispatching a turn
@@ -451,6 +452,22 @@ export function useVoiceDuplexSession(options: Options) {
         interrupted: options?.interrupted,
         ensureReplyId: options?.replyId,
       })
+      // One bounded content-free snapshot per five seconds, never per audio
+      // frame. These counters are observations, not proof of audible defects.
+      const now = performance.now()
+      const diagnostics = pcmPlayerRef.current?.diagnostics?.()
+      if (reports.length && diagnostics && now - continuityLastSentRef.current >= 5000) {
+        continuityLastSentRef.current = now
+        void postVoiceOutputDiagnostics({
+          event: "playback_continuity",
+          session_id: micSessionIdRef.current,
+          turn_id: turnIdRef.current,
+          orchestration: "pipecat",
+          reply_id: reports[reports.length - 1]?.reply_id ?? null,
+          audio_context_state: audioCtxRef.current?.state ?? null,
+          pcm_diagnostics: diagnostics,
+        })
+      }
       for (const report of reports) {
         try {
           ws.send(encodePlaybackProgress(report))
@@ -492,6 +509,7 @@ export function useVoiceDuplexSession(options: Options) {
         fallback_triggered: audioFallbackTriggeredRef.current,
         playback_blocked: playbackBlockedRef.current,
         browser_audio_playback_started: browserAudioPlaybackStartedRef.current,
+        pcm_diagnostics: pcmPlayerRef.current?.diagnostics?.(),
       })
     },
     [],
@@ -1661,6 +1679,7 @@ export function useVoiceDuplexSession(options: Options) {
       pcmPlayerRef.current?.dispose()
       pcmPlayerRef.current = null
       // The worklet module loads while the mic permission prompt is up.
+      continuityLastSentRef.current = -Infinity
       const playerReady = createVoicePcmPlayer(ctx, { onActiveChange: handlePcmActiveChange })
 
       const { stream, tuning, prerollEnabled } = await setupVoiceMicrophone(ctx)
@@ -2374,3 +2393,4 @@ export function useVoiceDuplexSession(options: Options) {
     },
   }
 }
+

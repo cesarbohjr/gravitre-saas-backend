@@ -180,4 +180,20 @@ Code added on the PR branch; production dialogue acceptance remains NOT RUN.
 - Limitations: follow-up recognition is deliberately narrow and English-language; this is not general reference-resolution parity. Email discovery is grounded in existing canonical capability bindings and allowed catalog vendors, not exhaustive discovery of every third-party mail product. Action-specific OAuth scope validation still occurs through execution controls. No paid inference, deployment or raw-audio test occurred.
 - Full CI, real text/voice replay, physical-device audio and blinded product comparisons remain pending. Existing standing batteries are still required before any quality release.
 
+## Implementation checkpoint: audio continuity observations and CI dependency repair
+
+Code added on the PR branch; physical audio acceptance remains NOT RUN.
+
+- Both PCM player implementations expose optional content-free lifetime diagnostics: observed underruns, queued milliseconds, duck state, duck transitions/duration and intentional flush count. The existing gain ramps, queue sizing, voice/model and cancellation authority are retained.
+- Worklet progress/active messages now deliver queue observations to the main thread. Old progress epochs and stale inactive reports cannot overwrite current diagnostics. The worklet cache version is bumped to avoid pairing a cached processor with the new page code.
+- The existing authenticated, organization-scoped output-diagnostics endpoint accepts an allowlisted bounded PCM schema and optional reply ID. Browser observations are labelled client_reported and player_lifetime, not trusted quality or action evidence.
+- When existing Pipecat playback reporting is enabled, the hook posts continuity snapshots at most once per five seconds while reports are available; normal output lifecycle reports also include the snapshot. No audio samples, transcript, device identity or credentials are included in these added fields.
+- Counters are not a listening verdict. The existing underrun heuristic counts restarts after short gaps, not all audible defects; terminal pauses, provider-side silence and network causality need synchronized audio/timing evidence. Duck duration uses the AudioContext clock and is cumulative across one player's lifetime.
+- Validation: all 24 backend unittest checks pass together, including four real-schema/isolated-handler contracts for bounds, authenticated scope, allowlisted persistence and diagnostic failure isolation. Four frontend test groups pass using the actual TypeScript player/metrics source under Node type stripping and a small assertion/global-mocking shim. Full Vitest, TypeScript typechecking and browser/WebAudio behaviour remain for CI/device verification; local type stripping is a syntax check, not a typecheck.
+- Prior-head Phase 3 offline workflow 41563834181 failed in dependency installation with Errno 28 (disk full); its scenario and voice-safety steps did not run. The workflow now selects CPU torch using the existing federated-runtime pattern, avoids large wheel-cache restoration/retention and asserts the installed build is CPU-only. All scenario commands, safety assertions and time limits remain unchanged. YAML parses locally; a fresh workflow run is required before calling the CI defect resolved.
+- Main CI on the prior head was still pending at inspection. Successful parent labels on other workflows do not certify skipped provider jobs or real speech quality.
+
+Next: inspect exact-head CI and replay text/voice on a real device, correlate observed starvation/ducking with audible gaps, and select any buffering/transport/prosody remedy from matched evidence. No paid provider call, deployment or training was initiated.
+
+
 
