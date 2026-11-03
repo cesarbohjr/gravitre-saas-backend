@@ -14,7 +14,7 @@ from app.services.clarification_repair import repair_generic_clarification
 
 class ContextContracts(unittest.TestCase):
     def test_inventory_variants_and_followups(self):
-        for question in ["What other email connectors do I have?", "K. What other email connectors do I have?", "Which email accounts are connected?", "List my email integrations."]:
+        for question in ["What other email connectors do I have?", "K. What other email connectors do I have?", "Which email accounts are connected?", "List my email integrations.", "What other email provider can you use?", "Which other email services can Gravitre access?"]:
             with self.subTest(question=question):
                 self.assertEqual(connector_inventory_intent(question).category, "email")
         history = [{"role": "user", "content": "What other email connectors do I have?"}, {"role": "assistant", "content": "I may be missing context — could you clarify or point me to a specific record or document?"}]
@@ -66,6 +66,33 @@ class InventoryEvidenceContracts(unittest.TestCase):
         self.assertNotIn("Hubspot", result.text)
         self.assertIn("permissions still need checking", result.text)
         self.assertEqual(result.source, "getConnectorStatus")
+
+    def test_exact_provider_question_after_gmail_discussion_respects_live_status(self):
+        rows = [
+            {"vendor": "gmail", "execution_available": True},
+            {"vendor": "microsoft365", "execution_available": False, "blocking_reason": "missing_scope"},
+        ]
+        history = [
+            {"role": "user", "content": "Can you find an email through Gmail?"},
+            {"role": "assistant", "content": "Gmail is configured."},
+        ]
+        result = self.answer(
+            rows,
+            question="What other email provider can you use?",
+            history=history,
+        )
+        self.assertIsNotNone(result)
+        self.assertEqual(result.source, "getConnectorStatus")
+        self.assertIn("Microsoft 365 (Outlook) is configured but needs additional permissions", result.text)
+        self.assertIn("Gmail is connected", result.text)
+        self.assertIn("permissions still need checking", result.text)
+        self.assertNotIn("Microsoft 365 (Outlook) is connected", result.text)
+
+    def test_provider_question_status_failure_never_claims_outlook(self):
+        result = self.answer(None, question="What other email provider can you use?", error=True)
+        self.assertEqual(result.source, "unverified")
+        self.assertIn("couldn't verify", result.text)
+        self.assertNotIn("Outlook is connected", result.text)
 
     def test_missing_scopes_and_expired_auth_remain_visible(self):
         for row, expected in [({"vendor": "microsoft365", "blocking_reason": "missing_scope"}, "needs additional permissions"), ({"vendor": "gmail", "auth_status": "auth_expired"}, "needs reconnection")]:
@@ -123,6 +150,7 @@ class GatewayContracts(unittest.IsolatedAsyncioTestCase):
         service.DECLINE_PATTERN = re.compile(r"^no$")
         with patch.dict(sys.modules, {service.__name__: service}):
             self.assertFalse(namespace["response_cache_eligible"]("Which ones?"))
+            self.assertFalse(namespace["response_cache_eligible"]("What other email provider can you use?"))
             self.assertFalse(namespace["response_cache_eligible"]("What other emails do I have?"))
             self.assertFalse(namespace["response_cache_eligible"]("Okay. I asked asked what other Gmails... what other emails do I have?"))
 
