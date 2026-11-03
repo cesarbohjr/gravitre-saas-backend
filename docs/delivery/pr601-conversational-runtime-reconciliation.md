@@ -24,6 +24,27 @@ The purpose of PR #601 is **integration correctness of the existing system**, no
 - Preserve existing authorization, tenant isolation, idempotency, approval, cost limits and deliberate fast-path optimization.
 - Completion criterion: one coherent agent experience across text and voice, with task continuity, natural expression, correct tools, honest recovery and verifiable results—not merely green component tests.
 
+## Autonomous execution and contextual continuity — mandatory integration gate
+Conversational naturalness is insufficient. Gravitre must **carry out authorized user objectives** using its connected capabilities, while retaining the referent and task state across turns.
+
+### Execution wiring to trace
+- Follow a user request through ASR/transcript → dialogue history and referent resolution → goal/intent extraction → light/medium/deep reasoning → task planning → capability/connector discovery → permission/readiness checks → tool invocation → result interpretation → multi-step continuation → outcome verification → final user response.
+- Identify the **execution owner** and persisted task state for each turn. Verify ownership survives tier/model/provider changes, classical fallback, retries, interruptions, reconnects and tool failures; prevent lost work, duplicate side effects and unbounded loops.
+- Separate informational replies, read-only tool work, prepared governed actions, approval-pending writes and completed writes. An agent must not substitute a generic answer for a feasible authorized task, nor claim success from intent, a tool request or an unverified response.
+- Check contextual follow-ups: "another email provider" after Gmail means find connected/available email alternatives, including Microsoft 365/Outlook when authorized; preserve antecedents, current task, previous tool outcomes and constraints. Topic changes must not inherit unrelated task state.
+- Check connector discovery from canonical capability registry, live installed/authorized connectors, permission scopes and catalog alternatives. Distinguish connected/usable, installed-but-unauthorized, available-to-connect and unsupported. Never hallucinate tools or permission.
+- On missing authorization, invalid credentials, unavailable provider, failed tool or unsupported task, pursue permitted alternatives and explain the precise blocker or request the required approval; do not repeat "more context" when enough context exists.
+- Governed side effects must retain user approval, least privilege, tenant isolation, idempotency and verifiable readback; autonomy applies within granted authority.
+
+### Required executable acceptance journeys
+1. **Email continuation:** user asks about Gmail, then "what other email provider can you use?", then asks to find a message via authorized Outlook/Microsoft 365. Verify referent, discovery, actual read or precise permission blocker, and task-completion reply.
+2. **Research and act:** discover available sources, search, cross-check and produce a grounded deliverable without requesting redundant directions.
+3. **Multi-step connector task:** plan, execute dependent reads, transform results, prepare a governed write, pause for approval and resume exactly once after approval; cancellation prevents writes.
+4. **Failure recovery:** selected LLM returns 401, connector times out, or one capability is unavailable; preserve goal/history, use authorized alternatives when configured, and return a useful truthful outcome.
+5. **Voice task continuity:** interruption, barge-in, reconnect and 20-minute conversation preserve active goal, action state, personality and audible output; no repeated generic clarification or double execution.
+
+For each journey, record turn-level task state, selected route/model, connector/action invoked, policy decision, result provenance, user-visible and heard reply, latency, and PASS/FAIL/NOT_RUN. A fluent answer without execution evidence **fails** task-completion acceptance.
+
 ## Mandatory full-stack intelligence and personality scope
 This PR is not audit-only: implement and regression-test **integration repairs** for proven gaps. Existing intelligence, learning, personality and voice components remain intact unless an evidenced component-level defect requires a narrowly scoped change.
 
@@ -56,7 +77,7 @@ For each layer and persona: source path + PR origin + configuration flag + deplo
 - Seven-layer intelligence, ML/adaptation, model-routing and agency-agent personality matrices with source references and deployment provenance.\n- Exact runtime persona injection map and expressive text/voice acceptance scores.
 - Turn-level causal timeline separating observed facts from hypotheses.
 - Root-cause fixes with exact-head CI and existing combined acceptance suite.
-- User-journey pass/fail report, audio measurements and independent safety audit.
+- User-journey pass/fail report, autonomous execution trace and verified task outcomes, audio measurements and independent safety audit.
 - Explicit NOT_RUN/NOT_CERTIFIED labels for unavailable live or paid tests, plus rollback plan.
 
 ## Release policy
