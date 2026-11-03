@@ -227,8 +227,6 @@ async def test_spoken_stream_allows_fallback_without_openai_client() -> None:
     Keep the real ReAct spoken adapter under test while stubbing only the
     shared inference boundary. No external SDK or billable call is made.
     """
-    from app.services.unified_turn_reasoning_service import _StreamedCompletion
-
     engine = _engine(_FakeOpenAI([]))
     engine.router._openai = None
     stream = _SpokenAnswerStream()
@@ -236,8 +234,11 @@ async def test_spoken_stream_allows_fallback_without_openai_client() -> None:
         {"role": "system", "content": "Preserve agent persona and active task"},
         {"role": "user", "content": "What other email provider can you use?"},
     ]
-    completion = _StreamedCompletion(content="Microsoft 365 is an alternative.")
-    completion.model_used = "claude-sonnet-4-5"
+    completion = SimpleNamespace(
+        content="Microsoft 365 is an alternative.", tool_calls=[],
+        prompt_tokens=0, completion_tokens=0, cached_tokens=0,
+        model_used="claude-sonnet-4-5",
+    )
     with patch(
         "app.services.unified_turn_reasoning_service._complete_unified_turn",
         new_callable=AsyncMock,
