@@ -26,6 +26,11 @@ _FOLLOW_UP = re.compile(
     r"which ones|list them(?: again)?|show (?:me )?the others)[?.!]*$"
 )
 _EMAIL_FOLLOW_UP = re.compile(r"(?i)^(?:what|which) other e-?mails? do (?:i|we) have[?.!]*$")
+_EMAIL_PROVIDER_OPTIONS = re.compile(
+    r"(?i)^(?:(?:okay|ok)[,.]?\\s+)?(?:what|which)\\s+(?:other\\s+)?"
+    r"(?:e-?mail|mail)\\s+(?:providers?|services?|integrations?|connectors?)\\s+"
+    r"(?:can|could|do)\\s+(?:you|gravitre)\\s+(?:use|access|support)[?.!]*$"
+)
 
 
 def _utterance(message: str) -> str:
@@ -48,6 +53,8 @@ def connector_inventory_intent(message: str, history: list[dict[str, Any]] | Non
             return None
         return ConnectorInventoryIntent(category="email" if match.group("email") else None)
     if _EMAIL_LIST.fullmatch(text):
+        return ConnectorInventoryIntent(category="email")
+    if _EMAIL_PROVIDER_OPTIONS.fullmatch(text):
         return ConnectorInventoryIntent(category="email")
     if not (_FOLLOW_UP.fullmatch(text) or _EMAIL_FOLLOW_UP.fullmatch(text)):
         return None
