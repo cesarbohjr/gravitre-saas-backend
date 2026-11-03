@@ -73,6 +73,15 @@ For each layer and persona: source path + PR origin + configuration flag + deplo
 6. Run synthetic end-to-end journeys: Outlook alternative after Gmail unavailable; multi-turn task with interruptions; autonomous authorized research/preparation; approval-gated writes; provider outage recovery; 20-minute voice continuity; genuine stop versus stop-speaking. Include clean/impaired network and physical iOS/browser listening.
 7. Compare contemporary ChatGPT on comparable tasks with independent raters, task success, meaningful latency, audio continuity and truthful capability claims. Report non-comparable gaps and costs.
 
+## ChatGPT benchmark — explicit product acceptance standard
+ChatGPT is the reference experience for **conversational intelligence, natural expression, contextual continuity, autonomous task execution, intelligent tool/connector discovery, error recovery and useful final outcomes**. Benchmark comparable capabilities, not claims of identical internals or unrestricted access.
+
+- Run the same multi-turn scripted and adversarial task sets against Gravitre and a contemporary ChatGPT configuration with equivalent authorized data, tools and permissions wherever possible. Record differences in entitlement or capability; do not count unavailable access as a reasoning failure.
+- Score task completion and verified side effects first; then correct referent/context, appropriate initiative, tool choice, follow-through, truthful recovery, personality consistency, dialogue naturalness, interruption handling and meaningful answer latency.
+- Blind independent human review of text and actual audio; capture transcript and listening observations separately. Measure median and tail latency, interruption recovery, audio underruns and conversational repetition.
+- Use pass/fail thresholds agreed before evaluation; require no critical authorization/safety violations, no false task-completion claims, and no repeated clarification loops in the mandatory journeys. Publish baseline and post-fix scores without cherry-picking.
+- Never assert ChatGPT parity from unit tests, scripted mocks or unrun paid-provider/device tests. Mark unsupported comparisons and pending live tests NOT_RUN/NOT_CERTIFIED.
+
 ## Required deliverables
 - Seven-layer intelligence, ML/adaptation, model-routing and agency-agent personality matrices with source references and deployment provenance.\n- Exact runtime persona injection map and expressive text/voice acceptance scores.
 - Turn-level causal timeline separating observed facts from hypotheses.
