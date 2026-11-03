@@ -784,7 +784,7 @@ class ReActEngine:
                 return
 
             if not tool_calls:
-                final_answer = content or "Task completed."
+                final_answer = content
                 trace.append(ReActTraceStep(iteration=iteration, thought=final_answer))
                 self._audit_iteration(
                     ctx,
@@ -1471,13 +1471,21 @@ class ReActEngine:
         """Single-pass reasoning when no integration tools are connected (STA-174)."""
         trace: list[ReActTraceStep] = []
         try:
-            client = self.router._openai
-            if client is None:
-                raise RuntimeError("OPENAI_API_KEY is not configured")
-            kwargs: dict[str, Any] = {"model": model, "messages": messages}
-            if _supports_custom_temperature(model):
-                kwargs["temperature"] = 0.2
-            response = await client.chat.completions.create(**kwargs)
+            # The no-connector case still needs provider policy, recovery and
+            # usage attribution; use the same inference boundary as tool rounds.
+            started = time.perf_counter()
+            response = await self._chat_with_tools(messages, [], model)
+            content = (response.choices[0].message.content or "").strip()
+            from app.services.tool_model_metering import record_tool_response
+
+            await record_tool_response(
+                self.router, org_id=ctx.org_id,
+                model=getattr(response, "model", None) or model,
+                elapsed_ms=int((time.perf_counter() - started) * 1000),
+                response=response, agent_id=ctx.agent_id,
+            )
+            if not content:
+                raise RuntimeError("react_reasoning_only_empty_response")
         except Exception as exc:  # noqa: BLE001
             logger.warning("react_reasoning_only_failed error=%s", exc)
             return ReActResult(

@@ -120,3 +120,82 @@ async def test_real_unified_dispatch_401_to_anthropic(router, monkeypatch):
     create.assert_awaited_once()
     alternate.assert_awaited_once()
     assert alternate.await_args.kwargs["messages"] == messages
+
+
+@pytest.mark.asyncio
+async def test_classical_reasoning_only_401_recovers_and_meters_actual_model(router, monkeypatch):
+    from unittest.mock import MagicMock
+    from app.operators.react_engine import ReActEngine, ReActStatus
+    from app.services.providers.tool_completion import ToolCompletionResult
+    from app.services.tool_types import ToolContext
+
+    create = AsyncMock(side_effect=HTTPFailure(401))
+    router._openai = SimpleNamespace(chat=SimpleNamespace(completions=SimpleNamespace(create=create)))
+    alternate = AsyncMock(return_value=ToolCompletionResult(content="Here are the options.", tool_calls=[]))
+    monkeypatch.setattr(tool_router, "_complete_anthropic_with_tools", alternate)
+    meter = AsyncMock()
+    monkeypatch.setattr("app.services.tool_model_metering.record_tool_response", meter)
+    engine = object.__new__(ReActEngine)
+    engine.router = router
+    ctx = ToolContext(settings=router.settings, client=MagicMock(), org_id="org-test", actor_id="actor")
+    messages = [{"role": "system", "content": "Persona, intelligence, pending objective"},
+                {"role": "user", "content": "Continue the same email-provider comparison"}]
+    result = await engine._run_reasoning_only(
+        ctx=ctx, messages=messages, model="gpt-5.5", audit_resource_type="conversation", audit_id=None,
+    )
+    assert result.status == ReActStatus.COMPLETED
+    assert result.answer == "Here are the options."
+    assert alternate.await_args.kwargs["messages"] is messages
+    assert alternate.await_args.kwargs["tools"] == []
+    assert meter.await_args.kwargs["model"].startswith("claude")
+    create.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("content, expected", [("", "error"), ("NEEDS_HUMAN_INPUT: Which date?", "needs_human_input")])
+async def test_reasoning_only_empty_is_not_false_completion_and_clarification_survives(router, monkeypatch, content, expected):
+    from unittest.mock import MagicMock
+    from app.operators.react_engine import ReActEngine
+    from app.services.tool_types import ToolContext
+
+    engine = object.__new__(ReActEngine)
+    engine.router = router
+    engine._chat_with_tools = AsyncMock(return_value=SimpleNamespace(
+        choices=[SimpleNamespace(message=SimpleNamespace(content=content))], model="claude-sonnet-4-6"))
+    monkeypatch.setattr("app.services.tool_model_metering.record_tool_response", AsyncMock())
+    ctx = ToolContext(settings=router.settings, client=MagicMock(), org_id="org-test", actor_id="actor")
+    result = await engine._run_reasoning_only(
+        ctx=ctx, messages=[], model="gpt-5.5", audit_resource_type="conversation", audit_id=None,
+    )
+    assert result.status.value == expected
+    assert result.answer != "Task completed."
+
+
+@pytest.mark.asyncio
+async def test_reasoning_only_policy_denial_never_dispatches_or_claims_completion(router, monkeypatch):
+    from unittest.mock import MagicMock
+    from app.operators.react_engine import ReActEngine, ReActStatus
+    from app.services.tool_types import ToolContext
+
+    create = AsyncMock()
+    router._openai = SimpleNamespace(chat=SimpleNamespace(completions=SimpleNamespace(create=create)))
+    monkeypatch.setattr("app.services.tool_model_metering.authorize_tool_model_call",
+                        AsyncMock(side_effect=PermissionError("model policy denied")))
+    engine = object.__new__(ReActEngine)
+    engine.router = router
+    ctx = ToolContext(settings=router.settings, client=MagicMock(), org_id="org-test", actor_id="actor")
+    result = await engine._run_reasoning_only(
+        ctx=ctx, messages=[], model="gpt-5.5", audit_resource_type="conversation", audit_id=None,
+    )
+    assert result.status == ReActStatus.ERROR
+    assert result.answer == ""
+    create.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_cancellation_is_not_a_provider_failure(router):
+    import asyncio
+    attempt = AsyncMock(side_effect=asyncio.CancelledError())
+    with pytest.raises(asyncio.CancelledError):
+        await tool_router.run_tool_failover(router, model="gpt-5.5", complete=attempt)
+    assert attempt.await_count == 1

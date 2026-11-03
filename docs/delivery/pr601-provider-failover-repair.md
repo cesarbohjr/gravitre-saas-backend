@@ -59,3 +59,38 @@ own reconciliation; this report does not certify it. End-to-end task completion,
 seven-layer/personality invocation and effective production configuration remain
 open gates. Non-OpenAI fallback currently buffers its completion, preserving the
 existing behavior rather than claiming native streaming parity.
+
+## Follow-up: classical no-tool reasoning reconciliation
+
+The remaining `_run_reasoning_only` OpenAI-only dispatch now uses the same
+`_chat_with_tools(messages, [], model)` inference boundary as classical tool
+rounds. This preserves the original message/personality context, applies the
+existing per-candidate authorization and failover policy, and records usage with
+the successful model. Empty responses return an error instead of inventing
+“Task completed.” Their usage is still recorded. Human-input markers retain
+the existing needs-human status. This supersedes the no-tool open item above.
+
+Expanded local regression invocation: the six suites listed above, plus
+`backend/tests/services/test_non_openai_provider_tool_attach.py`,
+`backend/tests/operators/test_react_engine.py`, and
+`backend/tests/test_react_engine_streaming.py`: **126 passed**, one existing
+Starlette warning. New checks exercise actual no-tool OpenAI 401 → Anthropic
+recovery, state retention, actual-model metering, empty response honesty, human
+clarification, policy denial before dispatch and cancellation without retry.
+
+Test harness correction: non-OpenAI attachment tests previously mocked the old
+public completion boundary. They now mock `_complete_anthropic_with_tools`,
+leaving the real narrowed-schema guard and failover adapter in the exercised
+path; no assertions were weakened. Before that correction, those stale mocks
+allowed dummy-credential SDK authentication attempts, which returned 401. The
+final 126-test run uses mocked provider transports.
+
+CI review on parent candidate `22055603a443557f60c8f5bd542e82ce733a68b8`:
+- CI run 41571704664 remains pending, with no jobs returned at inspection.
+- Conversational product acceptance run 41571704602 completed successfully.
+- Live-voice workflow 41571704727 succeeded only on its physical-acceptance
+  reservation/contracts job; synthetic live provider and billing Playwright
+  jobs were skipped. This is not a live voice certification result.
+
+These CI observations apply to the parent candidate, not the new follow-up.
+Production, billable-provider certification and physical listening remain NOT RUN.
