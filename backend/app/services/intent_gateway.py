@@ -94,6 +94,7 @@ class GatewayContext:
     connected_integrations: list[str] | None = None
     client: Any = None
     settings: Any = None
+    environment_name: str = "production"
 
 
 @dataclass(frozen=True)
@@ -117,6 +118,10 @@ def response_cache_eligible(question: str) -> bool:
 
     text = (question or "").strip()
     if not text:
+        return False
+    from app.services.connector_discovery_context import is_inventory_followup
+
+    if is_inventory_followup(text):
         return False
     if CONFIRM_PATTERN.match(text) or DECLINE_PATTERN.match(text):
         return False
@@ -365,6 +370,8 @@ async def _propose_connector_status(ctx: GatewayContext) -> CandidateVerdict | N
             org_id=ctx.org_id,
             settings=settings,
             connected_integrations=list(ctx.connected_integrations or []),
+            conversation_history=ctx.conversation_history,
+            environment_name=ctx.environment_name,
         )
     except Exception:  # noqa: BLE001
         return None
@@ -519,6 +526,15 @@ async def evaluate_intent_gateway(ctx: GatewayContext) -> GatewayDecision:
             )
         return GatewayDecision(action="fallthrough", reason="operator_task_shaped")
 
+    # Contextual inventory follows the same pending-state and live-read checks
+    # as explicit status questions, before a context-free cache can answer it.
+    status = await _propose_connector_status(ctx)
+    if status is not None and status.confidence >= INTENT_GATEWAY_THRESHOLD:
+        return GatewayDecision(
+            action="shortcut", reason="candidate_accepted", candidate_id=status.candidate_id,
+            confidence=status.confidence, answer=status.answer, extras=status.extras,
+        )
+
     proposals: list[CandidateVerdict] = []
     for propose in _SYNC_CANDIDATES:
         try:
@@ -530,7 +546,6 @@ async def evaluate_intent_gateway(ctx: GatewayContext) -> GatewayDecision:
 
     for propose_async in (
         _propose_channel_override,
-        _propose_connector_status,
         _propose_meta_capability,
     ):
         try:
@@ -552,3 +567,4 @@ async def evaluate_intent_gateway(ctx: GatewayContext) -> GatewayDecision:
         answer=best.answer,
         extras=best.extras,
     )
+

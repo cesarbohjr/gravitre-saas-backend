@@ -165,3 +165,19 @@ Code added on the PR branch; production disposition remains NOT RUN.
 
 Connector discovery, repeated clarification repair, audio telemetry and measured fine tuning remain pending. No deployment, paid inference or training was initiated.
 
+## Implementation checkpoint: contextual discovery and clarification repair
+
+Code added on the PR branch; production dialogue acceptance remains NOT RUN.
+
+- Extended the existing connector-status service to recognize email inventory questions and resolve narrowly matched follow-ups against the recent user subject. Unrelated turns stop context inheritance; action requests are not rewritten into inventory requests.
+- Email inventory derives eligible vendors from the canonical email capability bindings and canonical connector aliases. Microsoft 365/Outlook is included without a separate vendor-alias list.
+- Inventory uses the existing live getConnectorStatus read with the caller's organization and environment. Configured but blocked connections remain visible; failed verification never becomes a claim that no connectors exist.
+- The answer distinguishes configured services from supported catalog alternatives and explicitly avoids equating general connection health with permission to read/send email.
+- The gateway checks fresh inventory before context-free cache proposals, excludes inventory follow-ups from cached responses, forwards conversation history/environment, and preserves the pending-action authority check.
+- Removed the automatic generic confidence suffix. A conservative repair preserves useful answers and specific questions, substitutes a targeted question for generic/empty clarification, and changes strategy when the same targeted question has already failed. Grounding validation, confidence metadata and authorization remain in place.
+- Twelve new offline contracts pass. Combined with the previous authentication tests, all twenty checks pass in one process: `PYTHONPATH=backend:backend/tests/services python3 -m unittest test_provider_auth_backoff test_contextual_connector_discovery -v`.
+- Changed Python files compile. Service/parser/registry code runs in the offline checks; display/import infrastructure and live status reads are mocked. Gateway function-body checks are isolated from application startup. These are not full application, SDK or real-provider certifications.
+- Limitations: follow-up recognition is deliberately narrow and English-language; this is not general reference-resolution parity. Email discovery is grounded in existing canonical capability bindings and allowed catalog vendors, not exhaustive discovery of every third-party mail product. Action-specific OAuth scope validation still occurs through execution controls. No paid inference, deployment or raw-audio test occurred.
+- Full CI, real text/voice replay, physical-device audio and blinded product comparisons remain pending. Existing standing batteries are still required before any quality release.
+
+

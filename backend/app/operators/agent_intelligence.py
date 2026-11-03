@@ -1907,6 +1907,7 @@ class AgentIntelligence:
                 spoken_mode=bool(spoken_mode),
                 conversation_history=conversation_history,
                 task_state=gateway_state if isinstance(gateway_state, dict) else {},
+                environment_name=environment_name,
                 org_id=org_id,
                 conversation_id=conversation_id,
                 user_id=user_id,
@@ -6347,16 +6348,14 @@ class AgentIntelligence:
             task_state=task_state if isinstance(task_state, dict) else None,
         )
         full_content = _with_social(str(finalized["content"] or ""))
-        if finalized["confidence"].get("needs_clarification") and mode_key != "fast":
-            clarification_suffix = (
-                "\n\nI may be missing context — could you clarify or point me to a specific record or document?"
-            )
-            # An answer that already asks its own question must not gain a
-            # second, generic one ("Which numbers do you mean…? I may be
-            # missing context — could you clarify…?").
-            already_asks = "?" in (full_content.strip().split("\n\n")[-1] if full_content.strip() else "")
-            if clarification_suffix.strip() not in full_content and not already_asks:
-                full_content = f"{full_content.rstrip()}{clarification_suffix}"
+        from app.services.clarification_repair import repair_generic_clarification
+
+        full_content = repair_generic_clarification(
+            full_content,
+            query=task_text,
+            history=conversation_history,
+            needs_clarification=bool(finalized["confidence"].get("needs_clarification")),
+        )
 
         consensus_result = await get_conversational_consensus_service(active_settings).refine_if_warranted(
             org_id,
@@ -6952,3 +6951,4 @@ def get_agent_intelligence() -> AgentIntelligence:
     if _agent_intelligence_singleton is None:
         _agent_intelligence_singleton = AgentIntelligence()
     return _agent_intelligence_singleton
+

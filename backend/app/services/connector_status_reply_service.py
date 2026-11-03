@@ -62,6 +62,7 @@ class ConnectorConnectionState(str, Enum):
 class ConnectorStatusQuestion:
     kind: ConnectorStatusQuestionKind
     vendor_slug: str | None = None
+    category: str | None = None
 
 
 @dataclass(frozen=True)
@@ -125,10 +126,15 @@ def _is_short_connector_status_utterance(text: str) -> bool:
     return len(stripped) <= 160
 
 
-def parse_connector_status_question(message: str) -> ConnectorStatusQuestion | None:
+def parse_connector_status_question(message: str, history: list[dict[str, Any]] | None = None) -> ConnectorStatusQuestion | None:
     text = (message or "").strip()
     if not text or not _is_short_connector_status_utterance(text):
         return None
+    from app.services.connector_discovery_context import connector_inventory_intent
+
+    inventory = connector_inventory_intent(text, history)
+    if inventory is not None:
+        return ConnectorStatusQuestion(kind=ConnectorStatusQuestionKind.LIST, category=inventory.category)
     if _LIST_CONNECTED_RE.search(text):
         return ConnectorStatusQuestion(kind=ConnectorStatusQuestionKind.LIST)
     if _SUPPORT_QUESTION_RE.search(text):
@@ -265,11 +271,61 @@ def format_connected_list_answer(
                 labels.append(vendor_display_label(vendor))
     labels = sorted({label for label in labels if label})
     if not labels:
+        if connectors:
+            return "Your configured connectors aren't currently verified as ready to use. Check their authentication and permissions on the Connectors page."
         return "You don't have any connectors connected to this Gravitre account yet."
     if len(labels) == 1:
         return f"You have {labels[0]} connected."
     joined = ", ".join(labels[:-1]) + f", and {labels[-1]}"
     return f"You have {joined} connected."
+
+
+def format_email_inventory_answer(connectors: list[dict[str, Any]], *, include_alternatives: bool = False) -> str:
+    """Inventory from verified rows; catalog membership never proves mail scopes."""
+    from app.capability_ontology.registry import get_capability
+    from app.services.connector_semantic_registry import resolve_connector_slug_from_text as canonical_slug
+
+    capability = get_capability("email.send")
+    vendors = {canonical_slug(binding.vendor) or binding.vendor for binding in capability.bindings} if capability else set()
+    rows = [row for row in connectors if (canonical_slug(str(row.get("vendor") or "")) or row.get("vendor")) in vendors]
+
+    def label(slug: str) -> str:
+        return "Microsoft 365 (Outlook)" if slug == "microsoft365" else vendor_display_label(slug)
+
+    if not rows:
+        supported = {canonical_slug(slug) or slug for slug in _allowed_vendors()}
+        alternatives = sorted(label(slug) for slug in vendors & supported)
+        text = "I didn't find a configured email connector in this workspace."
+        if alternatives:
+            text += " Supported email options include " + ", ".join(alternatives) + ". You can review them on the Connectors page."
+        return text
+    descriptions = []
+    for row in rows:
+        slug = canonical_slug(str(row.get("vendor") or "")) or str(row.get("vendor") or "")
+        state = _classify_connection_state(row)
+        reason = str(row.get("blocking_reason") or "")
+        if state in {ConnectorConnectionState.CONNECTED_HEALTHY, ConnectorConnectionState.CONNECTED_SYNCING}:
+            status = "connected"
+        elif reason == "missing_scope":
+            status = "configured but needs additional permissions"
+        elif state == ConnectorConnectionState.AUTH_EXPIRED:
+            status = "configured but needs reconnection"
+        else:
+            status = "configured but not verified as ready to use"
+        description = f"{label(slug)} is {status}."
+        if description not in descriptions:
+            descriptions.append(description)
+    count = "one" if len(descriptions) == 1 else str(len(descriptions))
+    noun = "service" if len(descriptions) == 1 else "services"
+    text = f"I found {count} configured email {noun}. " + " ".join(descriptions)
+    text += " Email-specific permissions still need checking before reading or sending messages."
+    if include_alternatives:
+        installed = {canonical_slug(str(row.get("vendor") or "")) or row.get("vendor") for row in rows}
+        supported = {canonical_slug(slug) or slug for slug in _allowed_vendors()}
+        alternatives = sorted(label(slug) for slug in (vendors & supported) - installed)
+        if alternatives:
+            text += " Other supported options include " + ", ".join(alternatives) + "; these are catalog options, not additional connected accounts."
+    return text
 
 
 def _rows_from_get_connector_status(
@@ -305,6 +361,7 @@ def answer_connector_status_question(
     settings: Any,
     connected_integrations: list[str] | None = None,
     environment_name: str = "production",
+    conversation_history: list[dict[str, Any]] | None = None,
 ) -> ConnectorStatusAnswer | None:
     """Return a deterministic answer when the message is a connector status question.
 
@@ -314,7 +371,7 @@ def answer_connector_status_question(
     """
     del connected_integrations
     del client
-    parsed = parse_connector_status_question(message)
+    parsed = parse_connector_status_question(message, conversation_history)
     if parsed is None:
         return None
 
@@ -331,6 +388,12 @@ def answer_connector_status_question(
                 kind=parsed.kind,
                 state=ConnectorConnectionState.UNKNOWN,
                 source="unverified",
+            )
+        if parsed.category == "email":
+            return ConnectorStatusAnswer(
+                text=format_email_inventory_answer(connectors or [], include_alternatives=bool(re.search(r"(?i)\bothers?\b", message))),
+                kind=parsed.kind,
+                source="getConnectorStatus",
             )
         executable = [row for row in (connectors or []) if row.get("execution_available")]
         return ConnectorStatusAnswer(
@@ -385,3 +448,4 @@ def answer_connector_status_question(
         state=state,
         source="getConnectorStatus" if not service_error else "unverified",
     )
+
