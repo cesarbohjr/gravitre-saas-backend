@@ -175,5 +175,56 @@ class GatewayContracts(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(len(calls), 1)
 
 
+
+class FullGatewayOutlookJourneyContracts(unittest.IsolatedAsyncioTestCase):
+    async def test_exact_gmail_outlook_followup_uses_verified_live_rows(self):
+        from app.services import intent_gateway as gateway
+        from app.services import connector_status_reply_service as status
+
+        rows = [
+            {"vendor": "gmail", "execution_available": True},
+            {"vendor": "microsoft365", "execution_available": False, "blocking_reason": "missing_scope"},
+        ]
+        history = [
+            {"role": "user", "content": "Find the email about the quarterly report in Gmail."},
+            {"role": "assistant", "content": "Gmail cannot complete that search with current permissions."},
+        ]
+        context = gateway.GatewayContext(
+            message="What other email provider can you use?",
+            conversation_history=history,
+            task_state={},
+            org_id="acceptance-org", client=object(), settings=object(),
+            connected_integrations=["gmail"],
+        )
+        with patch.object(status, "_rows_from_get_connector_status", return_value=(rows, False)) as live, \\
+             patch.object(status, "_allowed_vendors", return_value=frozenset({"gmail", "microsoft365"})):
+            decision = await gateway.evaluate_intent_gateway(context)
+        self.assertEqual(decision.action, "shortcut")
+        self.assertEqual(decision.candidate_id, "connector_status")
+        self.assertEqual(decision.extras["verified_tool"], "getConnectorStatus")
+        self.assertIn("Gmail is connected", decision.answer)
+        self.assertIn("Microsoft 365 (Outlook) is configured but needs additional permissions", decision.answer)
+        self.assertNotIn("Outlook is connected", decision.answer)
+        live.assert_called_once()
+        self.assertEqual(live.call_args.kwargs["org_id"], "acceptance-org")
+
+    async def test_connector_status_question_does_not_approve_pending_write(self):
+        from app.services import intent_gateway as gateway
+        ctx = gateway.GatewayContext(
+            message="What other email provider can you use?",
+            task_state={"pending_task": {"status": "awaiting_confirm", "invoke_action": "gmail.messages.send"}},
+            org_id="acceptance-org", client=object(), settings=object(),
+            conversation_history=[{"role": "user", "content": "Draft a message but do not send it."}],
+        )
+        async def no_candidate(_ctx):
+            return None
+        with patch.object(gateway, "_SYNC_CANDIDATES", ()), \\
+             patch.object(gateway, "_propose_channel_override", side_effect=no_candidate), \\
+             patch.object(gateway, "_propose_meta_capability", side_effect=no_candidate):
+            decision = await gateway.evaluate_intent_gateway(ctx)
+        self.assertEqual(decision.action, "fallthrough")
+        self.assertNotEqual(decision.candidate_id, "connector_status")
+
+
 if __name__ == "__main__":
     unittest.main()
