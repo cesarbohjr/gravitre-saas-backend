@@ -27,9 +27,9 @@ _FOLLOW_UP = re.compile(
 )
 _EMAIL_FOLLOW_UP = re.compile(r"(?i)^(?:what|which) other e-?mails? do (?:i|we) have[?.!]*$")
 _EMAIL_PROVIDER_OPTIONS = re.compile(
-    r"(?i)^(?:(?:okay|ok)[,.]?\\s+)?(?:what|which)\\s+(?:other\\s+)?"
-    r"(?:e-?mail|mail)\\s+(?:providers?|services?|integrations?|connectors?)\\s+"
-    r"(?:can|could|do)\\s+(?:you|gravitre)\\s+(?:use|access|support)[?.!]*$"
+    r"(?i)^(?:(?:okay|ok)[,.]?\s+)?(?:what|which)\s+(?:other\s+)?"
+    r"(?:e-?mail|mail)\s+(?:providers?|services?|integrations?|connectors?)\s+"
+    r"(?:can|could|do)\s+(?:you|gravitre)\s+(?:use|access|support)[?.!]*$"
 )
 
 
