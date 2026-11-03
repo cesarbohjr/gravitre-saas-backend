@@ -149,3 +149,19 @@ The initial plan commit requires documentation/link review only. No runtime test
 Existing refusal to fund paid-provider tests remains in force: creating this PR does not authorize billable inference, training, a paid transport subscription or deployment. Record those gates NOT RUN until separately authorized; do not silently skip them and declare parity.
 
 No production migrations, runtime toggles, connector grants, customer-facing claims or automatic learning are introduced.
+
+## Implementation checkpoint: authentication backoff
+
+Code added on the PR branch; production disposition remains NOT RUN.
+
+- Shared bounded process-local authentication circuit guards unified OpenAI streaming and general OpenAI/Anthropic/Gemini tool completion.
+- A structured HTTP 401 opens a 60-second cooldown for the provider plus credential/endpoint fingerprint. Only a digest and expiry remain in the bounded 128-entry memory cache; no prompt, provider body or credential is logged by the guard.
+- Rotation of the effective credential or OpenAI endpoint permits an immediate attempt. Permission errors, rate limits, transient errors and cancellation do not open the circuit. The guard never selects an alternative provider.
+- Unified diagnostics distinguish the initial sanitized authentication failure from a suppressed repeated attempt. Existing tool narrowing, metering authorization and write gates remain in their original paths.
+- Offline validation: eight standard-library unittest checks passed, including the actual dispatch function bodies isolated from application startup imports. These verify both paths share the circuit, all three shared provider routes, recovery/isolation, cancellation and tool-narrowing rejection.
+- Local command: `PYTHONPATH=backend python3 -m unittest discover -s backend/tests/services -p test_provider_auth_backoff.py -v`.
+- Full application pytest and SDK integration are not locally executed: this workspace has a partial source checkout and no pytest installation. Full CI still needs inspection on the implementation SHA.
+- Limits: state is per worker and is reset by restart; concurrently in-flight requests can fail before the first 401 is observed; cooldown expiry permits retry without live health certification. Other direct SDK consumers (including independent composition/evaluation adapters) are outside this initial guard and require subsequent inventory. No production credential was changed or tested. This checkpoint does not close workstream 1.
+
+Connector discovery, repeated clarification repair, audio telemetry and measured fine tuning remain pending. No deployment, paid inference or training was initiated.
+
