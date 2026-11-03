@@ -1429,9 +1429,11 @@ class ReActEngine:
         from app.services.unified_turn_reasoning_service import _complete_unified_turn
 
         assert_tools_narrowed(tools, where="react_engine._stream_chat_with_tools")
+        # A missing OpenAI client must not block the canonical provider chain:
+        # the selected model may be Anthropic/Gemini, or an OpenAI attempt may
+        # be skipped in favor of a configured fallback. The shared dispatcher
+        # handles per-provider availability and policy before inference.
         client = getattr(self.router, "_openai", None)
-        if client is None:
-            raise RuntimeError("OPENAI_API_KEY is not configured")
         kwargs: dict[str, Any] = {"model": model, "messages": messages}
         if tools:
             kwargs["tools"] = openai_tools_payload(tools, where="react_engine.stream")
