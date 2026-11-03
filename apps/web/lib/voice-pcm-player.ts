@@ -20,6 +20,7 @@ import {
 import { createPcmJitterState, schedulePcmStart } from "@/lib/voice-pcm-jitter"
 import { VOICE_PCM_PLAYER_PROCESSOR, loadVoiceWorklets } from "@/lib/voice-worklets"
 import { rampDuckGain, resetDuckGainAt } from "@/lib/voice-overlap-duck"
+import { createPcmDiagnostics, type PcmPlaybackDiagnostics } from "@/lib/voice-pcm-diagnostics"
 
 /** Fade applied when playback is cut (barge-in, stop), instead of a hard stop. */
 export const PCM_FLUSH_FADE_S = 0.012
@@ -37,6 +38,8 @@ export type VoicePcmPlayerOptions = {
 
 export type VoicePcmPlayer = {
   readonly kind: VoicePcmPlayerKind
+  /** Content-free lifetime counters; optional for older/test players. */
+  diagnostics?: () => PcmPlaybackDiagnostics
   /** Queue PCM16 mono. Throws if the browser refuses to schedule it. */
   enqueue: (pcm: Int16Array, sampleRate: number) => void
   /** Fade out and drop everything queued (barge-in). Also ends any duck. */
@@ -82,6 +85,7 @@ export function createWorkletPcmPlayer(
   ctx: AudioContext,
   options: VoicePcmPlayerOptions = {},
 ): VoicePcmPlayer {
+  const diagnostics = createPcmDiagnostics("worklet", () => ctx.currentTime)
   const node = new AudioWorkletNode(ctx, VOICE_PCM_PLAYER_PROCESSOR, {
     numberOfInputs: 0,
     numberOfOutputs: 1,
@@ -111,9 +115,12 @@ export function createWorkletPcmPlayer(
       seq?: number
       epoch?: number
       played?: number
+      underruns?: number
+      buffered_frames?: number
     }
     if (msg?.type === "progress") {
       if (msg.epoch !== epoch || typeof msg.played !== "number") return
+      diagnostics.noteQueue(msg.underruns, typeof msg.buffered_frames === "number" ? msg.buffered_frames / ctx.sampleRate * 1000 : undefined)
       playedFrames = Math.max(playedFrames, msg.played)
       progressAt = typeof msg.frame === "number" ? msg.frame / ctx.sampleRate : ctx.currentTime
       return
@@ -124,7 +131,9 @@ export function createWorkletPcmPlayer(
       options.onStarted?.(at)
     } else if (msg?.type === "active") {
       const next = Boolean(msg.active)
+      if (typeof msg.epoch === "number" && msg.epoch !== epoch) return
       if (!next && typeof msg.seq === "number" && msg.seq < posted) return
+      diagnostics.noteQueue(msg.underruns, typeof msg.buffered_frames === "number" ? msg.buffered_frames / ctx.sampleRate * 1000 : undefined)
       if (next === active) return
       active = next
       options.onActiveChange?.(next)
@@ -132,6 +141,7 @@ export function createWorkletPcmPlayer(
   }
   return {
     kind: "worklet",
+    diagnostics: () => diagnostics.snapshot(),
     enqueue(pcm, sampleRate) {
       if (pcm.length === 0) return
       // Copy so the caller's buffer survives the transfer.
@@ -150,6 +160,7 @@ export function createWorkletPcmPlayer(
       )
     },
     flush() {
+      diagnostics.flush()
       epoch += 1
       playedFrames = 0
       progressAt = null
@@ -158,7 +169,7 @@ export function createWorkletPcmPlayer(
       origin = null
       duck.resetAfterFlush()
     },
-    setDuck: (ducked) => duck.set(ducked),
+    setDuck: (ducked) => { diagnostics.setDuck(ducked); duck.set(ducked) },
     isActive: () => active,
     originTime: () => origin,
     playedSeconds() {
@@ -187,6 +198,8 @@ export function createBufferSourcePcmPlayer(
   ctx: AudioContext,
   options: VoicePcmPlayerOptions = {},
 ): VoicePcmPlayer {
+  const diagnostics = createPcmDiagnostics("buffer-source", () => ctx.currentTime)
+  let lifetimeUnderruns = 0
   const duck = createDuckControl(ctx, options.destination ?? ctx.destination)
   const destination = duck.input
   const rate = ctx.sampleRate
@@ -209,13 +222,19 @@ export function createBufferSourcePcmPlayer(
 
   return {
     kind: "buffer-source",
+    diagnostics: () => {
+      diagnostics.noteQueue(lifetimeUnderruns, Math.max(0, nextFrame / rate - ctx.currentTime) * 1000)
+      return diagnostics.snapshot()
+    },
     enqueue(pcm, sampleRate) {
       if (pcm.length === 0) return
       const inRate = sampleRate || 16000
       if (!resampler || resampler.inRate !== inRate) resampler = new StreamingResampler(inRate, rate)
       const samples = resampler.process(int16ArrayToFloat(pcm))
       if (samples.length === 0) return
+      const beforeUnderruns = jitter.underruns
       const startAt = schedulePcmStart(jitter, ctx.currentTime, nextFrame / rate, performance.now())
+      lifetimeUnderruns += jitter.underruns - beforeUnderruns
       const startFrame = Math.round(startAt * rate)
       if (startFrame !== nextFrame) fadeInPending = true
       if (fadeInPending) {
@@ -243,6 +262,7 @@ export function createBufferSourcePcmPlayer(
       }
     },
     flush() {
+      diagnostics.flush()
       const old = out
       const oldSources = sources
       const now = ctx.currentTime
@@ -281,7 +301,7 @@ export function createBufferSourcePcmPlayer(
       duck.resetAfterFlush()
       if (wasActive) setActive(false)
     },
-    setDuck: (ducked) => duck.set(ducked),
+    setDuck: (ducked) => { diagnostics.setDuck(ducked); duck.set(ducked) },
     isActive: () => sources.length > 0,
     originTime: () => origin,
     playedSeconds() {
@@ -346,4 +366,5 @@ function createDuckControl(ctx: AudioContext, destination: AudioNode) {
     },
   }
 }
+
 
