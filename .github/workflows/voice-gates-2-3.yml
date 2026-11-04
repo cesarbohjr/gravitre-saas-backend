@@ -385,8 +385,28 @@ jobs:
           python-version: '3.12'
       - name: Regress isolated inference gate without paid network calls
         run: python -m unittest discover -s tests -p test_verify_acceptance_inference.py
+      - name: Reclaim unused hosted-runner toolchains before governed voice dependencies
+        run: |
+          set -euo pipefail
+          df -h / /tmp
+          for dir in /usr/local/lib/android /usr/share/dotnet /opt/ghc /usr/local/share/powershell; do
+            if [ -d "$dir" ]; then
+              sudo rm -rf -- "$dir"
+            fi
+          done
+          python -m pip cache purge || true
+          sudo apt-get clean
+          df -h / /tmp
+          free_kib=$(df -Pk / | awk 'NR==2 {print $4}')
+          if [ "$free_kib" -lt 10485760 ]; then
+            echo "::error::Governed voice runner needs at least 10 GiB free disk before dependency installation (KiB=$free_kib)"
+            exit 1
+          fi
       - name: Install backend and RTC test dependencies
-        run: python -m pip install -r backend/requirements-dev.txt 'livekit==1.2.0'
+        run: |
+          python -m pip install --no-cache-dir --no-compile -r backend/requirements-dev.txt 'livekit==1.2.0'
+          df -h / /tmp
+          python -m pip check
       - name: Require RTC SDK
         run: python -c 'from livekit import rtc'
       - name: Exercise canonical voice write boundaries and RTC stop wiring
