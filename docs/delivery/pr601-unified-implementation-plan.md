@@ -62,3 +62,31 @@ All confirmed failures repaired or evidence-backed dispositioned; critical hando
 - Baseline buffering and gain policy remain **unchanged**: 120 ms initial lead, max 320 ms, adaptive 60 ms increase, 12 ms flush fade, duck gain 0.15. No speculative reduction of attenuation or interruption detection was introduced.
 - **Acceptance status:** code committed; exact-head CI pending. Real iOS Safari/desktop output capture, TTS arrival/playing timestamps, server-to-client clock correlation, blinded listening, provider acoustic cause and an authorized matched comparison remain **NOT_RUN / NOT_CERTIFIED**. Investigate any long duck interval alongside rebuffer gaps and audio-context state before selecting a playback or prosody remedy.
 
+
+
+## PR #600 acoustic-causality gate — further engineering checkpoint (2026-11-03)
+
+**Implemented on reconciled PR #601 branch, not deployed:** source-backed fixes and deterministic regression comparisons. No provider invoice, mailbox action, production flag change or real-device recording was authorized by this checkpoint.
+
+### Findings and repairs
+
+1. Previously, a stream resuming after an extended interval was counted as recovered starvation even if the interval exceeded the existing 400 ms same-reply limit. `PcmPlayoutQueue.push` now increments `rebufferEvents`/`rebufferFrames` only for a continuation satisfying the existing same-reply classifier, keeping counting consistent with adaptive jitter. It still cannot identify true reply identity without an explicit source reply boundary; avoid treating the metric alone as an acoustic verdict.
+2. The worklet's first `started` event after a flush now replaces the provisional `ctx.currentTime + 120ms` reply origin with its actual reported AudioContext frame timestamp. Rebuffer-induced later starts do not change the original start time. Flush resets confirmation; stale-epoch start reports remain rejected.
+3. Added regression cases for terminal silence and cross-reply pauses, measured first-start correction, and a deterministic constant-PCM delayed-arrival comparison of the existing 120 ms lead versus a 260 ms alternative. The comparison tests the buffering/latency tradeoff, **not** an acoustically validated winner. Production lead remains 120 ms and the maximum remains 320 ms.
+4. Explicit stop, genuine interruption, approval/cancellation, gain ducking, worklet flush fade and task authority are untouched.
+
+### Required causal observation matrix (NOT RUN)
+
+For a synchronized browser/TTS/audio trace, collect same-clock relative receive/enqueue/start/play/underrun/duck/unduck/flush/context-state events scoped by session, turn and reply ID, with content-free timing plus any separately consented test audio. Report possible categories separately:
+
+| Signature | Hypothesis | Cross-check / disqualifier |
+| --- | --- | --- |
+| New same-reply rebuffer count with positive gap | PCM queue starvation | Compare PCM arrival gaps, queue depth and output recording; do not infer upstream provider identity |
+| Ducked state and growing ducked_ms, but no starvation | Overlap attenuation | Compare actual mic overlap, classifier decision and gain restoration; deliberate interruption must still flush |
+| AudioContext state is not running | Browser playback interruption | Inspect resume/user-gesture/OS interruption; do not call this TTS silence |
+| No queued PCM with late upstream chunk arrivals | TTS or transport delivery delay | Correlate server TTS generation/send timestamps and client receive clock, distinguishing intentional punctuation |
+| Silent recording with normal queue, no duck and running context | Unknown until investigated | Compare capture/output routing, device gain, synthesis amplitude and muted output |
+
+**Physical and benchmark gate:** iOS Safari speaker/headphones, desktop Chrome/Safari, Wi-Fi and impaired-network runs, barge-in/reconnect, uninterrupted 20-minute conversational audio, actual consented recordings, and contemporaneous blinded independent ChatGPT/Gravitre matched-permission reference ratings are still **NOT_RUN / NOT_CERTIFIED**. Code-level synthetic timings cannot be substituted for them. Use recorded exact code/config SHA, audio checksums, real provider route, test conditions, privacy controls and rating provenance when those evaluations are authorized and available.
+
+**Decision rule:** do not change lead/duck/gain/transport or claim a winner until synchronized real PCM/TTS/device data shows a reproducible mechanism, measured improvement in held-out sessions, nonregression of first meaningful audio and cancellation latency, and independent audible inspection. No merge/deploy solely on offline tests.
