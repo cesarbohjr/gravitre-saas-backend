@@ -265,6 +265,43 @@ describe("PcmPlayoutQueue", () => {
     expect(q.rebufferFrames).toBe(0)
   })
 
+  it("compares baseline and longer jitter leads under the same deterministic PCM delay", () => {
+    // Synthetic timing comparison only. It is not a live-provider or listening verdict.
+    const simulate = (leadS: number, delayMs: number) => {
+      const sampleRate = 1000
+      const q = new PcmPlayoutQueue({
+        sampleRate,
+        initialLeadS: leadS,
+        maxLeadS: Math.max(0.32, leadS),
+      })
+      const framesPerChunk = 40
+      const arrivals = Array.from({ length: 50 }, (_, index) =>
+        index * 40 + (index >= 12 ? delayMs : 0),
+      )
+      let next = 0
+      let firstStartMs: number | null = null
+      for (let frame = 0; frame < 2600; frame += 10) {
+        while (next < arrivals.length && arrivals[next] <= frame) {
+          q.push(new Float32Array(framesPerChunk).fill(0.25), frame)
+          next += 1
+        }
+        const { started } = q.process(new Float32Array(10), frame)
+        if (started && firstStartMs === null) firstStartMs = frame
+      }
+      return { rebufferEvents: q.rebufferEvents, firstStartMs }
+    }
+    const baselineClean = simulate(0.12, 0)
+    const alternativeClean = simulate(0.26, 0)
+    expect(baselineClean.rebufferEvents).toBe(0)
+    expect(alternativeClean.rebufferEvents).toBe(0)
+    expect(baselineClean.firstStartMs).toBeLessThan(alternativeClean.firstStartMs)
+    const baselineDelayed = simulate(0.12, 200)
+    const alternativeDelayed = simulate(0.26, 200)
+    expect(baselineDelayed.rebufferEvents).toBeGreaterThan(0)
+    expect(alternativeDelayed.rebufferEvents).toBeLessThan(baselineDelayed.rebufferEvents)
+    // Do not silently promote a slower first-audio policy based on synthetic data.
+  })
+
   it("flush fades out over ~12 ms and drops the rest", () => {
     const q = new PcmPlayoutQueue({ sampleRate: RATE })
     q.push(new Float32Array(RATE).fill(0.5), 0)
