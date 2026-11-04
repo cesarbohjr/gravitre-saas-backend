@@ -28,22 +28,29 @@ describe("content-free PCM continuity observations", () => {
     now = 0.2
     expect(metrics.snapshot().ducked_ms).toBe(200)
     metrics.flush()
-    expect(metrics.snapshot()).toEqual({ player_kind: "worklet", observed_underruns: 2, buffered_ms: 0, ducked: false, duck_transitions: 2, ducked_ms: 200, flush_count: 1 })
+    expect(metrics.snapshot()).toEqual({ player_kind: "worklet", observed_underruns: 2, rebuffer_events: 0, rebuffer_ms: 0, buffered_ms: 0, ducked: false, duck_transitions: 2, ducked_ms: 200, flush_count: 1 })
   })
 
   it("ignores invalid measurements and never decreases lifetime underruns", () => {
     const metrics = createPcmDiagnostics("buffer-source", () => 0)
     metrics.noteQueue(3, 100)
+    metrics.noteRebuffer(2, 45)
+    metrics.noteRebuffer(1, 5)
+    metrics.noteRebuffer(Number.NaN, -10)
     metrics.noteQueue(1, -5)
     metrics.noteQueue(Infinity, NaN)
     expect(metrics.snapshot().observed_underruns).toBe(3)
     expect(metrics.snapshot().buffered_ms).toBe(100)
+    expect(metrics.snapshot().rebuffer_events).toBe(2)
+    expect(metrics.snapshot().rebuffer_ms).toBe(45)
   })
 
   it("consumes actual worklet reports and rejects reports from an old flush epoch", () => {
     const { player, emit } = playerFixture()
-    emit({ type: "progress", epoch: 0, played: 48, frame: 48, underruns: 2, buffered_frames: 4800 })
+    emit({ type: "progress", epoch: 0, played: 48, frame: 48, underruns: 2, buffered_frames: 4800, rebuffer_events: 1, rebuffer_frames: 2400 })
     expect(player.diagnostics?.().buffered_ms).toBe(100)
+    expect(player.diagnostics?.().rebuffer_events).toBe(1)
+    expect(player.diagnostics?.().rebuffer_ms).toBe(50)
     player.flush()
     emit({ type: "progress", epoch: 0, played: 96, underruns: 99, buffered_frames: 9600 })
     expect(player.diagnostics?.().observed_underruns).toBe(2)
