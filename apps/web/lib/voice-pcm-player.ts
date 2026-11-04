@@ -117,10 +117,13 @@ export function createWorkletPcmPlayer(
       played?: number
       underruns?: number
       buffered_frames?: number
+      rebuffer_events?: number
+      rebuffer_frames?: number
     }
     if (msg?.type === "progress") {
       if (msg.epoch !== epoch || typeof msg.played !== "number") return
       diagnostics.noteQueue(msg.underruns, typeof msg.buffered_frames === "number" ? msg.buffered_frames / ctx.sampleRate * 1000 : undefined)
+      diagnostics.noteRebuffer(msg.rebuffer_events, typeof msg.rebuffer_frames === "number" ? msg.rebuffer_frames / ctx.sampleRate * 1000 : undefined)
       playedFrames = Math.max(playedFrames, msg.played)
       progressAt = typeof msg.frame === "number" ? msg.frame / ctx.sampleRate : ctx.currentTime
       return
@@ -137,6 +140,7 @@ export function createWorkletPcmPlayer(
       if (typeof msg.epoch === "number" && msg.epoch !== epoch) return
       if (!next && typeof msg.seq === "number" && msg.seq < posted) return
       diagnostics.noteQueue(msg.underruns, typeof msg.buffered_frames === "number" ? msg.buffered_frames / ctx.sampleRate * 1000 : undefined)
+      diagnostics.noteRebuffer(msg.rebuffer_events, typeof msg.rebuffer_frames === "number" ? msg.rebuffer_frames / ctx.sampleRate * 1000 : undefined)
       if (next === active) return
       active = next
       options.onActiveChange?.(next)
