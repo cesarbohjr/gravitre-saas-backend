@@ -35,6 +35,9 @@ _EMAIL_PROVIDER_OPTIONS = re.compile(
 
 def _utterance(message: str) -> str:
     text = " ".join((message or "").split())
+    # Treat an explicit speech correction as the current utterance, not a
+    # request to continue the prior (possibly misheard) subject.
+    text = re.sub(r"(?i)^(?:(?:no|sorry)[,.]?\s+)?i meant\s+", "", text)
     text = re.sub(r"(?i)^(?:ok(?:ay)?[,.]?\s+)?i asked(?: asked)?\s+", "", text)
     return re.sub(r"(?i)^what other gmails[.…]+\s*", "", text)
 
