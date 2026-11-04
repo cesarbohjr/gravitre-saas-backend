@@ -97,6 +97,9 @@ export function createWorkletPcmPlayer(
   node.connect(duck.input)
   let active = false
   let origin: number | null = null
+  // enqueue sets a provisional start for scheduling. The first worklet
+  // started event is authoritative for playback timing within this epoch.
+  let startConfirmed = false
   // Sequence of the last pcm message posted; the worklet echoes the last one it
   // processed. An "inactive" report from before audio we already posted (e.g. the
   // end of a barge-in flush fade) is stale and must not end the reply.
@@ -133,7 +136,10 @@ export function createWorkletPcmPlayer(
       // after flush. It must not re-establish the old reply as audible.
       if (msg.epoch !== epoch) return
       const at = typeof msg.frame === "number" ? msg.frame / ctx.sampleRate : ctx.currentTime
-      if (origin == null) origin = at
+      if (!startConfirmed) {
+        origin = at
+        startConfirmed = true
+      }
       options.onStarted?.(at)
     } else if (msg?.type === "active") {
       const next = Boolean(msg.active)
@@ -174,6 +180,7 @@ export function createWorkletPcmPlayer(
       postedSeconds = 0
       node.port.postMessage({ type: "flush", epoch })
       origin = null
+      startConfirmed = false
       duck.resetAfterFlush()
     },
     setDuck: (ducked) => { diagnostics.setDuck(ducked); duck.set(ducked) },
