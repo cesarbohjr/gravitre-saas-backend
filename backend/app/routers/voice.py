@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 import time
 import uuid
-from typing import Annotated, Any, AsyncIterator
+from typing import Annotated, Any, AsyncIterator, Literal
 
 from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile, status
 from fastapi.responses import Response, StreamingResponse
@@ -95,6 +95,18 @@ class MicDiagnosticsRequest(BaseModel):
     )
 
 
+class PcmOutputDiagnostics(BaseModel):
+    """Allowlisted browser observations; never execution or quality authority."""
+
+    player_kind: Literal["worklet", "buffer-source"]
+    observed_underruns: int = Field(ge=0, le=1000000)
+    buffered_ms: int = Field(ge=0, le=600000)
+    ducked: bool
+    duck_transitions: int = Field(ge=0, le=1000000)
+    ducked_ms: int = Field(ge=0, le=86400000)
+    flush_count: int = Field(ge=0, le=1000000)
+
+
 class OutputDiagnosticsRequest(BaseModel):
     """Browser audio-output lifecycle telemetry — no audio or transcript content."""
 
@@ -105,7 +117,7 @@ class OutputDiagnosticsRequest(BaseModel):
         ...,
         description=(
             "audio_missing | audio_silent | output_unavailable | playback_blocked | "
-            "playback_started | playback_recovered"
+            "playback_started | playback_recovered | playback_continuity"
         ),
     )
     audio_context_state: str | None = None
@@ -115,6 +127,8 @@ class OutputDiagnosticsRequest(BaseModel):
     fallback_triggered: bool = False
     playback_blocked: bool = False
     browser_audio_playback_started: bool = False
+    reply_id: int | None = Field(default=None, ge=0)
+    pcm_diagnostics: PcmOutputDiagnostics | None = None
 
 
 class SessionTurnRequest(BaseModel):
@@ -270,6 +284,7 @@ def post_output_diagnostics(
         "playback_blocked",
         "playback_started",
         "playback_recovered",
+        "playback_continuity",
     }
     event = str(body.event or "").strip().lower()
     if event not in allowed:
@@ -304,6 +319,10 @@ def post_output_diagnostics(
                 "fallback_triggered": body.fallback_triggered,
                 "playback_blocked": body.playback_blocked,
                 "browser_audio_playback_started": body.browser_audio_playback_started,
+                "reply_id": body.reply_id,
+                "pcm_diagnostics": body.pcm_diagnostics.model_dump() if body.pcm_diagnostics else None,
+                "diagnostic_scope": "player_lifetime",
+                "client_reported": True,
                 "contains_audio": False,
                 "contains_transcript": False,
             },
@@ -1082,3 +1101,4 @@ def get_missing_ml_capabilities(
     from app.services.voice_acoustic_signal import other_missing_ml_capabilities_report
 
     return {"capabilities": other_missing_ml_capabilities_report(), "built_now": False}
+

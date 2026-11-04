@@ -1,4 +1,5 @@
 import { apiFetch } from "@/lib/fetcher"
+import type { PcmPlaybackDiagnostics } from "@/lib/voice-pcm-diagnostics"
 
 export type VoiceOutputDiagnosticEvent =
   | "audio_missing"
@@ -7,6 +8,7 @@ export type VoiceOutputDiagnosticEvent =
   | "playback_blocked"
   | "playback_started"
   | "playback_recovered"
+  | "playback_continuity"
 
 export type VoiceOutputDiagnosticsPayload = {
   session_id?: string | null
@@ -20,6 +22,8 @@ export type VoiceOutputDiagnosticsPayload = {
   fallback_triggered?: boolean
   playback_blocked?: boolean
   browser_audio_playback_started?: boolean
+  reply_id?: number | null
+  pcm_diagnostics?: PcmPlaybackDiagnostics
 }
 
 /**
@@ -43,3 +47,4 @@ export async function postVoiceOutputDiagnostics(
     return false
   }
 }
+

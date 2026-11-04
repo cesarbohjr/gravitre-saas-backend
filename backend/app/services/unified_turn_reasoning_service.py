@@ -363,16 +363,20 @@ async def _complete_unified_turn(
     if provider == "openai":
         from app.services.tool_model_metering import authorize_tool_model_call
 
-        await authorize_tool_model_call(router, model=model)
-        return await _complete_unified_turn_stream(
-            openai_client,
-            kwargs=kwargs,
-            wall_start=wall_start,
-            model_start=model_start,
-            timeout_s=timeout_s,
-            on_text_delta=on_text_delta,
-            on_tool_call_delta=on_tool_call_delta,
-        )
+        from app.services.providers.auth_backoff import provider_auth_backoff, provider_auth_scope
+
+        credential, endpoint = provider_auth_scope(router, provider, openai_client=openai_client)
+        with provider_auth_backoff.guard(provider, credential, endpoint):
+            await authorize_tool_model_call(router, model=model)
+            return await _complete_unified_turn_stream(
+                openai_client,
+                kwargs=kwargs,
+                wall_start=wall_start,
+                model_start=model_start,
+                timeout_s=timeout_s,
+                on_text_delta=on_text_delta,
+                on_tool_call_delta=on_tool_call_delta,
+            )
 
     cap = max(5.0, float(timeout_s or 20.0))
 
@@ -1493,6 +1497,11 @@ async def run_unified_turn_shadow(
     except Exception as exc:  # noqa: BLE001
         logger.warning("unified_turn_shadow model call failed: %s", exc)
         breakdown["error"] = str(exc)[:200]
+        from app.services.providers.auth_backoff import ProviderAuthenticationUnavailable
+
+        if isinstance(exc, ProviderAuthenticationUnavailable):
+            breakdown["provider_error_category"] = exc.category
+            breakdown["provider_authentication_suppressed"] = exc.suppressed
         if "unified_turn_stream_timeout" in str(exc):
             breakdown["stream_timed_out"] = True
         _log_unified_turn_breakdown(
@@ -3259,3 +3268,4 @@ def schedule_unified_turn_shadow(
         task.add_done_callback(_SHADOW_BACKGROUND_TASKS.discard)
     except RuntimeError:
         asyncio.run(_runner())
+
