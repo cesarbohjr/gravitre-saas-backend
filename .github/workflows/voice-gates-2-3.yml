@@ -383,6 +383,8 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+      - name: Regress isolated inference gate without paid network calls
+        run: python -m unittest discover -s tests -p test_verify_acceptance_inference.py
       - name: Install backend and RTC test dependencies
         run: python -m pip install -r backend/requirements-dev.txt 'livekit==1.2.0'
       - name: Require RTC SDK
