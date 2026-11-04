@@ -232,6 +232,9 @@ describe("PcmPlayoutQueue", () => {
       }
     })
     expect(q.underruns).toBe(1)
+    expect(q.rebufferEvents).toBe(1)
+    expect(q.rebufferFrames / RATE).toBeGreaterThan(0.03)
+    expect(q.rebufferFrames / RATE).toBeLessThan(0.07)
     // No hard edge anywhere: every transition is a ramp.
     expect(maxJump(out)).toBeLessThan(0.5 / 100)
     // There is a silent gap, and the restart waited the grown lead (180 ms).
@@ -267,6 +270,8 @@ describe("PcmPlayoutQueue", () => {
     q.flush()
     q.push(new Float32Array(RATE).fill(-0.25), Math.round(RATE * 0.2))
     expect(q.underruns).toBe(0)
+    expect(q.rebufferEvents).toBe(0)
+    expect(q.rebufferFrames).toBe(0)
     const out = run(q, RATE * 0.5, Math.round(RATE * 0.2))
     expect(maxJump(out)).toBeLessThan(0.5 / 100)
     expect(out[out.length - 1]).toBeCloseTo(-0.25, 5)
