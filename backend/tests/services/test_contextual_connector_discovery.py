@@ -18,7 +18,7 @@ class ContextContracts(unittest.TestCase):
             with self.subTest(question=question):
                 self.assertEqual(connector_inventory_intent(question).category, "email")
         history = [{"role": "user", "content": "What other email connectors do I have?"}, {"role": "assistant", "content": "I may be missing context — could you clarify or point me to a specific record or document?"}]
-        for followup in ["Do I not have others?", "Which ones?", "What other emails do I have?", "Okay. I asked asked what other Gmails... what other emails do I have?"]:
+        for followup in ["Do I not have others?", "Which ones?", "Any others?", "Anything else?", "What other emails do I have?", "Okay. I asked asked what other Gmails... what other emails do I have?"]:
             self.assertEqual(connector_inventory_intent(followup, history).category, "email")
 
     def test_context_does_not_cross_topic_or_authorize_actions(self):
@@ -127,6 +127,20 @@ class ClarificationContracts(unittest.TestCase):
             self.assertIn("connected email services or individual messages", result)
             self.assertNotIn("missing context", result)
             self.assertIn("couldn't verify", result)
+
+    def test_explicit_connector_question_not_reframed_as_ambiguous_email(self):
+        for query in [
+            "What other email connectors do I have?",
+            "Which email providers are connected?",
+            "Show my integrations",
+        ]:
+            with self.subTest(query=query):
+                answer = repair_generic_clarification(
+                    self.generic, query=query, history=[], needs_clarification=True,
+                )
+                self.assertIn("couldn't verify your connected email services", answer)
+                self.assertIn("retry the connector-status check", answer)
+                self.assertNotIn("individual messages", answer)
 
     def test_repeated_question_changes_strategy_and_specific_questions_are_preserved(self):
         prior = repair_generic_clarification(self.generic, query="Find that record", history=[], needs_clarification=True)
