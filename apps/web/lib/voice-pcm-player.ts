@@ -126,6 +126,9 @@ export function createWorkletPcmPlayer(
       return
     }
     if (msg?.type === "started") {
+      // A start notification already queued before a barge-in can arrive
+      // after flush. It must not re-establish the old reply as audible.
+      if (msg.epoch !== epoch) return
       const at = typeof msg.frame === "number" ? msg.frame / ctx.sampleRate : ctx.currentTime
       if (origin == null) origin = at
       options.onStarted?.(at)
