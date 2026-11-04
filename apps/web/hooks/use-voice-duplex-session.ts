@@ -58,6 +58,7 @@ import {
   createBufferSourcePcmPlayer,
   createVoicePcmPlayer,
   type VoicePcmPlayer,
+  type VoicePcmPlayerOptions,
 } from "@/lib/voice-pcm-player"
 import { createOverlapDuckState } from "@/lib/voice-overlap-duck"
 import {
@@ -146,6 +147,8 @@ type Options = {
   micProfileOverride?: MicFieldProfile
   /** E2E harness / forced legacy path — skip Pipecat even when the flag is on. */
   forceHttpDuplex?: boolean
+  /** Explicit test-only browser audio capture. The factory does not start recording. */
+  acousticAcceptanceFactory?: (ctx: AudioContext) => Pick<VoicePcmPlayerOptions, "acceptanceOutputTap" | "onAcousticTiming">
   getHistory?: () => Array<{ role: string; content: string }>
   onUserFinal?: (text: string) => void
   /**
@@ -353,6 +356,7 @@ export function useVoiceDuplexSession(options: Options) {
   const playbackReportsEnabledRef = useRef(false)
   const playbackReportTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const continuityLastSentRef = useRef(-Infinity)
+  const acousticAcceptancePlayerOptionsRef = useRef<Pick<VoicePcmPlayerOptions, "acceptanceOutputTap" | "onAcousticTiming">>({})
   const lastUserFinalRef = useRef("")
   // Pipecat keeps one websocket alive across many turns. Completion is per turn,
   // not per socket. This guard prevents a close event from re-dispatching a turn
@@ -697,6 +701,7 @@ export function useVoiceDuplexSession(options: Options) {
       if (!player) {
         player = createBufferSourcePcmPlayer(ctx, {
           onActiveChange: handlePcmActiveChange,
+          ...acousticAcceptancePlayerOptionsRef.current,
         })
         pcmPlayerRef.current = player
       }
@@ -1680,7 +1685,14 @@ export function useVoiceDuplexSession(options: Options) {
       pcmPlayerRef.current = null
       // The worklet module loads while the mic permission prompt is up.
       continuityLastSentRef.current = -Infinity
-      const playerReady = createVoicePcmPlayer(ctx, { onActiveChange: handlePcmActiveChange })
+      // Acceptance capture is injected only by the non-production harness.
+      // No audio recording, telemetry upload or session behavior is activated
+      // unless a test explicitly supplies the factory.
+      acousticAcceptancePlayerOptionsRef.current = optsRef.current.acousticAcceptanceFactory?.(ctx) ?? {}
+      const playerReady = createVoicePcmPlayer(ctx, {
+        onActiveChange: handlePcmActiveChange,
+        ...acousticAcceptancePlayerOptionsRef.current,
+      })
 
       const { stream, tuning, prerollEnabled } = await setupVoiceMicrophone(ctx)
       if (!isCurrentStartup()) {
