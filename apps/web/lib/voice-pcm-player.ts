@@ -29,9 +29,10 @@ export type VoicePcmPlayerKind = "worklet" | "buffer-source"
 
 /** Same-clock metadata for consented acceptance sessions; never PCM or text. */
 export type AcousticTimingEvent = {
-  event: "pcm_enqueue" | "playback_started" | "duck" | "unduck" | "flush" | "rebuffer"
+  event: "pcm_enqueue" | "playback_started" | "duck" | "unduck" | "flush" | "rebuffer" | "transport_audio_received" | "server_bot_speaking" | "server_reply_announced" | "server_speech_duck" | "server_speech_unduck" | "server_interrupted"
   monotonic_ms: number
   audio_context_s: number
+  reply_id?: number
   pcm_frames?: number
   pcm_sample_rate?: number
   rebuffer_events?: number
