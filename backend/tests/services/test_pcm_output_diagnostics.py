@@ -33,13 +33,13 @@ class PcmDiagnosticsContracts(unittest.TestCase):
         self.namespace["OutputDiagnosticsRequest"].model_rebuild(_types_namespace=self.namespace)
 
     def payload(self, **updates):
-        data = dict(player_kind="worklet", observed_underruns=2, buffered_ms=120, ducked=False, duck_transitions=2, ducked_ms=250, flush_count=1)
+        data = dict(player_kind="worklet", observed_underruns=2, rebuffer_events=1, rebuffer_ms=50, buffered_ms=120, ducked=False, duck_transitions=2, ducked_ms=250, flush_count=1)
         data.update(updates)
         return data
 
     def test_schema_rejects_invalid_counts_and_unknown_player(self):
         schema = self.namespace["PcmOutputDiagnostics"]
-        for overrides in [{"observed_underruns": -1}, {"buffered_ms": float("inf")}, {"ducked_ms": 86400001}, {"player_kind": "arbitrary"}]:
+        for overrides in [{"observed_underruns": -1}, {"rebuffer_events": -1}, {"rebuffer_ms": 86400001}, {"buffered_ms": float("inf")}, {"ducked_ms": 86400001}, {"player_kind": "arbitrary"}]:
             with self.assertRaises(ValidationError):
                 schema(**self.payload(**overrides))
 
