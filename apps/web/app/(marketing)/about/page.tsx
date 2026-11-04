@@ -1,4 +1,5 @@
 import Link from "next/link"
+import { ArtCard } from "@/components/marketing/nodus/art-card"
 import { Badge } from "@/components/marketing/nodus/badge"
 import { Button } from "@/components/marketing/nodus/button"
 import { Container } from "@/components/marketing/nodus/container"
@@ -43,7 +44,11 @@ export default function AboutPage() {
               Put Gravitre to work
             </Button>
           </div>
-          <div className="border-divide flex flex-col justify-center rounded-3xl border bg-[color:var(--g-marketing-surface)] p-8 md:p-10">
+          <ArtCard
+            src="/illustrations/library/ai-guardrails.svg"
+            alt="A business lead setting the rules for AI: agents inside a protective shield, beside a checklist of approved and blocked actions"
+            status="Compliant"
+          >
             <p className="font-mono text-xs tracking-tight text-muted-foreground uppercase">
               What we believe
             </p>
@@ -53,7 +58,7 @@ export default function AboutPage() {
             <p className="mt-6 text-sm text-gray-600">
               {MARKETING_COPY.homeNarrative.categoryLine}
             </p>
-          </div>
+          </ArtCard>
         </div>
       </Container>
 
