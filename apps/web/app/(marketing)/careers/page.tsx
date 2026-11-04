@@ -1,5 +1,6 @@
 import { OpenRolesScene } from "@/components/marketing/nodus/scenes/scenes"
 import Link from "next/link"
+import { ArtCard } from "@/components/marketing/nodus/art-card"
 import { Badge } from "@/components/marketing/nodus/badge"
 import { Button } from "@/components/marketing/nodus/button"
 import { Container } from "@/components/marketing/nodus/container"
@@ -86,15 +87,23 @@ export default function CareersPage() {
               View roles
             </Button>
           </div>
-          <div className="flex flex-col justify-center gap-4 px-4 py-10 md:px-8 md:py-32">
-            <p className="font-mono text-xs tracking-tight text-muted-foreground uppercase">
-              How we work
-            </p>
-            {howWeWork.map((line, i) => (
-              <GravitreFlow key={line} delay={i * 0.06}>
-                <p className="text-charcoal-700 text-sm font-medium md:text-base">{line}</p>
-              </GravitreFlow>
-            ))}
+          <div className="flex flex-col justify-center px-4 py-10 md:px-8 md:py-32">
+            <ArtCard
+              src="/illustrations/library/team-at-work.svg"
+              alt="A team of four gathered around a table, agreeing on one recommendation"
+              status="Team at work"
+            >
+              <p className="font-mono text-xs tracking-tight text-muted-foreground uppercase">
+                How we work
+              </p>
+              <div className="mt-4 flex flex-col gap-3">
+                {howWeWork.map((line, i) => (
+                  <GravitreFlow key={line} delay={i * 0.06}>
+                    <p className="text-charcoal-700 text-sm font-medium md:text-base">{line}</p>
+                  </GravitreFlow>
+                ))}
+              </div>
+            </ArtCard>
           </div>
         </div>
       </Container>

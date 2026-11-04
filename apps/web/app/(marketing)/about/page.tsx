@@ -1,5 +1,5 @@
-import Image from "next/image"
 import Link from "next/link"
+import { ArtCard } from "@/components/marketing/nodus/art-card"
 import { Badge } from "@/components/marketing/nodus/badge"
 import { Button } from "@/components/marketing/nodus/button"
 import { Container } from "@/components/marketing/nodus/container"
@@ -44,33 +44,21 @@ export default function AboutPage() {
               Put Gravitre to work
             </Button>
           </div>
-          <div className="border-divide flex flex-col overflow-hidden rounded-3xl border bg-[color:var(--g-marketing-surface)]">
-            {/* Header art from the Gravitre illustrations library: one hub with
-                every connector wired in. The SVG animates itself (drift and
-                travelling dots) and stops under Reduce Motion. */}
-            <div className="border-divide border-b bg-card px-6 pt-6 pb-4">
-              <Image
-                unoptimized
-                priority
-                src="/illustrations/marketing/connectors.svg"
-                alt="The Gravitre hub with agents, workflows, connectors and approvals wired into it"
-                width={400}
-                height={300}
-                className="mx-auto h-auto w-full max-w-md"
-              />
-            </div>
-            <div className="p-8 md:p-10">
-              <p className="font-mono text-xs tracking-tight text-muted-foreground uppercase">
-                What we believe
-              </p>
-              <p className="text-charcoal-700 mt-4 text-lg font-medium leading-relaxed">
-                {MARKETING_COPY.homeNarrative.differentiation}
-              </p>
-              <p className="mt-6 text-sm text-gray-600">
-                {MARKETING_COPY.homeNarrative.categoryLine}
-              </p>
-            </div>
-          </div>
+          <ArtCard
+            src="/illustrations/library/connectors-hub.svg"
+            alt="Databases flowing into the Gravitre hub, every connection healthy"
+            status="Connected"
+          >
+            <p className="font-mono text-xs tracking-tight text-muted-foreground uppercase">
+              What we believe
+            </p>
+            <p className="text-charcoal-700 mt-4 text-lg font-medium leading-relaxed">
+              {MARKETING_COPY.homeNarrative.differentiation}
+            </p>
+            <p className="mt-6 text-sm text-gray-600">
+              {MARKETING_COPY.homeNarrative.categoryLine}
+            </p>
+          </ArtCard>
         </div>
       </Container>
 
