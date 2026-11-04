@@ -95,3 +95,37 @@ causality analysis; measured latency/continuity improvements; unchanged
 interruption/cancellation/write authorization; and a rollback candidate.
 Missing provider, consent, device or human comparison evidence must be
 recorded as **NOT_RUN / NOT_CERTIFIED** rather than passing by omission.
+
+
+## Streaming DSP underrun defect and source repair — 2026-11-03
+
+**Code-level cause identified:** `apps/web/public/voice-worklets/pcm-player-processor.js`
+used the `PcmPlayoutQueue.process` before-underrun callback to call
+`StreamingResampler.flush()` whenever the queue could not fill the next
+128-frame render quantum. `flush()` emits zero-padded FIR tail samples
+**and resets resampler history/phase**. A later PCM chunk from the *same*
+speech stream was therefore resampled as though a new stream had started.
+Under repeated short transport/TTS stalls, this creates artificial
+resampling boundaries on top of jitter-buffer mute/re-prime transitions.
+The causal mechanism follows directly from the source; its contribution
+to any particular reported physical recording remains unquantified.
+
+**Repair:** leave the streaming FIR lookahead intact when the queue runs
+dry; let the already-present 4 ms underrun fade and jitter-buffer
+re-prime handle the temporary silence. The explicit `flush` command
+still calls `resampler.reset()` on actual barge-in, stop or cancellation.
+The old pre-underrun callback is removed from the worklet; no changes
+to authentication, background task cancellation, duck attenuation,
+jitter policy or provider selection. Worklet cache version bumped 6→7.
+
+**Regression:** `apps/web/__tests__/lib/voice-audio-dsp.test.ts` feeds
+a 24 kHz 440 Hz signal into a 44.1 kHz worklet in two chunks, drains
+the queue between arrivals, asserts continuous resampler output phase
+count on recovery, then asserts a real `flush` resets that count.
+This is unit-level evidence, not yet an independent listening verdict.
+
+**Tradeoff:** the unpadded filter lookahead remaining when an utterance
+terminates may omit a sub-millisecond trailing tail until the next PCM
+chunk or explicit reset; acceptance recordings must check end-of-reply
+consonants and any reply-boundary smoothing before release. Real iOS,
+desktop and blinded comparison evidence remains NOT_RUN.
