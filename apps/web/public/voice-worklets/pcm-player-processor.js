@@ -86,7 +86,7 @@ class GravitrePcmPlayerProcessor extends AudioWorkletProcessor {
       }
     })
     for (let c = 1; c < outputs[0].length; c++) outputs[0][c].set(out)
-    if (started) this.port.postMessage({ type: "started", frame: currentFrame })
+    if (started) this.port.postMessage({ type: "started", frame: currentFrame, epoch: this.epoch })
     const played = this.queue.playedFrames - this.epochBase
     if (played - this.lastProgress >= this.progressFrames || (played > this.lastProgress && !this.queue.isActive())) {
       this.reportProgress()
