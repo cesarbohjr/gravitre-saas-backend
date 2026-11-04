@@ -196,6 +196,7 @@ class _StreamedCompletion:
     completion_tokens: int = 0
     cached_tokens: int = 0
     cache_write_tokens: int = 0
+    model_used: str = ""
 
 
 async def _complete_unified_turn_stream(
@@ -341,7 +342,50 @@ async def _complete_unified_turn_stream(
         raise TimeoutError(f"unified_turn_stream_timeout:{cap}") from exc
 
 
-async def _complete_unified_turn(
+async def _complete_unified_turn(router: Any, openai_client: Any, *, model: str,
+                                 kwargs: dict[str, Any], **options: Any) -> _StreamedCompletion:
+    from app.services.providers.provider_tool_router import run_tool_failover
+
+    async def attempt(candidate: str) -> _StreamedCompletion:
+        emitted = False
+        local_options = dict(options)
+        original_text = options.get("on_text_delta")
+        original_tool = options.get("on_tool_call_delta")
+
+        async def text_delta(piece: str) -> None:
+            nonlocal emitted
+            emitted = True
+            if original_text is not None:
+                result = original_text(piece)
+                if asyncio.iscoroutine(result):
+                    await result
+
+        def tool_delta() -> None:
+            nonlocal emitted
+            emitted = True
+            if original_tool is not None:
+                original_tool()
+
+        local_options.update(on_text_delta=text_delta, on_tool_call_delta=tool_delta)
+        candidate_kwargs = {**kwargs, "model": candidate}
+        if candidate != model:
+            candidate_kwargs.pop("reasoning_effort", None)
+        try:
+            result = await _complete_unified_turn_once(
+                router, openai_client, model=candidate, kwargs=candidate_kwargs, **local_options
+            )
+        except Exception as exc:
+            if emitted:
+                # Do not concatenate another provider's reply or replay tool deltas.
+                raise RuntimeError("unified_turn_partial_stream_failed") from exc
+            raise
+        result.model_used = candidate
+        return result
+
+    return await run_tool_failover(router, model=model, complete=attempt)
+
+
+async def _complete_unified_turn_once(
     router: Any,
     openai_client: Any,
     *,
@@ -355,24 +399,32 @@ async def _complete_unified_turn(
 ) -> _StreamedCompletion:
     """Dispatch tool completion to the agent's configured provider."""
     from app.services.providers.provider_tool_router import (
-        complete_with_tools,
+        _complete_with_tools_once as complete_with_tools,
         resolve_provider_for_model,
     )
 
     provider = resolve_provider_for_model(model)
     if provider == "openai":
-        from app.services.tool_model_metering import authorize_tool_model_call
+        from app.services.providers.base import ProviderUnavailableError
+        from app.services.providers.auth_backoff import provider_auth_backoff, provider_auth_scope
 
-        await authorize_tool_model_call(router, model=model)
-        return await _complete_unified_turn_stream(
-            openai_client,
-            kwargs=kwargs,
-            wall_start=wall_start,
-            model_start=model_start,
-            timeout_s=timeout_s,
-            on_text_delta=on_text_delta,
-            on_tool_call_delta=on_tool_call_delta,
-        )
+        # A model can be configured while its client transport failed to
+        # initialize. Treat that as provider unavailability so the shared
+        # failover executor can try another authorized provider.
+        if openai_client is None:
+            raise ProviderUnavailableError("openai", "client_unavailable")
+
+        credential, endpoint = provider_auth_scope(router, provider, openai_client=openai_client)
+        with provider_auth_backoff.guard(provider, credential, endpoint):
+            return await _complete_unified_turn_stream(
+                openai_client,
+                kwargs=kwargs,
+                wall_start=wall_start,
+                model_start=model_start,
+                timeout_s=timeout_s,
+                on_text_delta=on_text_delta,
+                on_tool_call_delta=on_tool_call_delta,
+            )
 
     cap = max(5.0, float(timeout_s or 20.0))
 
@@ -1422,6 +1474,7 @@ async def run_unified_turn_shadow(
                     on_text_delta=on_text_delta if prog_round == 0 else None,
                     on_tool_call_delta=on_tool_call_delta if prog_round == 0 else None,
                 )
+            model = completion.model_used or model
             from app.services.tool_model_metering import record_tool_model_call
 
             await record_tool_model_call(
@@ -1491,8 +1544,17 @@ async def run_unified_turn_shadow(
                 continue
             break
     except Exception as exc:  # noqa: BLE001
-        logger.warning("unified_turn_shadow model call failed: %s", exc)
-        breakdown["error"] = str(exc)[:200]
+        # SDK exception bodies may echo key prefixes or user text; log only the
+        # failure class. Auth-backoff category is recorded separately below.
+        logger.warning("unified_turn_shadow model call failed class=%s", type(exc).__name__)
+        from app.services.providers.auth_backoff import ProviderAuthenticationUnavailable
+
+        if isinstance(exc, ProviderAuthenticationUnavailable):
+            breakdown["error"] = exc.category
+            breakdown["provider_error_category"] = exc.category
+            breakdown["provider_authentication_suppressed"] = exc.suppressed
+        else:
+            breakdown["error"] = type(exc).__name__
         if "unified_turn_stream_timeout" in str(exc):
             breakdown["stream_timed_out"] = True
         _log_unified_turn_breakdown(
@@ -1500,7 +1562,9 @@ async def run_unified_turn_shadow(
         )
         return UnifiedTurnShadowResult(
             outcome_kind="error",
-            error=str(exc)[:500],
+            # Exception strings can contain provider response bodies or keys.
+            # Preserve a safe class for downstream voice failure handling.
+            error=type(exc).__name__,
             latency_ms=int((time.perf_counter() - wall_start) * 1000),
             tool_stats=tool_stats,
             model=model,
@@ -2430,6 +2494,25 @@ async def apply_unified_turn_live(
         response_style_key=response_style_key,
         conversation_tier=conversation_tier,
     )
+    if spoken_mode and result.outcome_kind == "error":
+        from app.services.voice_model_failure import unavailable_voice_model_reply
+
+        safe_unavailable = unavailable_voice_model_reply(result)
+        if safe_unavailable:
+            # Provider outage is NOT a request for more context. Stopping here
+            # prevents classical clarification from concealing the failed model.
+            # Never expose the provider exception, credential, or billing body.
+            result.outcome_kind = "conversational_reply"
+            result.user_message = safe_unavailable
+            result.live_served = True
+            emit_unified_turn_shadow_audit(
+                client=client,
+                org_id=org_id,
+                actor_id=user_id,
+                conversation_id=conversation_id,
+                result=result,
+            )
+            return _unified_live_turn_payload(result, task_state)
     if result.outcome_kind in {"skipped", "error"}:
         _mark_live_fallthrough(result, f"outcome_{result.outcome_kind}")
         emit_unified_turn_shadow_audit(

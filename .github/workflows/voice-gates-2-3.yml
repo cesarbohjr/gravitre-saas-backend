@@ -120,12 +120,16 @@ jobs:
     timeout-minutes: 120
     environment: acceptance
     env:
+      # GitHub-hosted runner only: do not cache multi-GB ML/CUDA wheels or generate .pyc during install.
+      PIP_NO_CACHE_DIR: '1'
+      PIP_DISABLE_PIP_VERSION_CHECK: '1'
+      PYTHONDONTWRITEBYTECODE: '1'
       SUPABASE_URL: ${{ secrets.E2E_SUPABASE_URL }}
       SUPABASE_ANON_KEY: ${{ secrets.E2E_SUPABASE_ANON_KEY }}
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.E2E_SUPABASE_SERVICE_ROLE_KEY }}
       SUPABASE_JWT_SECRET: ${{ secrets.E2E_SUPABASE_JWT_SECRET }}
       E2E_SUPABASE_ALLOWED_URL: ${{ vars.E2E_SUPABASE_ALLOWED_URL }}
-      ANTHROPIC_API_KEY: ${{ secrets.ACCEPTANCE_ANTHROPIC_API_KEY || secrets.ANTHROPIC_API_KEY }}
+      ANTHROPIC_API_KEY: ${{ secrets.ACCEPTANCE_ANTHROPIC_API_KEY }}
       OPENAI_API_KEY: ''
       GEMINI_API_KEY: ''
       APP_ENV: dev
@@ -148,14 +152,34 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+      - name: Reclaim unused hosted-runner toolchains and record disk baseline
+        run: |
+          set -euo pipefail
+          echo "Disk before safe hosted-runner cleanup:"
+          df -h / /tmp
+          # Disposable ubuntu-latest runner: these SDKs are unrelated to this Python/RTC job.
+          # Do not remove Python, FFmpeg, Docker, GitHub Actions tools, or repository data.
+          for dir in /usr/local/lib/android /usr/share/dotnet /opt/ghc /usr/local/share/powershell; do
+            if [ -d "$dir" ]; then
+              echo "Removing unused hosted SDK: $dir"
+              sudo rm -rf -- "$dir"
+            fi
+          done
+          python -m pip cache purge || true
+          sudo apt-get clean
+          echo "Disk after cleanup:"
+          df -h / /tmp
+          available_kib=$(df -Pk / | awk 'NR==2 {print $4}')
+          if [ "$available_kib" -lt 10485760 ]; then
+            echo "::error::Paired voice runner needs at least 10 GiB free before heavy dependencies; available KiB=$available_kib"
+            exit 1
+          fi
       - name: Verify isolated runtime configuration (read-only, no production fallback)
         run: |
           python - <<'PY'
           import json, os, pathlib
-          names = ('SUPABASE_URL', 'SUPABASE_ANON_KEY', 'SUPABASE_SERVICE_ROLE_KEY', 'SUPABASE_JWT_SECRET', 'E2E_SUPABASE_ALLOWED_URL')
+          names = ('SUPABASE_URL', 'SUPABASE_ANON_KEY', 'SUPABASE_SERVICE_ROLE_KEY', 'SUPABASE_JWT_SECRET', 'E2E_SUPABASE_ALLOWED_URL', 'ANTHROPIC_API_KEY')
           blockers = ['missing:' + name for name in names if not os.environ.get(name)]
-          if not (os.environ.get('ANTHROPIC_API_KEY') or os.environ.get('OPENAI_API_KEY')):
-              blockers.append('missing:ANTHROPIC_API_KEY_or_OPENAI_API_KEY')
           if os.environ.get('SUPABASE_URL') and (os.environ['SUPABASE_URL'].rstrip('/') != 'https://aadnwmjzrmbvadszroqt.supabase.co' or os.environ['SUPABASE_URL'].rstrip('/') != os.environ.get('E2E_SUPABASE_ALLOWED_URL', '').rstrip('/')):
               blockers.append('isolated_target_not_explicitly_allowlisted')
           result = {'status': 'NOT RUN' if blockers else 'CONFIGURATION_PRESENT', 'blockers': blockers,
@@ -164,8 +188,12 @@ jobs:
           path.parent.mkdir(parents=True, exist_ok=True)
           path.write_text(json.dumps(result, indent=2))
           print(json.dumps(result))
-          if any(b != 'missing:ANTHROPIC_API_KEY_or_OPENAI_API_KEY' for b in blockers): raise SystemExit(2)
+          if blockers: raise SystemExit(2)
           PY
+      - name: Regress inference preflight privacy and status mapping
+        run: python -m unittest discover -s tests -p test_verify_acceptance_inference.py
+      - name: Verify authorized live Anthropic inference (bounded request)
+        run: python scripts/verify_acceptance_inference.py --output acceptance-results/anthropic-inference.json
       - name: Install read-only smoke identity verifier
         run: python -m pip install 'supabase==2.33.0' 'PyJWT==2.15.1'
       - name: Verify target-pinning guards
@@ -185,24 +213,24 @@ jobs:
               raise SystemExit('Smoke token identity verification failed')
           print('AUTHENTICATED_SMOKE_ACTOR_VERIFIED: Auth API identity matches isolated membership')
           PY
-      - name: Record Anthropic inference as skipped (credits exhausted)
-        run: |
-          mkdir -p acceptance-results
-          python - <<'PY'
-          import json, pathlib
-          result = {'status': 'NOT_RUN', 'provider': 'anthropic',
-                    'reason': 'user_disabled_paid_inference_due_to_exhausted_credits',
-                    'certified': False}
-          pathlib.Path('acceptance-results/anthropic-inference.json').write_text(json.dumps(result, indent=2))
-          print(json.dumps(result))
-          PY
+
       - name: Install production voice pipeline and isolated transport dependencies
-        run: python -m pip install -r backend/requirements-dev.txt -r backend/requirements-voice-comparison.txt 'livekit-api==1.2.2'
+        run: |
+          set -euo pipefail
+          echo "Disk before voice dependency installation:"
+          df -h / /tmp
+          python -m pip install --no-cache-dir --no-compile -r backend/requirements-dev.txt -r backend/requirements-voice-comparison.txt 'livekit-api==1.2.2'
+          echo "Disk after voice dependency installation:"
+          df -h / /tmp
+          python -m pip check
       - name: Install recording decoder from the runner package repository
         run: |
           sudo apt-get update -qq
           sudo apt-get install --yes --no-install-recommends ffmpeg
+          sudo apt-get clean
           ffmpeg -version
+          echo "Disk after FFmpeg installation:"
+          df -h / /tmp
       - name: Verify paired controller isolation and capture contracts
         run: |
           python -m unittest discover -s tests -p test_voice_paired_live.py
@@ -355,8 +383,30 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
+      - name: Regress isolated inference gate without paid network calls
+        run: python -m unittest discover -s tests -p test_verify_acceptance_inference.py
+      - name: Reclaim unused hosted-runner toolchains before governed voice dependencies
+        run: |
+          set -euo pipefail
+          df -h / /tmp
+          for dir in /usr/local/lib/android /usr/share/dotnet /opt/ghc /usr/local/share/powershell; do
+            if [ -d "$dir" ]; then
+              sudo rm -rf -- "$dir"
+            fi
+          done
+          python -m pip cache purge || true
+          sudo apt-get clean
+          df -h / /tmp
+          free_kib=$(df -Pk / | awk 'NR==2 {print $4}')
+          if [ "$free_kib" -lt 10485760 ]; then
+            echo "::error::Governed voice runner needs at least 10 GiB free disk before dependency installation (KiB=$free_kib)"
+            exit 1
+          fi
       - name: Install backend and RTC test dependencies
-        run: python -m pip install -r backend/requirements-dev.txt 'livekit==1.2.0'
+        run: |
+          python -m pip install --no-cache-dir --no-compile -r backend/requirements-dev.txt 'livekit==1.2.0'
+          df -h / /tmp
+          python -m pip check
       - name: Require RTC SDK
         run: python -c 'from livekit import rtc'
       - name: Exercise canonical voice write boundaries and RTC stop wiring

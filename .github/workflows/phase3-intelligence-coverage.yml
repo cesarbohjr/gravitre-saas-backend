@@ -26,13 +26,41 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-          cache: pip
-          cache-dependency-path: backend/requirements.txt
-      - name: Install backend test dependencies
-        working-directory: backend
+      - name: Reclaim hosted-runner disk before CPU-only dependencies
         run: |
-          python -m pip install --upgrade pip
-          python -m pip install -r requirements-dev.txt
+          set -euo pipefail
+          echo "Phase 3 disk before cleanup:"
+          df -h / /tmp
+          for dir in /usr/local/lib/android /usr/share/dotnet /opt/ghc /usr/local/share/powershell; do
+            if [ -d "$dir" ]; then
+              sudo rm -rf -- "$dir"
+            fi
+          done
+          python -m pip cache purge || true
+          sudo apt-get clean
+          echo "Phase 3 disk after cleanup:"
+          df -h / /tmp
+          free_kib=$(df -Pk / | awk 'NR==2 {print $4}')
+          if [ "$free_kib" -lt 10485760 ]; then
+            echo "::error::Phase 3 coverage requires 10 GiB free before heavy Python install; KiB=$free_kib"
+            exit 1
+          fi
+      - name: Install backend test dependencies (CPU torch; no wheel caches)
+        working-directory: backend
+        env:
+          PIP_NO_CACHE_DIR: '1'
+          PIP_DISABLE_PIP_VERSION_CHECK: '1'
+          PYTHONDONTWRITEBYTECODE: '1'
+        run: |
+          set -euo pipefail
+          python -m pip install --no-cache-dir --no-compile --upgrade pip
+          # This contract-only job must not download multi-GB CUDA runtimes.
+          # Match the existing offline Phase 3 CPU build before requirements.
+          python -m pip install --no-cache-dir --no-compile torch --index-url https://download.pytorch.org/whl/cpu
+          python -m pip install --no-cache-dir --no-compile -r requirements-dev.txt
+          python -c "import torch; assert torch.version.cuda is None, 'Phase 3 must use CPU-only torch'"
+          python -m pip check
+          df -h / /tmp
       - name: Validate 56-cell inventory and fail-closed evidence rules
         run: |
           cd backend

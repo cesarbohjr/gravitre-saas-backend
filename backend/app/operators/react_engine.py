@@ -703,7 +703,7 @@ class ReActEngine:
                     from app.services.tool_model_metering import record_tool_response
 
                     await record_tool_response(
-                        self.router, org_id=ctx.org_id, model=resolved_model,
+                        self.router, org_id=ctx.org_id, model=getattr(response, "model", None) or resolved_model,
                         elapsed_ms=int((time.perf_counter() - _llm_started) * 1000),
                         response=response, agent_id=ctx.agent_id,
                     )
@@ -784,7 +784,7 @@ class ReActEngine:
                 return
 
             if not tool_calls:
-                final_answer = content or "Task completed."
+                final_answer = content
                 trace.append(ReActTraceStep(iteration=iteration, thought=final_answer))
                 self._audit_iteration(
                     ctx,
@@ -1396,7 +1396,11 @@ class ReActEngine:
         model: str,
     ) -> Any:
         from app.services.providers.provider_tool_router import complete_with_tools
+        from app.services.narrowed_tools import assert_tools_narrowed
 
+        # Enforce the attach-time safety boundary before provider selection or
+        # failover; an unconfigured provider must not mask an unsafe tool list.
+        assert_tools_narrowed(tools, where="react_engine._chat_with_tools")
         temp = 0.2 if _supports_custom_temperature(model) else None
         return await complete_with_tools(
             self.router,
@@ -1421,26 +1425,25 @@ class ReActEngine:
         response is not a tool round.
         """
         from app.services.model_router import OPENAI_REQUEST_TIMEOUT_S
-        from app.services.narrowed_tools import assert_tools_narrowed
-        from app.services.unified_turn_reasoning_service import _complete_unified_turn_stream
+        from app.services.narrowed_tools import assert_tools_narrowed, openai_tools_payload
+        from app.services.unified_turn_reasoning_service import _complete_unified_turn
 
         assert_tools_narrowed(tools, where="react_engine._stream_chat_with_tools")
+        # A missing OpenAI client must not block the canonical provider chain:
+        # the selected model may be Anthropic/Gemini, or an OpenAI attempt may
+        # be skipped in favor of a configured fallback. The shared dispatcher
+        # handles per-provider availability and policy before inference.
         client = getattr(self.router, "_openai", None)
-        if client is None:
-            raise RuntimeError("OPENAI_API_KEY is not configured")
         kwargs: dict[str, Any] = {"model": model, "messages": messages}
         if tools:
-            kwargs["tools"] = list(tools)
+            kwargs["tools"] = openai_tools_payload(tools, where="react_engine.stream")
             kwargs["tool_choice"] = "auto"
         if _supports_custom_temperature(model):
             kwargs["temperature"] = 0.2
         started = time.perf_counter()
         try:
-            from app.services.tool_model_metering import authorize_tool_model_call
-
-            await authorize_tool_model_call(self.router, model=model)
-            completion = await _complete_unified_turn_stream(
-                client,
+            completion = await _complete_unified_turn(
+                self.router, client, model=model,
                 kwargs=kwargs,
                 wall_start=started,
                 model_start=started,
@@ -1459,7 +1462,8 @@ class ReActEngine:
             completion_tokens=completion.completion_tokens,
             prompt_tokens_details=SimpleNamespace(cached_tokens=completion.cached_tokens),
         )
-        return SimpleNamespace(choices=[SimpleNamespace(message=message)], usage=usage)
+        return SimpleNamespace(choices=[SimpleNamespace(message=message)], usage=usage,
+                               model=completion.model_used or model)
 
     async def _run_reasoning_only(
         self,
@@ -1473,13 +1477,21 @@ class ReActEngine:
         """Single-pass reasoning when no integration tools are connected (STA-174)."""
         trace: list[ReActTraceStep] = []
         try:
-            client = self.router._openai
-            if client is None:
-                raise RuntimeError("OPENAI_API_KEY is not configured")
-            kwargs: dict[str, Any] = {"model": model, "messages": messages}
-            if _supports_custom_temperature(model):
-                kwargs["temperature"] = 0.2
-            response = await client.chat.completions.create(**kwargs)
+            # The no-connector case still needs provider policy, recovery and
+            # usage attribution; use the same inference boundary as tool rounds.
+            started = time.perf_counter()
+            response = await self._chat_with_tools(messages, [], model)
+            content = (response.choices[0].message.content or "").strip()
+            from app.services.tool_model_metering import record_tool_response
+
+            await record_tool_response(
+                self.router, org_id=ctx.org_id,
+                model=getattr(response, "model", None) or model,
+                elapsed_ms=int((time.perf_counter() - started) * 1000),
+                response=response, agent_id=ctx.agent_id,
+            )
+            if not content:
+                raise RuntimeError("react_reasoning_only_empty_response")
         except Exception as exc:  # noqa: BLE001
             logger.warning("react_reasoning_only_failed error=%s", exc)
             return ReActResult(

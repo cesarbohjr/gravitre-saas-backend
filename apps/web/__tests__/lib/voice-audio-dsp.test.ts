@@ -232,6 +232,9 @@ describe("PcmPlayoutQueue", () => {
       }
     })
     expect(q.underruns).toBe(1)
+    expect(q.rebufferEvents).toBe(1)
+    expect(q.rebufferFrames / RATE).toBeGreaterThan(0.03)
+    expect(q.rebufferFrames / RATE).toBeLessThan(0.07)
     // No hard edge anywhere: every transition is a ramp.
     expect(maxJump(out)).toBeLessThan(0.5 / 100)
     // There is a silent gap, and the restart waited the grown lead (180 ms).
@@ -240,6 +243,63 @@ describe("PcmPlayoutQueue", () => {
     const restart = out.findIndex((v, i) => i > firstEnd && v !== 0)
     expect(restart - latePush).toBeGreaterThanOrEqual(Math.round(0.18 * RATE) - Q)
     expect(restart - latePush).toBeLessThanOrEqual(Math.round(0.18 * RATE) + 2 * Q)
+  })
+
+  it("does not classify a new reply after a long silent gap as recovered starvation", () => {
+    const q = new PcmPlayoutQueue({ sampleRate: RATE })
+    q.push(new Float32Array(Math.round(RATE * 0.1)).fill(0.5), 0)
+    run(q, RATE / 2, 0)
+    expect(q.rebufferEvents).toBe(0)
+    // More than 400 ms since the previous push: this may be a new reply.
+    q.push(new Float32Array(Math.round(RATE * 0.1)).fill(0.25), RATE)
+    expect(q.underruns).toBe(0)
+    expect(q.rebufferEvents).toBe(0)
+    expect(q.rebufferFrames).toBe(0)
+  })
+
+  it("does not count a terminal silence as a recovered PCM gap", () => {
+    const q = new PcmPlayoutQueue({ sampleRate: RATE })
+    q.push(new Float32Array(Math.round(RATE * 0.1)).fill(0.5), 0)
+    run(q, RATE / 2, 0)
+    expect(q.rebufferEvents).toBe(0)
+    expect(q.rebufferFrames).toBe(0)
+  })
+
+  it("compares baseline and longer jitter leads under the same deterministic PCM delay", () => {
+    // Synthetic timing comparison only. It is not a live-provider or listening verdict.
+    const simulate = (leadS: number, delayMs: number) => {
+      const sampleRate = 1000
+      const q = new PcmPlayoutQueue({
+        sampleRate,
+        initialLeadS: leadS,
+        maxLeadS: Math.max(0.32, leadS),
+      })
+      const framesPerChunk = 40
+      const arrivals = Array.from({ length: 50 }, (_, index) =>
+        index * 40 + (index >= 12 ? delayMs : 0),
+      )
+      let next = 0
+      let firstStartMs: number | null = null
+      for (let frame = 0; frame < 2600; frame += 10) {
+        while (next < arrivals.length && arrivals[next] <= frame) {
+          q.push(new Float32Array(framesPerChunk).fill(0.25), frame)
+          next += 1
+        }
+        const { started } = q.process(new Float32Array(10), frame)
+        if (started && firstStartMs === null) firstStartMs = frame
+      }
+      return { rebufferEvents: q.rebufferEvents, firstStartMs }
+    }
+    const baselineClean = simulate(0.12, 0)
+    const alternativeClean = simulate(0.26, 0)
+    expect(baselineClean.rebufferEvents).toBe(0)
+    expect(alternativeClean.rebufferEvents).toBe(0)
+    expect(baselineClean.firstStartMs).toBeLessThan(alternativeClean.firstStartMs)
+    const baselineDelayed = simulate(0.12, 200)
+    const alternativeDelayed = simulate(0.26, 200)
+    expect(baselineDelayed.rebufferEvents).toBeGreaterThan(0)
+    expect(alternativeDelayed.rebufferEvents).toBeLessThan(baselineDelayed.rebufferEvents)
+    // Do not silently promote a slower first-audio policy based on synthetic data.
   })
 
   it("flush fades out over ~12 ms and drops the rest", () => {
@@ -267,6 +327,8 @@ describe("PcmPlayoutQueue", () => {
     q.flush()
     q.push(new Float32Array(RATE).fill(-0.25), Math.round(RATE * 0.2))
     expect(q.underruns).toBe(0)
+    expect(q.rebufferEvents).toBe(0)
+    expect(q.rebufferFrames).toBe(0)
     const out = run(q, RATE * 0.5, Math.round(RATE * 0.2))
     expect(maxJump(out)).toBeLessThan(0.5 / 100)
     expect(out[out.length - 1]).toBeCloseTo(-0.25, 5)
@@ -297,6 +359,40 @@ describe("pcm-player worklet processor", () => {
 
   afterAll(() => {
     for (const k of Object.keys(saved)) g[k] = saved[k]
+  })
+
+  it("preserves resampler phase after a temporary underrun, but resets on explicit flush", () => {
+    const Proc = registered["gravitre-pcm-player"]
+    expect(Proc).toBeDefined()
+    const proc = new Proc({ processorOptions: {} }) as InstanceType<typeof Proc> & {
+      resampler: { outCount: number }
+    }
+    const source = floatArrayToInt16(tone(440, 24000, 1920))
+    g.currentFrame = 0
+    proc.port.onmessage?.({
+      data: { type: "pcm", pcm: source.slice(0, 960), sampleRate: 24000, seq: 1 },
+    })
+    const firstCount = proc.resampler.outCount
+    expect(firstCount).toBeGreaterThan(1000)
+    // Deliberately drain all queued frames for a temporary network/TTS gap.
+    // The worklet must not interpret this as an end-of-reply FIR flush.
+    for (let frame = 0; frame < 44100 * 0.3; frame += 128) {
+      g.currentFrame = frame
+      proc.process([], [[new Float32Array(128)]])
+    }
+    expect(proc.resampler.outCount).toBe(firstCount)
+    g.currentFrame = 44100 * 0.3
+    proc.port.onmessage?.({
+      data: { type: "pcm", pcm: source.slice(960), sampleRate: 24000, seq: 2 },
+    })
+    expect(proc.resampler.outCount).toBeGreaterThan(firstCount + 1000)
+
+    // A real cancellation must still clear DSP state for the next reply.
+    proc.port.onmessage?.({ data: { type: "flush", epoch: 1 } })
+    proc.port.onmessage?.({
+      data: { type: "pcm", pcm: source.slice(0, 960), sampleRate: 24000, seq: 3 },
+    })
+    expect(proc.resampler.outCount).toBeLessThan(firstCount + 100)
   })
 
   it("plays 24 kHz chunks on a 44.1 kHz context without boundary clicks", () => {

@@ -56,14 +56,47 @@ jobs:
     defaults:
       run:
         working-directory: backend
+    env:
+      # Disposable GitHub runner: do not retain large ML/CUDA wheels or compile bytecode.
+      PIP_NO_CACHE_DIR: '1'
+      PIP_DISABLE_PIP_VERSION_CHECK: '1'
+      PYTHONDONTWRITEBYTECODE: '1'
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-          cache: pip
-          cache-dependency-path: backend/requirements.txt
-      - run: pip install -r requirements-dev.txt
+      - name: Reclaim unused hosted toolchains and verify available disk
+        run: |
+          set -euo pipefail
+          echo "Disk before cleanup:"
+          df -h / /tmp
+          # These preinstalled SDKs are unused by the Python-only contract suite.
+          # Never remove Python, GitHub Actions tooling, Docker or repository data.
+          for dir in /usr/local/lib/android /usr/share/dotnet /opt/ghc /usr/local/share/powershell; do
+            if [ -d "$dir" ]; then
+              echo "Removing unused SDK: $dir"
+              sudo rm -rf -- "$dir"
+            fi
+          done
+          python -m pip cache purge || true
+          sudo apt-get clean
+          echo "Disk after cleanup:"
+          df -h / /tmp
+          available_kib=$(df -Pk / | awk 'NR==2 {print $4}')
+          if [ "$available_kib" -lt 10485760 ]; then
+            echo "::error::Outcome Ownership runner has less than 10 GiB free before dependency install (KiB=$available_kib)"
+            exit 1
+          fi
+      - name: Install backend test dependencies without wheel cache
+        run: |
+          set -euo pipefail
+          echo "Disk before dependencies:"
+          df -h / /tmp
+          python -m pip install --no-cache-dir --no-compile -r requirements-dev.txt
+          echo "Disk after dependencies:"
+          df -h / /tmp
+          python -m pip check
       - name: Outcome Ownership contract (every outcome-ownership suite)
         run: >
           python -m pytest -q

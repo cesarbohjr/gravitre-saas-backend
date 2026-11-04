@@ -203,6 +203,11 @@ export class PcmPlayoutQueue {
     this.flushLeft = 0
     this.flushTotal = 0
     this.underruns = 0
+    // Diagnostic observations only: recovered queue-starvation gaps. These
+    // do not assert that the gap was audible or caused by the network/TTS.
+    this.rebufferEvents = 0
+    this.rebufferFrames = 0
+    this.starvedAtFrame = null
     this.playedFrames = 0
   }
 
@@ -217,7 +222,15 @@ export class PcmPlayoutQueue {
     this.chunks.push(samples)
     this.buffered += samples.length
     if (this.state === "idle" || this.state === "starved") {
-      if (this.state === "starved" && sinceLast <= this.sameReplyGap) {
+      const continuedReply = this.state === "starved" && sinceLast <= this.sameReplyGap
+      if (continuedReply && this.starvedAtFrame !== null) {
+        // An apparent starvation followed by a new reply is not an underrun.
+        // Keep the same-reply distinction aligned with adaptive jitter logic.
+        this.rebufferEvents += 1
+        this.rebufferFrames += Math.max(0, nowFrame - this.starvedAtFrame)
+      }
+      this.starvedAtFrame = null
+      if (continuedReply) {
         this.underruns += 1
         this.lead = Math.min(this.maxLead, this.lead + this.leadStep)
       }
@@ -242,6 +255,7 @@ export class PcmPlayoutQueue {
     this.state = "idle"
     this.lead = this.initialLead
     this.lastPushFrame = -Infinity
+    this.starvedAtFrame = null
     this.gain = 0
   }
 
@@ -314,6 +328,7 @@ export class PcmPlayoutQueue {
           this.playedFrames += 1
         } else {
           this.state = "starved"
+          this.starvedAtFrame = nowFrame + i
           this.gain = 0
           underrun = true
         }

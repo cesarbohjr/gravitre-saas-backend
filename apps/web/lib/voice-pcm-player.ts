@@ -20,15 +20,37 @@ import {
 import { createPcmJitterState, schedulePcmStart } from "@/lib/voice-pcm-jitter"
 import { VOICE_PCM_PLAYER_PROCESSOR, loadVoiceWorklets } from "@/lib/voice-worklets"
 import { rampDuckGain, resetDuckGainAt } from "@/lib/voice-overlap-duck"
+import { createPcmDiagnostics, type PcmPlaybackDiagnostics } from "@/lib/voice-pcm-diagnostics"
 
 /** Fade applied when playback is cut (barge-in, stop), instead of a hard stop. */
 export const PCM_FLUSH_FADE_S = 0.012
 
 export type VoicePcmPlayerKind = "worklet" | "buffer-source"
 
+/** Same-clock metadata for consented acceptance sessions; never PCM or text. */
+export type AcousticTimingEvent = {
+  event: "pcm_enqueue" | "playback_started" | "duck" | "unduck" | "flush" | "rebuffer" | "transport_audio_received" | "server_bot_speaking" | "server_reply_announced" | "server_speech_duck" | "server_speech_unduck" | "server_interrupted"
+  monotonic_ms: number
+  audio_context_s: number
+  reply_id?: number
+  pcm_frames?: number
+  pcm_sample_rate?: number
+  rebuffer_events?: number
+  rebuffer_ms?: number
+  buffered_ms?: number
+}
+
 export type VoicePcmPlayerOptions = {
   /** Where audio goes; defaults to ctx.destination. */
   destination?: AudioNode
+  /**
+   * Explicit acceptance-test output tap, AFTER overlap ducking. Must be an
+   * AudioNode in the same AudioContext (e.g. a MediaStreamDestination).
+   * Undefined by default: no audio samples are recorded or copied.
+   */
+  acceptanceOutputTap?: AudioNode
+  /** Optional bounded metadata sink for consented acceptance tests. */
+  onAcousticTiming?: (observation: AcousticTimingEvent) => void
   /** Audible playback started (first frame of a reply, or after an underrun). */
   onStarted?: (ctxTime: number) => void
   /** Whether anything is queued or playing changed. */
@@ -37,6 +59,8 @@ export type VoicePcmPlayerOptions = {
 
 export type VoicePcmPlayer = {
   readonly kind: VoicePcmPlayerKind
+  /** Content-free lifetime counters; optional for older/test players. */
+  diagnostics?: () => PcmPlaybackDiagnostics
   /** Queue PCM16 mono. Throws if the browser refuses to schedule it. */
   enqueue: (pcm: Int16Array, sampleRate: number) => void
   /** Fade out and drop everything queued (barge-in). Also ends any duck. */
@@ -82,6 +106,16 @@ export function createWorkletPcmPlayer(
   ctx: AudioContext,
   options: VoicePcmPlayerOptions = {},
 ): VoicePcmPlayer {
+  const diagnostics = createPcmDiagnostics("worklet", () => ctx.currentTime)
+  const note = (event: AcousticTimingEvent["event"], pcmFrames?: number, pcmSampleRate?: number) => {
+    if (!options.onAcousticTiming) return
+    try {
+      options.onAcousticTiming({
+        event, monotonic_ms: performance.now(), audio_context_s: ctx.currentTime,
+        ...(pcmFrames === undefined ? {} : { pcm_frames: pcmFrames, pcm_sample_rate: pcmSampleRate }),
+      })
+    } catch { /* diagnostic hooks may never interrupt audio */ }
+  }
   const node = new AudioWorkletNode(ctx, VOICE_PCM_PLAYER_PROCESSOR, {
     numberOfInputs: 0,
     numberOfOutputs: 1,
@@ -89,10 +123,13 @@ export function createWorkletPcmPlayer(
     processorOptions: { flushFadeS: PCM_FLUSH_FADE_S },
   })
   // Overlap ducking sits after the player, so it lowers what is already queued.
-  const duck = createDuckControl(ctx, options.destination ?? ctx.destination)
+  const duck = createDuckControl(ctx, options.destination ?? ctx.destination, options.acceptanceOutputTap)
   node.connect(duck.input)
   let active = false
   let origin: number | null = null
+  // enqueue sets a provisional start for scheduling. The first worklet
+  // started event is authoritative for playback timing within this epoch.
+  let startConfirmed = false
   // Sequence of the last pcm message posted; the worklet echoes the last one it
   // processed. An "inactive" report from before audio we already posted (e.g. the
   // end of a barge-in flush fade) is stale and must not end the reply.
@@ -103,6 +140,20 @@ export function createWorkletPcmPlayer(
   let playedFrames = 0
   let progressAt: number | null = null
   let postedSeconds = 0
+  let lastReportedRebuffer = 0
+  const noteRecoveredStarvation = (count: unknown, frames: unknown) => {
+    if (!options.onAcousticTiming) return
+    if (typeof count !== "number" || !Number.isSafeInteger(count) || count <= lastReportedRebuffer) return
+    if (typeof frames !== "number" || !Number.isFinite(frames) || frames < 0) return
+    lastReportedRebuffer = count
+    try {
+      options.onAcousticTiming({
+        event: "rebuffer", monotonic_ms: performance.now(), audio_context_s: ctx.currentTime,
+        rebuffer_events: count, rebuffer_ms: Math.round(frames / ctx.sampleRate * 1000),
+        buffered_ms: diagnostics.snapshot().buffered_ms,
+      })
+    } catch { /* optional diagnostics cannot block audio */ }
+  }
   node.port.onmessage = (event: MessageEvent) => {
     const msg = event.data as {
       type?: string
@@ -111,20 +162,38 @@ export function createWorkletPcmPlayer(
       seq?: number
       epoch?: number
       played?: number
+      underruns?: number
+      buffered_frames?: number
+      rebuffer_events?: number
+      rebuffer_frames?: number
     }
     if (msg?.type === "progress") {
       if (msg.epoch !== epoch || typeof msg.played !== "number") return
+      diagnostics.noteQueue(msg.underruns, typeof msg.buffered_frames === "number" ? msg.buffered_frames / ctx.sampleRate * 1000 : undefined)
+      diagnostics.noteRebuffer(msg.rebuffer_events, typeof msg.rebuffer_frames === "number" ? msg.rebuffer_frames / ctx.sampleRate * 1000 : undefined)
+      noteRecoveredStarvation(msg.rebuffer_events, msg.rebuffer_frames)
       playedFrames = Math.max(playedFrames, msg.played)
       progressAt = typeof msg.frame === "number" ? msg.frame / ctx.sampleRate : ctx.currentTime
       return
     }
     if (msg?.type === "started") {
+      // A start notification already queued before a barge-in can arrive
+      // after flush. It must not re-establish the old reply as audible.
+      if (msg.epoch !== epoch) return
       const at = typeof msg.frame === "number" ? msg.frame / ctx.sampleRate : ctx.currentTime
-      if (origin == null) origin = at
+      if (!startConfirmed) {
+        origin = at
+        startConfirmed = true
+      }
+      note("playback_started")
       options.onStarted?.(at)
     } else if (msg?.type === "active") {
       const next = Boolean(msg.active)
+      if (typeof msg.epoch === "number" && msg.epoch !== epoch) return
       if (!next && typeof msg.seq === "number" && msg.seq < posted) return
+      diagnostics.noteQueue(msg.underruns, typeof msg.buffered_frames === "number" ? msg.buffered_frames / ctx.sampleRate * 1000 : undefined)
+      diagnostics.noteRebuffer(msg.rebuffer_events, typeof msg.rebuffer_frames === "number" ? msg.rebuffer_frames / ctx.sampleRate * 1000 : undefined)
+      noteRecoveredStarvation(msg.rebuffer_events, msg.rebuffer_frames)
       if (next === active) return
       active = next
       options.onActiveChange?.(next)
@@ -132,8 +201,10 @@ export function createWorkletPcmPlayer(
   }
   return {
     kind: "worklet",
+    diagnostics: () => diagnostics.snapshot(),
     enqueue(pcm, sampleRate) {
       if (pcm.length === 0) return
+      note("pcm_enqueue", pcm.length, sampleRate || 16000)
       // Copy so the caller's buffer survives the transfer.
       const copy = new Int16Array(pcm)
       if (!active) {
@@ -150,15 +221,21 @@ export function createWorkletPcmPlayer(
       )
     },
     flush() {
+      note("flush")
+      diagnostics.flush()
       epoch += 1
       playedFrames = 0
       progressAt = null
       postedSeconds = 0
       node.port.postMessage({ type: "flush", epoch })
       origin = null
+      startConfirmed = false
       duck.resetAfterFlush()
     },
-    setDuck: (ducked) => duck.set(ducked),
+    setDuck: (ducked) => {
+      if (diagnostics.snapshot().ducked !== ducked) note(ducked ? "duck" : "unduck")
+      diagnostics.setDuck(ducked); duck.set(ducked)
+    },
     isActive: () => active,
     originTime: () => origin,
     playedSeconds() {
@@ -187,7 +264,18 @@ export function createBufferSourcePcmPlayer(
   ctx: AudioContext,
   options: VoicePcmPlayerOptions = {},
 ): VoicePcmPlayer {
-  const duck = createDuckControl(ctx, options.destination ?? ctx.destination)
+  const diagnostics = createPcmDiagnostics("buffer-source", () => ctx.currentTime)
+  const note = (event: AcousticTimingEvent["event"], pcmFrames?: number, pcmSampleRate?: number) => {
+    if (!options.onAcousticTiming) return
+    try {
+      options.onAcousticTiming({
+        event, monotonic_ms: performance.now(), audio_context_s: ctx.currentTime,
+        ...(pcmFrames === undefined ? {} : { pcm_frames: pcmFrames, pcm_sample_rate: pcmSampleRate }),
+      })
+    } catch { /* diagnostic hooks may never interrupt audio */ }
+  }
+  let lifetimeUnderruns = 0
+  const duck = createDuckControl(ctx, options.destination ?? ctx.destination, options.acceptanceOutputTap)
   const destination = duck.input
   const rate = ctx.sampleRate
   let out = ctx.createGain()
@@ -209,13 +297,20 @@ export function createBufferSourcePcmPlayer(
 
   return {
     kind: "buffer-source",
+    diagnostics: () => {
+      diagnostics.noteQueue(lifetimeUnderruns, Math.max(0, nextFrame / rate - ctx.currentTime) * 1000)
+      return diagnostics.snapshot()
+    },
     enqueue(pcm, sampleRate) {
       if (pcm.length === 0) return
       const inRate = sampleRate || 16000
+      note("pcm_enqueue", pcm.length, inRate)
       if (!resampler || resampler.inRate !== inRate) resampler = new StreamingResampler(inRate, rate)
       const samples = resampler.process(int16ArrayToFloat(pcm))
       if (samples.length === 0) return
+      const beforeUnderruns = jitter.underruns
       const startAt = schedulePcmStart(jitter, ctx.currentTime, nextFrame / rate, performance.now())
+      lifetimeUnderruns += jitter.underruns - beforeUnderruns
       const startFrame = Math.round(startAt * rate)
       if (startFrame !== nextFrame) fadeInPending = true
       if (fadeInPending) {
@@ -235,6 +330,7 @@ export function createBufferSourcePcmPlayer(
       nextFrame = startFrame + samples.length
       if (sources.length === 0) setActive(true)
       sources.push(src)
+      note("playback_started")
       options.onStarted?.(startFrame / rate)
       src.onended = () => {
         const before = sources.length
@@ -243,6 +339,8 @@ export function createBufferSourcePcmPlayer(
       }
     },
     flush() {
+      note("flush")
+      diagnostics.flush()
       const old = out
       const oldSources = sources
       const now = ctx.currentTime
@@ -281,7 +379,10 @@ export function createBufferSourcePcmPlayer(
       duck.resetAfterFlush()
       if (wasActive) setActive(false)
     },
-    setDuck: (ducked) => duck.set(ducked),
+    setDuck: (ducked) => {
+      if (diagnostics.snapshot().ducked !== ducked) note(ducked ? "duck" : "unduck")
+      diagnostics.setDuck(ducked); duck.set(ducked)
+    },
     isActive: () => sources.length > 0,
     originTime: () => origin,
     playedSeconds() {
@@ -320,9 +421,12 @@ export function createBufferSourcePcmPlayer(
 }
 
 /** The output gain stage both players route through for overlap ducking. */
-function createDuckControl(ctx: AudioContext, destination: AudioNode) {
+function createDuckControl(ctx: AudioContext, destination: AudioNode, acceptanceOutputTap?: AudioNode) {
   const gain = ctx.createGain()
   gain.connect(destination)
+  // Mirror the final, post-duck signal only when a deliberately supplied
+  // acceptance tap exists. No automatic recording, persistence or upload.
+  if (acceptanceOutputTap) gain.connect(acceptanceOutputTap)
   let ducked = false
   return {
     input: gain as AudioNode,
@@ -346,4 +450,5 @@ function createDuckControl(ctx: AudioContext, destination: AudioNode) {
     },
   }
 }
+
 

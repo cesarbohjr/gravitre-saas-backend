@@ -23,6 +23,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from app.services.narrowed_tools import assert_tools_narrowed, mark_narrowed
+from app.services.providers.tool_completion import ToolCompletionResult
 from app.services.unified_turn_reasoning_service import _complete_unified_turn
 
 TOOL = {
@@ -30,17 +31,6 @@ TOOL = {
     "function": {"name": "hubspot_search_deals", "parameters": {"type": "object"}},
     "invoke_action": "search",
 }
-
-
-def _fake_response() -> Any:
-    message = MagicMock()
-    message.content = "Found 3 deals."
-    message.tool_calls = []
-    choice = MagicMock()
-    choice.message = message
-    resp = MagicMock()
-    resp.choices = [choice]
-    return resp
 
 
 def _kwargs_as_the_unified_turn_builds_them() -> dict[str, Any]:
@@ -58,20 +48,20 @@ def _kwargs_as_the_unified_turn_builds_them() -> dict[str, Any]:
 def _run_through_provider(kwargs: dict[str, Any]) -> tuple[Any, dict[str, Any]]:
     seen: dict[str, Any] = {}
 
-    async def _capture(router: Any, **call_kwargs: Any) -> Any:
+    async def _capture(**call_kwargs: Any) -> Any:
         seen.update(call_kwargs)
         # The real guard, at the real call site.
         assert_tools_narrowed(
             call_kwargs.get("tools"),
             where="provider_tool_router.complete_with_tools",
         )
-        return _fake_response()
+        return ToolCompletionResult(content="Found 3 deals.", tool_calls=[])
 
     with patch(
         "app.services.providers.provider_tool_router.resolve_provider_for_model",
         return_value="anthropic",
     ), patch(
-        "app.services.providers.provider_tool_router.complete_with_tools",
+        "app.services.providers.provider_tool_router._complete_anthropic_with_tools",
         new=AsyncMock(side_effect=_capture),
     ):
         result = asyncio.run(

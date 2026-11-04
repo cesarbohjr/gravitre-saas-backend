@@ -64,29 +64,30 @@ class GravitrePcmPlayerProcessor extends AudioWorkletProcessor {
   reportProgress() {
     const played = this.queue.playedFrames - this.epochBase
     this.lastProgress = played
-    this.port.postMessage({ type: "progress", epoch: this.epoch, played, frame: currentFrame })
+    this.port.postMessage({ type: "progress", epoch: this.epoch, played, frame: currentFrame, underruns: this.queue.underruns, buffered_frames: this.queue.buffered, rebuffer_events: this.queue.rebufferEvents, rebuffer_frames: this.queue.rebufferFrames })
   }
 
   reportActive() {
     const active = this.queue.isActive()
     if (active === this.active) return
     this.active = active
-    this.port.postMessage({ type: "active", active, underruns: this.queue.underruns, seq: this.seq })
+    this.port.postMessage({ type: "active", active, underruns: this.queue.underruns, seq: this.seq, epoch: this.epoch, buffered_frames: this.queue.buffered })
   }
 
   process(_inputs, outputs) {
     if (this.disposed) return false
     const out = outputs[0] && outputs[0][0]
     if (!out) return true
-    const { started } = this.queue.process(out, currentFrame, () => {
-      // About to run dry: release the resampler's held-back tail first.
-      if (this.resampler && this.resampler.hasPending()) {
-        const tail = this.resampler.flush()
-        if (tail.length) this.queue.push(tail, currentFrame)
-      }
-    })
+    // Do not flush/resample-with-zero-padding when a temporary PCM delivery
+    // gap empties the playout queue. StreamingResampler.flush() resets its
+    // filter/phase history, so the next chunk of the *same* TTS reply would
+    // be treated as a fresh waveform, creating an artificial speech boundary.
+    // The queue already fades a true underrun and re-primes on recovery.
+    // Retain the sub-millisecond FIR lookahead until the next PCM message;
+    // an explicit barge-in flush still resets the resampler below.
+    const { started } = this.queue.process(out, currentFrame)
     for (let c = 1; c < outputs[0].length; c++) outputs[0][c].set(out)
-    if (started) this.port.postMessage({ type: "started", frame: currentFrame })
+    if (started) this.port.postMessage({ type: "started", frame: currentFrame, epoch: this.epoch })
     const played = this.queue.playedFrames - this.epochBase
     if (played - this.lastProgress >= this.progressFrames || (played > this.lastProgress && !this.queue.isActive())) {
       this.reportProgress()
@@ -97,3 +98,4 @@ class GravitrePcmPlayerProcessor extends AudioWorkletProcessor {
 }
 
 registerProcessor("gravitre-pcm-player", GravitrePcmPlayerProcessor)
+

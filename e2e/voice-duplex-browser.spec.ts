@@ -92,6 +92,13 @@ test.describe("Voice duplex browser pipeline", () => {
         .toBe("true")
         .catch(explain("Pipecat session never became ready"))
 
+      // Explicit local capture runs on the actual post-duck Pipecat output.
+      // This is a synthetic-provider browser integration check, NOT physical listening.
+      const startCapture = page.getByTestId("acoustic-capture-start")
+      await expect(startCapture).toBeEnabled()
+      await startCapture.click()
+      await expect(page.getByTestId("acoustic-capture-stop")).toBeEnabled()
+
       // The capture context only runs if the hook resumes it; no PCM flows otherwise.
       await expect
         .poll(async () => harness.getAttribute("data-capture-ctx-state"), { timeout: 15_000 })
@@ -112,6 +119,17 @@ test.describe("Voice duplex browser pipeline", () => {
       await expect
         .poll(async () => Number(await harness.getAttribute("data-audio-frames")), { timeout: 15_000 })
         .toBeGreaterThan(0)
+
+      // Stopping creates local Blob URLs. These are never uploaded by the test.
+      await page.getByTestId("acoustic-capture-stop").click()
+      const audioDownload = page.getByRole("link", { name: "Save audio recording" })
+      const timingDownload = page.getByRole("link", { name: "Save timing manifest" })
+      await expect(audioDownload).toBeVisible()
+      await expect(timingDownload).toBeVisible()
+      const downloadPromise = page.waitForEvent("download")
+      await timingDownload.click()
+      const download = await downloadPromise
+      expect(download.suggestedFilename()).toBe("gravitre-acoustic-timeline.json")
 
       // Server side: the turn ran on the durable seed and was persisted to the
       // same conversation the browser adopted.

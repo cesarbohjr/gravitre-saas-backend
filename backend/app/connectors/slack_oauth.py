@@ -3,6 +3,8 @@ from __future__ import annotations
 
 import logging
 import time
+import hashlib
+import threading
 from typing import Any
 from urllib.parse import urlencode
 
@@ -29,6 +31,34 @@ SLACK_SCOPES = (
 SLACK_AUTHORIZE_URL = "https://slack.com/oauth/v2/authorize"
 SLACK_TOKEN_URL = "https://slack.com/api/oauth.v2.access"
 SLACK_AUTH_TEST_URL = "https://slack.com/api/auth.test"
+
+# invalid_auth is a rejected credential, not a transient API failure.
+# Bound HTTP auth.test polling while preserving immediate recovery when the
+# stored token changes after reconnect. Never log or persist credential hashes.
+_SLACK_INVALID_AUTH_COOLDOWN_S = 300.0
+_SLACK_INVALID_AUTH_CAPACITY = 128
+_slack_invalid_auth_until: dict[tuple[str, str, bytes], float] = {}
+_slack_invalid_auth_lock = threading.Lock()
+
+
+def _slack_invalid_auth_cached(org_id: str, connector_id: str, token: str) -> bool:
+    key = (org_id, connector_id, hashlib.sha256(token.encode()).digest())
+    now = time.monotonic()
+    with _slack_invalid_auth_lock:
+        expired = [k for k, until in _slack_invalid_auth_until.items() if until <= now]
+        for k in expired:
+            _slack_invalid_auth_until.pop(k, None)
+        return key in _slack_invalid_auth_until
+
+
+def _mark_slack_invalid_auth(org_id: str, connector_id: str, token: str) -> None:
+    key = (org_id, connector_id, hashlib.sha256(token.encode()).digest())
+    with _slack_invalid_auth_lock:
+        if key not in _slack_invalid_auth_until and len(_slack_invalid_auth_until) >= _SLACK_INVALID_AUTH_CAPACITY:
+            oldest = min(_slack_invalid_auth_until, key=_slack_invalid_auth_until.get)
+            _slack_invalid_auth_until.pop(oldest, None)
+        _slack_invalid_auth_until[key] = time.monotonic() + _SLACK_INVALID_AUTH_COOLDOWN_S
+
 
 
 def normalize_vendor(vendor: str) -> str:
@@ -203,6 +233,8 @@ def slack_connection_auth_status(
             token = str(oauth_tokens["access_token"])
     if not token:
         return "pending_auth"
+    if _slack_invalid_auth_cached(org_id, connector_id, token):
+        return "auth_expired"
     try:
         with httpx.Client(timeout=15.0) as http:
             response = http.post(
@@ -212,6 +244,8 @@ def slack_connection_auth_status(
             data = response.json()
             if data.get("ok"):
                 return "connected"
+            if data.get("error") == "invalid_auth":
+                _mark_slack_invalid_auth(org_id, connector_id, token)
             logger.info(
                 "slack_auth_test_failed connector_id=%s error=%s",
                 connector_id,

@@ -58,6 +58,8 @@ import {
   createBufferSourcePcmPlayer,
   createVoicePcmPlayer,
   type VoicePcmPlayer,
+  type VoicePcmPlayerOptions,
+  type AcousticTimingEvent,
 } from "@/lib/voice-pcm-player"
 import { createOverlapDuckState } from "@/lib/voice-overlap-duck"
 import {
@@ -97,6 +99,16 @@ export type DuplexLatencyStages = {
   /** The live duplex path owns delivery/recovery for this turn even before audio proof arrives. */
   duplex_transport_owned?: boolean
 }
+
+/** Content-free server notification receipt, aligned to the browser PCM clock. */
+const ACOUSTIC_SERVER_STAGES = {
+  audio: "transport_audio_received",
+  "bot-started-speaking": "server_bot_speaking",
+  "audio.reply": "server_reply_announced",
+  "speech.duck": "server_speech_duck",
+  "speech.unduck": "server_speech_unduck",
+  "speech.interrupted": "server_interrupted",
+} as const satisfies Record<string, AcousticTimingEvent["event"]>
 
 export type DuplexTurnResult = {
   userText: string
@@ -146,6 +158,8 @@ type Options = {
   micProfileOverride?: MicFieldProfile
   /** E2E harness / forced legacy path — skip Pipecat even when the flag is on. */
   forceHttpDuplex?: boolean
+  /** Explicit test-only browser audio capture. The factory does not start recording. */
+  acousticAcceptanceFactory?: (ctx: AudioContext) => Pick<VoicePcmPlayerOptions, "acceptanceOutputTap" | "onAcousticTiming">
   getHistory?: () => Array<{ role: string; content: string }>
   onUserFinal?: (text: string) => void
   /**
@@ -352,6 +366,8 @@ export function useVoiceDuplexSession(options: Options) {
   const playbackTrackerRef = useRef(createPlaybackProgressTracker())
   const playbackReportsEnabledRef = useRef(false)
   const playbackReportTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const continuityLastSentRef = useRef(-Infinity)
+  const acousticAcceptancePlayerOptionsRef = useRef<Pick<VoicePcmPlayerOptions, "acceptanceOutputTap" | "onAcousticTiming">>({})
   const lastUserFinalRef = useRef("")
   // Pipecat keeps one websocket alive across many turns. Completion is per turn,
   // not per socket. This guard prevents a close event from re-dispatching a turn
@@ -451,6 +467,22 @@ export function useVoiceDuplexSession(options: Options) {
         interrupted: options?.interrupted,
         ensureReplyId: options?.replyId,
       })
+      // One bounded content-free snapshot per five seconds, never per audio
+      // frame. These counters are observations, not proof of audible defects.
+      const now = performance.now()
+      const diagnostics = pcmPlayerRef.current?.diagnostics?.()
+      if (reports.length && diagnostics && now - continuityLastSentRef.current >= 5000) {
+        continuityLastSentRef.current = now
+        void postVoiceOutputDiagnostics({
+          event: "playback_continuity",
+          session_id: micSessionIdRef.current,
+          turn_id: turnIdRef.current,
+          orchestration: "pipecat",
+          reply_id: reports[reports.length - 1]?.reply_id ?? null,
+          audio_context_state: audioCtxRef.current?.state ?? null,
+          pcm_diagnostics: diagnostics,
+        })
+      }
       for (const report of reports) {
         try {
           ws.send(encodePlaybackProgress(report))
@@ -492,6 +524,7 @@ export function useVoiceDuplexSession(options: Options) {
         fallback_triggered: audioFallbackTriggeredRef.current,
         playback_blocked: playbackBlockedRef.current,
         browser_audio_playback_started: browserAudioPlaybackStartedRef.current,
+        pcm_diagnostics: pcmPlayerRef.current?.diagnostics?.(),
       })
     },
     [],
@@ -679,6 +712,7 @@ export function useVoiceDuplexSession(options: Options) {
       if (!player) {
         player = createBufferSourcePcmPlayer(ctx, {
           onActiveChange: handlePcmActiveChange,
+          ...acousticAcceptancePlayerOptionsRef.current,
         })
         pcmPlayerRef.current = player
       }
@@ -1661,7 +1695,15 @@ export function useVoiceDuplexSession(options: Options) {
       pcmPlayerRef.current?.dispose()
       pcmPlayerRef.current = null
       // The worklet module loads while the mic permission prompt is up.
-      const playerReady = createVoicePcmPlayer(ctx, { onActiveChange: handlePcmActiveChange })
+      continuityLastSentRef.current = -Infinity
+      // Acceptance capture is injected only by the non-production harness.
+      // No audio recording, telemetry upload or session behavior is activated
+      // unless a test explicitly supplies the factory.
+      acousticAcceptancePlayerOptionsRef.current = optsRef.current.acousticAcceptanceFactory?.(ctx) ?? {}
+      const playerReady = createVoicePcmPlayer(ctx, {
+        onActiveChange: handlePcmActiveChange,
+        ...acousticAcceptancePlayerOptionsRef.current,
+      })
 
       const { stream, tuning, prerollEnabled } = await setupVoiceMicrophone(ctx)
       if (!isCurrentStartup()) {
@@ -1747,6 +1789,18 @@ export function useVoiceDuplexSession(options: Options) {
           return
         }
         const kind = String(msg.type || "")
+        const acousticSink = acousticAcceptancePlayerOptionsRef.current.onAcousticTiming
+        if (acousticSink) {
+          const stage = ACOUSTIC_SERVER_STAGES[kind as keyof typeof ACOUSTIC_SERVER_STAGES]
+          if (stage) {
+            try {
+              acousticSink({
+                event: stage, monotonic_ms: performance.now(), audio_context_s: ctx.currentTime,
+                ...(typeof msg.reply_id === "number" ? { reply_id: msg.reply_id } : {}),
+              })
+            } catch { /* acoustic instrumentation never blocks live voice */ }
+          }
+        }
         if (kind === "session.ready") {
           const cid = typeof msg.conversation_id === "string" ? msg.conversation_id : null
           if (cid) optsRef.current.onConversationId?.(cid)
@@ -2374,3 +2428,4 @@ export function useVoiceDuplexSession(options: Options) {
     },
   }
 }
+
