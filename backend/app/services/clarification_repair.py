@@ -21,6 +21,11 @@ def repair_generic_clarification(answer: str, *, query: str, history: list[dict[
     if substantive and substantive != _UNVERIFIED:
         # Keep useful content and any specific question already authored.
         return substantive
+    if re.search(r"(?i)\b(?:connectors?|integrations?|e-?mail\s+(?:providers?|services?|connectors?|integrations?)|outlook\s+connector)\b", query):
+        # A clearly stated inventory request cannot be clarified into a new task.
+        # A failed live lookup is missing evidence, not missing user context.
+        return ("I couldn\'t verify your connected email services right now. "
+                "Please retry the connector-status check; I can\'t confirm which providers are available until it succeeds.")
     if re.search(r"(?i)\b(e-?mails?|gmail|outlook|connectors?)\b", query):
         question = "Are you asking about connected email services or individual messages?"
     elif re.search(r"(?i)\b(records?|contacts?|deals?|accounts?|invoices?)\b", query):
