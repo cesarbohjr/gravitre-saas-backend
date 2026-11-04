@@ -29,11 +29,14 @@ export type VoicePcmPlayerKind = "worklet" | "buffer-source"
 
 /** Same-clock metadata for consented acceptance sessions; never PCM or text. */
 export type AcousticTimingEvent = {
-  event: "pcm_enqueue" | "playback_started" | "duck" | "unduck" | "flush"
+  event: "pcm_enqueue" | "playback_started" | "duck" | "unduck" | "flush" | "rebuffer"
   monotonic_ms: number
   audio_context_s: number
   pcm_frames?: number
   pcm_sample_rate?: number
+  rebuffer_events?: number
+  rebuffer_ms?: number
+  buffered_ms?: number
 }
 
 export type VoicePcmPlayerOptions = {
@@ -136,6 +139,20 @@ export function createWorkletPcmPlayer(
   let playedFrames = 0
   let progressAt: number | null = null
   let postedSeconds = 0
+  let lastReportedRebuffer = 0
+  const noteRecoveredStarvation = (count: unknown, frames: unknown) => {
+    if (!options.onAcousticTiming) return
+    if (typeof count !== "number" || !Number.isSafeInteger(count) || count <= lastReportedRebuffer) return
+    if (typeof frames !== "number" || !Number.isFinite(frames) || frames < 0) return
+    lastReportedRebuffer = count
+    try {
+      options.onAcousticTiming({
+        event: "rebuffer", monotonic_ms: performance.now(), audio_context_s: ctx.currentTime,
+        rebuffer_events: count, rebuffer_ms: Math.round(frames / ctx.sampleRate * 1000),
+        buffered_ms: diagnostics.snapshot().buffered_ms,
+      })
+    } catch { /* optional diagnostics cannot block audio */ }
+  }
   node.port.onmessage = (event: MessageEvent) => {
     const msg = event.data as {
       type?: string
@@ -153,6 +170,7 @@ export function createWorkletPcmPlayer(
       if (msg.epoch !== epoch || typeof msg.played !== "number") return
       diagnostics.noteQueue(msg.underruns, typeof msg.buffered_frames === "number" ? msg.buffered_frames / ctx.sampleRate * 1000 : undefined)
       diagnostics.noteRebuffer(msg.rebuffer_events, typeof msg.rebuffer_frames === "number" ? msg.rebuffer_frames / ctx.sampleRate * 1000 : undefined)
+      noteRecoveredStarvation(msg.rebuffer_events, msg.rebuffer_frames)
       playedFrames = Math.max(playedFrames, msg.played)
       progressAt = typeof msg.frame === "number" ? msg.frame / ctx.sampleRate : ctx.currentTime
       return
@@ -174,6 +192,7 @@ export function createWorkletPcmPlayer(
       if (!next && typeof msg.seq === "number" && msg.seq < posted) return
       diagnostics.noteQueue(msg.underruns, typeof msg.buffered_frames === "number" ? msg.buffered_frames / ctx.sampleRate * 1000 : undefined)
       diagnostics.noteRebuffer(msg.rebuffer_events, typeof msg.rebuffer_frames === "number" ? msg.rebuffer_frames / ctx.sampleRate * 1000 : undefined)
+      noteRecoveredStarvation(msg.rebuffer_events, msg.rebuffer_frames)
       if (next === active) return
       active = next
       options.onActiveChange?.(next)
