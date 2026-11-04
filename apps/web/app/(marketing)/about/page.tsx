@@ -45,9 +45,9 @@ export default function AboutPage() {
             </Button>
           </div>
           <ArtCard
-            src="/illustrations/library/connectors-hub.svg"
-            alt="Databases flowing into the Gravitre hub, every connection healthy"
-            status="Connected"
+            src="/illustrations/library/ai-guardrails.svg"
+            alt="A business lead setting the rules for AI: agents inside a protective shield, beside a checklist of approved and blocked actions"
+            status="Compliant"
           >
             <p className="font-mono text-xs tracking-tight text-muted-foreground uppercase">
               What we believe
