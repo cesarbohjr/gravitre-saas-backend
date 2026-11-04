@@ -90,3 +90,35 @@ For a synchronized browser/TTS/audio trace, collect same-clock relative receive/
 **Physical and benchmark gate:** iOS Safari speaker/headphones, desktop Chrome/Safari, Wi-Fi and impaired-network runs, barge-in/reconnect, uninterrupted 20-minute conversational audio, actual consented recordings, and contemporaneous blinded independent ChatGPT/Gravitre matched-permission reference ratings are still **NOT_RUN / NOT_CERTIFIED**. Code-level synthetic timings cannot be substituted for them. Use recorded exact code/config SHA, audio checksums, real provider route, test conditions, privacy controls and rating provenance when those evaluations are authorized and available.
 
 **Decision rule:** do not change lead/duck/gain/transport or claim a winner until synchronized real PCM/TTS/device data shows a reproducible mechanism, measured improvement in held-out sessions, nonregression of first meaningful audio and cancellation latency, and independent audible inspection. No merge/deploy solely on offline tests.
+
+## Release-gate clarification — 2026-11-04 (supersedes Phase 8 sequencing only)
+
+User-authorized release order is **offline exact-head certification → merge to main → production deployment verification → real live-provider, connector, audio and comparative acceptance**. This ordering supersedes older paragraphs requiring paid provider or physical listening before merge. It does **not** waive those acceptance journeys or classify NOT_RUN as PASS.
+
+### Gate A — Pre-merge engineering certification
+- All applicable GitHub Actions workflow jobs (not just green workflow wrappers) pass on the **same immutable head SHA**, including full backend pytest, integration smoke, web, Phase 3 seven-layer/offline contracts, autonomous-write independent process, connector governance, browser voice guard, and privacy/security tests.
+- Fix runner/environment faults rather than silently dropping assertions. In particular, Phase 3 intelligence coverage's historical `Errno 28` install failure must be rerun with CPU-only PyTorch and adequate disposable-runner disk.
+- Preserve the exact SHA and test/job/artifact links. A skipped paid test is deferred; a failed or cancelled non-paid job blocks this gate.
+
+### Gate B — Merge decision
+- Confirm PR600's 21 changes have been reconciled into PR601 and avoid an independent duplicate merge. Resolve current branch protection, review requirements, migration safety and rollback owner.
+- Once Gate A passes, mark the PR ready for review and merge with exact-head SHA guard. CI passing is **not** evidence of production conversational parity.
+
+### Gate C — Deployment verification
+- Confirm backend Railway deployment and frontend Vercel deployment originate from the merged main commit; check health and migrations, make rollback available, and ensure permitted production settings are effective.
+- No certification of text, audio, connector outcomes or user conversations from source existence alone.
+
+### Gate D — Post-deployment real functional acceptance
+- Prove effective authorized OpenAI/Anthropic inference/failover, conversational referent/history/agent-persona retention, contextual connector inventory and real authorized Outlook or equivalent mailbox read with result provenance.
+- Prove research and multistep work actually performs permitted reads, prepares approval-gated writes, executes exactly once after approval and verifies results. Preserve cross-tenant, revocation, cancellation, restart/idempotency safeguards. If authorized test connectors/accounts are missing, mark scenario BLOCKED with exact dependency.
+- Record relevance-aware seven-capability activation/defer, ML/memory consent, role/persona injection, downstream reasoning consumption, final answer impact and accurate user-facing task outcome.
+
+### Gate E — Post-deployment acoustic and product acceptance
+- Record synchronized TTS/network/client audio, speaker playback and utterance boundaries across Pipecat and LiveKit, iOS Safari and desktop, clean/impaired networks, barge-in, reconnect and 20-minute dialogue.
+- Diagnose audible ducking/underruns from actual measurements before altering gain/buffering. Require independent matched-permission contemporary ChatGPT text/audio benchmark against frozen CQ-01–CQ-16 cases and existing 26-case/520-pair baseline.
+- Any nonpassing mandatory scenario remains FAIL/NOT_RUN/BLOCKED, never reclassified as PASS because the release was deployed. Repair in reviewable follow-up and repeat affected gates; preserve rollback control.
+
+### Evidence-state vocabulary
+Use `PASS_OFFLINE_CONTRACT`, `PASS_LIVE_VERIFIED`, `BLOCKED`, `FAIL`, `NOT_RUN` and `DEFERRED_POST_DEPLOY` distinctly. Never infer `PASS_LIVE_VERIFIED` from `PASS_OFFLINE_CONTRACT`, parent workflow SUCCESS, source code presence, or provider key presence.
+
+**Source, deployment, invocation, execution, observed user-visible output and actual heard audio are six separate assertions requiring separate evidence.**
