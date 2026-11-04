@@ -64,7 +64,7 @@ class GravitrePcmPlayerProcessor extends AudioWorkletProcessor {
   reportProgress() {
     const played = this.queue.playedFrames - this.epochBase
     this.lastProgress = played
-    this.port.postMessage({ type: "progress", epoch: this.epoch, played, frame: currentFrame, underruns: this.queue.underruns, buffered_frames: this.queue.buffered })
+    this.port.postMessage({ type: "progress", epoch: this.epoch, played, frame: currentFrame, underruns: this.queue.underruns, buffered_frames: this.queue.buffered, rebuffer_events: this.queue.rebufferEvents, rebuffer_frames: this.queue.rebufferFrames })
   }
 
   reportActive() {
