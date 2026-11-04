@@ -2,6 +2,9 @@
 export type PcmPlaybackDiagnostics = {
   player_kind: "worklet" | "buffer-source"
   observed_underruns: number
+  /** Recovered worklet starvation, not proof of an audible defect. */
+  rebuffer_events: number
+  rebuffer_ms: number
   buffered_ms: number
   ducked: boolean
   duck_transitions: number
@@ -15,6 +18,8 @@ export function createPcmDiagnostics(
 ) {
   let underruns = 0
   let bufferedMs = 0
+  let rebufferEvents = 0
+  let rebufferMs = 0
   let duckedSince: number | null = null
   let duckedMs = 0
   let transitions = 0
@@ -37,6 +42,10 @@ export function createPcmDiagnostics(
         bufferedMs = buffered
       }
     },
+    noteRebuffer(count: unknown, durationMs: unknown) {
+      if (typeof count === "number" && Number.isSafeInteger(count) && count >= 0) rebufferEvents = Math.max(rebufferEvents, count)
+      if (typeof durationMs === "number" && Number.isFinite(durationMs) && durationMs >= 0) rebufferMs = Math.max(rebufferMs, durationMs)
+    },
     setDuck,
     flush() {
       flushes += 1
@@ -47,6 +56,8 @@ export function createPcmDiagnostics(
       return {
         player_kind: kind,
         observed_underruns: underruns,
+        rebuffer_events: rebufferEvents,
+        rebuffer_ms: Math.round(rebufferMs),
         buffered_ms: Math.round(bufferedMs),
         ducked: duckedSince !== null,
         duck_transitions: transitions,
