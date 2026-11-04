@@ -1562,7 +1562,9 @@ async def run_unified_turn_shadow(
         )
         return UnifiedTurnShadowResult(
             outcome_kind="error",
-            error=str(exc)[:500],
+            # Exception strings can contain provider response bodies or keys.
+            # Preserve a safe class for downstream voice failure handling.
+            error=type(exc).__name__,
             latency_ms=int((time.perf_counter() - wall_start) * 1000),
             tool_stats=tool_stats,
             model=model,
@@ -2492,6 +2494,25 @@ async def apply_unified_turn_live(
         response_style_key=response_style_key,
         conversation_tier=conversation_tier,
     )
+    if spoken_mode and result.outcome_kind == "error":
+        from app.services.voice_model_failure import unavailable_voice_model_reply
+
+        safe_unavailable = unavailable_voice_model_reply(result)
+        if safe_unavailable:
+            # Provider outage is NOT a request for more context. Stopping here
+            # prevents classical clarification from concealing the failed model.
+            # Never expose the provider exception, credential, or billing body.
+            result.outcome_kind = "conversational_reply"
+            result.user_message = safe_unavailable
+            result.live_served = True
+            emit_unified_turn_shadow_audit(
+                client=client,
+                org_id=org_id,
+                actor_id=user_id,
+                conversation_id=conversation_id,
+                result=result,
+            )
+            return _unified_live_turn_payload(result, task_state)
     if result.outcome_kind in {"skipped", "error"}:
         _mark_live_fallthrough(result, f"outcome_{result.outcome_kind}")
         emit_unified_turn_shadow_audit(
