@@ -59,8 +59,10 @@ export function createAcousticAcceptanceCapture(ctx: AudioContext) {
     start() {
       if (startedAt !== null) throw new Error("Acoustic capture already started")
       if (typeof MediaRecorder === "undefined") throw new Error("MediaRecorder is unavailable")
-      const selected = ["audio/webm;codecs=opus", "audio/mp4", ""]
-        .find((mime) => !mime || MediaRecorder.isTypeSupported(mime))
+      const selected = typeof MediaRecorder.isTypeSupported === "function"
+        ? ["audio/webm;codecs=opus", "audio/mp4", ""]
+            .find((mime) => !mime || MediaRecorder.isTypeSupported(mime))
+        : ""
       if (selected === undefined) throw new Error("No supported audio recorder")
       recorder = selected ? new MediaRecorder(output.stream, { mimeType: selected }) : new MediaRecorder(output.stream)
       records = []
@@ -70,7 +72,16 @@ export function createAcousticAcceptanceCapture(ctx: AudioContext) {
       startedAt = performance.now()
       ctx.addEventListener("statechange", onContextState)
       onContextState()
-      recorder.start(1000)
+      try {
+        recorder.start(1000)
+      } catch (error) {
+        ctx.removeEventListener("statechange", onContextState)
+        startedAt = null
+        recorder = null
+        records = []
+        blobs = []
+        throw error
+      }
     },
     async stop(): Promise<{ audio: Blob; manifest: AcousticAcceptanceManifest }> {
       const current = recorder
