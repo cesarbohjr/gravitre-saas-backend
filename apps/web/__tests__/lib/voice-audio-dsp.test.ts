@@ -245,6 +245,26 @@ describe("PcmPlayoutQueue", () => {
     expect(restart - latePush).toBeLessThanOrEqual(Math.round(0.18 * RATE) + 2 * Q)
   })
 
+  it("does not classify a new reply after a long silent gap as recovered starvation", () => {
+    const q = new PcmPlayoutQueue({ sampleRate: RATE })
+    q.push(new Float32Array(Math.round(RATE * 0.1)).fill(0.5), 0)
+    run(q, RATE / 2, 0)
+    expect(q.rebufferEvents).toBe(0)
+    // More than 400 ms since the previous push: this may be a new reply.
+    q.push(new Float32Array(Math.round(RATE * 0.1)).fill(0.25), RATE)
+    expect(q.underruns).toBe(0)
+    expect(q.rebufferEvents).toBe(0)
+    expect(q.rebufferFrames).toBe(0)
+  })
+
+  it("does not count a terminal silence as a recovered PCM gap", () => {
+    const q = new PcmPlayoutQueue({ sampleRate: RATE })
+    q.push(new Float32Array(Math.round(RATE * 0.1)).fill(0.5), 0)
+    run(q, RATE / 2, 0)
+    expect(q.rebufferEvents).toBe(0)
+    expect(q.rebufferFrames).toBe(0)
+  })
+
   it("flush fades out over ~12 ms and drops the rest", () => {
     const q = new PcmPlayoutQueue({ sampleRate: RATE })
     q.push(new Float32Array(RATE).fill(0.5), 0)
