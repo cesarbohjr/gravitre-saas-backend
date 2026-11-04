@@ -27,6 +27,15 @@ export const PCM_FLUSH_FADE_S = 0.012
 
 export type VoicePcmPlayerKind = "worklet" | "buffer-source"
 
+/** Same-clock metadata for consented acceptance sessions; never PCM or text. */
+export type AcousticTimingEvent = {
+  event: "pcm_enqueue" | "playback_started" | "duck" | "unduck" | "flush"
+  monotonic_ms: number
+  audio_context_s: number
+  pcm_frames?: number
+  pcm_sample_rate?: number
+}
+
 export type VoicePcmPlayerOptions = {
   /** Where audio goes; defaults to ctx.destination. */
   destination?: AudioNode
@@ -36,6 +45,8 @@ export type VoicePcmPlayerOptions = {
    * Undefined by default: no audio samples are recorded or copied.
    */
   acceptanceOutputTap?: AudioNode
+  /** Optional bounded metadata sink for consented acceptance tests. */
+  onAcousticTiming?: (observation: AcousticTimingEvent) => void
   /** Audible playback started (first frame of a reply, or after an underrun). */
   onStarted?: (ctxTime: number) => void
   /** Whether anything is queued or playing changed. */
@@ -92,6 +103,15 @@ export function createWorkletPcmPlayer(
   options: VoicePcmPlayerOptions = {},
 ): VoicePcmPlayer {
   const diagnostics = createPcmDiagnostics("worklet", () => ctx.currentTime)
+  const note = (event: AcousticTimingEvent["event"], pcmFrames?: number, pcmSampleRate?: number) => {
+    if (!options.onAcousticTiming) return
+    try {
+      options.onAcousticTiming({
+        event, monotonic_ms: performance.now(), audio_context_s: ctx.currentTime,
+        ...(pcmFrames === undefined ? {} : { pcm_frames: pcmFrames, pcm_sample_rate: pcmSampleRate }),
+      })
+    } catch { /* diagnostic hooks may never interrupt audio */ }
+  }
   const node = new AudioWorkletNode(ctx, VOICE_PCM_PLAYER_PROCESSOR, {
     numberOfInputs: 0,
     numberOfOutputs: 1,
@@ -146,6 +166,7 @@ export function createWorkletPcmPlayer(
         origin = at
         startConfirmed = true
       }
+      note("playback_started")
       options.onStarted?.(at)
     } else if (msg?.type === "active") {
       const next = Boolean(msg.active)
@@ -163,6 +184,7 @@ export function createWorkletPcmPlayer(
     diagnostics: () => diagnostics.snapshot(),
     enqueue(pcm, sampleRate) {
       if (pcm.length === 0) return
+      note("pcm_enqueue", pcm.length, sampleRate || 16000)
       // Copy so the caller's buffer survives the transfer.
       const copy = new Int16Array(pcm)
       if (!active) {
@@ -179,6 +201,7 @@ export function createWorkletPcmPlayer(
       )
     },
     flush() {
+      note("flush")
       diagnostics.flush()
       epoch += 1
       playedFrames = 0
@@ -189,7 +212,10 @@ export function createWorkletPcmPlayer(
       startConfirmed = false
       duck.resetAfterFlush()
     },
-    setDuck: (ducked) => { diagnostics.setDuck(ducked); duck.set(ducked) },
+    setDuck: (ducked) => {
+      if (diagnostics.snapshot().ducked !== ducked) note(ducked ? "duck" : "unduck")
+      diagnostics.setDuck(ducked); duck.set(ducked)
+    },
     isActive: () => active,
     originTime: () => origin,
     playedSeconds() {
@@ -219,6 +245,15 @@ export function createBufferSourcePcmPlayer(
   options: VoicePcmPlayerOptions = {},
 ): VoicePcmPlayer {
   const diagnostics = createPcmDiagnostics("buffer-source", () => ctx.currentTime)
+  const note = (event: AcousticTimingEvent["event"], pcmFrames?: number, pcmSampleRate?: number) => {
+    if (!options.onAcousticTiming) return
+    try {
+      options.onAcousticTiming({
+        event, monotonic_ms: performance.now(), audio_context_s: ctx.currentTime,
+        ...(pcmFrames === undefined ? {} : { pcm_frames: pcmFrames, pcm_sample_rate: pcmSampleRate }),
+      })
+    } catch { /* diagnostic hooks may never interrupt audio */ }
+  }
   let lifetimeUnderruns = 0
   const duck = createDuckControl(ctx, options.destination ?? ctx.destination, options.acceptanceOutputTap)
   const destination = duck.input
@@ -249,6 +284,7 @@ export function createBufferSourcePcmPlayer(
     enqueue(pcm, sampleRate) {
       if (pcm.length === 0) return
       const inRate = sampleRate || 16000
+      note("pcm_enqueue", pcm.length, inRate)
       if (!resampler || resampler.inRate !== inRate) resampler = new StreamingResampler(inRate, rate)
       const samples = resampler.process(int16ArrayToFloat(pcm))
       if (samples.length === 0) return
@@ -274,6 +310,7 @@ export function createBufferSourcePcmPlayer(
       nextFrame = startFrame + samples.length
       if (sources.length === 0) setActive(true)
       sources.push(src)
+      note("playback_started")
       options.onStarted?.(startFrame / rate)
       src.onended = () => {
         const before = sources.length
@@ -282,6 +319,7 @@ export function createBufferSourcePcmPlayer(
       }
     },
     flush() {
+      note("flush")
       diagnostics.flush()
       const old = out
       const oldSources = sources
@@ -321,7 +359,10 @@ export function createBufferSourcePcmPlayer(
       duck.resetAfterFlush()
       if (wasActive) setActive(false)
     },
-    setDuck: (ducked) => { diagnostics.setDuck(ducked); duck.set(ducked) },
+    setDuck: (ducked) => {
+      if (diagnostics.snapshot().ducked !== ducked) note(ducked ? "duck" : "unduck")
+      diagnostics.setDuck(ducked); duck.set(ducked)
+    },
     isActive: () => sources.length > 0,
     originTime: () => origin,
     playedSeconds() {
