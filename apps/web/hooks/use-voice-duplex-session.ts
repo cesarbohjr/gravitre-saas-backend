@@ -59,6 +59,7 @@ import {
   createVoicePcmPlayer,
   type VoicePcmPlayer,
   type VoicePcmPlayerOptions,
+  type AcousticTimingEvent,
 } from "@/lib/voice-pcm-player"
 import { createOverlapDuckState } from "@/lib/voice-overlap-duck"
 import {
@@ -98,6 +99,16 @@ export type DuplexLatencyStages = {
   /** The live duplex path owns delivery/recovery for this turn even before audio proof arrives. */
   duplex_transport_owned?: boolean
 }
+
+/** Content-free server notification receipt, aligned to the browser PCM clock. */
+const ACOUSTIC_SERVER_STAGES = {
+  audio: "transport_audio_received",
+  "bot-started-speaking": "server_bot_speaking",
+  "audio.reply": "server_reply_announced",
+  "speech.duck": "server_speech_duck",
+  "speech.unduck": "server_speech_unduck",
+  "speech.interrupted": "server_interrupted",
+} as const satisfies Record<string, AcousticTimingEvent["event"]>
 
 export type DuplexTurnResult = {
   userText: string
@@ -1778,6 +1789,18 @@ export function useVoiceDuplexSession(options: Options) {
           return
         }
         const kind = String(msg.type || "")
+        const acousticSink = acousticAcceptancePlayerOptionsRef.current.onAcousticTiming
+        if (acousticSink) {
+          const stage = ACOUSTIC_SERVER_STAGES[kind as keyof typeof ACOUSTIC_SERVER_STAGES]
+          if (stage) {
+            try {
+              acousticSink({
+                event: stage, monotonic_ms: performance.now(), audio_context_s: ctx.currentTime,
+                ...(typeof msg.reply_id === "number" ? { reply_id: msg.reply_id } : {}),
+              })
+            } catch { /* acoustic instrumentation never blocks live voice */ }
+          }
+        }
         if (kind === "session.ready") {
           const cid = typeof msg.conversation_id === "string" ? msg.conversation_id : null
           if (cid) optsRef.current.onConversationId?.(cid)
