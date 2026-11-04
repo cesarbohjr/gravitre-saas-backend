@@ -45,9 +45,9 @@ export default function AboutPage() {
             </Button>
           </div>
           <ArtCard
-            src="/illustrations/library/ai-guardrails.svg"
-            alt="A business lead setting the rules for AI: agents inside a protective shield, beside a checklist of approved and blocked actions"
-            status="Compliant"
+            src="/illustrations/library/quiet-desk.svg"
+            alt="A calm workspace: a tidy desk with a monitor, lamp, books and a plant, a calendar on the wall and a clock ticking by the window"
+            aspect="aspect-[32/11]"
           >
             <p className="font-mono text-xs tracking-tight text-muted-foreground uppercase">
               What we believe
