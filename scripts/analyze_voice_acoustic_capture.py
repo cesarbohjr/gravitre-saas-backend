@@ -39,9 +39,17 @@ def analyze(manifest: dict, *, audio: bytes | None = None) -> dict:
     duck_started = None
     duck_intervals = []
     non_running = []
+    recovered_starvations = []
     for row, timestamp in zip(rows, timings):
         kind = row["event"]
         counts[kind] = counts.get(kind, 0) + 1
+        if kind == "rebuffer":
+            count = row.get("rebuffer_events")
+            gap_ms = row.get("rebuffer_ms")
+            if not isinstance(count, int) or count < 1 or not isinstance(gap_ms, (int, float)) or gap_ms < 0:
+                raise ValueError("invalid rebuffer observation")
+            recovered_starvations.append({"at_ms": timestamp, "cumulative_events": count,
+                                          "cumulative_gap_ms": round(float(gap_ms), 2)})
         if kind == "pcm_enqueue":
             if previous_enqueue is not None:
                 enqueue_gaps.append(round(timestamp - previous_enqueue, 2))
@@ -64,6 +72,8 @@ def analyze(manifest: dict, *, audio: bytes | None = None) -> dict:
     # An enqueue gap may be linguistic or transport-induced. Do not classify
     # it as starvation without simultaneous queue and worklet evidence.
     candidates = []
+    if recovered_starvations:
+        candidates.append("recovered_same_reply_pcm_starvation__confirm_audible_gap")
     if enqueue_gaps and max(enqueue_gaps) > 100:
         candidates.append("long_client_pcm_arrival_gap__cause_unverified")
     if duck_intervals and max(duck_intervals) > 250:
@@ -77,6 +87,7 @@ def analyze(manifest: dict, *, audio: bytes | None = None) -> dict:
         "evidence_class": "browser_post_duck_capture",
         "audio_sha256": hashlib.sha256(audio).hexdigest() if audio is not None else None,
         "events": counts,
+        "recovered_starvation_events": recovered_starvations[:100],
         "maximum_pcm_arrival_gap_ms": max(enqueue_gaps) if enqueue_gaps else None,
         "maximum_duck_interval_ms": max(duck_intervals) if duck_intervals else None,
         "non_running_audio_context_events": non_running[:50],
