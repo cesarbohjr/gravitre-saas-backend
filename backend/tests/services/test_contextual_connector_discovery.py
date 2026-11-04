@@ -14,7 +14,7 @@ from app.services.clarification_repair import repair_generic_clarification
 
 class ContextContracts(unittest.TestCase):
     def test_inventory_variants_and_followups(self):
-        for question in ["What other email connectors do I have?", "K. What other email connectors do I have?", "Which email accounts are connected?", "List my email integrations.", "What other email provider can you use?", "Which other email services can Gravitre access?"]:
+        for question in ["What other email connectors do I have?", "No, I meant what other email connectors do I have?", "Sorry, I meant what other email provider can you use?", "K. What other email connectors do I have?", "Which email accounts are connected?", "List my email integrations.", "What other email provider can you use?", "Which other email services can Gravitre access?"]:
             with self.subTest(question=question):
                 self.assertEqual(connector_inventory_intent(question).category, "email")
         history = [{"role": "user", "content": "What other email connectors do I have?"}, {"role": "assistant", "content": "I may be missing context — could you clarify or point me to a specific record or document?"}]
@@ -24,7 +24,7 @@ class ContextContracts(unittest.TestCase):
     def test_context_does_not_cross_topic_or_authorize_actions(self):
         history = [{"role": "user", "content": "What email connectors do I have?"}, {"role": "user", "content": "Let's pick something else."}]
         self.assertIsNone(connector_inventory_intent("Do I not have others?", history))
-        for text in ["What other emails do I have?", "Do I not have others?", "Which accounts do I have?", "Send it", "What email connectors do I have and send Sarah a message?", "Delete my email accounts"]:
+        for text in ["No, I meant send this message", "What other emails do I have?", "Do I not have others?", "Which accounts do I have?", "Send it", "What email connectors do I have and send Sarah a message?", "Delete my email accounts"]:
             self.assertIsNone(connector_inventory_intent(text))
 
     def test_continued_followups_preserve_category(self):
