@@ -361,6 +361,40 @@ describe("pcm-player worklet processor", () => {
     for (const k of Object.keys(saved)) g[k] = saved[k]
   })
 
+  it("preserves resampler phase after a temporary underrun, but resets on explicit flush", () => {
+    const Proc = registered["gravitre-pcm-player"]
+    expect(Proc).toBeDefined()
+    const proc = new Proc({ processorOptions: {} }) as InstanceType<typeof Proc> & {
+      resampler: { outCount: number }
+    }
+    const source = floatArrayToInt16(tone(440, 24000, 1920))
+    g.currentFrame = 0
+    proc.port.onmessage?.({
+      data: { type: "pcm", pcm: source.slice(0, 960), sampleRate: 24000, seq: 1 },
+    })
+    const firstCount = proc.resampler.outCount
+    expect(firstCount).toBeGreaterThan(1000)
+    // Deliberately drain all queued frames for a temporary network/TTS gap.
+    // The worklet must not interpret this as an end-of-reply FIR flush.
+    for (let frame = 0; frame < 44100 * 0.3; frame += 128) {
+      g.currentFrame = frame
+      proc.process([], [[new Float32Array(128)]])
+    }
+    expect(proc.resampler.outCount).toBe(firstCount)
+    g.currentFrame = 44100 * 0.3
+    proc.port.onmessage?.({
+      data: { type: "pcm", pcm: source.slice(960), sampleRate: 24000, seq: 2 },
+    })
+    expect(proc.resampler.outCount).toBeGreaterThan(firstCount + 1000)
+
+    // A real cancellation must still clear DSP state for the next reply.
+    proc.port.onmessage?.({ data: { type: "flush", epoch: 1 } })
+    proc.port.onmessage?.({
+      data: { type: "pcm", pcm: source.slice(0, 960), sampleRate: 24000, seq: 3 },
+    })
+    expect(proc.resampler.outCount).toBeLessThan(firstCount + 100)
+  })
+
   it("plays 24 kHz chunks on a 44.1 kHz context without boundary clicks", () => {
     const Proc = registered["gravitre-pcm-player"]
     expect(Proc).toBeDefined()
