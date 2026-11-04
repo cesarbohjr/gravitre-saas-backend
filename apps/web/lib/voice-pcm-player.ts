@@ -30,6 +30,12 @@ export type VoicePcmPlayerKind = "worklet" | "buffer-source"
 export type VoicePcmPlayerOptions = {
   /** Where audio goes; defaults to ctx.destination. */
   destination?: AudioNode
+  /**
+   * Explicit acceptance-test output tap, AFTER overlap ducking. Must be an
+   * AudioNode in the same AudioContext (e.g. a MediaStreamDestination).
+   * Undefined by default: no audio samples are recorded or copied.
+   */
+  acceptanceOutputTap?: AudioNode
   /** Audible playback started (first frame of a reply, or after an underrun). */
   onStarted?: (ctxTime: number) => void
   /** Whether anything is queued or playing changed. */
@@ -93,7 +99,7 @@ export function createWorkletPcmPlayer(
     processorOptions: { flushFadeS: PCM_FLUSH_FADE_S },
   })
   // Overlap ducking sits after the player, so it lowers what is already queued.
-  const duck = createDuckControl(ctx, options.destination ?? ctx.destination)
+  const duck = createDuckControl(ctx, options.destination ?? ctx.destination, options.acceptanceOutputTap)
   node.connect(duck.input)
   let active = false
   let origin: number | null = null
@@ -214,7 +220,7 @@ export function createBufferSourcePcmPlayer(
 ): VoicePcmPlayer {
   const diagnostics = createPcmDiagnostics("buffer-source", () => ctx.currentTime)
   let lifetimeUnderruns = 0
-  const duck = createDuckControl(ctx, options.destination ?? ctx.destination)
+  const duck = createDuckControl(ctx, options.destination ?? ctx.destination, options.acceptanceOutputTap)
   const destination = duck.input
   const rate = ctx.sampleRate
   let out = ctx.createGain()
@@ -354,9 +360,12 @@ export function createBufferSourcePcmPlayer(
 }
 
 /** The output gain stage both players route through for overlap ducking. */
-function createDuckControl(ctx: AudioContext, destination: AudioNode) {
+function createDuckControl(ctx: AudioContext, destination: AudioNode, acceptanceOutputTap?: AudioNode) {
   const gain = ctx.createGain()
   gain.connect(destination)
+  // Mirror the final, post-duck signal only when a deliberately supplied
+  // acceptance tap exists. No automatic recording, persistence or upload.
+  if (acceptanceOutputTap) gain.connect(acceptanceOutputTap)
   let ducked = false
   return {
     input: gain as AudioNode,
