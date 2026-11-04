@@ -49,3 +49,16 @@ Record turn IDs, provider route, intelligence evidence, persona, tool invocation
 
 ## Definition of done
 All confirmed failures repaired or evidence-backed dispositioned; critical handoffs verified; no false completion claims; no critical authorization/security violations; complete exact-head CI; matched full-journey tests; physical audio and live-provider checks only when authorized, otherwise NOT_RUN/NOT_CERTIFIED. No ChatGPT parity claim without measured results. PR #601 remains draft until gates pass. No production rollout, paid-provider testing, secret rotation or autonomous writes outside existing approval policy authorized by this plan.
+
+
+## PR #600 voice-continuity instrumentation checkpoint — 2026-11-03
+
+**Scope:** source-only playback-state correctness and content-free diagnostics, not a listening verdict. Change set on the reconciled PR #601 branch; do not promote or merge without exact-head checks.
+
+- The worklet now tags `started` events with the same flush epoch as progress and active reports. The browser rejects a delayed pre-flush start, preserving reply-origin and heard-history attribution through interruptions. An automated regression exercises a stale start followed by a valid new-epoch start.
+- The PCM queue counts **recovered starvation gaps** only when a starved queue later receives additional PCM; it records event count and elapsed output frames without changing fade, queue, barge-in, or cancel behavior. These observations cannot by themselves distinguish TTS/network delay from a pause or a new reply. The existing underrun heuristic is separate and may report different counts.
+- Worklet progress/active messages carry `rebuffer_events` and `rebuffer_frames`, converted by the player into cumulative `rebuffer_ms`. The existing scoped output-diagnostics payload allowlists bounded `rebuffer_events` and `rebuffer_ms`; no audio, transcript, device identity or new grants are collected. Duck duration and flush count remain available for joint analysis.
+- Processor and shared DSP changes bump the worklet cache version to 6. Unit contracts cover stale event epochs, cumulative/invalid diagnostic values, measured queue starvation, flush exclusion, and backend schema bounds.
+- Baseline buffering and gain policy remain **unchanged**: 120 ms initial lead, max 320 ms, adaptive 60 ms increase, 12 ms flush fade, duck gain 0.15. No speculative reduction of attenuation or interruption detection was introduced.
+- **Acceptance status:** code committed; exact-head CI pending. Real iOS Safari/desktop output capture, TTS arrival/playing timestamps, server-to-client clock correlation, blinded listening, provider acoustic cause and an authorized matched comparison remain **NOT_RUN / NOT_CERTIFIED**. Investigate any long duck interval alongside rebuffer gaps and audio-context state before selecting a playback or prosody remedy.
+
