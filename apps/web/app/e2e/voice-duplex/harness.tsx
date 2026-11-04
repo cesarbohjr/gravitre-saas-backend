@@ -13,9 +13,10 @@
  *   fake STT/TTS/LLM providers.
  */
 
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { useVoiceDuplexSession } from "@/hooks/use-voice-duplex-session"
 import { ORG_STORAGE_KEY } from "@/lib/org-context"
+import { createAcousticAcceptanceCapture } from "@/lib/voice-acoustic-acceptance"
 
 type HarnessTransport = "http" | "pipecat"
 
@@ -58,6 +59,10 @@ function readTransport(): { transport: HarnessTransport; wsBase: string } {
 
 export function VoiceDuplexHarness() {
   const [metrics, setMetrics] = useState<HarnessMetrics>(EMPTY_METRICS)
+  const acousticCaptureRef = useRef<ReturnType<typeof createAcousticAcceptanceCapture> | null>(null)
+  const [recording, setRecording] = useState(false)
+  const [captureError, setCaptureError] = useState("")
+  const [captureArtifacts, setCaptureArtifacts] = useState<{ audioUrl: string; manifestUrl: string } | null>(null)
   const [config, setConfig] = useState<{ transport: HarnessTransport; wsBase: string } | null>(null)
   const [harnessReady, setHarnessReady] = useState(false)
   const [turn, setTurn] = useState<{ assistantText: string; userText: string; conversationId: string }>({
@@ -323,6 +328,12 @@ export function VoiceDuplexHarness() {
   }, [config])
 
   const duplex = useVoiceDuplexSession({
+    acousticAcceptanceFactory: (ctx) => {
+      acousticCaptureRef.current?.dispose()
+      const capture = createAcousticAcceptanceCapture(ctx)
+      acousticCaptureRef.current = capture
+      return { acceptanceOutputTap: capture.outputTap, onAcousticTiming: capture.onAcousticTiming }
+    },
     forceHttpDuplex: config?.transport !== "pipecat",
     enabled: true,
     onError: (message) => {
@@ -337,6 +348,44 @@ export function VoiceDuplexHarness() {
         conversationId: result.conversationId || prev.conversationId,
       })),
   })
+
+  // Capture is only enabled by an explicit click on this gated /e2e page.
+  // Keep binary audio local to the browser; links are object URLs, not uploads.
+  const startAcousticCapture = () => {
+    try {
+      if (!acousticCaptureRef.current) throw new Error("Start the Pipecat voice harness first")
+      acousticCaptureRef.current.start()
+      setCaptureError("")
+      setRecording(true)
+    } catch (error) {
+      setCaptureError(error instanceof Error ? error.message : "Capture could not start")
+    }
+  }
+
+  const stopAcousticCapture = async () => {
+    try {
+      if (!acousticCaptureRef.current) throw new Error("No active capture")
+      const { audio, manifest } = await acousticCaptureRef.current.stop()
+      const audioUrl = URL.createObjectURL(audio)
+      const manifestUrl = URL.createObjectURL(new Blob([JSON.stringify(manifest, null, 2)], { type: "application/json" }))
+      setCaptureArtifacts((previous) => {
+        if (previous) {
+          URL.revokeObjectURL(previous.audioUrl)
+          URL.revokeObjectURL(previous.manifestUrl)
+        }
+        return { audioUrl, manifestUrl }
+      })
+      setRecording(false)
+    } catch (error) {
+      setCaptureError(error instanceof Error ? error.message : "Capture could not stop")
+    }
+  }
+
+  useEffect(() => {
+    return () => {
+      acousticCaptureRef.current?.dispose()
+    }
+  }, [])
 
   useEffect(() => {
     window.__voiceDuplexHarness = {
@@ -368,6 +417,30 @@ export function VoiceDuplexHarness() {
       className="p-6"
     >
       <p className="text-sm">Voice duplex harness — presence: {duplex.presence}</p>
+      <p className="mt-2 text-sm">
+        Explicit acceptance-only recording of post-duck browser audio.
+        No microphone capture, automatic recording, or upload. Use
+        transport=pipecat for the real browser playback path and test server.
+      </p>
+      <div className="mt-3 flex gap-2">
+        <button type="button" data-testid="acoustic-capture-start"
+          disabled={!harnessReady || recording || !duplex.isActive || !acousticCaptureRef.current}
+          onClick={startAcousticCapture} className="rounded-md border px-3 py-2 text-sm">
+          Start local audio capture
+        </button>
+        <button type="button" data-testid="acoustic-capture-stop"
+          disabled={!recording} onClick={() => void stopAcousticCapture()}
+          className="rounded-md border px-3 py-2 text-sm">
+          Stop capture
+        </button>
+      </div>
+      {captureError && <p role="alert" className="mt-2 text-sm">{captureError}</p>}
+      {captureArtifacts && (
+        <div className="mt-2 flex gap-3 text-sm">
+          <a href={captureArtifacts.audioUrl} download="gravitre-post-duck-browser-audio.webm">Save audio recording</a>
+          <a href={captureArtifacts.manifestUrl} download="gravitre-acoustic-timeline.json">Save timing manifest</a>
+        </div>
+      )}
       <button
         type="button"
         data-testid="voice-duplex-start"
