@@ -15,7 +15,7 @@ import {
   GravitreTrace,
 } from "@/components/marketing/system"
 import { MARKETING_COPY } from "@/lib/marketing-copy"
-import { BuildWithUsScene } from "@/components/marketing/nodus/scenes/scenes"
+import { BeliefScene, BuildWithUsScene } from "@/components/marketing/nodus/scenes/scenes"
 
 /**
  * About — Nodus layout · Gravitre copy · Marketing System 4.0 converge signature.
@@ -53,6 +53,13 @@ export default function AboutPage() {
             <p className="mt-6 text-sm text-gray-600">
               {MARKETING_COPY.homeNarrative.categoryLine}
             </p>
+            <div
+              role="img"
+              aria-label="Agents, workflows, connectors and approvals feed the Gravitre hub, which reports whether the work is working"
+              className="mt-8"
+            >
+              <BeliefScene />
+            </div>
           </div>
         </div>
       </Container>
