@@ -57,6 +57,19 @@ describe("content-free PCM continuity observations", () => {
     expect(player.diagnostics?.().buffered_ms).toBe(0)
   })
 
+  it("replaces provisional jitter origin with first measured playback start", () => {
+    const { player, emit } = playerFixture()
+    player.enqueue(new Int16Array(960), 24000)
+    expect(player.originTime()).toBeCloseTo(0.12)
+    emit({ type: "started", epoch: 0, frame: 7200 })
+    expect(player.originTime()).toBeCloseTo(0.15)
+    // A second start after buffering is not a new reply origin.
+    emit({ type: "started", epoch: 0, frame: 14400 })
+    expect(player.originTime()).toBeCloseTo(0.15)
+    player.flush()
+    expect(player.originTime()).toBeNull()
+  })
+
   it("ignores a delayed pre-flush start without changing the new reply's origin", () => {
     const observed: number[] = []
     const port = { onmessage: null as ((e: MessageEvent) => void) | null, postMessage() {} }
