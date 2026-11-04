@@ -100,6 +100,8 @@ class PcmOutputDiagnostics(BaseModel):
 
     player_kind: Literal["worklet", "buffer-source"]
     observed_underruns: int = Field(ge=0, le=1000000)
+    rebuffer_events: int = Field(default=0, ge=0, le=1000000)
+    rebuffer_ms: int = Field(default=0, ge=0, le=86400000)
     buffered_ms: int = Field(ge=0, le=600000)
     ducked: bool
     duck_transitions: int = Field(ge=0, le=1000000)
