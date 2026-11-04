@@ -57,6 +57,34 @@ describe("content-free PCM continuity observations", () => {
     player.dispose()
   })
 
+  it("emits one timestamped starvation event per new worklet counter increment", () => {
+    const observations: Array<{ event: string; rebuffer_events?: number }> = []
+    const port = { onmessage: null as ((e: MessageEvent) => void) | null, postMessage() {} }
+    class FakeNode {
+      port = port
+      connect() {}
+      disconnect() {}
+    }
+    vi.stubGlobal("AudioWorkletNode", FakeNode)
+    const gain = () => ({
+      gain: { value: 1, cancelScheduledValues() {}, setValueAtTime() {}, linearRampToValueAtTime() {} },
+      connect() {}, disconnect() {},
+    })
+    const ctx = { currentTime: 1, sampleRate: 48000, destination: {}, createGain: gain } as unknown as AudioContext
+    const player = createWorkletPcmPlayer(ctx, { onAcousticTiming: (event) => observations.push(event) })
+    const emit = (rebuffer_events: number) => port.onmessage?.({
+      data: { type: "progress", epoch: 0, played: 960, frame: 48000, rebuffer_events,
+        rebuffer_frames: rebuffer_events * 2400, buffered_frames: 4800 },
+    } as MessageEvent)
+    emit(1)
+    emit(1)
+    emit(2)
+    expect(observations.filter((event) => event.event === "rebuffer").map((event) => event.rebuffer_events)).toEqual([1, 2])
+    player.flush()
+    emit(3)
+    expect(observations.filter((event) => event.event === "rebuffer")).toHaveLength(2)
+  })
+
   it("counts duck duration and transitions without resetting lifetime evidence on flush", () => {
     let now = 0
     const metrics = createPcmDiagnostics("worklet", () => now)
