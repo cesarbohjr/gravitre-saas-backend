@@ -62,7 +62,7 @@ export function VoiceDuplexHarness() {
   const acousticCaptureRef = useRef<ReturnType<typeof createAcousticAcceptanceCapture> | null>(null)
   const [recording, setRecording] = useState(false)
   const [captureError, setCaptureError] = useState("")
-  const [captureArtifacts, setCaptureArtifacts] = useState<{ audioUrl: string; manifestUrl: string } | null>(null)
+  const [captureArtifacts, setCaptureArtifacts] = useState<{ audioUrl: string; manifestUrl: string; audioFilename: string } | null>(null)
   const [config, setConfig] = useState<{ transport: HarnessTransport; wsBase: string } | null>(null)
   const [harnessReady, setHarnessReady] = useState(false)
   const [turn, setTurn] = useState<{ assistantText: string; userText: string; conversationId: string }>({
@@ -367,13 +367,15 @@ export function VoiceDuplexHarness() {
       if (!acousticCaptureRef.current) throw new Error("No active capture")
       const { audio, manifest } = await acousticCaptureRef.current.stop()
       const audioUrl = URL.createObjectURL(audio)
+      const extension = audio.type.includes("mp4") ? "m4a" : audio.type.includes("ogg") ? "ogg" : audio.type.includes("webm") ? "webm" : "bin"
+      const audioFilename = `gravitre-post-duck-browser-audio.${extension}`
       const manifestUrl = URL.createObjectURL(new Blob([JSON.stringify(manifest, null, 2)], { type: "application/json" }))
       setCaptureArtifacts((previous) => {
         if (previous) {
           URL.revokeObjectURL(previous.audioUrl)
           URL.revokeObjectURL(previous.manifestUrl)
         }
-        return { audioUrl, manifestUrl }
+        return { audioUrl, manifestUrl, audioFilename }
       })
       setRecording(false)
     } catch (error) {
@@ -437,7 +439,7 @@ export function VoiceDuplexHarness() {
       {captureError && <p role="alert" className="mt-2 text-sm">{captureError}</p>}
       {captureArtifacts && (
         <div className="mt-2 flex gap-3 text-sm">
-          <a href={captureArtifacts.audioUrl} download="gravitre-post-duck-browser-audio.webm">Save audio recording</a>
+          <a href={captureArtifacts.audioUrl} download={captureArtifacts.audioFilename}>Save audio recording</a>
           <a href={captureArtifacts.manifestUrl} download="gravitre-acoustic-timeline.json">Save timing manifest</a>
         </div>
       )}
