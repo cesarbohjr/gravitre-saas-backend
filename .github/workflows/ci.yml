@@ -236,8 +236,10 @@ jobs:
   backend:
     name: Backend (pytest)
     runs-on: ubuntu-latest
-    # Match main's bounded full-suite ceiling without skipping acceptance coverage.
-    timeout-minutes: 45
+    # The exact-head 45-minute ceiling cancelled full pytest twice at 86-91%
+    # (runs 41771505761, attempts 1 and 2). Preserve the full test battery
+    # with a bounded 90-minute ceiling rather than treating cancellations as passes.
+    timeout-minutes: 90
     defaults:
       run:
         working-directory: backend
