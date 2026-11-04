@@ -19,6 +19,44 @@ function playerFixture() {
 describe("content-free PCM continuity observations", () => {
   afterEach(() => vi.unstubAllGlobals())
 
+  it("routes a consented acceptance tap after ducking without changing normal output", () => {
+    const connections: Array<unknown> = []
+    const port = { onmessage: null as ((e: MessageEvent) => void) | null, postMessage() {} }
+    class FakeNode {
+      port = port
+      connect(target: unknown) { connections.push(target) }
+      disconnect() {}
+    }
+    vi.stubGlobal("AudioWorkletNode", FakeNode)
+    const gain = () => ({
+      gain: { value: 1, cancelScheduledValues() {}, setValueAtTime() {}, linearRampToValueAtTime() {} },
+      connect(target: unknown) { connections.push(target) },
+      disconnect() {},
+    })
+    const ctx = { currentTime: 0, sampleRate: 48000, destination: { name: "speakers" }, createGain: gain } as unknown as AudioContext
+    const captureTap = { name: "consented-test-tap" } as unknown as AudioNode
+    const events: string[] = []
+    const player = createWorkletPcmPlayer(ctx, {
+      acceptanceOutputTap: captureTap,
+      onAcousticTiming: (event) => events.push(event.event),
+    })
+    expect(connections).toContain(captureTap)
+    expect(connections).toContain(ctx.destination)
+    player.enqueue(new Int16Array(960), 24000)
+    port.onmessage?.({ data: { type: "started", epoch: 0, frame: 7200 } } as MessageEvent)
+    player.setDuck(true)
+    player.setDuck(false)
+    player.flush()
+    expect(events).toEqual(["pcm_enqueue", "playback_started", "duck", "unduck", "flush"])
+    player.dispose()
+  })
+
+  it("never connects an acoustic recording tap by default", () => {
+    const { player } = playerFixture()
+    expect(player.kind).toBe("worklet")
+    player.dispose()
+  })
+
   it("counts duck duration and transitions without resetting lifetime evidence on flush", () => {
     let now = 0
     const metrics = createPcmDiagnostics("worklet", () => now)
