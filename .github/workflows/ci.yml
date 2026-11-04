@@ -95,11 +95,32 @@ jobs:
           cache: pip
           cache-dependency-path: backend/requirements.txt
 
+      - name: Reclaim unused hosted-runner SDKs before Python dependencies
+        run: |
+          set -euo pipefail
+          echo "Disk before cleanup:"
+          df -h / /tmp
+          for dir in /usr/local/lib/android /usr/share/dotnet /opt/ghc /usr/local/share/powershell; do
+            if [ -d "$dir" ]; then
+              echo "Removing unused SDK: $dir"
+              sudo rm -rf -- "$dir"
+            fi
+          done
+          python -m pip cache purge || true
+          sudo apt-get clean
+          echo "Disk after cleanup:"
+          df -h / /tmp
+          free_kib=$(df -Pk / | awk 'NR==2 {print $4}')
+          if [ "$free_kib" -lt 10485760 ]; then
+            echo "::error::Backend CI needs at least 10 GiB disk free before heavy dependency install (KiB=$free_kib)"
+            exit 1
+          fi
+
       - name: Install backend dependencies
         working-directory: backend
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements-dev.txt
+          python -m pip install --no-cache-dir --no-compile -r requirements-dev.txt
 
       - name: Start backend and run integration smoke test
         working-directory: backend
@@ -166,10 +187,31 @@ jobs:
           python-version: "3.12"
           cache: pip
           cache-dependency-path: backend/requirements.txt
+      - name: Reclaim unused hosted-runner SDKs before Python dependencies
+        run: |
+          set -euo pipefail
+          echo "Disk before cleanup:"
+          df -h / /tmp
+          for dir in /usr/local/lib/android /usr/share/dotnet /opt/ghc /usr/local/share/powershell; do
+            if [ -d "$dir" ]; then
+              echo "Removing unused SDK: $dir"
+              sudo rm -rf -- "$dir"
+            fi
+          done
+          python -m pip cache purge || true
+          sudo apt-get clean
+          echo "Disk after cleanup:"
+          df -h / /tmp
+          free_kib=$(df -Pk / | awk 'NR==2 {print $4}')
+          if [ "$free_kib" -lt 10485760 ]; then
+            echo "::error::Backend CI needs at least 10 GiB disk free before heavy dependency install (KiB=$free_kib)"
+            exit 1
+          fi
+
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements-dev.txt
+          python -m pip install --no-cache-dir --no-compile -r requirements-dev.txt
       - name: Typed greeting and spoken plan-hold both complete
         run: >
           python -m pytest -q
@@ -208,10 +250,31 @@ jobs:
           cache: pip
           cache-dependency-path: backend/requirements.txt
 
+      - name: Reclaim unused hosted-runner SDKs before Python dependencies
+        run: |
+          set -euo pipefail
+          echo "Disk before cleanup:"
+          df -h / /tmp
+          for dir in /usr/local/lib/android /usr/share/dotnet /opt/ghc /usr/local/share/powershell; do
+            if [ -d "$dir" ]; then
+              echo "Removing unused SDK: $dir"
+              sudo rm -rf -- "$dir"
+            fi
+          done
+          python -m pip cache purge || true
+          sudo apt-get clean
+          echo "Disk after cleanup:"
+          df -h / /tmp
+          free_kib=$(df -Pk / | awk 'NR==2 {print $4}')
+          if [ "$free_kib" -lt 10485760 ]; then
+            echo "::error::Backend CI needs at least 10 GiB disk free before heavy dependency install (KiB=$free_kib)"
+            exit 1
+          fi
+
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements-dev.txt
+          python -m pip install --no-cache-dir --no-compile -r requirements-dev.txt
 
       - name: Pinned Mem0 SDK engineering integration (isolated, no provider calls)
         run: |
@@ -588,13 +651,34 @@ jobs:
           cache: pip
           cache-dependency-path: backend/requirements.txt
 
+      - name: Reclaim unused hosted-runner SDKs before Python dependencies
+        run: |
+          set -euo pipefail
+          echo "Disk before cleanup:"
+          df -h / /tmp
+          for dir in /usr/local/lib/android /usr/share/dotnet /opt/ghc /usr/local/share/powershell; do
+            if [ -d "$dir" ]; then
+              echo "Removing unused SDK: $dir"
+              sudo rm -rf -- "$dir"
+            fi
+          done
+          python -m pip cache purge || true
+          sudo apt-get clean
+          echo "Disk after cleanup:"
+          df -h / /tmp
+          free_kib=$(df -Pk / | awk 'NR==2 {print $4}')
+          if [ "$free_kib" -lt 10485760 ]; then
+            echo "::error::Backend CI needs at least 10 GiB disk free before heavy dependency install (KiB=$free_kib)"
+            exit 1
+          fi
+
       - name: Install root + web + backend dependencies
         run: |
           npm install
           cd apps/web && pnpm install --frozen-lockfile
           cd ../../backend
           python -m pip install --upgrade pip
-          pip install -r requirements-dev.txt
+          python -m pip install --no-cache-dir --no-compile -r requirements-dev.txt
 
       - name: Install Playwright Chromium
         run: npx playwright install --with-deps chromium
