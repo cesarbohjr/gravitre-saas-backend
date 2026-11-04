@@ -50,6 +50,28 @@ describe("content-free PCM continuity observations", () => {
     expect(player.diagnostics?.().buffered_ms).toBe(0)
   })
 
+  it("ignores a delayed pre-flush start without changing the new reply's origin", () => {
+    const observed: number[] = []
+    const port = { onmessage: null as ((e: MessageEvent) => void) | null, postMessage() {} }
+    class FakeNode {
+      port = port
+      connect() {}
+      disconnect() {}
+    }
+    vi.stubGlobal("AudioWorkletNode", FakeNode)
+    const gain = () => ({ gain: { value: 1, cancelScheduledValues() {}, setValueAtTime() {}, linearRampToValueAtTime() {} }, connect() {}, disconnect() {} })
+    const ctx = { currentTime: 1, sampleRate: 48000, destination: {}, createGain: gain } as unknown as AudioContext
+    const player = createWorkletPcmPlayer(ctx, { onStarted: (at) => observed.push(at) })
+    player.enqueue(new Int16Array(960), 24000)
+    player.flush()
+    port.onmessage?.({ data: { type: "started", frame: 48000, epoch: 0 } } as MessageEvent)
+    expect(observed).toEqual([])
+    expect(player.originTime()).toBeNull()
+    port.onmessage?.({ data: { type: "started", frame: 52800, epoch: 1 } } as MessageEvent)
+    expect(observed).toEqual([1.1])
+    expect(player.originTime()).toBe(1.1)
+  })
+
   it("ignores stale inactive reports and reports duck/flush from the real player", () => {
     const { player, ctx, emit } = playerFixture()
     player.enqueue(new Int16Array(960), 24000)
