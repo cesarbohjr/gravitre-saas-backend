@@ -78,13 +78,14 @@ class GravitrePcmPlayerProcessor extends AudioWorkletProcessor {
     if (this.disposed) return false
     const out = outputs[0] && outputs[0][0]
     if (!out) return true
-    const { started } = this.queue.process(out, currentFrame, () => {
-      // About to run dry: release the resampler's held-back tail first.
-      if (this.resampler && this.resampler.hasPending()) {
-        const tail = this.resampler.flush()
-        if (tail.length) this.queue.push(tail, currentFrame)
-      }
-    })
+    // Do not flush/resample-with-zero-padding when a temporary PCM delivery
+    // gap empties the playout queue. StreamingResampler.flush() resets its
+    // filter/phase history, so the next chunk of the *same* TTS reply would
+    // be treated as a fresh waveform, creating an artificial speech boundary.
+    // The queue already fades a true underrun and re-primes on recovery.
+    // Retain the sub-millisecond FIR lookahead until the next PCM message;
+    // an explicit barge-in flush still resets the resampler below.
+    const { started } = this.queue.process(out, currentFrame)
     for (let c = 1; c < outputs[0].length; c++) outputs[0][c].set(out)
     if (started) this.port.postMessage({ type: "started", frame: currentFrame, epoch: this.epoch })
     const played = this.queue.playedFrames - this.epochBase
