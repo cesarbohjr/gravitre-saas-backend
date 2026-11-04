@@ -137,26 +137,27 @@ jobs:
           python -m uvicorn app.main:app --host 127.0.0.1 --port 8765 >/tmp/backend.log 2>&1 &
           SERVER_PID=$!
           trap 'kill $SERVER_PID 2>/dev/null || true' EXIT
-          # 120s, not 30s. Measured: startup blocks on warm_local_tool_encoder
-          # (all-MiniLM-L6-v2 download, added 2026-08-06 in ef7ef50f) plus 758
-          # tool-doc embeddings before /health answers -- 51.6s warm and ~62s
-          # cold locally. 30s could not be met, so this job could only ever
-          # reach the failure branch.
-          for i in $(seq 1 120); do
-            if curl -sf --max-time 5 "http://127.0.0.1:8765/health" >/dev/null; then
+          # CI telemetry from run 41787238076 showed repeated /health 200
+          # responses taking ~9 seconds. A 5-second client cutoff incorrectly
+          # treated healthy responses as unready. Allow up to 20 seconds per
+          # request while bounding total startup readiness to 180 seconds.
+          start=$SECONDS
+          ready=0
+          while (( SECONDS - start < 180 )); do
+            if curl -fsS --max-time 20 "http://127.0.0.1:8765/health" >/dev/null; then
+              ready=1
               break
             fi
-            # A dead server is a different failure from a slow one. Say so now
-            # instead of burning the whole window on a process that is gone.
-            if ! kill -0 $SERVER_PID 2>/dev/null; then
-              echo "Backend process exited during startup after ${i}s"
-              cat /tmp/backend.log
+            # Do not wait out the deadline if uvicorn exited.
+            if ! kill -0 "$SERVER_PID" 2>/dev/null; then
+              echo "Backend process exited during startup after $((SECONDS-start))s"
+              tail -n 200 /tmp/backend.log
               exit 1
             fi
-            sleep 1
+            sleep 2
           done
-          if ! curl -sf --max-time 5 "http://127.0.0.1:8765/health" >/dev/null; then
-            echo "Backend failed to become ready on port 8765 within 120s"
+          if [ "$ready" -ne 1 ]; then
+            echo "Backend failed to become ready on port 8765 within 180s (20s request timeout)"
             # Never `wait` here. The server is still running by definition of
             # reaching this branch, so waiting for it blocked forever and turned
             # a legible failure into an unbounded hang.
