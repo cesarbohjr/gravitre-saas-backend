@@ -77,3 +77,12 @@ export function hasProviderMark(input?: string | null): boolean {
   const entry = resolveProvider(input)
   return Boolean(entry && entry.source !== "fallback")
 }
+
+/**
+ * Light-theme logo URL for surfaces that draw the mark themselves (SVG
+ * `<image>`, CSS backgrounds). Undefined when the registry has no official mark.
+ */
+export function providerLogoSrc(input?: string | null): string | undefined {
+  const entry = resolveProvider(input)
+  return entry && entry.source !== "fallback" ? entry.src : undefined
+}

@@ -6,7 +6,6 @@ import type { Conversation } from "./lib/api"
 import { RichText } from "./components/RichText"
 import { AgentChip, clipboardAttachment, Composer, withAttachments, type Attachment } from "./components/Composer"
 import { identityOf } from "./lib/identity"
-import { systemBadge } from "./lib/model"
 import { Logo } from "./ui"
 import type { ContextSourcesSummary } from "@web/lib/context-sources"
 import { useAgentName } from "./views/Voice"
@@ -376,7 +375,7 @@ export function QuickAsk() {
                     <span className="sub" style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
                       {x.sources.used.slice(0, 2).map((u, j) => (
                         <span key={j} style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
-                          <Logo text={systemBadge(u.kind) || "·"} style={{ width: 16, height: 16, fontSize: 7 }} />
+                          <Logo system={u.kind} fallback="·" style={{ width: 16, height: 16, fontSize: 7 }} />
                           {u.name}
                           {u.freshness ? ` · ${u.freshness}` : ""}
                         </span>

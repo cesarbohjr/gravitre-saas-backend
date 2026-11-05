@@ -187,7 +187,7 @@ export function toAssignment(job: AgentJob): Assignment {
       {
         title: humanizeToolName(tool),
         detail: ok ? "Done" : err || "Didn't complete",
-        system: systemBadge(tool.split(/[._:]/)[0]),
+        system: tool.split(/[._:]/)[0],
         state: ok ? "done" : "failed",
       },
     ]

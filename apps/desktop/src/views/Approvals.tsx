@@ -3,7 +3,7 @@ import { ART } from "../art"
 import { lockNote, policyLine, slaLine, titleCase, whatWillHappen, type Approval, type DetailRow } from "@web/components/approvals/decision-queue/model"
 import { useStore } from "../store"
 import { AgentAvatar, Empty, ErrorLine, Logo } from "../ui"
-import { age, systemBadge } from "../lib/model"
+import { age } from "../lib/model"
 import { identityOf } from "../lib/identity"
 
 type Priority = "all" | "high" | "medium" | "low"
@@ -157,7 +157,7 @@ export function Approvals() {
                 </span>
                 <span className="sub ell">{canApprove ? `${a.requestedBy} · ${policyLine(a)}` : "Your role can't approve changes"}</span>
               </span>
-              <Logo text={systemBadge(a.context.integration)} />
+              <Logo system={a.context.integration} />
             </button>
           ))}
         </div>
@@ -193,7 +193,7 @@ export function Approvals() {
             <div style={{ padding: "16px 24px 24px", display: "flex", flexDirection: "column", gap: 14 }}>
               <div className="card" style={{ overflow: "hidden" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 14px" }}>
-                  <Logo text={systemBadge(sel.context.integration) || "·"} style={{ width: 28, height: 28, fontSize: 10 }} />
+                  <Logo system={sel.context.integration} fallback="·" style={{ width: 28, height: 28, fontSize: 10 }} />
                   <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column" }}>
                     <span className="ell" style={{ fontSize: 14, fontWeight: 600 }}>
                       {subject || (meta.find((m) => m.term === "Action")?.value ?? "What happens if you approve")}
@@ -239,7 +239,7 @@ export function Approvals() {
                       <span key={i} style={{ display: "flex", gap: 8, alignItems: "center" }}>
                         <span className="sub mono">{i + 1}</span>
                         <span style={{ flex: 1 }}>{s.text}</span>
-                        {s.app ? <Logo text={systemBadge(s.app)} /> : null}
+                        {s.app ? <Logo system={s.app} /> : null}
                         {s.access === "write" ? <span className="pill st-wait" style={{ height: 18, fontSize: 11 }}>Writes</span> : null}
                       </span>
                     ))}

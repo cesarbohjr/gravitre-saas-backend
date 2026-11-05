@@ -1,26 +1,43 @@
 "use client"
 
 import { useId, type CSSProperties } from "react"
+import { ProviderLogo } from "@/components/gravitre/provider-logo"
+import { hasProviderMark } from "@/lib/provider-registry"
 import { COVER_ICONS, coverFor, vendorLook, type CoverSpec } from "./vendor-look"
 
-/** Two-letter vendor tile in the vendor's colours (sizes: sm 28, default 36, md 44, lg 76). */
+/**
+ * The vendor tile (sizes: sm 28, default 36, md 44, lg 76). Vendors in the
+ * provider registry show their official mark on a light tile; anything the
+ * registry has no licensed mark for keeps the two-letter tile in its colours.
+ * `base` picks the stylesheet: cn-logo (redesign pages) or cno-tile (overlays).
+ */
 export function VendorTile({
   vendor,
   category,
   size,
+  base = "cn-logo",
   className,
   style,
 }: {
   vendor: string
   category?: string
   size?: "sm" | "md" | "lg"
+  base?: "cn-logo" | "cno-tile"
   className?: string
   style?: CSSProperties
 }) {
   const look = vendorLook(vendor, category)
+  const branded = hasProviderMark(look.key) || hasProviderMark(vendor)
+  if (branded) {
+    return (
+      <span className={[base, "brand", size, className].filter(Boolean).join(" ")} style={style} aria-hidden>
+        <ProviderLogo provider={hasProviderMark(look.key) ? look.key : vendor} theme="light" decorative />
+      </span>
+    )
+  }
   return (
     <span
-      className={["cn-logo", size, className].filter(Boolean).join(" ")}
+      className={[base, base === "cno-tile" && "mono", size, className].filter(Boolean).join(" ")}
       style={{ background: look.bg, color: look.fg, ...style }}
       aria-hidden
     >

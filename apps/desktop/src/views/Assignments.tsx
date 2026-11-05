@@ -173,7 +173,7 @@ export function Assignments() {
                           <span style={{ fontSize: 13, fontWeight: 500 }}>{st.title}</span>
                           <span className="sub">{st.detail}</span>
                         </span>
-                        <Logo text={st.system} />
+                        <Logo system={st.system} />
                       </div>
                       {st.state === "waiting" && sel.status === "waiting" ? (
                         <div style={{ margin: "0 14px 12px 48px", border: rejecting ? "1px solid var(--bd)" : 0, borderRadius: 10, overflow: "hidden" }}>
