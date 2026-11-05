@@ -169,6 +169,24 @@ def main() -> None:
         openapi_error = f"{type(exc).__name__}: {str(exc)[:250]}"
     registered_http_paths = {r["path"] for r in routes if r["methods"]}
     missing_openapi = sorted(set(openapi_paths) - registered_http_paths)
+    # These are product-critical entrypoints, not merely framework health
+    # endpoints. Explicit WebSocket coverage is necessary because OpenAPI
+    # intentionally excludes WebSocket routes.
+    required_routes = (
+        ("POST", "/api/assistant/chat"),
+        ("WEBSOCKET", "/api/voice/pipecat/ws"),
+    )
+    missing_critical_routes: list[str] = []
+    for method, route_path in required_routes:
+        found = any(
+            row["path"] == route_path
+            and (method == "WEBSOCKET" and row["route_class"] == "APIWebSocketRoute"
+                 or method in row["methods"])
+            and row["handler"] not in (".", "")
+            for row in routes
+        )
+        if not found:
+            missing_critical_routes.append(f"{method} {route_path}")
     out = {
         "schema_version": 2,
         "commit": os.getenv("GITHUB_SHA", ""),
@@ -183,6 +201,8 @@ def main() -> None:
         "openapi_path_count": len(openapi_paths),
         "openapi_unmatched_paths": missing_openapi[:200],
         "openapi_error": openapi_error,
+        "missing_critical_routes": missing_critical_routes,
+        "websocket_route_count": sum(1 for row in routes if row["route_class"] == "APIWebSocketRoute"),
         "routes": sorted(routes, key=lambda x: (x["path"], ",".join(x["methods"]))),
         "import_edges": sorted(dedup.values(), key=lambda x: (x["from"], x["to"], x["depth"])),
     }
@@ -191,8 +211,9 @@ def main() -> None:
     target.write_text(json.dumps(out, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     print(f"registered_routes={len(routes)} import_edges={len(dedup)} "
           f"unresolved_wrappers={len(wrappers)} openapi_paths={len(openapi_paths)} "
-          f"unmatched_openapi={len(missing_openapi)} file={target}")
-    if wrappers or missing_openapi or openapi_error:
+          f"unmatched_openapi={len(missing_openapi)} "
+          f"missing_critical={len(missing_critical_routes)} file={target}")
+    if wrappers or missing_openapi or openapi_error or missing_critical_routes:
         raise RuntimeError("Incomplete route inventory: inspect uploaded artifact's "
                            "unresolved_wrappers and openapi_unmatched_paths")
 
