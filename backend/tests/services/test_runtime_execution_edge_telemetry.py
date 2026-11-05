@@ -57,3 +57,35 @@ def test_pseudonym_stable_across_handoffs(monkeypatch, caplog):
                                       source="workflow_result")
     ids = re.findall(r"correlation=([0-9a-f]{24})", caplog.text)
     assert len(ids) == 2 and ids[0] == ids[1]
+
+
+def test_typed_plan_and_run_identity_same_hmac_across_owners(monkeypatch, caplog):
+    import logging
+    import re
+    monkeypatch.setenv("PR605_EXECUTION_EDGE_TELEMETRY_ENABLED", "true")
+    monkeypatch.setenv("PR605_EXECUTION_EDGE_HMAC_KEY", "separate-test-audit-key-" * 3)
+    plan = telemetry.ExecutionCorrelation.from_plan_id("shared-plan-123")
+    assert plan is not None
+    with caplog.at_level(logging.INFO, logger="app.runtime_execution_edges"):
+        assert plan.record(owner="agent", stage="selected", source="execution_plan")
+        assert plan.record(owner="workflow", stage="observed", source="workflow_result")
+        run = telemetry.ExecutionCorrelation.from_run_id("shared-run-456")
+        assert run is not None
+        assert run.record(owner="connector", stage="observed", source="connector_result")
+        assert run.record(owner="outcome", stage="observed", source="terminal_fanout")
+        assert run.record(owner="play", stage="observed", source="play_actioned")
+    hashes = re.findall(r"correlation=([0-9a-f]{24})", caplog.text)
+    assert len(hashes) == 5
+    assert hashes[0] == hashes[1]
+    assert hashes[2] == hashes[3] == hashes[4]
+    assert hashes[0] != hashes[2]  # No fabricated join between plan and run IDs.
+    assert "shared-plan-123" not in caplog.text
+    assert "shared-run-456" not in caplog.text
+
+
+def test_typed_context_missing_identity_does_not_emit(monkeypatch, caplog):
+    monkeypatch.setenv("PR605_EXECUTION_EDGE_TELEMETRY_ENABLED", "true")
+    monkeypatch.setenv("PR605_EXECUTION_EDGE_HMAC_KEY", "a" * 48)
+    assert telemetry.ExecutionCorrelation.from_plan_id(None) is None
+    assert telemetry.ExecutionCorrelation.from_run_id(" ") is None
+    assert not caplog.text
