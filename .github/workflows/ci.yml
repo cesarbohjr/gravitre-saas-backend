@@ -279,6 +279,26 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install --no-cache-dir --no-compile -r requirements-dev.txt
 
+      - name: PR605 runtime mounted-route and dependency export
+        run: |
+          mkdir -p "$RUNNER_TEMP/pr605"
+          timeout 120s python scripts/pr605_runtime_dependency_inventory.py --output "$RUNNER_TEMP/pr605/runtime-route-dependencies.json" --depth 3
+        env:
+          APP_ENV: dev
+          SUPABASE_URL: https://test.supabase.co
+          SUPABASE_ANON_KEY: anon-test
+          SUPABASE_SERVICE_ROLE_KEY: service-role-test
+          SUPABASE_JWT_SECRET: jwt-secret-test
+          OPENAI_API_KEY: sk-test-openai
+
+      - name: Upload PR605 exact-head runtime route inventory
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pr605-runtime-route-dependencies
+          path: ${{ runner.temp }}/pr605/runtime-route-dependencies.json
+          if-no-files-found: warn
+
       - name: Pinned Mem0 SDK engineering integration (isolated, no provider calls)
         run: |
           python -m venv "$RUNNER_TEMP/mem0-engine-venv"
