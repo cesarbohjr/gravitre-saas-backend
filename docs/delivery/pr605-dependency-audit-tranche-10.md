@@ -17,3 +17,6 @@ Date: 2026-11-05.
 2. Repair unresolved nested router semantics until route coverage has no unexplained gaps. Preserve WebSocket routes that OpenAPI intentionally omits.
 3. Add source-relative and dynamic-dispatch call edges with explicit unknown markers, trace frontend caller mapping and correlate against production traffic.
 4. Update PR605 governing plan and retirement ledger with evidence; do not delete legacy or mutate run history until certified.
+
+## CI exporter hardening follow-up
+Further code review found the revised exporter wrote a literal `\\n` suffix instead of an actual newline and would not fail if OpenAPI schema generation raised an exception. Both are fixed in commit `b7502f83f98b62a52f6f75ad3ba11771807f37bf`; wrapper metadata now tolerates objects without `__dict__`. Exact-head CI and artifact parsing must confirm correctness; none of this constitutes production caller coverage.
