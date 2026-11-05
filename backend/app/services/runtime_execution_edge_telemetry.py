@@ -10,6 +10,7 @@ import hashlib
 import hmac
 import logging
 import os
+from dataclasses import dataclass
 from typing import Literal
 
 logger = logging.getLogger("app.runtime_execution_edges")
@@ -19,6 +20,25 @@ Stage = Literal["selected", "started", "authorized", "observed", "completed", "f
 
 _ALLOWED_OWNERS = frozenset(("agent", "play", "workflow", "connector", "event_consumer", "outcome", "voice"))
 _ALLOWED_STAGES = frozenset(("selected", "started", "authorized", "observed", "completed", "failed", "skipped"))
+
+
+@dataclass(frozen=True)
+class ExecutionCorrelation:
+    """Typed execution identity; propagate only when IDs belong to the same plan.
+
+    Event primary keys must not be treated as plan IDs without an explicit link.
+    This object never serializes or logs the raw identifier.
+    """
+    execution_id: str
+
+    @classmethod
+    def from_plan_id(cls, plan_id: str | None) -> "ExecutionCorrelation | None":
+        value = str(plan_id or "").strip()
+        return cls(value) if value else None
+
+    def record(self, *, owner: str, stage: str, source: str) -> bool:
+        return emit_handoff(owner=owner, stage=stage,
+                            correlation_id=self.execution_id, source=source)
 
 
 def emit_handoff(*, owner: str, stage: str, correlation_id: str | None = None,
