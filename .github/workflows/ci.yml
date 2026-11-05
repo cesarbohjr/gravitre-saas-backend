@@ -373,6 +373,14 @@ jobs:
           PGVER="$(ls /usr/lib/postgresql | sort -V | tail -1)"
           echo "GRAVITRE_PG_BIN=/usr/lib/postgresql/${PGVER}/bin" >> "$GITHUB_ENV"
 
+      - name: PR605 lossless run status Postgres migration certification (must not skip)
+        run: |
+          python -m pytest tests/db/test_pr605_run_status_contract_pg.py -q --no-header -rs
+          python -c "from tests.db.pg_harness import PG_BIN; assert PG_BIN is not None, 'PostgreSQL binaries required'"
+        env:
+          APP_ENV: dev
+          GRAVITRE_REQUIRE_PG: "1"
+
       - name: Write invoke idempotency Postgres acceptance (must not skip)
         run: python -m pytest tests/db/test_write_invoke_idempotency_pg.py -q --no-header
         env:
