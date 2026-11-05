@@ -6,6 +6,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 from app.workflows.constants import SCHEMA_VERSION
+from app.workflows.run_status_contract import contract_run_status_v2, run_status_metadata
 
 logger = logging.getLogger(__name__)
 
@@ -26,25 +27,6 @@ _CONTRACT_TO_LEGACY_WORKFLOW_STATUS = {
     "draft": "draft",
     "archived": "archived",
     "error": "error",
-}
-
-_LEGACY_TO_CONTRACT_RUN_STATUS = {
-    "pending": "queued",
-    "queued": "queued",
-    "running": "running",
-    "verifying": "running",
-    "completed": "completed",
-    # Match the existing DB trigger coarse contract; retain rich lifecycle in metadata.
-    "partial_success": "completed",
-    "success": "completed",
-    "failed": "failed",
-    "error": "failed",
-    "cancelled": "cancelled",
-    "canceled": "cancelled",
-    "pending_approval": "needs_approval",
-    "needs_approval": "needs_approval",
-    "awaiting_approval": "needs_approval",
-    "verification_inconclusive": "failed",
 }
 
 _LEGACY_TO_CONTRACT_STEP_STATUS = {
@@ -79,14 +61,7 @@ def legacy_workflow_status(contract_status: str | None) -> str:
 
 
 def contract_run_status(legacy_status: str | None) -> str:
-    raw = str(legacy_status or "queued").lower()
-    if raw == "flagged_for_review":
-        # Product contract: this is neither a failed nor a verified outcome.
-        # The coarse runs.status CHECK cannot represent it; never silently
-        # turn a terminal review state into queued work. Full contract migration
-        # is tracked in PR #605 and must precede a corresponding mirror write.
-        raise ValueError("flagged_for_review needs a lossless run-status contract")
-    return _LEGACY_TO_CONTRACT_RUN_STATUS.get(raw, "queued")
+    return contract_run_status_v2(legacy_status)
 
 
 def contract_step_status(legacy_status: str | None) -> str:
@@ -394,8 +369,7 @@ def mirror_legacy_run_to_contract(client: Any, run_id: str) -> None:
                 "run_hash": run.get("run_hash"),
                 "environment": run.get("environment"),
                 # Preserve source lifecycle for consumers of coarse run statuses.
-                "execution_lifecycle": run.get("status"),
-                "mirrored_by": "schema_sync",
+                **run_status_metadata(lifecycle=str(run.get("status") or ""), origin="schema_sync"),
             },
             "updated_at": datetime.now(timezone.utc).isoformat(),
         }
