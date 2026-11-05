@@ -22,3 +22,14 @@ def test_required_values_and_region_choices_are_validated():
     with pytest.raises(ValueError):
         validate_oauth_inputs("pandadoc", {"region": "attacker.com"})
     assert validate_oauth_inputs("pandadoc", {"region": "pandadoc.eu"}) == {"region": "pandadoc.eu"}
+
+
+@pytest.mark.parametrize("hostname", ["sentry.io", "us.sentry.io", "eu.sentry.io", "de.sentry.io"])
+def test_sentry_collects_reviewed_api_hostname(hostname):
+    assert validate_oauth_inputs("sentry", {"hostname": hostname}) == {"hostname": hostname}
+
+
+@pytest.mark.parametrize("hostname", ["", "https://sentry.io", "127.0.0.1", "sentry.io.attacker.example", "attacker.example"])
+def test_sentry_token_cannot_be_routed_to_an_unreviewed_host(hostname):
+    with pytest.raises(ValueError):
+        validate_oauth_inputs("sentry", {"hostname": hostname})

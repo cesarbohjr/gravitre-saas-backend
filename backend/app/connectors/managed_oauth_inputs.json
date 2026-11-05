@@ -171,5 +171,20 @@
       "pattern": "^[a-z0-9_-]+$",
       "example": "acme"
     }
+  ],
+  "sentry": [
+    {
+      "key": "hostname",
+      "label": "Sentry API hostname",
+      "required": true,
+      "format": "hostname",
+      "enum": [
+        "sentry.io",
+        "us.sentry.io",
+        "eu.sentry.io",
+        "de.sentry.io"
+      ],
+      "example": "sentry.io"
+    }
   ]
 }
