@@ -10,6 +10,7 @@ import hashlib
 import hmac
 import logging
 import os
+import re
 from dataclasses import dataclass
 from typing import Literal
 
@@ -66,4 +67,34 @@ def emit_handoff(*, owner: str, stage: str, correlation_id: str | None = None,
     digest = hmac.new(secret.encode("utf-8"), correlation_id.encode("utf-8"), hashlib.sha256).hexdigest()[:24]
     logger.info("runtime_edge_v1 owner=%s stage=%s source=%s correlation=%s",
                 owner, stage, source, digest)
+    return True
+
+_RUN_UUID = re.compile(r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$")
+
+
+def emit_outbox_run_link(*, event_id: str | None, aggregate_type: str,
+                         aggregate_id: str | None, event_type: str) -> bool:
+    """Link a *claimed, typed* Postgres workflow-run outbox row to its owning run.
+
+    The DB trigger in 20261012024141_domain_event_outbox.sql inserts
+    aggregate_type='workflow_run', aggregate_id=NEW.id::text for
+    execution.outcome_finalized. Never infer links for arbitrary events or
+    from payload/timestamp coincidences.
+    """
+    if os.environ.get("PR605_EXECUTION_EDGE_TELEMETRY_ENABLED", "").lower() != "true":
+        return False
+    secret = os.environ.get("PR605_EXECUTION_EDGE_HMAC_KEY", "")
+    if len(secret) < 32:
+        return False
+    if event_type != "execution.outcome_finalized" or aggregate_type != "workflow_run":
+        return False
+    event = str(event_id or "").strip()
+    run = str(aggregate_id or "").strip()
+    if not event.isdecimal() or len(event) > 20 or not _RUN_UUID.fullmatch(run):
+        return False
+    key = secret.encode("utf-8")
+    event_digest = hmac.new(key, event.encode("utf-8"), hashlib.sha256).hexdigest()[:24]
+    run_digest = hmac.new(key, run.encode("utf-8"), hashlib.sha256).hexdigest()[:24]
+    logger.info("runtime_edge_link_v1 kind=workflow_run_outbox event=%s run=%s",
+                event_digest, run_digest)
     return True
