@@ -1,0 +1,60 @@
+name: PR605 run status contract certification
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'backend/app/workflows/run_status_contract.py'
+      - 'backend/app/workflows/schema_sync.py'
+      - 'backend/tests/workflows/test_schema_sync.py'
+      - 'backend/tests/db/test_pr605_run_status_contract_pg.py'
+      - 'backend/tests/db/pg_harness.py'
+      - 'supabase/migrations/20261105090000_run_status_contract_v2.sql'
+      - '.github/workflows/pr605-run-status-contract.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  certify-v2-run-status:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install isolated PostgreSQL and test runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update -y -q
+          sudo apt-get install -y -q postgresql postgresql-client
+          python -m pip install --disable-pip-version-check pytest==8.4.2
+          PGVER="$(ls /usr/lib/postgresql | sort -V | tail -1)"
+          test -x "/usr/lib/postgresql/${PGVER}/bin/initdb"
+          test -x "/usr/lib/postgresql/${PGVER}/bin/pg_ctl"
+          echo "GRAVITRE_PG_BIN=/usr/lib/postgresql/${PGVER}/bin" >> "$GITHUB_ENV"
+
+      - name: Test exact migration against throwaway Postgres (no skips)
+        working-directory: backend
+        shell: bash
+        env:
+          GRAVITRE_REQUIRE_PG: '1'
+        run: |
+          set -euo pipefail
+          python -c "from tests.db.pg_harness import PG_BIN; assert PG_BIN is not None, 'postgres binaries absent'"
+          python -m pytest -q -rs --no-header \
+            tests/db/test_pr605_run_status_contract_pg.py \
+            tests/workflows/test_schema_sync.py
+
+      - name: Record certification provenance
+        if: always()
+        shell: bash
+        run: |
+          printf 'sha=%s\nworkflow=%s\nrun=%s\n' "$GITHUB_SHA" "$GITHUB_WORKFLOW" "$GITHUB_RUN_ID"
