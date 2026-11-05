@@ -86,7 +86,8 @@ def all_dependencies(route: Any) -> list[str]:
 
 def nested_routes(route: Any) -> list[Any]:
     """Unwrap FastAPI/Starlette router containers without executing handlers."""
-    for candidate in (route, getattr(route, "router", None), getattr(route, "app", None),
+    for candidate in (route, getattr(route, "original_router", None),
+                      getattr(route, "router", None), getattr(route, "app", None),
                       getattr(route, "included_router", None), getattr(route, "inner", None)):
         if candidate is None:
             continue
