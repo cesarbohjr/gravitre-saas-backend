@@ -202,8 +202,16 @@ class DomainEventRelay:
         """Run handlers not yet delivered. Returns (delivered handler names, first error)."""
         done = [str(n) for n in (event.get("delivered_handlers") or [])]
         error: str | None = None
-        from app.services.runtime_execution_edge_telemetry import emit_handoff
+        from app.services.runtime_execution_edge_telemetry import emit_handoff, emit_outbox_run_link
 
+        # Postgres trigger v20261012024141 supplies the workflow-run aggregate
+        # identity. Do not join generic events or infer from payload/timestamps.
+        emit_outbox_run_link(
+            event_id=str(event.get("id") or ""),
+            aggregate_type=str(event.get("aggregate_type") or ""),
+            aggregate_id=str(event.get("aggregate_id") or ""),
+            event_type=str(event.get("event_type") or ""),
+        )
         for reg in handlers_for(str(event.get("event_type") or "")):
             if reg.name in done:
                 continue
