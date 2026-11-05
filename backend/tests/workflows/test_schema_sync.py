@@ -3,6 +3,8 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock
 
+import pytest
+
 from app.workflows.schema_sync import (
     contract_approval_status,
     contract_nodes_edges_from_definition,
@@ -35,6 +37,19 @@ def test_contract_run_status_maps_pending_approval():
     assert contract_run_status("success") == "completed"
     assert contract_run_status("verifying") == "running"
     assert contract_run_status("verification_inconclusive") == "failed"
+
+
+def test_partial_success_matches_existing_contract_projection():
+    # Coarse runs.status still carries completed; source lifecycle metadata
+    # must distinguish partial success until the versioned status migration.
+    assert contract_run_status("partial_success") == "completed"
+
+
+def test_flagged_for_review_does_not_silently_requeue_or_falsely_complete():
+    # The existing runs.status constraint cannot represent this distinct
+    # product state. Fail explicitly instead of inventing another lifecycle.
+    with pytest.raises(ValueError, match="lossless run-status contract"):
+        contract_run_status("flagged_for_review")
 
 
 def test_contract_step_and_approval_status():
