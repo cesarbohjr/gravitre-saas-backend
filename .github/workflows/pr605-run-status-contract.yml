@@ -50,8 +50,10 @@ jobs:
           set -euo pipefail
           python -c "from tests.db.pg_harness import PG_BIN; assert PG_BIN is not None, 'postgres binaries absent'"
           python -m pytest --noconftest -q -rs --no-header \
-            tests/db/test_pr605_run_status_contract_pg.py \
-            tests/workflows/test_schema_sync.py
+            tests/db/test_pr605_run_status_contract_pg.py
+          python -m pytest --noconftest -q -rs --no-header \
+            tests/workflows/test_schema_sync.py \
+            -k 'contract_run_status_maps_pending_approval or partial_success_is_distinct_in_v2_contract or flagged_for_review_is_distinct_in_v2_contract or v2_status_translation_parity or v2_unknown_status_rejected'
 
       - name: Record certification provenance
         if: always()
