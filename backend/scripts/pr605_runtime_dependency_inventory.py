@@ -16,10 +16,16 @@ import ast
 import importlib.util
 import json
 import os
+import sys
 from pathlib import Path
 from typing import Any
 
-APP_ROOT = Path(__file__).resolve().parents[1] / "app"
+BACKEND_ROOT = Path(__file__).resolve().parents[1]
+APP_ROOT = BACKEND_ROOT / "app"
+# python scripts/foo.py puts scripts/ on sys.path, not backend/.
+# Resolve the project root explicitly so app.main can be imported in CI.
+if str(BACKEND_ROOT) not in sys.path:
+    sys.path.insert(0, str(BACKEND_ROOT))
 
 
 def local_imports(module: str) -> list[str]:
