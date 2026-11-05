@@ -7,6 +7,9 @@ on:
       - 'backend/app/services/runtime_execution_edge_telemetry.py'
       - 'backend/app/services/domain_events.py'
       - 'backend/app/services/workflow_execution_strategy.py'
+      - 'backend/app/services/autonomous_execution_loop.py'
+      - 'backend/app/services/chat_connector_execution_service.py'
+      - 'backend/app/services/execution_outcome.py'
       - 'backend/tests/services/test_runtime_execution_edge_telemetry.py'
       - '.github/workflows/pr605-runtime-edge-contract.yml'
   workflow_dispatch:
@@ -35,5 +38,5 @@ jobs:
           set -euo pipefail
           python -m pip install pytest==8.4.2
           python -m pytest -q --noconftest backend/tests/services/test_runtime_execution_edge_telemetry.py
-          python -m compileall -q backend/app/services/runtime_execution_edge_telemetry.py backend/app/services/domain_events.py backend/app/services/workflow_execution_strategy.py
+          python -m compileall -q backend/app/services/runtime_execution_edge_telemetry.py backend/app/services/domain_events.py backend/app/services/workflow_execution_strategy.py backend/app/services/autonomous_execution_loop.py backend/app/services/chat_connector_execution_service.py backend/app/services/execution_outcome.py
           echo "PR605 runtime correlation privacy contract PASS; production sampling remains disabled."
