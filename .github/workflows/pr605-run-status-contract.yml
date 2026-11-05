@@ -49,7 +49,7 @@ jobs:
         run: |
           set -euo pipefail
           python -c "from tests.db.pg_harness import PG_BIN; assert PG_BIN is not None, 'postgres binaries absent'"
-          python -m pytest -q -rs --no-header \
+          python -m pytest --noconftest -q -rs --no-header \
             tests/db/test_pr605_run_status_contract_pg.py \
             tests/workflows/test_schema_sync.py
 
