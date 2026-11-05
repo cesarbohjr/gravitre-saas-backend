@@ -144,3 +144,32 @@ def test_outbox_link_disabled_without_key_or_flag(monkeypatch, caplog):
         event_id="2", aggregate_type="workflow_run", aggregate_id=run_id,
         event_type="execution.outcome_finalized")
     assert not caplog.text
+
+
+def test_persisted_orchestration_plan_run_link_pseudonymous(monkeypatch, caplog):
+    import logging
+    import re
+    monkeypatch.setenv("PR605_EXECUTION_EDGE_TELEMETRY_ENABLED", "true")
+    monkeypatch.setenv("PR605_EXECUTION_EDGE_HMAC_KEY", "audit-orchestration-key-" * 3)
+    plan = "private-execution-plan"
+    run = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
+    with caplog.at_level(logging.INFO, logger="app.runtime_execution_edges"):
+        assert telemetry.emit_plan_run_link(plan_id=plan, run_id=run, source="orchestration_step")
+        assert telemetry.emit_handoff(owner="agent", stage="selected", correlation_id=plan, source="execution_plan")
+        assert telemetry.emit_handoff(owner="outcome", stage="observed", correlation_id=run, source="terminal_fanout")
+    link = next(line for line in caplog.text.splitlines() if "kind=orchestration_plan_run" in line)
+    plan_digest = re.search(r"plan=([0-9a-f]{24})", link).group(1)
+    run_digest = re.search(r"run=([0-9a-f]{24})", link).group(1)
+    assert f"correlation={plan_digest}" in caplog.text
+    assert f"correlation={run_digest}" in caplog.text
+    assert plan not in caplog.text and run not in caplog.text
+
+
+def test_plan_run_link_rejects_invalid_and_untrusted_inputs(monkeypatch, caplog):
+    monkeypatch.setenv("PR605_EXECUTION_EDGE_TELEMETRY_ENABLED", "true")
+    monkeypatch.setenv("PR605_EXECUTION_EDGE_HMAC_KEY", "audit-orchestration-key-" * 3)
+    run = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
+    assert not telemetry.emit_plan_run_link(plan_id="", run_id=run, source="orchestration_step")
+    assert not telemetry.emit_plan_run_link(plan_id="x", run_id="not-run", source="orchestration_step")
+    assert not telemetry.emit_plan_run_link(plan_id="x", run_id=run, source="user_text")
+    assert not caplog.text
