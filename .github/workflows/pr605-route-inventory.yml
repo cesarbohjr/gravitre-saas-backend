@@ -1,0 +1,78 @@
+name: PR605 registered route inventory certification
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'backend/scripts/pr605_runtime_dependency_inventory.py'
+      - 'backend/app/main.py'
+      - 'backend/app/routers/**'
+      - 'backend/requirements-dev.txt'
+      - '.github/workflows/pr605-route-inventory.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  registered-routes:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Reclaim runner SDKs before full backend dependency installation
+        working-directory: .
+        shell: bash
+        run: |
+          set -euo pipefail
+          for dir in /usr/local/lib/android /usr/share/dotnet /opt/ghc /usr/local/share/powershell; do
+            if [ -d "$dir" ]; then sudo rm -rf -- "$dir"; fi
+          done
+          sudo apt-get clean
+          df -h / /tmp
+      - name: Install backend requirements
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install --no-cache-dir --no-compile -r requirements-dev.txt
+      - name: Export and strictly certify registered routes
+        shell: bash
+        env:
+          APP_ENV: dev
+          SUPABASE_URL: https://test.supabase.co
+          SUPABASE_ANON_KEY: anon-test
+          SUPABASE_SERVICE_ROLE_KEY: service-role-test
+          SUPABASE_JWT_SECRET: jwt-secret-test
+          OPENAI_API_KEY: sk-test-openai
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/pr605"
+          timeout 180s python scripts/pr605_runtime_dependency_inventory.py --output "$RUNNER_TEMP/pr605/runtime-route-dependencies.json" --depth 3
+          python - "$RUNNER_TEMP/pr605/runtime-route-dependencies.json" <<'PY'
+          import json, sys
+          report = json.load(open(sys.argv[1], encoding="utf-8"))
+          assert report["commit"] == __import__("os").environ["GITHUB_SHA"]
+          assert report["route_count"] >= 1000, "unexpectedly small route inventory"
+          assert report["openapi_path_count"] >= 800, "unexpectedly small OpenAPI set"
+          assert not report["unresolved_wrappers"]
+          assert not report["openapi_unmatched_paths"]
+          assert not report["openapi_error"]
+          assert not report["missing_critical_routes"]
+          assert report["websocket_route_count"] > 0
+          print("CERTIFIED scope=registered routes + OpenAPI/WS coverage", report["route_count"], report["openapi_path_count"])
+          PY
+      - name: Preserve exact-head route inventory
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pr605-standalone-runtime-routes
+          path: ${{ runner.temp }}/pr605/runtime-route-dependencies.json
+          if-no-files-found: warn
