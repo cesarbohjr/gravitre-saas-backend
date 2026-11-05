@@ -62,3 +62,10 @@ Read-only FULL JOIN by shared run ID:
 - ECO-060 P0: investigate 32 stale/inconsistent translated statuses and 2 unrepresentable review records; approve only precise idempotent backfill.
 - ECO-061 P1: ensure 283 runs-only rows are classified by origin rather than falsely labeled orphans.
 - ECO-062 P0: certify truth across approval, business outcome, UI and analytics under changed status contract.
+
+## Confirmed additional application mirror defect and scoped code fix
+Source `backend/app/workflows/schema_sync.py` defines `contract_run_status` with `_LEGACY_TO_CONTRACT_RUN_STATUS.get(raw, "queued")`. Until now, this mapping omitted both `partial_success` and `flagged_for_review`, so the application-side mirror would **turn both into queued**. This is a concrete source-level mechanism consistent with the 30 partial/queued and 2 flagged/queued historical mismatches (not proof that this exact function wrote each historical row).
+- **Code fix committed:** `partial_success` maps explicitly to the existing DB projection `completed` and `mirror_legacy_run_to_contract` now preserves original `execution_lifecycle` and `mirrored_by=schema_sync` metadata.
+- `flagged_for_review` now raises an explicit `ValueError` rather than falling back to `queued`; the surrounding legacy mirror catches and logs failure. This prevents the application's silent false requeue but **does not yet persist a correct lossless review status in `runs`**, and the DB trigger still requires the planned schema/consumer migration.
+- Tests committed in `backend/tests/workflows/test_schema_sync.py` assert explicit partial translation and refusal to requeue review-state results. Applicable exact-head CI results must be inspected; not yet certified.
+- Existing historical rows were **not modified**. Do not represent the remaining warning-only trigger or 34 mismatched records as repaired; the full contract, lifecycle truth and approved row-scoped reconciliation gates remain open.
