@@ -84,6 +84,18 @@ def all_dependencies(route: Any) -> list[str]:
     return sorted(found)
 
 
+def nested_routes(route: Any) -> list[Any]:
+    """Unwrap FastAPI/Starlette router containers without executing handlers."""
+    for candidate in (route, getattr(route, "router", None), getattr(route, "app", None),
+                      getattr(route, "included_router", None), getattr(route, "inner", None)):
+        if candidate is None:
+            continue
+        children = getattr(candidate, "routes", None)
+        if isinstance(children, (list, tuple)) and children:
+            return list(children)
+    return []
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--output", required=True)
@@ -95,13 +107,32 @@ def main() -> None:
 
     routes: list[dict[str, Any]] = []
     modules: set[str] = set()
-    for route in getattr(app, "routes", []):
+    wrappers: list[dict[str, Any]] = []
+    seen: set[int] = set()
+    pending: list[tuple[Any, str]] = [(r, "") for r in getattr(app, "routes", [])]
+    while pending:
+        route, prefix = pending.pop(0)
+        if id(route) in seen:
+            continue
+        seen.add(id(route))
         endpoint = getattr(route, "endpoint", None)
+        if endpoint is None:
+            children = nested_routes(route)
+            if children:
+                new_prefix = prefix + str(getattr(route, "path", "") or "")
+                pending.extend((r, new_prefix) for r in children)
+                continue
+            wrappers.append({
+                "class": route.__class__.__name__,
+                "module": route.__class__.__module__,
+                "safe_attributes": sorted(str(k) for k in vars(route))[:50],
+            })
+            continue
         module = getattr(endpoint, "__module__", "")
         if module.startswith("app."):
             modules.add(module)
         routes.append({
-            "path": str(getattr(route, "path", "")),
+            "path": prefix + str(getattr(route, "path", "")),
             "methods": sorted(getattr(route, "methods", []) or []),
             "route_class": route.__class__.__name__,
             "name": str(getattr(route, "name", "")),
@@ -113,23 +144,46 @@ def main() -> None:
     for module in sorted(modules):
         edges.extend(walk_imports(module, args.depth))
     dedup = {(edge["from"], edge["to"], edge["depth"]): edge for edge in edges}
+
+    # FastAPI's generated OpenAPI path set is independent validation of the
+    # HTTP route enumeration; websocket routes intentionally are not in OpenAPI.
+    openapi_paths: list[str] = []
+    openapi_error = ""
+    try:
+        spec = app.openapi()
+        openapi_paths = sorted(str(p) for p in (spec.get("paths") or {}))
+    except Exception as exc:
+        openapi_error = f"{type(exc).__name__}: {str(exc)[:250]}"
+    registered_http_paths = {r["path"] for r in routes if r["methods"]}
+    missing_openapi = sorted(set(openapi_paths) - registered_http_paths)
     out = {
-        "schema_version": 1,
+        "schema_version": 2,
         "commit": os.getenv("GITHUB_SHA", ""),
-        "method": "runtime_routes_plus_static_import_graph",
+        "method": "runtime_nested_routes_plus_static_import_graph",
         "limitations": [
             "Not proof of production traffic or executed handler branches",
             "Relative and dynamic imports and method-call dispatch not resolved",
             "Database, events, frontend callers and RPC consumers need independent tracing",
         ],
         "route_count": len(routes),
+        "unresolved_wrappers": wrappers,
+        "openapi_path_count": len(openapi_paths),
+        "openapi_unmatched_paths": missing_openapi[:200],
+        "openapi_error": openapi_error,
         "routes": sorted(routes, key=lambda x: (x["path"], ",".join(x["methods"]))),
         "import_edges": sorted(dedup.values(), key=lambda x: (x["from"], x["to"], x["depth"])),
     }
     target = Path(args.output)
     target.parent.mkdir(parents=True, exist_ok=True)
-    target.write_text(json.dumps(out, indent=2, sort_keys=True) + "\n", encoding="utf-8")
-    print(f"registered_routes={len(routes)} import_edges={len(dedup)} file={target}")
+    target.write_text(json.dumps(out, indent=2, sort_keys=True) + "\\n", encoding="utf-8")
+    print(f"registered_routes={len(routes)} import_edges={len(dedup)} "
+          f"unresolved_wrappers={len(wrappers)} openapi_paths={len(openapi_paths)} "
+          f"unmatched_openapi={len(missing_openapi)} file={target}")
+    if wrappers or missing_openapi:
+        raise RuntimeError("Incomplete route inventory: inspect uploaded artifact's "
+                           "unresolved_wrappers and openapi_unmatched_paths")
+
+
 
 
 if __name__ == "__main__":
