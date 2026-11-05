@@ -1,0 +1,52 @@
+name: PR605 cross-surface ownership evidence
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'backend/scripts/pr605_cross_surface_ownership_inventory.py'
+      - 'backend/tests/scripts/test_pr605_cross_surface_ownership_inventory.py'
+      - '.github/workflows/pr605-cross-surface-ownership.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  bounded-source-inventory:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Source-only inventory and unit assertions
+        shell: bash
+        env:
+          PYTHONDONTWRITEBYTECODE: "1"
+        run: |
+          set -euo pipefail
+          python -m pip install pytest==8.4.2
+          python -m pytest -q --noconftest backend/tests/scripts/test_pr605_cross_surface_ownership_inventory.py
+          mkdir -p "$RUNNER_TEMP/pr605"
+          python backend/scripts/pr605_cross_surface_ownership_inventory.py --output "$RUNNER_TEMP/pr605/source-ownership.json"
+          python - "$RUNNER_TEMP/pr605/source-ownership.json" <<'PY'
+          import json, os, sys
+          report = json.load(open(sys.argv[1], encoding="utf-8"))
+          assert report["commit"] == os.environ["GITHUB_SHA"]
+          assert report["candidate_source_count"] == 10
+          assert not report["missing_sources"]
+          assert all(report["critical_source_assertions"].values())
+          assert report["retirement_certified"] is False
+          print("PASS: bounded static caller evidence. Retirement certification remains gated.")
+          PY
+      - name: Retain source ownership report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pr605-cross-surface-ownership
+          path: ${{ runner.temp }}/pr605/source-ownership.json
+          if-no-files-found: error
