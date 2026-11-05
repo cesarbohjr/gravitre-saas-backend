@@ -96,6 +96,13 @@ def decide_execution_loop(
     alternate_read_steps must come from an existing repair/replanner. This policy
     never invents connector actions.
     """
+    # Same plan identity is used by workflow observation; the ID is HMACed
+    # and no payload/tenant/conversation data is logged. Disabled by default.
+    from app.services.runtime_execution_edge_telemetry import ExecutionCorrelation
+
+    correlation = ExecutionCorrelation.from_plan_id(plan.plan_id)
+    if correlation is not None:
+        correlation.record(owner="agent", stage="selected", source="execution_plan")
     state = task_state if isinstance(task_state, dict) else {}
     obs = [row for row in (observations or state.get("execution_observations") or []) if isinstance(row, dict)]
 
