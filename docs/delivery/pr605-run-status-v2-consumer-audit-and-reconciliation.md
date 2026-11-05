@@ -50,3 +50,9 @@ New v2 contract staged in PR #605:
 - Runtime route inventory has previously passed one CI step but output was invalid nested-router containers; recursive exporter was committed and awaits exact-head artifact inspection.
 - Production DB binding remains unconfirmed. Complete downstream traffic correlation and all dynamic event consumers unverified.
 - No historically affected row repaired, no production service or policy changed.
+
+## Additional read-only run-family evidence
+An aggregate grouped by `workflow_runs.run_type` shows all 34 mismatched pairs comprise **execute** runs: 30 `partial_success/queued`, 2 `failed/running`, and 2 `flagged_for_review/queued`. This narrows the authorized reconciliation candidate population; it is **not** permission to alter them. Two additional workflow-only review records still require separate investigation, and 283 `runs`-only records must not be mistaken for failed mirrors.
+
+## Important gate limitation
+The current audit lists known readers/writers and their documented contracts, but **complete downstream consumer/runtime certification remains open** pending exact-head CI artifacts, source-graph expansion, production traffic sampling across all execution surfaces, and validation of the connected database as production. The staged v2 migration is not applied and the historical records have not been changed.
