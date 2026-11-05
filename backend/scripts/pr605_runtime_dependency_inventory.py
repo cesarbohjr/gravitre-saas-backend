@@ -125,7 +125,7 @@ def main() -> None:
             wrappers.append({
                 "class": route.__class__.__name__,
                 "module": route.__class__.__module__,
-                "safe_attributes": sorted(str(k) for k in vars(route))[:50],
+                "safe_attributes": sorted(str(k) for k in getattr(route, "__dict__", {}))[:50],
             })
             continue
         module = getattr(endpoint, "__module__", "")
@@ -175,11 +175,11 @@ def main() -> None:
     }
     target = Path(args.output)
     target.parent.mkdir(parents=True, exist_ok=True)
-    target.write_text(json.dumps(out, indent=2, sort_keys=True) + "\\n", encoding="utf-8")
+    target.write_text(json.dumps(out, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     print(f"registered_routes={len(routes)} import_edges={len(dedup)} "
           f"unresolved_wrappers={len(wrappers)} openapi_paths={len(openapi_paths)} "
           f"unmatched_openapi={len(missing_openapi)} file={target}")
-    if wrappers or missing_openapi:
+    if wrappers or missing_openapi or openapi_error:
         raise RuntimeError("Incomplete route inventory: inspect uploaded artifact's "
                            "unresolved_wrappers and openapi_unmatched_paths")
 
