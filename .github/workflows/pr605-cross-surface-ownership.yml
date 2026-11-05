@@ -5,7 +5,9 @@ on:
     branches: [main]
     paths:
       - 'backend/scripts/pr605_cross_surface_ownership_inventory.py'
+      - 'backend/scripts/pr605_execution_owner_edges.py'
       - 'backend/tests/scripts/test_pr605_cross_surface_ownership_inventory.py'
+      - 'backend/tests/scripts/test_pr605_execution_owner_edges.py'
       - '.github/workflows/pr605-cross-surface-ownership.yml'
   workflow_dispatch:
 
@@ -30,9 +32,10 @@ jobs:
         run: |
           set -euo pipefail
           python -m pip install pytest==8.4.2
-          python -m pytest -q --noconftest backend/tests/scripts/test_pr605_cross_surface_ownership_inventory.py
+          python -m pytest -q --noconftest backend/tests/scripts/test_pr605_cross_surface_ownership_inventory.py backend/tests/scripts/test_pr605_execution_owner_edges.py
           mkdir -p "$RUNNER_TEMP/pr605"
           python backend/scripts/pr605_cross_surface_ownership_inventory.py --output "$RUNNER_TEMP/pr605/source-ownership.json"
+          python backend/scripts/pr605_execution_owner_edges.py --output "$RUNNER_TEMP/pr605/execution-edges.json"
           python - "$RUNNER_TEMP/pr605/source-ownership.json" <<'PY'
           import json, os, sys
           report = json.load(open(sys.argv[1], encoding="utf-8"))
@@ -41,12 +44,18 @@ jobs:
           assert not report["missing_sources"]
           assert all(report["critical_source_assertions"].values())
           assert report["retirement_certified"] is False
-          print("PASS: bounded static caller evidence. Retirement certification remains gated.")
+          edges = json.load(open(os.path.join(os.environ["RUNNER_TEMP"], "pr605", "execution-edges.json"), encoding="utf-8"))
+          assert edges["commit"] == os.environ["GITHUB_SHA"]
+          assert len(edges["sources"]) == 12
+          assert not edges["missing_sources"]
+          assert edges["runtime_executions_observed"] == 0
+          assert edges["retirement_certified"] is False
+          print("PASS: bounded call-site and registration evidence. Runtime and retirement remain gated.")
           PY
       - name: Retain source ownership report
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: pr605-cross-surface-ownership
-          path: ${{ runner.temp }}/pr605/source-ownership.json
+          path: ${{ runner.temp }}/pr605/*.json
           if-no-files-found: error
