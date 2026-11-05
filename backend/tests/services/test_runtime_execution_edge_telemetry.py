@@ -173,3 +173,12 @@ def test_plan_run_link_rejects_invalid_and_untrusted_inputs(monkeypatch, caplog)
     assert not telemetry.emit_plan_run_link(plan_id="x", run_id="not-run", source="orchestration_step")
     assert not telemetry.emit_plan_run_link(plan_id="x", run_id=run, source="user_text")
     assert not caplog.text
+
+
+def test_source_label_looks_safe_but_is_not_registered(monkeypatch, caplog):
+    monkeypatch.setenv("PR605_EXECUTION_EDGE_TELEMETRY_ENABLED", "true")
+    monkeypatch.setenv("PR605_EXECUTION_EDGE_HMAC_KEY", "audit-orchestration-key-" * 3)
+    assert not telemetry.emit_handoff(
+        owner="agent", stage="started", correlation_id="private-identifier",
+        source="arbitrary_sensitive_text")
+    assert not caplog.text
