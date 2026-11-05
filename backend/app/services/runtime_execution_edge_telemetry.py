@@ -98,3 +98,27 @@ def emit_outbox_run_link(*, event_id: str | None, aggregate_type: str,
     logger.info("runtime_edge_link_v1 kind=workflow_run_outbox event=%s run=%s",
                 event_digest, run_digest)
     return True
+
+
+def emit_plan_run_link(*, plan_id: str | None, run_id: str | None,
+                       source: str) -> bool:
+    """Only call at a boundary holding both genuine persisted identities.
+
+    Never derive either identifier from the other, use timestamps, or serialize
+    plaintext. The caller must prove the plan-to-run association in source.
+    """
+    if os.environ.get("PR605_EXECUTION_EDGE_TELEMETRY_ENABLED", "").lower() != "true":
+        return False
+    secret = os.environ.get("PR605_EXECUTION_EDGE_HMAC_KEY", "")
+    if len(secret) < 32 or source != "orchestration_step":
+        return False
+    plan = str(plan_id or "").strip()
+    run = str(run_id or "").strip()
+    if not plan or len(plan) > 256 or not _RUN_UUID.fullmatch(run):
+        return False
+    key = secret.encode("utf-8")
+    plan_digest = hmac.new(key, plan.encode("utf-8"), hashlib.sha256).hexdigest()[:24]
+    run_digest = hmac.new(key, run.encode("utf-8"), hashlib.sha256).hexdigest()[:24]
+    logger.info("runtime_edge_link_v1 kind=orchestration_plan_run plan=%s run=%s",
+                plan_digest, run_digest)
+    return True
