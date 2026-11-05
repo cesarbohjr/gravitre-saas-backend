@@ -1,6 +1,6 @@
 # Catalog connector coverage
 
-Engineering implementation, pending live activation. Requested by the owner to
+Engineering implementation and Nango dev templates, pending account activation. Requested by the owner to
 fill connector gaps across agents, workflows, plays and packages. No live account
 grants, agent permissions or workflow definitions were changed by this patch.
 
@@ -68,10 +68,18 @@ or of every advertised action being implemented.
 
 ## Activation
 
-Live provisioning was blocked on 2026-11-05: Nango API authentication returned
-401 and the dashboard presented sign-in. No live integration creation is claimed.
-Restore secure Nango access, select the intended environment, then run this
-read-only inventory using an environment-supplied `NANGO_SECRET_KEY`:
+After the owner restored sign-in, all 12 exact configurations above were created
+and verified through Nango's dashboard in the **dev** environment. The inventory
+increased from 80 to 92 integrations. Existing configurations were preserved.
+Each new entry uses OAuth 2, has zero account connections, and still needs custom
+provider app credentials and scopes. The existing callback URL remains
+`https://gravitre.app/api/connectors/oauth/callback`.
+
+See `activation-dev.json` for the verified IDs and `nango-dev-inventory.jpg` for
+dashboard evidence. Production-environment provisioning and an authenticated
+runtime action have not been verified. API authentication was not retested after
+the browser sign-in. For a later API inventory, select the intended environment
+and use an environment-supplied `NANGO_SECRET_KEY`:
 
 ```sh
 python scripts/nango-connector-setup.py --oauth-only \
@@ -97,7 +105,8 @@ python scripts/audit-catalog-connector-dependencies.py \
 
 The optional `--live-inventory` adds a locally supplied snapshot; raw snapshots
 must not be committed. Production acceptance is NOT RUN: this branch is not
-deployed and live Nango access is unavailable. Full CI must pass before merge.
+deployed, provider app credentials/scopes are missing, and no account consent or
+runtime read has been completed for the new paths. Full CI must pass before merge.
 
 ## Local verification
 
