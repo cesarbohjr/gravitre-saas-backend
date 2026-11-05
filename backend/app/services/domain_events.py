@@ -202,13 +202,28 @@ class DomainEventRelay:
         """Run handlers not yet delivered. Returns (delivered handler names, first error)."""
         done = [str(n) for n in (event.get("delivered_handlers") or [])]
         error: str | None = None
+        from app.services.runtime_execution_edge_telemetry import emit_handoff
+
         for reg in handlers_for(str(event.get("event_type") or "")):
             if reg.name in done:
                 continue
+            # Only a fixed event type class is exposed; never a handler name,
+            # event payload, tenant identifier, or provider credentials.
+            event_kind = str(event.get("event_type") or "")
+            source = {
+                "execution.outcome_finalized": "outcome_finalized",
+                "source.disconnected": "source_disconnected",
+            }.get(event_kind, "other_event")
+            emit_handoff(owner="event_consumer", stage="started",
+                         correlation_id=str(event.get("id") or ""), source=source)
             try:
                 reg.fn(self._client, event)
                 done.append(reg.name)
+                emit_handoff(owner="event_consumer", stage="completed",
+                             correlation_id=str(event.get("id") or ""), source=source)
             except Exception as exc:  # noqa: BLE001
+                emit_handoff(owner="event_consumer", stage="failed",
+                             correlation_id=str(event.get("id") or ""), source=source)
                 error = f"{reg.name}: {type(exc).__name__}: {exc}"
                 logger.warning(
                     "domain_event_handler_failed event_id=%s event_type=%s handler=%s attempt=%s error=%s",
