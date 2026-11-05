@@ -50,3 +50,8 @@ Previously inspected Railway production backend's `list_variables` returned only
 5. Independently approve each retirement candidate only after live consumer coverage, migration parity, security regressions, rollback and owner signoff.
 
 No merge, deployment, schema mutation, historical backfill or legacy removal authorized by this audit document. PR remains DRAFT.
+
+
+## Post-check CI correction
+
+An additional read of the previous Gate 20 commit's workflow `42113006427` returned **completed/cancelled**, with no jobs returned. This is **not** a completed successful exact-head full CI nor a diagnosable failing test. The `.github/workflows/ci.yml` branch shows a `ci-${{ github.ref }}` concurrency group with `cancel-in-progress: false` but a queued run can still be superseded by a newer queued request. No CI concurrency or runner changes were made based on this observation. Final-head integrated CI and dedicated privacy tests must complete and be inspected before further release steps.
