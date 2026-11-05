@@ -44,13 +44,17 @@ def inspect_text(path: str, source: str) -> dict:
     dynamic = []
     if suffix == ".py":
         tree = ast.parse(source, filename=path)
+        imported_dynamic_names = set()
+        for node in ast.walk(tree):
+            if isinstance(node, ast.ImportFrom) and node.module == "importlib":
+                imported_dynamic_names.update(alias.asname or alias.name for alias in node.names if alias.name == "import_module")
         for node in ast.walk(tree):
             if isinstance(node, ast.Import):
                 imports.update(a.name for a in node.names)
             elif isinstance(node, ast.ImportFrom):
                 if node.module:
                     imports.add("." * node.level + node.module)
-            elif isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id in {"__import__"}:
+            elif isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id in {"__import__", *imported_dynamic_names}:
                 dynamic.append({"line": node.lineno, "kind": "dynamic_python_import"})
             elif isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute) and node.func.attr in {"import_module", "getattr"}:
                 dynamic.append({"line": node.lineno, "kind": "dynamic_python_dispatch_candidate"})
