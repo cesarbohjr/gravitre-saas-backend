@@ -39,3 +39,8 @@ Date: 2026-11-05. **Evidence is from connected services and read-only SQL. Produ
 
 ## Gate conclusion
 **Partially advanced, not complete.** A runnable exact-head inventory generator is committed and wired into CI. Production HTTP activity was sampled, and 44 outcome events were acknowledged in the connected project. However, exact-head inventory results, production Supabase binding, voice/caller coverage and full event side-effect certification remain open. No production mutation was executed.
+
+## Supplemental production runtime confirmation — Railway relay logs
+- Railway production deployment log sample contains repeated `app.schedulers.domain_event_relay_scheduler` INFO lines, roughly every five minutes (15:05, 15:10, 15:15, 15:20, 15:25 UTC and later), reporting `domain_event_outbox_stats` with **delivered=44, dead=0, pending=0, retrying=0, processing=0**.
+- These live backend logs strongly correlate with the connected Supabase project's **44 delivered outcome events**, providing concrete evidence that the production relay scheduler is executing and reading an outbox with matching totals. **However, matching aggregate counts are not a cryptographic or configuration-level project binding attestation**; a non-secret database project ref confirmation remains necessary.
+- Important refinement: production relay **is active**, so the remaining gate concerns actual registered handler side effects, delivery latency, lease/retry recovery, source DB binding and other consumer types—not merely whether a relay process starts.
