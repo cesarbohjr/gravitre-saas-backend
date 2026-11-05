@@ -47,3 +47,11 @@ Audit branch: `feat/gravitre-unified-ecosystem-modernization`.
 - KEEP / CONSOLIDATE / UPGRADE / RETIRE register with proof; no speculative deletion.
 - Revised implementation order and measurable acceptance gates committed to PR #605.
 - No claim of complete audit, parity, repaired defects or release certification until supported by evidence.
+
+## Gate 2 supplemental findings (2026-11-04)
+Detailed source-backed decisions and retirement gates are committed in `docs/delivery/pr605-canonical-ownership-retirement-register.md`.
+- **ECO-011 / P0 confirmed:** `unified_turn_classical_fallback.py` contains explicit LIVE→classical routing and phrase-pattern safety nets for connector/tool queries. This is a concrete architectural split, although actual production invocation remains to be traced.
+- **ECO-012 / P0 confirmed:** `unified_turn_fallthrough.py` includes typed reason strings for classical delegation, errors and connector misclaims; migration must preserve tool semantics and replace ambiguous hidden downgrade with explicit authority.
+- **ECO-013 / P0 confirmed:** `execution_plan_authority.py` protects terminal write truth; `execution_outcome.py` is documented as canonical terminal-outcome writer. These are critical contracts to preserve while simplifying architecture.
+- **ECO-014 / P1 confirmed:** `execution_outcome.py` documents intentional dual-write for run projections and audit events. A single authority does not require immediate single-table storage; dependency and data migration are prerequisites.
+- **ECO-015 / P1 confirmed:** `connector_availability_service.py` declares canonical connector readiness; need prove all action selection and provider paths use it.
