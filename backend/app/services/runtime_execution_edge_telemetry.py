@@ -36,6 +36,11 @@ class ExecutionCorrelation:
         value = str(plan_id or "").strip()
         return cls(value) if value else None
 
+    @classmethod
+    def from_run_id(cls, run_id: str | None) -> "ExecutionCorrelation | None":
+        value = str(run_id or "").strip()
+        return cls(value) if value else None
+
     def record(self, *, owner: str, stage: str, source: str) -> bool:
         return emit_handoff(owner=owner, stage=stage,
                             correlation_id=self.execution_id, source=source)
