@@ -43,3 +43,26 @@ Status: **partial static dependency classification**. A KEEP decision means pres
 
 ## Remaining gate blockers
 Full call graph, active production flags, deployed route configuration, provider credentials readiness (never expose secrets), actual customer telemetry, model/voice minutes and costs, all 13k-tree module ownership, exhaustive CI coverage, and measured regression results remain outstanding. Do not claim completed holistic audit or safe deletion.
+
+## Gate 17 — bounded dynamic-dispatch discovery and production ownership checkpoint (2026-11-05)
+
+**Status: NOT RETIREMENT-CERTIFIED.** Existing source code and sampled runtime evidence do not establish every active caller. Added `backend/scripts/pr605_cross_surface_ownership_inventory.py` and offline tests `backend/tests/scripts/test_pr605_cross_surface_ownership_inventory.py`; independent workflow `.github/workflows/pr605-cross-surface-ownership.yml` generates a SHA-pinned, retained JSON artifact for ten critical source candidates. It extracts static import references, literal API paths, selected dynamic import/getattr candidates and non-sensitive environment variable *names*, with explicit unknowns. **These are not dynamic execution traces**, and the exporter deliberately sets `retirement_certified=false`. A passing workflow certifies only this bounded evidence scope.
+
+### Newly refined source-grounded ownership decisions
+
+| ID | Source chain / finding | Proposed action | Retirement blocker / acceptance |
+|---|---|---|---|
+| DEC-015 | Browser `pipecat-voice-client.ts` builds authenticated/org-scoped WS URL, selecting `NEXT_PUBLIC_VOICE_WS_BASE`, `NEXT_PUBLIC_BACKEND_WS_URL`, voice-status hint or production API origin; literal `/api/voice/pipecat/ws` | KEEP and VERIFY runtime selection | Prove actual production origin, WS auth, session owner, audience, reconnect/cancel and fallback browser compatibility |
+| DEC-016 | Next.js `app/api/voice/session/turn/route.ts` forwards NDJSON to `/api/voice/session/turn` using `voiceFastApiBase()`, retaining authorization/org/environment headers through helper | KEEP routing contract; UPGRADE origin observability | Browser→Vercel→Railway target and auth/tenant context, correct deployed SHA; no silent localhost in production |
+| DEC-017 | `voice-api-proxy.ts` gates on configured `FASTAPI_BASE_URL` but delegates configured value to `backendBaseUrl()`; absent env falls back to localhost:8000 | VERIFY/UPGRADE | Resolve actual environment and `backendBaseUrl()` precedence; test production and preview config with sanitized base identity before changing routing |
+| DEC-018 | `unified_turn_classical_fallback.py` keeps a reduced phrase-pattern safety net and structured `needs_tool_sse` defer; `connector_tool_proposal` explicitly stays LIVE | CONSOLIDATE CANDIDATE only | Map request branches and runtime flags; protect connector SSE, tool observations, approvals and no false tool success before removing classical |
+| DEC-019 | `execution_outcome.py` documents one terminal writer with repository-level `workflow_runs`→`runs` mirroring; audit dual-write deliberately retained | KEEP canonical write contract | Prove all actual writers/readers, durable outbox, event subscribers, approval domains and transition consistency; no premature one-table cutover |
+| DEC-020 | Source-only caller inventory added in PR #605 identifies ten focused sources and selected literal routes, with unknown dynamic call dispatch | KEEP investigation tooling | Extend to Next.js component callsites and backend method bodies, RPC/event subscribers; prove real request coverage and owner signatures for every proposed retirement |
+
+**Evidence and semantics:** `registered route` ≠ `actively called production path`; `imports module` ≠ `invokes method`; `provider configured` ≠ `tenant authorized and executed`. Classify ambiguous paths as UNKNOWN until traffic, spans and write-fence tests demonstrate behavior. No current candidate is certified for deletion.
+
+### Release sequencing
+1. Run the dedicated source-only ownership workflow on its triggering PR head and inspect artifact/test logs; repair any source extraction errors, preserving SHA identity.
+2. Complete H-01 dynamic frontend/backend routing and H-03 governed execution with source and trace-linked ownership; H-04 voice trace, H-05 database event consumers, H-06 production project-ref proof and H-07 latency/cost evidence remain blockers.
+3. Move specific retirement candidates to `RETIRE APPROVED` **only** after source callers, production usage, equivalent consumer migration, security tests, owner signoff and rollback are recorded. No blanket approval is implied.
+4. After holistic audit closure, certify full CI on the new exact head and independently verify production DB identity, then seek the protected merge/release gates. Historical reconciliation remains separately authorized.
