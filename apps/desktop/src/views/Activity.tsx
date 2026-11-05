@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react"
 import { ART } from "../art"
 import { useStore } from "../store"
 import { AgentAvatar, Empty, ErrorLine, Icon, Logo } from "../ui"
-import { activityActor, activityStatus, clock, dayLabel, systemBadge } from "../lib/model"
+import { activityActor, activityStatus, clock, dayLabel } from "../lib/model"
 import { identityOf } from "../lib/identity"
 import type { ActivityEvent } from "../lib/api"
 
@@ -107,7 +107,7 @@ export function Activity() {
                   <span className="ell" style={{ flex: 1, minWidth: 0, fontSize: 13 }}>
                     {titleOf(e)}
                   </span>
-                  <Logo text={systemBadge(e.integration)} />
+                  <Logo system={e.integration} />
                   <span className={`pill ${st.cls}`}>{st.label}</span>
                 </button>
               </div>
@@ -154,7 +154,7 @@ export function Activity() {
                   <span style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
                     {systemsOf(dr).map((s) => (
                       <span key={s} style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
-                        <Logo text={systemBadge(s)} />
+                        <Logo system={s} />
                         {pretty(s)}
                       </span>
                     ))}

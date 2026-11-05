@@ -337,7 +337,9 @@
       "id": "google_analytics",
       "name": "Google Analytics",
       "category": "analytics",
-      "aliases": [],
+      "aliases": [
+        "ga4"
+      ],
       "source": "official-asset",
       "src": "/connector-logos/google_analytics.svg",
       "hex": "#E37400",
@@ -362,7 +364,10 @@
       "id": "google_search_console",
       "name": "Google Search Console",
       "category": "analytics",
-      "aliases": [],
+      "aliases": [
+        "search_console",
+        "gsc"
+      ],
       "source": "simple-icons",
       "simpleIcon": "googlesearchconsole",
       "hex": "#458CF5",
@@ -733,7 +738,10 @@
       "name": "Microsoft 365",
       "category": "communication",
       "aliases": [
-        "microsoft_365"
+        "microsoft_365",
+        "m365",
+        "office365",
+        "office_365"
       ],
       "source": "official-asset",
       "src": "/vendor-logos/microsoft365.svg",
@@ -1059,7 +1067,9 @@
       "id": "zendesk",
       "name": "Zendesk",
       "category": "support",
-      "aliases": [],
+      "aliases": [
+        "zendesk_support"
+      ],
       "source": "simple-icons",
       "simpleIcon": "zendesk",
       "hex": "#03363D",

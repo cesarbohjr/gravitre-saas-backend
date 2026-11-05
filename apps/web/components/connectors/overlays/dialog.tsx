@@ -4,7 +4,7 @@ import type { ReactNode } from "react"
 import * as DialogPrimitive from "@radix-ui/react-dialog"
 import * as AlertDialogPrimitive from "@radix-ui/react-alert-dialog"
 import { X } from "lucide-react"
-import { vendorLook } from "@/components/connectors/redesign/vendor-look"
+import { VendorTile } from "@/components/connectors/redesign/art"
 import "./overlays.css"
 
 /**
@@ -34,18 +34,13 @@ export function ConnectorsDialog({
   /** The add-connector flow needs more room than a settings form. */
   wide?: boolean
 }) {
-  const look = vendor ? vendorLook(vendor) : null
   return (
     <DialogPrimitive.Root open={open} onOpenChange={onOpenChange}>
       <DialogPrimitive.Portal>
         <DialogPrimitive.Overlay className="cno-scrim" />
         <DialogPrimitive.Content className={`cno-dialog${wide ? " wide" : ""}`}>
           <div className="cno-dialog-head">
-            {look ? (
-              <span className="cno-tile mono" style={{ background: look.bg, color: look.fg }} aria-hidden>
-                {look.mono}
-              </span>
-            ) : null}
+            {vendor ? <VendorTile vendor={vendor} base="cno-tile" /> : null}
             <div className="cno-dialog-heading">
               <DialogPrimitive.Title className="cno-dialog-title">{title}</DialogPrimitive.Title>
               {description ? (

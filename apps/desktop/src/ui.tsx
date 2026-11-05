@@ -1,5 +1,7 @@
-import type { CSSProperties, ReactNode } from "react"
-import { avatarColor, initials, STATUS, type StepState, type Status } from "./lib/model"
+import { useState, type CSSProperties, type ReactNode } from "react"
+import { avatarColor, initials, STATUS, systemBadge, type StepState, type Status } from "./lib/model"
+import { providerMark } from "./lib/brands"
+import { useStore } from "./store"
 import type { AgentIdentity } from "./lib/identity"
 
 export const ic = {
@@ -144,11 +146,29 @@ export function StepDot({ state }: { state: StepState }) {
   )
 }
 
-export function Logo({ text, style }: { text: string; style?: CSSProperties }) {
-  if (!text) return null
+/**
+ * A connected system: its official mark (served by the web app, the same one
+ * the web app and the extension show), else its two-letter badge.
+ * `system` is the raw connector type, vendor key or tool prefix.
+ */
+export function Logo({ system, fallback, style }: { system?: string | null; fallback?: string; style?: CSSProperties }) {
+  const { session, dark } = useStore()
+  const [failed, setFailed] = useState(false)
+  const badge = systemBadge(system) || fallback || ""
+  if (!badge) return null
+  const mark = failed ? null : providerMark(system)
+  if (!mark) {
+    return (
+      <span className="logo" style={style}>
+        {badge}
+      </span>
+    )
+  }
+  const plate = !dark && mark.lightPlate ? " plate-ink" : dark && mark.darkPlate ? " plate-bone" : ""
+  const base = (session.appBase || "https://gravitre.app").replace(/\/$/, "")
   return (
-    <span className="logo" style={style}>
-      {text}
+    <span className={`logo vlogo${plate}`} style={style} title={mark.name} role="img" aria-label={mark.name}>
+      <img src={`${base}${dark ? mark.srcDark : mark.src}`} alt="" draggable={false} onError={() => setFailed(true)} />
     </span>
   )
 }

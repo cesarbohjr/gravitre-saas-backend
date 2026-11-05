@@ -55,7 +55,8 @@ import {
 import "@/components/workspace/workspace.css"
 import "@/components/connectors/redesign/connectors.css"
 import * as DialogPrimitive from "@radix-ui/react-dialog"
-import { coverTypeFor, vendorLook, type CoverType } from "@/components/connectors/redesign/vendor-look"
+import { coverTypeFor, type CoverType } from "@/components/connectors/redesign/vendor-look"
+import { VendorTile } from "@/components/connectors/redesign/art"
 import { 
   Search,
   RefreshCw,
@@ -845,12 +846,9 @@ function getSelectedConnectorKey(catalog: CatalogConnector[], type: string): str
 }
 
 function PickCard({ entry, note, disabled, onPick }: { entry: CatalogConnector; note: string; disabled?: boolean; onPick: () => void }) {
-  const look = vendorLook(entry.vendorKey || entry.type, entry.category)
   return (
     <button type="button" className="cno-pick" aria-disabled={disabled ? "true" : undefined} onClick={onPick} title={entry.description}>
-      <span className="cno-tile mono" style={{ background: look.bg, color: look.fg }} aria-hidden>
-        {look.mono}
-      </span>
+      <VendorTile vendor={entry.vendorKey || entry.type} category={entry.category} base="cno-tile" />
       <span style={{ display: "flex", flexDirection: "column", minWidth: 0 }}>
         <span className="t">{entry.type}</span>
         <span className="s">{note}</span>
@@ -1376,9 +1374,7 @@ function AddConnectorModal({
         <DialogPrimitive.Content className="cno-dialog wide" aria-describedby={undefined}>
           <div className="cno-dialog-head">
             {selectedType && step !== "select" ? (
-              <span className="cno-tile mono" style={{ background: vendorLook(selectedType).bg, color: vendorLook(selectedType).fg }} aria-hidden>
-                {vendorLook(selectedType).mono}
-              </span>
+              <VendorTile vendor={getSelectedConnectorKey(catalogConnectors, selectedType)} base="cno-tile" />
             ) : null}
             <div className="cno-dialog-heading">
               <DialogPrimitive.Title className="cno-dialog-title">

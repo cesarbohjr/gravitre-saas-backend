@@ -26,6 +26,11 @@
 .gv-ws .cn-logo.sm { width: 28px; height: 28px; border-radius: 8px; font-size: 10.5px; }
 .gv-ws .cn-logo.lg { width: 76px; height: 76px; border-radius: 18px; font-size: 20px; box-shadow: 0 0 0 4px var(--gv-card), 0 8px 20px rgba(20, 21, 19, 0.12); }
 .gv-ws .cn-logo.md { width: 44px; height: 44px; border-radius: 12px; font-size: 13px; box-shadow: 0 0 0 3px var(--gv-card), 0 4px 12px rgba(20, 21, 19, 0.1); }
+/* Official vendor mark on a light tile — same tile in both themes so brand colours always read. */
+.gv-ws .cn-logo.brand { background: #ffffff; border-color: rgba(20, 21, 19, 0.08); }
+.dark .gv-ws .cn-logo.brand { background: #f4f4f1; border-color: transparent; }
+.gv-ws .cn-logo.brand > [data-provider] { width: 56%; height: 56%; }
+.gv-ws .cn-logo.brand.lg > [data-provider] { width: 52%; height: 52%; }
 
 /* Pills / status */
 .gv-ws .cn-pill { display: inline-flex; align-items: center; gap: 6px; border-radius: 999px; padding: 3px 10px; font-size: 12px; font-weight: 500; white-space: nowrap; }

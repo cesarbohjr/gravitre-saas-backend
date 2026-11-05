@@ -4,7 +4,7 @@ import type { ContextSourcesSummary } from "@web/lib/context-sources"
 import { policyLine } from "@web/components/approvals/decision-queue/model"
 import { useStore } from "../store"
 import { AgentAvatar, Art, ErrorLine, Icon, Logo, MOD, type IconName } from "../ui"
-import { clock, dayLabel, systemBadge } from "../lib/model"
+import { clock, dayLabel } from "../lib/model"
 import { identityOf } from "../lib/identity"
 import type { Conversation, PendingTask, Surface } from "../lib/api"
 import { RichText } from "../components/RichText"
@@ -345,7 +345,7 @@ export function Ask() {
                       {m.error ? <ErrorLine message={m.error} /> : null}
                       {m.pending ? (
                         <div className="card" style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", boxShadow: "none" }}>
-                          <Logo text="·" style={{ width: 28, height: 28 }} />
+                          <Logo fallback="·" style={{ width: 28, height: 28 }} />
                           <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column" }}>
                             <span className="ell" style={{ fontSize: 13, fontWeight: 600 }}>
                               {m.pending.title}
@@ -396,7 +396,7 @@ export function Ask() {
             {lastSources?.used.length ? (
               lastSources.used.map((s, i) => (
                 <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13 }}>
-                  <Logo text={systemBadge(s.kind) || "·"} />
+                  <Logo system={s.kind} fallback="·" />
                   <span className="ell" style={{ flex: 1, minWidth: 0 }}>
                     {s.name}
                   </span>
@@ -408,7 +408,7 @@ export function Ask() {
             )}
             {lastSources?.skipped.map((s, i) => (
               <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: "var(--t3)" }}>
-                <Logo text={systemBadge(s.label) || "·"} />
+                <Logo system={s.label} fallback="·" />
                 <span style={{ flex: 1 }}>
                   Left out: {s.label} ({s.count})
                 </span>
