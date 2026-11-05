@@ -1,0 +1,100 @@
+{
+  "source": "https://raw.githubusercontent.com/NangoHQ/nango/master/packages/providers/providers.yaml",
+  "retrieved_on": "2026-11-05",
+  "source_sha256": "5c38509f87365aecdc1f1d115ec12e05478b0a00266d4d67050d57219f685765",
+  "templates": [
+    {
+      "provider": "freshservice-oauth",
+      "auth_mode": "OAUTH2",
+      "alias": "freshworks",
+      "input_fields": [
+        "orgSubdomain",
+        "subdomain"
+      ],
+      "setup_guide_url": "https://nango.dev/docs/api-integrations/freshservice-oauth/how-to-register-your-own-freshservice-oauth-app"
+    },
+    {
+      "provider": "gong-oauth",
+      "auth_mode": "OAUTH2",
+      "alias": null,
+      "input_fields": [
+        "api_base_url_for_customer"
+      ],
+      "setup_guide_url": "https://nango.dev/docs/api-integrations/gong-oauth/how-to-register-your-own-gong-oauth-api-oauth-app"
+    },
+    {
+      "provider": "hibob-oauth",
+      "auth_mode": "OAUTH2",
+      "alias": null,
+      "input_fields": [],
+      "setup_guide_url": null
+    },
+    {
+      "provider": "cal-com-oauth",
+      "auth_mode": "OAUTH2",
+      "alias": null,
+      "input_fields": [],
+      "setup_guide_url": "https://nango.dev/docs/api-integrations/cal-com-oauth/how-to-register-your-own-cal-com-oauth-app"
+    },
+    {
+      "provider": "bamboohr",
+      "auth_mode": "OAUTH2",
+      "alias": null,
+      "input_fields": [
+        "subdomain"
+      ],
+      "setup_guide_url": "https://nango.dev/docs/api-integrations/bamboohr/how-to-register-your-own-bamboohr-oauth-app"
+    },
+    {
+      "provider": "greenhouse-harvest-partner",
+      "auth_mode": "OAUTH2",
+      "alias": null,
+      "input_fields": [],
+      "setup_guide_url": "https://nango.dev/docs/api-integrations/greenhouse-harvest-partner/how-to-register-your-own-greenhouse-harvest-partner-oauth-app"
+    },
+    {
+      "provider": "ahrefs",
+      "auth_mode": "OAUTH2",
+      "alias": null,
+      "input_fields": [],
+      "setup_guide_url": "https://nango.dev/docs/api-integrations/ahrefs/how-to-register-your-own-ahrefs-api-oauth-app"
+    },
+    {
+      "provider": "linear",
+      "auth_mode": "OAUTH2",
+      "alias": null,
+      "input_fields": [],
+      "setup_guide_url": "https://nango.dev/docs/api-integrations/linear/how-to-register-your-own-linear-api-oauth-app"
+    },
+    {
+      "provider": "gitlab",
+      "auth_mode": "OAUTH2",
+      "alias": null,
+      "input_fields": [],
+      "setup_guide_url": null
+    },
+    {
+      "provider": "shopify",
+      "auth_mode": "OAUTH2",
+      "alias": null,
+      "input_fields": [
+        "subdomain"
+      ],
+      "setup_guide_url": "https://nango.dev/docs/api-integrations/shopify/how-to-register-your-own-shopify-api-oauth-app"
+    },
+    {
+      "provider": "paypal",
+      "auth_mode": "OAUTH2",
+      "alias": null,
+      "input_fields": [],
+      "setup_guide_url": null
+    },
+    {
+      "provider": "facebook",
+      "auth_mode": "OAUTH2",
+      "alias": null,
+      "input_fields": [],
+      "setup_guide_url": "https://nango.dev/docs/api-integrations/facebook/how-to-register-your-own-facebook-api-oauth-app"
+    }
+  ]
+}

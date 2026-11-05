@@ -17,9 +17,14 @@ from app.connectors.nango_registry import NANGO_CONNECTOR_REGISTRY, NANGO_FALLBA
 def run() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--apply", action="store_true", help="Create missing integration configurations only")
-    parser.add_argument("--vendor", help="Limit the audit to one vendor")
+    parser.add_argument("--vendor", action="append", help="Limit to these vendors (repeatable)")
+    parser.add_argument("--oauth-only", action="store_true", help="Only provision interactive OAuth; never create API-key/Basic configurations")
     parser.add_argument("--output", type=Path, required=True, help="Safe metadata report; no provider/user credentials")
     args = parser.parse_args()
+    known = set(NANGO_CONNECTOR_REGISTRY) | set(NANGO_FALLBACK_REGISTRY)
+    if args.vendor and set(args.vendor) - known:
+        parser.error("Unknown vendor: " + ", ".join(sorted(set(args.vendor) - known)))
+    args.output.parent.mkdir(parents=True, exist_ok=True)
     key = os.environ.get("NANGO_SECRET_KEY", "").strip()
     if not key:
         parser.error("NANGO_SECRET_KEY is required")
@@ -32,10 +37,14 @@ def run() -> None:
         inventory = {r["unique_key"]: r for r in inventory_response.json()["data"]}
         specs = (*NANGO_CONNECTOR_REGISTRY.values(), *NANGO_FALLBACK_REGISTRY.values())
         for spec in specs:
-            if args.vendor and args.vendor != spec.vendor:
+            if args.vendor and spec.vendor not in args.vendor:
                 continue
             item = {"vendor": spec.vendor, "integration_id": spec.integration_id, "provider": spec.provider,
                     "native_fallback": spec.native_fallback, "created": False}
+            if args.oauth_only and spec.auth_mode not in {"OAUTH1", "OAUTH2"}:
+                item["state"] = "interactive_oauth_unavailable"
+                rows.append(item)
+                continue
             if spec.provider not in providers:
                 item["state"] = "provider_not_supported"
             else:

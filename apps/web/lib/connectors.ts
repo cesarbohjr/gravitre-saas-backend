@@ -107,6 +107,7 @@ export const SHIPPED_OAUTH_CONNECTOR_TYPES = [
   "Apollo",
   "Gusto",
   "Plaid",
+  "Clio",
 ] as const
 
 /** Generic OAuth providers that require PKCE (RFC 7636). Salesforce uses backend PKCE too. */
@@ -153,6 +154,7 @@ export const OAUTH_VENDOR_KEYS = new Set([
   "apollo",
   "gusto",
   "plaid",
+  "clio",
 ])
 
 /** OAuth + optional PAT/API-token fallback at connect time. */
@@ -260,9 +262,11 @@ const VENDOR_LABELS: Record<string, string> = {
   canva: "Canva",
   figma: "Figma",
   motion: "Motion",
+  clio: "Clio",
 }
 
 const CATALOG_ENTRIES: CatalogConnectorEntry[] = [
+  { type: "Clio", vendorKey: "clio", description: "Legal contacts, matters and intake", authType: "oauth", credentialModel: "oauth2", category: "Operations / Workflow", shipped: true, oauthReady: true },
   // CRM / Marketing
   { type: "Salesforce", vendorKey: "salesforce", description: "CRM and sales automation", authType: "oauth", credentialModel: "oauth2", category: "CRM / Marketing", shipped: true },
   { type: "HubSpot", vendorKey: "hubspot", description: "Marketing, sales, and service", authType: "oauth", credentialModel: "oauth2", category: "CRM / Marketing", shipped: true },
@@ -351,16 +355,21 @@ const CATALOG_ENTRIES: CatalogConnectorEntry[] = [
   { type: "Figma", vendorKey: "figma", description: "Product design and prototyping", authType: "oauth", credentialModel: "oauth2", category: "Learning / Creative", shipped: true, oauthReady: true, setupComplexity: "medium" },
 ]
 
-export const CONNECTOR_CATALOG: CatalogConnectorEntry[] = [
-  ...CATALOG_ENTRIES,
-  ...managedConnectors.map((entry): CatalogConnectorEntry => ({
+const managedCatalogEntries: CatalogConnectorEntry[] = managedConnectors.map((entry): CatalogConnectorEntry => ({
     type: entry.type, vendorKey: entry.vendorKey, category: entry.category,
     description: `${entry.description}. ${!entry.providerSupported ? "Managed authorization is not available yet." : entry.hasReadActions ? "Read actions available after connection." : "Account authorization only; workflow actions pending."}`,
     authType: entry.authMode === "API_KEY" ? "apiKey" : "oauth",
     credentialModel: entry.authMode === "API_KEY" ? "api_key" : "oauth2",
     oauthReady: entry.providerSupported && entry.authMode !== "API_KEY",
-    // Connect-only managed providers are still customer-installable even before action packs ship.\n    shipped: entry.hasReadActions || ["smartlead", "instantly", "quickmail", "hunter", "snov", "emailable", "millionverifier"].includes(entry.vendorKey), authMode: "customer_owned",
-  })),
+    shipped: entry.hasReadActions || ["smartlead", "instantly", "quickmail", "hunter", "snov", "emailable", "millionverifier"].includes(entry.vendorKey),
+    authMode: CATALOG_ENTRIES.find((native) => native.vendorKey === entry.vendorKey)?.authMode || "customer_owned",
+  }))
+
+// An OAuth path replaces the picker entry, not the existing account. Avoid two
+// cards for BambooHR/Greenhouse/Ahrefs and preserve all healthy native grants.
+export const CONNECTOR_CATALOG: CatalogConnectorEntry[] = [
+  ...CATALOG_ENTRIES.filter((entry) => !MANAGED_CONNECTOR_VENDOR_KEYS.has(entry.vendorKey)),
+  ...managedCatalogEntries,
 ]
 
 for (const entry of managedConnectors) {

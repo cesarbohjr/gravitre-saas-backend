@@ -137,5 +137,39 @@
       "required": false,
       "pattern": "^[0-9]{10}$"
     }
+  ],
+  "freshservice": [
+    {
+      "key": "orgSubdomain",
+      "label": "Freshworks organization subdomain",
+      "required": true,
+      "pattern": "^[a-z0-9-]+$",
+      "example": "acme"
+    },
+    {
+      "key": "subdomain",
+      "label": "Freshservice subdomain",
+      "required": true,
+      "pattern": "^[a-z0-9_-]+$",
+      "example": "acme"
+    }
+  ],
+  "bamboohr": [
+    {
+      "key": "subdomain",
+      "label": "BambooHR subdomain",
+      "required": true,
+      "pattern": "^[a-z0-9_-]+$",
+      "example": "acme"
+    }
+  ],
+  "shopify": [
+    {
+      "key": "subdomain",
+      "label": "Shopify store subdomain",
+      "required": true,
+      "pattern": "^[a-z0-9_-]+$",
+      "example": "acme"
+    }
   ]
 }

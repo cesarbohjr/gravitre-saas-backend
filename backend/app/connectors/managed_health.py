@@ -20,9 +20,12 @@ def managed_auth_status(client: Any, org_id: str, connector_id: str, settings: A
         return "pending_auth"
     row = rows[0]
     config = safe_normalize_stored_dict(row, key="config")
-    spec = get_nango_connector_spec(str(row.get("vendor") or row.get("type") or ""))
-    if not spec or config.get("auth_provider") != "managed":
+    spec = get_nango_connector_spec(str(row.get("vendor") or row.get("type") or ""),
+                                    integration_id=str(config.get("managed_integration_id") or ""))
+    if config.get("auth_provider") != "managed":
         return "pending_auth"
+    if spec is None:
+        return "misconfigured"
     connection_id = str(config.get("managed_connection_id") or "").strip()
     if config.get("managed_integration_id") != spec.integration_id:
         return "misconfigured"
