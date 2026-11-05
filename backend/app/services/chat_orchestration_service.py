@@ -1511,6 +1511,14 @@ class ChatOrchestrationService:
         params["step_results"] = step_results
         params["current_step_index"] = idx + 1
         run_id = str(params.get("orchestration_run_id") or "") or None
+        # This handler owns both the restored execution plan and its persisted
+        # orchestration run. A link is emitted only when both are present;
+        # unrelated step IDs must never be promoted into plan identities.
+        if exec_plan is not None and run_id:
+            from app.services.runtime_execution_edge_telemetry import emit_plan_run_link
+
+            emit_plan_run_link(plan_id=exec_plan.plan_id, run_id=run_id,
+                               source="orchestration_step")
         if run_id:
             sync_orchestration_step(
                 client,
