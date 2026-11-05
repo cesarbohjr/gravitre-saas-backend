@@ -58,3 +58,14 @@ All numbers are snapshot counts, not invariant future counts.
 - ECO-066 P1: Lighthouse homepage perf 0.73–0.74 below 0.75 threshold; profile and repair; do not lower gate.
 - ECO-067 P0: Run-status PostgreSQL tests skipped by upstream inventory failure, so v2 migration unverified; ensure CI ordering + required pass.
 - ECO-068 P0: Historical reconciliation approval and tenant-scoped execution controls required as independent release gate.
+
+## Additional scoped read-only verification — environment grouping
+Read-only aggregate comparison on connected project `smyeexlrqdpymwjmgzqu` grouped affected `workflow_runs.environment`:
+- The 30 `partial_success/queued`, 2 `failed/running`, and 2 `flagged_for_review/queued` **paired** discrepancies are `run_type=execute` with source environment label `production`.
+- The two missing contract projections are `run_type=execute`, `flagged_for_review`, with source environment label `default`.
+- A row having `environment='production'` does **not** prove that this Supabase project is the one used by Railway production. Preserve the independent non-secret project binding attestation.
+- Historical reconciliation should treat the 34 `production`-labeled paired rows and 2 `default`-labeled missing projections as **separate approval cohorts**; do not auto-create contract rows or cross environments without explicit signoff.
+
+## Post-documentation source changes
+- New typed marketplace candidate review request model in `backend/app/routers/capabilities.py` and a Pydantic/OpenAPI regression test address the exact unbound `CandidateReviewRequest` symbol from the failed exported artifact.
+- Nested route introspection now examines `_IncludedRouter.original_router` to resolve real FastAPI handler edges. These are code corrections awaiting exact-head CI and artifact inspection, not certified production traffic evidence.
