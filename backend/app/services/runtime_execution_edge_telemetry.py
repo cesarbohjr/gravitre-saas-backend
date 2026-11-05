@@ -21,6 +21,9 @@ Stage = Literal["selected", "started", "authorized", "observed", "completed", "f
 
 _ALLOWED_OWNERS = frozenset(("agent", "play", "workflow", "connector", "event_consumer", "outcome", "voice"))
 _ALLOWED_STAGES = frozenset(("selected", "started", "authorized", "observed", "completed", "failed", "skipped"))
+_ALLOWED_SOURCES = frozenset(("execution_plan", "workflow_result", "connector_result", "terminal_fanout",
+                              "play_actioned", "outcome_finalized", "source_disconnected",
+                              "other_event", "tool_call"))
 
 
 @dataclass(frozen=True)
@@ -62,7 +65,7 @@ def emit_handoff(*, owner: str, stage: str, correlation_id: str | None = None,
         return False
     if owner not in _ALLOWED_OWNERS or stage not in _ALLOWED_STAGES:
         return False
-    if not source or len(source) > 64 or not source.replace("_", "").isalnum() or not source.isascii():
+    if source not in _ALLOWED_SOURCES:
         return False
     digest = hmac.new(secret.encode("utf-8"), correlation_id.encode("utf-8"), hashlib.sha256).hexdigest()[:24]
     logger.info("runtime_edge_v1 owner=%s stage=%s source=%s correlation=%s",
