@@ -120,8 +120,13 @@ def main() -> None:
         if endpoint is None:
             children = nested_routes(route)
             if children:
-                new_prefix = prefix + str(getattr(route, "path", "") or "")
-                pending.extend((r, new_prefix) for r in children)
+                # _IncludedRouter.original_router carries the parent prefix;
+                # nested APIRouter.include_router() children may retain local
+                # /insights or /assets paths that lack the parent prefix.
+                original = getattr(route, "original_router", None)
+                own_prefix = str(getattr(original, "prefix", "") or "")
+                new_prefix = prefix or own_prefix
+                pending.extend((child, new_prefix) for child in children)
                 continue
             wrappers.append({
                 "class": route.__class__.__name__,
@@ -132,8 +137,15 @@ def main() -> None:
         module = getattr(endpoint, "__module__", "")
         if module.startswith("app."):
             modules.add(module)
+        route_path = str(getattr(route, "path", ""))
+        # Most FastAPI routes have prefix baked into route.path. Only nested
+        # included routes missing the inherited parent prefix need it added.
+        full_path = (
+            route_path if not prefix or route_path == prefix or route_path.startswith(prefix + "/")
+            else prefix.rstrip("/") + "/" + route_path.lstrip("/")
+        )
         routes.append({
-            "path": prefix + str(getattr(route, "path", "")),
+            "path": full_path,
             "methods": sorted(getattr(route, "methods", []) or []),
             "route_class": route.__class__.__name__,
             "name": str(getattr(route, "name", "")),
