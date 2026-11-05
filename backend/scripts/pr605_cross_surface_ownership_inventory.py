@@ -55,7 +55,7 @@ def inspect_text(path: str, source: str) -> dict:
                 if node.module:
                     imports.add("." * node.level + node.module)
             elif isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id in {"__import__", *imported_dynamic_names}:
-                dynamic.append({"line": node.lineno, "kind": "dynamic_python_import"})
+                dynamic.append({"line": node.lineno, "kind": "dynamic_python_dispatch_candidate"})
             elif isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute) and node.func.attr in {"import_module", "getattr"}:
                 dynamic.append({"line": node.lineno, "kind": "dynamic_python_dispatch_candidate"})
     elif suffix in {".ts", ".tsx"}:
