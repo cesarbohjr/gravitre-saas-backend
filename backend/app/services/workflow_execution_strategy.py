@@ -75,6 +75,12 @@ def apply_workflow_result_to_plan(
         # queued or running workflow is not complete.
         if updated.terminal_status not in {"failed", "partial"}:
             updated.terminal_status = "completed"
+    # Disabled unless an operator separately approves privacy-safe correlation.
+    # Plan ID is HMAC-pseudonymized before logging; status/payload are never logged.
+    from app.services.runtime_execution_edge_telemetry import emit_handoff
+
+    emit_handoff(owner="workflow", stage="observed",
+                 correlation_id=str(plan.plan_id or ""), source="workflow_result")
     return updated
 
 
