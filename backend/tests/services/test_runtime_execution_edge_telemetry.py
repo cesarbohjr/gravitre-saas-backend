@@ -182,3 +182,53 @@ def test_source_label_looks_safe_but_is_not_registered(monkeypatch, caplog):
         owner="agent", stage="started", correlation_id="private-identifier",
         source="arbitrary_sensitive_text")
     assert not caplog.text
+
+
+def test_synthetic_end_to_end_correlation_graph_without_customer_data(monkeypatch, caplog):
+    """Offline preflight only: synthetic lineage, not production runtime proof.
+
+    Exercises the entire HMAC graph with deliberately generated fixture IDs:
+    agent -> workflow -> orchestration run -> connector -> outcome -> play
+    -> outbox -> event consumer. No provider, DB, tenant, or network involved.
+    """
+    import logging
+    import re
+
+    monkeypatch.setenv("PR605_EXECUTION_EDGE_TELEMETRY_ENABLED", "true")
+    monkeypatch.setenv("PR605_EXECUTION_EDGE_HMAC_KEY", "synthetic-ci-audit-key-" * 3)
+    plan = "fixture-plan-noncustomer"
+    run = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
+    with caplog.at_level(logging.INFO, logger="app.runtime_execution_edges"):
+        assert telemetry.emit_handoff(owner="agent", stage="selected", correlation_id=plan,
+                                      source="execution_plan")
+        assert telemetry.emit_handoff(owner="workflow", stage="observed", correlation_id=plan,
+                                      source="workflow_result")
+        assert telemetry.emit_plan_run_link(plan_id=plan, run_id=run,
+                                             source="orchestration_step")
+        assert telemetry.emit_handoff(owner="connector", stage="observed", correlation_id=run,
+                                      source="connector_result")
+        assert telemetry.emit_handoff(owner="outcome", stage="observed", correlation_id=run,
+                                      source="terminal_fanout")
+        assert telemetry.emit_handoff(owner="play", stage="observed", correlation_id=run,
+                                      source="play_actioned")
+        assert telemetry.emit_outbox_run_link(event_id="7", aggregate_type="workflow_run",
+                                               aggregate_id=run, event_type="execution.outcome_finalized")
+        assert telemetry.emit_handoff(owner="event_consumer", stage="completed",
+                                      correlation_id="7", source="outcome_finalized")
+        assert not telemetry.emit_outbox_run_link(event_id="9", aggregate_type="connector",
+                                                   aggregate_id=run, event_type="source.disconnected")
+    lines = caplog.text.splitlines()
+    plan_line = next(x for x in lines if "kind=orchestration_plan_run" in x)
+    outbox_line = next(x for x in lines if "kind=workflow_run_outbox" in x)
+    plan_hash = re.search(r"plan=([0-9a-f]{24})", plan_line).group(1)
+    run_hash = re.search(r"run=([0-9a-f]{24})", plan_line).group(1)
+    event_hash = re.search(r"event=([0-9a-f]{24})", outbox_line).group(1)
+    assert f"run={run_hash}" in outbox_line
+    for owner in ("agent", "workflow"):
+        assert any(f"owner={owner}" in x and f"correlation={plan_hash}" in x for x in lines)
+    for owner in ("connector", "outcome", "play"):
+        assert any(f"owner={owner}" in x and f"correlation={run_hash}" in x for x in lines)
+    assert any("owner=event_consumer" in x and f"correlation={event_hash}" in x for x in lines)
+    assert plan_hash != run_hash and event_hash != run_hash
+    for raw in (plan, run, "synthetic-ci-audit-key"):
+        assert raw not in caplog.text
