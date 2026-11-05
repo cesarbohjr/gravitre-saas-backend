@@ -77,10 +77,11 @@ def apply_workflow_result_to_plan(
             updated.terminal_status = "completed"
     # Disabled unless an operator separately approves privacy-safe correlation.
     # Plan ID is HMAC-pseudonymized before logging; status/payload are never logged.
-    from app.services.runtime_execution_edge_telemetry import emit_handoff
+    from app.services.runtime_execution_edge_telemetry import ExecutionCorrelation
 
-    emit_handoff(owner="workflow", stage="observed",
-                 correlation_id=str(plan.plan_id or ""), source="workflow_result")
+    correlation = ExecutionCorrelation.from_plan_id(plan.plan_id)
+    if correlation is not None:
+        correlation.record(owner="workflow", stage="observed", source="workflow_result")
     return updated
 
 
