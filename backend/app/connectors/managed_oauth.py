@@ -6,8 +6,12 @@ from typing import Any
 import httpx
 
 from app.connectors.nango_client import scoped_connection
-from app.connectors.nango_registry import NANGO_FALLBACK_REGISTRY
+from app.connectors.nango_registry import get_nango_connector_spec
 from app.core.safe_dict import safe_normalize_stored_dict
+
+
+class ManagedOAuthAccessToken(str):
+    """Ephemeral Bearer credential, distinct from a legacy Basic-auth API key."""
 
 
 def managed_oauth_row(client: Any, org_id: str, connector_id: str, *, environment_name: str | None = None) -> dict | None:
@@ -24,13 +28,16 @@ def managed_oauth_row(client: Any, org_id: str, connector_id: str, *, environmen
     return row
 
 
-def managed_oauth_tokens(client: Any, org_id: str, connector_id: str, settings: Any, *, environment_name: str | None = None) -> dict | None:
+def managed_oauth_tokens(client: Any, org_id: str, connector_id: str, settings: Any, *, environment_name: str | None = None,
+                         expected_vendor: str | None = None) -> dict | None:
     row = managed_oauth_row(client, org_id, connector_id, environment_name=environment_name)
     if row is None:
         return None
     config = safe_normalize_stored_dict(row, key="config")
     vendor = str(row.get("vendor") or row.get("type") or "")
-    spec = NANGO_FALLBACK_REGISTRY.get(vendor)
+    if expected_vendor is not None and vendor != expected_vendor:
+        raise ValueError("Managed connector vendor mismatch")
+    spec = get_nango_connector_spec(vendor, integration_id=str(config.get("managed_integration_id") or ""))
     connection_id = str(config.get("managed_connection_id") or "")
     if (not spec or config.get("managed_integration_id") != spec.integration_id or not connection_id
             or row.get("status") not in {"active", "healthy", "connected", "syncing"}):

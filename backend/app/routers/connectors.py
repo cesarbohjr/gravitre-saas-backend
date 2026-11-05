@@ -1550,11 +1550,12 @@ async def _delete_connector_impl(
         # workflow_nodes may be absent in some environments; do not block connector removal.
         pass
 
-    config = row.get("config") if isinstance(row.get("config"), dict) else {}
+    config = safe_normalize_stored_dict(row, key="config")
     if config.get("auth_provider") == "managed" and config.get("managed_connection_id"):
         from app.connectors.nango_client import delete_managed_connection
         from app.connectors.nango_registry import get_nango_connector_spec
-        spec = get_nango_connector_spec(str(row.get("vendor") or row.get("type") or ""))
+        spec = get_nango_connector_spec(str(row.get("vendor") or row.get("type") or ""),
+                                        integration_id=str(config.get("managed_integration_id") or ""))
         if spec is None or config.get("managed_integration_id") != spec.integration_id:
             raise HTTPException(status_code=400, detail="Managed integration mismatch")
         try:

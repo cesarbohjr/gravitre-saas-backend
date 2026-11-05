@@ -38,7 +38,7 @@ def _format_base_url(profile: VendorHttpProfile, connector: dict[str, Any]) -> s
         "munchkin_id": str(cfg.get("munchkin_id") or ""),
         "subdomain": str(cfg.get("subdomain") or ""),
         "account": str(cfg.get("account") or ""),
-        "shop": str(cfg.get("shop") or cfg.get("shop_domain") or ""),
+        "shop": str(cfg.get("shop") or cfg.get("shop_domain") or cfg.get("subdomain") or ""),
         "region": str(cfg.get("region") or "us-east-1"),
     }
     for key, value in replacements.items():

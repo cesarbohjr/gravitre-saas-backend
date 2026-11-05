@@ -42,10 +42,10 @@
   {
     "vendorKey": "gong",
     "type": "Gong",
-    "integrationId": "gong",
+    "integrationId": "gravitre-gong-oauth",
     "category": "Sales / Prospecting",
     "description": "Revenue intelligence and conversation insights",
-    "authMode": "BASIC",
+    "authMode": "OAUTH2",
     "providerSupported": true,
     "hasReadActions": false
   },
@@ -162,10 +162,10 @@
   {
     "vendorKey": "hibob",
     "type": "HiBob",
-    "integrationId": "hibob",
+    "integrationId": "gravitre-hibob-oauth",
     "category": "HR / People",
     "description": "HRIS and people operations",
-    "authMode": "BASIC",
+    "authMode": "OAUTH2",
     "providerSupported": true,
     "hasReadActions": false
   },
@@ -242,10 +242,10 @@
   {
     "vendorKey": "freshservice",
     "type": "Freshservice",
-    "integrationId": "freshservice",
+    "integrationId": "gravitre-freshservice-oauth",
     "category": "Customer Support",
     "description": "IT service management and service desk",
-    "authMode": "BASIC",
+    "authMode": "OAUTH2",
     "providerSupported": true,
     "hasReadActions": true
   },
@@ -552,10 +552,10 @@
   {
     "vendorKey": "cal_com",
     "type": "Cal.com",
-    "integrationId": "cal-com",
+    "integrationId": "gravitre-cal-com-oauth",
     "category": "Operations / Workflow",
     "description": "Get Cal.com profile",
-    "authMode": "API_KEY",
+    "authMode": "OAUTH2",
     "providerSupported": true,
     "hasReadActions": true
   },
@@ -825,6 +825,86 @@
     "integrationId": "contentful",
     "category": "Learning / Creative",
     "description": "List Contentful spaces",
+    "authMode": "OAUTH2",
+    "providerSupported": true,
+    "hasReadActions": true
+  },
+  {
+    "vendorKey": "bamboohr",
+    "type": "BambooHR",
+    "integrationId": "gravitre-bamboohr",
+    "category": "HR / People",
+    "description": "Employee and time-off data through your authorized BambooHR account",
+    "authMode": "OAUTH2",
+    "providerSupported": true,
+    "hasReadActions": true
+  },
+  {
+    "vendorKey": "greenhouse",
+    "type": "Greenhouse",
+    "integrationId": "gravitre-greenhouse-harvest",
+    "category": "HR / People",
+    "description": "Recruiting data through Greenhouse Harvest v3 partner OAuth",
+    "authMode": "OAUTH2",
+    "providerSupported": true,
+    "hasReadActions": true
+  },
+  {
+    "vendorKey": "ahrefs",
+    "type": "Ahrefs",
+    "integrationId": "gravitre-ahrefs",
+    "category": "CRM / Marketing",
+    "description": "SEO and visibility data within your Ahrefs account entitlements",
+    "authMode": "OAUTH2",
+    "providerSupported": true,
+    "hasReadActions": true
+  },
+  {
+    "vendorKey": "linear",
+    "type": "Linear",
+    "integrationId": "gravitre-linear",
+    "category": "Operations / Workflow",
+    "description": "Issues and project coordination",
+    "authMode": "OAUTH2",
+    "providerSupported": true,
+    "hasReadActions": true
+  },
+  {
+    "vendorKey": "gitlab",
+    "type": "GitLab",
+    "integrationId": "gravitre-gitlab",
+    "category": "Storage / Dev / Infra",
+    "description": "GitLab.com projects, issues and merge requests",
+    "authMode": "OAUTH2",
+    "providerSupported": true,
+    "hasReadActions": true
+  },
+  {
+    "vendorKey": "shopify",
+    "type": "Shopify",
+    "integrationId": "gravitre-shopify",
+    "category": "CRM / Marketing",
+    "description": "Store products, orders and customers",
+    "authMode": "OAUTH2",
+    "providerSupported": true,
+    "hasReadActions": true
+  },
+  {
+    "vendorKey": "paypal",
+    "type": "PayPal",
+    "integrationId": "gravitre-paypal",
+    "category": "Payments / Finance",
+    "description": "Authorized payment and dispute records",
+    "authMode": "OAUTH2",
+    "providerSupported": true,
+    "hasReadActions": true
+  },
+  {
+    "vendorKey": "meta_marketing",
+    "type": "Meta Marketing",
+    "integrationId": "gravitre-meta-marketing",
+    "category": "CRM / Marketing",
+    "description": "Ad-account campaigns and ad sets",
     "authMode": "OAUTH2",
     "providerSupported": true,
     "hasReadActions": true

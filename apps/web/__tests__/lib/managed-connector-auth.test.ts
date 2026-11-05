@@ -17,7 +17,8 @@ afterEach(() => { vi.useRealTimers() })
 
 it("maps every managed display name without changing native auth", () => {
   const managed = CONNECTOR_CATALOG.filter((c) => isManagedConnectorVendor(c.vendorKey))
-  expect(managed).toHaveLength(83)
+  // Eight requested OAuth providers were added to the original 83 entries.
+  expect(managed).toHaveLength(91)
   for (const c of managed) { expect(connectorVendorKey(c.type)).toBe(c.vendorKey); expect(isOAuthVendorKey(c.vendorKey)).toBe(true) }
   expect(isManagedConnectorVendor("HubSpot")).toBe(false)
 })

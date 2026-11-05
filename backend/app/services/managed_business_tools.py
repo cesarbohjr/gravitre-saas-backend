@@ -34,6 +34,10 @@ def _executor(spec: dict[str, Any]):
                 raise ToolValidationError("Harvest requires a numeric harvest_account_id")
             headers["Harvest-Account-Id"] = account_id
         cid, connection_id, integration_id = _managed_connector(ctx, spec["vendor"], params)
+        # Cal.com's OAuth template has a root API origin; the legacy API-key
+        # template already includes /v2 in its base. Both confirmed accounts work.
+        if spec["vendor"] == "cal_com" and integration_id == "gravitre-cal-com-oauth":
+            path = "/v2/me"
         try:
             response = proxy_request(ctx.settings, method="GET", endpoint=path,
                                      connection_id=connection_id, integration_id=integration_id,

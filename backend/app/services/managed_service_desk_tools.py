@@ -59,7 +59,7 @@ def _managed_connector(
     connection_id = str(config.get("managed_connection_id") or "").strip()
     integration_id = str(config.get("managed_integration_id") or "").strip()
     from app.connectors.nango_registry import get_nango_connector_spec
-    spec = get_nango_connector_spec(vendor)
+    spec = get_nango_connector_spec(vendor, integration_id=integration_id)
     if spec is None or integration_id != spec.integration_id:
         raise ToolValidationError("Managed integration mismatch")
     if not connection_id or not integration_id:
