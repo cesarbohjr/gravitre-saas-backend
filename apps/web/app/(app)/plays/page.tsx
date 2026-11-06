@@ -22,7 +22,8 @@ import {
 } from "@/components/ui/alert-dialog"
 import { apiFetch, fetcher } from "@/lib/fetcher"
 import { playsApi, type PlayImpactSummary, type PlayListItem, type PlayOperatingMode } from "@/lib/api"
-import { resolveProvider } from "@/lib/provider-registry"
+import { hasProviderMark, resolveProvider } from "@/lib/provider-registry"
+import { ProviderLogo } from "@/components/gravitre/provider-logo"
 import { cn } from "@/lib/utils"
 import {
   READINESS_LABEL,
@@ -592,10 +593,15 @@ function PlaysBoard() {
                                 {chips.slice(0, 3).map((chip, index) => (
                                   <span
                                     key={`${chip.vendor}-${index}`}
-                                    className={cn("pl-app", !chip.ready && "miss")}
+                                    className={cn("pl-app", hasProviderMark(chip.vendor) && "brand", !chip.ready && "miss")}
                                     title={chip.ready ? vendorName(chip.vendor) : `${vendorName(chip.vendor)} (not connected)`}
                                   >
-                                    {appInitials(chip.vendor)}
+                                    {/* Official mark from the shared provider registry; letters only when there is none. */}
+                                    {hasProviderMark(chip.vendor) ? (
+                                      <ProviderLogo provider={chip.vendor} size="sm" theme="light" decorative />
+                                    ) : (
+                                      appInitials(chip.vendor)
+                                    )}
                                   </span>
                                 ))}
                                 {chips.length === 0 ? <span className="pl-desc">None</span> : null}
