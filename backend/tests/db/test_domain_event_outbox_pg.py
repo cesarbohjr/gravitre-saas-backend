@@ -493,3 +493,63 @@ def test_release_returns_event_without_spending_an_attempt(pg):
     assert row == "pending:0:true"
     denied = pg.psql(f"SET ROLE authenticated; SELECT public.release_domain_event({eid}, 'w');", check=False)
     assert denied.returncode != 0 and "permission denied" in denied.stderr
+
+
+def test_real_outbox_relay_handler_effect_and_privacy_safe_link(pg, monkeypatch, caplog):
+    """Real PostgreSQL run -> trigger -> claimed relay -> durable consumer effect.
+
+    This is an isolated *partial* runtime handoff, not a complete agent/play
+    execution and not a production acceptance test.
+    """
+    import logging
+    import re
+    from app.services import domain_events as de
+
+    monkeypatch.setenv("PR605_EXECUTION_EDGE_TELEMETRY_ENABLED", "true")
+    monkeypatch.setenv("PR605_EXECUTION_EDGE_HMAC_KEY", "synthetic-postgres-evidence-key-" * 2)
+    pg.psql("""CREATE TABLE IF NOT EXISTS public.gate26_consumer_effects (
+        event_id bigint PRIMARY KEY, aggregate_id uuid NOT NULL,
+        effect_kind text NOT NULL CHECK (effect_kind = 'synthetic_recorded')
+    ); TRUNCATE public.gate26_consumer_effects;""")
+    run_id = _new_run(pg)
+    pg.psql(f"UPDATE public.workflow_runs SET status = 'completed' WHERE id = '{run_id}';")
+    row = _events(pg)[0]
+    assert row["aggregate_id"] == run_id
+
+    def persist_effect(_client, event):
+        # Simulates a real idempotent consumer write, rather than a list append.
+        # Event and aggregate identities come from the claimed database row.
+        assert event["aggregate_type"] == "workflow_run"
+        assert event["aggregate_id"] == run_id
+        pg.psql(
+            "INSERT INTO public.gate26_consumer_effects (event_id, aggregate_id, effect_kind) "
+            f"VALUES ({int(event['id'])}, '{run_id}', 'synthetic_recorded') "
+            "ON CONFLICT (event_id) DO NOTHING;"
+        )
+
+    de.reset_domain_event_handlers_for_tests()
+    de.register_domain_event_handler(de.EVENT_EXECUTION_OUTCOME_FINALIZED,
+                                     "gate26_synthetic_effect", persist_effect)
+    try:
+        relay = de.DomainEventRelay(_PsqlRpcClient(pg), worker_id="gate26-acceptance")
+        with caplog.at_level(logging.INFO, logger="app.runtime_execution_edges"):
+            tick = relay.run_once()
+            replay = relay.run_once()
+    finally:
+        de.reset_domain_event_handlers_for_tests()
+    assert tick.delivered == 1 and replay.claimed == 0
+    assert pg.value("SELECT count(*) FROM public.gate26_consumer_effects;") == "1"
+    effect = json.loads(pg.value(
+        "SELECT row_to_json(e) FROM public.gate26_consumer_effects e;"
+    ))
+    assert effect["aggregate_id"] == run_id
+    delivered = _events(pg)[0]
+    assert delivered["status"] == "delivered"
+    assert delivered["delivered_handlers"] == ["gate26_synthetic_effect"]
+    lines = caplog.text.splitlines()
+    link = next(x for x in lines if "kind=workflow_run_outbox" in x)
+    consumer = next(x for x in lines if "owner=event_consumer stage=completed" in x)
+    event_digest = re.search(r"event=([0-9a-f]{24})", link).group(1)
+    assert f"correlation={event_digest}" in consumer
+    assert run_id not in caplog.text
+    assert str(row["id"]) not in link
