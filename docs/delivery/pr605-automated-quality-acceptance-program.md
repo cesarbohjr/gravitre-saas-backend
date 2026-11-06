@@ -48,3 +48,25 @@ P5: controlled post-deployment production smoke tests only after separate approv
 
 ## Definition of done
 A pull request cannot claim full certification until required suites pass on its exact head, all critical journeys have persisted-effect assertions, missing coverage is explicitly listed, and release approval remains separate. No claim of zero monetary cost or production equivalence.
+
+## GitHub Actions rationalization and Master QA naming (mandatory Phase 0 gate)
+Before adding more workflows, inventory **every** `.github/workflows/*.yml` and `*.yaml` file and its triggers, branch/path filters, required-check status, ownership, dependencies, last meaningful run, average duration, artifacts, secrets, external network access, and estimated runner-minute/storage consumption. Include reusable workflows and workflow_call dependencies. Produce a versioned workflow inventory and explicit KEEP / CONSOLIDATE / RETIRE / INVESTIGATE disposition with evidence.
+
+- **KEEP** active merge protections, security scanning, migration safety, deployment controls, and specialized tests that have distinct value.
+- **CONSOLIDATE** overlapping jobs and repeated installs into reusable workflows/composite actions while preserving independent required status checks, path coverage, and failure isolation. Do not create one enormous un-debuggable job.
+- **RETIRE** obsolete or superseded workflows only after proving no callers, required branch-protection references, deployment triggers, or release dependencies remain. Prefer a reviewable deletion PR with rollback instructions; do not delete existing workflows automatically as part of the inventory.
+- **INVESTIGATE** unknown or infrequently triggered workflows; inactivity alone is not proof of irrelevance.
+- Never weaken protections or remove a required status check without separately reviewing branch rulesets, deployment protections, and the replacement check.
+
+Proposed clearly labeled master sequence (names provisional until inventory):
+1. `QA 00 — Change Scope & Contract Checks`: fast PR lint, static analysis, unit tests, schemas and policy.
+2. `QA 10 — Synthetic Integration & Data Durability`: disposable PostgreSQL/Redis, billing webhooks, event relay, retries, tenant isolation.
+3. `QA 20 — Agent, Play & Enterprise Workflow Acceptance`: simulated CRM, marketing, support, connector OAuth and authorization, persisted outcomes.
+4. `QA 30 — Chat, Model & Voice Quality`: text/voice regressions, latency and deterministic evaluations; optional calibrated model-based evals only with cost approval.
+5. `QA 40 — Browser & API End-to-End`: Playwright and API journeys against ephemeral local app processes.
+6. `QA 50 — Extended Reliability`: manual/nightly fault injection, concurrency, recovery and performance with configured budgets.
+7. `QA 90 — Master Release Evidence`: collect exact-head results, distinguish missing/skipped/cancelled from passed, publish audit artifacts and block certification on required failures.
+
+Prefer one clearly named entry workflow invoking smaller reusable jobs; maintain explicit individual status checks and clear ownership. Configure concurrency cancellation, least-privilege permissions, bounded timeouts, path filters only where safe, artifact retention limits, dependency caching, and no live credentials. Verify that required jobs do not disappear under path filtering. Keep production deployment separate from QA automation and approval-gated.
+
+**Exit criteria:** workflow inventory complete; approved dispositions recorded; legacy checks mapped to replacements; branch protections checked; master QA labels consistent; reduced duplicate CI work measured; no loss of security, integration, or release coverage.
