@@ -16,6 +16,7 @@ on:
       - "backend/tests/services/test_connector_*.py"
       - "backend/tests/services/test_action_workflow_validation.py"
       - "backend/tests/services/test_chat_connector_execution.py"
+      - "backend/tests/services/test_gate26_connector_relay_behavior.py"
       - "backend/tests/services/test_chat_orchestration.py"
       - "backend/tests/services/test_chat_action_mapper.py"
       - "backend/tests/services/test_react_inference_parity.py"
@@ -33,6 +34,7 @@ on:
       - "backend/tests/services/test_connector_*.py"
       - "backend/tests/services/test_action_workflow_validation.py"
       - "backend/tests/services/test_chat_connector_execution.py"
+      - "backend/tests/services/test_gate26_connector_relay_behavior.py"
       - "backend/tests/services/test_chat_orchestration.py"
       - "backend/tests/services/test_chat_action_mapper.py"
       - "backend/tests/services/test_react_inference_parity.py"
@@ -109,6 +111,7 @@ jobs:
             tests/services/test_connector_capability_analysis.py \
             tests/services/test_connector_session_state.py \
             tests/services/test_chat_connector_execution.py \
+            tests/services/test_gate26_connector_relay_behavior.py \
             tests/services/test_chat_orchestration.py \
             tests/services/test_chat_action_mapper.py \
             tests/services/test_react_inference_parity.py \
