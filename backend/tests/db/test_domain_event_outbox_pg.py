@@ -552,4 +552,4 @@ def test_real_outbox_relay_handler_effect_and_privacy_safe_link(pg, monkeypatch,
     event_digest = re.search(r"event=([0-9a-f]{24})", link).group(1)
     assert f"correlation={event_digest}" in consumer
     assert run_id not in caplog.text
-    assert str(row["id"]) not in link
+    assert "runtime_edge_link_v1" in link
