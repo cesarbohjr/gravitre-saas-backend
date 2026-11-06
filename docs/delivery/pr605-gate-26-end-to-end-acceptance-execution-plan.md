@@ -38,3 +38,17 @@ Classify each execution surface as **KEEP**, **UPGRADE**, or **CONSOLIDATE CANDI
 ## Current decision
 
 **Do not deploy, enable production correlation, collect remote runtime traces, merge, backfill, or retire.** Finish exact-head CI, secure both #607 approvals and acceptance-environment identity, then execute the six scenarios under a named operator and capture redacted evidence.
+
+## Owner decision update — November 5, 2026: production-only live acceptance
+
+The project owner directs that **final live runtime acceptance take place in production after an explicitly approved merge and deployment**, not in a separate paid staging/acceptance environment. This supersedes the earlier environment-selection recommendation, **not** the requirements for CI, privacy, write safety, rollback or evidence. No additional environment should be provisioned. The owner has also accepted responsibility for both Security/Privacy and Operations/SRE reviews as a documented exception to the independent-review requirement (issue #607); do not represent this as two independent approvals.
+
+**Release order:**
+1. Pre-merge: complete all applicable no-paid-provider exact-head CI and disposable CI PostgreSQL tests; repair confirmed failures. As of this update, isolated PostgreSQL run 42159816259 passed **26 tests** on `efc48dc6`; full CI run 42159816226 remained **in progress**.
+2. Obtain explicit owner merge approval; merge only the certified SHA. Do not infer merge authorization from the instruction to test in production.
+3. Obtain explicit deployment approval, record the deployment commit, production service identity, rollback target and on-call operator; deploy with production-safe flags defaulting **off**.
+4. Conduct **post-deploy production acceptance** with synthetic tenant/test accounts and least-privilege, read-only checks first. Require separate explicit authorization for any mutating connector/provider test, production DB migration, telemetry activation, or customer-data access. Set a bounded window, log retention, access restrictions, abort criteria and rollback owner before collection. Do not enable HMAC telemetry automatically merely because the owner chose production testing.
+5. Validate actual persisted outcomes, provider authorization and readback, cancellation/revocation, event-consumer effects, retries, tenant isolation and privacy-safe trace links; record PASS/FAIL per scenario. A failing test triggers a rollback/repair decision, not a fabricated certification.
+6. Only after successful production evidence and a separate retirement decision may any legacy implementation be considered for removal.
+
+**Current state:** no production testing or deployment performed; PR remains draft, unmerged. The end-to-end deployed chain remains **not yet certified**.
