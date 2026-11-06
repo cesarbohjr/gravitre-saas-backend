@@ -111,7 +111,8 @@ def test_retries_failed_handler_without_reexecuting_delivered_handler(monkeypatc
         effects.append("stable")
 
     def flaky(_client, _event):
-        if first_failure.pop(0):
+        if first_failure[0]:
+            first_failure[0] = False
             raise RuntimeError("fixture-induced failure")
         effects.append("recovered")
 
