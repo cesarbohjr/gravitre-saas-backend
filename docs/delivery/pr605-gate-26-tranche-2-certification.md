@@ -44,3 +44,19 @@ These are mock and pure-function regressions, not production connector-consent o
 - At the time of inspection, prior Connector Governance run `42155142972` was **cancelled**, the earlier route inventory job was still running, and GitHub had not returned new-head workflow results. No exact-head CI or PostgreSQL success is claimed. The latest head must be checked again after workflow dispatch.
 
 **Still open:** exact-head CI including the new PostgreSQL suite, real runtime trace / dynamic caller evidence, and any discovered test repairs. No retirements.
+
+## CI evidence after execution — confirmed repair
+
+- Exact-head tested: `bbc1ec5756750163d004def3bf0e13a684757b66`.
+- Isolated PostgreSQL outbox acceptance **PASS**: [run 42155554988](https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/42155554988), job 127688733750, PostgreSQL 16 binaries detected, **25 passed, 1 warning, zero skipped**. This proves the tested outbox migration on a local throwaway cluster (transaction rollback, atomic producer, concurrent claims, lease fencing, retry, RLS and handler replay), **not** production migration identity or all cross-service runtime effects.
+- Connector Governance **PASS**: [run 42155554965](https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/42155554965).
+- Supabase migration safety **PASS**: [run 42155554980](https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/42155554980).
+- Privacy-safe runtime edge contract **PASS**: [run 42155555008](https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/42155555008).
+- Registered route inventory **PASS**: [run 42155555030](https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/42155555030).
+- Cross-surface ownership **FAIL**: [run 42155555074](https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/42155555074), job 127688734280. Log: **6 tests passed**, `source_ownership_candidates=10 missing=0`, `source_owners=19 method_edges=1167 missing=0`, then `AssertionError` because the CI workflow expected **20** owners. The previous change had assumed 8 additions, but the actual source registry contains 19. Repaired assertion to 19 in commit `fb078187`. Must rerun and confirm.
+- Full CI run [42155555123](https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/42155555123) was **pending** when inspected, not certified. Other scoped workflows reported success at the prior head.
+- New head after repair is subject to **fresh exact-head** CI. Previous green runs cannot certify a new SHA.
+
+### Remaining dynamic coverage and retirement block
+
+The existing PostgreSQL suite proves actual local event-consumer effects and replay, but the whole agent → play → workflow → connector → outbox → consumer chain has not been observed as one shared typed, privacy-reviewed runtime trace. Need an authorized acceptance-environment execution with consent and no raw org/user/customer IDs or provider payloads in telemetry; capture persisted consumer effects, authorization/revocation/cancellation and retry checkpoints. Feature-flagged source purge, outcome learning and Temporal registrations cannot be deemed live from static code. **No retirement candidate is certified.**
