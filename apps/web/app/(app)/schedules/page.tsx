@@ -149,6 +149,14 @@ function SchedulesCalendar() {
     { revalidateOnFocus: false },
   )
   const brokenConnectors = useMemo(() => (connectorData?.connectors ?? []).filter(needsReconnect), [connectorData])
+  // The hub art shows the workspace's own systems, with the broken one last so its link is the cut one.
+  const artApps = useMemo<[string, string, string] | undefined>(() => {
+    const all = connectorData?.connectors ?? []
+    const healthy = all.filter((c) => !needsReconnect(c))
+    const order = [...healthy, ...all.filter(needsReconnect)]
+    const keys = Array.from(new Set(order.map((c) => c.type).filter((t): t is string => Boolean(t))))
+    return keys.length >= 3 ? [keys[0], keys[1], keys[keys.length - 1]] as [string, string, string] : undefined
+  }, [connectorData])
 
   // Quiet hours are per person: they hold email and Slack alerts, not the runs themselves.
   const { data: prefsData } = useSWR(user ? PREFERENCES_KEY : null, () => notificationPrefsApi.get(), { revalidateOnFocus: false })
@@ -578,7 +586,7 @@ function SchedulesCalendar() {
 
         <article className="au-feature">
           <div className="au-feature-art tall">
-            <ConnectionsQueueArt broken={brokenConnectors.length > 0} />
+            <ConnectionsQueueArt broken={brokenConnectors.length > 0} apps={artApps} />
           </div>
           <div className="au-feature-body">
             <span className="au-eyebrow">Connections</span>

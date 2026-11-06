@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, type ReactNode } from "react"
 import { Bell, Check, CircleAlert, Info, Loader2, TriangleAlert, X } from "lucide-react"
+import { VendorTile } from "@/components/connectors/redesign/art"
 import { vendorLook } from "@/components/connectors/redesign/vendor-look"
 import { registerConnectorsToaster, removeConnectorsToast, type ConnectorsToast, type ConnectorsToastTone } from "./toast"
 
@@ -59,10 +60,8 @@ function ToastCard({ item, paused }: { item: ConnectorsToast; paused: boolean })
   return (
     <div role={item.tone === "error" ? "alert" : "status"} className="cno-toast" data-tone={item.tone}>
       <div className="cno-toast-body">
-        {look ? (
-          <span className="cno-tile mono" style={{ background: look.bg, color: look.fg }} aria-hidden>
-            {look.mono}
-          </span>
+        {item.vendor ? (
+          <VendorTile vendor={item.vendor} base="cno-tile" />
         ) : (
           <span className="cno-tile" aria-hidden>
             {ICONS[item.tone]}

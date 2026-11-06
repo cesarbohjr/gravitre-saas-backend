@@ -26,6 +26,7 @@ import {
 } from "@/components/intelligence/overview/overview-model"
 import type { PromotionCandidate } from "@/lib/api"
 import type { Connector } from "@/types/api"
+import { providerLogoSrc } from "@/lib/provider-registry"
 import "./overview.css"
 
 // ---------------------------------------------------------------- shared bits
@@ -107,7 +108,6 @@ export const GLANCE_LOOK: Record<GlanceCard["id"], { bg: string; fg: string; pat
   approval: { bg: "#FBF1DC", fg: "#8A5A06", path: "M12 8v4l2.5 2.5M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18z" },
 }
 
-const LOGOS = new Set(["gmail", "hubspot", "microsoft_teams", "outlook", "slack", "stripe", "zendesk"])
 const BRAND: Record<string, string> = {
   hubspot: "#FF7A59",
   zendesk: "#03363D",
@@ -132,18 +132,18 @@ export function brandColor(vendor: string): string {
   return BRAND[vendorKey(vendor)] ?? "#8A8B85"
 }
 
-/** Small round app mark: the vendor's logo when we ship one, else its initial. */
+/** Small round app mark: the vendor's official logo from the provider registry, else its initial. */
 export function AppDot({ vendor, name, size }: { vendor: string; name: string; size?: number }) {
-  const key = vendorKey(vendor)
+  const src = providerLogoSrc(vendorKey(vendor)) ?? providerLogoSrc(vendor)
   const box = size ? { width: size, height: size, fontSize: Math.round(size * 0.45) } : {}
-  if (LOGOS.has(key)) {
+  if (src) {
     return (
       <span
         className="io-appdot"
         aria-hidden
         style={{
           ...box,
-          background: `#FFFFFF url(/connector-logos/${key}.svg) center / 62% no-repeat`,
+          background: `#FFFFFF url(${src}) center / 62% no-repeat`,
           boxShadow: "inset 0 0 0 1px #E4E4DF",
         }}
       />
@@ -555,11 +555,12 @@ function KnowledgeArt({ apps }: { apps: Connector[] }) {
         {rows.map((y, i) => {
           const app = apps[i]
           const key = app ? vendorKey(String(app.vendor ?? "")) : ""
+          const src = app ? providerLogoSrc(key) ?? providerLogoSrc(String(app.vendor ?? "")) : undefined
           return (
             <g key={`a${y}`} className={`kx-app kx-a${i}`}>
               <circle cx="30" cy={y} r="11" fill="#FFFFFF" stroke="#E4E4DF" />
-              {app && LOGOS.has(key) ? (
-                <image href={`/connector-logos/${key}.svg`} x="23.125" y={y - 6.875} width="13.75" height="13.75" />
+              {app && src ? (
+                <image href={src} x="23.125" y={y - 6.875} width="13.75" height="13.75" />
               ) : app ? (
                 <text x="30" y={y + 3.6} textAnchor="middle" fontSize="10" fontWeight="700" fill={brandColor(key)}>
                   {appName(app).charAt(0).toUpperCase()}

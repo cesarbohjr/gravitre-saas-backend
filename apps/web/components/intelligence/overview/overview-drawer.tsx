@@ -28,13 +28,13 @@ import { EVIDENCE_FEED_PREFIX } from "@/components/intelligence/evidence-play-re
 import { SHARE_OPTIONS_KEY } from "@/components/intelligence/overlays/share-finding-dialog"
 import { toast } from "@/components/intelligence/overlays/toast"
 import {
+  AppDot,
   GLANCE_LOOK,
   IO_TEXT,
   Ico,
   KIND,
   PATHS,
   abilityStatus,
-  brandColor,
 } from "@/components/intelligence/overview/overview-sections"
 import {
   assistantApi,
@@ -647,17 +647,7 @@ function SharePanel({ item, path }: { item: FeedItem; path: string }) {
                       setAppId(a.id)
                     }}
                   >
-                    <span
-                      className="io-appdot"
-                      aria-hidden
-                      style={{
-                        width: 24,
-                        height: 24,
-                        background: `#FFFFFF url(/connector-logos/${vendor}.svg) center / 62% no-repeat`,
-                        boxShadow: "inset 0 0 0 1px #E4E4DF",
-                        color: brandColor(vendor),
-                      }}
-                    />
+                    <AppDot vendor={vendor} name={a.name} size={24} />
                     <span style={{ flex: 1, display: "flex", flexDirection: "column", gap: 1, textAlign: "left" }}>
                       <span style={{ fontSize: 14, fontWeight: 600 }}>{a.name}</span>
                       <span data-io-muted style={{ fontSize: 12.5, ...IO_TEXT.muted }}>

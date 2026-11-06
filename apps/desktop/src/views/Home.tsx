@@ -2,7 +2,7 @@ import { useState } from "react"
 import { policyLine } from "@web/components/approvals/decision-queue/model"
 import { useStore } from "../store"
 import { AgentAvatar, ErrorLine, Icon, Logo, MOD, Section } from "../ui"
-import { age, clock, dayLabel, greeting, percentDone, progressLine, systemBadge } from "../lib/model"
+import { age, clock, dayLabel, greeting, percentDone, progressLine } from "../lib/model"
 import { identityOf } from "../lib/identity"
 import { AgentChip, ModeSwitch } from "../components/Composer"
 
@@ -41,7 +41,7 @@ export function Home() {
       who: identityOf(agents, a.requestedBy),
       title: a.title,
       meta: [a.requestedBy, policyLine(a), age(a.requestedAt)].filter(Boolean).join(" · "),
-      system: systemBadge(a.context.integration),
+      system: a.context.integration || "",
       action: "Review",
       run: () => go({ view: "appr", select: a.id }),
     })),
@@ -110,7 +110,7 @@ export function Home() {
                       </span>
                       <span className="sub ell">{w.meta}</span>
                     </div>
-                    <Logo text={w.system} />
+                    <Logo system={w.system} />
                     <button className="btn btn-sm" onClick={w.run}>
                       {w.action}
                     </button>

@@ -2,6 +2,7 @@
 
 import { useId, type ReactNode } from "react"
 import { ArtFrame } from "@/components/agents/art/agents-art"
+import { providerLogoSrc } from "@/lib/provider-registry"
 import "./dashboard-art.css"
 
 /**
@@ -637,13 +638,19 @@ function CardArtFrame({ label, wash, children }: { label: string; wash: { cx: nu
   )
 }
 
+/** A connector in the hub art: its official mark when the registry has one, else two letters. */
 function AppTile({ y, code, tone }: { y: number; code: string; tone: "green" | "amber" }) {
+  const src = providerLogoSrc(code)
   return (
     <g>
-      <rect x="36" y={y} width="30" height="30" rx="8" fill="#FBF1DC" stroke="#D9D1C2" strokeWidth="1.5" />
-      <text x="51" y={y + 19} textAnchor="middle" fontFamily="Geist Mono, monospace" fontSize="9.5" fontWeight="600" fill="#33342F">
-        {code.slice(0, 2).toUpperCase()}
-      </text>
+      <rect x="36" y={y} width="30" height="30" rx="8" fill={src ? "#FFFFFF" : "#FBF1DC"} stroke="#D9D1C2" strokeWidth="1.5" />
+      {src ? (
+        <image href={src} x="43" y={y + 7} width="16" height="16" preserveAspectRatio="xMidYMid meet" />
+      ) : (
+        <text x="51" y={y + 19} textAnchor="middle" fontFamily="Geist Mono, monospace" fontSize="9.5" fontWeight="600" fill="#33342F">
+          {code.slice(0, 2).toUpperCase()}
+        </text>
+      )}
       <circle cx="64" cy={y + 2} r="4.5" fill={tone === "green" ? "#19C37D" : "#E2A33A"} stroke="#FBF1DC" strokeWidth="1.5" />
     </g>
   )
@@ -654,7 +661,7 @@ function AppTile({ y, code, tone }: { y: number; code: string; tone: "green" | "
  * bottom link is cut by a padlock and its runs queue up in amber with their count.
  */
 export function ConnectionsQueueArt({ broken, queued, apps }: { broken: boolean; queued?: number; apps?: [string, string, string] }) {
-  const [a, b, c] = apps ?? ["GS", "SL", "HS"]
+  const [a, b, c] = apps ?? ["google_sheets", "slack", "hubspot"]
   return (
     <CardArtFrame
       label={
