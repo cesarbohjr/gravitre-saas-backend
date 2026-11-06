@@ -23,8 +23,11 @@ async def test_orphan_finalization_dispatches_to_one_terminal_owner(
     All external fanout and storage are mocked. This does not certify durability.
     """
     outcome = SimpleNamespace(consequential=0, as_dict=lambda: {})
-    monkeypatch.setattr(service, "orchestration_terminal_status", lambda rows: "failed")
-    monkeypatch.setattr(service, "orchestration_outcome", lambda rows: outcome)
+    # The finalizer imports these helpers locally from the canonical runs module.
+    # Patch their defining module, not the chat service (which exports neither).
+    from app.services import chat_orchestration_runs
+    monkeypatch.setattr(chat_orchestration_runs, "orchestration_terminal_status", lambda rows: "failed")
+    monkeypatch.setattr(chat_orchestration_runs, "orchestration_outcome", lambda rows: outcome)
     monkeypatch.setattr(service, "orchestration_run_fully_completed", lambda rows: False)
     start = Mock(return_value=late_id)
     persisted = Mock()
