@@ -62,17 +62,23 @@ jobs:
                       'E2E_STRIPE_SECRET_KEY', 'E2E_STRIPE_PRICE_ID_NODE_MONTHLY',
                       'E2E_SUPABASE_ANON_KEY', 'E2E_SUPABASE_SERVICE_ROLE_KEY',
                       'E2E_SUPABASE_JWT_SECRET')
-          if any(not os.environ.get(key) for key in required):
-              raise SystemExit('Acceptance NOT RUN: configure isolated E2E secrets and allowed URL')
+          missing = [key for key in required if not os.environ.get(key)]
+          if missing:
+              raise SystemExit('Acceptance NOT RUN: missing configuration names: ' + ', '.join(missing))
           url = os.environ['E2E_SUPABASE_URL'].rstrip('/')
           allowed = os.environ['E2E_SUPABASE_ALLOWED_URL'].rstrip('/')
           parsed = urlsplit(url)
-          if (url != 'https://aadnwmjzrmbvadszroqt.supabase.co' or url != allowed
-                  or parsed.scheme != 'https' or not parsed.hostname
-                  or not parsed.hostname.endswith('.supabase.co')
-                  or parsed.username or parsed.password or parsed.query or parsed.fragment
-                  or not os.environ['E2E_STRIPE_SECRET_KEY'].startswith('sk_test_')):
-              raise SystemExit('Acceptance blocked: test-mode Stripe and exact allowed Supabase URL required')
+          checks = {
+              'dedicated_supabase_target': url == 'https://aadnwmjzrmbvadszroqt.supabase.co',
+              'allowed_url_matches_target': url == allowed,
+              'undecorated_https_target': (parsed.scheme == 'https' and bool(parsed.hostname)
+                  and parsed.hostname.endswith('.supabase.co')
+                  and not any((parsed.username, parsed.password, parsed.query, parsed.fragment))),
+              'stripe_test_mode_key': os.environ['E2E_STRIPE_SECRET_KEY'].startswith('sk_test_'),
+          }
+          failed = [name for name, passed in checks.items() if not passed]
+          if failed:
+              raise SystemExit('Acceptance blocked: failed configuration checks (values redacted): ' + ', '.join(failed))
           print('Isolated billing target and Stripe test mode verified (values redacted)')
           PY
       - name: Read-only application schema readiness preflight

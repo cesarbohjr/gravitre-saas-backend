@@ -10,15 +10,15 @@ import pytest
 ROOT = Path(__file__).resolve().parents[1] / ".github" / "workflows"
 
 
-@pytest.mark.parametrize("override, expected", [
-    ({}, 0),
-    ({"E2E_STRIPE_SECRET_KEY": "sk_live_synthetic_forbidden"}, 1),
-    ({"E2E_SUPABASE_URL": "https://production.invalid"}, 1),
-    ({"E2E_SUPABASE_ALLOWED_URL": "https://other.invalid"}, 1),
-    ({"E2E_SUPABASE_URL": "https://aadnwmjzrmbvadszroqt.supabase.co?x=1"}, 1),
-    ({"E2E_SUPABASE_SERVICE_ROLE_KEY": ""}, 1),
+@pytest.mark.parametrize("override, expected, diagnostic", [
+    ({}, 0, None),
+    ({"E2E_STRIPE_SECRET_KEY": "sk_live_synthetic_forbidden"}, 1, "stripe_test_mode_key"),
+    ({"E2E_SUPABASE_URL": "https://production.invalid"}, 1, "dedicated_supabase_target"),
+    ({"E2E_SUPABASE_ALLOWED_URL": "https://other.invalid"}, 1, "allowed_url_matches_target"),
+    ({"E2E_SUPABASE_URL": "https://aadnwmjzrmbvadszroqt.supabase.co?x=1"}, 1, "undecorated_https_target"),
+    ({"E2E_SUPABASE_SERVICE_ROLE_KEY": ""}, 1, "E2E_SUPABASE_SERVICE_ROLE_KEY"),
 ])
-def test_actual_billing_credential_guard_executes_and_fails_closed(override, expected):
+def test_actual_billing_credential_guard_executes_and_fails_closed(override, expected, diagnostic):
     workflow = (ROOT / "isolated-acceptance.yml").read_text()
     block = re.search(r"(?ms)^          python - <<'PY'\n(.*?)^          PY$", workflow)
     assert block, "Billing credential guard must exist before fixture seeding"
@@ -37,6 +37,8 @@ def test_actual_billing_credential_guard_executes_and_fails_closed(override, exp
     result = subprocess.run([sys.executable, "-c", source], env=env,
                             capture_output=True, text=True, timeout=5)
     assert result.returncode == expected, result.stderr
+    if diagnostic:
+        assert diagnostic in result.stderr
     assert not any(value in result.stdout + result.stderr for value in env.values() if value)
 
 
