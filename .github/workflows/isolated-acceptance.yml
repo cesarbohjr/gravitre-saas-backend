@@ -98,9 +98,9 @@ jobs:
           STRIPE_SECRET_KEY: ${{ secrets.E2E_STRIPE_SECRET_KEY }}
           STRIPE_PRICE_ID_NODE_MONTHLY: ${{ secrets.E2E_STRIPE_PRICE_ID_NODE_MONTHLY }}
           FASTAPI_BASE_URL: http://127.0.0.1:8000
-          PLAYWRIGHT_BASE_URL: http://127.0.0.1:3000
+          PLAYWRIGHT_BASE_URL: http://localhost:3000
           NEXT_PUBLIC_PLAYWRIGHT_E2E: '1'
-        run: npm run test:e2e
+        run: npx playwright test --config playwright.billing.acceptance.config.ts
       - name: Publish billing evidence
         if: always()
         uses: actions/upload-artifact@v4

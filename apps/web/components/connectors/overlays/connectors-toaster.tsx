@@ -1,15 +1,14 @@
 "use client"
 
 import { useEffect, useRef, useState, type ReactNode } from "react"
-import { Bell, Check, CircleAlert, Info, Loader2, TriangleAlert, X } from "lucide-react"
-import { VendorTile } from "@/components/connectors/redesign/art"
+import { Bell, Check, CircleAlert, Info, Loader2, ShieldAlert, X } from "lucide-react"
 import { vendorLook } from "@/components/connectors/redesign/vendor-look"
 import { registerConnectorsToaster, removeConnectorsToast, type ConnectorsToast, type ConnectorsToastTone } from "./toast"
 
 const ICONS: Record<ConnectorsToastTone, ReactNode> = {
   success: <Check size={18} strokeWidth={2.2} aria-hidden />,
   error: <CircleAlert size={18} strokeWidth={2.2} aria-hidden />,
-  warning: <TriangleAlert size={18} strokeWidth={2.2} aria-hidden />,
+  warning: <ShieldAlert size={18} strokeWidth={2.2} aria-hidden />,
   info: <Info size={18} strokeWidth={2.2} aria-hidden />,
   message: <Bell size={18} strokeWidth={2.2} aria-hidden />,
   loading: <Loader2 size={18} strokeWidth={2.2} className="cno-spin" aria-hidden />,
@@ -60,13 +59,10 @@ function ToastCard({ item, paused }: { item: ConnectorsToast; paused: boolean })
   return (
     <div role={item.tone === "error" ? "alert" : "status"} className="cno-toast" data-tone={item.tone}>
       <div className="cno-toast-body">
-        {item.vendor ? (
-          <VendorTile vendor={item.vendor} base="cno-tile" />
-        ) : (
-          <span className="cno-tile" aria-hidden>
-            {ICONS[item.tone]}
-          </span>
-        )}
+        {/* The shared overlay shell: a soft tone tile; the system is named in the eyebrow. */}
+        <span className="cno-tile" aria-hidden>
+          {ICONS[item.tone]}
+        </span>
         <div className="cno-toast-copy">
           <span className="cno-eyebrow">{eyebrow}</span>
           <span className="cno-toast-title">{item.title}</span>

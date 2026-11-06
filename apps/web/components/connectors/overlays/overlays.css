@@ -1,6 +1,6 @@
 /*
  * Connectors overlays ("Connector toasts and dialogs" design): white card,
- * 14px radius, hairline border, the system's mono tile, and a mono eyebrow
+ * 14px radius, hairline border, a soft tone tile and a mono eyebrow
  * naming the system and what happened ("QUICKBOOKS · CONNECTED"). Toasts stack
  * bottom left, three at most, full width on phones. Dialogs sit centered on a
  * 48% ink scrim and become bottom sheets on phones. Scoped to `cno-` so other
@@ -15,7 +15,7 @@
   --cno-track: #efefea;
   --cno-x: #55564f;
   position: fixed; left: 24px; bottom: 24px; z-index: 61;
-  width: 440px; max-width: calc(100% - 48px);
+  width: 400px; max-width: calc(100% - 48px);
   display: flex; flex-direction: column; gap: 14px;
   pointer-events: none;
   font-family: var(--font-geist), "Geist", system-ui, sans-serif;
@@ -163,23 +163,25 @@ textarea.cno-in { height: auto; min-height: 88px; padding: 10px 12px; line-heigh
 
 /* Add-connector flow: chips, vendor picks, steps */
 .cno-chips { display: flex; gap: 6px; flex-wrap: wrap; }
-.cno-chip { border: 1px solid var(--cno-border); background: var(--cno-card); color: var(--cno-ink); border-radius: 999px; padding: 6px 12px; font: inherit; font-size: 13px; cursor: pointer; }
+.cno-chip { border: 1px solid var(--cno-border); background: var(--cno-card); color: var(--cno-ink); border-radius: 999px; height: 32px; padding: 0 12px; font: inherit; font-size: 13px; font-weight: 500; cursor: pointer; }
+.cno-chip:hover { border-color: #cbcbc3; }
 .cno-chip[aria-pressed="true"] { background: #141513; border-color: #141513; color: #ffffff; }
 .dark .cno-chip[aria-pressed="true"] { background: #ededE8; border-color: #ededE8; color: #111211; }
 .cno-picks { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 10px; }
 .cno-pick {
   display: flex; gap: 10px; align-items: center; text-align: left; border: 1px solid var(--cno-border); background: var(--cno-card);
-  color: var(--cno-ink); border-radius: 12px; padding: 10px 12px; font: inherit; cursor: pointer; min-width: 0;
+  color: var(--cno-ink); border-radius: 12px; padding: 12px; gap: 12px; min-height: 64px; font: inherit; cursor: pointer; min-width: 0;
 }
-.cno-pick:hover { border-color: #cbcbc3; }
+.cno-pick:hover { border-color: #cbcbc3; background: #fbfbf8; }
+.dark .cno-pick:hover { background: #1d1f1c; }
 .cno-pick[aria-pressed="true"] { border-color: #0b8a5c; box-shadow: 0 0 0 3px rgba(25, 195, 125, 0.16); }
 .cno-pick[aria-disabled="true"] { opacity: 0.6; }
-.cno-pick .t { font-size: 14px; font-weight: 600; line-height: 1.3; }
-.cno-pick .s { font-size: 12.5px; color: var(--cno-muted); line-height: 1.35; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.cno-pick .cno-tile { width: 32px; height: 32px; border-radius: 9px; font-size: 11px; }
-.cno-steps { display: flex; gap: 8px; align-items: center; font-size: 12.5px; color: var(--cno-muted); }
+.cno-pick .t { font-size: 15px; font-weight: 600; line-height: 1.3; }
+.cno-pick .s { font-size: 13px; color: var(--cno-muted); line-height: 1.35; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cno-pick .cno-tile { width: 36px; height: 36px; border-radius: 10px; font-size: 11px; }
+.cno-steps { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; font-size: 13px; color: var(--cno-muted); }
 .cno-steps span[data-on] { color: var(--cno-ink); font-weight: 600; }
-.cno-steps i { width: 18px; height: 1px; background: var(--cno-border); }
+.cno-steps i { width: 16px; height: 1px; background: #cbcbc3; }
 .cno-can { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; font-size: 14px; color: #33342f; }
 .cno-can li { display: flex; gap: 10px; align-items: flex-start; }
 .cno-can li svg { flex: 0 0 auto; margin-top: 2px; color: #0b8a5c; }
