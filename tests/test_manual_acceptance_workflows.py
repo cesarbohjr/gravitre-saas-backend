@@ -1,7 +1,43 @@
 """Verify dedicated manual acceptance entrypoints and keep target restrictions immutable."""
 from pathlib import Path
+import re
+import subprocess
+import sys
+import textwrap
+
+import pytest
 
 ROOT = Path(__file__).resolve().parents[1] / ".github" / "workflows"
+
+
+@pytest.mark.parametrize("override, expected", [
+    ({}, 0),
+    ({"E2E_STRIPE_SECRET_KEY": "sk_live_synthetic_forbidden"}, 1),
+    ({"E2E_SUPABASE_URL": "https://production.invalid"}, 1),
+    ({"E2E_SUPABASE_ALLOWED_URL": "https://other.invalid"}, 1),
+    ({"E2E_SUPABASE_URL": "https://aadnwmjzrmbvadszroqt.supabase.co?x=1"}, 1),
+    ({"E2E_SUPABASE_SERVICE_ROLE_KEY": ""}, 1),
+])
+def test_actual_billing_credential_guard_executes_and_fails_closed(override, expected):
+    workflow = (ROOT / "isolated-acceptance.yml").read_text()
+    block = re.search(r"(?ms)^          python - <<'PY'\n(.*?)^          PY$", workflow)
+    assert block, "Billing credential guard must exist before fixture seeding"
+    source = textwrap.dedent(block.group(1))
+    compile(source, "billing-credential-guard", "exec")
+    env = {
+        "E2E_SUPABASE_URL": "https://aadnwmjzrmbvadszroqt.supabase.co",
+        "E2E_SUPABASE_ALLOWED_URL": "https://aadnwmjzrmbvadszroqt.supabase.co",
+        "E2E_STRIPE_SECRET_KEY": "sk_test_synthetic_no_provider_calls",
+        "E2E_STRIPE_PRICE_ID_NODE_MONTHLY": "price_synthetic",
+        "E2E_SUPABASE_ANON_KEY": "synthetic-anon",
+        "E2E_SUPABASE_SERVICE_ROLE_KEY": "synthetic-service",
+        "E2E_SUPABASE_JWT_SECRET": "synthetic-jwt",
+        **override,
+    }
+    result = subprocess.run([sys.executable, "-c", source], env=env,
+                            capture_output=True, text=True, timeout=5)
+    assert result.returncode == expected, result.stderr
+    assert not any(value in result.stdout + result.stderr for value in env.values() if value)
 
 
 def test_manual_billing_entrypoint_uses_shared_verified_suite():

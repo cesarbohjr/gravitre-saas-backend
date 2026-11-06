@@ -67,7 +67,8 @@ jobs:
           url = os.environ['E2E_SUPABASE_URL'].rstrip('/')
           allowed = os.environ['E2E_SUPABASE_ALLOWED_URL'].rstrip('/')
           parsed = urlsplit(url)
-          if (url != 'https://aadnwmjzrmbvadszroqt.supabase.co' or url != allowed\n                  or parsed.scheme != 'https' or not parsed.hostname
+          if (url != 'https://aadnwmjzrmbvadszroqt.supabase.co' or url != allowed
+                  or parsed.scheme != 'https' or not parsed.hostname
                   or not parsed.hostname.endswith('.supabase.co')
                   or parsed.username or parsed.password or parsed.query or parsed.fragment
                   or not os.environ['E2E_STRIPE_SECRET_KEY'].startswith('sk_test_')):
