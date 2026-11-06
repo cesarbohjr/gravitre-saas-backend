@@ -119,6 +119,8 @@
 .gv-ws .ov-page.dash .pl-apps { display: flex; gap: 4px; align-items: center; }
 .gv-ws .ov-page.dash .pl-app { width: 24px; height: 24px; border-radius: 6px; display: grid; place-items: center; font-family: var(--font-mono), "Geist Mono", ui-monospace, monospace; font-size: 9.5px; font-weight: 600; background: var(--ov-band); color: var(--ov-ink-2); border: 1px solid var(--ov-border); text-transform: uppercase; }
 .gv-ws .ov-page.dash .pl-app.miss { background: var(--ov-card); color: var(--ov-amber-ink); border: 1px dashed var(--ov-amber); }
+/* Official vendor marks sit on a white tile in both themes; not-connected keeps the dashed amber edge. */
+.gv-ws .ov-page.dash .pl-app.brand { background: #fff; }
 .gv-ws .ov-page.dash .pl-chev { width: 36px; color: var(--ov-control); }
 .gv-ws .ov-page.dash .pl-tbl tbody tr:hover .pl-chev { color: var(--ov-muted); }
 
@@ -137,3 +139,13 @@
   .gv-ws .ov-page.dash .pl-bar .ov-search input,
   .gv-ws .ov-page.dash .pl-flt select { font-size: 16px; }
 }
+
+/* Plays: shared app logo chips on cards, side panel and setup note */
+.gv-ws .ov-page.dash .pl-app.more { font-size: 10px; color: var(--ov-muted); }
+.gv-ws .ov-page.dash .au-card .pl-apps { flex-wrap: wrap; }
+/* Card footer wraps instead of spilling past the card edge in narrow columns. */
+.gv-ws .ov-page.dash .au-card .row.foot { flex-wrap: wrap; row-gap: 6px; }
+.gv-ws .ov-page.dash .au-card .row.foot .au-tag { max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+.gv-ws .ov-page.dash .au-connectors .au-conn-logo { width: 14px; height: 14px; }
+.gv-ws .ov-page.dash .au-blocker { display: flex; align-items: center; gap: 10px; }
+.gv-ws .ov-page.dash .au-blocker-logos { display: flex; gap: 4px; flex-shrink: 0; }

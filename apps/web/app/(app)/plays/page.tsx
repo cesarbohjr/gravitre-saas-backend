@@ -22,7 +22,8 @@ import {
 } from "@/components/ui/alert-dialog"
 import { apiFetch, fetcher } from "@/lib/fetcher"
 import { playsApi, type PlayImpactSummary, type PlayListItem, type PlayOperatingMode } from "@/lib/api"
-import { resolveProvider } from "@/lib/provider-registry"
+import { hasProviderMark, resolveProvider } from "@/lib/provider-registry"
+import { ProviderLogo } from "@/components/gravitre/provider-logo"
 import { cn } from "@/lib/utils"
 import {
   READINESS_LABEL,
@@ -113,6 +114,46 @@ function vendorName(slug: string): string {
 
 function workflowsLabel(count: number): string {
   return count === 1 ? "1 workflow" : `${count} workflows`
+}
+
+/** One app chip: the vendor's official mark from the provider registry, or two letters when it has none. */
+function AppChip({ vendor, ready }: { vendor: string; ready: boolean }) {
+  const branded = hasProviderMark(vendor)
+  return (
+    <span
+      className={cn("pl-app", branded && "brand", !ready && "miss")}
+      title={ready ? vendorName(vendor) : `${vendorName(vendor)} (not connected)`}
+    >
+      {branded ? <ProviderLogo provider={vendor} size="sm" theme="light" decorative /> : appInitials(vendor)}
+    </span>
+  )
+}
+
+/** The apps a play uses, as logo chips (table rows and cards share it). */
+function AppChips({ item, max = 3 }: { item: PlayListItem; max?: number }) {
+  const chips = connectorChips(item)
+  if (chips.length === 0) return <span className="pl-desc">None</span>
+  const extra = chips.length - max
+  return (
+    <span className="pl-apps" aria-label={`Apps: ${chips.map((chip) => vendorName(chip.vendor)).join(", ")}`}>
+      {chips.slice(0, max).map((chip, index) => (
+        <AppChip key={`${chip.vendor}-${index}`} vendor={chip.vendor} ready={chip.ready} />
+      ))}
+      {extra > 0 ? <span className="pl-app more">+{extra}</span> : null}
+    </span>
+  )
+}
+
+/** "connector group hunter | snov: not configured" -> the vendors it names, for a readable note with logos. */
+function blockerVendors(blocker: string): string[] | null {
+  const match = /^connector group (.+?):\s*(.+)$/i.exec(blocker.trim())
+  if (!match) return null
+  const vendors = match[1].split("|").map((vendor) => vendor.trim()).filter(Boolean)
+  return vendors.length ? vendors : null
+}
+
+function joinOr(names: string[]): string {
+  return names.length <= 1 ? names.join("") : `${names.slice(0, -1).join(", ")} or ${names[names.length - 1]}`
 }
 
 function ReadinessBadge({ state }: { state: PlayReadinessState }) {
@@ -556,7 +597,6 @@ function PlaysBoard() {
                         const dept = departmentKey(item)
                         const readiness = readinessOf(item)
                         const tier = tierOf(item)
-                        const chips = connectorChips(item)
                         return (
                           <tr
                             key={item.play.key}
@@ -588,18 +628,7 @@ function PlaysBoard() {
                               </span>
                             </td>
                             <td>
-                              <span className="pl-apps">
-                                {chips.slice(0, 3).map((chip, index) => (
-                                  <span
-                                    key={`${chip.vendor}-${index}`}
-                                    className={cn("pl-app", !chip.ready && "miss")}
-                                    title={chip.ready ? vendorName(chip.vendor) : `${vendorName(chip.vendor)} (not connected)`}
-                                  >
-                                    {appInitials(chip.vendor)}
-                                  </span>
-                                ))}
-                                {chips.length === 0 ? <span className="pl-desc">None</span> : null}
-                              </span>
+                              <AppChips item={item} />
                             </td>
                             <td className="num au-mono">{verifiedByPlay.get(item.play.key) ?? 0}</td>
                             <td className="pl-chev" aria-hidden>
@@ -709,6 +738,7 @@ function PlayCard({
       </span>
       <b>{item.play.name}</b>
       {compact ? null : <p>{item.play.objective}</p>}
+      {connectorChips(item).length ? <AppChips item={item} max={compact ? 3 : 5} /> : null}
       <span className="row foot">
         <span className="au-tag">{departmentLabel(departmentKey(item))}</span>
         <ReadinessBadge state={readinessOf(item)} />
@@ -770,7 +800,11 @@ function PlaySide({
           <div className="au-connectors">
             {chips.map((chip, index) => (
               <span key={`${chip.vendor}-${index}`} className={chip.ready ? undefined : "off"}>
-                <i aria-hidden />
+                {hasProviderMark(chip.vendor) ? (
+                  <ProviderLogo provider={chip.vendor} size="sm" theme="light" decorative className="au-conn-logo" />
+                ) : (
+                  <i aria-hidden />
+                )}
                 {chip.ready ? vendorName(chip.vendor) : (
                   <Link href={`/connectors?connect=${encodeURIComponent(chip.vendor)}`} aria-label={`Connect ${vendorName(chip.vendor)} in Gravitre`}>
                     {vendorName(chip.vendor)}
@@ -784,7 +818,7 @@ function PlaySide({
       ) : null}
 
       {readiness !== "ready" && item.readiness.blockers?.[0] ? (
-        <p className="ov-note">{item.readiness.blockers[0]}</p>
+        <BlockerNote blocker={item.readiness.blockers[0]} />
       ) : null}
 
       <div className="au-side-foot">
@@ -802,5 +836,23 @@ function PlaySide({
         </Link>
       </div>
     </aside>
+  )
+}
+
+function BlockerNote({ blocker }: { blocker: string }) {
+  const vendors = blockerVendors(blocker)
+  if (!vendors) return <p className="ov-note">{blocker}</p>
+  const names = vendors.map(vendorName)
+  return (
+    <p className="ov-note au-blocker">
+      <span className="au-blocker-logos" aria-hidden>
+        {vendors.map((vendor) => (
+          <AppChip key={vendor} vendor={vendor} ready={false} />
+        ))}
+      </span>
+      <span>
+        {vendors.length > 1 ? `Connect one of ${joinOr(names)} to turn this play on.` : `Connect ${names[0]} to turn this play on.`}
+      </span>
+    </p>
   )
 }
