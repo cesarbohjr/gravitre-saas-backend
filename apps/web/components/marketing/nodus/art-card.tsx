@@ -4,20 +4,24 @@ import { cn } from "@/lib/utils"
 
 /**
  * Animated image card from the Gravitre illustration library ("Editorial with
- * texture"): a grained scene that animates itself (the SVG carries its own
- * keyframes and stops under Reduce Motion), a status pill in the corner, and
- * the card's copy underneath. Used for page-header cards on marketing pages.
+ * texture"): a grained scene on the dotted gradient backdrop that animates
+ * itself (the SVG carries its own keyframes and stops under Reduce Motion), an
+ * optional status pill in the corner, and the card's copy underneath. Wide
+ * scenes pass `aspect` (e.g. "aspect-[32/11]") so nothing is cropped. Used
+ * for page-header cards on marketing pages.
  */
 export function ArtCard({
   src,
   alt,
   status,
+  aspect = "aspect-[4/3]",
   children,
   className,
 }: {
   src: string
   alt: string
-  status: string
+  status?: string
+  aspect?: string
   children?: ReactNode
   className?: string
 }) {
@@ -29,11 +33,13 @@ export function ArtCard({
         className,
       )}
     >
-      <div className="border-divide relative aspect-[4/3] overflow-hidden border-b bg-[#dedad0]">
-        <span className="absolute top-3 right-3 z-10 inline-flex items-center gap-1.5 rounded-full border border-[#e4e4df] bg-white/90 px-2.5 py-1 text-[11px] font-medium text-[#3e3f39]">
-          <span aria-hidden className="size-[7px] rounded-full bg-[#19c37d]" />
-          {status}
-        </span>
+      <div className={cn("border-divide relative overflow-hidden border-b bg-[#ebdfc8]", aspect)}>
+        {status ? (
+          <span className="absolute top-3 right-3 z-10 inline-flex items-center gap-1.5 rounded-full border border-[#e4e4df] bg-white/90 px-2.5 py-1 text-[11px] font-medium text-[#3e3f39]">
+            <span aria-hidden className="size-[7px] rounded-full bg-[#19c37d]" />
+            {status}
+          </span>
+        ) : null}
         <Image
           unoptimized
           priority
