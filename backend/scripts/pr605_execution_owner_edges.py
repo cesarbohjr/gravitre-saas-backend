@@ -17,6 +17,12 @@ SOURCES = {
     "assistant_ingress": "backend/app/routers/assistant.py",
     "voice_ws_ingress": "backend/app/routers/pipecat_voice.py",
     "connector_execution": "backend/app/services/chat_connector_execution_service.py",
+    "chat_orchestration": "backend/app/services/chat_orchestration_service.py",
+    "orchestration_run_repository": "backend/app/services/chat_orchestration_runs.py",
+    "write_authority": "backend/app/services/write_authority.py",
+    "speculative_execution": "backend/app/services/speculative_execution.py",
+    "turn_cancellation": "backend/app/services/turn_cancellation.py",
+    "connector_outcome_effects": "backend/app/services/connector_outcome_effects.py",
     "connector_registry": "backend/app/connectors/connector_availability_service.py",
     "connector_catalog": "backend/app/services/connector_execution_matrix.py",
     "agent_decision": "backend/app/operators/agent_intelligence.py",
@@ -24,10 +30,12 @@ SOURCES = {
     "workflow_strategy": "backend/app/services/workflow_execution_strategy.py",
     "terminal_outcome": "backend/app/services/execution_outcome.py",
     "event_outbox_relay": "backend/app/services/domain_events.py",
+    "runtime_correlation": "backend/app/services/runtime_execution_edge_telemetry.py",
     "event_relay_scheduler": "backend/app/schedulers/domain_event_relay_scheduler.py",
     "temporal_worker_registry": "backend/app/temporal/worker.py",
 }
-CRITICAL = {"assistant_ingress", "voice_ws_ingress", "connector_execution", "terminal_outcome",
+CRITICAL = {"assistant_ingress", "voice_ws_ingress", "connector_execution", "chat_orchestration",
+            "write_authority", "speculative_execution", "terminal_outcome",
             "event_outbox_relay", "event_relay_scheduler", "temporal_worker_registry"}
 
 
@@ -105,6 +113,7 @@ def collect(root: Path = ROOT) -> dict:
             "production traces not linked to AST edges",
             "production worker and feature flag selection not attested",
             "agent/play/workflow active caller chains not exhaustively proven",
+            "source-owner inventory includes orchestrator and write-fence paths but not all repository modules",
             "dynamic dispatch and database/event RPC consumers still require tracing",
         ],
     }
