@@ -35,3 +35,12 @@ These are mock and pure-function regressions, not production connector-consent o
 - **Remediation:** inspect next exact-head scoped tests, fix confirmed failures, run real PostgreSQL integration tests in an authorized isolated environment, and reconcile all source and dynamic caller/consumer gaps. Do not enable production telemetry without privacy approval.
 
 **Tranche 2 remains OPEN. No retirement, migration, deployment or merge approved.**
+
+## Exact-head CI triage and durable acceptance workflow (subsequent continuation)
+
+- The expanded AST source owner registry has **20** source files, but `.github/workflows/pr605-cross-surface-ownership.yml` still asserted 12. Fixed the stale assertion in commit `923a64ae`. This was a deterministic CI contract mismatch identified by inspection, **not** a previously observed failing job log; do not represent it as a CI failure until the job runs.
+- Existing `backend/tests/db/test_domain_event_outbox_pg.py` already exercises real disposable PostgreSQL transactions and idempotency (including rollback, concurrent claimers, lease fencing, retry/dead-letter, RLS and multi-relay delivery). New workflow `.github/workflows/pr605-gate26-postgres-outbox.yml` commit `8d172b33` explicitly installs PostgreSQL, refuses to count missing binaries as a skip, and runs that suite on the PR head. No production or Supabase database is touched by this workflow.
+- Source-backed caller and consumer matrix committed as `docs/delivery/pr605-gate-26-tranche-2-caller-consumer-map.md` commit `f4be6900`, including three orchestration connector branches, three relay consumer registrations, worker startup gates and six Temporal workflow / eight activity registrations. It is not an exhaustive runtime caller proof.
+- At the time of inspection, prior Connector Governance run `42155142972` was **cancelled**, the earlier route inventory job was still running, and GitHub had not returned new-head workflow results. No exact-head CI or PostgreSQL success is claimed. The latest head must be checked again after workflow dispatch.
+
+**Still open:** exact-head CI including the new PostgreSQL suite, real runtime trace / dynamic caller evidence, and any discovered test repairs. No retirements.
