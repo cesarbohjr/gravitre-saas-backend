@@ -46,7 +46,7 @@ jobs:
           assert report["retirement_certified"] is False
           edges = json.load(open(os.path.join(os.environ["RUNNER_TEMP"], "pr605", "execution-edges.json"), encoding="utf-8"))
           assert edges["commit"] == os.environ["GITHUB_SHA"]
-          assert len(edges["sources"]) == 12
+          assert len(edges["sources"]) == 20  # 12 original owners + 8 Gate 26 ownership/safety owners
           assert not edges["missing_sources"]
           assert edges["runtime_executions_observed"] == 0
           assert edges["retirement_certified"] is False
