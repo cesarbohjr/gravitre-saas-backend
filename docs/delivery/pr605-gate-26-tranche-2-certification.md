@@ -24,3 +24,14 @@ These are mock and pure-function regressions, not production connector-consent o
 5. Record SHA, run/job URLs, test counts, skipped tests, outstanding blockers, and independent review/approval before declaring Tranche 2 complete.
 
 **Status: IMPLEMENTATION IN PROGRESS — NOT CERTIFIED.** Zero approved retirements.
+
+## 2026-11-05 continuation: cancellation, revocation and durability
+
+- Commit `0df973e` adds four synthetic behavioral/source-contract checks in `backend/tests/services/test_gate26_cancellation_and_outbox_contract.py`: sticky cancellation of mutable writes, expiration of scoped human authority (subsequent write denied in enforce mode), discarded speculative writes never executing, and static Postgres outbox migration invariants (transactional triggers, idempotency unique key, leases/SKIP LOCKED, handler checkpoints and RLS).
+- Commit `510db140` wires this file into the Connector Governance workflow's PR trigger and scoped pytest command.
+- Commit `70a1a98e` expands the source-owner inventory to chat orchestration, orchestration-run persistence, write authority, speculation, turn cancellation, connector effect truth and typed runtime correlation. The output remains **static AST evidence**, not an exhaustive repository-wide or runtime inventory.
+- **Important distinction:** The migration contract check only proves SQL text declares expected features; it does **not** establish successful PostgreSQL migration, transaction rollback semantics, lease-owner enforcement, crash/restart idempotency, RLS tenant isolation or live side effects. Those need independent integration evidence.
+- CI lookup immediately after `70a1a98e` returned no runs. The earlier Connector Governance job for `50d76c5d` was cancelled (not a pass). Do not count cancelled, skipped, queued or pending as success.
+- **Remediation:** inspect next exact-head scoped tests, fix confirmed failures, run real PostgreSQL integration tests in an authorized isolated environment, and reconcile all source and dynamic caller/consumer gaps. Do not enable production telemetry without privacy approval.
+
+**Tranche 2 remains OPEN. No retirement, migration, deployment or merge approved.**
