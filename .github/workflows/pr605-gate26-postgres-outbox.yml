@@ -1,0 +1,63 @@
+name: PR605 Gate26 isolated PostgreSQL outbox acceptance
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'backend/tests/db/test_domain_event_outbox_pg.py'
+      - 'backend/tests/db/pg_harness.py'
+      - 'backend/tests/services/test_gate26_cancellation_and_outbox_contract.py'
+      - 'supabase/migrations/20261012024141_domain_event_outbox.sql'
+      - 'supabase/migrations/20261013020000_domain_event_claim_handled_types.sql'
+      - '.github/workflows/pr605-gate26-postgres-outbox.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  isolated-outbox:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Prepare isolated PostgreSQL binaries and runner
+        shell: bash
+        run: |
+          set -euo pipefail
+          for dir in /usr/local/lib/android /usr/share/dotnet /opt/ghc /usr/local/share/powershell; do
+            if [ -d "$dir" ]; then sudo rm -rf -- "$dir"; fi
+          done
+          sudo apt-get update -qq
+          sudo apt-get install -y postgresql postgresql-client
+          test -n "$(find /usr/lib/postgresql -name initdb -type f -print -quit)"
+          df -h /
+      - name: Install test dependencies
+        run: |
+          python -m pip install --no-cache-dir --no-compile -r requirements-dev.txt
+          python -m pip check
+      - name: Execute real throwaway PostgreSQL outbox suite
+        env:
+          APP_ENV: dev
+          SUPABASE_URL: https://test.supabase.co
+          SUPABASE_ANON_KEY: anon-test
+          SUPABASE_SERVICE_ROLE_KEY: service-role-test
+          SUPABASE_JWT_SECRET: jwt-secret-test
+          OPENAI_API_KEY: sk-test-openai
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from tests.db.pg_harness import PG_BIN
+          if PG_BIN is None:
+              raise SystemExit("PostgreSQL binaries absent: refusing to certify skipped tests")
+          print("Isolated PostgreSQL binaries:", PG_BIN)
+          PY
+          python -m pytest -q -rs tests/db/test_domain_event_outbox_pg.py
