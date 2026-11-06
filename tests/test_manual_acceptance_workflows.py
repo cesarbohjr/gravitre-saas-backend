@@ -13,6 +13,8 @@ ROOT = Path(__file__).resolve().parents[1] / ".github" / "workflows"
 @pytest.mark.parametrize("override, expected, diagnostic", [
     ({}, 0, None),
     ({"E2E_STRIPE_SECRET_KEY": "sk_live_synthetic_forbidden"}, 1, "stripe_test_mode_key"),
+    ({"E2E_STRIPE_PUBLISHABLE_KEY": "pk_live_synthetic_forbidden"}, 1, "stripe_test_publishable_key"),
+    ({"E2E_STRIPE_PUBLISHABLE_KEY": ""}, 1, "E2E_STRIPE_PUBLISHABLE_KEY"),
     ({"E2E_SUPABASE_URL": "https://production.invalid"}, 1, "dedicated_supabase_target"),
     ({"E2E_SUPABASE_ALLOWED_URL": "https://other.invalid"}, 1, "allowed_url_matches_target"),
     ({"E2E_SUPABASE_URL": "https://aadnwmjzrmbvadszroqt.supabase.co?x=1"}, 1, "undecorated_https_target"),
@@ -28,6 +30,7 @@ def test_actual_billing_credential_guard_executes_and_fails_closed(override, exp
         "E2E_SUPABASE_URL": "https://aadnwmjzrmbvadszroqt.supabase.co",
         "E2E_SUPABASE_ALLOWED_URL": "https://aadnwmjzrmbvadszroqt.supabase.co",
         "E2E_STRIPE_SECRET_KEY": "sk_test_synthetic_no_provider_calls",
+        "E2E_STRIPE_PUBLISHABLE_KEY": "pk_test_synthetic_no_provider_calls",
         "E2E_STRIPE_PRICE_ID_NODE_MONTHLY": "price_synthetic",
         "E2E_SUPABASE_ANON_KEY": "synthetic-anon",
         "E2E_SUPABASE_SERVICE_ROLE_KEY": "synthetic-service",

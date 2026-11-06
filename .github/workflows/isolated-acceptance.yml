@@ -32,6 +32,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 25
     environment: acceptance
+    env:
+      BILLING_ACCEPTANCE_ISOLATED: '1'
+      BILLING_ACCEPTANCE_ALLOWED_URL: ${{ vars.E2E_SUPABASE_ALLOWED_URL }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -50,6 +53,7 @@ jobs:
           E2E_SUPABASE_URL: ${{ secrets.E2E_SUPABASE_URL }}
           E2E_SUPABASE_ALLOWED_URL: ${{ vars.E2E_SUPABASE_ALLOWED_URL }}
           E2E_STRIPE_SECRET_KEY: ${{ secrets.E2E_STRIPE_SECRET_KEY }}
+          E2E_STRIPE_PUBLISHABLE_KEY: ${{ secrets.E2E_STRIPE_PUBLISHABLE_KEY }}
           E2E_STRIPE_PRICE_ID_NODE_MONTHLY: ${{ secrets.E2E_STRIPE_PRICE_ID_NODE_MONTHLY }}
           E2E_SUPABASE_ANON_KEY: ${{ secrets.E2E_SUPABASE_ANON_KEY }}
           E2E_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.E2E_SUPABASE_SERVICE_ROLE_KEY }}
@@ -59,7 +63,7 @@ jobs:
           import os
           from urllib.parse import urlsplit
           required = ('E2E_SUPABASE_URL', 'E2E_SUPABASE_ALLOWED_URL',
-                      'E2E_STRIPE_SECRET_KEY', 'E2E_STRIPE_PRICE_ID_NODE_MONTHLY',
+                      'E2E_STRIPE_SECRET_KEY', 'E2E_STRIPE_PUBLISHABLE_KEY', 'E2E_STRIPE_PRICE_ID_NODE_MONTHLY',
                       'E2E_SUPABASE_ANON_KEY', 'E2E_SUPABASE_SERVICE_ROLE_KEY',
                       'E2E_SUPABASE_JWT_SECRET')
           missing = [key for key in required if not os.environ.get(key)]
@@ -75,6 +79,7 @@ jobs:
                   and parsed.hostname.endswith('.supabase.co')
                   and not any((parsed.username, parsed.password, parsed.query, parsed.fragment))),
               'stripe_test_mode_key': os.environ['E2E_STRIPE_SECRET_KEY'].startswith('sk_test_'),
+              'stripe_test_publishable_key': os.environ['E2E_STRIPE_PUBLISHABLE_KEY'].startswith('pk_test_'),
           }
           failed = [name for name, passed in checks.items() if not passed]
           if failed:
@@ -92,6 +97,13 @@ jobs:
           pnpm --dir apps/web install --frozen-lockfile
           python -m pip install -r backend/requirements-dev.txt
           npx playwright install --with-deps chromium
+      - name: Validate test price and start signed webhook forwarding
+        env:
+          SUPABASE_URL: ${{ secrets.E2E_SUPABASE_URL }}
+          STRIPE_SECRET_KEY: ${{ secrets.E2E_STRIPE_SECRET_KEY }}
+          STRIPE_PRICE_ID_NODE_MONTHLY: ${{ secrets.E2E_STRIPE_PRICE_ID_NODE_MONTHLY }}
+          NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: ${{ secrets.E2E_STRIPE_PUBLISHABLE_KEY }}
+        run: python scripts/prepare-dedicated-billing-acceptance.py
       - name: Run authenticated billing E2E
         env:
           CI: 'true'
@@ -104,10 +116,29 @@ jobs:
           NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.E2E_SUPABASE_ANON_KEY }}
           STRIPE_SECRET_KEY: ${{ secrets.E2E_STRIPE_SECRET_KEY }}
           STRIPE_PRICE_ID_NODE_MONTHLY: ${{ secrets.E2E_STRIPE_PRICE_ID_NODE_MONTHLY }}
+          NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: ${{ secrets.E2E_STRIPE_PUBLISHABLE_KEY }}
+          COMMERCIAL_OFFERS_ENABLED: 'true'
+          DISABLE_AI: 'true'
+          BILLING_RECONCILIATION_ENABLED: 'false'
+          USAGE_SYNC_INTERVAL_SECONDS: '0'
+          PUBLIC_APP_URL: http://localhost:3000
+          NEXT_PUBLIC_APP_URL: http://localhost:3000
           FASTAPI_BASE_URL: http://127.0.0.1:8000
           PLAYWRIGHT_BASE_URL: http://localhost:3000
           NEXT_PUBLIC_PLAYWRIGHT_E2E: '1'
         run: npx playwright test --config playwright.billing.acceptance.config.ts
+      - name: Stop runner-local Stripe test listener
+        if: always()
+        run: |
+          python - <<'PY'
+          import os, pathlib, signal
+          path = pathlib.Path(os.environ['RUNNER_TEMP']) / 'dedicated-billing-stripe-listener.pid'
+          if path.exists():
+              try:
+                  os.killpg(int(path.read_text()), signal.SIGTERM)
+              except ProcessLookupError:
+                  pass
+          PY
       - name: Publish billing evidence
         if: always()
         uses: actions/upload-artifact@v4
@@ -171,7 +202,7 @@ jobs:
       - name: Install tests
         run: python -m pip install -r backend/requirements-dev.txt
       - name: Verify acceptance schema preflight fail-closed contracts
-        run: python -m pytest -q tests/test_isolated_acceptance_db.py tests/test_acceptance_initialization_preflight.py tests/test_manual_acceptance_workflows.py
+        run: python -m pytest -q tests/test_isolated_acceptance_db.py tests/test_acceptance_initialization_preflight.py tests/test_manual_acceptance_workflows.py tests/test_billing_acceptance_setup.py
       - name: Exercise twenty simulated cancelled turns
         working-directory: backend
         run: python -m pytest -q tests/scripts/test_voice_provider_roundtrip.py -k twenty_cancelled
