@@ -33,7 +33,7 @@ def test_ambiguous_commit_blocks_or_recovers_after_authoritative_readback(
     workflow_id = "22222222-2222-4222-8222-222222222222"
     nodes = [
         {"id": "trigger", "node_type": "source", "title": "Start"},
-        {"id": "write", "node_type": "invoke_tool", "title": "Create CRM fixture",
+        {"id": "write", "node_type": "connector", "title": "Create CRM fixture",
          "config": {"action": "hubspot.contacts.create",
                     "params": {"email": "qa-p27@example.invalid"}}},
         {"id": "continue", "node_type": "agent", "title": "Continue",
