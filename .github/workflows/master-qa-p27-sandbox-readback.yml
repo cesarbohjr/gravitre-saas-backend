@@ -1,4 +1,4 @@
-name: P27 sandbox provider readback — manually approved only
+name: P27 HubSpot sandbox authoritative readback — manually approved only
 on:
   workflow_dispatch:
     inputs:
@@ -13,7 +13,7 @@ concurrency:
   cancel-in-progress: false
 jobs:
   provider-readback:
-    name: P27 sandbox write and independent provider readback
+    name: P27 HubSpot developer-test contact upsert and independent GET
     if: ${{ github.event.inputs.approval == 'APPROVE_NONPRODUCTION_WRITE' }}
     environment: p27-provider-sandbox
     runs-on: ubuntu-latest
@@ -22,9 +22,9 @@ jobs:
       run:
         working-directory: backend
     env:
-      P27_SANDBOX_BASE_URL: ${{ vars.P27_SANDBOX_BASE_URL }}
-      P27_SANDBOX_ALLOWED_HOST: ${{ vars.P27_SANDBOX_ALLOWED_HOST }}
-      P27_SANDBOX_TOKEN: ${{ secrets.P27_SANDBOX_TOKEN }}
+      P27_HUBSPOT_SANDBOX_PORTAL_ID: ${{ vars.P27_HUBSPOT_SANDBOX_PORTAL_ID }}
+      P27_HUBSPOT_QA_EMAIL_DOMAIN: ${{ vars.P27_HUBSPOT_QA_EMAIL_DOMAIN }}
+      P27_HUBSPOT_SANDBOX_TOKEN: ${{ secrets.P27_HUBSPOT_SANDBOX_TOKEN }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -34,8 +34,8 @@ jobs:
           python-version: "3.12"
       - name: Require strict sandbox host and provider credentials
         run: |
-          test -n "$P27_SANDBOX_BASE_URL" || { echo "::error::Sandbox URL missing"; exit 1; }
-          test -n "$P27_SANDBOX_ALLOWED_HOST" || { echo "::error::Sandbox host missing"; exit 1; }
-          test -n "$P27_SANDBOX_TOKEN" || { echo "::error::Sandbox token missing"; exit 1; }
+          test -n "$P27_HUBSPOT_SANDBOX_PORTAL_ID" || { echo "::error::Approved HubSpot developer-test portal missing"; exit 1; }
+          test -n "$P27_HUBSPOT_QA_EMAIL_DOMAIN" || { echo "::error::Owned QA email domain missing"; exit 1; }
+          test -n "$P27_HUBSPOT_SANDBOX_TOKEN" || { echo "::error::HubSpot test account token missing"; exit 1; }
       - name: Make one uniquely keyed synthetic action and read it from provider
-        run: python scripts/p27_sandbox_provider_readback.py --approve-sandbox-write
+        run: python scripts/p27_hubspot_sandbox_readback.py --approve-sandbox-write
