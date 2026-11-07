@@ -644,6 +644,29 @@ def _execute_graph_node(ctx: _GraphRunContext, node_id: str, step_index: int) ->
     # and the step receipt leaves a 'running' SQL step and this checkpoint,
     # which the orphan reconciler can identify and read back safely.
     if _recovery_kind(step_type, config) in {"write", "agent_delegation", "workflow"}:
+        # Preserve narrow, deterministic lookup selectors before any outbound
+        # call. Without them a process-loss readback could be inconclusive
+        # even though the source resource is uniquely addressable.
+        from app.services.tool_service import params_for_step
+
+        prepared = params_for_step(
+            step_type, config, merged_parameters,
+            step_outputs=dict(ctx.node_outputs),
+        )
+        selectors = {
+            k: v for k, v in (prepared or {}).items()
+            if k in {"id", "record_id", "object_id", "contact_id", "company_id",
+                     "deal_id", "ticket_id", "entity_id", "email", "domain",
+                     "external_id", "externalId", "sku", "phone"}
+            and isinstance(v, (str, int))
+        }
+        recovery_config = {**config, "params": selectors}
+        update_step(
+            client=ctx.client,
+            step_uuid=step_uuid,
+            status="running",
+            input_snapshot={"config": recovery_config},
+        )
         with ctx.lock:
             _save_graph_checkpoint(
                 ctx,
