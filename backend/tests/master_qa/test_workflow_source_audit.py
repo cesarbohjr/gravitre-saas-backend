@@ -1,7 +1,9 @@
 """Static workflow risk scanner: no external network or credentials."""
-import json
+from pathlib import Path
+from runpy import run_path
 
-from scripts.master_qa_workflow_audit import inventory
+# Load by absolute source path: the test package may shadow backend/scripts.
+inventory = run_path(str(Path(__file__).resolve().parents[2] / 'scripts' / 'master_qa_workflow_audit.py'), run_name='master_qa_audit')['inventory']
 
 
 def test_inventory_captures_callers_and_redacts_values(tmp_path):
