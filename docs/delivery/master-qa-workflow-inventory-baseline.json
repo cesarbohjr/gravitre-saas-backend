@@ -4,7 +4,7 @@
   "generated_date": "2026-11-07",
   "scope": "All GitHub workflows found in current main. No disposition approved. Source excerpts are exploratory; no deployment or safety inference from filename.",
   "total_files": 92,
-  "source_inspected": 86,
+  "source_inspected": 92,
   "disposition_status": "ALL_PENDING",
   "entries": [
     {
@@ -1883,9 +1883,8 @@
     },
     {
       "path": ".github/workflows/unified-turn-standing-batteries.yml",
-      "inspection_status": "PENDING_DEEP_INSPECTION",
+      "inspection_status": "SOURCE_INSPECTED",
       "unverified_details": [
-        "triggers",
         "required_check",
         "last_run",
         "calls",
@@ -1895,13 +1894,19 @@
         "ownership"
       ],
       "disposition": "INVESTIGATE",
-      "disposition_approved": false
+      "disposition_approved": false,
+      "workflow_name": "Unified turn standing batteries",
+      "trigger_excerpt": "schedule:\n    - cron: \"0 6 * * 0\"  # Weekly Sunday 06:00 UTC\n  workflow_dispatch:\n\n",
+      "has_workflow_call": false,
+      "has_workflow_dispatch": true,
+      "has_push_trigger": false,
+      "has_pr_trigger": false,
+      "environment_refs": []
     },
     {
       "path": ".github/workflows/usage-sync.yml",
-      "inspection_status": "PENDING_DEEP_INSPECTION",
+      "inspection_status": "SOURCE_INSPECTED",
       "unverified_details": [
-        "triggers",
         "required_check",
         "last_run",
         "calls",
@@ -1911,7 +1916,14 @@
         "ownership"
       ],
       "disposition": "INVESTIGATE",
-      "disposition_approved": false
+      "disposition_approved": false,
+      "workflow_name": "Usage Sync",
+      "trigger_excerpt": "schedule:\n    - cron: \"0 * * * *\"\n  workflow_dispatch:\n    inputs:\n      reason:\n        description: \"Reason for manual trigger\"\n        required: false\n\n",
+      "has_workflow_call": false,
+      "has_workflow_dispatch": true,
+      "has_push_trigger": false,
+      "has_pr_trigger": false,
+      "environment_refs": []
     },
     {
       "path": ".github/workflows/voice-duplex-guard.yml",
@@ -1937,9 +1949,8 @@
     },
     {
       "path": ".github/workflows/voice-gates-2-3.yml",
-      "inspection_status": "PENDING_DEEP_INSPECTION",
+      "inspection_status": "SOURCE_INSPECTED",
       "unverified_details": [
-        "triggers",
         "required_check",
         "last_run",
         "calls",
@@ -1949,13 +1960,21 @@
         "ownership"
       ],
       "disposition": "INVESTIGATE",
-      "disposition_approved": false
+      "disposition_approved": false,
+      "workflow_name": "Voice gates 2 and 3 execution",
+      "trigger_excerpt": "pull_request:\n    paths:\n      - 'backend/app/services/pipecat_voice/livekit_candidate.py'\n      - 'backend/app/services/pipecat_voice/pipeline.py'\n      - 'backend/app/operators/agent_intelligence.py'\n      - 'backend/tests/operators/test_agent_intelligence.py'\n      - 'backend/tests/services/pipecat_voice/test_voice_output_audio_framing.py'\n      - 'backend/tests/services/pipecat_voice/test_livekit_write_fence.py'\n      - '.github/workflows/voice-gates-2-3.yml'\n      - 'scripts/bootstrap_voice_acceptance.py'\n      - 'scripts/voice_paired_live.py'\n      - 'scripts/voice_acceptance_repetitions.py'\n      - 'backend/app/services/pipecat_voice/flux_stt.py'\n      - 'backend/app/services/pipecat_voice/stt_factory.py'\n      - 'backend/tests/services/pipecat_voice/test_flux_partial_bridge.py'\n      - 'scripts/voice_native_assignment_live.py'\n      - 'scripts/voice_acceptance_sink.py'\n      - 'scripts/verify_native_assignment_cancel.py'\n      - 'scripts/verify_voice_route_authorization.py'\n      - 'scripts/wait_voice_acceptance_predecessors.py'\n      - 'backend/app/operators/agent_jobs.py'\n      - 'backend/app/services/conversational_execution_service.py'\n      - 'tests/test_voice_acceptan",
+      "has_workflow_call": false,
+      "has_workflow_dispatch": true,
+      "has_push_trigger": false,
+      "has_pr_trigger": true,
+      "environment_refs": [
+        "acceptance"
+      ]
     },
     {
       "path": ".github/workflows/voice-livekit-candidate.yml",
-      "inspection_status": "PENDING_DEEP_INSPECTION",
+      "inspection_status": "SOURCE_INSPECTED",
       "unverified_details": [
-        "triggers",
         "required_check",
         "last_run",
         "calls",
@@ -1965,7 +1984,14 @@
         "ownership"
       ],
       "disposition": "INVESTIGATE",
-      "disposition_approved": false
+      "disposition_approved": false,
+      "workflow_name": "Isolated LiveKit candidate contracts",
+      "trigger_excerpt": "pull_request:\n    paths:\n      - 'backend/app/services/pipecat_voice/livekit_candidate.py'\n      - 'backend/tests/unit/test_livekit_candidate.py'\n      - 'backend/requirements-voice-comparison.txt'\n      - 'scripts/voice_livekit_connected_smoke.py'\n      - '.github/workflows/voice-livekit-candidate.yml'\n      - 'backend/tests/services/pipecat_voice/test_livekit_write_fence.py'\n      - 'backend/tests/services/pipecat_voice/test_flux_partial_bridge.py'\n  workflow_dispatch:\n",
+      "has_workflow_call": false,
+      "has_workflow_dispatch": true,
+      "has_push_trigger": false,
+      "has_pr_trigger": true,
+      "environment_refs": []
     },
     {
       "path": ".github/workflows/voice-slo-gates.yml",
@@ -1991,9 +2017,8 @@
     },
     {
       "path": ".github/workflows/voice-stt-control-latency.yml",
-      "inspection_status": "PENDING_DEEP_INSPECTION",
+      "inspection_status": "SOURCE_INSPECTED",
       "unverified_details": [
-        "triggers",
         "required_check",
         "last_run",
         "calls",
@@ -2003,13 +2028,21 @@
         "ownership"
       ],
       "disposition": "INVESTIGATE",
-      "disposition_approved": false
+      "disposition_approved": false,
+      "workflow_name": "Voice provider control latency diagnosis",
+      "trigger_excerpt": "pull_request:\n    paths:\n      - 'scripts/voice_stt_control_latency.py'\n      - 'tests/test_voice_stt_control_latency.py'\n      - '.github/workflows/voice-stt-control-latency.yml'\n  workflow_dispatch:\n    inputs:\n      run_paid_provider_tests:\n        description: 'Explicit authorization for billable provider calls (default OFF)'\n        required: true\n        type: boolean\n        default: false\n",
+      "has_workflow_call": false,
+      "has_workflow_dispatch": true,
+      "has_push_trigger": false,
+      "has_pr_trigger": true,
+      "environment_refs": [
+        "acceptance"
+      ]
     },
     {
       "path": ".github/workflows/workflow-schedules.yml",
-      "inspection_status": "PENDING_DEEP_INSPECTION",
+      "inspection_status": "SOURCE_INSPECTED",
       "unverified_details": [
-        "triggers",
         "required_check",
         "last_run",
         "calls",
@@ -2019,7 +2052,14 @@
         "ownership"
       ],
       "disposition": "INVESTIGATE",
-      "disposition_approved": false
+      "disposition_approved": false,
+      "workflow_name": "Workflow Schedules",
+      "trigger_excerpt": "schedule:\n    - cron: \"*/5 * * * *\"\n  workflow_dispatch:\n    inputs:\n      reason:\n        description: \"Reason for manual trigger\"\n        required: false\n\n",
+      "has_workflow_call": false,
+      "has_workflow_dispatch": true,
+      "has_push_trigger": false,
+      "has_pr_trigger": false,
+      "environment_refs": []
     }
   ]
 }
