@@ -861,6 +861,17 @@ class Settings(BaseSettings):
     workflow_queue_enabled: bool = True
     workflow_queue_poll_seconds: int = 5
     workflow_queue_lease_seconds: int = 60
+    # P27-06: automatic orphan graph reconciliation is rollout-gated until
+    # provider-specific sandbox acceptance and lease fencing are approved.
+    workflow_orphan_recovery_enabled: bool = Field(
+        default=False,
+        validation_alias=AliasChoices(
+            "WORKFLOW_ORPHAN_RECOVERY_ENABLED", "workflow_orphan_recovery_enabled",
+        ),
+    )
+    workflow_orphan_recovery_interval_seconds: int = 60
+    workflow_orphan_stale_seconds: int = 3600
+    workflow_orphan_lease_seconds: int = 600
     workflow_queue_max_delivery_attempts: int = Field(
         default=5,
         validation_alias=AliasChoices(
