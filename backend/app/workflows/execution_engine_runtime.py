@@ -86,6 +86,7 @@ class _GraphRunContext:
     node_outputs: dict[str, Any]
     skipped_nodes: list[str]
     step_index: int = 0
+    recovery_token: str | None = None
     lock: threading.Lock = field(default_factory=threading.Lock)
 
 
@@ -541,6 +542,13 @@ def _skip_untaken_branch_node(
 
 
 def _execute_graph_node(ctx: _GraphRunContext, node_id: str, step_index: int) -> _NodeRunResult:
+    if ctx.recovery_token:
+        alive = ctx.client.rpc("assert_graph_recovery_lease", {
+            "p_run_id": ctx.run_id, "p_token": ctx.recovery_token,
+        }).execute().data
+        if alive is not True:
+            return _NodeRunResult(node_id, step_index, halt="failed",
+                                  error="Recovery lease lost; new provider action refused")
     try:
         enforce_interrupt(ctx.client, ctx.org_id, "workflow_run", ctx.run_id, actor_id=ctx.user_id)
     except AgentExecutionInterrupted as exc:
@@ -1661,6 +1669,7 @@ def resume_paused_workflow_graph(
     *,
     client: Any,
     environment_name: str = "default",
+    recovery_token: str | None = None,
 ) -> tuple[str, list[dict], list[str], bool]:
     """Resume a graph run paused by operator interrupt (STA-170)."""
     run = get_run_with_steps(client, org_id, run_id, environment_name)
@@ -1689,6 +1698,7 @@ def resume_paused_workflow_graph(
         node_outputs=safe_normalize_stored_dict(checkpoint, key='node_outputs'),
         skipped_nodes=list(checkpoint.get("skipped_nodes") or []),
         step_index=int(checkpoint.get("step_index") or 0),
+        recovery_token=recovery_token,
     )
     # Never consume the checkpoint before reconciling an in-flight external
     # write. Unknown readback must preserve the paused run and approval state.
