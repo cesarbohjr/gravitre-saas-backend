@@ -68,7 +68,7 @@ BEGIN
     UPDATE public.workflow_runs wr SET status='paused'
     WHERE wr.id=v_run.id AND wr.org_id=v_run.org_id AND wr.status='running';
     IF NOT FOUND THEN
-        DELETE FROM public.workflow_recovery_leases WHERE run_id=v_run.id AND token=v_token;
+        DELETE FROM public.workflow_recovery_leases l WHERE l.run_id=v_run.id AND l.token=v_token;
         RETURN;
     END IF;
     RETURN QUERY SELECT v_run.id::uuid, v_run.org_id::uuid, v_token,
