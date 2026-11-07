@@ -22,7 +22,7 @@ from tests.master_qa.canonical_pg_repository import PgRepositoryClient, canonica
 pytestmark = requires_pg
 
 
-@pytest.mark.parametrize("provider_result", ["applied", "not_applied", "unknown"])
+@pytest.mark.parametrize("provider_result", ["applied", "not_applied", "unknown", "incomplete_absence", "unverified_applied"])
 def test_ambiguous_commit_blocks_or_recovers_after_authoritative_readback(
     monkeypatch, provider_result
 ):
@@ -89,7 +89,7 @@ os._exit(88)
         child = subprocess.run(
             [sys.executable, "-c", script], capture_output=True, text=True,
             env={**os.environ, "P27_SOCK": str(pg.sock), "P27_PORT": pg.port,
-                 "P27_APPLY": "yes" if provider_result == "applied" else "no",
+                 "P27_APPLY": "yes" if provider_result in {"applied", "unverified_applied"} else "no",
                  "P27_ACTION": action_key}, timeout=20)
         assert child.returncode == 88, child.stderr
         assert repository.get_run_with_steps(client, ORG, run_id, "synthetic")[
@@ -106,6 +106,16 @@ os._exit(88)
             assert invoke_action == "hubspot.contacts.create"
             if provider_result == "unknown":
                 return ReconciliationResult("unknown", "provider_unavailable")
+            if provider_result == "incomplete_absence":
+                return ReconciliationResult(
+                    "not_applied", "first_page_empty", None,
+                    "hubspot.contacts.search",
+                    {"method": "reconcile_lookup", "verified": False,
+                     "complete_result_set": False})
+            if provider_result == "unverified_applied":
+                return ReconciliationResult(
+                    "applied", "write_response_only", "provider-record-p27",
+                    "hubspot.contacts.create", {"verified": False})
             existing = pg.value(
                 "SELECT resource_id FROM public.qa_p27_authoritative_provider "
                 f"WHERE action_key='{action_key}'")
@@ -151,14 +161,14 @@ os._exit(88)
                 SimpleNamespace(), ORG, "synthetic-approver", run_id,
                 client=reconnect, environment_name="synthetic")
         except runtime.GraphValidationError:
-            assert provider_result == "unknown"
+            assert provider_result in {"unknown", "incomplete_absence", "unverified_applied"}
             assert invoked == []
             assert pg.value(f"SELECT status FROM public.workflow_runs WHERE id='{run_id}'") == "paused"
             assert repository.get_run_with_steps(
                 PgRepositoryClient(pg), ORG, run_id, "synthetic")[
                     "parameters"]["_graph_execution"]["paused_at_node"] == "write"
         else:
-            assert provider_result != "unknown"
+            assert provider_result in {"applied", "not_applied"}
             assert status == "completed" and errors == []
             assert invoked == (["continue"] if provider_result == "applied"
                                else ["write", "continue"])
@@ -168,5 +178,5 @@ os._exit(88)
                                       else "failed")
         assert len(readbacks) == 1
         assert pg.value("SELECT count(*) FROM public.qa_p27_authoritative_provider") == (
-            "1" if provider_result != "unknown" else "0"
+            "1" if provider_result in {"applied", "unverified_applied", "not_applied"} else "0"
         )
