@@ -30,7 +30,7 @@ jobs:
         run: python -m pip install --disable-pip-version-check pytest
       - name: Run seven fixture tests with zero accepted skips
         run: |
-          python -m pytest -q -rs tests/master_qa/test_synthetic_fixture_factory.py
+          python -m pytest -q -rs tests/master_qa/test_synthetic_fixture_factory.py tests/master_qa/test_workflow_source_audit.py
           python - <<'PY'
           import subprocess
           p = subprocess.run(
@@ -40,6 +40,16 @@ jobs:
           )
           assert '7 tests collected' in p.stdout or '7 tests collected' in p.stderr, p.stdout
           PY
+
+      - name: Generate static workflow governance artifact (no secrets or API calls)
+        run: python scripts/master_qa_workflow_audit.py --output "$RUNNER_TEMP/master-qa-workflow-audit.json"
+      - name: Upload workflow governance artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: master-qa-workflow-source-audit
+          path: ${{ runner.temp }}/master-qa-workflow-audit.json
+          retention-days: 5
+          if-no-files-found: error
 
   actual-runtime-and-postgres:
     name: Master QA actual guards and disposable PostgreSQL
