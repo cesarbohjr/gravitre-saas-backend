@@ -4,7 +4,7 @@
   "generated_date": "2026-11-07",
   "scope": "All GitHub workflows found in current main. No disposition approved. Source excerpts are exploratory; no deployment or safety inference from filename.",
   "total_files": 92,
-  "source_inspected": 32,
+  "source_inspected": 41,
   "disposition_status": "ALL_PENDING",
   "entries": [
     {
@@ -493,9 +493,8 @@
     },
     {
       "path": ".github/workflows/indexnow-on-publish.yml",
-      "inspection_status": "PENDING_DEEP_INSPECTION",
+      "inspection_status": "SOURCE_INSPECTED",
       "unverified_details": [
-        "triggers",
         "required_check",
         "last_run",
         "calls",
@@ -505,13 +504,19 @@
         "ownership"
       ],
       "disposition": "INVESTIGATE",
-      "disposition_approved": false
+      "disposition_approved": false,
+      "workflow_name": "IndexNow on publication",
+      "trigger_excerpt": "workflow_dispatch:\n    inputs:\n      published_url:\n        description: \"Published, canonical https://gravitre.app URL\"\n        required: true\n        type: string\n\n",
+      "has_workflow_call": false,
+      "has_workflow_dispatch": true,
+      "has_push_trigger": false,
+      "has_pr_trigger": false,
+      "environment_refs": []
     },
     {
       "path": ".github/workflows/intelligence-lifecycle-e2e.yml",
-      "inspection_status": "PENDING_DEEP_INSPECTION",
+      "inspection_status": "SOURCE_INSPECTED",
       "unverified_details": [
-        "triggers",
         "required_check",
         "last_run",
         "calls",
@@ -521,13 +526,19 @@
         "ownership"
       ],
       "disposition": "INVESTIGATE",
-      "disposition_approved": false
+      "disposition_approved": false,
+      "workflow_name": "Intelligence lifecycle E2E acceptance",
+      "trigger_excerpt": "workflow_dispatch:\n\n",
+      "has_workflow_call": false,
+      "has_workflow_dispatch": true,
+      "has_push_trigger": false,
+      "has_pr_trigger": false,
+      "environment_refs": []
     },
     {
       "path": ".github/workflows/intelligence-offline-acceptance.yml",
-      "inspection_status": "PENDING_DEEP_INSPECTION",
+      "inspection_status": "SOURCE_INSPECTED",
       "unverified_details": [
-        "triggers",
         "required_check",
         "last_run",
         "calls",
@@ -537,7 +548,14 @@
         "ownership"
       ],
       "disposition": "INVESTIGATE",
-      "disposition_approved": false
+      "disposition_approved": false,
+      "workflow_name": "Intelligence offline engineering acceptance",
+      "trigger_excerpt": "push:\n    branches: [fix/intelligence-offline-e2e-acceptance]\n  pull_request:\n    branches: [main]\n    paths:\n      - 'backend/app/billing/intelligence_sweep_meter.py'\n      - 'backend/app/services/intelligence_*.py'\n      - 'backend/app/routers/intelligence_overview.py'\n      - 'backend/tests/e2e/test_intelligence_*.py'\n      - 'backend/tests/billing/test_intelligence_sweep_atomic_meter.py'\n      - 'backend/tests/services/test_intelligence_*.py'\n      - 'supabase/migrations/20261026*intelligence*.sql'\n      - 'apps/web/components/intelligence/evidence-play-recommendations.tsx'\n      - 'apps/web/lib/api.ts'\n      - 'apps/web/__tests__/intelligence-evidence-api.test.ts'\n      - '.github/workflows/intelligence-offline-acceptance.yml'\n  workflow_dispatch:\n\n",
+      "has_workflow_call": false,
+      "has_workflow_dispatch": true,
+      "has_push_trigger": true,
+      "has_pr_trigger": true,
+      "environment_refs": []
     },
     {
       "path": ".github/workflows/isolated-acceptance.yml",
@@ -565,9 +583,8 @@
     },
     {
       "path": ".github/workflows/issue-535-voice-confirmation.yml",
-      "inspection_status": "PENDING_DEEP_INSPECTION",
+      "inspection_status": "SOURCE_INSPECTED",
       "unverified_details": [
-        "triggers",
         "required_check",
         "last_run",
         "calls",
@@ -577,13 +594,19 @@
         "ownership"
       ],
       "disposition": "INVESTIGATE",
-      "disposition_approved": false
+      "disposition_approved": false,
+      "workflow_name": "Issue 535 voice confirmation replay",
+      "trigger_excerpt": "pull_request:\n    paths:\n      - 'backend/app/services/pipecat_voice/cognitive_llm.py'\n      - 'backend/tests/e2e/voice_scenarios/fakes.py'\n      - 'backend/tests/e2e/voice_scenarios/metrics.py'\n      - 'backend/tests/services/pipecat_voice/test_phase3_provider_commit_gate.py'\n      - '.github/workflows/issue-535-voice-confirmation.yml'\n  workflow_dispatch:\n",
+      "has_workflow_call": false,
+      "has_workflow_dispatch": true,
+      "has_push_trigger": false,
+      "has_pr_trigger": true,
+      "environment_refs": []
     },
     {
       "path": ".github/workflows/knowledge-sync.yml",
-      "inspection_status": "PENDING_DEEP_INSPECTION",
+      "inspection_status": "SOURCE_INSPECTED",
       "unverified_details": [
-        "triggers",
         "required_check",
         "last_run",
         "calls",
@@ -593,13 +616,19 @@
         "ownership"
       ],
       "disposition": "INVESTIGATE",
-      "disposition_approved": false
+      "disposition_approved": false,
+      "workflow_name": "Knowledge Sync",
+      "trigger_excerpt": "schedule:\n    - cron: \"15 * * * *\"\n  workflow_dispatch:\n    inputs:\n      reason:\n        description: \"Reason for manual trigger\"\n        required: false\n\n",
+      "has_workflow_call": false,
+      "has_workflow_dispatch": true,
+      "has_push_trigger": false,
+      "has_pr_trigger": false,
+      "environment_refs": []
     },
     {
       "path": ".github/workflows/live-generated-response-quality.yml",
-      "inspection_status": "PENDING_DEEP_INSPECTION",
+      "inspection_status": "SOURCE_INSPECTED",
       "unverified_details": [
-        "triggers",
         "required_check",
         "last_run",
         "calls",
@@ -609,13 +638,21 @@
         "ownership"
       ],
       "disposition": "INVESTIGATE",
-      "disposition_approved": false
+      "disposition_approved": false,
+      "workflow_name": "Live generated-response quality (manual post-deploy)",
+      "trigger_excerpt": "workflow_dispatch:\n    inputs:\n      deployed_sha:\n        description: \"Production backend Git SHA to certify (must equal checked-out main HEAD)\"\n        required: true\n        type: string\n",
+      "has_workflow_call": false,
+      "has_workflow_dispatch": true,
+      "has_push_trigger": false,
+      "has_pr_trigger": false,
+      "environment_refs": [
+        "production-evaluation"
+      ]
     },
     {
       "path": ".github/workflows/live-signup-billing-http.yml",
-      "inspection_status": "PENDING_DEEP_INSPECTION",
+      "inspection_status": "SOURCE_INSPECTED",
       "unverified_details": [
-        "triggers",
         "required_check",
         "last_run",
         "calls",
@@ -625,13 +662,21 @@
         "ownership"
       ],
       "disposition": "INVESTIGATE",
-      "disposition_approved": false
+      "disposition_approved": false,
+      "workflow_name": "Live Signup and Billing HTTP Acceptance",
+      "trigger_excerpt": "push:\n    branches: [main]\n    paths:\n      - \"scripts/verify_live_signup_billing_http.py\"\n      - \".github/workflows/live-signup-billing-http.yml\"\n  workflow_dispatch:\n\n",
+      "has_workflow_call": false,
+      "has_workflow_dispatch": true,
+      "has_push_trigger": true,
+      "has_pr_trigger": false,
+      "environment_refs": [
+        "production"
+      ]
     },
     {
       "path": ".github/workflows/marketing-lighthouse.yml",
-      "inspection_status": "PENDING_DEEP_INSPECTION",
+      "inspection_status": "SOURCE_INSPECTED",
       "unverified_details": [
-        "triggers",
         "required_check",
         "last_run",
         "calls",
@@ -641,13 +686,19 @@
         "ownership"
       ],
       "disposition": "INVESTIGATE",
-      "disposition_approved": false
+      "disposition_approved": false,
+      "workflow_name": "Marketing Lighthouse CI",
+      "trigger_excerpt": "push:\n    branches: [main]\n    paths:\n      - \"apps/web/**\"\n      - \".github/workflows/marketing-lighthouse.yml\"\n  pull_request:\n    paths:\n      - \"apps/web/**\"\n      - \".github/workflows/marketing-lighthouse.yml\"\n  workflow_dispatch:\n\n",
+      "has_workflow_call": false,
+      "has_workflow_dispatch": true,
+      "has_push_trigger": true,
+      "has_pr_trigger": true,
+      "environment_refs": []
     },
     {
       "path": ".github/workflows/marketplace-production-smoke.yml",
-      "inspection_status": "PENDING_DEEP_INSPECTION",
+      "inspection_status": "SOURCE_INSPECTED",
       "unverified_details": [
-        "triggers",
         "required_check",
         "last_run",
         "calls",
@@ -657,7 +708,14 @@
         "ownership"
       ],
       "disposition": "INVESTIGATE",
-      "disposition_approved": false
+      "disposition_approved": false,
+      "workflow_name": "Marketplace Production Smoke",
+      "trigger_excerpt": "schedule:\n    - cron: \"30 4 * * *\"\n  workflow_dispatch:\n    inputs:\n      reason:\n        description: \"Reason for manual trigger\"\n        required: false\n\n",
+      "has_workflow_call": false,
+      "has_workflow_dispatch": true,
+      "has_push_trigger": false,
+      "has_pr_trigger": false,
+      "environment_refs": []
     },
     {
       "path": ".github/workflows/metrics-rollup.yml",
