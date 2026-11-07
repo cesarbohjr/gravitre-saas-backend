@@ -1,39 +1,33 @@
-# P27 release gate — sandbox provider and deployed staging execution
+# P27-07 release gate — zero-additional-infrastructure-cost live acceptance
 
-Status: **BLOCKED on external account and staging provisioning**. PR #611 remains draft, unmerged, undeployed; `WORKFLOW_ORPHAN_RECOVERY_ENABLED=false`.
+**User-approved testing strategy:** Gravitre has no live customers yet. Existing production Railway and the existing Gravitre HubSpot portal are the **primary controlled live testing targets**. A separate Railway test/staging environment existed previously, generated charges, and was intentionally removed. **Do not recreate it, provision a second backend/Redis/PostgreSQL service, buy an upgrade, or incur new recurring infrastructure cost just to satisfy this gate.**
 
-## Verified resources
+PR #611 remains draft/unmerged/undeployed. Default `WORKFLOW_ORPHAN_RECOVERY_ENABLED=false`. Testing approval is not approval to merge, restart, or interrupt production services without a controlled release plan.
 
-- Connected HubSpot portal `343328749` (Gravitre AI) reports account type `STANDARD`. **Do not use it for synthetic writes**.
-- Connected Railway workspace has projects `spirited-communication` (backend and Redis) and `Gravitre front-end`, each with **production only**. No independent staging service or database has been confirmed.
-- PR-owned manual workflow: `.github/workflows/master-qa-p27-sandbox-readback.yml`, `workflow_dispatch`, protected environment `p27-provider-sandbox`. The action is not part of ordinary PR CI and cannot execute without specific sandbox credentials, an explicit dispatch input, and environment approval.
-- Genuine **two-process** offline crash/restart test: `backend/tests/master_qa/test_worker_process_crash_restart_pg.py` and `_p27_worker_subprocess.py`. Uses disposable PostgreSQL and a SQL-backed provider simulation, **not HubSpot** or an actually deployed Railway worker.
+## Current inventory and evidence
 
-## HubSpot developer-test portal onboarding — operator-owned
+- Connected HubSpot Gravitre AI portal `343328749` is type `STANDARD`. This is the intended live-test account, **not a dedicated developer-test portal**. Existing data must be preserved; use uniquely tagged `p27qa` records, a narrowly restricted test org and reversible actions.
+- Connected Railway `spirited-communication` contains the live backend and Redis in its `production` environment. There is no need to create an additional staging environment.
+- Prior CI has demonstrated disposable PostgreSQL tests, a synthetic provider effect, atomic SQL ownership, and separate real OS recovery processes. **These do not establish real Railway production worker restart or HubSpot live readback**.
+- GitHub Actions manual workflow `.github/workflows/master-qa-p27-sandbox-readback.yml` and `backend/scripts/p27_hubspot_sandbox_readback.py` currently reject `STANDARD` HubSpot portals. They must be **deliberately revised with an existing-live-portal-specific safety gate and tests** before they can be used. Never silently bypass the portal type check.
+- A workflow_dispatch workflow may need to exist on GitHub's default branch before it can be invoked; a PR-only YAML change is not proof of dispatch availability.
 
-1. In HubSpot open **Development → Testing → Test Accounts → Create developer test account**. Name it `Gravitre P27 Release QA`. Select an isolated developer-test environment, not the connected `STANDARD` portal.
-2. In that test account, issue an API **Service Key** scoped to CRM contacts read/write (or a supported test-only OAuth app/token). Do not paste it into a PR, chat, or general repository variable.
-3. On the GitHub repository create protected environment `p27-provider-sandbox` with required reviewers, protected branch rules and restricted access. Add variables `P27_HUBSPOT_SANDBOX_PORTAL_ID` and `P27_HUBSPOT_QA_EMAIL_DOMAIN` (a dedicated domain you control) and secret `P27_HUBSPOT_SANDBOX_TOKEN`. A token from the connected standard portal must be rejected.
-4. Verify the account-info endpoint returns the expected portal ID and a permitted test account type *before* dispatch; do not turn off those checks.
-5. Dispatch workflow `P27 HubSpot sandbox authoritative readback — manually approved only` on reviewed PR SHA with input `approval=APPROVE_NONPRODUCTION_WRITE`. Confirm GitHub environment review before execution.
-6. Archive the complete Actions run URL, SHA, portal ID, created contact ID, independent CRM GET response and same-email upsert outcome. Review and delete the synthetic contact from the test account when no longer needed. A PASS from local mocks is not live-provider certification.
+## Zero-extra-cost live verification sequence
 
-## Dedicated staging worker crash/restart — operator-owned
+1. **Complete engineering and CI first:** resolve all required checks on the exact PR SHA, verify idempotency and fail-closed unknown-readback handling, review migration security, and approve a controlled merge/deployment to the existing Railway backend. Preserve rollback instructions and confirm the deployed SHA.
+2. **No separate provider account:** use the existing connected HubSpot Gravitre AI portal and test-only `p27qa` contact identifiers. Review existing records before writes. A single contact upsert followed by authoritative GET and same-key retry is the allowed scope; no emails, bulk updates, real customer records, billing, advertising, or third-party messages.
+3. **Keep provider testing explicitly gated:** before testing the `STANDARD` portal, update the provider-specific readback adapter and offline negative tests so they require the exact expected portal ID, an explicit `APPROVE_LIVE_TEST_CONTACT` operator input, a unique QA marker, a test-only email namespace, restricted CRM permissions, resource IDs, and a post-test cleanup/verification procedure. No secret may be logged, committed, or pasted into a PR. Use **existing secrets/credentials only** when their scopes and test permission are independently verified; never create a new paid service.
+4. **Verify readback:** run one controlled HubSpot test record and independently retrieve its fields by record ID, then resubmit the identical upsert and prove the ID is unchanged. Record the actual provider response and remove/mark the test record with independent readback; do not label a mock response as provider acceptance.
+5. **Worker restart on existing Railway:** first check active jobs, approvals, scheduled workloads, other testing sessions and backend health; ensure no users or critical operations will be interrupted. Plan a reversible, limited maintenance action on the existing backend **only with explicit authorization for that service restart**. Prefer process-scoped worker termination if isolation is available. Do **not** blindly kill the only API instance, Redis, Postgres, or a shared worker. If safe process-level isolation is not available within existing infrastructure, keep this gate blocked rather than add paid staging.
+6. **Live failure-injection:** use a uniquely keyed approved test workflow and verified connector, persist `executor_in_flight` checkpoint before provider dispatch, simulate/observe post-commit-before-receipt worker interruption, recover with an atomic SQL claim, and independently read the provider record. Require a single resource, a single completion fanout, durable evidence, no unauthorized retry, and preserved pause on unknown readback. Verify cancellation/rollback and return `WORKFLOW_ORPHAN_RECOVERY_ENABLED` to `false` after testing unless separately authorized for broad release.
+7. **Evidence:** archive precise PR and deployed SHAs, CI URLs, migration result, Railway deployment/worker logs, HubSpot portal ID and test resource ID, unique write idempotency key, readback proof, SQL lease result, cleanup and rollback proof. Do not merge/deploy solely to satisfy documentation.
 
-1. Provision separate staging backend, Redis and PostgreSQL (new project/environment with **no production database URLs, keys, connector accounts, or domains**). Do not duplicate production secrets. Deploy a reviewed build of the exact P27 SHA after staging migration validation.
-2. Apply `supabase/migrations/20261107235500_p27_graph_recovery_leases.sql` to **staging only**, verify role EXECUTE restrictions, and use a staging-only HubSpot developer-test connector.
-3. Set `WORKFLOW_ORPHAN_RECOVERY_ENABLED=true` only in staging with short, bounded thresholds and configured alerts. Confirm at least two distinct worker process IDs and separate SQL claim sessions.
-4. Create a single approved, synthetic, idempotent contact action and durable `executor_in_flight` checkpoint. Terminate the **worker process** after the provider commits but before local receipt, not the database or a production worker. Keep the source-of-record contact in the test portal.
-5. Start a new worker. Prove the SQL claim parks the orphan; inject a second competitor and verify one winner, wrong-token rejection and no new provider write. Force the first recovery worker to exit after claim, expire its lease in staging, and prove replacement owner advances only after independent HubSpot GET/readback.
-6. Verify the workflow and step are completed, exactly one test contact exists, the finalizer/outbox delivered once, and the run/claim journal is auditable. Repeat with provider outage/unknown readback: no additional write, run paused, checkpoint retained.
-7. Capture staging deployment commit, worker logs/PIDs, SQL lease claim rows, API evidence, CI Actions links, rollback result, and security approval. Leave production rollout disabled pending formal release gate.
+## Hard constraints / stop conditions
 
-## Stop conditions
+- **Zero additional testing infrastructure cost:** no new Railway testing service, staging DB, Redis, always-on runner or paid add-on.
+- Do not touch existing HubSpot contacts or invoke non-QA outbound actions. If no safe QA-only contact can be created or cleaned up, block.
+- No uncontrolled interruption to production APIs or external activities. No active real-user sessions or outstanding critical jobs at the start of worker termination.
+- Missing authorization, missing credential permission, unclear source-of-record response, duplicate write, invalid lease, missing checkpoint or failed required CI blocks live certification.
+- The absence of customers narrows operational exposure; it **does not remove** the need to preserve service security, test data isolation, controlled downtime and independently verified readback.
 
-- No verified nonproduction HubSpot developer-test account / scoped credential.
-- No isolated staging backend/DB/Redis.
-- No protected GitHub environment approval for the sandbox write.
-- Unknown provider readback or mismatch, failed staging reconciliation, lost lease, duplicate resource or missing checkpoint.
-- General CI or schema security gates not green.
-
-Do not present the offline two-process test as an actual deployed staging run, and do not interpret HubSpot's existing `STANDARD` portal as a sandbox.
+**Current status:** corrected acceptance plan only. No existing Railway or HubSpot resources were mutated by this documentation update. No live write, Railway restart, migration, merge, deployment, or new infrastructure spend is claimed.
