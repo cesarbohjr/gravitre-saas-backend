@@ -288,11 +288,11 @@
       "acceptance_proof": "zero denied external writes; bounded approved action",
       "source_candidate": "approval fence and provider request ledger",
       "implementation_commit": null,
-      "regression_test_id": null,
+      "regression_test_id": "backend/tests/master_qa/test_synthetic_fixture_factory.py::test_unapproved_write_has_zero_effects",
       "preexisting_evidence": "Not certified on deployed target",
       "synthetic_status": "NOT_RUN",
       "production_status": "NOT_RUN",
-      "blocked_on": "separate live approval for P27; synthetic reproduction not yet added",
+      "blocked_on": "SIMULATOR ONLY: connect to actual approval/write fence; not independently run/certified",
       "evidence_run_url": null
     },
     {
@@ -303,11 +303,11 @@
       "acceptance_proof": "no post-cancel writes; revoked scopes denied; idempotent recovery",
       "source_candidate": "worker restart, replay and persistence",
       "implementation_commit": null,
-      "regression_test_id": null,
+      "regression_test_id": "backend/tests/master_qa/test_synthetic_fixture_factory.py::test_revoked_scope_blocks_write | ::test_idempotent_effect_and_in_memory_event_delivery",
       "preexisting_evidence": "Not certified on deployed target",
       "synthetic_status": "NOT_RUN",
       "production_status": "NOT_RUN",
-      "blocked_on": "separate live approval for P27; synthetic reproduction not yet added",
+      "blocked_on": "SIMULATOR ONLY: real cancel/restart/PostgreSQL relay tests not yet integrated",
       "evidence_run_url": null
     },
     {
@@ -318,11 +318,11 @@
       "acceptance_proof": "cross-tenant denied; pseudonymous correlation, no payload leakage",
       "source_candidate": "HMAC/privacy contract; issue #607 approvals",
       "implementation_commit": null,
-      "regression_test_id": null,
+      "regression_test_id": "backend/tests/master_qa/test_synthetic_fixture_factory.py::test_cross_tenant_write_is_denied_even_if_approved",
       "preexisting_evidence": "Not certified on deployed target",
       "synthetic_status": "NOT_RUN",
       "production_status": "NOT_RUN",
-      "blocked_on": "separate live approval for P27; synthetic reproduction not yet added",
+      "blocked_on": "SIMULATOR ONLY: real tenant auth/privacy/HMAC assertions not yet integrated",
       "evidence_run_url": null
     },
     {
