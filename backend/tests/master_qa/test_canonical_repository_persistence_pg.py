@@ -158,3 +158,80 @@ async def test_canonical_postgres_denied_approval_has_no_writes(monkeypatch):
         assert repository.get_approval_counts(PgRepositoryClient(pg), run_id) == (0, False)
         assert pg.value(f"SELECT status FROM public.workflow_runs WHERE id='{run_id}'") == "pending_approval"
         assert pg.value("SELECT count(*) FROM public.domain_event_outbox") == outbox_before
+
+
+def test_crashed_outbox_worker_lease_recovered_by_new_worker_process():
+    """Actual subprocess exits after SQL claim; new relay reclaims expired lease.
+
+    This validates the domain outbox crash boundary, not graph executor restart.
+    """
+    import subprocess
+    import sys
+    from app.workflows import repository
+    from app.services import domain_events
+
+    workflow_id = "22222222-2222-4222-8222-222222222222"
+    with canonical_pg_cluster() as pg:
+        client = PgRepositoryClient(pg)
+        pg.psql(f"INSERT INTO public.workflows (id,org_id,name) "
+                f"VALUES ('{workflow_id}','{ORG}','Crash recovery fixture')")
+        created = repository.create_execute_run(
+            client, ORG, workflow_id, "synthetic-actor",
+            {"steps": []}, {}, "crash-recovery-hash",
+            "pending_approval", "pending_approval", 1, ["admin"],
+            environment_name="synthetic")
+        run_id = created["id"]
+        assert repository.try_mark_run_running(client, run_id, ORG)
+        repository.update_run(client, run_id, "completed")
+        assert pg.value(f"SELECT count(*) FROM public.domain_event_outbox "
+                        f"WHERE aggregate_id='{run_id}'") == "1"
+
+        # Simulate an abruptly killed worker process after claiming the event,
+        # without acknowledging/committing delivery. PostgreSQL is independent
+        # and survives the child process termination.
+        script = """
+import os
+import psycopg
+with psycopg.connect(host=os.environ['P27_PG_SOCK'],
+                     port=os.environ['P27_PG_PORT'],
+                     user='postgres', dbname='postgres') as conn:
+    with conn.cursor() as cur:
+        cur.execute("SELECT id FROM public.claim_domain_events('crashed-worker', 1, 60)")
+        row = cur.fetchone()
+        assert row is not None, "expected one claim"
+os._exit(73)
+"""
+        import os
+        env = {**os.environ, "P27_PG_SOCK": str(pg.sock), "P27_PG_PORT": pg.port}
+        child = subprocess.run([sys.executable, "-c", script], env=env,
+                               capture_output=True, text=True, timeout=20)
+        assert child.returncode == 73, child.stderr
+        assert pg.value("SELECT status FROM public.domain_event_outbox") == "processing"
+        assert pg.value("SELECT lease_owner FROM public.domain_event_outbox") == "crashed-worker"
+
+        # The lease must expire before another process can claim the event.
+        pg.psql("UPDATE public.domain_event_outbox "
+                "SET lease_expires_at=now()-interval '1 second' "
+                "WHERE lease_owner='crashed-worker'")
+        pg.psql("CREATE TABLE public.qa_p27_crash_effects ("
+                "event_id bigint PRIMARY KEY, run_id uuid NOT NULL)")
+        def consumer(_client, event):
+            assert event["aggregate_id"] == run_id
+            pg.psql("INSERT INTO public.qa_p27_crash_effects (event_id,run_id) "
+                    f"VALUES ({int(event['id'])},'{run_id}') "
+                    "ON CONFLICT(event_id) DO NOTHING")
+        domain_events.reset_domain_event_handlers_for_tests()
+        domain_events.register_domain_event_handler(
+            domain_events.EVENT_EXECUTION_OUTCOME_FINALIZED,
+            "qa_p27_crash_recovery", consumer)
+        try:
+            relay = domain_events.DomainEventRelay(
+                _PsqlRpcClient(pg), worker_id="replacement-worker")
+            recovered = relay.run_once()
+            replay = relay.run_once()
+        finally:
+            domain_events.reset_domain_event_handlers_for_tests()
+        assert recovered.delivered == 1
+        assert replay.claimed == 0
+        assert pg.value("SELECT count(*) FROM public.qa_p27_crash_effects") == "1"
+        assert pg.value("SELECT status FROM public.domain_event_outbox") == "delivered"
