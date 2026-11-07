@@ -20,7 +20,15 @@ import pytest
 from fastapi import HTTPException
 
 from tests.db.pg_harness import requires_pg
-from tests.db.test_domain_event_outbox_pg import ORG, _PsqlRpcClient, _new_run, pg
+from tests.db.test_domain_event_outbox_pg import ORG, _PsqlRpcClient
+from tests.master_qa.canonical_pg_repository import (
+    PgRepositoryClient, canonical_pg_cluster,
+)
+
+@pytest.fixture
+def pg():
+    with canonical_pg_cluster() as database:
+        yield database
 
 pytestmark = requires_pg
 
@@ -28,7 +36,7 @@ pytestmark = requires_pg
 async def test_agent_play_approval_real_step_to_durable_consumer(pg, monkeypatch):
     from app.services import agent_selector, domain_events, work_loop_links
     from app.routers import plays, workflows
-    from app.workflows import execute, handlers
+    from app.workflows import execute, handlers, repository
     from app.services.tool_types import ToolContext, NormalizedResult
     from app.services.sealed_read_execution import invoke_compiled_read
     from app.services.connector_resource_resolver import ResourceResolution
@@ -43,7 +51,7 @@ async def test_agent_play_approval_real_step_to_durable_consumer(pg, monkeypatch
         write_authority_mode="enforce",
         connector_secrets_encryption_key="k" * 32,
     )
-    client = MagicMock()
+    client = PgRepositoryClient(pg)
     def connector_table(name):
         assert name == "connectors"
         class Query:
@@ -87,7 +95,21 @@ async def test_agent_play_approval_real_step_to_durable_consumer(pg, monkeypatch
         play_parameters = body.parameters
         assert play_parameters["play"]["execution_authority"] == "canonical_workflow_runtime"
         assert pg.value("SELECT count(*) FROM public.workflow_runs") == "0"
-        run_id = _new_run(pg, "pending_approval")
+        # Production repository creation, including canonical runs mirror.
+        pg.psql(f"INSERT INTO public.workflows (id, org_id, name) "
+                f"VALUES ('{workflow_id}', '{ORG}', 'Synthetic QA Play workflow') "
+                "ON CONFLICT (id) DO NOTHING")
+        created = repository.create_execute_run(
+            client=client, org_id=ORG, workflow_id=workflow_id,
+            triggered_by=current_user["user_id"], definition_snapshot=definition,
+            parameters=body.parameters, run_hash="synthetic-p27-joined",
+            status="pending_approval", approval_status="pending_approval",
+            required_approvals=1, approver_roles=["admin"],
+            environment_name=environment_name)
+        run_id = created["id"]
+        repository.create_step(
+            client=client, org_id=ORG, run_id=run_id, step_id="synthetic-read",
+            step_index=0, step_name="Read synthetic CRM", step_type="invoke_tool")
         return {"run_id": run_id, "status": "pending_approval", "approval_required": True}
 
     # The Play router is production code, but initial workflow creation is an
@@ -101,52 +123,28 @@ async def test_agent_play_approval_real_step_to_durable_consumer(pg, monkeypatch
     assert pg.value(f"SELECT status FROM public.workflow_runs WHERE id='{run_id}'") == "pending_approval"
     assert pg.value("SELECT count(*) FROM public.domain_event_outbox") == "0"
 
-    approvals = []
-    step_rows = [{
-        "id": "synthetic-step-1", "step_id": "synthetic-read",
-        "step_type": "invoke_tool", "status": "pending", "output_snapshot": {},
-    }]
-    statuses = ["pending"]
-    def current_run(_client, org, rid, env):
-        assert (org, rid, env) == (ORG, run_id, "synthetic")
-        return {"id": run_id, "org_id": ORG,
-                "status": pg.value(f"SELECT status FROM public.workflow_runs WHERE id='{run_id}'"),
-                "run_type": workflows.RUN_TYPE_EXECUTE, "required_approvals": 1,
-                "definition_snapshot": definition, "parameters": play_parameters,
-                "environment": "synthetic", "steps": list(step_rows)}
+    assert pg.value(f"SELECT count(*) FROM public.workflow_steps WHERE run_id='{run_id}'") == "1"
     monkeypatch.setattr(workflows, "get_supabase_client", lambda _: client)
     monkeypatch.setattr(workflows, "get_plan_for_org", lambda *_: {"features": {"approvals": True}})
     monkeypatch.setattr(workflows, "require_feature", lambda *_: None)
     monkeypatch.setattr(workflows, "get_user_role", lambda *_: "admin")
     monkeypatch.setattr(workflows, "has_capability", lambda *_: True)
-    monkeypatch.setattr(workflows, "get_run_with_steps", current_run)
-    monkeypatch.setattr(workflows, "insert_run_approval",
-                        lambda **kw: approvals.append(kw["approver_id"]))
-    monkeypatch.setattr(workflows, "get_approval_counts", lambda *_: (len(approvals), False))
+    # Approval store, counts and run reader now use unpatched repository.
+    monkeypatch.setattr(workflows, "get_run_with_steps", repository.get_run_with_steps)
+    monkeypatch.setattr(workflows, "insert_run_approval", repository.insert_run_approval)
+    monkeypatch.setattr(workflows, "get_approval_counts", repository.get_approval_counts)
     monkeypatch.setattr("app.services.approval_record_service.finalize_contract_approval",
                         lambda *a, **kw: None)
     monkeypatch.setattr("app.services.transparency_service.record_human_override",
                         lambda *a, **kw: None)
-    def claim(_client, rid, org):
-        assert (rid, org) == (run_id, ORG)
-        return pg.value(
-            f"UPDATE public.workflow_runs SET status='running' "
-            f"WHERE id='{run_id}' AND status='pending_approval' RETURNING id") == run_id
-    monkeypatch.setattr(workflows, "try_mark_run_running", claim)
+    monkeypatch.setattr(workflows, "try_mark_run_running", repository.try_mark_run_running)
     for name in ("emit_execute_approval_recorded", "emit_execute_approved", "emit_execute_started"):
         monkeypatch.setattr(workflows, name, lambda *a, **kw: None)
 
     # Existing step rows were created at approval time; the real handler
     # must perform the pending -> running -> completed step transition.
     monkeypatch.setattr(execute, "enforce_interrupt", lambda *a, **kw: None)
-    monkeypatch.setattr(execute, "get_run_with_steps", current_run)
-    monkeypatch.setattr(execute, "set_step_running",
-                        lambda _db, sid, _time: (
-                            statuses.append("running"), step_rows[0].update(status="running")))
-    def complete_step(**kw):
-        statuses.append(kw["status"])
-        step_rows[0].update(status=kw["status"], output_snapshot=kw.get("output_snapshot") or {})
-    monkeypatch.setattr(execute, "update_step", complete_step)
+    # Production repository step reader and writers remain unpatched.
     monkeypatch.setattr(execute, "emit_execute_step_completed", lambda *a, **kw: None)
     monkeypatch.setattr(execute, "write_audit_event", lambda *a, **kw: None)
     monkeypatch.setattr(execute, "resolve_active_branch", lambda *_: None)
@@ -181,7 +179,9 @@ async def test_agent_play_approval_real_step_to_durable_consumer(pg, monkeypatch
     def terminal_finalizer(_client, **kw):
         assert kw["org_id"] == ORG and kw["run_id"] == run_id
         assert kw["status"] == "completed"
-        pg.psql(f"UPDATE public.workflow_runs SET status='completed' WHERE id='{run_id}'")
+        # Pending canonical outcome notification fanout is adapted, but the
+        # repository update and runs/run_steps mirrors are production code.
+        repository.update_run(_client, run_id, "completed", approval_status="approved")
     monkeypatch.setattr("app.services.execution_outcome.finalize_execution_outcome",
                         terminal_finalizer)
 
@@ -194,8 +194,12 @@ async def test_agent_play_approval_real_step_to_durable_consumer(pg, monkeypatch
         {"user_id": "synthetic-approver"}, ORG, "synthetic", settings)
     assert approved["status"] == "completed"
     assert approved["approval_status"] == "approved"
-    assert approvals == ["synthetic-approver"]
-    assert statuses == ["pending", "running", "completed"]
+    assert repository.get_approval_counts(PgRepositoryClient(pg), run_id) == (1, False)
+    steps = repository.get_run_with_steps(PgRepositoryClient(pg), ORG, run_id, "synthetic")["steps"]
+    assert steps[0]["status"] == "completed"
+    assert steps[0]["output_snapshot"]
+    assert pg.value(f"SELECT status FROM public.runs WHERE id='{run_id}'") == "completed"
+    assert pg.value(f"SELECT status FROM public.run_steps WHERE run_id='{run_id}'") == "completed"
     assert vendor.call_count == 1
     assert pg.value(f"SELECT status FROM public.workflow_runs WHERE id='{run_id}'") == "completed"
     assert pg.value("SELECT count(*) FROM public.domain_event_outbox") == "1"
