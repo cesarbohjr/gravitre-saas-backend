@@ -4,7 +4,7 @@
   "generated_date": "2026-11-07",
   "scope": "All GitHub workflows found in current main. No disposition approved. Source excerpts are exploratory; no deployment or safety inference from filename.",
   "total_files": 92,
-  "source_inspected": 41,
+  "source_inspected": 50,
   "disposition_status": "ALL_PENDING",
   "entries": [
     {
@@ -719,9 +719,8 @@
     },
     {
       "path": ".github/workflows/metrics-rollup.yml",
-      "inspection_status": "PENDING_DEEP_INSPECTION",
+      "inspection_status": "SOURCE_INSPECTED",
       "unverified_details": [
-        "triggers",
         "required_check",
         "last_run",
         "calls",
@@ -731,13 +730,19 @@
         "ownership"
       ],
       "disposition": "INVESTIGATE",
-      "disposition_approved": false
+      "disposition_approved": false,
+      "workflow_name": "Metrics Rollup",
+      "trigger_excerpt": "schedule:\n    - cron: \"15 2 * * *\"\n  workflow_dispatch:\n    inputs:\n      days:\n        description: \"Days back to roll up\"\n        required: false\n        default: \"1\"\n      purge_days:\n        description: \"Purge audit_events older than N days (optional)\"\n        required: false\n\n",
+      "has_workflow_call": false,
+      "has_workflow_dispatch": true,
+      "has_push_trigger": false,
+      "has_pr_trigger": false,
+      "environment_refs": []
     },
     {
       "path": ".github/workflows/migration-history-recovery.yml",
-      "inspection_status": "PENDING_DEEP_INSPECTION",
+      "inspection_status": "SOURCE_INSPECTED",
       "unverified_details": [
-        "triggers",
         "required_check",
         "last_run",
         "calls",
@@ -747,13 +752,19 @@
         "ownership"
       ],
       "disposition": "INVESTIGATE",
-      "disposition_approved": false
+      "disposition_approved": false,
+      "workflow_name": "Migration history recovery",
+      "trigger_excerpt": "pull_request:\n    branches: [main]\n    paths:\n      - 'scripts/migration_recovery/**'\n      - '.github/workflows/migration-history-recovery.yml'\n  workflow_dispatch:\n",
+      "has_workflow_call": false,
+      "has_workflow_dispatch": true,
+      "has_push_trigger": false,
+      "has_pr_trigger": true,
+      "environment_refs": []
     },
     {
       "path": ".github/workflows/milestone1-live-reverify.yml",
-      "inspection_status": "PENDING_DEEP_INSPECTION",
+      "inspection_status": "SOURCE_INSPECTED",
       "unverified_details": [
-        "triggers",
         "required_check",
         "last_run",
         "calls",
@@ -763,13 +774,19 @@
         "ownership"
       ],
       "disposition": "INVESTIGATE",
-      "disposition_approved": false
+      "disposition_approved": false,
+      "workflow_name": "Milestone 1 Live Reverify",
+      "trigger_excerpt": "workflow_dispatch:\n    inputs:\n      min_sha:\n        description: \"Minimum deployed git sha prefix (Research Manager)\"\n        required: false\n        default: \"4eb6adbe\"\n      skip_wave67_write:\n        description: \"Skip Wave67 write/approve turns (read-only spotcheck)\"\n        required: false\n        type: boolean\n        default: false\n  push:\n    branches: [main]\n    paths:\n      - \"backend/app/services/research_manager.py\"\n      - \"backend/app/services/unified_retrieval_service.py\"\n      - \"scripts/smoke-milestone1-live-reverify.py\"\n      - \"scripts/smoke-retrieval-ab-live.py\"\n      - \"scripts/smoke_auth.py\"\n      - \"scripts/smoke-routing-wave-live.py\"\n      - \"scripts/smoke-research-cascade-prod.py\"\n      - \"scripts/smoke-wave67-spotcheck.py\"\n      - \"scripts/smoke-canvas-write-governance-live.py\"\n      - \"scripts/smoke-react-write-live.py\"\n      - \".github/workflows/milestone1-live-reverify.yml\"\n\n",
+      "has_workflow_call": false,
+      "has_workflow_dispatch": true,
+      "has_push_trigger": true,
+      "has_pr_trigger": false,
+      "environment_refs": []
     },
     {
       "path": ".github/workflows/milestone2-latency-ab.yml",
-      "inspection_status": "PENDING_DEEP_INSPECTION",
+      "inspection_status": "SOURCE_INSPECTED",
       "unverified_details": [
-        "triggers",
         "required_check",
         "last_run",
         "calls",
@@ -779,13 +796,19 @@
         "ownership"
       ],
       "disposition": "INVESTIGATE",
-      "disposition_approved": false
+      "disposition_approved": false,
+      "workflow_name": "Milestone 2 Latency A/B",
+      "trigger_excerpt": "workflow_dispatch:\n    inputs:\n      reason:\n        description: \"Reason for manual trigger (pre/post RM latency guardrail)\"\n        required: false\n        default: \"milestone2-latency-ab\"\n\n",
+      "has_workflow_call": false,
+      "has_workflow_dispatch": true,
+      "has_push_trigger": false,
+      "has_pr_trigger": false,
+      "environment_refs": []
     },
     {
       "path": ".github/workflows/milestone2-performance-audit.yml",
-      "inspection_status": "PENDING_DEEP_INSPECTION",
+      "inspection_status": "SOURCE_INSPECTED",
       "unverified_details": [
-        "triggers",
         "required_check",
         "last_run",
         "calls",
@@ -795,13 +818,19 @@
         "ownership"
       ],
       "disposition": "INVESTIGATE",
-      "disposition_approved": false
+      "disposition_approved": false,
+      "workflow_name": "Milestone 2 Performance Audit",
+      "trigger_excerpt": "workflow_dispatch:\n    inputs:\n      reason:\n        description: \"Reason for manual trigger\"\n        required: false\n  push:\n    branches: [main]\n    paths:\n      - \"scripts/smoke-milestone2-performance-audit.py\"\n      - \".github/workflows/milestone2-performance-audit.yml\"\n\n",
+      "has_workflow_call": false,
+      "has_workflow_dispatch": true,
+      "has_push_trigger": true,
+      "has_pr_trigger": false,
+      "environment_refs": []
     },
     {
       "path": ".github/workflows/msp-enrichment-workflow-live.yml",
-      "inspection_status": "PENDING_DEEP_INSPECTION",
+      "inspection_status": "SOURCE_INSPECTED",
       "unverified_details": [
-        "triggers",
         "required_check",
         "last_run",
         "calls",
@@ -811,13 +840,19 @@
         "ownership"
       ],
       "disposition": "INVESTIGATE",
-      "disposition_approved": false
+      "disposition_approved": false,
+      "workflow_name": "MSP Enrichment Workflow Live",
+      "trigger_excerpt": "workflow_dispatch:\n    inputs:\n      reason:\n        description: \"Reason for manual trigger\"\n        required: false\n        default: \"post-merge verification\"\n  push:\n    branches: [main]\n    paths:\n      - \"scripts/smoke-msp-enrichment-workflow-live.py\"\n      - \".github/workflows/msp-enrichment-workflow-live.yml\"\n      - \"backend/app/marketplace/workflows/msp_enrichment_workflow.py\"\n      - \"backend/app/marketplace/intelligence_packs/prospecting_install.py\"\n\n",
+      "has_workflow_call": false,
+      "has_workflow_dispatch": true,
+      "has_push_trigger": true,
+      "has_pr_trigger": false,
+      "environment_refs": []
     },
     {
       "path": ".github/workflows/msp-isolated-database-security.yml",
-      "inspection_status": "PENDING_DEEP_INSPECTION",
+      "inspection_status": "SOURCE_INSPECTED",
       "unverified_details": [
-        "triggers",
         "required_check",
         "last_run",
         "calls",
@@ -827,13 +862,19 @@
         "ownership"
       ],
       "disposition": "INVESTIGATE",
-      "disposition_approved": false
+      "disposition_approved": false,
+      "workflow_name": "MSP isolated database security",
+      "trigger_excerpt": "push:\n    branches:\n      - feature/msp-tenant-isolation-policy-20261017\n      - feature/msp-live-acceptance-and-frontend-map\n  workflow_dispatch:\n\n",
+      "has_workflow_call": false,
+      "has_workflow_dispatch": true,
+      "has_push_trigger": true,
+      "has_pr_trigger": false,
+      "environment_refs": []
     },
     {
       "path": ".github/workflows/native-langfuse-certification.yml",
-      "inspection_status": "PENDING_DEEP_INSPECTION",
+      "inspection_status": "SOURCE_INSPECTED",
       "unverified_details": [
-        "triggers",
         "required_check",
         "last_run",
         "calls",
@@ -843,13 +884,19 @@
         "ownership"
       ],
       "disposition": "INVESTIGATE",
-      "disposition_approved": false
+      "disposition_approved": false,
+      "workflow_name": "Native Langfuse delivery certification",
+      "trigger_excerpt": "pull_request:\n    paths:\n      - 'backend/app/services/native_runtime/**'\n      - 'backend/app/services/native_agent_adapters.py'\n      - 'backend/native-workers/langfuse*.py'\n      - 'backend/native-workers/requirements-langfuse.txt'\n      - '.github/workflows/native-langfuse-certification.yml'\n  workflow_dispatch:\n",
+      "has_workflow_call": false,
+      "has_workflow_dispatch": true,
+      "has_push_trigger": false,
+      "has_pr_trigger": true,
+      "environment_refs": []
     },
     {
       "path": ".github/workflows/native-workers-offline.yml",
-      "inspection_status": "PENDING_DEEP_INSPECTION",
+      "inspection_status": "SOURCE_INSPECTED",
       "unverified_details": [
-        "triggers",
         "required_check",
         "last_run",
         "calls",
@@ -859,7 +906,16 @@
         "ownership"
       ],
       "disposition": "INVESTIGATE",
-      "disposition_approved": false
+      "disposition_approved": false,
+      "workflow_name": "Native worker image contracts",
+      "trigger_excerpt": "pull_request:\n    paths:\n      - 'backend/app/services/native_runtime/**'\n      - 'backend/native-workers/**'\n      - 'backend/tests/native_runtime/**'\n      - '.github/workflows/native-workers-offline.yml'\n  workflow_dispatch:\n",
+      "has_workflow_call": false,
+      "has_workflow_dispatch": true,
+      "has_push_trigger": false,
+      "has_pr_trigger": true,
+      "environment_refs": [
+        "acceptance"
+      ]
     },
     {
       "path": ".github/workflows/navigation-e2e.yml",
