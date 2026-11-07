@@ -65,7 +65,7 @@ BEGIN
         (run_id, org_id, token, owner, claimed_at, lease_expires_at, attempts)
     VALUES (v_run.id, v_run.org_id, v_token, p_owner, now(),
             now() + make_interval(secs => p_lease_seconds), 1)
-    ON CONFLICT (run_id) DO UPDATE
+    ON CONFLICT ON CONSTRAINT workflow_recovery_leases_pkey DO UPDATE
        SET token=excluded.token, owner=excluded.owner, claimed_at=excluded.claimed_at,
            lease_expires_at=excluded.lease_expires_at,
            attempts=public.workflow_recovery_leases.attempts + 1
