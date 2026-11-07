@@ -231,6 +231,9 @@ class PgRepositoryClient:
             "assert_graph_recovery_lease": (
                 "SELECT public.assert_graph_recovery_lease(%s,%s)",
                 ("p_run_id", "p_token"), False),
+            "graph_recovery_lease_active": (
+                "SELECT public.graph_recovery_lease_active(%s)",
+                ("p_run_id",), False),
             "renew_graph_recovery_lease": (
                 "SELECT public.renew_graph_recovery_lease(%s,%s,%s)",
                 ("p_run_id", "p_token", "p_seconds"), False),
