@@ -649,9 +649,12 @@ def _execute_graph_node(ctx: _GraphRunContext, node_id: str, step_index: int) ->
         # even though the source resource is uniquely addressable.
         from app.services.tool_service import params_for_step
 
-        prepared = params_for_step(
-            step_type, config, merged_parameters,
-            step_outputs=dict(ctx.node_outputs),
+        prepared = (
+            params_for_step(
+                step_type, config, merged_parameters,
+                step_outputs=dict(ctx.node_outputs),
+            )
+            if step_type == "invoke_tool" else {}
         )
         selectors = {
             k: v for k, v in (prepared or {}).items()
