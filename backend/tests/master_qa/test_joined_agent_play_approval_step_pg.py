@@ -4,16 +4,17 @@ Real: AgentSelector.select, Play run router preflight/dispatch, approval route,
 execute_workflow_steps registered invoke_tool handler, sealed read gate, SQL
 workflow status trigger, outbox relay and idempotent durable consumer.
 
-Adapted: local tenant connector query, initial execute_workflow run creation,
-approval/step repositories, terminal finalizer and outbound vendor transport.
-The narrow disposable PG fixture does NOT contain canonical approvals or
-workflow_steps schemas; this test is NOT unmodified production DB E2E or
-external provider readback certification.
+Adapted: local tenant connector query, initial execute_workflow route
+policy/planning, terminal notification finalizer and outbound vendor transport.
+Canonical repository methods and legacy/contract run, step and approval
+tables are real, backed by disposable PostgreSQL via a SQL transport adapter.
+This is NOT an unmodified production API/worker, process crash or external
+provider readback certification.
 """
 from __future__ import annotations
 
 from types import SimpleNamespace
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import Mock, patch
 from uuid import UUID
 
 import pytest
