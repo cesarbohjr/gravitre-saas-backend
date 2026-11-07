@@ -259,11 +259,24 @@ class PgRepositoryClient:
         return Call()
 
 
+from contextlib import contextmanager
+import subprocess
+
+
+@contextmanager
 def canonical_pg_cluster():
-    return pg_cluster(
-        BOOTSTRAP_SQL,
-        CANONICAL_SCHEMA,
-        MIGRATION.read_text(),
-        CLAIM_TYPES_MIGRATION.read_text(),
-        (MIGRATIONS / "20261107235500_p27_graph_recovery_leases.sql").read_text(),
-    )
+    try:
+        with pg_cluster(
+            BOOTSTRAP_SQL,
+            CANONICAL_SCHEMA,
+            MIGRATION.read_text(),
+            CLAIM_TYPES_MIGRATION.read_text(),
+            (MIGRATIONS / "20261107235500_p27_graph_recovery_leases.sql").read_text(),
+        ) as server:
+            yield server
+    except subprocess.CalledProcessError as exc:
+        # The base PG harness captures stderr; surface PostgreSQL's precise
+        # migration error instead of an opaque exit status 3 in CI.
+        raise AssertionError(
+            f"Disposable PostgreSQL SQL error: {exc.stderr or exc.output}"
+        ) from exc
