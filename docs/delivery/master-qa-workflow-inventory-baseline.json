@@ -4,7 +4,7 @@
   "generated_date": "2026-11-07",
   "scope": "All GitHub workflows found in current main. No disposition approved. Source excerpts are exploratory; no deployment or safety inference from filename.",
   "total_files": 92,
-  "source_inspected": 59,
+  "source_inspected": 68,
   "disposition_status": "ALL_PENDING",
   "entries": [
     {
@@ -1121,9 +1121,8 @@
     },
     {
       "path": ".github/workflows/pr587-local-acoustic.yml",
-      "inspection_status": "PENDING_DEEP_INSPECTION",
+      "inspection_status": "SOURCE_INSPECTED",
       "unverified_details": [
-        "triggers",
         "required_check",
         "last_run",
         "calls",
@@ -1133,13 +1132,19 @@
         "ownership"
       ],
       "disposition": "INVESTIGATE",
-      "disposition_approved": false
+      "disposition_approved": false,
+      "workflow_name": "PR587 local cancellation acoustic qualification (no provider credits)",
+      "trigger_excerpt": "workflow_dispatch:\n",
+      "has_workflow_call": false,
+      "has_workflow_dispatch": true,
+      "has_push_trigger": false,
+      "has_pr_trigger": false,
+      "environment_refs": []
     },
     {
       "path": ".github/workflows/pr587-offline-cancellation.yml",
-      "inspection_status": "PENDING_DEEP_INSPECTION",
+      "inspection_status": "SOURCE_INSPECTED",
       "unverified_details": [
-        "triggers",
         "required_check",
         "last_run",
         "calls",
@@ -1149,13 +1154,19 @@
         "ownership"
       ],
       "disposition": "INVESTIGATE",
-      "disposition_approved": false
+      "disposition_approved": false,
+      "workflow_name": "PR587 offline cancellation safety gate",
+      "trigger_excerpt": "pull_request:\n    paths:\n      - 'scripts/pr587_offline_cancel_gate.py'\n      - 'docs/delivery/pr587-stt-control-latency-3980a8d.json'\n      - 'docs/delivery/pr587-local-control-decoder-rejections.json'\n      - '.github/workflows/pr587-offline-cancellation.yml'\n  workflow_dispatch:\n",
+      "has_workflow_call": false,
+      "has_workflow_dispatch": true,
+      "has_push_trigger": false,
+      "has_pr_trigger": true,
+      "environment_refs": []
     },
     {
       "path": ".github/workflows/pr605-cross-surface-ownership.yml",
-      "inspection_status": "PENDING_DEEP_INSPECTION",
+      "inspection_status": "SOURCE_INSPECTED",
       "unverified_details": [
-        "triggers",
         "required_check",
         "last_run",
         "calls",
@@ -1165,7 +1176,14 @@
         "ownership"
       ],
       "disposition": "INVESTIGATE",
-      "disposition_approved": false
+      "disposition_approved": false,
+      "workflow_name": "PR605 cross-surface ownership evidence",
+      "trigger_excerpt": "pull_request:\n    branches: [main]\n    paths:\n      - 'backend/scripts/pr605_cross_surface_ownership_inventory.py'\n      - 'backend/scripts/pr605_execution_owner_edges.py'\n      - 'backend/tests/scripts/test_pr605_cross_surface_ownership_inventory.py'\n      - 'backend/tests/scripts/test_pr605_execution_owner_edges.py'\n      - '.github/workflows/pr605-cross-surface-ownership.yml'\n  workflow_dispatch:\n\n",
+      "has_workflow_call": false,
+      "has_workflow_dispatch": true,
+      "has_push_trigger": false,
+      "has_pr_trigger": true,
+      "environment_refs": []
     },
     {
       "path": ".github/workflows/pr605-gate26-postgres-outbox.yml",
@@ -1235,9 +1253,8 @@
     },
     {
       "path": ".github/workflows/pr605-runtime-edge-contract.yml",
-      "inspection_status": "PENDING_DEEP_INSPECTION",
+      "inspection_status": "SOURCE_INSPECTED",
       "unverified_details": [
-        "triggers",
         "required_check",
         "last_run",
         "calls",
@@ -1247,13 +1264,19 @@
         "ownership"
       ],
       "disposition": "INVESTIGATE",
-      "disposition_approved": false
+      "disposition_approved": false,
+      "workflow_name": "PR605 privacy-safe runtime edge contract",
+      "trigger_excerpt": "pull_request:\n    branches: [main]\n    paths:\n      - 'backend/app/services/runtime_execution_edge_telemetry.py'\n      - 'backend/app/services/domain_events.py'\n      - 'backend/app/services/workflow_execution_strategy.py'\n      - 'backend/app/services/autonomous_execution_loop.py'\n      - 'backend/app/services/chat_connector_execution_service.py'\n      - 'backend/app/services/execution_outcome.py'\n      - 'backend/app/services/chat_orchestration_service.py'\n      - 'backend/tests/services/test_runtime_execution_edge_telemetry.py'\n      - 'backend/tests/services/test_pr605_relay_acceptance.py'\n      - '.github/workflows/pr605-runtime-edge-contract.yml'\n  workflow_dispatch:\n\n",
+      "has_workflow_call": false,
+      "has_workflow_dispatch": true,
+      "has_push_trigger": false,
+      "has_pr_trigger": true,
+      "environment_refs": []
     },
     {
       "path": ".github/workflows/probe-gmail-live-bugs-audit.yml",
-      "inspection_status": "PENDING_DEEP_INSPECTION",
+      "inspection_status": "SOURCE_INSPECTED",
       "unverified_details": [
-        "triggers",
         "required_check",
         "last_run",
         "calls",
@@ -1263,13 +1286,19 @@
         "ownership"
       ],
       "disposition": "INVESTIGATE",
-      "disposition_approved": false
+      "disposition_approved": false,
+      "workflow_name": "Probe Gmail Live Bugs Audit",
+      "trigger_excerpt": "workflow_dispatch:\n    inputs:\n      since_hours:\n        description: \"Lookback window for conversation hunt\"\n        required: false\n        default: \"96\"\n  push:\n    branches: [main]\n    paths:\n      - \"scripts/probe-gmail-live-bugs-audit.py\"\n      - \".github/workflows/probe-gmail-live-bugs-audit.yml\"\n\n",
+      "has_workflow_call": false,
+      "has_workflow_dispatch": true,
+      "has_push_trigger": true,
+      "has_pr_trigger": false,
+      "environment_refs": []
     },
     {
       "path": ".github/workflows/production-hardening-smoke.yml",
-      "inspection_status": "PENDING_DEEP_INSPECTION",
+      "inspection_status": "SOURCE_INSPECTED",
       "unverified_details": [
-        "triggers",
         "required_check",
         "last_run",
         "calls",
@@ -1279,7 +1308,14 @@
         "ownership"
       ],
       "disposition": "INVESTIGATE",
-      "disposition_approved": false
+      "disposition_approved": false,
+      "workflow_name": "Production Hardening Smoke",
+      "trigger_excerpt": "schedule:\n    - cron: \"0 5 * * *\"\n  workflow_dispatch:\n    inputs:\n      reason:\n        description: \"Reason for manual trigger\"\n        required: false\n\n",
+      "has_workflow_call": false,
+      "has_workflow_dispatch": true,
+      "has_push_trigger": false,
+      "has_pr_trigger": false,
+      "environment_refs": []
     },
     {
       "path": ".github/workflows/production-release-verification.yml",
@@ -1327,9 +1363,8 @@
     },
     {
       "path": ".github/workflows/railway-safety-vars.yml",
-      "inspection_status": "PENDING_DEEP_INSPECTION",
+      "inspection_status": "SOURCE_INSPECTED",
       "unverified_details": [
-        "triggers",
         "required_check",
         "last_run",
         "calls",
@@ -1339,13 +1374,19 @@
         "ownership"
       ],
       "disposition": "INVESTIGATE",
-      "disposition_approved": false
+      "disposition_approved": false,
+      "workflow_name": "Railway safety variables",
+      "trigger_excerpt": "workflow_dispatch:\n    inputs:\n      mode:\n        description: audit (read-only) or apply (add absent safety pins)\n        type: choice\n        options: [audit, apply]\n        default: audit\n      railway_environment:\n        description: Railway environment name\n        required: false\n        default: production\n\n",
+      "has_workflow_call": false,
+      "has_workflow_dispatch": true,
+      "has_push_trigger": false,
+      "has_pr_trigger": false,
+      "environment_refs": []
     },
     {
       "path": ".github/workflows/release1-authenticated-network-audit.yml",
-      "inspection_status": "PENDING_DEEP_INSPECTION",
+      "inspection_status": "SOURCE_INSPECTED",
       "unverified_details": [
-        "triggers",
         "required_check",
         "last_run",
         "calls",
@@ -1355,13 +1396,21 @@
         "ownership"
       ],
       "disposition": "INVESTIGATE",
-      "disposition_approved": false
+      "disposition_approved": false,
+      "workflow_name": "Release 1 authenticated production network credential audit",
+      "trigger_excerpt": "push:\n    branches: [main]\n    paths:\n      - \".github/workflows/release1-authenticated-network-audit.yml\"\n      - \"scripts/verify_release1_authenticated_network.py\"\n  workflow_dispatch:\n\n",
+      "has_workflow_call": false,
+      "has_workflow_dispatch": true,
+      "has_push_trigger": true,
+      "has_pr_trigger": false,
+      "environment_refs": [
+        "production"
+      ]
     },
     {
       "path": ".github/workflows/release1-authenticated-smoke.yml",
-      "inspection_status": "PENDING_DEEP_INSPECTION",
+      "inspection_status": "SOURCE_INSPECTED",
       "unverified_details": [
-        "triggers",
         "required_check",
         "last_run",
         "calls",
@@ -1371,7 +1420,16 @@
         "ownership"
       ],
       "disposition": "INVESTIGATE",
-      "disposition_approved": false
+      "disposition_approved": false,
+      "workflow_name": "Release 1 authenticated production smoke",
+      "trigger_excerpt": "push:\n    branches: [main]\n    paths:\n      - \"scripts/verify-release1-authenticated-smoke.py\"\n      - \"scripts/verify-release1-live-negative-matrix.py\"\n      - \"scripts/provision_release1_smoke_member.py\"\n      - \"scripts/verify_release1_admin_audit_live.py\"\n      - \"scripts/verify_release1_live_source_revocation.py\"\n      - \".github/workflows/release1-authenticated-smoke.yml\"\n  workflow_dispatch:\n\n",
+      "has_workflow_call": false,
+      "has_workflow_dispatch": true,
+      "has_push_trigger": true,
+      "has_pr_trigger": false,
+      "environment_refs": [
+        "production"
+      ]
     },
     {
       "path": ".github/workflows/release1-chat-voice-revocation-e2e.yml",
