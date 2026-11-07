@@ -57,8 +57,8 @@ BEGIN
         SELECT 1 FROM public.workflow_recovery_leases active
         WHERE active.run_id = wr.id AND active.lease_expires_at > now())
     ORDER BY wr.created_at, wr.id
-    FOR UPDATE OF wr SKIP LOCKED
-    LIMIT 1;
+    LIMIT 1
+    FOR UPDATE OF wr SKIP LOCKED;
     IF NOT FOUND THEN RETURN; END IF;
 
     INSERT INTO public.workflow_recovery_leases
