@@ -114,10 +114,15 @@ async def test_actual_approve_route_denies_missing_approver_capability_before_wr
     monkeypatch.setattr(workflows, "has_capability", lambda *_: False)
     monkeypatch.setattr(workflows, "insert_run_approval",
                         lambda **kwargs: (_ for _ in ()).throw(AssertionError("approval written")))
+    # Imported module-scoped PG fixture is shared across master_qa modules;
+    # a previous terminal event can exist. Verify the denied request creates
+    # no NEW event, rather than treating unrelated historical rows as a leak.
+    existing_events = pg.value("SELECT count(*) FROM public.domain_event_outbox")
     with pytest.raises(HTTPException) as rejected:
         await workflows.approve_run(UUID(run_id), workflows.ApproveRejectRequest(),
             {"user_id": "synthetic-unprivileged"}, ORG, "synthetic",
             SimpleNamespace(disable_execute=False))
     assert rejected.value.status_code == 403
     assert pg.value(f"SELECT status FROM public.workflow_runs WHERE id='{run_id}'") == "pending_approval"
-    assert pg.value("SELECT count(*) FROM public.domain_event_outbox") == "0"
+    assert pg.value("SELECT count(*) FROM public.domain_event_outbox") == existing_events
+    assert pg.value(f"SELECT count(*) FROM public.domain_event_outbox WHERE aggregate_id='{run_id}'") == "0"
