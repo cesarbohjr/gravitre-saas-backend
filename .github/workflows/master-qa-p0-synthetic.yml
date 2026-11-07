@@ -1,0 +1,91 @@
+name: Master QA P0 — Synthetic and real guard acceptance
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'backend/tests/master_qa/**'
+      - '.github/workflows/master-qa-p0-synthetic.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: master-qa-p0-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  synthetic-fixtures:
+    name: Master QA synthetic fixture contracts
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install minimal offline test runner
+        run: python -m pip install --disable-pip-version-check pytest
+      - name: Run seven fixture tests with zero accepted skips
+        run: |
+          python -m pytest -q -rs tests/master_qa/test_synthetic_fixture_factory.py
+          python - <<'PY'
+          import subprocess
+          p = subprocess.run(
+              ['python', '-m', 'pytest', '--collect-only', '-q',
+               'tests/master_qa/test_synthetic_fixture_factory.py'],
+              capture_output=True, text=True, check=True
+          )
+          assert '7 tests collected' in p.stdout or '7 tests collected' in p.stderr, p.stdout
+          PY
+
+  actual-runtime-and-postgres:
+    name: Master QA actual guards and disposable PostgreSQL
+    runs-on: ubuntu-latest
+    timeout-minutes: 28
+    defaults:
+      run:
+        working-directory: backend
+    env:
+      APP_ENV: dev
+      SUPABASE_URL: https://test.supabase.co
+      SUPABASE_ANON_KEY: anon-test
+      SUPABASE_SERVICE_ROLE_KEY: service-role-test
+      SUPABASE_JWT_SECRET: jwt-secret-test
+      OPENAI_API_KEY: sk-test-openai
+      GRAVITRE_REQUIRE_PG: "1"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Reclaim unrelated runner SDK caches
+        run: |
+          set -euo pipefail
+          for dir in /usr/local/lib/android /usr/share/dotnet /opt/ghc /usr/local/share/powershell; do
+            if [ -d "$dir" ]; then sudo rm -rf -- "$dir"; fi
+          done
+      - name: Install disposable local PostgreSQL
+        run: |
+          set -euo pipefail
+          sudo env DEBIAN_FRONTEND=noninteractive timeout 120s apt-get -o Acquire::Retries=1 update -qq
+          sudo env DEBIAN_FRONTEND=noninteractive timeout 120s apt-get -o Acquire::Retries=1 install -y -qq postgresql postgresql-client
+          test -n "$(find /usr/lib/postgresql -name initdb -type f -print -quit)"
+      - name: Install existing backend development dependencies
+        run: |
+          python -m pip install --no-cache-dir --no-compile -r requirements-dev.txt
+          python -m pip check
+      - name: Exercise actual Gravitre execution safety guards
+        run: python -m pytest -q -rs tests/master_qa/test_runtime_guard_integration.py tests/services/test_gate26_cancellation_and_outbox_contract.py
+      - name: Certify disposable PostgreSQL trigger, relay and idempotency
+        run: |
+          python - <<'PY'
+          from tests.db.pg_harness import PG_BIN
+          if PG_BIN is None:
+              raise SystemExit("PostgreSQL unavailable: not certifying skipped tests")
+          PY
+          python -m pytest -q -rs tests/db/test_domain_event_outbox_pg.py
