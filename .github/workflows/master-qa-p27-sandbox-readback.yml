@@ -1,0 +1,41 @@
+name: P27 sandbox provider readback — manually approved only
+on:
+  workflow_dispatch:
+    inputs:
+      approval:
+        description: "Type APPROVE_NONPRODUCTION_WRITE after confirming sandbox credentials and isolated provider"
+        required: true
+        type: string
+permissions:
+  contents: read
+concurrency:
+  group: p27-sandbox-readback
+  cancel-in-progress: false
+jobs:
+  provider-readback:
+    name: P27 sandbox write and independent provider readback
+    if: ${{ github.event.inputs.approval == 'APPROVE_NONPRODUCTION_WRITE' }}
+    environment: p27-provider-sandbox
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    defaults:
+      run:
+        working-directory: backend
+    env:
+      P27_SANDBOX_BASE_URL: ${{ vars.P27_SANDBOX_BASE_URL }}
+      P27_SANDBOX_ALLOWED_HOST: ${{ vars.P27_SANDBOX_ALLOWED_HOST }}
+      P27_SANDBOX_TOKEN: ${{ secrets.P27_SANDBOX_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Require strict sandbox host and provider credentials
+        run: |
+          test -n "$P27_SANDBOX_BASE_URL" || { echo "::error::Sandbox URL missing"; exit 1; }
+          test -n "$P27_SANDBOX_ALLOWED_HOST" || { echo "::error::Sandbox host missing"; exit 1; }
+          test -n "$P27_SANDBOX_TOKEN" || { echo "::error::Sandbox token missing"; exit 1; }
+      - name: Make one uniquely keyed synthetic action and read it from provider
+        run: python scripts/p27_sandbox_provider_readback.py --approve-sandbox-write
