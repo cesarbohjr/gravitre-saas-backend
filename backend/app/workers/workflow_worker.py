@@ -122,7 +122,7 @@ async def _worker_loop(poll_seconds: int, settings: Settings) -> None:
     next_orphan_check = 0.0
     while True:
         try:
-            if (bool(getattr(settings, "workflow_orphan_recovery_enabled", True))
+            if (bool(getattr(settings, "workflow_orphan_recovery_enabled", False))
                     and time.monotonic() >= next_orphan_check):
                 next_orphan_check = time.monotonic() + max(
                     30, int(getattr(settings, "workflow_orphan_recovery_interval_seconds", 60)))
