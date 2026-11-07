@@ -90,7 +90,7 @@ jobs:
           python -m pip install --no-cache-dir --no-compile -r requirements-dev.txt
           python -m pip check
       - name: Exercise actual Gravitre execution safety guards
-        run: python -m pytest -q -rs tests/master_qa/test_sandbox_provider_readback_contract.py tests/master_qa/test_actual_agent_selection.py tests/master_qa/test_runtime_guard_integration.py tests/services/test_gate26_cancellation_and_outbox_contract.py
+        run: python -m pytest -q -rs tests/master_qa/test_sandbox_provider_readback_contract.py tests/master_qa/test_hubspot_sandbox_readback_contract.py tests/master_qa/test_actual_agent_selection.py tests/master_qa/test_runtime_guard_integration.py tests/services/test_gate26_cancellation_and_outbox_contract.py
       - name: Certify disposable PostgreSQL trigger, relay and idempotency
         run: |
           python - <<'PY'
@@ -98,4 +98,4 @@ jobs:
           if PG_BIN is None:
               raise SystemExit("PostgreSQL unavailable: not certifying skipped tests")
           PY
-          python -m pytest -q -rs tests/db/test_domain_event_outbox_pg.py tests/master_qa/test_real_guard_postgres_consumer_pg.py tests/master_qa/test_canonical_play_outbox_pg.py tests/master_qa/test_actual_workflow_step_pg.py tests/master_qa/test_actual_approval_resume_pg.py tests/master_qa/test_joined_agent_play_approval_step_pg.py tests/master_qa/test_canonical_repository_persistence_pg.py tests/master_qa/test_graph_checkpoint_process_recovery_pg.py tests/master_qa/test_ambiguous_provider_commit_recovery_pg.py
+          python -m pytest -q -rs tests/db/test_domain_event_outbox_pg.py tests/master_qa/test_real_guard_postgres_consumer_pg.py tests/master_qa/test_canonical_play_outbox_pg.py tests/master_qa/test_actual_workflow_step_pg.py tests/master_qa/test_actual_approval_resume_pg.py tests/master_qa/test_joined_agent_play_approval_step_pg.py tests/master_qa/test_canonical_repository_persistence_pg.py tests/master_qa/test_graph_checkpoint_process_recovery_pg.py tests/master_qa/test_ambiguous_provider_commit_recovery_pg.py tests/master_qa/test_orphan_graph_claim_pg.py
