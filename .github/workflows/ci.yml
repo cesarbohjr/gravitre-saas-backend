@@ -279,6 +279,26 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install --no-cache-dir --no-compile -r requirements-dev.txt
 
+      - name: PR605 runtime mounted-route and dependency export
+        run: |
+          mkdir -p "$RUNNER_TEMP/pr605"
+          timeout 120s python scripts/pr605_runtime_dependency_inventory.py --output "$RUNNER_TEMP/pr605/runtime-route-dependencies.json" --depth 3
+        env:
+          APP_ENV: dev
+          SUPABASE_URL: https://test.supabase.co
+          SUPABASE_ANON_KEY: anon-test
+          SUPABASE_SERVICE_ROLE_KEY: service-role-test
+          SUPABASE_JWT_SECRET: jwt-secret-test
+          OPENAI_API_KEY: sk-test-openai
+
+      - name: Upload PR605 exact-head runtime route inventory
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pr605-runtime-route-dependencies
+          path: ${{ runner.temp }}/pr605/runtime-route-dependencies.json
+          if-no-files-found: warn
+
       - name: Pinned Mem0 SDK engineering integration (isolated, no provider calls)
         run: |
           python -m venv "$RUNNER_TEMP/mem0-engine-venv"
@@ -309,15 +329,23 @@ jobs:
             ${{ runner.temp }}/mem0-erasure-audit.json
           if-no-files-found: warn
 
-      - name: Verify bounded media decoder
+      # Keep package provisioning distinct from decoder verification. A slow apt
+      # mirror must fail promptly rather than consume the backend test budget.
+      - name: Provision FFmpeg for bounded media decoder tests
+        timeout-minutes: 5
         run: |
-          if command -v ffmpeg >/dev/null 2>&1; then
-            ffmpeg -version | head -n 1
-          else
-            sudo env DEBIAN_FRONTEND=noninteractive timeout 600s apt-get -o Acquire::Retries=3 update -y -q
-            sudo env DEBIAN_FRONTEND=noninteractive timeout 900s apt-get -o Acquire::Retries=3 install -y -q --no-install-recommends ffmpeg
-            ffmpeg -version | head -n 1
+          set -euo pipefail
+          if ! command -v ffmpeg >/dev/null 2>&1; then
+            sudo env DEBIAN_FRONTEND=noninteractive timeout 90s apt-get -o Acquire::Retries=1 -o Acquire::http::Timeout=20 update -y -q
+            sudo env DEBIAN_FRONTEND=noninteractive timeout 150s apt-get -o Acquire::Retries=1 -o Acquire::http::Timeout=20 install -y -q --no-install-recommends ffmpeg
           fi
+
+      - name: Verify bounded media decoder
+        timeout-minutes: 1
+        run: |
+          set -euo pipefail
+          command -v ffmpeg
+          ffmpeg -version | head -n 1
 
       # tests/db/*_pg.py start a throwaway PostgreSQL from the runner's server
       # binaries; the retrieval migration test also needs pgvector. Best effort:
@@ -352,6 +380,14 @@ jobs:
           sudo apt-get install -y -q postgresql postgresql-client
           PGVER="$(ls /usr/lib/postgresql | sort -V | tail -1)"
           echo "GRAVITRE_PG_BIN=/usr/lib/postgresql/${PGVER}/bin" >> "$GITHUB_ENV"
+
+      - name: PR605 lossless run status Postgres migration certification (must not skip)
+        run: |
+          python -m pytest tests/db/test_pr605_run_status_contract_pg.py -q --no-header -rs
+          python -c "from tests.db.pg_harness import PG_BIN; assert PG_BIN is not None, 'PostgreSQL binaries required'"
+        env:
+          APP_ENV: dev
+          GRAVITRE_REQUIRE_PG: "1"
 
       - name: Write invoke idempotency Postgres acceptance (must not skip)
         run: python -m pytest tests/db/test_write_invoke_idempotency_pg.py -q --no-header

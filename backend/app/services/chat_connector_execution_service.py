@@ -3379,6 +3379,14 @@ class ChatConnectorExecutionService:
                 plan.invoke_action,
                 exc,
             )
+        # The connector result belongs to this persisted run. Emit only an
+        # opt-in HMAC pseudonym, never tool arguments/provider output.
+        from app.services.runtime_execution_edge_telemetry import ExecutionCorrelation
+
+        correlation = ExecutionCorrelation.from_run_id(run_id)
+        if correlation is not None:
+            correlation.record(owner="connector", stage="observed",
+                               source="connector_result")
         # Persist a real workflow_steps row so Runs UI is not 0/0 with COMPLETED.
         if run_id:
             try:

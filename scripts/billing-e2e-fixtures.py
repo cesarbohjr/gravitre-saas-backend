@@ -13,6 +13,7 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from dotenv import dotenv_values
+from billing_acceptance_safety import require_isolated_target
 
 REPO = Path(__file__).resolve().parent.parent
 ENV_BACKEND = REPO / "backend" / ".env"
@@ -124,8 +125,7 @@ def _complete_onboarding(client, org_id: str) -> None:
 def build_fixtures() -> dict:
     env = _load_env()
     if os.environ.get("BILLING_ACCEPTANCE_ISOLATED") == "1":
-        from urllib.parse import urlparse
-        assert urlparse(env["SUPABASE_URL"]).hostname in {"localhost", "127.0.0.1"}
+        require_isolated_target(env["SUPABASE_URL"])
     client = _supabase_client(env)
     now = datetime.now(timezone.utc)
 
@@ -149,12 +149,11 @@ def build_fixtures() -> dict:
     founder_fixture = None
     trial_customer_fixture = None
     if os.environ.get("BILLING_ACCEPTANCE_ISOLATED") == "1":
-        from urllib.parse import urlparse
-        assert urlparse(env["SUPABASE_URL"]).hostname in {"localhost", "127.0.0.1"}
+        require_isolated_target(env["SUPABASE_URL"])
         founder_org, founder_user, founder_email, founder_password = _create_user(client, "founder")
         _complete_onboarding(client, founder_org)
         _set_trial_window(client, founder_org, ends_at=now + timedelta(days=5))
-        client.table("platform_admins").insert({"user_id": founder_user, "email": founder_email, "notes": "Disposable local acceptance only"}).execute()
+        client.table("platform_admins").insert({"user_id": founder_user, "email": founder_email, "notes": "Disposable isolated billing acceptance only"}).execute()
         trial_org, trial_user, trial_email, trial_password = _create_user(client, "founder-trial")
         _complete_onboarding(client, trial_org)
         _set_trial_window(client, trial_org, ends_at=now + timedelta(days=5))

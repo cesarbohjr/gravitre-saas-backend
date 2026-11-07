@@ -3,6 +3,10 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock
 
+import pytest
+
+from app.workflows.run_status_contract import RUN_STATUS_CONTRACT_VERSION, contract_run_status_v2, run_status_metadata
+
 from app.workflows.schema_sync import (
     contract_approval_status,
     contract_nodes_edges_from_definition,
@@ -35,6 +39,36 @@ def test_contract_run_status_maps_pending_approval():
     assert contract_run_status("success") == "completed"
     assert contract_run_status("verifying") == "running"
     assert contract_run_status("verification_inconclusive") == "failed"
+
+
+def test_partial_success_is_distinct_in_v2_contract():
+    assert RUN_STATUS_CONTRACT_VERSION == 2
+    assert contract_run_status("partial_success") == "partial_success"
+
+
+def test_flagged_for_review_is_distinct_in_v2_contract():
+    assert contract_run_status("flagged_for_review") == "flagged_for_review"
+    assert run_status_metadata(lifecycle="flagged_for_review", origin="schema_sync") == {
+        "status_contract_version": 2,
+        "execution_lifecycle": "flagged_for_review",
+        "mirrored_by": "schema_sync",
+    }
+
+
+@pytest.mark.parametrize("source,expected", [
+    ("pending", "queued"), ("verifying", "running"),
+    ("pending_approval", "needs_approval"), ("awaiting_approval", "needs_approval"),
+    ("verification_inconclusive", "failed"), ("partial_success", "partial_success"),
+    ("flagged_for_review", "flagged_for_review"), ("paused", "paused"),
+])
+def test_v2_status_translation_parity(source, expected):
+    assert contract_run_status_v2(source) == expected
+
+
+@pytest.mark.parametrize("source", [None, "", "new_unknown_status"])
+def test_v2_unknown_status_rejected(source):
+    with pytest.raises(ValueError):
+        contract_run_status_v2(source)
 
 
 def test_contract_step_and_approval_status():

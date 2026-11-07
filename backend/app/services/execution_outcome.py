@@ -1139,6 +1139,17 @@ def finalize_execution_outcome(
             exc,
         )
 
+    # Record the canonical terminal fanout boundary against the persisted
+    # run identity. "observed" does not assert downstream delivery/success.
+    from app.services.runtime_execution_edge_telemetry import ExecutionCorrelation
+
+    correlation = ExecutionCorrelation.from_run_id(event.run_id)
+    if correlation is not None:
+        correlation.record(owner="outcome", stage="observed",
+                           source="terminal_fanout")
+        if fanout.get("play_actioned_recorded"):
+            correlation.record(owner="play", stage="observed",
+                               source="play_actioned")
     logger.info(
         "execution_outcome_finalized org_id=%s run_id=%s status=%s source=%s "
         "schema_version=%s fanout=%s",

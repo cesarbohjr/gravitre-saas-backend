@@ -1,0 +1,44 @@
+name: PR605 privacy-safe runtime edge contract
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'backend/app/services/runtime_execution_edge_telemetry.py'
+      - 'backend/app/services/domain_events.py'
+      - 'backend/app/services/workflow_execution_strategy.py'
+      - 'backend/app/services/autonomous_execution_loop.py'
+      - 'backend/app/services/chat_connector_execution_service.py'
+      - 'backend/app/services/execution_outcome.py'
+      - 'backend/app/services/chat_orchestration_service.py'
+      - 'backend/tests/services/test_runtime_execution_edge_telemetry.py'
+      - 'backend/tests/services/test_pr605_relay_acceptance.py'
+      - '.github/workflows/pr605-runtime-edge-contract.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  privacy-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Run isolated privacy and HMAC tests
+        shell: bash
+        env:
+          PYTHONDONTWRITEBYTECODE: '1'
+          PR605_EXECUTION_EDGE_TELEMETRY_ENABLED: 'false'
+          PYTHONPATH: backend
+        run: |
+          set -euo pipefail
+          python -m pip install pytest==8.4.2
+          python -m pytest -q --noconftest backend/tests/services/test_runtime_execution_edge_telemetry.py backend/tests/services/test_pr605_relay_acceptance.py
+          python -m compileall -q backend/app/services/runtime_execution_edge_telemetry.py backend/app/services/domain_events.py backend/app/services/workflow_execution_strategy.py backend/app/services/autonomous_execution_loop.py backend/app/services/chat_connector_execution_service.py backend/app/services/execution_outcome.py backend/app/services/chat_orchestration_service.py
+          echo "PR605 privacy and real-relay synthetic acceptance PASS; no external calls or production collection."
