@@ -4,14 +4,13 @@
   "generated_date": "2026-11-07",
   "scope": "All GitHub workflows found in current main. No disposition approved. Source excerpts are exploratory; no deployment or safety inference from filename.",
   "total_files": 92,
-  "source_inspected": 14,
+  "source_inspected": 23,
   "disposition_status": "ALL_PENDING",
   "entries": [
     {
       "path": ".github/workflows/acceptance-db-preflight.yml",
-      "inspection_status": "PENDING_DEEP_INSPECTION",
+      "inspection_status": "SOURCE_INSPECTED",
       "unverified_details": [
-        "triggers",
         "required_check",
         "last_run",
         "calls",
@@ -21,13 +20,19 @@
         "ownership"
       ],
       "disposition": "INVESTIGATE",
-      "disposition_approved": false
+      "disposition_approved": false,
+      "workflow_name": "Prepare acceptance database initialization",
+      "trigger_excerpt": "pull_request:\n    branches: [main]\n    paths:\n      - '.github/workflows/acceptance-db-preflight.yml'\n      - 'scripts/prepare_acceptance_baseline.py'\n      - 'scripts/check_acceptance_remote_readonly.py'\n      - 'tests/test_acceptance_initialization_preflight.py'\n  workflow_dispatch:\n    inputs:\n      verified_migration_run_id:\n        description: 'Successful Migration history recovery run with data-free baseline artifact'\n        required: true\n        default: '39929148399'\n        type: string\n\n",
+      "has_workflow_call": false,
+      "has_workflow_dispatch": true,
+      "has_push_trigger": false,
+      "has_pr_trigger": true,
+      "environment_refs": []
     },
     {
       "path": ".github/workflows/agent-roi-live.yml",
-      "inspection_status": "PENDING_DEEP_INSPECTION",
+      "inspection_status": "SOURCE_INSPECTED",
       "unverified_details": [
-        "triggers",
         "required_check",
         "last_run",
         "calls",
@@ -37,13 +42,19 @@
         "ownership"
       ],
       "disposition": "INVESTIGATE",
-      "disposition_approved": false
+      "disposition_approved": false,
+      "workflow_name": "Agent ROI live",
+      "trigger_excerpt": "workflow_run:\n    workflows: [\"Production release verification\"]\n    types: [completed]\n    branches: [main]\n  workflow_dispatch:\n  push:\n    branches: [main]\n    paths:\n      - \"scripts/verify-agent-roi-live.py\"\n      - \".github/workflows/agent-roi-live.yml\"\n      - \"backend/app/services/agent_roi_service.py\"\n      - \"backend/app/routers/enterprise.py\"\n      - \"apps/web/components/enterprise/agent-roi-panel.tsx\"\n\n",
+      "has_workflow_call": false,
+      "has_workflow_dispatch": true,
+      "has_push_trigger": true,
+      "has_pr_trigger": false,
+      "environment_refs": []
     },
     {
       "path": ".github/workflows/auth-config-sync.yml",
-      "inspection_status": "PENDING_DEEP_INSPECTION",
+      "inspection_status": "SOURCE_INSPECTED",
       "unverified_details": [
-        "triggers",
         "required_check",
         "last_run",
         "calls",
@@ -53,13 +64,19 @@
         "ownership"
       ],
       "disposition": "INVESTIGATE",
-      "disposition_approved": false
+      "disposition_approved": false,
+      "workflow_name": "Auth Config Sync",
+      "trigger_excerpt": "workflow_dispatch:\n    inputs:\n      skip_vercel_deploy:\n        description: Skip Vercel production deploy\n        required: false\n        default: \"false\"\n        type: choice\n        options:\n          - \"false\"\n          - \"true\"\n\n",
+      "has_workflow_call": false,
+      "has_workflow_dispatch": true,
+      "has_push_trigger": false,
+      "has_pr_trigger": false,
+      "environment_refs": []
     },
     {
       "path": ".github/workflows/authenticated-click-audit.yml",
-      "inspection_status": "PENDING_DEEP_INSPECTION",
+      "inspection_status": "SOURCE_INSPECTED",
       "unverified_details": [
-        "triggers",
         "required_check",
         "last_run",
         "calls",
@@ -69,13 +86,19 @@
         "ownership"
       ],
       "disposition": "INVESTIGATE",
-      "disposition_approved": false
+      "disposition_approved": false,
+      "workflow_name": "Authenticated Click Audit",
+      "trigger_excerpt": "schedule:\n    - cron: \"0 7 * * *\" # daily 07:00 UTC\n  workflow_dispatch:\n  push:\n    branches: [main]\n    paths:\n      - \"scripts/prompt3-authenticated-click-audit.js\"\n      - \"scripts/click-audit.js\"\n      - \"scripts/auth-session-bootstrap.py\"\n      - \".github/workflows/authenticated-click-audit.yml\"\n      - \"apps/web/lib/app-routes.ts\"\n      - \"apps/web/lib/settings-sections.ts\"\n      - \"apps/web/components/gravitre/sidebar-nav-config.ts\"\n\n",
+      "has_workflow_call": false,
+      "has_workflow_dispatch": true,
+      "has_push_trigger": true,
+      "has_pr_trigger": false,
+      "environment_refs": []
     },
     {
       "path": ".github/workflows/autonomous-write-certification.yml",
-      "inspection_status": "PENDING_DEEP_INSPECTION",
+      "inspection_status": "SOURCE_INSPECTED",
       "unverified_details": [
-        "triggers",
         "required_check",
         "last_run",
         "calls",
@@ -85,13 +108,19 @@
         "ownership"
       ],
       "disposition": "INVESTIGATE",
-      "disposition_approved": false
+      "disposition_approved": false,
+      "workflow_name": "Autonomous write independent-process certification",
+      "trigger_excerpt": "pull_request:\n    branches: [main]\n    paths:\n      - 'backend/app/services/autonomous_task_contract.py'\n      - 'backend/app/services/react_execution_strategy.py'\n      - 'backend/app/operators/react_engine.py'\n      - 'backend/app/services/tool_service.py'\n      - 'backend/app/services/tool_types.py'\n      - 'backend/tests/db/test_autonomous_independent_write_pg.py'\n      - 'backend/tests/db/test_autonomous_atomic_approval_pg.py'\n      - 'supabase/migrations/20261102095000_autonomous_atomic_write_claim.sql'\n      - 'backend/tests/services/test_autonomous_write_attempt_budget.py'\n      - 'backend/tests/services/test_autonomous_workflow_context.py'\n      - 'backend/tests/services/test_autonomous_worker_dispatch_boundary.py'\n      - 'backend/tests/services/test_autonomous_invoke_receiver_integration.py'\n      - 'backend/tests/db/test_autonomous_full_dispatcher_pg.py'\n      - '.github/workflows/autonomous-write-certification.yml'\n  workflow_dispatch:\n\n",
+      "has_workflow_call": false,
+      "has_workflow_dispatch": true,
+      "has_push_trigger": false,
+      "has_pr_trigger": true,
+      "environment_refs": []
     },
     {
       "path": ".github/workflows/browser-fallback-recovery-certification.yml",
-      "inspection_status": "PENDING_DEEP_INSPECTION",
+      "inspection_status": "SOURCE_INSPECTED",
       "unverified_details": [
-        "triggers",
         "required_check",
         "last_run",
         "calls",
@@ -101,13 +130,19 @@
         "ownership"
       ],
       "disposition": "INVESTIGATE",
-      "disposition_approved": false
+      "disposition_approved": false,
+      "workflow_name": "Browser fallback recovery certification",
+      "trigger_excerpt": "pull_request:\n    branches:\n      - main\n      - feature/unified-agent-capability-manifest-recovery\n    paths:\n      - 'backend/app/services/native_runtime/**'\n      - 'backend/native-workers/**'\n      - 'backend/tests/native_runtime/**'\n      - 'backend/tests/services/pipecat_voice/test_livekit_write_fence.py'\n      - 'backend/tests/services/pipecat_voice/test_turn_scoped_cancellation.py'\n      - '.github/workflows/browser-fallback-recovery-certification.yml'\n  workflow_dispatch:\n\n",
+      "has_workflow_call": false,
+      "has_workflow_dispatch": true,
+      "has_push_trigger": false,
+      "has_pr_trigger": true,
+      "environment_refs": []
     },
     {
       "path": ".github/workflows/catalog-enrichment-nl-variance.yml",
-      "inspection_status": "PENDING_DEEP_INSPECTION",
+      "inspection_status": "SOURCE_INSPECTED",
       "unverified_details": [
-        "triggers",
         "required_check",
         "last_run",
         "calls",
@@ -117,13 +152,19 @@
         "ownership"
       ],
       "disposition": "INVESTIGATE",
-      "disposition_approved": false
+      "disposition_approved": false,
+      "workflow_name": "Catalog enrichment NL-variance",
+      "trigger_excerpt": "schedule:\n    - cron: \"30 7 * * 1\"  # Weekly Monday 07:30 UTC\n  workflow_dispatch:\n  push:\n    branches: [main]\n    paths:\n      - \"backend/app/connectors/action_catalog/**\"\n      - \"backend/app/services/unified_turn_tool_retrieval.py\"\n      - \"backend/app/rag/tool_retrieval_embedding.py\"\n      - \"scripts/probe-catalog-enrichment-nl-variance.py\"\n      - \"scripts/generate-action-retrieval-enrichment.py\"\n\n",
+      "has_workflow_call": false,
+      "has_workflow_dispatch": true,
+      "has_push_trigger": true,
+      "has_pr_trigger": false,
+      "environment_refs": []
     },
     {
       "path": ".github/workflows/chat-history-hygiene-live.yml",
-      "inspection_status": "PENDING_DEEP_INSPECTION",
+      "inspection_status": "SOURCE_INSPECTED",
       "unverified_details": [
-        "triggers",
         "required_check",
         "last_run",
         "calls",
@@ -133,7 +174,14 @@
         "ownership"
       ],
       "disposition": "INVESTIGATE",
-      "disposition_approved": false
+      "disposition_approved": false,
+      "workflow_name": "Chat history hygiene live",
+      "trigger_excerpt": "workflow_dispatch:\n  push:\n    branches: [main]\n    paths:\n      - \"scripts/verify-chat-history-hygiene-live.py\"\n      - \".github/workflows/chat-history-hygiene-live.yml\"\n      - \"backend/app/routers/conversations.py\"\n      - \"apps/web/app/(app)/ai/_components/ai-workspace.tsx\"\n\n",
+      "has_workflow_call": false,
+      "has_workflow_dispatch": true,
+      "has_push_trigger": true,
+      "has_pr_trigger": false,
+      "environment_refs": []
     },
     {
       "path": ".github/workflows/ci.yml",
@@ -181,9 +229,8 @@
     },
     {
       "path": ".github/workflows/connector-health.yml",
-      "inspection_status": "PENDING_DEEP_INSPECTION",
+      "inspection_status": "SOURCE_INSPECTED",
       "unverified_details": [
-        "triggers",
         "required_check",
         "last_run",
         "calls",
@@ -193,7 +240,14 @@
         "ownership"
       ],
       "disposition": "INVESTIGATE",
-      "disposition_approved": false
+      "disposition_approved": false,
+      "workflow_name": "Connector Health",
+      "trigger_excerpt": "schedule:\n    - cron: \"*/5 * * * *\"\n  workflow_dispatch:\n\n",
+      "has_workflow_call": false,
+      "has_workflow_dispatch": true,
+      "has_push_trigger": false,
+      "has_pr_trigger": false,
+      "environment_refs": []
     },
     {
       "path": ".github/workflows/connector-verified-writes-live.yml",
