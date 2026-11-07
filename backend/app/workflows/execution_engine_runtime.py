@@ -639,6 +639,19 @@ def _execute_graph_node(ctx: _GraphRunContext, node_id: str, step_index: int) ->
     step_started = datetime.now(timezone.utc).isoformat()
     set_step_running(ctx.client, step_uuid, step_started)
 
+    # The provider must never see a consequential call before a durable
+    # pre-dispatch graph checkpoint exists. A crash between provider commit
+    # and the step receipt leaves a 'running' SQL step and this checkpoint,
+    # which the orphan reconciler can identify and read back safely.
+    if _recovery_kind(step_type, config) in {"write", "agent_delegation", "workflow"}:
+        with ctx.lock:
+            _save_graph_checkpoint(
+                ctx,
+                paused_at_node=node_id,
+                batch_index=_batch_index_for_node(_graph.topological_batches(ctx.graph), node_id),
+                pause_reason="executor_in_flight",
+            )
+
     active_branch = resolve_active_branch(ctx.node_outputs)
     if should_skip_for_branch(config, active_branch):
         skipped_output = {
@@ -1032,7 +1045,20 @@ def _handle_node_failure(
 def _batch_requires_serial(ctx: _GraphRunContext, batch: list[str]) -> bool:
     if len(batch) <= 1:
         return True
-    return any(_is_approval_node(ctx.graph.nodes_by_id[nid]) for nid in batch)
+    # Shared run parameters contain a single graph checkpoint. Serialize
+    # consequential nodes so parallel writes cannot overwrite each other's
+    # pre-dispatch journal or leave an incomplete provider receipt.
+    for nid in batch:
+        node = ctx.graph.nodes_by_id[nid]
+        if _is_approval_node(node):
+            return True
+        step = _node_to_step(node, ctx.graph.nodes_by_id, ctx.edge_dicts)
+        if step and _recovery_kind(
+            str(step.get("type") or ""),
+            safe_normalize_stored_dict(step, key="config"),
+        ) in {"write", "agent_delegation", "workflow"}:
+            return True
+    return False
 
 
 def _batch_index_for_node(batches: list[list[str]], node_id: str) -> int:
@@ -1700,9 +1726,16 @@ def resume_paused_workflow_graph(
         step_index=int(checkpoint.get("step_index") or 0),
         recovery_token=recovery_token,
     )
+    # A completed SQL step can have committed just before the worker died,
+    # even when the checkpoint node_outputs snapshot predates its receipt.
+    # Restore those outputs before deciding which nodes remain executable.
+    step_rows = list(run.get("steps") or [])
+    for node_id, output in _node_outputs_from_completed_steps(step_rows).items():
+        ctx.node_outputs.setdefault(node_id, output)
+
     # Never consume the checkpoint before reconciling an in-flight external
     # write. Unknown readback must preserve the paused run and approval state.
-    _reconcile_interrupted_graph_steps(ctx, steps=list(run.get("steps") or []))
+    _reconcile_interrupted_graph_steps(ctx, steps=step_rows)
     merge_run_parameters(
         client,
         run_id,
