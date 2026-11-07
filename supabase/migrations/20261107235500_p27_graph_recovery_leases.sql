@@ -101,12 +101,12 @@ $$;
 
 CREATE OR REPLACE FUNCTION public.graph_recovery_lease_active(p_run_id uuid)
 RETURNS boolean
-LANGUAGE sql STABLE SECURITY DEFINER SET search_path=public AS $
+LANGUAGE sql STABLE SECURITY DEFINER SET search_path=public AS $$
     SELECT EXISTS(
         SELECT 1 FROM public.workflow_recovery_leases
         WHERE run_id=p_run_id AND lease_expires_at > now()
     );
-$;
+$$;
 
 CREATE OR REPLACE FUNCTION public.renew_graph_recovery_lease(
     p_run_id uuid, p_token uuid, p_seconds integer DEFAULT 600)
