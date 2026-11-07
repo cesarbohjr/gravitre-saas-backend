@@ -118,3 +118,43 @@ def test_real_repository_approval_step_and_reconnect_consumer():
         # second durable event or consumer side effect.
         repository.update_run(PgRepositoryClient(pg), run_id, "completed")
         assert pg.value(f"SELECT count(*) FROM public.domain_event_outbox WHERE aggregate_id='{run_id}'") == "1"
+
+
+@pytest.mark.asyncio
+async def test_canonical_postgres_denied_approval_has_no_writes(monkeypatch):
+    """Actual approval route denial on the same tables, not a fake approval list."""
+    from uuid import UUID
+    from fastapi import HTTPException
+    from app.workflows import repository
+    from app.routers import workflows
+
+    workflow_id = "22222222-2222-4222-8222-222222222222"
+    with canonical_pg_cluster() as pg:
+        client = PgRepositoryClient(pg)
+        pg.psql(f"INSERT INTO public.workflows (id, org_id, name) "
+                f"VALUES ('{workflow_id}', '{ORG}', 'P27 denied workflow')")
+        run = repository.create_execute_run(
+            client=client, org_id=ORG, workflow_id=workflow_id,
+            triggered_by="synthetic-owner", definition_snapshot={"steps": []},
+            parameters={}, run_hash="deny-test", status="pending_approval",
+            approval_status="pending_approval", required_approvals=1,
+            approver_roles=["admin"], environment_name="synthetic")
+        run_id = run["id"]
+        monkeypatch.setattr(workflows, "get_supabase_client", lambda _: client)
+        monkeypatch.setattr(workflows, "get_plan_for_org", lambda *_: {})
+        monkeypatch.setattr(workflows, "require_feature", lambda *_: None)
+        monkeypatch.setattr(workflows, "get_run_with_steps", repository.get_run_with_steps)
+        monkeypatch.setattr(workflows, "get_user_role", lambda *_: "member")
+        monkeypatch.setattr(workflows, "has_capability", lambda *_: False)
+        # Approval store and claim remain unpatched: any unauthorized access
+        # would be visible in the underlying SQL tables.
+        outbox_before = pg.value("SELECT count(*) FROM public.domain_event_outbox")
+        with pytest.raises(HTTPException) as exc:
+            await workflows.approve_run(
+                UUID(run_id), workflows.ApproveRejectRequest(),
+                {"user_id": "synthetic-unprivileged"}, ORG, "synthetic",
+                type("Settings", (), {"disable_execute": False})())
+        assert exc.value.status_code == 403
+        assert repository.get_approval_counts(PgRepositoryClient(pg), run_id) == (0, False)
+        assert pg.value(f"SELECT status FROM public.workflow_runs WHERE id='{run_id}'") == "pending_approval"
+        assert pg.value("SELECT count(*) FROM public.domain_event_outbox") == outbox_before
