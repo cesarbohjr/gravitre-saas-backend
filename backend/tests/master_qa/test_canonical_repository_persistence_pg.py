@@ -40,7 +40,7 @@ def test_real_repository_approval_step_and_reconnect_consumer():
             environment_name="synthetic")
         run_id = created["id"]
         assert repository.get_run_with_steps(client, ORG, run_id, "synthetic")["status"] == "pending_approval"
-        assert pg.value(f"SELECT status FROM public.runs WHERE id='{run_id}'") == "pending"
+        assert pg.value(f"SELECT status FROM public.runs WHERE id='{run_id}'") == "needs_approval"
         assert pg.value("SELECT count(*) FROM public.domain_event_outbox") == "0"
 
         first_step = repository.create_step(
