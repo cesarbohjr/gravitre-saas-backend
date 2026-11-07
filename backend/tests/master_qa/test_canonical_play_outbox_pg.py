@@ -61,7 +61,7 @@ async def test_canonical_play_handoff_to_guarded_synthetic_connector_and_durable
 
     async def offline_executor(body, *, current_user, org_id, environment_name, settings):
         execution_arguments.append((body, org_id))
-        assert body.workflow_id == "22222222-2222-4222-8222-222222222222"
+        assert str(body.workflow_id) == "22222222-2222-4222-8222-222222222222"
         assert body.play_key == "customer-rescue"
         assert body.parameters["play"]["execution_authority"] == "canonical_workflow_runtime"
         assert org_id == ORG
