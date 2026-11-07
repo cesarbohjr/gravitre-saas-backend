@@ -4,7 +4,7 @@
   "generated_date": "2026-11-07",
   "scope": "All GitHub workflows found in current main. No disposition approved. Source excerpts are exploratory; no deployment or safety inference from filename.",
   "total_files": 92,
-  "source_inspected": 23,
+  "source_inspected": 32,
   "disposition_status": "ALL_PENDING",
   "entries": [
     {
@@ -251,9 +251,8 @@
     },
     {
       "path": ".github/workflows/connector-verified-writes-live.yml",
-      "inspection_status": "PENDING_DEEP_INSPECTION",
+      "inspection_status": "SOURCE_INSPECTED",
       "unverified_details": [
-        "triggers",
         "required_check",
         "last_run",
         "calls",
@@ -263,7 +262,14 @@
         "ownership"
       ],
       "disposition": "INVESTIGATE",
-      "disposition_approved": false
+      "disposition_approved": false,
+      "workflow_name": "Connector Verified Writes Live",
+      "trigger_excerpt": "schedule:\n    - cron: \"30 6 * * *\"\n  workflow_dispatch:\n    inputs:\n      vendors:\n        description: \"Comma-separated vendors (default: apollo,slack,hubspot,github)\"\n        required: false\n        default: \"apollo,slack,hubspot,github\"\n      reason:\n        description: \"Reason for manual trigger\"\n        required: false\n\n",
+      "has_workflow_call": false,
+      "has_workflow_dispatch": true,
+      "has_push_trigger": false,
+      "has_pr_trigger": false,
+      "environment_refs": []
     },
     {
       "path": ".github/workflows/conversation-engineering.yml",
@@ -289,9 +295,8 @@
     },
     {
       "path": ".github/workflows/conversation-parity-contract.yml",
-      "inspection_status": "PENDING_DEEP_INSPECTION",
+      "inspection_status": "SOURCE_INSPECTED",
       "unverified_details": [
-        "triggers",
         "required_check",
         "last_run",
         "calls",
@@ -301,7 +306,14 @@
         "ownership"
       ],
       "disposition": "INVESTIGATE",
-      "disposition_approved": false
+      "disposition_approved": false,
+      "workflow_name": "Conversation parity contract",
+      "trigger_excerpt": "pull_request:\n    paths:\n      - \"backend/app/services/conversation_parity_*.py\"\n      - \"backend/app/services/conversational_turn_gate.py\"\n      - \"backend/app/services/expert_dialogue_library.py\"\n      - \"backend/app/services/module_d_unified_voice_spec.py\"\n      - \"backend/tests/services/test_few_shot_benchmark_isolation.py\"\n      - \"backend/tests/services/pipecat_voice/**\"\n      - \"backend/tests/support/fake_supabase.py\"\n      - \"scripts/verify-*live*.py\"\n      - \"backend/app/services/pipecat_voice/**\"\n      - \"backend/tests/services/test_conversation_parity_*.py\"\n      - \"scripts/run-conversation-parity-benchmark.py\"\n      - \".github/workflows/conversation-parity-contract.yml\"\n  workflow_dispatch:\n\n",
+      "has_workflow_call": false,
+      "has_workflow_dispatch": true,
+      "has_push_trigger": false,
+      "has_pr_trigger": true,
+      "environment_refs": []
     },
     {
       "path": ".github/workflows/conversational-product-acceptance.yml",
@@ -327,9 +339,8 @@
     },
     {
       "path": ".github/workflows/credential-db-bypass-daily.yml",
-      "inspection_status": "PENDING_DEEP_INSPECTION",
+      "inspection_status": "SOURCE_INSPECTED",
       "unverified_details": [
-        "triggers",
         "required_check",
         "last_run",
         "calls",
@@ -339,13 +350,19 @@
         "ownership"
       ],
       "disposition": "INVESTIGATE",
-      "disposition_approved": false
+      "disposition_approved": false,
+      "workflow_name": "Credential DB Bypass Guard (Daily)",
+      "trigger_excerpt": "schedule:\n    - cron: \"17 6 * * *\" # 06:17 UTC daily\n  workflow_dispatch:\n\n",
+      "has_workflow_call": false,
+      "has_workflow_dispatch": true,
+      "has_push_trigger": false,
+      "has_pr_trigger": false,
+      "environment_refs": []
     },
     {
       "path": ".github/workflows/deletion-lifecycle-readiness.yml",
-      "inspection_status": "PENDING_DEEP_INSPECTION",
+      "inspection_status": "SOURCE_INSPECTED",
       "unverified_details": [
-        "triggers",
         "required_check",
         "last_run",
         "calls",
@@ -355,13 +372,19 @@
         "ownership"
       ],
       "disposition": "INVESTIGATE",
-      "disposition_approved": false
+      "disposition_approved": false,
+      "workflow_name": "Deletion lifecycle readiness evidence",
+      "trigger_excerpt": "push:\n    branches: [main]\n    paths:\n      - \"scripts/check_deletion_lifecycle_readiness.py\"\n      - \".github/workflows/deletion-lifecycle-readiness.yml\"\n  pull_request:\n    paths:\n      - \"scripts/check_deletion_lifecycle_readiness.py\"\n      - \"backend/tests/services/test_deletion_readiness_collector.py\"\n      - \".github/workflows/deletion-lifecycle-readiness.yml\"\n  workflow_dispatch:\n\n",
+      "has_workflow_call": false,
+      "has_workflow_dispatch": true,
+      "has_push_trigger": true,
+      "has_pr_trigger": true,
+      "environment_refs": []
     },
     {
       "path": ".github/workflows/department-eval-suites.yml",
-      "inspection_status": "PENDING_DEEP_INSPECTION",
+      "inspection_status": "SOURCE_INSPECTED",
       "unverified_details": [
-        "triggers",
         "required_check",
         "last_run",
         "calls",
@@ -371,13 +394,19 @@
         "ownership"
       ],
       "disposition": "INVESTIGATE",
-      "disposition_approved": false
+      "disposition_approved": false,
+      "workflow_name": "Department Eval Suites",
+      "trigger_excerpt": "pull_request:\n    paths:\n      - \"backend/app/marketplace/**\"\n      - \"backend/app/services/department_eval_registry.py\"\n      - \"backend/app/services/agent_security_gateway.py\"\n      - \"backend/app/services/retrieve_plan_gate.py\"\n      - \"backend/app/services/agent_tool_permissions.py\"\n      - \"backend/app/services/tool_service.py\"\n      - \"backend/app/services/*tool*\"\n      - \"backend/app/rag/**\"\n      - \"backend/app/knowledge_fabric/**\"\n      - \"backend/tests/eval/**\"\n      - \"backend/tests/marketplace/**\"\n      - \"scripts/run-department-eval-suite.py\"\n      - \".github/workflows/department-eval-suites.yml\"\n  push:\n    branches: [main]\n    paths:\n      - \"backend/app/marketplace/**\"\n      - \"backend/app/services/department_eval_registry.py\"\n      - \"backend/app/services/agent_security_gateway.py\"\n      - \"backend/app/services/retrieve_plan_gate.py\"\n      - \"backend/app/services/agent_tool_permissions.py\"\n      - \"backend/app/services/tool_service.py\"\n      - \"backend/app/services/*tool*\"\n      - \"backend/app/rag/**\"\n      - \"backend/app/knowledge_fabric/**\"\n      - \"backend/tests/eval/**\"\n      - \"backend/tests/marketplace/**\"\n      - \"scripts/run-department-eval-suite.py\"\n      ",
+      "has_workflow_call": false,
+      "has_workflow_dispatch": true,
+      "has_push_trigger": true,
+      "has_pr_trigger": true,
+      "environment_refs": []
     },
     {
       "path": ".github/workflows/desktop-tauri.yml",
-      "inspection_status": "PENDING_DEEP_INSPECTION",
+      "inspection_status": "SOURCE_INSPECTED",
       "unverified_details": [
-        "triggers",
         "required_check",
         "last_run",
         "calls",
@@ -387,13 +416,19 @@
         "ownership"
       ],
       "disposition": "INVESTIGATE",
-      "disposition_approved": false
+      "disposition_approved": false,
+      "workflow_name": "Desktop Tauri",
+      "trigger_excerpt": "workflow_dispatch:\n  push:\n    branches: [main]\n    paths:\n      - \"apps/desktop/**\"\n      - \".github/workflows/desktop-tauri.yml\"\n\n",
+      "has_workflow_call": false,
+      "has_workflow_dispatch": true,
+      "has_push_trigger": true,
+      "has_pr_trigger": false,
+      "environment_refs": []
     },
     {
       "path": ".github/workflows/extension-release.yml",
-      "inspection_status": "PENDING_DEEP_INSPECTION",
+      "inspection_status": "SOURCE_INSPECTED",
       "unverified_details": [
-        "triggers",
         "required_check",
         "last_run",
         "calls",
@@ -403,13 +438,19 @@
         "ownership"
       ],
       "disposition": "INVESTIGATE",
-      "disposition_approved": false
+      "disposition_approved": false,
+      "workflow_name": "Extension release",
+      "trigger_excerpt": "workflow_dispatch:\n  push:\n    branches: [main]\n    paths:\n      - \"apps/extension/**\"\n      - \"scripts/package-extension-chrome-store.py\"\n      - \".github/workflows/extension-release.yml\"\n\n",
+      "has_workflow_call": false,
+      "has_workflow_dispatch": true,
+      "has_push_trigger": true,
+      "has_pr_trigger": false,
+      "environment_refs": []
     },
     {
       "path": ".github/workflows/federated-runtime.yml",
-      "inspection_status": "PENDING_DEEP_INSPECTION",
+      "inspection_status": "SOURCE_INSPECTED",
       "unverified_details": [
-        "triggers",
         "required_check",
         "last_run",
         "calls",
@@ -419,13 +460,19 @@
         "ownership"
       ],
       "disposition": "INVESTIGATE",
-      "disposition_approved": false
+      "disposition_approved": false,
+      "workflow_name": "Federated runtime contracts",
+      "trigger_excerpt": "pull_request:\n    branches: [main]\n  push:\n    branches: [main]\n  workflow_dispatch:\n",
+      "has_workflow_call": false,
+      "has_workflow_dispatch": true,
+      "has_push_trigger": true,
+      "has_pr_trigger": true,
+      "environment_refs": []
     },
     {
       "path": ".github/workflows/golden-benchmark-live.yml",
-      "inspection_status": "PENDING_DEEP_INSPECTION",
+      "inspection_status": "SOURCE_INSPECTED",
       "unverified_details": [
-        "triggers",
         "required_check",
         "last_run",
         "calls",
@@ -435,7 +482,14 @@
         "ownership"
       ],
       "disposition": "INVESTIGATE",
-      "disposition_approved": false
+      "disposition_approved": false,
+      "workflow_name": "Golden benchmark live",
+      "trigger_excerpt": "workflow_dispatch:\n  schedule:\n    - cron: \"40 6 * * 1\"\n\n",
+      "has_workflow_call": false,
+      "has_workflow_dispatch": true,
+      "has_push_trigger": false,
+      "has_pr_trigger": false,
+      "environment_refs": []
     },
     {
       "path": ".github/workflows/indexnow-on-publish.yml",
