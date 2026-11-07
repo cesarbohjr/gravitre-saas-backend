@@ -15,7 +15,7 @@ from psycopg import sql
 from psycopg.rows import dict_row
 from psycopg.types.json import Jsonb
 
-from tests.db.pg_harness import pg_cluster
+from tests.db.pg_harness import MIGRATIONS, pg_cluster
 from tests.db.test_domain_event_outbox_pg import (
     BOOTSTRAP_SQL, MIGRATION, CLAIM_TYPES_MIGRATION, ORG, USER,
 )
@@ -228,4 +228,5 @@ def canonical_pg_cluster():
         CANONICAL_SCHEMA,
         MIGRATION.read_text(),
         CLAIM_TYPES_MIGRATION.read_text(),
+        (MIGRATIONS / "20261107235500_p27_graph_recovery_leases.sql").read_text(),
     )
