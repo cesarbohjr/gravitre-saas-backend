@@ -101,6 +101,32 @@ def test_missing_public_key_fails_before_stripe_or_database_access(isolated, mon
         module.prepare(client_factory=lambda _: pytest.fail("No provider request allowed"))
 
 
+@pytest.mark.parametrize("price_id", ["prod_synthetic", " price_synthetic", "price_synthetic\n", '"price_synthetic"', ""])
+def test_product_ids_or_decorated_price_ids_rejected_before_provider_access(isolated, monkeypatch, price_id):
+    module = load_script("prepare-dedicated-billing-acceptance")
+    for name, value in {"SUPABASE_URL": ACCEPTANCE_URL, "STRIPE_SECRET_KEY": "sk_test_synthetic", "NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY": "pk_test_synthetic", "STRIPE_PRICE_ID_NODE_MONTHLY": price_id}.items():
+        monkeypatch.setenv(name, value)
+    with pytest.raises(ValueError, match="Price ID starting price_"):
+        module.prepare(client_factory=lambda _: pytest.fail("No provider request allowed"))
+
+
+def test_price_lookup_failure_has_safe_class_code_without_credentials(isolated, monkeypatch):
+    module = load_script("prepare-dedicated-billing-acceptance")
+    for name, value in {"SUPABASE_URL": ACCEPTANCE_URL, "STRIPE_SECRET_KEY": "sk_test_synthetic", "NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY": "pk_test_synthetic", "STRIPE_PRICE_ID_NODE_MONTHLY": "price_synthetic"}.items():
+        monkeypatch.setenv(name, value)
+    class InvalidRequestError(Exception):
+        code = "resource_missing"
+        http_status = 404
+    def retrieve(_):
+        raise InvalidRequestError("Never print sk_test_synthetic or price_synthetic")
+    client = SimpleNamespace(v1=SimpleNamespace(prices=SimpleNamespace(retrieve=retrieve)))
+    with pytest.raises(ValueError) as error:
+        module.prepare(client_factory=lambda _: client)
+    message = str(error.value)
+    assert "error=InvalidRequestError, code=resource_missing, http_status=404" in message
+    assert "sk_test_synthetic" not in message and "price_synthetic" not in message
+
+
 def test_listener_is_test_only_signed_and_points_to_runner(isolated, monkeypatch, tmp_path, capsys):
     module = load_script("prepare-dedicated-billing-acceptance")
     for name, value in {"SUPABASE_URL": ACCEPTANCE_URL, "STRIPE_SECRET_KEY": "sk_test_synthetic", "NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY": "pk_test_synthetic", "STRIPE_PRICE_ID_NODE_MONTHLY": "price_synthetic", "RUNNER_TEMP": str(tmp_path), "GITHUB_ENV": str(tmp_path / "env")}.items():

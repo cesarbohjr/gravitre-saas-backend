@@ -21,17 +21,30 @@ def prepare(*, client_factory=None, popen=subprocess.Popen, sleep=time.sleep) ->
     if not key.startswith("sk_test_") or not public_key.startswith("pk_test_"):
         raise ValueError("Dedicated acceptance requires sk_test_ and matching pk_test_ credentials")
     price_id = os.environ.get("STRIPE_PRICE_ID_NODE_MONTHLY", "")
-    if not price_id:
-        raise ValueError("Missing acceptance Node monthly price")
+    if not re.fullmatch(r"price_[A-Za-z0-9]+", price_id):
+        raise ValueError("Acceptance requires a Price ID starting price_ with no quotes or whitespace; a prod_ Product ID is not a Price ID")
     if client_factory is None:
         import stripe
         client_factory = stripe.StripeClient
     client = client_factory(key)
     try:
         price = client.v1.prices.retrieve(price_id)
-    except Exception:
-        # Stripe errors may contain configuration values. Retain only the check.
-        raise ValueError("Acceptance price lookup failed with the test key; verify test-mode account and price") from None
+    except Exception as exc:
+        # Never emit upstream messages: those can include keys and object IDs.
+        # Distinguish configuration/API failure from a runner programming error.
+        name = type(exc).__name__
+        allowed_names = {"InvalidRequestError", "AuthenticationError", "PermissionError",
+                         "APIConnectionError", "APIError", "RateLimitError", "AttributeError", "TypeError"}
+        kind = name if name in allowed_names else "unexpected_error"
+        code = getattr(exc, "code", None)
+        allowed_codes = {"resource_missing", "api_key_expired", "secret_key_required",
+                         "account_invalid", "platform_account_required", "testmode_charges_only"}
+        code = code if code in allowed_codes else "other"
+        status = getattr(exc, "http_status", None)
+        status = status if isinstance(status, int) and 400 <= status <= 599 else "unknown"
+        raise ValueError("Acceptance price lookup failed (values redacted): "
+                         f"error={kind}, code={code}, http_status={status}; "
+                         "verify the test key/account and Price ID") from None
     verify_test_price(price)
     print("Verified existing sandbox price: active, livemode=false, USD 59/month, licensed (ID redacted)")
 
