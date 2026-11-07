@@ -73,7 +73,9 @@ def test_graph_resume_after_crashed_process_skips_checkpointed_write(monkeypatch
         # checkpoint. os._exit simulates abrupt interpreter termination.
         child_script = """
 import os, json, psycopg
-from psycopg.types.json import Jsonb
+from types import SimpleNamespace
+from app.workflows import repository
+from tests.master_qa.canonical_pg_repository import PgRepositoryClient
 with psycopg.connect(host=os.environ["P27_SOCK"], port=os.environ["P27_PORT"],
                      user="postgres", dbname="postgres") as conn:
     with conn.cursor() as cursor:
@@ -81,11 +83,12 @@ with psycopg.connect(host=os.environ["P27_SOCK"], port=os.environ["P27_PORT"],
             "INSERT INTO public.qa_checkpointed_provider_effects "
             "(action_key,run_id,provider_id) VALUES (%s,%s,%s)",
             (os.environ["P27_KEY"],os.environ["P27_RUN"],"sandbox-fixture-1"))
-        cursor.execute(
-            "UPDATE public.workflow_runs SET parameters=%s,status='paused' "
-            "WHERE id=%s AND org_id=%s",
-            (Jsonb({"_graph_execution":json.loads(os.environ["P27_CHECKPOINT"])}),
-             os.environ["P27_RUN"],os.environ["P27_ORG"]))
+pg = SimpleNamespace(sock=os.environ["P27_SOCK"], port=os.environ["P27_PORT"])
+client = PgRepositoryClient(pg)
+repository.merge_run_parameters(
+    client, os.environ["P27_RUN"],
+    {"_graph_execution":json.loads(os.environ["P27_CHECKPOINT"])})
+repository.update_run(client, os.environ["P27_RUN"], "paused")
 os._exit(79)
 """
         env = {
