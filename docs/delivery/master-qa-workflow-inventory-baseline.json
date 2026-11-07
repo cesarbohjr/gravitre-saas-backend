@@ -4,7 +4,7 @@
   "generated_date": "2026-11-07",
   "scope": "All GitHub workflows found in current main. No disposition approved. Source excerpts are exploratory; no deployment or safety inference from filename.",
   "total_files": 92,
-  "source_inspected": 50,
+  "source_inspected": 59,
   "disposition_status": "ALL_PENDING",
   "entries": [
     {
@@ -919,9 +919,8 @@
     },
     {
       "path": ".github/workflows/navigation-e2e.yml",
-      "inspection_status": "PENDING_DEEP_INSPECTION",
+      "inspection_status": "SOURCE_INSPECTED",
       "unverified_details": [
-        "triggers",
         "required_check",
         "last_run",
         "calls",
@@ -931,13 +930,19 @@
         "ownership"
       ],
       "disposition": "INVESTIGATE",
-      "disposition_approved": false
+      "disposition_approved": false,
+      "workflow_name": "Navigation E2E",
+      "trigger_excerpt": "workflow_dispatch:\n\n",
+      "has_workflow_call": false,
+      "has_workflow_dispatch": true,
+      "has_push_trigger": false,
+      "has_pr_trigger": false,
+      "environment_refs": []
     },
     {
       "path": ".github/workflows/outcome-ownership-contract.yml",
-      "inspection_status": "PENDING_DEEP_INSPECTION",
+      "inspection_status": "SOURCE_INSPECTED",
       "unverified_details": [
-        "triggers",
         "required_check",
         "last_run",
         "calls",
@@ -947,13 +952,19 @@
         "ownership"
       ],
       "disposition": "INVESTIGATE",
-      "disposition_approved": false
+      "disposition_approved": false,
+      "workflow_name": "Outcome Ownership Contract",
+      "trigger_excerpt": "pull_request:\n    paths:\n      - \"backend/app/services/execution_outcome.py\"\n      - \"backend/app/services/outcome_*.py\"\n      - \"backend/app/services/objective_capability_composer.py\"\n      - \"backend/app/services/agent_delegation_strategy.py\"\n      - \"backend/app/services/swarm_coordinator_service.py\"\n      - \"backend/app/services/chat_connector_execution_service.py\"\n      - \"backend/app/services/chat_orchestration_*.py\"\n      - \"backend/app/services/conversational_execution_service.py\"\n      - \"backend/app/services/execution_plan_service.py\"\n      - \"backend/app/services/react_execution_strategy.py\"\n      - \"backend/app/services/response_composer.py\"\n      - \"backend/app/services/notification_email_service.py\"\n      - \"backend/app/services/tool_registry.py\"\n      - \"backend/app/services/tool_service.py\"\n      - \"backend/app/services/pipecat_voice/voice_tool_narration.py\"\n      - \"backend/app/operators/agent_intelligence.py\"\n      - \"backend/app/operators/agent_jobs.py\"\n      - \"backend/app/workflows/**\"\n      - \"backend/tests/services/test_outcome_ownership_*.py\"\n      - \"backend/tests/workflows/test_outcome_ownership_*.py\"\n      - \".github/workflows/outcome-ownership-contract.y",
+      "has_workflow_call": false,
+      "has_workflow_dispatch": false,
+      "has_push_trigger": true,
+      "has_pr_trigger": true,
+      "environment_refs": []
     },
     {
       "path": ".github/workflows/phase3-intelligence-coverage.yml",
-      "inspection_status": "PENDING_DEEP_INSPECTION",
+      "inspection_status": "SOURCE_INSPECTED",
       "unverified_details": [
-        "triggers",
         "required_check",
         "last_run",
         "calls",
@@ -963,13 +974,19 @@
         "ownership"
       ],
       "disposition": "INVESTIGATE",
-      "disposition_approved": false
+      "disposition_approved": false,
+      "workflow_name": "Phase 3 Intelligence Coverage",
+      "trigger_excerpt": "pull_request:\n    paths:\n      - 'backend/app/services/intelligence_router.py'\n      - 'backend/app/services/operational_intelligence_layer.py'\n      - 'backend/app/operators/**'\n      - 'backend/app/plays/**'\n      - 'backend/app/workflows/**'\n      - 'backend/app/services/**'\n      - 'backend/scripts/phase3_intelligence_coverage.py'\n      - 'backend/scripts/phase3_intelligence_scenario_bundles.py'\n      - 'backend/tests/test_phase3_intelligence_coverage.py'\n      - 'backend/tests/services/test_phase3*.py'\n      - 'backend/tests/e2e/test_intelligence*.py'\n      - 'backend/tests/e2e/test_phase3*.py'\n      - 'docs/testing/PHASE3_SEVEN_LAYER_CERTIFICATION.md'\n      - '.github/workflows/phase3-intelligence-coverage.yml'\n  workflow_dispatch:\n",
+      "has_workflow_call": false,
+      "has_workflow_dispatch": true,
+      "has_push_trigger": false,
+      "has_pr_trigger": true,
+      "environment_refs": []
     },
     {
       "path": ".github/workflows/phase3-offline-12-scenarios.yml",
-      "inspection_status": "PENDING_DEEP_INSPECTION",
+      "inspection_status": "SOURCE_INSPECTED",
       "unverified_details": [
-        "triggers",
         "required_check",
         "last_run",
         "calls",
@@ -979,13 +996,19 @@
         "ownership"
       ],
       "disposition": "INVESTIGATE",
-      "disposition_approved": false
+      "disposition_approved": false,
+      "workflow_name": "Phase 3 offline 12-scenario evaluation",
+      "trigger_excerpt": "pull_request:\n    paths:\n      - 'backend/scripts/phase3_offline_12_scenarios.py'\n      - 'backend/app/services/**'\n      - 'backend/app/operators/**'\n      - 'backend/app/plays/**'\n      - 'backend/app/workflows/**'\n      - 'backend/tests/services/test_phase3*.py'\n      - 'backend/tests/e2e/test_phase3*.py'\n      - '.github/workflows/phase3-offline-12-scenarios.yml'\n  workflow_dispatch:\n",
+      "has_workflow_call": false,
+      "has_workflow_dispatch": true,
+      "has_push_trigger": false,
+      "has_pr_trigger": true,
+      "environment_refs": []
     },
     {
       "path": ".github/workflows/phase3-phase5-evidence.yml",
-      "inspection_status": "PENDING_DEEP_INSPECTION",
+      "inspection_status": "SOURCE_INSPECTED",
       "unverified_details": [
-        "triggers",
         "required_check",
         "last_run",
         "calls",
@@ -995,13 +1018,19 @@
         "ownership"
       ],
       "disposition": "INVESTIGATE",
-      "disposition_approved": false
+      "disposition_approved": false,
+      "workflow_name": "Phase 3 and Phase 5 evidence gates",
+      "trigger_excerpt": "pull_request:\n    paths:\n      - 'backend/scripts/phase3_offline_12_scenarios.py'\n      - 'backend/scripts/phase5_learning_evidence_gate.py'\n      - '.github/workflows/phase3-phase5-evidence.yml'\n  workflow_dispatch:\n",
+      "has_workflow_call": false,
+      "has_workflow_dispatch": true,
+      "has_push_trigger": false,
+      "has_pr_trigger": true,
+      "environment_refs": []
     },
     {
       "path": ".github/workflows/platform-cs-backfill.yml",
-      "inspection_status": "PENDING_DEEP_INSPECTION",
+      "inspection_status": "SOURCE_INSPECTED",
       "unverified_details": [
-        "triggers",
         "required_check",
         "last_run",
         "calls",
@@ -1011,13 +1040,19 @@
         "ownership"
       ],
       "disposition": "INVESTIGATE",
-      "disposition_approved": false
+      "disposition_approved": false,
+      "workflow_name": "Platform CS Snapshot Backfill",
+      "trigger_excerpt": "schedule:\n    - cron: \"0 3 * * *\"\n  workflow_dispatch:\n    inputs:\n      reason:\n        description: \"Reason for manual trigger\"\n        required: false\n\n",
+      "has_workflow_call": false,
+      "has_workflow_dispatch": true,
+      "has_push_trigger": false,
+      "has_pr_trigger": false,
+      "environment_refs": []
     },
     {
       "path": ".github/workflows/plays-datasets-live-proof.yml",
-      "inspection_status": "PENDING_DEEP_INSPECTION",
+      "inspection_status": "SOURCE_INSPECTED",
       "unverified_details": [
-        "triggers",
         "required_check",
         "last_run",
         "calls",
@@ -1027,13 +1062,21 @@
         "ownership"
       ],
       "disposition": "INVESTIGATE",
-      "disposition_approved": false
+      "disposition_approved": false,
+      "workflow_name": "Plays + datasets authenticated live proof",
+      "trigger_excerpt": "workflow_dispatch:\n    inputs:\n      dataset_query:\n        description: Public dataset metadata search query\n        required: false\n        default: customer support\n      backend_url:\n        description: Backend base URL\n        required: false\n        default: https://gravitre-saas-backend-production.up.railway.app\n\n",
+      "has_workflow_call": false,
+      "has_workflow_dispatch": true,
+      "has_push_trigger": false,
+      "has_pr_trigger": false,
+      "environment_refs": [
+        "production"
+      ]
     },
     {
       "path": ".github/workflows/plays-production-acceptance.yml",
-      "inspection_status": "PENDING_DEEP_INSPECTION",
+      "inspection_status": "SOURCE_INSPECTED",
       "unverified_details": [
-        "triggers",
         "required_check",
         "last_run",
         "calls",
@@ -1043,13 +1086,21 @@
         "ownership"
       ],
       "disposition": "INVESTIGATE",
-      "disposition_approved": false
+      "disposition_approved": false,
+      "workflow_name": "Plays production acceptance",
+      "trigger_excerpt": "workflow_dispatch:\n    inputs:\n      backend_url:\n        description: Backend base URL\n        required: false\n        default: https://gravitre-saas-backend-production.up.railway.app\n\n",
+      "has_workflow_call": false,
+      "has_workflow_dispatch": true,
+      "has_push_trigger": false,
+      "has_pr_trigger": false,
+      "environment_refs": [
+        "production"
+      ]
     },
     {
       "path": ".github/workflows/pr587-controlled-reconcile.yml",
-      "inspection_status": "PENDING_DEEP_INSPECTION",
+      "inspection_status": "SOURCE_INSPECTED",
       "unverified_details": [
-        "triggers",
         "required_check",
         "last_run",
         "calls",
@@ -1059,7 +1110,14 @@
         "ownership"
       ],
       "disposition": "INVESTIGATE",
-      "disposition_approved": false
+      "disposition_approved": false,
+      "workflow_name": "PR587 controlled main reconciliation",
+      "trigger_excerpt": "push:\n    branches: [feat/phase2-dialogue-intelligence]\n    paths:\n      - '.github/workflows/pr587-controlled-reconcile.yml'\n  pull_request:\n    paths:\n      - '.github/workflows/pr587-controlled-reconcile.yml'\n  workflow_dispatch:\n",
+      "has_workflow_call": false,
+      "has_workflow_dispatch": true,
+      "has_push_trigger": true,
+      "has_pr_trigger": true,
+      "environment_refs": []
     },
     {
       "path": ".github/workflows/pr587-local-acoustic.yml",
