@@ -221,6 +221,40 @@ class PgRepositoryClient:
     def table(self, name):
         return PgTable(self.pg, name)
 
+    def rpc(self, name, params):
+        # Only recovery SQL functions used by offline acceptance are exposed.
+        commands = {
+            "claim_stale_graph_recovery": (
+                "SELECT coalesce(json_agg(q),'[]'::json) "
+                "FROM public.claim_stale_graph_recovery(%s,%s,%s) q",
+                ("p_owner", "p_stale_seconds", "p_lease_seconds"), True),
+            "assert_graph_recovery_lease": (
+                "SELECT public.assert_graph_recovery_lease(%s,%s)",
+                ("p_run_id", "p_token"), False),
+            "renew_graph_recovery_lease": (
+                "SELECT public.renew_graph_recovery_lease(%s,%s,%s)",
+                ("p_run_id", "p_token", "p_seconds"), False),
+            "release_graph_recovery_lease": (
+                "SELECT public.release_graph_recovery_lease(%s,%s)",
+                ("p_run_id", "p_token"), False),
+        }
+        query, keys, is_collection = commands[name]
+        pg = self.pg
+
+        class Call:
+            def execute(self):
+                with psycopg.connect(
+                    host=str(pg.sock), port=pg.port, dbname="postgres",
+                    user="postgres", row_factory=dict_row,
+                ) as conn:
+                    with conn.cursor() as cur:
+                        cur.execute(query, tuple(params[k] for k in keys))
+                        record = cur.fetchone()
+                value = next(iter(record.values()))
+                return Response(value if is_collection else value)
+
+        return Call()
+
 
 def canonical_pg_cluster():
     return pg_cluster(
