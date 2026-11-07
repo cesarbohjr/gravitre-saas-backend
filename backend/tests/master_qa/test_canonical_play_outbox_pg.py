@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import json
 from types import SimpleNamespace
-from unittest.mock import MagicMock, Mock
+from unittest.mock import MagicMock, Mock, patch
 
 import pytest
 
@@ -30,6 +30,9 @@ async def test_canonical_play_handoff_to_guarded_synthetic_connector_and_durable
         WriteAuthorityError, check_write_authority, write_authority,
     )
     from app.services import work_loop_links
+    from app.services.tool_types import ToolContext, NormalizedResult
+    from app.services.sealed_read_execution import invoke_compiled_read
+    from app.services.connector_resource_resolver import ResourceResolution
 
     # Real Play router preflight; only its backend data dependencies are local
     # fixtures, never production records. Identifiers are synthetic UUIDs.
@@ -53,7 +56,7 @@ async def test_canonical_play_handoff_to_guarded_synthetic_connector_and_durable
 
     # Fake provider must not be invoked without the real write gate. The
     # workflow's *executor* is intentionally a stub: scope is Play dispatch.
-    provider = Mock(return_value={"id": "local-vendor-fixture-1"})
+    provider = Mock(return_value=NormalizedResult(success=True, action="hubspot.contacts.search", data={"results": [{"id": "local-vendor-fixture-1"}]}))
     monkeypatch.setattr(outcome_verification, "is_write_action",
                         lambda action: action == "synthetic.qa.write")
     cfg = SimpleNamespace(write_authority_mode="enforce")
@@ -71,8 +74,31 @@ async def test_canonical_play_handoff_to_guarded_synthetic_connector_and_durable
         provider.assert_not_called()
         with write_authority("human", "fixture-explicit-human-approval"):
             assert check_write_authority("synthetic.qa.write", settings=cfg).kind == "human"
-            receipt = provider()
-            assert receipt["id"] == "local-vendor-fixture-1"
+            # Real sealed read preflight + shared invoke_tool, but the final
+            # vendor transport is local and cannot reach HubSpot.
+            resource = ResourceResolution(
+                status="resolved", connector_id="hubspot", connection_id="local-conn",
+                resource_type="portal", resource_id="99887", display_name="99887",
+                confidence=0.98, resolution_reason="linked_config", candidate_count=1,
+            )
+            ctx = ToolContext(
+                settings=SimpleNamespace(disable_connectors=False,
+                    connector_secrets_encryption_key="k" * 32, write_authority_mode="enforce"),
+                client=MagicMock(), org_id=ORG, actor_id="synthetic-owner",
+                environment_name="synthetic",
+            )
+            with (
+                patch("app.services.read_preflight.resolve_resource", return_value=resource),
+                patch("app.services.tool_service.enforce_rate_limit"),
+                patch("app.services.tool_service.write_audit_event"),
+                patch("app.services.agent_tool_permissions.list_agent_tool_permissions",
+                      return_value=[{"connector_type": "hubspot", "scopes": ["hubspot:read"], "expires_at": None}]),
+                patch("app.services.tool_service._resolve_tool_executor", return_value=lambda _ctx, _args: provider()),
+            ):
+                receipt = invoke_compiled_read(ctx, "hubspot.contacts.search",
+                                               {"query": "synthetic account", "limit": 1})
+            assert receipt.success is True
+            assert receipt.data["results"][0]["id"] == "local-vendor-fixture-1"
             run_id = _new_run(pg)
             pg.psql(f"UPDATE public.workflow_runs SET status='completed' WHERE id='{run_id}';")
         return {"run_id": run_id, "status": "completed", "approval_required": True}
