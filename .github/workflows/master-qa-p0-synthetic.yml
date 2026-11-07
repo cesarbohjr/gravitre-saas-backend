@@ -30,11 +30,11 @@ jobs:
         run: python -m pip install --disable-pip-version-check pytest
       - name: Run seven fixture tests with zero accepted skips
         run: |
-          python -m pytest -q -rs tests/master_qa/test_synthetic_fixture_factory.py tests/master_qa/test_workflow_source_audit.py
+          python -m pytest --confcutdir=tests/master_qa -q -rs tests/master_qa/test_synthetic_fixture_factory.py tests/master_qa/test_workflow_source_audit.py
           python - <<'PY'
           import subprocess
           p = subprocess.run(
-              ['python', '-m', 'pytest', '--collect-only', '-q',
+              ['python', '-m', 'pytest', '--collect-only', '-q', '--confcutdir=tests/master_qa',
                'tests/master_qa/test_synthetic_fixture_factory.py'],
               capture_output=True, text=True, check=True
           )
