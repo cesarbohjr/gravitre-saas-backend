@@ -1648,7 +1648,7 @@ def _reconcile_interrupted_graph_steps(
         config = safe_normalize_stored_dict(saved_input, key="config")
         if not config:
             config = safe_normalize_stored_dict(step_def, key="config")
-        if _recovery_kind(step_type, config) not in {"write", "workflow"}:
+        if _recovery_kind(step_type, config) not in {"write", "agent_delegation", "workflow"}:
             continue
         # 'pending' is not a send receipt. Only running (or a step with
         # evidence of dispatch) could have sent the action.
