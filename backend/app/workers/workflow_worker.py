@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import asyncio
+import time
 from typing import Any
 
 from app.config import Settings, get_settings
@@ -116,8 +117,20 @@ async def _renew_claim_until_done(raw: str) -> None:
 
 
 async def _worker_loop(poll_seconds: int, settings: Settings) -> None:
+    # Existing durable queue owns normal executions; the separate SQL sweep
+    # only claims abandoned graph runs with an in-flight step + checkpoint.
+    next_orphan_check = 0.0
     while True:
         try:
+            if (bool(getattr(settings, "workflow_orphan_recovery_enabled", True))
+                    and time.monotonic() >= next_orphan_check):
+                next_orphan_check = time.monotonic() + max(
+                    30, int(getattr(settings, "workflow_orphan_recovery_interval_seconds", 60)))
+                try:
+                    from app.services.workflow_orphan_reconciler import recover_one_stale_graph_run
+                    await asyncio.to_thread(recover_one_stale_graph_run, settings)
+                except Exception as exc:  # noqa: BLE001
+                    logger.warning("workflow_orphan_sweep_failed reason=%s", type(exc).__name__)
             raw = await dequeue_workflow_run(timeout_seconds=poll_seconds)
             if raw:
                 heartbeat = asyncio.create_task(_renew_claim_until_done(raw))
