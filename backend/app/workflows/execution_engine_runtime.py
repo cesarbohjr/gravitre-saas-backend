@@ -1551,6 +1551,91 @@ def resume_workflow_graph(
     return _finalize_run(ctx, final_status=final_status, errors=errors, run_error_message=run_error_message, rate_limited=rate_limited)
 
 
+
+def _reconcile_interrupted_graph_steps(
+    ctx: _GraphRunContext,
+    *,
+    steps: list[dict[str, Any]],
+) -> None:
+    """Fail closed on an in-flight write before clearing a durable pause checkpoint.
+
+    A worker can die after the external provider commits but before updating
+    workflow_steps or the graph node_outputs checkpoint. A persisted 'running'
+    step without an output is NOT evidence that the operation was absent.
+    Provider reconciliation must settle the write before normal graph resume.
+    """
+    from app.workflows.repository import update_step as _persist_step_update
+
+    for step in steps:
+        if str(step.get("status") or "") not in {"running", "pending"}:
+            continue
+        node_id = str(step.get("step_id") or "")
+        if not node_id or node_id in ctx.node_outputs:
+            continue
+        node = ctx.graph.nodes_by_id.get(node_id)
+        if not node:
+            # If a row cannot be mapped back to a graph node, it cannot be
+            # safely classified as non-mutating.
+            raise GraphValidationError("Interrupted step is missing from the saved graph")
+        step_def = _node_to_step(node, ctx.graph.nodes_by_id, ctx.edge_dicts)
+        if step_def is None:
+            raise GraphValidationError("Interrupted step cannot be reconstructed")
+        step_type = str(step.get("step_type") or step_def.get("type") or "")
+        saved_input = safe_normalize_stored_dict(step, key="input_snapshot")
+        config = safe_normalize_stored_dict(saved_input, key="config")
+        if not config:
+            config = safe_normalize_stored_dict(step_def, key="config")
+        if _recovery_kind(step_type, config) not in {"write", "agent_delegation", "workflow"}:
+            continue
+        # 'pending' is not a send receipt. Only running (or a step with
+        # evidence of dispatch) could have sent the action.
+        if str(step.get("status")) == "pending":
+            continue
+        evidence = safe_normalize_stored_dict(step, key="output_snapshot")
+        if evidence.get("outcome_verified") is True:
+            ctx.node_outputs[node_id] = evidence
+            continue
+        from app.services.outcome_reconciliation import ReconciliationResult
+
+        recon = _reconcile_step(
+            ctx,
+            step_type=step_type,
+            config=config,
+            exc=TimeoutError("executor terminated before provider receipt"),
+        )
+        if not isinstance(recon, ReconciliationResult) or recon.state not in {"applied", "not_applied"}:
+            raise GraphValidationError(
+                "Interrupted external action could not be reconciled with the provider; "
+                "resume is blocked to prevent duplicate writes"
+            )
+        if recon.state == "not_applied":
+            # Provider-verified absence permits *one* fresh, governed attempt
+            # using the original approval and the existing graph runtime.
+            _persist_step_update(
+                client=ctx.client,
+                step_uuid=str(step["id"]),
+                status=STEP_STATUS_FAILED,
+                error_code="reconciled_not_applied",
+                error_message="Provider readback proved the action absent before resume",
+                completed_at=datetime.now(timezone.utc).isoformat(),
+            )
+            continue
+        output = {
+            "reconciled": True,
+            "resource_id": recon.resource_id,
+            "verification": dict(recon.evidence or {}),
+            "outcome_verified": True,
+            "recovery": "provider_readback",
+        }
+        _persist_step_update(
+            client=ctx.client,
+            step_uuid=str(step["id"]),
+            status=STEP_STATUS_COMPLETED,
+            output_snapshot=output,
+            completed_at=datetime.now(timezone.utc).isoformat(),
+        )
+        ctx.node_outputs[node_id] = output
+
 def resume_paused_workflow_graph(
     settings: Settings,
     org_id: str,
@@ -1588,6 +1673,9 @@ def resume_paused_workflow_graph(
         skipped_nodes=list(checkpoint.get("skipped_nodes") or []),
         step_index=int(checkpoint.get("step_index") or 0),
     )
+    # Never consume the checkpoint before reconciling an in-flight external
+    # write. Unknown readback must preserve the paused run and approval state.
+    _reconcile_interrupted_graph_steps(ctx, steps=list(run.get("steps") or []))
     merge_run_parameters(
         client,
         run_id,
