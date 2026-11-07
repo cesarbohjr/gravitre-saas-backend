@@ -39,12 +39,31 @@ def process_workflow_run_job(settings: Settings, job_raw: str) -> bool:
         )
         return True
 
-    # Redelivered terminal runs must never repeat provider effects.
-    if str(run.get("status") or "").lower() in {"completed", "failed", "cancelled", "rejected"}:
+    # A queued redelivery must not bypass human approval, operator pauses,
+    # or a P27 orphan graph checkpoint. In particular, a crashed worker can
+    # leave the run 'running' even after the provider applied its write.
+    # ONLY the fenced SQL orphan reconciler may settle that uncertain effect.
+    state = str(run.get("status") or "").lower()
+    if state in {
+        "completed", "failed", "cancelled", "rejected", "paused",
+        "pending_approval", "awaiting_approval", "flagged_for_review",
+        "verification_inconclusive",
+    }:
         return True
 
     definition = run.get("definition_snapshot") or {}
     parameters = run.get("parameters") or {}
+    checkpoint = parameters.get("_graph_execution") if isinstance(parameters, dict) else None
+    if (
+        state == "running"
+        and isinstance(checkpoint, dict)
+        and checkpoint.get("pause_reason") == "executor_in_flight"
+    ):
+        logger.warning(
+            "workflow_worker_uncertain_write_redelivery_blocked org_id=%s run_id=%s",
+            job.org_id, job.run_id,
+        )
+        return True
     actor_id = str(run.get("triggered_by") or "system")
     environment_name = str(run.get("environment") or "default")
 
