@@ -35,17 +35,27 @@ BEGIN
     -- the step, not merely from the creation date of a long-lived workflow.
     SELECT wr.id, wr.org_id, wr.environment, wr.triggered_by INTO v_run
     FROM public.workflow_runs wr
-    WHERE wr.status = 'running'
-      AND jsonb_typeof(wr.parameters->'_graph_execution') = 'object'
-      AND EXISTS (
-        SELECT 1 FROM public.workflow_steps s
-        WHERE s.run_id = wr.id
-          AND s.status = 'running'
-          AND s.started_at IS NOT NULL
-          AND s.started_at <= now() - make_interval(secs => p_stale_seconds))
+    WHERE jsonb_typeof(wr.parameters->'_graph_execution') = 'object'
+      AND (
+        -- First takeover: abandoned in-flight action, no recent step activity.
+        (wr.status = 'running' AND EXISTS (
+          SELECT 1 FROM public.workflow_steps s
+          WHERE s.run_id = wr.id AND s.status = 'running'
+            AND s.started_at IS NOT NULL
+            AND s.started_at <= now() - make_interval(secs => p_stale_seconds)))
+        OR
+        -- The recovery owner itself died after the atomic running -> paused
+        -- transition. Reclaim ONLY a previously leased in-flight run, never
+        -- an ordinary human-paused workflow or a deliberately blocked result.
+        (wr.status = 'paused'
+         AND wr.parameters->'_graph_execution'->>'pause_reason' = 'executor_in_flight'
+         AND EXISTS (
+           SELECT 1 FROM public.workflow_recovery_leases old
+           WHERE old.run_id=wr.id AND old.lease_expires_at <= now()))
+      )
       AND NOT EXISTS (
-        SELECT 1 FROM public.workflow_recovery_leases l
-        WHERE l.run_id = wr.id AND l.lease_expires_at > now())
+        SELECT 1 FROM public.workflow_recovery_leases active
+        WHERE active.run_id = wr.id AND active.lease_expires_at > now())
     ORDER BY wr.created_at, wr.id
     FOR UPDATE OF wr SKIP LOCKED
     LIMIT 1;
@@ -66,7 +76,8 @@ BEGIN
     -- The claim and status transition commit atomically. The old worker's
     -- next status-conditional write must reject the now-paused run.
     UPDATE public.workflow_runs wr SET status='paused'
-    WHERE wr.id=v_run.id AND wr.org_id=v_run.org_id AND wr.status='running';
+    WHERE wr.id=v_run.id AND wr.org_id=v_run.org_id
+      AND wr.status IN ('running','paused');
     IF NOT FOUND THEN
         DELETE FROM public.workflow_recovery_leases l WHERE l.run_id=v_run.id AND l.token=v_token;
         RETURN;
