@@ -49,3 +49,9 @@ The recovery SQL migration is committed but NOT applied to production. No deploy
 3. Connect and verify a **separate HubSpot developer-test portal** with expected portal ID; run manual provider readback via protected environment and archive exact evidence.
 4. Verify staging kill/restart with real worker processes, concurrent claims, source-of-record idempotency and alerting. Only then consider `WORKFLOW_ORPHAN_RECOVERY_ENABLED=true` in controlled rollout.
 5. This PR is draft/unmerged/undeployed; production writes, migrations and activation have **not** been executed.
+
+## P27-07 release-path correction — zero additional infrastructure spend
+
+The operative owner-approved acceptance plan is `docs/delivery/p27-07-sandbox-and-staging-acceptance.md`, updated to use **existing Railway production backend/Redis and the existing STANDARD Gravitre HubSpot portal** for narrowly scoped live QA because there are no live customers yet. A prior separate Railway test environment incurred charges and was removed. **Do not create new staging/test infrastructure or a separate paid account.**
+
+Earlier passages in this file requiring a developer-test HubSpot portal or staging Railway deployment document a superseded proposal; **they are not current release prerequisites**. The HubSpot script currently hard-rejects STANDARD portals and must receive a reviewed explicit-live-test guard plus offline negatives before touching the existing portal. A Railway worker interruption likewise requires a controlled process-specific execution plan and approval; the absence of customers is not blanket consent to kill production. Production rollout stays OFF until live acceptance is demonstrated.
