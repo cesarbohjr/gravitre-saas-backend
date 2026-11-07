@@ -4,7 +4,7 @@
   "generated_date": "2026-11-07",
   "scope": "All GitHub workflows found in current main. No disposition approved. Source excerpts are exploratory; no deployment or safety inference from filename.",
   "total_files": 92,
-  "source_inspected": 68,
+  "source_inspected": 77,
   "disposition_status": "ALL_PENDING",
   "entries": [
     {
@@ -1433,9 +1433,8 @@
     },
     {
       "path": ".github/workflows/release1-chat-voice-revocation-e2e.yml",
-      "inspection_status": "PENDING_DEEP_INSPECTION",
+      "inspection_status": "SOURCE_INSPECTED",
       "unverified_details": [
-        "triggers",
         "required_check",
         "last_run",
         "calls",
@@ -1445,13 +1444,21 @@
         "ownership"
       ],
       "disposition": "INVESTIGATE",
-      "disposition_approved": false
+      "disposition_approved": false,
+      "workflow_name": "Release 1 chat and voice revocation end to end",
+      "trigger_excerpt": "push:\n    branches: [main]\n    paths:\n      - \"scripts/verify_release1_chat_voice_e2e.py\"\n      - \".github/workflows/release1-chat-voice-revocation-e2e.yml\"\n  workflow_dispatch:\n\n",
+      "has_workflow_call": false,
+      "has_workflow_dispatch": true,
+      "has_push_trigger": true,
+      "has_pr_trigger": false,
+      "environment_refs": [
+        "production"
+      ]
     },
     {
       "path": ".github/workflows/release1-deployed-browser-credentials.yml",
-      "inspection_status": "PENDING_DEEP_INSPECTION",
+      "inspection_status": "SOURCE_INSPECTED",
       "unverified_details": [
-        "triggers",
         "required_check",
         "last_run",
         "calls",
@@ -1461,13 +1468,21 @@
         "ownership"
       ],
       "disposition": "INVESTIGATE",
-      "disposition_approved": false
+      "disposition_approved": false,
+      "workflow_name": "Release 1 deployed browser credential verification",
+      "trigger_excerpt": "push:\n    branches: [main]\n    paths:\n      - \".github/workflows/release1-deployed-browser-credentials.yml\"\n      - \"scripts/verify-release1-deployed-browser-credentials.py\"\n  workflow_dispatch:\n\n",
+      "has_workflow_call": false,
+      "has_workflow_dispatch": true,
+      "has_push_trigger": true,
+      "has_pr_trigger": false,
+      "environment_refs": [
+        "production"
+      ]
     },
     {
       "path": ".github/workflows/release1-execution-revocation-audit.yml",
-      "inspection_status": "PENDING_DEEP_INSPECTION",
+      "inspection_status": "SOURCE_INSPECTED",
       "unverified_details": [
-        "triggers",
         "required_check",
         "last_run",
         "calls",
@@ -1477,13 +1492,19 @@
         "ownership"
       ],
       "disposition": "INVESTIGATE",
-      "disposition_approved": false
+      "disposition_approved": false,
+      "workflow_name": "Release 1 execution revocation credential contracts",
+      "trigger_excerpt": "push:\n    branches: [main]\n    paths:\n      - \".github/workflows/release1-execution-revocation-audit.yml\"\n      - \"scripts/audit_release1_browser_credentials.py\"\n  workflow_dispatch:\n\n",
+      "has_workflow_call": false,
+      "has_workflow_dispatch": true,
+      "has_push_trigger": true,
+      "has_pr_trigger": false,
+      "environment_refs": []
     },
     {
       "path": ".github/workflows/release1-live-approval-denial.yml",
-      "inspection_status": "PENDING_DEEP_INSPECTION",
+      "inspection_status": "SOURCE_INSPECTED",
       "unverified_details": [
-        "triggers",
         "required_check",
         "last_run",
         "calls",
@@ -1493,13 +1514,21 @@
         "ownership"
       ],
       "disposition": "INVESTIGATE",
-      "disposition_approved": false
+      "disposition_approved": false,
+      "workflow_name": "Release 1 forged approval live write-denial",
+      "trigger_excerpt": "push:\n    branches: [main]\n    paths:\n      - \"scripts/verify_release1_live_approval_bypass.py\"\n      - \".github/workflows/release1-live-approval-denial.yml\"\n  workflow_dispatch:\n\n",
+      "has_workflow_call": false,
+      "has_workflow_dispatch": true,
+      "has_push_trigger": true,
+      "has_pr_trigger": false,
+      "environment_refs": [
+        "production"
+      ]
     },
     {
       "path": ".github/workflows/release1-live-memory-liveness.yml",
-      "inspection_status": "PENDING_DEEP_INSPECTION",
+      "inspection_status": "SOURCE_INSPECTED",
       "unverified_details": [
-        "triggers",
         "required_check",
         "last_run",
         "calls",
@@ -1509,13 +1538,21 @@
         "ownership"
       ],
       "disposition": "INVESTIGATE",
-      "disposition_approved": false
+      "disposition_approved": false,
+      "workflow_name": "Release 1 live memory source revocation",
+      "trigger_excerpt": "push:\n    branches: [main]\n    paths:\n      - \"scripts/verify_release1_live_memory_liveness.py\"\n      - \".github/workflows/release1-live-memory-liveness.yml\"\n  workflow_dispatch:\n\n",
+      "has_workflow_call": false,
+      "has_workflow_dispatch": true,
+      "has_push_trigger": true,
+      "has_pr_trigger": false,
+      "environment_refs": [
+        "production"
+      ]
     },
     {
       "path": ".github/workflows/release1-live-public-mcp.yml",
-      "inspection_status": "PENDING_DEEP_INSPECTION",
+      "inspection_status": "SOURCE_INSPECTED",
       "unverified_details": [
-        "triggers",
         "required_check",
         "last_run",
         "calls",
@@ -1525,13 +1562,21 @@
         "ownership"
       ],
       "disposition": "INVESTIGATE",
-      "disposition_approved": false
+      "disposition_approved": false,
+      "workflow_name": "Release 1 public MCP and SSRF live verification",
+      "trigger_excerpt": "workflow_run:\n    workflows: [\"Production release verification\"]\n    types: [completed]\n    branches: [main]\n  push:\n    branches: [main]\n    paths:\n      - \"scripts/verify_release1_live_public_mcp.py\"\n      - \"scripts/verify_release1_live_forged_mcp_approval.py\"\n      - \".github/workflows/release1-live-public-mcp.yml\"\n  workflow_dispatch:\n\n",
+      "has_workflow_call": false,
+      "has_workflow_dispatch": true,
+      "has_push_trigger": true,
+      "has_pr_trigger": false,
+      "environment_refs": [
+        "production"
+      ]
     },
     {
       "path": ".github/workflows/release1-production-smoke.yml",
-      "inspection_status": "PENDING_DEEP_INSPECTION",
+      "inspection_status": "SOURCE_INSPECTED",
       "unverified_details": [
-        "triggers",
         "required_check",
         "last_run",
         "calls",
@@ -1541,13 +1586,19 @@
         "ownership"
       ],
       "disposition": "INVESTIGATE",
-      "disposition_approved": false
+      "disposition_approved": false,
+      "workflow_name": "Release 1 production smoke",
+      "trigger_excerpt": "push:\n    branches: [main]\n    paths:\n      - \".github/workflows/release1-production-smoke.yml\"\n      - \"scripts/verify-release1-production-smoke.py\"\n  workflow_dispatch:\n  workflow_run:\n    workflows: [\"Production release verification\", \"Railway backend production\"]\n    types: [completed]\n    branches: [main]\n\n",
+      "has_workflow_call": false,
+      "has_workflow_dispatch": true,
+      "has_push_trigger": true,
+      "has_pr_trigger": false,
+      "environment_refs": []
     },
     {
       "path": ".github/workflows/release1-role-execution-matrix.yml",
-      "inspection_status": "PENDING_DEEP_INSPECTION",
+      "inspection_status": "SOURCE_INSPECTED",
       "unverified_details": [
-        "triggers",
         "required_check",
         "last_run",
         "calls",
@@ -1557,13 +1608,19 @@
         "ownership"
       ],
       "disposition": "INVESTIGATE",
-      "disposition_approved": false
+      "disposition_approved": false,
+      "workflow_name": "Release 1 role and execution security matrix",
+      "trigger_excerpt": "push:\n    branches: [main]\n    paths:\n      - \".github/workflows/release1-role-execution-matrix.yml\"\n      - \"backend/tests/db/test_emergency_membership_lockdown_pg.py\"\n      - \"backend/tests/db/test_governance_member_write_lockdown_pg.py\"\n      - \"backend/tests/services/test_mcp_stdio_and_network_policy.py\"\n  workflow_dispatch:\n\n",
+      "has_workflow_call": false,
+      "has_workflow_dispatch": true,
+      "has_push_trigger": true,
+      "has_pr_trigger": false,
+      "environment_refs": []
     },
     {
       "path": ".github/workflows/repair-root-npm-lock.yml",
-      "inspection_status": "PENDING_DEEP_INSPECTION",
+      "inspection_status": "SOURCE_INSPECTED",
       "unverified_details": [
-        "triggers",
         "required_check",
         "last_run",
         "calls",
@@ -1573,7 +1630,14 @@
         "ownership"
       ],
       "disposition": "INVESTIGATE",
-      "disposition_approved": false
+      "disposition_approved": false,
+      "workflow_name": "Repair root npm lockfile (guarded)",
+      "trigger_excerpt": "pull_request:\n    branches: [main]\n    paths:\n      - 'package.json'\n      - 'package-lock.json'\n      - '.github/workflows/repair-root-npm-lock.yml'\n\n",
+      "has_workflow_call": false,
+      "has_workflow_dispatch": false,
+      "has_push_trigger": false,
+      "has_pr_trigger": true,
+      "environment_refs": []
     },
     {
       "path": ".github/workflows/research-cascade-prod-smoke.yml",
