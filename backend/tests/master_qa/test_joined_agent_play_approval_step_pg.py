@@ -14,7 +14,7 @@ provider readback certification.
 from __future__ import annotations
 
 from types import SimpleNamespace
-from unittest.mock import Mock, patch
+from unittest.mock import MagicMock, Mock, patch
 from uuid import UUID
 
 import pytest
@@ -197,7 +197,9 @@ async def test_agent_play_approval_real_step_to_durable_consumer(pg, monkeypatch
         confidence=0.98, resolution_reason="linked_config", candidate_count=1)
     def invoke(_context, action, params, **_kw):
         assert action == "hubspot.contacts.search"
-        ctx = ToolContext(settings=settings, client=client, org_id=ORG,
+        # The connector vendor transport uses a local fake rather than the
+        # restricted SQL repository client (whose scope is workflow state).
+        ctx = ToolContext(settings=settings, client=MagicMock(), org_id=ORG,
                           actor_id="synthetic-approver", environment_name="synthetic")
         with (patch("app.services.read_preflight.resolve_resource", return_value=resource),
               patch("app.services.tool_service.enforce_rate_limit"),
@@ -211,7 +213,8 @@ async def test_agent_play_approval_real_step_to_durable_consumer(pg, monkeypatch
     monkeypatch.setattr(handlers, "_invoke_canvas_registered_tool", invoke)
     def terminal_finalizer(_client, **kw):
         assert kw["org_id"] == ORG and kw["run_id"] == run_id
-        assert kw["status"] == "completed"
+        assert kw["status"] == "completed", (
+            kw, repository.get_run_with_steps(_client, ORG, run_id, "synthetic")["steps"])
         # Pending canonical outcome notification fanout is adapted, but the
         # repository update and runs/run_steps mirrors are production code.
         repository.update_run(_client, run_id, "completed", approval_status="approved")
