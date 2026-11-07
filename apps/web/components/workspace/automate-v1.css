@@ -96,10 +96,10 @@
 .gv-ws .au-ready.warn { color: var(--ov-amber-ink); } .gv-ws .au-ready.warn i { background: var(--ov-amber); }
 .gv-ws .au-ready.muted { color: var(--ov-muted); } .gv-ws .au-ready.muted i { background: var(--ov-idle); }
 .gv-ws .au-connectors { display: flex; flex-wrap: wrap; gap: 6px; }
-.gv-ws .au-connectors span { display: inline-flex; align-items: center; gap: 6px; border-radius: 999px; padding: 3px 10px; font-size: 12px; font-weight: 500; background: var(--ov-green-bg); color: var(--ov-green-ink); }
-.gv-ws .au-connectors span i { width: 6px; height: 6px; border-radius: 50%; background: var(--ov-green); }
-.gv-ws .au-connectors span.off { background: var(--ov-amber-bg); color: var(--ov-amber-ink); }
-.gv-ws .au-connectors span.off i { background: var(--ov-amber); }
+.gv-ws .au-connectors > span { display: inline-flex; align-items: center; gap: 6px; border-radius: 999px; padding: 3px 10px; font-size: 12px; font-weight: 500; background: var(--ov-green-bg); color: var(--ov-green-ink); }
+.gv-ws .au-connectors > span > i { width: 6px; height: 6px; border-radius: 50%; background: var(--ov-green); }
+.gv-ws .au-connectors > span.off { background: var(--ov-amber-bg); color: var(--ov-amber-ink); }
+.gv-ws .au-connectors > span.off > i { background: var(--ov-amber); }
 
 /* Authority ladder in the play side pane */
 .gv-ws .au-ladder { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }

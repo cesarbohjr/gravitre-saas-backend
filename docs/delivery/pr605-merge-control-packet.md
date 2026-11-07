@@ -40,16 +40,16 @@ Manual API/CLI and integration deployment paths are not covered by these narrow
 holds. Do not dispatch auth-config-sync, milestone2-latency-ab,
 unified-turn-phase2-live, or unified-turn-phase4-cutover during the hold.
 
-## Proposed branch protection — NOT APPLIED
+## Branch protection — APPLIED after explicit owner authorization
 
-The owner explicitly excluded GitHub-protection changes from the deployment-hold
-authorization. The later request to complete #605 does not specify a protection
-configuration. Preserve the existing settings until the owner separately
-approves this concrete proposal or a documented manual merge-control exception.
+The owner separately authorized this exact policy, which was applied and verified
+in PR comment 6693200708. Preserve it without weakening or adding bypass actors.
+The current follow-up and complete high-advisory reachability inventory are in
+`pr605-merge-readiness-followup.md` and `pr605-high-dependency-triage.json`.
 
-Proposed classic rule for main:
+Enforced classic rule for main:
 
-| Control | Proposed setting |
+| Control | Enforced setting |
 | --- | --- |
 | Require pull request | Enabled |
 | Required approving reviews | 1 independent reviewer |
