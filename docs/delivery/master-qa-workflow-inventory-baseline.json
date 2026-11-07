@@ -1,0 +1,1569 @@
+{
+  "schema_version": 1,
+  "main_sha": "cf8b95d25a6a70aa5db3b8eef103e6f86786b773",
+  "generated_date": "2026-11-07",
+  "scope": "All GitHub workflows found in current main. No disposition approved. Source excerpts are exploratory; no deployment or safety inference from filename.",
+  "total_files": 92,
+  "source_inspected": 14,
+  "disposition_status": "ALL_PENDING",
+  "entries": [
+    {
+      "path": ".github/workflows/acceptance-db-preflight.yml",
+      "inspection_status": "PENDING_DEEP_INSPECTION",
+      "unverified_details": [
+        "triggers",
+        "required_check",
+        "last_run",
+        "calls",
+        "secrets",
+        "external_side_effects",
+        "cost",
+        "ownership"
+      ],
+      "disposition": "INVESTIGATE",
+      "disposition_approved": false
+    },
+    {
+      "path": ".github/workflows/agent-roi-live.yml",
+      "inspection_status": "PENDING_DEEP_INSPECTION",
+      "unverified_details": [
+        "triggers",
+        "required_check",
+        "last_run",
+        "calls",
+        "secrets",
+        "external_side_effects",
+        "cost",
+        "ownership"
+      ],
+      "disposition": "INVESTIGATE",
+      "disposition_approved": false
+    },
+    {
+      "path": ".github/workflows/auth-config-sync.yml",
+      "inspection_status": "PENDING_DEEP_INSPECTION",
+      "unverified_details": [
+        "triggers",
+        "required_check",
+        "last_run",
+        "calls",
+        "secrets",
+        "external_side_effects",
+        "cost",
+        "ownership"
+      ],
+      "disposition": "INVESTIGATE",
+      "disposition_approved": false
+    },
+    {
+      "path": ".github/workflows/authenticated-click-audit.yml",
+      "inspection_status": "PENDING_DEEP_INSPECTION",
+      "unverified_details": [
+        "triggers",
+        "required_check",
+        "last_run",
+        "calls",
+        "secrets",
+        "external_side_effects",
+        "cost",
+        "ownership"
+      ],
+      "disposition": "INVESTIGATE",
+      "disposition_approved": false
+    },
+    {
+      "path": ".github/workflows/autonomous-write-certification.yml",
+      "inspection_status": "PENDING_DEEP_INSPECTION",
+      "unverified_details": [
+        "triggers",
+        "required_check",
+        "last_run",
+        "calls",
+        "secrets",
+        "external_side_effects",
+        "cost",
+        "ownership"
+      ],
+      "disposition": "INVESTIGATE",
+      "disposition_approved": false
+    },
+    {
+      "path": ".github/workflows/browser-fallback-recovery-certification.yml",
+      "inspection_status": "PENDING_DEEP_INSPECTION",
+      "unverified_details": [
+        "triggers",
+        "required_check",
+        "last_run",
+        "calls",
+        "secrets",
+        "external_side_effects",
+        "cost",
+        "ownership"
+      ],
+      "disposition": "INVESTIGATE",
+      "disposition_approved": false
+    },
+    {
+      "path": ".github/workflows/catalog-enrichment-nl-variance.yml",
+      "inspection_status": "PENDING_DEEP_INSPECTION",
+      "unverified_details": [
+        "triggers",
+        "required_check",
+        "last_run",
+        "calls",
+        "secrets",
+        "external_side_effects",
+        "cost",
+        "ownership"
+      ],
+      "disposition": "INVESTIGATE",
+      "disposition_approved": false
+    },
+    {
+      "path": ".github/workflows/chat-history-hygiene-live.yml",
+      "inspection_status": "PENDING_DEEP_INSPECTION",
+      "unverified_details": [
+        "triggers",
+        "required_check",
+        "last_run",
+        "calls",
+        "secrets",
+        "external_side_effects",
+        "cost",
+        "ownership"
+      ],
+      "disposition": "INVESTIGATE",
+      "disposition_approved": false
+    },
+    {
+      "path": ".github/workflows/ci.yml",
+      "inspection_status": "SOURCE_INSPECTED",
+      "workflow_name": "CI",
+      "trigger_excerpt": "push:\n    branches: [main]\n  pull_request:\n    branches: [main]\n  workflow_dispatch:\n\n",
+      "has_workflow_call": false,
+      "has_workflow_dispatch": true,
+      "has_push_trigger": true,
+      "has_pr_trigger": true,
+      "environment_refs": [],
+      "unverified_details": [
+        "required_check",
+        "last_run",
+        "calls",
+        "secrets",
+        "external_side_effects",
+        "cost",
+        "ownership"
+      ],
+      "disposition": "INVESTIGATE",
+      "disposition_approved": false
+    },
+    {
+      "path": ".github/workflows/connector-governance.yml",
+      "inspection_status": "SOURCE_INSPECTED",
+      "workflow_name": "Connector Governance",
+      "trigger_excerpt": "push:\n    branches: [main]\n    paths:\n      - \"backend/app/services/chat_action_mapper.py\"\n      - \"backend/app/services/react_write_gate.py\"\n      - \"backend/app/services/connector_*.py\"\n      - \"backend/app/services/chat_connector*.py\"\n      - \"backend/app/services/chat_orchestration_service.py\"\n      - \"backend/app/connectors/action_catalog/**\"\n      - \"backend/tests/services/test_connector_*.py\"\n      - \"backend/tests/services/test_action_workflow_validation.py\"\n      - \"backend/tests/services/test_chat_connector_execution.py\"\n      - \"backend/tests/services/test_gate26_connector_relay_behavior.py\"\n      - \"backend/tests/services/test_gate26_cancellation_and_outbox_contract.py\"\n      - \"backend/tests/services/test_chat_orchestration.py\"\n      - \"backend/tests/services/test_chat_action_mapper.py\"\n      - \"backend/tests/services/test_react_inference_parity.py\"\n      - \"backend/tests/smoke/test_connector_action_smoke.py\"\n      - \".github/workflows/connector-governance.yml\"\n  pull_request:\n    branches: [main]\n    paths:\n      - \"backend/app/services/chat_action_mapper.py\"\n      - \"b",
+      "has_workflow_call": false,
+      "has_workflow_dispatch": false,
+      "has_push_trigger": true,
+      "has_pr_trigger": true,
+      "environment_refs": [],
+      "unverified_details": [
+        "required_check",
+        "last_run",
+        "calls",
+        "secrets",
+        "external_side_effects",
+        "cost",
+        "ownership"
+      ],
+      "disposition": "INVESTIGATE",
+      "disposition_approved": false
+    },
+    {
+      "path": ".github/workflows/connector-health.yml",
+      "inspection_status": "PENDING_DEEP_INSPECTION",
+      "unverified_details": [
+        "triggers",
+        "required_check",
+        "last_run",
+        "calls",
+        "secrets",
+        "external_side_effects",
+        "cost",
+        "ownership"
+      ],
+      "disposition": "INVESTIGATE",
+      "disposition_approved": false
+    },
+    {
+      "path": ".github/workflows/connector-verified-writes-live.yml",
+      "inspection_status": "PENDING_DEEP_INSPECTION",
+      "unverified_details": [
+        "triggers",
+        "required_check",
+        "last_run",
+        "calls",
+        "secrets",
+        "external_side_effects",
+        "cost",
+        "ownership"
+      ],
+      "disposition": "INVESTIGATE",
+      "disposition_approved": false
+    },
+    {
+      "path": ".github/workflows/conversation-engineering.yml",
+      "inspection_status": "SOURCE_INSPECTED",
+      "workflow_name": "Conversational guidance engineering",
+      "trigger_excerpt": "pull_request:\n    branches: [main]\n  workflow_dispatch:\n",
+      "has_workflow_call": false,
+      "has_workflow_dispatch": true,
+      "has_push_trigger": false,
+      "has_pr_trigger": true,
+      "environment_refs": [],
+      "unverified_details": [
+        "required_check",
+        "last_run",
+        "calls",
+        "secrets",
+        "external_side_effects",
+        "cost",
+        "ownership"
+      ],
+      "disposition": "INVESTIGATE",
+      "disposition_approved": false
+    },
+    {
+      "path": ".github/workflows/conversation-parity-contract.yml",
+      "inspection_status": "PENDING_DEEP_INSPECTION",
+      "unverified_details": [
+        "triggers",
+        "required_check",
+        "last_run",
+        "calls",
+        "secrets",
+        "external_side_effects",
+        "cost",
+        "ownership"
+      ],
+      "disposition": "INVESTIGATE",
+      "disposition_approved": false
+    },
+    {
+      "path": ".github/workflows/conversational-product-acceptance.yml",
+      "inspection_status": "SOURCE_INSPECTED",
+      "workflow_name": "Conversational product acceptance",
+      "trigger_excerpt": "pull_request:\n    branches: [main]\n  push:\n    branches: [main]\n  workflow_dispatch:\n\n",
+      "has_workflow_call": false,
+      "has_workflow_dispatch": true,
+      "has_push_trigger": true,
+      "has_pr_trigger": true,
+      "environment_refs": [],
+      "unverified_details": [
+        "required_check",
+        "last_run",
+        "calls",
+        "secrets",
+        "external_side_effects",
+        "cost",
+        "ownership"
+      ],
+      "disposition": "INVESTIGATE",
+      "disposition_approved": false
+    },
+    {
+      "path": ".github/workflows/credential-db-bypass-daily.yml",
+      "inspection_status": "PENDING_DEEP_INSPECTION",
+      "unverified_details": [
+        "triggers",
+        "required_check",
+        "last_run",
+        "calls",
+        "secrets",
+        "external_side_effects",
+        "cost",
+        "ownership"
+      ],
+      "disposition": "INVESTIGATE",
+      "disposition_approved": false
+    },
+    {
+      "path": ".github/workflows/deletion-lifecycle-readiness.yml",
+      "inspection_status": "PENDING_DEEP_INSPECTION",
+      "unverified_details": [
+        "triggers",
+        "required_check",
+        "last_run",
+        "calls",
+        "secrets",
+        "external_side_effects",
+        "cost",
+        "ownership"
+      ],
+      "disposition": "INVESTIGATE",
+      "disposition_approved": false
+    },
+    {
+      "path": ".github/workflows/department-eval-suites.yml",
+      "inspection_status": "PENDING_DEEP_INSPECTION",
+      "unverified_details": [
+        "triggers",
+        "required_check",
+        "last_run",
+        "calls",
+        "secrets",
+        "external_side_effects",
+        "cost",
+        "ownership"
+      ],
+      "disposition": "INVESTIGATE",
+      "disposition_approved": false
+    },
+    {
+      "path": ".github/workflows/desktop-tauri.yml",
+      "inspection_status": "PENDING_DEEP_INSPECTION",
+      "unverified_details": [
+        "triggers",
+        "required_check",
+        "last_run",
+        "calls",
+        "secrets",
+        "external_side_effects",
+        "cost",
+        "ownership"
+      ],
+      "disposition": "INVESTIGATE",
+      "disposition_approved": false
+    },
+    {
+      "path": ".github/workflows/extension-release.yml",
+      "inspection_status": "PENDING_DEEP_INSPECTION",
+      "unverified_details": [
+        "triggers",
+        "required_check",
+        "last_run",
+        "calls",
+        "secrets",
+        "external_side_effects",
+        "cost",
+        "ownership"
+      ],
+      "disposition": "INVESTIGATE",
+      "disposition_approved": false
+    },
+    {
+      "path": ".github/workflows/federated-runtime.yml",
+      "inspection_status": "PENDING_DEEP_INSPECTION",
+      "unverified_details": [
+        "triggers",
+        "required_check",
+        "last_run",
+        "calls",
+        "secrets",
+        "external_side_effects",
+        "cost",
+        "ownership"
+      ],
+      "disposition": "INVESTIGATE",
+      "disposition_approved": false
+    },
+    {
+      "path": ".github/workflows/golden-benchmark-live.yml",
+      "inspection_status": "PENDING_DEEP_INSPECTION",
+      "unverified_details": [
+        "triggers",
+        "required_check",
+        "last_run",
+        "calls",
+        "secrets",
+        "external_side_effects",
+        "cost",
+        "ownership"
+      ],
+      "disposition": "INVESTIGATE",
+      "disposition_approved": false
+    },
+    {
+      "path": ".github/workflows/indexnow-on-publish.yml",
+      "inspection_status": "PENDING_DEEP_INSPECTION",
+      "unverified_details": [
+        "triggers",
+        "required_check",
+        "last_run",
+        "calls",
+        "secrets",
+        "external_side_effects",
+        "cost",
+        "ownership"
+      ],
+      "disposition": "INVESTIGATE",
+      "disposition_approved": false
+    },
+    {
+      "path": ".github/workflows/intelligence-lifecycle-e2e.yml",
+      "inspection_status": "PENDING_DEEP_INSPECTION",
+      "unverified_details": [
+        "triggers",
+        "required_check",
+        "last_run",
+        "calls",
+        "secrets",
+        "external_side_effects",
+        "cost",
+        "ownership"
+      ],
+      "disposition": "INVESTIGATE",
+      "disposition_approved": false
+    },
+    {
+      "path": ".github/workflows/intelligence-offline-acceptance.yml",
+      "inspection_status": "PENDING_DEEP_INSPECTION",
+      "unverified_details": [
+        "triggers",
+        "required_check",
+        "last_run",
+        "calls",
+        "secrets",
+        "external_side_effects",
+        "cost",
+        "ownership"
+      ],
+      "disposition": "INVESTIGATE",
+      "disposition_approved": false
+    },
+    {
+      "path": ".github/workflows/isolated-acceptance.yml",
+      "inspection_status": "SOURCE_INSPECTED",
+      "workflow_name": "Isolated billing and live voice acceptance",
+      "trigger_excerpt": "pull_request:\n    branches: [main]\n  workflow_dispatch:\n    inputs:\n      suite:\n        description: 'Choose isolated acceptance suite'\n        required: true\n        type: choice\n        options: [all, billing, voice]\n        default: all\n  workflow_call:\n    inputs:\n      suite:\n        description: 'Which isolated suite to execute'\n        required: true\n        type: string\n\n",
+      "has_workflow_call": true,
+      "has_workflow_dispatch": true,
+      "has_push_trigger": false,
+      "has_pr_trigger": true,
+      "environment_refs": [
+        "acceptance"
+      ],
+      "unverified_details": [
+        "required_check",
+        "last_run",
+        "calls",
+        "secrets",
+        "external_side_effects",
+        "cost",
+        "ownership"
+      ],
+      "disposition": "INVESTIGATE",
+      "disposition_approved": false
+    },
+    {
+      "path": ".github/workflows/issue-535-voice-confirmation.yml",
+      "inspection_status": "PENDING_DEEP_INSPECTION",
+      "unverified_details": [
+        "triggers",
+        "required_check",
+        "last_run",
+        "calls",
+        "secrets",
+        "external_side_effects",
+        "cost",
+        "ownership"
+      ],
+      "disposition": "INVESTIGATE",
+      "disposition_approved": false
+    },
+    {
+      "path": ".github/workflows/knowledge-sync.yml",
+      "inspection_status": "PENDING_DEEP_INSPECTION",
+      "unverified_details": [
+        "triggers",
+        "required_check",
+        "last_run",
+        "calls",
+        "secrets",
+        "external_side_effects",
+        "cost",
+        "ownership"
+      ],
+      "disposition": "INVESTIGATE",
+      "disposition_approved": false
+    },
+    {
+      "path": ".github/workflows/live-generated-response-quality.yml",
+      "inspection_status": "PENDING_DEEP_INSPECTION",
+      "unverified_details": [
+        "triggers",
+        "required_check",
+        "last_run",
+        "calls",
+        "secrets",
+        "external_side_effects",
+        "cost",
+        "ownership"
+      ],
+      "disposition": "INVESTIGATE",
+      "disposition_approved": false
+    },
+    {
+      "path": ".github/workflows/live-signup-billing-http.yml",
+      "inspection_status": "PENDING_DEEP_INSPECTION",
+      "unverified_details": [
+        "triggers",
+        "required_check",
+        "last_run",
+        "calls",
+        "secrets",
+        "external_side_effects",
+        "cost",
+        "ownership"
+      ],
+      "disposition": "INVESTIGATE",
+      "disposition_approved": false
+    },
+    {
+      "path": ".github/workflows/marketing-lighthouse.yml",
+      "inspection_status": "PENDING_DEEP_INSPECTION",
+      "unverified_details": [
+        "triggers",
+        "required_check",
+        "last_run",
+        "calls",
+        "secrets",
+        "external_side_effects",
+        "cost",
+        "ownership"
+      ],
+      "disposition": "INVESTIGATE",
+      "disposition_approved": false
+    },
+    {
+      "path": ".github/workflows/marketplace-production-smoke.yml",
+      "inspection_status": "PENDING_DEEP_INSPECTION",
+      "unverified_details": [
+        "triggers",
+        "required_check",
+        "last_run",
+        "calls",
+        "secrets",
+        "external_side_effects",
+        "cost",
+        "ownership"
+      ],
+      "disposition": "INVESTIGATE",
+      "disposition_approved": false
+    },
+    {
+      "path": ".github/workflows/metrics-rollup.yml",
+      "inspection_status": "PENDING_DEEP_INSPECTION",
+      "unverified_details": [
+        "triggers",
+        "required_check",
+        "last_run",
+        "calls",
+        "secrets",
+        "external_side_effects",
+        "cost",
+        "ownership"
+      ],
+      "disposition": "INVESTIGATE",
+      "disposition_approved": false
+    },
+    {
+      "path": ".github/workflows/migration-history-recovery.yml",
+      "inspection_status": "PENDING_DEEP_INSPECTION",
+      "unverified_details": [
+        "triggers",
+        "required_check",
+        "last_run",
+        "calls",
+        "secrets",
+        "external_side_effects",
+        "cost",
+        "ownership"
+      ],
+      "disposition": "INVESTIGATE",
+      "disposition_approved": false
+    },
+    {
+      "path": ".github/workflows/milestone1-live-reverify.yml",
+      "inspection_status": "PENDING_DEEP_INSPECTION",
+      "unverified_details": [
+        "triggers",
+        "required_check",
+        "last_run",
+        "calls",
+        "secrets",
+        "external_side_effects",
+        "cost",
+        "ownership"
+      ],
+      "disposition": "INVESTIGATE",
+      "disposition_approved": false
+    },
+    {
+      "path": ".github/workflows/milestone2-latency-ab.yml",
+      "inspection_status": "PENDING_DEEP_INSPECTION",
+      "unverified_details": [
+        "triggers",
+        "required_check",
+        "last_run",
+        "calls",
+        "secrets",
+        "external_side_effects",
+        "cost",
+        "ownership"
+      ],
+      "disposition": "INVESTIGATE",
+      "disposition_approved": false
+    },
+    {
+      "path": ".github/workflows/milestone2-performance-audit.yml",
+      "inspection_status": "PENDING_DEEP_INSPECTION",
+      "unverified_details": [
+        "triggers",
+        "required_check",
+        "last_run",
+        "calls",
+        "secrets",
+        "external_side_effects",
+        "cost",
+        "ownership"
+      ],
+      "disposition": "INVESTIGATE",
+      "disposition_approved": false
+    },
+    {
+      "path": ".github/workflows/msp-enrichment-workflow-live.yml",
+      "inspection_status": "PENDING_DEEP_INSPECTION",
+      "unverified_details": [
+        "triggers",
+        "required_check",
+        "last_run",
+        "calls",
+        "secrets",
+        "external_side_effects",
+        "cost",
+        "ownership"
+      ],
+      "disposition": "INVESTIGATE",
+      "disposition_approved": false
+    },
+    {
+      "path": ".github/workflows/msp-isolated-database-security.yml",
+      "inspection_status": "PENDING_DEEP_INSPECTION",
+      "unverified_details": [
+        "triggers",
+        "required_check",
+        "last_run",
+        "calls",
+        "secrets",
+        "external_side_effects",
+        "cost",
+        "ownership"
+      ],
+      "disposition": "INVESTIGATE",
+      "disposition_approved": false
+    },
+    {
+      "path": ".github/workflows/native-langfuse-certification.yml",
+      "inspection_status": "PENDING_DEEP_INSPECTION",
+      "unverified_details": [
+        "triggers",
+        "required_check",
+        "last_run",
+        "calls",
+        "secrets",
+        "external_side_effects",
+        "cost",
+        "ownership"
+      ],
+      "disposition": "INVESTIGATE",
+      "disposition_approved": false
+    },
+    {
+      "path": ".github/workflows/native-workers-offline.yml",
+      "inspection_status": "PENDING_DEEP_INSPECTION",
+      "unverified_details": [
+        "triggers",
+        "required_check",
+        "last_run",
+        "calls",
+        "secrets",
+        "external_side_effects",
+        "cost",
+        "ownership"
+      ],
+      "disposition": "INVESTIGATE",
+      "disposition_approved": false
+    },
+    {
+      "path": ".github/workflows/navigation-e2e.yml",
+      "inspection_status": "PENDING_DEEP_INSPECTION",
+      "unverified_details": [
+        "triggers",
+        "required_check",
+        "last_run",
+        "calls",
+        "secrets",
+        "external_side_effects",
+        "cost",
+        "ownership"
+      ],
+      "disposition": "INVESTIGATE",
+      "disposition_approved": false
+    },
+    {
+      "path": ".github/workflows/outcome-ownership-contract.yml",
+      "inspection_status": "PENDING_DEEP_INSPECTION",
+      "unverified_details": [
+        "triggers",
+        "required_check",
+        "last_run",
+        "calls",
+        "secrets",
+        "external_side_effects",
+        "cost",
+        "ownership"
+      ],
+      "disposition": "INVESTIGATE",
+      "disposition_approved": false
+    },
+    {
+      "path": ".github/workflows/phase3-intelligence-coverage.yml",
+      "inspection_status": "PENDING_DEEP_INSPECTION",
+      "unverified_details": [
+        "triggers",
+        "required_check",
+        "last_run",
+        "calls",
+        "secrets",
+        "external_side_effects",
+        "cost",
+        "ownership"
+      ],
+      "disposition": "INVESTIGATE",
+      "disposition_approved": false
+    },
+    {
+      "path": ".github/workflows/phase3-offline-12-scenarios.yml",
+      "inspection_status": "PENDING_DEEP_INSPECTION",
+      "unverified_details": [
+        "triggers",
+        "required_check",
+        "last_run",
+        "calls",
+        "secrets",
+        "external_side_effects",
+        "cost",
+        "ownership"
+      ],
+      "disposition": "INVESTIGATE",
+      "disposition_approved": false
+    },
+    {
+      "path": ".github/workflows/phase3-phase5-evidence.yml",
+      "inspection_status": "PENDING_DEEP_INSPECTION",
+      "unverified_details": [
+        "triggers",
+        "required_check",
+        "last_run",
+        "calls",
+        "secrets",
+        "external_side_effects",
+        "cost",
+        "ownership"
+      ],
+      "disposition": "INVESTIGATE",
+      "disposition_approved": false
+    },
+    {
+      "path": ".github/workflows/platform-cs-backfill.yml",
+      "inspection_status": "PENDING_DEEP_INSPECTION",
+      "unverified_details": [
+        "triggers",
+        "required_check",
+        "last_run",
+        "calls",
+        "secrets",
+        "external_side_effects",
+        "cost",
+        "ownership"
+      ],
+      "disposition": "INVESTIGATE",
+      "disposition_approved": false
+    },
+    {
+      "path": ".github/workflows/plays-datasets-live-proof.yml",
+      "inspection_status": "PENDING_DEEP_INSPECTION",
+      "unverified_details": [
+        "triggers",
+        "required_check",
+        "last_run",
+        "calls",
+        "secrets",
+        "external_side_effects",
+        "cost",
+        "ownership"
+      ],
+      "disposition": "INVESTIGATE",
+      "disposition_approved": false
+    },
+    {
+      "path": ".github/workflows/plays-production-acceptance.yml",
+      "inspection_status": "PENDING_DEEP_INSPECTION",
+      "unverified_details": [
+        "triggers",
+        "required_check",
+        "last_run",
+        "calls",
+        "secrets",
+        "external_side_effects",
+        "cost",
+        "ownership"
+      ],
+      "disposition": "INVESTIGATE",
+      "disposition_approved": false
+    },
+    {
+      "path": ".github/workflows/pr587-controlled-reconcile.yml",
+      "inspection_status": "PENDING_DEEP_INSPECTION",
+      "unverified_details": [
+        "triggers",
+        "required_check",
+        "last_run",
+        "calls",
+        "secrets",
+        "external_side_effects",
+        "cost",
+        "ownership"
+      ],
+      "disposition": "INVESTIGATE",
+      "disposition_approved": false
+    },
+    {
+      "path": ".github/workflows/pr587-local-acoustic.yml",
+      "inspection_status": "PENDING_DEEP_INSPECTION",
+      "unverified_details": [
+        "triggers",
+        "required_check",
+        "last_run",
+        "calls",
+        "secrets",
+        "external_side_effects",
+        "cost",
+        "ownership"
+      ],
+      "disposition": "INVESTIGATE",
+      "disposition_approved": false
+    },
+    {
+      "path": ".github/workflows/pr587-offline-cancellation.yml",
+      "inspection_status": "PENDING_DEEP_INSPECTION",
+      "unverified_details": [
+        "triggers",
+        "required_check",
+        "last_run",
+        "calls",
+        "secrets",
+        "external_side_effects",
+        "cost",
+        "ownership"
+      ],
+      "disposition": "INVESTIGATE",
+      "disposition_approved": false
+    },
+    {
+      "path": ".github/workflows/pr605-cross-surface-ownership.yml",
+      "inspection_status": "PENDING_DEEP_INSPECTION",
+      "unverified_details": [
+        "triggers",
+        "required_check",
+        "last_run",
+        "calls",
+        "secrets",
+        "external_side_effects",
+        "cost",
+        "ownership"
+      ],
+      "disposition": "INVESTIGATE",
+      "disposition_approved": false
+    },
+    {
+      "path": ".github/workflows/pr605-gate26-postgres-outbox.yml",
+      "inspection_status": "SOURCE_INSPECTED",
+      "workflow_name": "PR605 Gate26 isolated PostgreSQL outbox acceptance",
+      "trigger_excerpt": "pull_request:\n    branches: [main]\n    paths:\n      - 'backend/tests/db/test_domain_event_outbox_pg.py'\n      - 'backend/tests/db/pg_harness.py'\n      - 'backend/tests/services/test_gate26_cancellation_and_outbox_contract.py'\n      - 'supabase/migrations/20261012024141_domain_event_outbox.sql'\n      - 'supabase/migrations/20261013020000_domain_event_claim_handled_types.sql'\n      - '.github/workflows/pr605-gate26-postgres-outbox.yml'\n  workflow_dispatch:\n\n",
+      "has_workflow_call": false,
+      "has_workflow_dispatch": true,
+      "has_push_trigger": false,
+      "has_pr_trigger": true,
+      "environment_refs": [],
+      "unverified_details": [
+        "required_check",
+        "last_run",
+        "calls",
+        "secrets",
+        "external_side_effects",
+        "cost",
+        "ownership"
+      ],
+      "disposition": "INVESTIGATE",
+      "disposition_approved": false
+    },
+    {
+      "path": ".github/workflows/pr605-route-inventory.yml",
+      "inspection_status": "SOURCE_INSPECTED",
+      "workflow_name": "PR605 registered route inventory certification",
+      "trigger_excerpt": "pull_request:\n    branches: [main]\n    paths:\n      - 'backend/scripts/pr605_runtime_dependency_inventory.py'\n      - 'backend/app/main.py'\n      - 'backend/app/routers/**'\n      - 'backend/requirements-dev.txt'\n      - '.github/workflows/pr605-route-inventory.yml'\n  workflow_dispatch:\n\n",
+      "has_workflow_call": false,
+      "has_workflow_dispatch": true,
+      "has_push_trigger": false,
+      "has_pr_trigger": true,
+      "environment_refs": [],
+      "unverified_details": [
+        "required_check",
+        "last_run",
+        "calls",
+        "secrets",
+        "external_side_effects",
+        "cost",
+        "ownership"
+      ],
+      "disposition": "INVESTIGATE",
+      "disposition_approved": false
+    },
+    {
+      "path": ".github/workflows/pr605-run-status-contract.yml",
+      "inspection_status": "SOURCE_INSPECTED",
+      "workflow_name": "PR605 run status contract certification",
+      "trigger_excerpt": "pull_request:\n    branches: [main]\n    paths:\n      - 'backend/app/workflows/run_status_contract.py'\n      - 'backend/app/workflows/schema_sync.py'\n      - 'backend/tests/workflows/test_schema_sync.py'\n      - 'backend/tests/db/test_pr605_run_status_contract_pg.py'\n      - 'backend/tests/db/pg_harness.py'\n      - 'supabase/migrations/20261105090000_run_status_contract_v2.sql'\n      - '.github/workflows/pr605-run-status-contract.yml'\n  workflow_dispatch:\n\n",
+      "has_workflow_call": false,
+      "has_workflow_dispatch": true,
+      "has_push_trigger": false,
+      "has_pr_trigger": true,
+      "environment_refs": [],
+      "unverified_details": [
+        "required_check",
+        "last_run",
+        "calls",
+        "secrets",
+        "external_side_effects",
+        "cost",
+        "ownership"
+      ],
+      "disposition": "INVESTIGATE",
+      "disposition_approved": false
+    },
+    {
+      "path": ".github/workflows/pr605-runtime-edge-contract.yml",
+      "inspection_status": "PENDING_DEEP_INSPECTION",
+      "unverified_details": [
+        "triggers",
+        "required_check",
+        "last_run",
+        "calls",
+        "secrets",
+        "external_side_effects",
+        "cost",
+        "ownership"
+      ],
+      "disposition": "INVESTIGATE",
+      "disposition_approved": false
+    },
+    {
+      "path": ".github/workflows/probe-gmail-live-bugs-audit.yml",
+      "inspection_status": "PENDING_DEEP_INSPECTION",
+      "unverified_details": [
+        "triggers",
+        "required_check",
+        "last_run",
+        "calls",
+        "secrets",
+        "external_side_effects",
+        "cost",
+        "ownership"
+      ],
+      "disposition": "INVESTIGATE",
+      "disposition_approved": false
+    },
+    {
+      "path": ".github/workflows/production-hardening-smoke.yml",
+      "inspection_status": "PENDING_DEEP_INSPECTION",
+      "unverified_details": [
+        "triggers",
+        "required_check",
+        "last_run",
+        "calls",
+        "secrets",
+        "external_side_effects",
+        "cost",
+        "ownership"
+      ],
+      "disposition": "INVESTIGATE",
+      "disposition_approved": false
+    },
+    {
+      "path": ".github/workflows/production-release-verification.yml",
+      "inspection_status": "SOURCE_INSPECTED",
+      "workflow_name": "Production release verification",
+      "trigger_excerpt": "workflow_run:\n    workflows: [\"CI\"]\n    types: [completed]\n    branches: [main]\n  workflow_dispatch:\n\n",
+      "has_workflow_call": false,
+      "has_workflow_dispatch": true,
+      "has_push_trigger": false,
+      "has_pr_trigger": false,
+      "environment_refs": [],
+      "unverified_details": [
+        "required_check",
+        "last_run",
+        "calls",
+        "secrets",
+        "external_side_effects",
+        "cost",
+        "ownership"
+      ],
+      "disposition": "INVESTIGATE",
+      "disposition_approved": false
+    },
+    {
+      "path": ".github/workflows/railway-backend-production.yml",
+      "inspection_status": "SOURCE_INSPECTED",
+      "workflow_name": "Railway backend production",
+      "trigger_excerpt": "push:\n    branches: [main]\n    paths:\n      - \"backend/**\"\n      - \"scripts/verify-agent-roi-live.py\"\n      - \"apps/web/lib/supabase/memberships.ts\"\n      - \".github/workflows/railway-backend-production.yml\"\n  workflow_dispatch:\n    inputs:\n      force_railway_up:\n        description: If GitHub auto-deploy is stuck, GraphQL-redeploy tip (never CLI railway up)\n        type: boolean\n        default: true\n\n",
+      "has_workflow_call": false,
+      "has_workflow_dispatch": true,
+      "has_push_trigger": true,
+      "has_pr_trigger": false,
+      "environment_refs": [],
+      "unverified_details": [
+        "required_check",
+        "last_run",
+        "calls",
+        "secrets",
+        "external_side_effects",
+        "cost",
+        "ownership"
+      ],
+      "disposition": "INVESTIGATE",
+      "disposition_approved": false
+    },
+    {
+      "path": ".github/workflows/railway-safety-vars.yml",
+      "inspection_status": "PENDING_DEEP_INSPECTION",
+      "unverified_details": [
+        "triggers",
+        "required_check",
+        "last_run",
+        "calls",
+        "secrets",
+        "external_side_effects",
+        "cost",
+        "ownership"
+      ],
+      "disposition": "INVESTIGATE",
+      "disposition_approved": false
+    },
+    {
+      "path": ".github/workflows/release1-authenticated-network-audit.yml",
+      "inspection_status": "PENDING_DEEP_INSPECTION",
+      "unverified_details": [
+        "triggers",
+        "required_check",
+        "last_run",
+        "calls",
+        "secrets",
+        "external_side_effects",
+        "cost",
+        "ownership"
+      ],
+      "disposition": "INVESTIGATE",
+      "disposition_approved": false
+    },
+    {
+      "path": ".github/workflows/release1-authenticated-smoke.yml",
+      "inspection_status": "PENDING_DEEP_INSPECTION",
+      "unverified_details": [
+        "triggers",
+        "required_check",
+        "last_run",
+        "calls",
+        "secrets",
+        "external_side_effects",
+        "cost",
+        "ownership"
+      ],
+      "disposition": "INVESTIGATE",
+      "disposition_approved": false
+    },
+    {
+      "path": ".github/workflows/release1-chat-voice-revocation-e2e.yml",
+      "inspection_status": "PENDING_DEEP_INSPECTION",
+      "unverified_details": [
+        "triggers",
+        "required_check",
+        "last_run",
+        "calls",
+        "secrets",
+        "external_side_effects",
+        "cost",
+        "ownership"
+      ],
+      "disposition": "INVESTIGATE",
+      "disposition_approved": false
+    },
+    {
+      "path": ".github/workflows/release1-deployed-browser-credentials.yml",
+      "inspection_status": "PENDING_DEEP_INSPECTION",
+      "unverified_details": [
+        "triggers",
+        "required_check",
+        "last_run",
+        "calls",
+        "secrets",
+        "external_side_effects",
+        "cost",
+        "ownership"
+      ],
+      "disposition": "INVESTIGATE",
+      "disposition_approved": false
+    },
+    {
+      "path": ".github/workflows/release1-execution-revocation-audit.yml",
+      "inspection_status": "PENDING_DEEP_INSPECTION",
+      "unverified_details": [
+        "triggers",
+        "required_check",
+        "last_run",
+        "calls",
+        "secrets",
+        "external_side_effects",
+        "cost",
+        "ownership"
+      ],
+      "disposition": "INVESTIGATE",
+      "disposition_approved": false
+    },
+    {
+      "path": ".github/workflows/release1-live-approval-denial.yml",
+      "inspection_status": "PENDING_DEEP_INSPECTION",
+      "unverified_details": [
+        "triggers",
+        "required_check",
+        "last_run",
+        "calls",
+        "secrets",
+        "external_side_effects",
+        "cost",
+        "ownership"
+      ],
+      "disposition": "INVESTIGATE",
+      "disposition_approved": false
+    },
+    {
+      "path": ".github/workflows/release1-live-memory-liveness.yml",
+      "inspection_status": "PENDING_DEEP_INSPECTION",
+      "unverified_details": [
+        "triggers",
+        "required_check",
+        "last_run",
+        "calls",
+        "secrets",
+        "external_side_effects",
+        "cost",
+        "ownership"
+      ],
+      "disposition": "INVESTIGATE",
+      "disposition_approved": false
+    },
+    {
+      "path": ".github/workflows/release1-live-public-mcp.yml",
+      "inspection_status": "PENDING_DEEP_INSPECTION",
+      "unverified_details": [
+        "triggers",
+        "required_check",
+        "last_run",
+        "calls",
+        "secrets",
+        "external_side_effects",
+        "cost",
+        "ownership"
+      ],
+      "disposition": "INVESTIGATE",
+      "disposition_approved": false
+    },
+    {
+      "path": ".github/workflows/release1-production-smoke.yml",
+      "inspection_status": "PENDING_DEEP_INSPECTION",
+      "unverified_details": [
+        "triggers",
+        "required_check",
+        "last_run",
+        "calls",
+        "secrets",
+        "external_side_effects",
+        "cost",
+        "ownership"
+      ],
+      "disposition": "INVESTIGATE",
+      "disposition_approved": false
+    },
+    {
+      "path": ".github/workflows/release1-role-execution-matrix.yml",
+      "inspection_status": "PENDING_DEEP_INSPECTION",
+      "unverified_details": [
+        "triggers",
+        "required_check",
+        "last_run",
+        "calls",
+        "secrets",
+        "external_side_effects",
+        "cost",
+        "ownership"
+      ],
+      "disposition": "INVESTIGATE",
+      "disposition_approved": false
+    },
+    {
+      "path": ".github/workflows/repair-root-npm-lock.yml",
+      "inspection_status": "PENDING_DEEP_INSPECTION",
+      "unverified_details": [
+        "triggers",
+        "required_check",
+        "last_run",
+        "calls",
+        "secrets",
+        "external_side_effects",
+        "cost",
+        "ownership"
+      ],
+      "disposition": "INVESTIGATE",
+      "disposition_approved": false
+    },
+    {
+      "path": ".github/workflows/research-cascade-prod-smoke.yml",
+      "inspection_status": "PENDING_DEEP_INSPECTION",
+      "unverified_details": [
+        "triggers",
+        "required_check",
+        "last_run",
+        "calls",
+        "secrets",
+        "external_side_effects",
+        "cost",
+        "ownership"
+      ],
+      "disposition": "INVESTIGATE",
+      "disposition_approved": false
+    },
+    {
+      "path": ".github/workflows/run-acceptance-billing.yml",
+      "inspection_status": "SOURCE_INSPECTED",
+      "workflow_name": "Run isolated billing Playwright acceptance",
+      "trigger_excerpt": "workflow_dispatch:\n",
+      "has_workflow_call": false,
+      "has_workflow_dispatch": true,
+      "has_push_trigger": false,
+      "has_pr_trigger": false,
+      "environment_refs": [],
+      "unverified_details": [
+        "required_check",
+        "last_run",
+        "calls",
+        "secrets",
+        "external_side_effects",
+        "cost",
+        "ownership"
+      ],
+      "disposition": "INVESTIGATE",
+      "disposition_approved": false
+    },
+    {
+      "path": ".github/workflows/run-acceptance-voice.yml",
+      "inspection_status": "SOURCE_INSPECTED",
+      "workflow_name": "Run live ElevenLabs and Deepgram acceptance",
+      "trigger_excerpt": "workflow_dispatch:\n",
+      "has_workflow_call": false,
+      "has_workflow_dispatch": true,
+      "has_push_trigger": false,
+      "has_pr_trigger": false,
+      "environment_refs": [],
+      "unverified_details": [
+        "required_check",
+        "last_run",
+        "calls",
+        "secrets",
+        "external_side_effects",
+        "cost",
+        "ownership"
+      ],
+      "disposition": "INVESTIGATE",
+      "disposition_approved": false
+    },
+    {
+      "path": ".github/workflows/seo-publishing.yml",
+      "inspection_status": "PENDING_DEEP_INSPECTION",
+      "unverified_details": [
+        "triggers",
+        "required_check",
+        "last_run",
+        "calls",
+        "secrets",
+        "external_side_effects",
+        "cost",
+        "ownership"
+      ],
+      "disposition": "INVESTIGATE",
+      "disposition_approved": false
+    },
+    {
+      "path": ".github/workflows/smoke-conversation-pollution-cleanup.yml",
+      "inspection_status": "PENDING_DEEP_INSPECTION",
+      "unverified_details": [
+        "triggers",
+        "required_check",
+        "last_run",
+        "calls",
+        "secrets",
+        "external_side_effects",
+        "cost",
+        "ownership"
+      ],
+      "disposition": "INVESTIGATE",
+      "disposition_approved": false
+    },
+    {
+      "path": ".github/workflows/snowflake-isolated-security.yml",
+      "inspection_status": "PENDING_DEEP_INSPECTION",
+      "unverified_details": [
+        "triggers",
+        "required_check",
+        "last_run",
+        "calls",
+        "secrets",
+        "external_side_effects",
+        "cost",
+        "ownership"
+      ],
+      "disposition": "INVESTIGATE",
+      "disposition_approved": false
+    },
+    {
+      "path": ".github/workflows/social-intelligence-regression.yml",
+      "inspection_status": "PENDING_DEEP_INSPECTION",
+      "unverified_details": [
+        "triggers",
+        "required_check",
+        "last_run",
+        "calls",
+        "secrets",
+        "external_side_effects",
+        "cost",
+        "ownership"
+      ],
+      "disposition": "INVESTIGATE",
+      "disposition_approved": false
+    },
+    {
+      "path": ".github/workflows/supabase-migration-safety.yml",
+      "inspection_status": "PENDING_DEEP_INSPECTION",
+      "unverified_details": [
+        "triggers",
+        "required_check",
+        "last_run",
+        "calls",
+        "secrets",
+        "external_side_effects",
+        "cost",
+        "ownership"
+      ],
+      "disposition": "INVESTIGATE",
+      "disposition_approved": false
+    },
+    {
+      "path": ".github/workflows/unified-turn-ops-gates.yml",
+      "inspection_status": "PENDING_DEEP_INSPECTION",
+      "unverified_details": [
+        "triggers",
+        "required_check",
+        "last_run",
+        "calls",
+        "secrets",
+        "external_side_effects",
+        "cost",
+        "ownership"
+      ],
+      "disposition": "INVESTIGATE",
+      "disposition_approved": false
+    },
+    {
+      "path": ".github/workflows/unified-turn-phase2-live.yml",
+      "inspection_status": "PENDING_DEEP_INSPECTION",
+      "unverified_details": [
+        "triggers",
+        "required_check",
+        "last_run",
+        "calls",
+        "secrets",
+        "external_side_effects",
+        "cost",
+        "ownership"
+      ],
+      "disposition": "INVESTIGATE",
+      "disposition_approved": false
+    },
+    {
+      "path": ".github/workflows/unified-turn-phase4-cutover.yml",
+      "inspection_status": "PENDING_DEEP_INSPECTION",
+      "unverified_details": [
+        "triggers",
+        "required_check",
+        "last_run",
+        "calls",
+        "secrets",
+        "external_side_effects",
+        "cost",
+        "ownership"
+      ],
+      "disposition": "INVESTIGATE",
+      "disposition_approved": false
+    },
+    {
+      "path": ".github/workflows/unified-turn-standing-batteries.yml",
+      "inspection_status": "PENDING_DEEP_INSPECTION",
+      "unverified_details": [
+        "triggers",
+        "required_check",
+        "last_run",
+        "calls",
+        "secrets",
+        "external_side_effects",
+        "cost",
+        "ownership"
+      ],
+      "disposition": "INVESTIGATE",
+      "disposition_approved": false
+    },
+    {
+      "path": ".github/workflows/usage-sync.yml",
+      "inspection_status": "PENDING_DEEP_INSPECTION",
+      "unverified_details": [
+        "triggers",
+        "required_check",
+        "last_run",
+        "calls",
+        "secrets",
+        "external_side_effects",
+        "cost",
+        "ownership"
+      ],
+      "disposition": "INVESTIGATE",
+      "disposition_approved": false
+    },
+    {
+      "path": ".github/workflows/voice-duplex-guard.yml",
+      "inspection_status": "SOURCE_INSPECTED",
+      "workflow_name": "Voice duplex browser guard",
+      "trigger_excerpt": "pull_request:\n    paths:\n      - \"apps/web/hooks/use-voice-duplex-session.ts\"\n      - \"apps/web/lib/voice-*.ts\"\n      - \"apps/web/public/voice-worklets/**\"\n      - \"apps/web/lib/pipecat-voice-client.ts\"\n      - \"apps/web/app/e2e/voice-duplex/**\"\n      - \"apps/web/app/api/voice/**\"\n      - \"apps/web/lib/auth-context.tsx\"\n      - \"backend/app/services/pipecat_voice/**\"\n      - \"backend/tests/e2e/pipecat_voice_harness_server.py\"\n      - \"backend/tests/support/fake_supabase.py\"\n      - \"e2e/voice-duplex-browser.spec.ts\"\n      - \"playwright.voice.config.ts\"\n      - \".github/workflows/voice-duplex-guard.yml\"\n  schedule:\n    - cron: \"0 7 * * *\" # Daily 07:00 UTC\n  workflow_dispatch:\n\n",
+      "has_workflow_call": false,
+      "has_workflow_dispatch": true,
+      "has_push_trigger": false,
+      "has_pr_trigger": true,
+      "environment_refs": [],
+      "unverified_details": [
+        "required_check",
+        "last_run",
+        "calls",
+        "secrets",
+        "external_side_effects",
+        "cost",
+        "ownership"
+      ],
+      "disposition": "INVESTIGATE",
+      "disposition_approved": false
+    },
+    {
+      "path": ".github/workflows/voice-gates-2-3.yml",
+      "inspection_status": "PENDING_DEEP_INSPECTION",
+      "unverified_details": [
+        "triggers",
+        "required_check",
+        "last_run",
+        "calls",
+        "secrets",
+        "external_side_effects",
+        "cost",
+        "ownership"
+      ],
+      "disposition": "INVESTIGATE",
+      "disposition_approved": false
+    },
+    {
+      "path": ".github/workflows/voice-livekit-candidate.yml",
+      "inspection_status": "PENDING_DEEP_INSPECTION",
+      "unverified_details": [
+        "triggers",
+        "required_check",
+        "last_run",
+        "calls",
+        "secrets",
+        "external_side_effects",
+        "cost",
+        "ownership"
+      ],
+      "disposition": "INVESTIGATE",
+      "disposition_approved": false
+    },
+    {
+      "path": ".github/workflows/voice-slo-gates.yml",
+      "inspection_status": "SOURCE_INSPECTED",
+      "workflow_name": "Voice SLO two-metric gates",
+      "trigger_excerpt": "schedule:\n    - cron: \"15 6 * * *\"\n  workflow_dispatch:\n\n",
+      "has_workflow_call": false,
+      "has_workflow_dispatch": true,
+      "has_push_trigger": false,
+      "has_pr_trigger": false,
+      "environment_refs": [],
+      "unverified_details": [
+        "required_check",
+        "last_run",
+        "calls",
+        "secrets",
+        "external_side_effects",
+        "cost",
+        "ownership"
+      ],
+      "disposition": "INVESTIGATE",
+      "disposition_approved": false
+    },
+    {
+      "path": ".github/workflows/voice-stt-control-latency.yml",
+      "inspection_status": "PENDING_DEEP_INSPECTION",
+      "unverified_details": [
+        "triggers",
+        "required_check",
+        "last_run",
+        "calls",
+        "secrets",
+        "external_side_effects",
+        "cost",
+        "ownership"
+      ],
+      "disposition": "INVESTIGATE",
+      "disposition_approved": false
+    },
+    {
+      "path": ".github/workflows/workflow-schedules.yml",
+      "inspection_status": "PENDING_DEEP_INSPECTION",
+      "unverified_details": [
+        "triggers",
+        "required_check",
+        "last_run",
+        "calls",
+        "secrets",
+        "external_side_effects",
+        "cost",
+        "ownership"
+      ],
+      "disposition": "INVESTIGATE",
+      "disposition_approved": false
+    }
+  ]
+}
