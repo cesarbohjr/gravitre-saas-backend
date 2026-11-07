@@ -77,6 +77,13 @@ CREATE TABLE public.runs (
  started_at timestamptz, completed_at timestamptz, duration_ms integer,
  error_message text, metadata jsonb, updated_at timestamptz
 );
+CREATE TABLE public.play_runs (
+ id uuid PRIMARY KEY, org_id uuid NOT NULL,
+ installation_id text, play_key text, play_version text,
+ operating_mode text, trigger_type text, status text,
+ workflow_run_ids jsonb, created_by text,
+ started_at timestamptz, metadata jsonb
+);
 CREATE TABLE public.run_steps (
  id uuid PRIMARY KEY, org_id uuid NOT NULL, run_id uuid NOT NULL,
  name text, status text, order_index integer, started_at timestamptz,
@@ -107,7 +114,7 @@ class Response:
 class PgTable:
     def __init__(self, pg, name):
         assert name in {
-            "workflow_runs", "workflow_steps", "run_approvals",
+            "workflow_runs", "workflow_steps", "run_approvals", "play_runs",
             "workflows", "workflow_defs", "runs", "run_steps",
         }, name
         self.pg = pg
