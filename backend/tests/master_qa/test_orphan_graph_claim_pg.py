@@ -120,3 +120,47 @@ def test_recovery_worker_invokes_original_resume_once_with_lease(monkeypatch):
         assert pg.value("SELECT count(*) FROM public.workflow_recovery_leases") == "0"
         assert service.recover_one_stale_graph_run(SimpleNamespace(
             workflow_orphan_stale_seconds=300))["state"] == "no_candidate"
+
+
+def test_crashed_recovery_owner_can_be_reclaimed_only_after_lease_expires():
+    from app.workflows import repository
+    with canonical_pg_cluster() as pg:
+        run_id = _orphan(pg)
+        client = PgRepositoryClient(pg)
+        state = repository.get_run_with_steps(client, ORG, run_id, "synthetic")
+        checkpoint = state["parameters"]["_graph_execution"]
+        repository.merge_run_parameters(client, run_id, {
+            "_graph_execution": {**checkpoint, "pause_reason": "executor_in_flight"},
+        })
+        def claim(owner):
+            return client.rpc("claim_stale_graph_recovery", {
+                "p_owner": owner, "p_stale_seconds": 300,
+                "p_lease_seconds": 600,
+            }).execute().data
+        first = claim("first-owner")[0]
+        assert claim("overlapping-owner") == []
+        assert pg.value(f"SELECT status FROM public.workflow_runs WHERE id='{run_id}'") == "paused"
+        # The first owner's process exits without releasing its lease.
+        # The database remains up and the lease is forcibly aged.
+        pg.psql("UPDATE public.workflow_recovery_leases "
+                "SET lease_expires_at=now()-interval '1 second' "
+                f"WHERE run_id='{run_id}'")
+        second = claim("replacement-owner")[0]
+        assert second["run_id"] == run_id
+        assert second["claim_token"] != first["claim_token"]
+        assert pg.value(
+            f"SELECT attempts FROM public.workflow_recovery_leases "
+            f"WHERE run_id='{run_id}'") == "2"
+        assert client.rpc("assert_graph_recovery_lease", {
+            "p_run_id": run_id, "p_token": first["claim_token"],
+        }).execute().data is False
+        assert client.rpc("assert_graph_recovery_lease", {
+            "p_run_id": run_id, "p_token": second["claim_token"],
+        }).execute().data is True
+        assert claim("third-overlap") == []
+        # A stale process cannot release the replacement owner's claim.
+        assert client.rpc("release_graph_recovery_lease", {
+            "p_run_id": run_id, "p_token": first["claim_token"],
+        }).execute().data is False
+        assert pg.value(f"SELECT count(*) FROM public.workflow_recovery_leases "
+                        f"WHERE run_id='{run_id}'") == "1"
