@@ -98,4 +98,4 @@ jobs:
           if PG_BIN is None:
               raise SystemExit("PostgreSQL unavailable: not certifying skipped tests")
           PY
-          python -m pytest -q -rs tests/db/test_domain_event_outbox_pg.py tests/master_qa/test_real_guard_postgres_consumer_pg.py tests/master_qa/test_canonical_play_outbox_pg.py tests/master_qa/test_actual_workflow_step_pg.py tests/master_qa/test_actual_approval_resume_pg.py
+          python -m pytest -q -rs tests/db/test_domain_event_outbox_pg.py tests/master_qa/test_real_guard_postgres_consumer_pg.py tests/master_qa/test_canonical_play_outbox_pg.py tests/master_qa/test_actual_workflow_step_pg.py tests/master_qa/test_actual_approval_resume_pg.py tests/master_qa/test_joined_agent_play_approval_step_pg.py
