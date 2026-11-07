@@ -1704,6 +1704,22 @@ def resume_paused_workflow_graph(
     if run.get("status") != RUN_STATUS_PAUSED:
         raise GraphValidationError(f"Run is not paused (status={run.get('status')})")
 
+    # Recovery ownership is process-independent. A concurrent manual resume
+    # cannot bypass an active SQL claim while the recovering worker is about
+    # to reconcile an ambiguous provider effect.
+    if recovery_token:
+        valid = client.rpc("assert_graph_recovery_lease", {
+            "p_run_id": run_id, "p_token": recovery_token,
+        }).execute().data
+        if valid is not True:
+            raise GraphValidationError("Recovery claim missing or expired")
+    else:
+        active = client.rpc("graph_recovery_lease_active", {
+            "p_run_id": run_id,
+        }).execute().data
+        if active is True:
+            raise GraphValidationError("A recovery worker already owns this workflow")
+
     params = safe_normalize_stored_dict(run, key='parameters')
     checkpoint = params.get(_CHECKPOINT_KEY) or {}
     if not checkpoint:
