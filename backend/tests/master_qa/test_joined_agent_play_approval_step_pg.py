@@ -4,8 +4,8 @@ Real: AgentSelector.select, Play run router preflight/dispatch, approval route,
 execute_workflow_steps registered invoke_tool handler, sealed read gate, SQL
 workflow status trigger, outbox relay and idempotent durable consumer.
 
-Adapted: local tenant connector query, initial execute_workflow route
-policy/planning, terminal notification finalizer and outbound vendor transport.
+Adapted: local tenant connector query, deterministic version/policy/billing,
+terminal notification finalizer and outbound vendor transport.
 Canonical repository methods and legacy/contract run, step and approval
 tables are real, backed by disposable PostgreSQL via a SQL transport adapter.
 This is NOT an unmodified production API/worker, process crash or external
@@ -51,6 +51,8 @@ async def test_agent_play_approval_real_step_to_durable_consumer(pg, monkeypatch
         disable_execute=False, disable_connectors=False,
         write_authority_mode="enforce",
         connector_secrets_encryption_key="k" * 32,
+        policy_allowed_envs="synthetic",
+        policy_max_steps=10, policy_max_runtime_seconds=60,
     )
     client = PgRepositoryClient(pg)
     def connector_table(name):
@@ -89,32 +91,62 @@ async def test_agent_play_approval_real_step_to_durable_consumer(pg, monkeypatch
     monkeypatch.setattr(plays, "resolve_policy", lambda *a, **kw: (1, ["admin"]))
     monkeypatch.setattr(plays, "write_audit_event", lambda *a, **kw: None)
 
+    # Exercise production execute_workflow from Play dispatch. Policy, active
+    # version, billing and notification side dependencies are deterministic;
+    # repository creation/step insertion remain the original implementations.
+    pg.psql(f"INSERT INTO public.workflows (id, org_id, name) "
+            f"VALUES ('{workflow_id}', '{ORG}', 'Synthetic QA Play workflow')")
+    monkeypatch.setattr(workflows, "get_supabase_client", lambda _: client)
+    monkeypatch.setattr(workflows, "get_plan_for_org", lambda *a: {"features": {"approvals": True}})
+    monkeypatch.setattr(workflows, "get_workflow_def", lambda *a: {"id": workflow_id})
+    monkeypatch.setattr(workflows, "play_binding_for_workflow",
+                        lambda *a, **kw: {"key": "customer-rescue", "version": "1"})
+    monkeypatch.setattr(workflows, "get_active_workflow_version",
+                        lambda *a: {"id": "33333333-3333-4333-8333-333333333333",
+                                    "definition": definition})
+    monkeypatch.setattr("app.workflows.definition_resolver.resolve_executable_definition",
+                        lambda _client, _org, _workflow, definition, _env: definition)
+    monkeypatch.setattr(workflows, "validate_definition", lambda value: value)
+    monkeypatch.setattr(workflows, "validate_execute_steps", lambda value: None)
+    monkeypatch.setattr(workflows, "enrich_vertical_workflow_parameters",
+                        lambda _org, _workflow, parameters, _wf, **kw: parameters)
+    monkeypatch.setattr(workflows, "resolve_policy", lambda *a: (1, ["admin"]))
+    monkeypatch.setattr(workflows, "get_user_role", lambda *a: "admin")
+    monkeypatch.setattr(workflows, "check_concurrency", lambda *a, **kw: None)
+    monkeypatch.setattr(workflows, "evaluate_policy", lambda ctx:
+                        SimpleNamespace(allowed=True, required_approvals=1,
+                                        approver_roles=["admin"], approval_floor_applied=False))
+    monkeypatch.setattr("app.services.org_approval_rules.required_approvals_for_definition",
+                        lambda *a: 1)
+    monkeypatch.setattr(workflows, "require_feature", lambda *a: None)
+    monkeypatch.setattr(workflows, "_record_workflow_run_usage", lambda *a: None)
+    monkeypatch.setattr(workflows, "write_audit_event", lambda *a, **kw: None)
+    monkeypatch.setattr("app.services.workflow_approval_scope.persist_run_approval_scope",
+                        lambda *a, **kw: None)
+    monkeypatch.setattr("app.services.approval_record_service.sync_workflow_pending_approval",
+                        lambda *a, **kw: None)
+    for event_name in ("emit_execute_created", "emit_execute_pending_approval"):
+        monkeypatch.setattr(workflows, event_name, lambda *a, **kw: None)
+    # Use actual repository functions without replacing their write logic.
+    monkeypatch.setattr(workflows, "create_execute_run", repository.create_execute_run)
+    monkeypatch.setattr(workflows, "create_step", repository.create_step)
+    production_execute = workflows.execute_workflow
+
     async def initial_execute(body, *, current_user, org_id, environment_name, settings):
         nonlocal run_id, play_parameters
-        assert org_id == ORG and environment_name == "synthetic"
-        assert str(body.workflow_id) == workflow_id and body.play_key == "customer-rescue"
-        play_parameters = body.parameters
-        assert play_parameters["play"]["execution_authority"] == "canonical_workflow_runtime"
         assert pg.value("SELECT count(*) FROM public.workflow_runs") == "0"
-        # Production repository creation, including canonical runs mirror.
-        pg.psql(f"INSERT INTO public.workflows (id, org_id, name) "
-                f"VALUES ('{workflow_id}', '{ORG}', 'Synthetic QA Play workflow') "
-                "ON CONFLICT (id) DO NOTHING")
-        created = repository.create_execute_run(
-            client=client, org_id=ORG, workflow_id=workflow_id,
-            triggered_by=current_user["user_id"], definition_snapshot=definition,
-            parameters=body.parameters, run_hash="synthetic-p27-joined",
-            status="pending_approval", approval_status="pending_approval",
-            required_approvals=1, approver_roles=["admin"],
-            environment_name=environment_name)
-        run_id = created["id"]
-        repository.create_step(
-            client=client, org_id=ORG, run_id=run_id, step_id="synthetic-read",
-            step_index=0, step_name="Read synthetic CRM", step_type="invoke_tool")
-        return {"run_id": run_id, "status": "pending_approval", "approval_required": True}
+        assert org_id == ORG and str(body.workflow_id) == workflow_id
+        assert body.play_key == "customer-rescue"
+        result = await production_execute(
+            body, current_user=current_user, org_id=org_id,
+            environment_name=environment_name, settings=settings)
+        run_id = result["run_id"]
+        play_parameters = repository.get_run_with_steps(client, ORG, run_id,
+                                                         "synthetic")["parameters"]
+        assert play_parameters["play"]["execution_authority"] == "canonical_workflow_runtime"
+        return result
 
-    # The Play router is production code, but initial workflow creation is an
-    # adapter because the isolated outbox schema lacks the canonical run contract.
+    # Thin inspection wrapper, not an execution stub.
     monkeypatch.setattr(workflows, "execute_workflow", initial_execute)
     response = await plays.run_play("customer-rescue",
         plays.RunPlayRequest(installationId="fixture-install"),
