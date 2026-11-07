@@ -639,11 +639,13 @@ def _execute_graph_node(ctx: _GraphRunContext, node_id: str, step_index: int) ->
     step_started = datetime.now(timezone.utc).isoformat()
     set_step_running(ctx.client, step_uuid, step_started)
 
-    # The provider must never see a consequential call before a durable
-    # pre-dispatch graph checkpoint exists. A crash between provider commit
+    # A direct external write or nested workflow must not dispatch before a
+    # durable pre-dispatch graph checkpoint exists. Delegated agent execution
+    # remains under its own queue safeguards, not this recovery sweep.
+    # A crash between provider commit
     # and the step receipt leaves a 'running' SQL step and this checkpoint,
     # which the orphan reconciler can identify and read back safely.
-    if _recovery_kind(step_type, config) in {"write", "agent_delegation", "workflow"}:
+    if _recovery_kind(step_type, config) in {"write", "workflow"}:
         # Preserve narrow, deterministic lookup selectors before any outbound
         # call. Without them a process-loss readback could be inconclusive
         # even though the source resource is uniquely addressable.
@@ -1072,8 +1074,9 @@ def _batch_requires_serial(ctx: _GraphRunContext, batch: list[str]) -> bool:
     if len(batch) <= 1:
         return True
     # Shared run parameters contain a single graph checkpoint. Serialize
-    # consequential nodes so parallel writes cannot overwrite each other's
-    # pre-dispatch journal or leave an incomplete provider receipt.
+    # direct connector writes and nested workflows so their durable journals
+    # cannot overwrite one another. Parallel agent delegation stays unchanged;
+    # it is NOT yet eligible for automatic stale graph restart.
     for nid in batch:
         node = ctx.graph.nodes_by_id[nid]
         if _is_approval_node(node):
@@ -1082,7 +1085,7 @@ def _batch_requires_serial(ctx: _GraphRunContext, batch: list[str]) -> bool:
         if step and _recovery_kind(
             str(step.get("type") or ""),
             safe_normalize_stored_dict(step, key="config"),
-        ) in {"write", "agent_delegation", "workflow"}:
+        ) in {"write", "workflow"}:
             return True
     return False
 
@@ -1645,7 +1648,7 @@ def _reconcile_interrupted_graph_steps(
         config = safe_normalize_stored_dict(saved_input, key="config")
         if not config:
             config = safe_normalize_stored_dict(step_def, key="config")
-        if _recovery_kind(step_type, config) not in {"write", "agent_delegation", "workflow"}:
+        if _recovery_kind(step_type, config) not in {"write", "workflow"}:
             continue
         # 'pending' is not a send receipt. Only running (or a step with
         # evidence of dispatch) could have sent the action.
