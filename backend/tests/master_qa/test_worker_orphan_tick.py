@@ -84,3 +84,60 @@ def test_old_redis_worker_is_fenced_after_sql_recovery_takes_over(monkeypatch):
             queue.assert_current_workflow_claim_live()
         status[0] = "running"
         queue.assert_current_workflow_claim_live()
+
+
+@pytest.mark.parametrize("state,checkpoint", [
+    ("running", {"pause_reason": "executor_in_flight", "paused_at_node": "write"}),
+    ("paused", {"pause_reason": "executor_in_flight"}),
+    ("pending_approval", {}),
+    ("awaiting_approval", {}),
+    ("flagged_for_review", {}),
+])
+def test_redis_redelivery_never_replays_unresolved_graph_write(
+        monkeypatch, state, checkpoint):
+    import json
+    from app.workers import workflow_worker as worker
+
+    job = json.dumps({
+        "run_id": "22222222-2222-4222-8222-222222222222",
+        "org_id": "11111111-1111-4111-8111-111111111111",
+        "workflow_id": "33333333-3333-4333-8333-333333333333",
+    })
+    run = {
+        "id": "22222222-2222-4222-8222-222222222222",
+        "org_id": "11111111-1111-4111-8111-111111111111",
+        "status": state,
+        "definition_snapshot": {"steps": [{"type": "invoke_tool"}]},
+        "parameters": {"_graph_execution": checkpoint} if checkpoint else {},
+    }
+    monkeypatch.setattr(worker, "get_supabase_client", lambda _: object())
+    monkeypatch.setattr(worker, "get_run_with_steps",
+                        lambda _client, _org, _run: run)
+    def never_execute(**kwargs):
+        raise AssertionError("Queued redelivery would repeat provider write")
+    monkeypatch.setattr(worker, "execute_workflow_steps", never_execute)
+    assert worker.process_workflow_run_job(SimpleNamespace(), job) is True
+
+
+def test_uncheckpointed_running_queue_job_still_uses_normal_dispatch(monkeypatch):
+    import json
+    from app.workers import workflow_worker as worker
+
+    job = json.dumps({
+        "run_id": "22222222-2222-4222-8222-222222222222",
+        "org_id": "11111111-1111-4111-8111-111111111111",
+        "workflow_id": "33333333-3333-4333-8333-333333333333",
+    })
+    monkeypatch.setattr(worker, "get_supabase_client", lambda _: object())
+    monkeypatch.setattr(worker, "get_run_with_steps",
+                        lambda _client, _org, _run: {
+                            "status": "running",
+                            "definition_snapshot": {"steps": []},
+                            "parameters": {},
+                        })
+    dispatched = []
+    monkeypatch.setattr(worker, "execute_workflow_steps",
+                        lambda **kw: (dispatched.append(kw["run_id"]) or
+                                      ("completed", [], [], False)))
+    assert worker.process_workflow_run_job(SimpleNamespace(), job) is True
+    assert dispatched == ["22222222-2222-4222-8222-222222222222"]
