@@ -24,3 +24,10 @@ Owner: PR #611. This is an **offline implementation checkpoint**, not production
 4. Full production worker restart, deployed SHA, external readback and P27 production acceptance remain **NOT RUN** until separately authorized.
 
 No migrations, deployment, merge, paid live calls or production resource creation are permitted by this checkpoint.
+
+## Ambiguous commit before local receipt — P27-05
+
+- Production `resume_paused_workflow_graph` now runs `_reconcile_interrupted_graph_steps` **before** erasing `_graph_execution` and transitioning to running. It reads outstanding `workflow_steps` through the canonical repository, reconstructs the action, and calls the existing `_reconcile_step`/provider source-of-record path.
+- `applied` needs `verified: true` evidence to mark the prior step completed and skip its node. `not_applied` must be supported by a complete result set or authoritative ID-based field comparison to permit a new governed invocation; a bare empty first page is insufficient. `unknown` blocks resume with persisted checkpoint untouched.
+- `test_ambiguous_provider_commit_recovery_pg.py` creates a provider-side effect in a separate SQL source, exits an OS process before the workflow receipt is saved, and invokes the actual graph-resume scheduler against a fresh SQL client. Cases: `applied`, `not_applied`, `unknown`, `incomplete_absence`, `unverified_applied`. Provider lookup is deterministic **local source-of-record simulation**, not a production provider call.
+- **Remaining risk**: concurrent recovery claims / fencing, no guaranteed pre-dispatch checkpoint for every connector type, and provider adapters that cannot prove exhaustive negative readback. They remain blocked and must not be treated as certified exactly-once external execution.
