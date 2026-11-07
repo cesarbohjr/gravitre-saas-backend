@@ -45,9 +45,9 @@ async def test_canonical_play_handoff_to_guarded_synthetic_connector_and_durable
     ))
     monkeypatch.setattr(plays, "_observed_signals", lambda *args, **kwargs: set())
     monkeypatch.setattr(plays, "list_play_workflow_bindings", lambda *args, **kwargs: [
-        {"workflowId": "fixture-workflow"},
+        {"workflowId": "22222222-2222-4222-8222-222222222222"},
     ])
-    monkeypatch.setattr(plays, "get_workflow_def", lambda *args, **kwargs: {"id": "fixture-workflow"})
+    monkeypatch.setattr(plays, "get_workflow_def", lambda *args, **kwargs: {"id": "22222222-2222-4222-8222-222222222222"})
     monkeypatch.setattr(plays, "resolve_policy", lambda *args, **kwargs: (1, ["admin"]))
     monkeypatch.setattr(plays, "write_audit_event", lambda *args, **kwargs: None)
 
@@ -61,8 +61,8 @@ async def test_canonical_play_handoff_to_guarded_synthetic_connector_and_durable
 
     async def offline_executor(body, *, current_user, org_id, environment_name, settings):
         execution_arguments.append((body, org_id))
-        assert body.workflow_id == "fixture-workflow"
-        assert body.play_key == "customer-rescue" if hasattr(body, "play_key") else body.playKey == "customer-rescue"
+        assert body.workflow_id == "22222222-2222-4222-8222-222222222222"
+        assert body.play_key == "customer-rescue"
         assert body.parameters["play"]["execution_authority"] == "canonical_workflow_runtime"
         assert org_id == ORG
         assert environment_name == "synthetic"
