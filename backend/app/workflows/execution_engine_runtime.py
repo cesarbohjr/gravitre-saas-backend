@@ -1608,6 +1608,23 @@ def _reconcile_interrupted_graph_steps(
                 "Interrupted external action could not be reconciled with the provider; "
                 "resume is blocked to prevent duplicate writes"
             )
+        # A state label alone is insufficient: provider-specific adapters
+        # must supply evidence. Paginated or unfiltered search absence is
+        # not authoritative and must never authorize a replay.
+        proof = dict(recon.evidence or {})
+        if recon.state == "applied" and proof.get("verified") is not True:
+            raise GraphValidationError(
+                "Provider reported applied without verified readback evidence"
+            )
+        if recon.state == "not_applied" and not (
+            proof.get("complete_result_set") is True
+            or (proof.get("method") in {"entity_get", "provider_authoritative_get"}
+                and proof.get("verified") is False
+                and recon.detail == "requested_values_absent")
+        ):
+            raise GraphValidationError(
+                "Provider absence is not authoritative; interrupted write cannot be retried"
+            )
         if recon.state == "not_applied":
             # Provider-verified absence permits *one* fresh, governed attempt
             # using the original approval and the existing graph runtime.
