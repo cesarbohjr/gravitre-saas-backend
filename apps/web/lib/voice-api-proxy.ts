@@ -3,7 +3,13 @@ import { backendBaseUrl } from "@/lib/public-urls"
 
 export function voiceFastApiBase(): string {
   const configured = process.env.FASTAPI_BASE_URL?.trim()
-  if (configured) return backendBaseUrl().replace(/\/+$/, "")
+  // In production, the voice proxy must use the same canonical backend
+  // resolver as all other server-side API routes. Never direct a deployed
+  // Vercel function at its own localhost just because an env var is absent.
+  if (configured || process.env.NODE_ENV === "production") {
+    return backendBaseUrl().replace(/\/+$/, "")
+  }
+  // Preserve the local FastAPI development path, without requiring Railway.
   return "http://localhost:8000"
 }
 
