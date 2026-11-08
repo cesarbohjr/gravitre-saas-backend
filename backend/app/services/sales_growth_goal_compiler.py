@@ -161,11 +161,17 @@ def compile_sales_growth_goal(
     previous = "sales-goal-source"
     for idx, action in enumerate(chosen, start=1):
         node_id = f"sales-evidence-{idx}"
+        # Contact search supports list_all in the existing chat tool adapter.
+        # Other provider actions need typed input binding before live dispatch;
+        # avoid fabricating an apparently ready query for an unknown schema.
+        config = {"action": action.action_key}
+        if action.action_key == "hubspot.contacts.search":
+            config.update({"list_all": True, "limit": 10})
         nodes.append({
             "id": node_id, "node_type": "connector",
             "name": action.display_name,
             "position": {"x": idx * 280, "y": 80},
-            "config": {"action": action.action_key},
+            "config": config,
             "metadata": {
                 "purpose": "read_only_diagnostic",
                 "evidence_source": action.connector_id,
