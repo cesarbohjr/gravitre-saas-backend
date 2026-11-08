@@ -358,8 +358,18 @@ jobs:
               )
               if changed != 1:
                   raise SystemExit(f"Unexpected local Supabase port config for {old}: {changed}")
-          config, changed = re.subn(
-              r'(?m)^project_id = "gravitre-operator-ai"
+          old_name = "gravitre-operator-ai"
+          if config.count(old_name) != 1:
+              raise SystemExit("Missing unique local project identifier")
+          config = config.replace(
+              old_name, "gravitre-qa-" + os.environ.get("GITHUB_RUN_ID", "local"), 1
+          )
+          cfg.write_text(config)
+          print("Disposable Supabase replay uses isolated ports and project identity.")
+          PY
+          supabase start -x studio,imgproxy,edge-runtime,logflare,vector
+          supabase db reset --no-seed
+          echo "Local Supabase replayed all migrations on isolated Docker ports (production untouched)."
 
       - name: Set up isolated billing browser acceptance
         if: steps.gate.outputs.billing == 'true'
