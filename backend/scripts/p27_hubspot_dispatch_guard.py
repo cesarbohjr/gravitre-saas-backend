@@ -21,7 +21,7 @@ ALLOWED_EVENTS = {"pull_request", "workflow_dispatch"}
 
 
 def check_dispatch(*, env: dict[str, str], checked_out_sha: str,
-                   fetch_head=None) -> dict:
+                   fetch_head=None, approved_review=None) -> dict:
     """Require owner, repo, exact immutable checkout and current PR HEAD."""
     event = env.get("GITHUB_EVENT_NAME", "")
     actor = env.get("GITHUB_ACTOR", "")
@@ -40,6 +40,8 @@ def check_dispatch(*, env: dict[str, str], checked_out_sha: str,
         head = fetch_head()
         if not SHA_RE.fullmatch(head) or head != expected:
             raise RuntimeError("PR head changed after owner label; refusing write")
+        if approved_review is not True:
+            raise RuntimeError("independent exact-head reviewer approval required")
     else:
         if env.get("GITHUB_REF") != "refs/heads/main" or pr_number != "0":
             raise RuntimeError("workflow_dispatch must run from main")
@@ -60,6 +62,36 @@ def current_pr_head(token: str) -> str:
     with urllib.request.urlopen(request, timeout=12) as response:
         payload = json.load(response)
     return str(payload.get("head", {}).get("sha", ""))
+
+
+def current_independent_approval(token: str, expected_sha: str) -> bool:
+    """Require an independently submitted APPROVED review on this exact HEAD.
+
+    Never count PR author's review or a stale approval from another commit.
+    Last submitted review per reviewer is authoritative for that reviewer.
+    """
+    if not token:
+        raise RuntimeError("GitHub token required to read independent review")
+    url = f"https://api.github.com/repos/{REPO}/pulls/{PR}/reviews?per_page=100"
+    request = urllib.request.Request(
+        url, headers={"Authorization": "Bearer " + token,
+                      "Accept": "application/vnd.github+json",
+                      "User-Agent": "gravitre-p27-review-preflight"},
+    )
+    with urllib.request.urlopen(request, timeout=12) as response:
+        reviews = json.load(response)
+    if not isinstance(reviews, list) or len(reviews) >= 100:
+        raise RuntimeError("review listing incomplete; fail closed")
+    latest = {}
+    for item in reviews:
+        reviewer = (item.get("user") or {}).get("login")
+        if not reviewer or reviewer == OWNER:
+            continue
+        if item.get("state") in {"APPROVED", "CHANGES_REQUESTED", "DISMISSED"}:
+            latest[reviewer] = item
+    return any(r.get("state") == "APPROVED"
+               and r.get("commit_id") == expected_sha
+               for r in latest.values())
 
 
 def summarize(path: Path) -> dict:
@@ -89,6 +121,9 @@ def main() -> int:
     data = check_dispatch(
         env=dict(os.environ), checked_out_sha=actual,
         fetch_head=lambda: current_pr_head(os.getenv("GH_TOKEN", "")),
+        approved_review=(current_independent_approval(
+            os.getenv("GH_TOKEN", ""), os.getenv("EXPECTED_HEAD_SHA", ""))
+            if os.getenv("GITHUB_EVENT_NAME") == "pull_request" else None),
     )
     print(json.dumps(data, sort_keys=True))
     return 0
