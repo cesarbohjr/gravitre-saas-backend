@@ -32,10 +32,13 @@ def registry_keyed_cache(fn: Callable[[], _T]) -> Callable[[], _T]:
     reference and compared with ``is`` so a recycled ``id()`` can never alias.
     """
     lock = threading.RLock()
-    # One immutable (registry_obj, registry_len, partner_len, value) tuple, swapped atomically.
-    state: list[tuple[object, int, int, Any] | None] = [None]
+    # Immutable registry-key snapshots detect one-for-one action substitutions.
+    # Object identity also catches a replaced (e.g. monkeypatched) registry.
+    state: list[tuple[object, frozenset[str], frozenset[str], Any] | None] = [None]
 
-    def _hit(fingerprint: tuple[object, int, int]) -> tuple[object, int, int, Any] | None:
+    def _hit(
+        fingerprint: tuple[object, frozenset[str], frozenset[str]],
+    ) -> tuple[object, frozenset[str], frozenset[str], Any] | None:
         cached = state[0]
         if cached is not None and cached[0] is fingerprint[0] and cached[1:3] == fingerprint[1:]:
             return cached
