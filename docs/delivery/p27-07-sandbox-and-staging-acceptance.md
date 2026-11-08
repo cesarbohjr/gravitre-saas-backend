@@ -45,3 +45,23 @@ PR #611 remains draft/unmerged/undeployed. Default `WORKFLOW_ORPHAN_RECOVERY_ENA
 - `backend/app/workers/workflow_worker.py` starts the consumer via `asyncio.create_task(_worker_loop(...))` in the API application. The Railway service has no independent worker process. A `kill -9` of the only backend process would also terminate the API. **No permission to harm unrelated traffic is inferred from zero live customers.**
 - The deployed worker termination gate therefore remains **BLOCKED without process isolation, a controlled approved maintenance window, or verified no-impact method**. A cancellation of the asyncio task is not equivalent to a real OS-process crash. Existing 2-process PostgreSQL CI evidence satisfies the isolated death/restart regression, but not deployed Railway restart certification.
 - No new infrastructure was created, no Railway restart performed, no credentials retrieved or changed. Test acceptance should use existing resources only; do not create a paid staging environment.
+
+## P27-08 — no-extra-service isolated worker execution (opt-in)
+
+Code: `backend/app/workers/isolated_workflow_supervisor.py`, `backend/app/workers/workflow_worker_process.py`, `backend/app/workers/workflow_worker.py`, `backend/app/main.py`.
+
+- `WORKFLOW_WORKER_PROCESS_ISOLATION_ENABLED=false` **by default**. When explicitly enabled alongside `WORKFLOW_QUEUE_ENABLED=true`, FastAPI starts one supervisor asyncio task and suppresses its own in-process workflow queue consumer.
+- The supervisor invokes the fixed `python -m app.workers.workflow_worker_process` command as a **child OS process in the existing Railway backend container** (no additional service or database). The child alone runs the existing queue processing and optionally the SQL-orphan sweep. Redis queue ownership and SQL recovery lease fencing remain authoritative.
+- The parent awaits the child exit and restarts an unexpectedly terminated child. A signal to that **child PID** leaves the parent API PID and HTTP listener running. On API shutdown the supervisor first sends SIGTERM to its own child, then SIGKILL after a bounded five-second grace period.
+- The opt-in subprocess consumes memory/CPU on the **existing** Railway service; no new Railway service bill is created, but load/resource use must still be monitored. Isolation does not mean zero compute use.
+- CI: `backend/tests/master_qa/test_isolated_workflow_supervisor.py` SIGKILLs an actual OS child and verifies a test HTTP parent remains responsive before and after automatic restart. The companion disposable PostgreSQL tests continue validating committed external effects, SQL lease takeover, independent readback and non-duplication. The test HTTP listener is **not the deployed FastAPI server**.
+
+### Two-phase controlled existing-Railway acceptance
+
+1. Review **exact-head all-required CI**, preserve existing backend deployment rollback target, and **obtain explicit approval to merge and deploy**. Do not use live Railway service to run unmerged PR code.
+2. Enable `WORKFLOW_WORKER_PROCESS_ISOLATION_ENABLED=true` with `WORKFLOW_ORPHAN_RECOVERY_ENABLED=false` for phase A; verify healthy API requests, background worker child PID, no duplicate queue consumer, and no unrelated active workflow run. Roll back on OOM, unexpected task spawn, queue lag or API errors.
+3. With verified no unrelated active work, terminate **only the dedicated child PID**, not the uvicorn parent or Redis. Verify unchanged API health, distinct restarted child PID, queue claim fencing, and healthy redis state. Disable the isolation flag if process supervision is unstable.
+4. In phase B, with migrated SQL lease functions and a single uniquely tagged approved test workflow, enable `WORKFLOW_ORPHAN_RECOVERY_ENABLED=true` for the controlled window. Kill the dedicated child after an externally verified synthetic provider commit but before local output acknowledgment. Require a new owner lease, source-of-record readback, one provider effect, one event/outbox, and safe pause on indeterminate reads.
+5. Explicitly disable orphan auto-recovery and either retain or revert isolation according to separate release approval. Record real Railway deployment SHA, child PIDs, API health, no-impact proof, lease/Redis logs, HubSpot test object and deletion evidence.
+
+Do not claim phase A/B production acceptance merely because the OS child simulation passes CI. Do not set the flags in Railway or touch the live process until deployment and explicit approval gates are satisfied.
