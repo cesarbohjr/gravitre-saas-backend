@@ -1,0 +1,107 @@
+"""No-network contracts for tool-driven protected HubSpot acceptance."""
+from __future__ import annotations
+
+import json
+from pathlib import Path
+from runpy import run_path
+
+import pytest
+
+ROOT = Path(__file__).resolve().parents[3]
+module = run_path(
+    str(ROOT / "backend/scripts/p27_hubspot_dispatch_guard.py"),
+    run_name="__p27_dispatch_contract__",
+)
+check_dispatch = module["check_dispatch"]
+summarize = module["summarize"]
+SHA = "a" * 40
+REPO = "cesarbohjr/gravitre-saas-backend"
+
+
+def env(event="pull_request", **kw):
+    data = {
+        "GITHUB_EVENT_NAME": event,
+        "GITHUB_ACTOR": "cesarbohjr",
+        "GITHUB_REPOSITORY": REPO,
+        "EXPECTED_HEAD_SHA": SHA,
+        "EVENT_PR_NUMBER": "611" if event == "pull_request" else "0",
+        "GITHUB_REF": "refs/pull/611/merge" if event == "pull_request" else "refs/heads/main",
+    }
+    data.update(kw)
+    return data
+
+
+def test_owner_labeled_exact_pr_head_can_be_authorized():
+    result = check_dispatch(env=env(), checked_out_sha=SHA, fetch_head=lambda: SHA)
+    assert result["result"] == "PASS"
+    assert result["event"] == "pull_request"
+
+
+@pytest.mark.parametrize("update", [
+    {"GITHUB_ACTOR": "unknown-user"},
+    {"GITHUB_REPOSITORY": "other/repo"},
+    {"EVENT_PR_NUMBER": "612"},
+    {"EXPECTED_HEAD_SHA": "not-a-sha"},
+    {"GITHUB_EVENT_NAME": "issue_comment"},
+])
+def test_wrong_actor_repository_pr_sha_or_event_never_authorizes(update):
+    with pytest.raises(RuntimeError):
+        check_dispatch(env=env(**update), checked_out_sha=SHA, fetch_head=lambda: SHA)
+
+
+def test_stale_pr_head_or_wrong_checkout_never_authorizes():
+    with pytest.raises(RuntimeError, match="PR head changed"):
+        check_dispatch(env=env(), checked_out_sha=SHA, fetch_head=lambda: "b" * 40)
+    with pytest.raises(RuntimeError, match="checkout SHA"):
+        check_dispatch(env=env(), checked_out_sha="b" * 40, fetch_head=lambda: SHA)
+    with pytest.raises(RuntimeError, match="cannot verify"):
+        check_dispatch(env=env(), checked_out_sha=SHA)
+
+
+def test_manual_dispatch_only_allowed_on_main():
+    assert check_dispatch(
+        env=env("workflow_dispatch"), checked_out_sha=SHA,
+    )["result"] == "PASS"
+    with pytest.raises(RuntimeError, match="must run from main"):
+        check_dispatch(
+            env=env("workflow_dispatch", GITHUB_REF="refs/heads/feature"),
+            checked_out_sha=SHA,
+        )
+
+
+def test_summary_only_passes_verified_cleanup(tmp_path):
+    file = tmp_path / "proof.json"
+    good = {"result": "PASS", "portal_id": "343328749",
+            "cleanup": "archived_and_get_404_verified",
+            "duplicate_record": False,
+            "resubmission": "same_email_same_contact_id",
+            "synthetic_marker": "p27qaconfidential", "contact_id": "12345"}
+    file.write_text(json.dumps(good))
+    summary = summarize(file)
+    assert summary["verified_cleanup_404"]
+    assert "contact_id" not in summary and "synthetic_marker" not in summary
+    for field, wrong in [
+        ("result", "FAILED"), ("portal_id", "1"),
+        ("cleanup", "unknown"), ("duplicate_record", True),
+        ("resubmission", "different_record"),
+    ]:
+        candidate = dict(good)
+        candidate[field] = wrong
+        file.write_text(json.dumps(candidate))
+        with pytest.raises(RuntimeError):
+            summarize(file)
+
+
+def test_workflow_exposes_preflight_without_provider_secrets():
+    workflow = (ROOT / ".github/workflows/master-qa-p27-sandbox-readback.yml").read_text()
+    assert "pull_request:" in workflow
+    assert "types: [labeled]" in workflow
+    assert "p27-hubspot-preflight" in workflow
+    assert "p27-hubspot-live-approved" in workflow
+    assert "github.actor == 'cesarbohjr'" in workflow
+    assert "environment: p27-provider-sandbox" in workflow
+    assert "ref: ${{ github.event.pull_request.head.sha || github.sha }}" in workflow
+    assert "python scripts/p27_hubspot_dispatch_guard.py" in workflow
+    assert "P27_HUBSPOT_LIVE_TEST_TOKEN: ${{ secrets.P27_HUBSPOT_LIVE_TEST_TOKEN }}" in workflow
+    preflight = workflow.split("  label-preflight:", 1)[1].split("  provider-readback:", 1)[0]
+    assert "secrets." not in preflight
