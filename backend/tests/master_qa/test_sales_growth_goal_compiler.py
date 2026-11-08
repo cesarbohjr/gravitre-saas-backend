@@ -1,0 +1,117 @@
+"""Goal-to-canvas certification: no fake tools, no unapproved writes, real schema."""
+from __future__ import annotations
+
+from types import SimpleNamespace
+
+import pytest
+
+from app.services.sales_growth_goal_compiler import (
+    GoalCompilationBlocked,
+    compile_sales_growth_goal,
+    verified_sales_observations,
+)
+from app.workflows.graph_model import build_execution_graph, topological_batches
+
+
+def _entry(connector, action, kind="read", implemented=True):
+    return SimpleNamespace(
+        connector_id=connector, action_key=action,
+        display_name=action, kind=kind,
+        chat_executable=implemented,
+        invoke_tool_handler=action if implemented else "",
+        implementation_status="executable" if implemented else "not_implemented",
+    )
+
+
+def _compile(**extra):
+    return compile_sales_growth_goal(
+        goal="I need to increase sales",
+        connected_integrations=["hubspot"],
+        action_entries=[
+            _entry("hubspot", "hubspot.deals.search"),
+            _entry("hubspot", "hubspot.contacts.search"),
+            _entry("hubspot", "hubspot.contacts.create", kind="write"),
+            _entry("slack", "slack.channels.list"),
+            _entry("google_analytics", "google_analytics.reports.run"),
+        ],
+        **extra,
+    )
+
+
+def test_goal_compiles_to_actual_canvas_schema_and_registered_reads():
+    plan = _compile()
+    assert plan.objective == "increase_sales"
+    assert plan.status == "READ_DIAGNOSTIC_READY"
+    assert plan.observation_status == "NOT_RUN"
+    assert plan.capabilities == ("hubspot.deals.search", "hubspot.contacts.search")
+    assert not plan.required_external_approval
+    assert "slack.channels.list" not in plan.capabilities
+    assert "hubspot.contacts.create" not in plan.capabilities
+    graph = build_execution_graph(plan.graph["nodes"], plan.graph["edges"])
+    assert topological_batches(graph) == [
+        ["sales-goal-source"], ["sales-evidence-1"], ["sales-evidence-2"],
+    ]
+    assert [s["config"]["action"] for s in plan.workflow_definition["steps"]] == list(plan.capabilities)
+
+
+@pytest.mark.parametrize("connected", [[], ["slack"], ["google_ads"], ["  "]])
+def test_missing_connector_is_fail_closed(connected):
+    with pytest.raises(GoalCompilationBlocked, match="no_connected_executable_sales_read"):
+        compile_sales_growth_goal(
+            goal="Increase sales", connected_integrations=connected,
+            action_entries=[_entry("hubspot", "hubspot.contacts.search")],
+        )
+
+
+def test_catalog_only_or_write_only_actions_never_become_executable():
+    with pytest.raises(GoalCompilationBlocked):
+        compile_sales_growth_goal(
+            goal="increase sales", connected_integrations=["hubspot"],
+            action_entries=[
+                _entry("hubspot", "hubspot.contacts.search", implemented=False),
+                _entry("hubspot", "hubspot.contacts.create", kind="write"),
+            ],
+        )
+
+
+def test_no_fabricated_play_or_workflow_id():
+    plan = _compile(installed_plays=[
+        {"status": "ready", "department": "sales", "play_key": "growth"},
+        {"status": "ready", "department": "marketing", "play_key": "bad",
+         "workflow_id": "not-sales", "installed": True},
+    ], agent_selection={"persona_key": "SALES"})
+    assert plan.selected_play is None and plan.selected_workflow_id is None
+    assert plan.agent_persona == "SALES"
+
+
+def test_reuse_only_positively_ready_tenant_installed_play():
+    plan = _compile(installed_plays=[
+        {"status": "ready", "department": "sales", "play_key": "sales-boost",
+         "workflow_id": "installed-workflow-uuid", "installed": True},
+    ])
+    assert plan.selected_play == "sales-boost"
+    assert plan.selected_workflow_id == "installed-workflow-uuid"
+
+
+def test_observation_requires_matching_persisted_completed_steps():
+    plan = _compile()
+    assert verified_sales_observations(plan, completed_steps=[])["status"] == "INCOMPLETE"
+    incomplete = [{"step_id": "sales-evidence-1", "status": "completed",
+                   "output_snapshot": {"data": {"results": []}}}]
+    assert verified_sales_observations(plan, completed_steps=incomplete)["status"] == "INCOMPLETE"
+    completed = incomplete + [{"step_id": "sales-evidence-2", "status": "completed",
+                               "output_snapshot": {"data": {"results": [{"id": "fixture"}]}}}]
+    evidence = verified_sales_observations(plan, completed_steps=completed)
+    assert evidence["status"] == "DIAGNOSTIC_READS_OBSERVED"
+    assert len(evidence["verified_actions"]) == 2
+    assert evidence["business_outcome"] == "NOT_MEASURED"
+    completed[1]["status"] = "failed"
+    assert verified_sales_observations(plan, completed_steps=completed)["status"] == "INCOMPLETE"
+
+
+def test_non_sales_goal_does_not_silently_route_to_sales():
+    with pytest.raises(GoalCompilationBlocked, match="unsupported_goal"):
+        compile_sales_growth_goal(
+            goal="reduce support backlog", connected_integrations=["hubspot"],
+            action_entries=[_entry("hubspot", "hubspot.contacts.search")],
+        )
