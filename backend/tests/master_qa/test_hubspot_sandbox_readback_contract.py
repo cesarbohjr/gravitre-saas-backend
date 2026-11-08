@@ -20,7 +20,7 @@ def hubspot(monkeypatch):
 def _fake_hubspot_api(*, portal=PORTAL, account_type="STANDARD",
                       mismatch=False, duplicate=False, cleanup_fails=False,
                       delete_fails=False, first_upsert_fails=False,
-                      applied_but_response_lost=False):
+                      applied_but_response_lost=False, foreign_receipt_id=False):
     seen = []
     state = {"deleted": False, "properties": None, "created": False}
 
@@ -43,11 +43,17 @@ def _fake_hubspot_api(*, portal=PORTAL, account_type="STANDARD",
                 raise RuntimeError("upsert network timeout")
             state["created"] = True
             return {"status": "COMPLETE",
-                    "results": [{"id": "90002" if duplicate and count > 1 else "90001"}]}
+                    "results": [{"id": "90002" if foreign_receipt_id or (duplicate and count > 1) else "90001"}]}
         if "idProperty=email" in url and method == "GET":
             if not state["created"] or state["deleted"]:
                 raise urllib.error.HTTPError(url, 404, "Not Found", None, None)
             return {"id": "90001", "properties": dict(state["properties"])}
+        if "/crm/v3/objects/contacts/90002" in url and method == "GET":
+            return {"id": "90002", "properties": {
+                "email": "real-customer@example.com",
+                "firstname": "Real",
+                "lastname": "Customer",
+            }}
         if "/crm/v3/objects/contacts/90001" in url and method == "GET":
             if state["deleted"] and not cleanup_fails:
                 raise urllib.error.HTTPError(url, 404, "Not Found", None, None)
@@ -84,7 +90,8 @@ def test_existing_portal_same_key_and_cleanup_404(hubspot, monkeypatch):
     assert [m for m, _, _ in seen] == [
         "GET", "POST", "GET", "POST", "GET", "DELETE", "GET"]
     assert seen[1][2] == seen[3][2]
-    assert seen[5][1].endswith("/contacts/90001")
+    assert seen[5][0] == "GET"  # independently prove synthetic owner before DELETE
+    assert seen[6][1].endswith("/contacts/90001")
 
 
 @pytest.mark.parametrize("kwargs,returned_portal,returned_type", [
@@ -119,7 +126,11 @@ def test_readback_idempotency_or_cleanup_failure_never_reports_pass(
     monkeypatch.setattr(hubspot, "_request", reply)
     with pytest.raises(RuntimeError):
         _invoke(hubspot)
-    assert any(m == "DELETE" for m, _, _ in seen)
+    if behavior["mismatch"]:
+        # Never delete an unverified object just because upsert named it.
+        assert not any(m == "DELETE" for m, _, _ in seen)
+    else:
+        assert any(m == "DELETE" for m, _, _ in seen)
 
 
 def test_upsert_unconfirmed_never_claims_cleanup(hubspot, monkeypatch):
@@ -136,6 +147,18 @@ def test_provider_applied_then_response_lost_recovers_qa_id_and_cleans_up(
     monkeypatch.setattr(hubspot, "_request", reply)
     with pytest.raises(RuntimeError):
         _invoke(hubspot)
-    assert [m for m, _, _ in seen] == ["GET", "POST", "GET", "DELETE", "GET"]
+    assert [m for m, _, _ in seen] == ["GET", "POST", "GET", "GET", "DELETE", "GET"]
     assert seen[2][1].find("idProperty=email") != -1
-    assert seen[3][1].endswith("/contacts/90001")
+    assert seen[3][0] == "GET"  # verify id and marker independently
+    assert seen[4][1].endswith("/contacts/90001")
+
+
+def test_unexpected_provider_id_never_deletes_real_contact(
+        hubspot, monkeypatch):
+    reply, seen = _fake_hubspot_api(foreign_receipt_id=True)
+    monkeypatch.setattr(hubspot, "_request", reply)
+    with pytest.raises(RuntimeError):
+        _invoke(hubspot)
+    assert any("/contacts/90002" in url and method == "GET"
+               for method, url, _ in seen)
+    assert not any(method == "DELETE" for method, _, _ in seen)
