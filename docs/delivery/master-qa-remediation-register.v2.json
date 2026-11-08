@@ -375,7 +375,7 @@
       "dependencies": [],
       "regression_candidate": null,
       "regression_state": "NOT_YET_IMPLEMENTED",
-      "implementation_state": "EVIDENCE_OR_REPAIR_PENDING",
+      "implementation_state": "PRODUCTION_TOPOLOGY_READONLY_PARTIAL_NOT_CLOSED",
       "implemented_commit": null,
       "synthetic_status": "NOT_CERTIFIED",
       "live_status": "NOT_RUN",
@@ -402,7 +402,13 @@
       ],
       "partial_test_evidence": null,
       "audit_evidence_class": "INFRA_INVENTORY_CONFIRMED",
-      "audit_observation": "Railway frontend and Vercel web paths exist; redundancy unproven"
+      "audit_observation": "Railway frontend and Vercel web paths exist; redundancy unproven",
+      "r1_evidence": {
+        "resource_readback": "VERCEL_RAILWAY_READ_ONLY",
+        "source_url": "https://github.com/cesarbohjr/gravitre-saas-backend/blob/feat/master-qa-tranche27-orchestration/docs/delivery/pr611-r1-production-topology-and-routing-evidence.md",
+        "observed": "Verified Vercel gravitre.app attachment, Railway API CNAME/TLS and healthy single backend+Redis; old Railway frontend offline/domainless. No user-authenticated route or safe retirement proof.",
+        "scope": "PARTIAL_R1_NOT_CERTIFIED"
+      }
     },
     {
       "finding_id": "ECO-009",
@@ -783,7 +789,7 @@
       "dependencies": [],
       "regression_candidate": null,
       "regression_state": "NOT_YET_IMPLEMENTED",
-      "implementation_state": "EVIDENCE_OR_REPAIR_PENDING",
+      "implementation_state": "PRODUCTION_TOPOLOGY_READONLY_PARTIAL_NOT_CLOSED",
       "implemented_commit": null,
       "synthetic_status": "NOT_CERTIFIED",
       "live_status": "NOT_RUN",
@@ -810,7 +816,13 @@
       ],
       "partial_test_evidence": null,
       "audit_evidence_class": "SOURCE_CANDIDATE_REQUIRES_RUNTIME_PROOF",
-      "audit_observation": "Original audit and source candidate require caller/runtime evidence; no final root-cause claim."
+      "audit_observation": "Original audit and source candidate require caller/runtime evidence; no final root-cause claim.",
+      "r1_evidence": {
+        "resource_readback": "VERCEL_RAILWAY_READ_ONLY",
+        "source_url": "https://github.com/cesarbohjr/gravitre-saas-backend/blob/feat/master-qa-tranche27-orchestration/docs/delivery/pr611-r1-production-topology-and-routing-evidence.md",
+        "observed": "Verified Vercel gravitre.app attachment, Railway API CNAME/TLS and healthy single backend+Redis; old Railway frontend offline/domainless. No user-authenticated route or safe retirement proof.",
+        "scope": "PARTIAL_R1_NOT_CERTIFIED"
+      }
     },
     {
       "finding_id": "P27-02",
@@ -1791,7 +1803,7 @@
       "dependencies": [],
       "regression_candidate": null,
       "regression_state": "NOT_YET_IMPLEMENTED",
-      "implementation_state": "EVIDENCE_OR_REPAIR_PENDING",
+      "implementation_state": "PRODUCTION_TOPOLOGY_READONLY_PARTIAL_NOT_CLOSED",
       "implemented_commit": null,
       "synthetic_status": "NOT_CERTIFIED",
       "live_status": "NOT_RUN",
@@ -1818,7 +1830,13 @@
       ],
       "partial_test_evidence": null,
       "audit_evidence_class": "SOURCE_CANDIDATE_REQUIRES_RUNTIME_PROOF",
-      "audit_observation": "Original audit and source candidate require caller/runtime evidence; no final root-cause claim."
+      "audit_observation": "Original audit and source candidate require caller/runtime evidence; no final root-cause claim.",
+      "r1_evidence": {
+        "resource_readback": "VERCEL_RAILWAY_READ_ONLY",
+        "source_url": "https://github.com/cesarbohjr/gravitre-saas-backend/blob/feat/master-qa-tranche27-orchestration/docs/delivery/pr611-r1-production-topology-and-routing-evidence.md",
+        "observed": "Verified Vercel gravitre.app attachment, Railway API CNAME/TLS and healthy single backend+Redis; old Railway frontend offline/domainless. No user-authenticated route or safe retirement proof.",
+        "scope": "PARTIAL_R1_NOT_CERTIFIED"
+      }
     },
     {
       "finding_id": "DEC-014",
@@ -1933,9 +1951,9 @@
       "root_cause": "UNVERIFIED",
       "remediation": "Trace Authorization/org/environment forwarding, SSE/NDJSON and actual backend origin",
       "dependencies": [],
-      "regression_candidate": null,
-      "regression_state": "NOT_YET_IMPLEMENTED",
-      "implementation_state": "EVIDENCE_OR_REPAIR_PENDING",
+      "regression_candidate": "apps/web/lib/voice-api-proxy.audit.test.ts",
+      "regression_state": "ADDED_EXACT_HEAD_CI_PENDING",
+      "implementation_state": "SOURCE_WIRING_TEST_ADDED_UNVERIFIED",
       "implemented_commit": null,
       "synthetic_status": "NOT_CERTIFIED",
       "live_status": "NOT_RUN",
@@ -1960,7 +1978,13 @@
         "independent durable consumer/provider observation",
         "exact-SHA CI and release/rollback evidence"
       ],
-      "partial_test_evidence": null,
+      "partial_test_evidence": {
+        "test_path": "apps/web/lib/voice-api-proxy.audit.test.ts",
+        "scope": "authorization/org/environment forwarding and missing-caller negative case; no live authenticated request",
+        "ci_run_url": null,
+        "executed_head_sha": null,
+        "certifies_whole_finding": false
+      },
       "audit_evidence_class": "SOURCE_CANDIDATE_REQUIRES_RUNTIME_PROOF",
       "audit_observation": "Original audit and source candidate require caller/runtime evidence; no final root-cause claim."
     },
@@ -1981,10 +2005,10 @@
       "root_cause": "UNVERIFIED",
       "remediation": "Prove configured FASTAPI_BASE_URL/hostname cannot silently choose localhost or wrong host; test deployed aliases",
       "dependencies": [],
-      "regression_candidate": null,
-      "regression_state": "NOT_YET_IMPLEMENTED",
-      "implementation_state": "EVIDENCE_OR_REPAIR_PENDING",
-      "implemented_commit": null,
+      "regression_candidate": "apps/web/lib/voice-api-proxy.audit.test.ts",
+      "regression_state": "ADDED_EXACT_HEAD_CI_PENDING",
+      "implementation_state": "SOURCE_REPAIRED_UNMERGED_NOT_DEPLOYED",
+      "implemented_commit": "a0bcd2f781212370b42542e4e3de1deaf8a68fca",
       "synthetic_status": "NOT_CERTIFIED",
       "live_status": "NOT_RUN",
       "fix_verified": false,
@@ -2008,9 +2032,21 @@
         "independent durable consumer/provider observation",
         "exact-SHA CI and release/rollback evidence"
       ],
-      "partial_test_evidence": null,
+      "partial_test_evidence": {
+        "test_path": "apps/web/lib/voice-api-proxy.audit.test.ts",
+        "scope": "production origin fallback and development behavior",
+        "ci_run_url": null,
+        "executed_head_sha": null,
+        "certifies_whole_finding": false
+      },
       "audit_evidence_class": "SOURCE_CONFIRMED_CONFIG_RISK",
-      "audit_observation": "voiceFastApiBase falls back to localhost:8000 when FASTAPI_BASE_URL absent; deployed impact unknown"
+      "audit_observation": "voiceFastApiBase falls back to localhost:8000 when FASTAPI_BASE_URL absent; deployed impact unknown",
+      "source_defect_status": "CONFIRMED_SOURCE_DEFECT_REPAIRED_IN_PR",
+      "r1_evidence": {
+        "source_url": "https://github.com/cesarbohjr/gravitre-saas-backend/blob/feat/master-qa-tranche27-orchestration/docs/delivery/pr611-r1-production-topology-and-routing-evidence.md",
+        "observed": "Production Vercel missing FASTAPI_BASE_URL previously pointed voice requests at localhost. Now uses canonical Railway resolver when production; no deployed runtime trace.",
+        "scope": "SOURCE_FIX_ONLY"
+      }
     },
     {
       "finding_id": "DEC-018",
@@ -2158,5 +2194,5 @@
     }
   ],
   "partial_test_mappings_count": 14,
-  "note": "Known partial CI tests are references, NOT closure. Historical successful SHA must not be presented as latest-head certification."
+  "note": "R1: live hosting identity and API CNAME verified read-only; DEC-017 source defect repaired with six tests, unmerged/undeployed; all 43 remain open. Do not promote any partial evidence into PASS."
 }
