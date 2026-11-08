@@ -241,6 +241,7 @@ async def compile_sales_growth_for_org(
     goal: str,
     settings: Any,
     installed_plays: Iterable[dict[str, Any]] = (),
+    environment_name: str | None = None,
 ) -> GoalPlan:
     """Resolve the actual tenant's connectors and agent policy before compiling.
 
@@ -260,7 +261,57 @@ async def compile_sales_growth_for_org(
     }
     selected_agent = await selector.select(org_id, classification)
     connected = await selector._get_connected(org_id)
+    # Discover only genuinely installed and workflow-bound tenant Plays.
+    # This is an advisory candidate, not execution authorization.
+    plays = tuple(installed_plays)
+    if not plays and environment_name is not None:
+        plays = tuple(discover_installed_sales_plays(
+            org_id=org_id, settings=settings, environment_name=environment_name,
+        ))
     return compile_sales_growth_goal(
         goal=goal, connected_integrations=connected,
-        installed_plays=installed_plays, agent_selection=selected_agent,
+        installed_plays=plays, agent_selection=selected_agent,
     )
+
+
+def discover_installed_sales_plays(
+    *, org_id: str, settings: Any, environment_name: str,
+) -> list[dict[str, Any]]:
+    """Read tenant-owned Play installations and existing workflow bindings.
+
+    No catalog template is promoted to an executable Play without a genuine
+    installation and a bound workflow in the same organization/environment.
+    This does not override Play readiness checks at dispatch time.
+    """
+    from app.workflows.repository import get_supabase_client
+    from app.plays.workflow_bindings import list_all_play_workflow_bindings
+
+    if not org_id or not environment_name:
+        return []
+    client = get_supabase_client(settings)
+    installations = (
+        client.table("play_installations").select("play_key,status")
+        .eq("org_id", org_id).eq("environment_name", environment_name)
+        .execute().data or []
+    )
+    bindings = list_all_play_workflow_bindings(client, org_id)
+    sales_keys = {
+        "qualified-prospecting", "revenue-leak-hunter",
+        "revenue-recovery", "marketing-performance",
+    }
+    candidates: list[dict[str, Any]] = []
+    for installation in installations:
+        key = str(installation.get("play_key") or "").lower()
+        if key not in sales_keys or installation.get("status") != "ready":
+            continue
+        for binding in bindings.get(key, []):
+            workflow_id = str(binding.get("workflowId") or "")
+            if not workflow_id or binding.get("status") in {"archived", "deleted"}:
+                continue
+            candidates.append({
+                "play_key": key, "workflow_id": workflow_id,
+                "department": "sales", "status": "ready",
+                "installed": True,
+            })
+            break
+    return candidates
