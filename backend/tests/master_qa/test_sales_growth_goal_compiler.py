@@ -191,3 +191,14 @@ def test_installed_play_discovery_requires_same_org_environment_and_workflow_bin
         "status": "ready", "installed": True,
     }]
     assert checks == [("org_id", "tenant-A"), ("environment_name", "synthetic")]
+
+
+def test_unbound_analytics_schema_cannot_masquerade_as_executable_plan():
+    with pytest.raises(GoalCompilationBlocked, match="no_connected_executable_sales_read"):
+        compile_sales_growth_goal(
+            goal="increase sales",
+            connected_integrations=["google_analytics"],
+            action_entries=[
+                _entry("google_analytics", "google_analytics.reports.run"),
+            ],
+        )
