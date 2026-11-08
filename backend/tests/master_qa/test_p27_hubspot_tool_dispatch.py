@@ -14,6 +14,7 @@ module = run_path(
 )
 check_dispatch = module["check_dispatch"]
 summarize = module["summarize"]
+has_review = module["has_independent_exact_head_review"]
 SHA = "a" * 40
 REPO = "cesarbohjr/gravitre-saas-backend"
 
@@ -77,6 +78,19 @@ def test_manual_dispatch_only_allowed_on_main():
             env=env("workflow_dispatch", GITHUB_REF="refs/heads/feature"),
             checked_out_sha=SHA,
         )
+
+
+def test_exact_head_review_cannot_be_faked_by_author_or_stale_approval():
+    author = {"user": {"login": "cesarbohjr"}, "state": "APPROVED", "commit_id": SHA}
+    stale = {"user": {"login": "reviewer"}, "state": "APPROVED", "commit_id": "b" * 40}
+    approved = {"user": {"login": "reviewer"}, "state": "APPROVED", "commit_id": SHA}
+    withdrawn = {"user": {"login": "reviewer"}, "state": "CHANGES_REQUESTED", "commit_id": SHA}
+    assert not has_review([author], SHA)
+    assert not has_review([stale], SHA)
+    assert has_review([author, approved], SHA)
+    assert not has_review([approved, withdrawn], SHA)
+    with pytest.raises(RuntimeError, match="incomplete"):
+        has_review([approved] * 100, SHA)
 
 
 def test_summary_only_passes_verified_cleanup(tmp_path):
