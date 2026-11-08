@@ -4886,6 +4886,7 @@ async def create_workflow_from_goal(
         try:
             sales_plan = await compile_sales_growth_for_org(
                 org_id=org_id, goal=request.goal, settings=settings,
+                environment_name=environment_name,
             )
         except GoalCompilationBlocked as exc:
             raise HTTPException(
