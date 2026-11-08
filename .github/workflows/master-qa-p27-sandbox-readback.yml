@@ -1,20 +1,20 @@
-name: P27 HubSpot sandbox authoritative readback — manually approved only
+name: P27 controlled existing HubSpot portal QA — manual approval only
 on:
   workflow_dispatch:
     inputs:
       approval:
-        description: "Type APPROVE_NONPRODUCTION_WRITE after confirming sandbox credentials and isolated provider"
+        description: "Type APPROVE_LIVE_TEST_CONTACT for one disposable record in existing Gravitre HubSpot"
         required: true
         type: string
 permissions:
   contents: read
 concurrency:
-  group: p27-sandbox-readback
+  group: p27-existing-live-hubspot-qa
   cancel-in-progress: false
 jobs:
   provider-readback:
-    name: P27 HubSpot developer-test contact upsert and independent GET
-    if: ${{ github.event.inputs.approval == 'APPROVE_NONPRODUCTION_WRITE' }}
+    name: Exact portal QA upsert + independent GET + identical replay + verified delete
+    if: ${{ github.event.inputs.approval == 'APPROVE_LIVE_TEST_CONTACT' }}
     environment: p27-provider-sandbox
     runs-on: ubuntu-latest
     timeout-minutes: 8
@@ -22,9 +22,9 @@ jobs:
       run:
         working-directory: backend
     env:
-      P27_HUBSPOT_SANDBOX_PORTAL_ID: ${{ vars.P27_HUBSPOT_SANDBOX_PORTAL_ID }}
+      P27_HUBSPOT_EXPECTED_PORTAL_ID: ${{ vars.P27_HUBSPOT_EXPECTED_PORTAL_ID }}
       P27_HUBSPOT_QA_EMAIL_DOMAIN: ${{ vars.P27_HUBSPOT_QA_EMAIL_DOMAIN }}
-      P27_HUBSPOT_SANDBOX_TOKEN: ${{ secrets.P27_HUBSPOT_SANDBOX_TOKEN }}
+      P27_HUBSPOT_LIVE_TEST_TOKEN: ${{ secrets.P27_HUBSPOT_LIVE_TEST_TOKEN }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -32,10 +32,10 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - name: Require strict sandbox host and provider credentials
+      - name: Require explicitly configured exact existing portal and dedicated QA namespace
         run: |
-          test -n "$P27_HUBSPOT_SANDBOX_PORTAL_ID" || { echo "::error::Approved HubSpot developer-test portal missing"; exit 1; }
-          test -n "$P27_HUBSPOT_QA_EMAIL_DOMAIN" || { echo "::error::Owned QA email domain missing"; exit 1; }
-          test -n "$P27_HUBSPOT_SANDBOX_TOKEN" || { echo "::error::HubSpot test account token missing"; exit 1; }
-      - name: Make one uniquely keyed synthetic action and read it from provider
-        run: python scripts/p27_hubspot_sandbox_readback.py --approve-sandbox-write
+          test "$P27_HUBSPOT_EXPECTED_PORTAL_ID" = "343328749" || { echo "::error::Existing Gravitre HubSpot portal ID not approved"; exit 1; }
+          test -n "$P27_HUBSPOT_QA_EMAIL_DOMAIN" || { echo "::error::Dedicated QA email domain missing"; exit 1; }
+          test -n "$P27_HUBSPOT_LIVE_TEST_TOKEN" || { echo "::error::Scoped existing HubSpot test token missing"; exit 1; }
+      - name: One synthetic write, provider GET, same-key replay, cleanup GET 404
+        run: python scripts/p27_hubspot_sandbox_readback.py --approve-live-test-contact
