@@ -35,6 +35,12 @@ _READ_PRIORITIES = (
     ("google_analytics", ("report",), "Inspect acquisition and conversion"),
 )
 _MAX_STEPS = 3
+# Only actions with verified parameter bindings may be dispatched by this
+# reference compiler. All other cataloged actions remain future candidates.
+_BOUND_READ_ACTIONS = frozenset({
+    "hubspot.deals.search",
+    "hubspot.contacts.search",
+})
 
 
 class GoalCompilationBlocked(ValueError):
@@ -88,6 +94,7 @@ def _pick_reads(
         e for e in entries
         if e.connector_id.lower() in connected
         and e.kind == "read"
+        and e.action_key in _BOUND_READ_ACTIONS
         and e.chat_executable
         and e.invoke_tool_handler
         and e.implementation_status == "executable"
@@ -167,6 +174,8 @@ def compile_sales_growth_goal(
         config = {"action": action.action_key}
         if action.action_key == "hubspot.contacts.search":
             config.update({"list_all": True, "limit": 10})
+        elif action.action_key == "hubspot.deals.search":
+            config.update({"limit": 25})
         nodes.append({
             "id": node_id, "node_type": "connector",
             "name": action.display_name,
