@@ -1,20 +1,63 @@
-name: P27 controlled existing HubSpot portal QA — manual approval only
+name: P27 controlled existing HubSpot portal QA — protected tool dispatch
 on:
   workflow_dispatch:
     inputs:
       approval:
-        description: "Type APPROVE_LIVE_TEST_CONTACT for one disposable record in existing Gravitre HubSpot"
+        description: "Type APPROVE_LIVE_TEST_CONTACT for one disposable record in the existing Gravitre HubSpot portal"
         required: true
         type: string
+  pull_request:
+    branches: [main]
+    types: [labeled]
+
 permissions:
   contents: read
+
 concurrency:
   group: p27-existing-live-hubspot-qa
   cancel-in-progress: false
+
 jobs:
+  label-preflight:
+    name: Read-only tool label dispatch validation
+    if: >-
+      ${{ github.event_name == 'pull_request'
+          && github.event.action == 'labeled'
+          && github.event.label.name == 'p27-hubspot-preflight'
+          && github.actor == 'cesarbohjr'
+          && github.event.pull_request.number == 611
+          && github.event.pull_request.head.repo.full_name == github.repository }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Assert source identity without provider credentials
+        env:
+          EXPECTED_REPO: cesarbohjr/gravitre-saas-backend
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          test "$GITHUB_REPOSITORY" = "$EXPECTED_REPO"
+          test "$PR_NUMBER" = "611"
+          test "${#HEAD_SHA}" -eq 40
+          echo "Read-only P27 label routing preflight passed: $HEAD_SHA"
+          echo "No HubSpot credential was provided or provider request sent."
+
   provider-readback:
-    name: Exact portal QA upsert + independent GET + identical replay + verified delete
-    if: ${{ github.event.inputs.approval == 'APPROVE_LIVE_TEST_CONTACT' }}
+    name: One scoped QA contact, GET/replay/verified cleanup
+    if: >-
+      ${{ (github.event_name == 'workflow_dispatch'
+           && github.event.inputs.approval == 'APPROVE_LIVE_TEST_CONTACT'
+           && github.ref == 'refs/heads/main'
+           && github.actor == 'cesarbohjr')
+          || (github.event_name == 'pull_request'
+              && github.event.action == 'labeled'
+              && github.event.label.name == 'p27-hubspot-live-approved'
+              && github.actor == 'cesarbohjr'
+              && github.event.pull_request.number == 611
+              && github.event.pull_request.head.repo.full_name == github.repository) }}
+    # This must be configured in GitHub Settings with required reviewers,
+    # deployment branch policy and all three dedicated P27 credentials/values.
+    # A workflow declaration alone does not establish environment protection.
     environment: p27-provider-sandbox
     runs-on: ubuntu-latest
     timeout-minutes: 8
@@ -25,17 +68,39 @@ jobs:
       P27_HUBSPOT_EXPECTED_PORTAL_ID: ${{ vars.P27_HUBSPOT_EXPECTED_PORTAL_ID }}
       P27_HUBSPOT_QA_EMAIL_DOMAIN: ${{ vars.P27_HUBSPOT_QA_EMAIL_DOMAIN }}
       P27_HUBSPOT_LIVE_TEST_TOKEN: ${{ secrets.P27_HUBSPOT_LIVE_TEST_TOKEN }}
+      # Used for a read-only exact-head check before ANY HubSpot write.
+      GH_TOKEN: ${{ github.token }}
+      EXPECTED_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+      EVENT_PR_NUMBER: ${{ github.event.pull_request.number || '0' }}
     steps:
       - uses: actions/checkout@v4
         with:
           persist-credentials: false
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - name: Require explicitly configured exact existing portal and dedicated QA namespace
+      - name: Verify exact repo, caller, immutable checkout and current PR head
         run: |
-          test "$P27_HUBSPOT_EXPECTED_PORTAL_ID" = "343328749" || { echo "::error::Existing Gravitre HubSpot portal ID not approved"; exit 1; }
-          test -n "$P27_HUBSPOT_QA_EMAIL_DOMAIN" || { echo "::error::Dedicated QA email domain missing"; exit 1; }
-          test -n "$P27_HUBSPOT_LIVE_TEST_TOKEN" || { echo "::error::Scoped existing HubSpot test token missing"; exit 1; }
-      - name: One synthetic write, provider GET, same-key replay, cleanup GET 404
-        run: python scripts/p27_hubspot_sandbox_readback.py --approve-live-test-contact
+          set -euo pipefail
+          python scripts/p27_hubspot_dispatch_guard.py
+      - name: Require exact existing portal, scoped credential and QA namespace
+        run: |
+          set -euo pipefail
+          test "$P27_HUBSPOT_EXPECTED_PORTAL_ID" = "343328749" || { echo "::error::HubSpot account is not the approved portal"; exit 1; }
+          test -n "$P27_HUBSPOT_QA_EMAIL_DOMAIN" || { echo "::error::QA domain not configured"; exit 1; }
+          test -n "$P27_HUBSPOT_LIVE_TEST_TOKEN" || { echo "::error::Dedicated HubSpot QA token missing"; exit 1; }
+      - name: Run exactly one synthetic write, independent readback, replay, verified cleanup
+        run: |
+          set -euo pipefail
+          umask 077
+          python scripts/p27_hubspot_sandbox_readback.py --approve-live-test-contact > "$RUNNER_TEMP/p27-hubspot-result.json"
+          python scripts/p27_hubspot_dispatch_guard.py --summarize "$RUNNER_TEMP/p27-hubspot-result.json"
+      - name: Upload successful sanitized acceptance proof
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: p27-hubspot-live-verified-${{ github.run_id }}
+          path: ${{ runner.temp }}/p27-hubspot-result.json
+          retention-days: 7
+          if-no-files-found: error
