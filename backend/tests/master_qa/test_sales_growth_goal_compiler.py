@@ -115,3 +115,40 @@ def test_non_sales_goal_does_not_silently_route_to_sales():
             goal="reduce support backlog", connected_integrations=["hubspot"],
             action_entries=[_entry("hubspot", "hubspot.contacts.search")],
         )
+
+
+@pytest.mark.asyncio
+async def test_authenticated_org_selection_uses_real_selector_boundary(monkeypatch):
+    from app.services import agent_selector, sales_growth_goal_compiler
+    calls = []
+
+    class TenantSelector:
+        def __init__(self, settings):
+            assert settings is not None
+        async def select(self, org_id, classification):
+            calls.append(("select", org_id, classification["department"]))
+            return {"persona_key": "SALES"}
+        async def _get_connected(self, org_id):
+            calls.append(("connected", org_id))
+            return {"hubspot", "platform"}
+
+    monkeypatch.setattr(agent_selector, "AgentSelector", TenantSelector)
+    monkeypatch.setattr(
+        sales_growth_goal_compiler, "build_connector_execution_matrix",
+        lambda: (_entry("hubspot", "hubspot.contacts.search"),),
+    )
+    plan = await sales_growth_goal_compiler.compile_sales_growth_for_org(
+        org_id="tenant-123", goal="I need to increase sales", settings=object(),
+    )
+    assert calls == [("select", "tenant-123", "sales"), ("connected", "tenant-123")]
+    assert plan.capabilities == ("hubspot.contacts.search",)
+    assert plan.agent_persona == "SALES"
+
+
+@pytest.mark.asyncio
+async def test_org_boundary_must_be_explicit():
+    from app.services.sales_growth_goal_compiler import compile_sales_growth_for_org
+    with pytest.raises(GoalCompilationBlocked, match="authenticated_org_required"):
+        await compile_sales_growth_for_org(
+            org_id="", goal="increase sales", settings=object(),
+        )
