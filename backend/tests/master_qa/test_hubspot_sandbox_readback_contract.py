@@ -1,10 +1,13 @@
-"""No-network HubSpot acceptance contract with actual CRM v3 request shapes."""
+"""No-network HubSpot existing live portal test: approval, idempotency, cleanup."""
 from __future__ import annotations
 
 import importlib
+import urllib.error
 from pathlib import Path
 
 import pytest
+
+PORTAL = "343328749"
 
 
 @pytest.fixture
@@ -14,9 +17,12 @@ def hubspot(monkeypatch):
     return importlib.import_module("p27_hubspot_sandbox_readback")
 
 
-def _fake_hubspot_api(*, portal="910002", account_type="DEVELOPER_TEST",
-                      mismatch=False, duplicate=False):
+def _fake_hubspot_api(*, portal=PORTAL, account_type="STANDARD",
+                      mismatch=False, duplicate=False, cleanup_fails=False,
+                      delete_fails=False, first_upsert_fails=False):
     seen = []
+    state = {"deleted": False, "properties": None}
+
     def response(url, *, token, method, payload=None):
         seen.append((method, url, payload))
         if url.endswith("/account-info/v3/details") and method == "GET":
@@ -26,53 +32,91 @@ def _fake_hubspot_api(*, portal="910002", account_type="DEVELOPER_TEST",
             item = payload["inputs"][0]
             assert item["idProperty"] == "email"
             assert item["id"] == item["properties"]["email"]
-            count = len([method for method, _, _ in seen if method == "POST"])
+            assert item["properties"]["email"].startswith("p27qa")
+            assert item["properties"]["lastname"] == item["objectWriteTraceId"]
+            state["properties"] = dict(item["properties"])
+            count = len([m for m, _, _ in seen if m == "POST"])
+            if first_upsert_fails and count == 1:
+                raise RuntimeError("upsert network timeout")
             return {"status": "COMPLETE",
                     "results": [{"id": "90002" if duplicate and count > 1 else "90001"}]}
-        if method == "GET" and "/crm/v3/objects/contacts/90001" in url:
-            posted = next(payload for m, _, payload in seen if m == "POST")
-            props = dict(posted["inputs"][0]["properties"])
+        if "/crm/v3/objects/contacts/90001" in url and method == "GET":
+            if state["deleted"] and not cleanup_fails:
+                raise urllib.error.HTTPError(url, 404, "Not Found", None, None)
+            props = dict(state["properties"])
             if mismatch:
-                props["lastname"] = "not-the-original-value"
+                props["lastname"] = "wrong"
             return {"id": "90001", "properties": props}
+        if url.endswith("/crm/v3/objects/contacts/90001") and method == "DELETE":
+            if delete_fails:
+                raise RuntimeError("cleanup denied")
+            state["deleted"] = True
+            return {}
         raise AssertionError("unexpected URL: " + method + " " + url)
+
     return response, seen
 
 
-def test_hubspot_sandbox_upsert_authoritative_get_and_same_id_replay(hubspot, monkeypatch):
+def _invoke(hubspot, **kwargs):
+    return hubspot.verify_hubspot(
+        token="test-only-credential", portal_id=kwargs.pop("portal_id", PORTAL),
+        email_domain=kwargs.pop("email_domain", "qa.example.invalid"),
+        approved=kwargs.pop("approved", True),
+        approve_existing_live_portal=kwargs.pop("live_approved", True),
+    )
+
+
+def test_existing_portal_same_key_and_cleanup_404(hubspot, monkeypatch):
     reply, seen = _fake_hubspot_api()
     monkeypatch.setattr(hubspot, "_request", reply)
-    evidence = hubspot.verify_hubspot(
-        token="sandbox-fixture-token", portal_id="910002",
-        email_domain="example.invalid", approved=True)
-    assert evidence["result"] == "PASS" and evidence["duplicate_record"] is False
-    assert [method for method, _, _ in seen] == ["GET", "POST", "GET", "POST", "GET"]
+    evidence = _invoke(hubspot)
+    assert evidence["result"] == "PASS"
+    assert evidence["cleanup"] == "archived_and_get_404_verified"
+    assert evidence["duplicate_record"] is False
+    assert [m for m, _, _ in seen] == [
+        "GET", "POST", "GET", "POST", "GET", "DELETE", "GET"]
     assert seen[1][2] == seen[3][2]
-    assert evidence["readback"] == "crm_v3_contacts_get_by_id"
+    assert seen[5][1].endswith("/contacts/90001")
 
 
-@pytest.mark.parametrize("portal,account_type,approved", [
-    ("910003", "DEVELOPER_TEST", True),
-    ("910002", "STANDARD", True),
-    ("910002", "DEVELOPER_TEST", False),
+@pytest.mark.parametrize("kwargs,returned_portal,returned_type", [
+    ({"portal_id": "999999"}, PORTAL, "STANDARD"),
+    ({}, "999999", "STANDARD"),
+    ({}, PORTAL, "DEVELOPER_TEST"),
+    ({"approved": False}, PORTAL, "STANDARD"),
+    ({"live_approved": False}, PORTAL, "STANDARD"),
+    ({"email_domain": "gmail.com"}, PORTAL, "STANDARD"),
+    ({"email_domain": "injected..invalid"}, PORTAL, "STANDARD"),
+    ({"email_domain": "example.invalid."}, PORTAL, "STANDARD"),
 ])
-def test_hubspot_wrong_portal_production_account_or_no_approval_never_writes(
-        hubspot, monkeypatch, portal, account_type, approved):
-    reply, seen = _fake_hubspot_api(portal=portal, account_type=account_type)
+def test_no_write_on_invalid_live_portal_approval_or_namespace(
+        hubspot, monkeypatch, kwargs, returned_portal, returned_type):
+    reply, seen = _fake_hubspot_api(
+        portal=returned_portal, account_type=returned_type)
     monkeypatch.setattr(hubspot, "_request", reply)
     with pytest.raises(RuntimeError):
-        hubspot.verify_hubspot(
-            token="sandbox-fixture-token", portal_id="910002",
-            email_domain="example.invalid", approved=approved)
+        _invoke(hubspot, **kwargs)
     assert all(method != "POST" for method, _, _ in seen)
 
 
-@pytest.mark.parametrize("mismatch,duplicate", [(True, False), (False, True)])
-def test_hubspot_readback_mismatch_or_duplicate_contact_fails(
-        hubspot, monkeypatch, mismatch, duplicate):
-    reply, seen = _fake_hubspot_api(mismatch=mismatch, duplicate=duplicate)
+@pytest.mark.parametrize("behavior", [
+    {"mismatch": True},
+    {"duplicate": True},
+    {"cleanup_fails": True},
+    {"delete_fails": True},
+])
+def test_readback_idempotency_or_cleanup_failure_never_reports_pass(
+        hubspot, monkeypatch, behavior):
+    reply, seen = _fake_hubspot_api(**behavior)
     monkeypatch.setattr(hubspot, "_request", reply)
     with pytest.raises(RuntimeError):
-        hubspot.verify_hubspot(
-            token="sandbox-fixture-token", portal_id="910002",
-            email_domain="example.invalid", approved=True)
+        _invoke(hubspot)
+    assert any(m == "DELETE" for m, _, _ in seen)
+
+
+def test_upsert_unconfirmed_never_claims_cleanup(hubspot, monkeypatch):
+    reply, seen = _fake_hubspot_api(first_upsert_fails=True)
+    monkeypatch.setattr(hubspot, "_request", reply)
+    with pytest.raises(RuntimeError):
+        _invoke(hubspot)
+    assert not any(m == "DELETE" for m, _, _ in seen)
