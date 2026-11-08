@@ -152,3 +152,42 @@ async def test_org_boundary_must_be_explicit():
         await compile_sales_growth_for_org(
             org_id="", goal="increase sales", settings=object(),
         )
+
+
+def test_installed_play_discovery_requires_same_org_environment_and_workflow_binding(monkeypatch):
+    from app.services.sales_growth_goal_compiler import discover_installed_sales_plays
+    from app.workflows import repository
+    from app.plays import workflow_bindings
+    checks = []
+
+    class Query:
+        def select(self, *args):
+            return self
+        def eq(self, field, value):
+            checks.append((field, value))
+            return self
+        def execute(self):
+            return SimpleNamespace(data=[
+                {"play_key": "qualified-prospecting", "status": "ready"},
+                {"play_key": "revenue-recovery", "status": "paused"},
+                {"play_key": "marketing-performance", "status": "ready"},
+            ])
+
+    monkeypatch.setattr(repository, "get_supabase_client",
+                        lambda settings: SimpleNamespace(table=lambda name: Query()))
+    monkeypatch.setattr(workflow_bindings, "list_all_play_workflow_bindings",
+                        lambda client, org: {
+                            "qualified-prospecting": [{
+                                "workflowId": "tenant-bound-workflow", "status": "active",
+                            }],
+                            "marketing-performance": [],  # no binding
+                        })
+    plays = discover_installed_sales_plays(
+        org_id="tenant-A", settings=object(), environment_name="synthetic",
+    )
+    assert plays == [{
+        "play_key": "qualified-prospecting",
+        "workflow_id": "tenant-bound-workflow", "department": "sales",
+        "status": "ready", "installed": True,
+    }]
+    assert checks == [("org_id", "tenant-A"), ("environment_name", "synthetic")]
