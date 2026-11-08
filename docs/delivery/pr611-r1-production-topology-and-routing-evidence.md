@@ -16,7 +16,7 @@
 
 ## Production deployment alignment and hold
 
-- Vercel project serving `gravitre.app` has a recent **READY production** deployment `dpl_9UPDqCidmuCKYjLjXSGVuYxmFz9S` for main SHA `2e78e03a58e29e03019687b03ad90fd6ad420e84`, plus multiple older READY versions. **READY does not prove the current custom-domain alias points at that exact deployment.** A selected-domain routing/deployment alias attestation is still needed.
+- Vercel project serving `gravitre.app` has a recent **READY production** deployment `dpl_9UPDqCidmuCKYjLjXSGVuYxmFz9S` for main SHA `2e78e03a58e29e03019687b03ad90fd6ad420e84`, plus multiple older READY versions. **Direct `get_deployment(idOrUrl=gravitre.app)` now resolves the custom hostname to this exact deployment and confirms `alias` contains `gravitre.app`**, `readyState=READY`, `target=production`, and `meta.githubCommitSha=2e78e03a58e29e03019687b03ad90fd6ad420e84`. This verifies the Vercel alias-to-deployment mapping, **not** application-level authenticated success.
 - Railway backend's healthy deployment precedes PR #611 and its planned SQL recovery migration; backend code and website frontend are **not proven same-SHA**. Roll forward only after exact-head full CI and controlled deployment.
 - Vercel environment variable listing returned key metadata but was truncated. Never infer absence, presence, or effective production value of `FASTAPI_BASE_URL` from an incomplete list; this must be checked by a permissioned focused configuration readback without printing secrets.
 - Observed `gravitre.app` publicly serves a homepage; the API health URL could not be fetched by the public web reader, despite Railway DNS/TLS and service health. This is **NOT a verified end-user /health 200**, nor proof of an outage. Need browser/HTTP probe with response status and hosting logs.
@@ -31,7 +31,7 @@
 
 ## Downstream execution and next defect queue
 
-1. **R1 residual:** Verify live alias→deployment SHA, specific production `FASTAPI_BASE_URL` target (without exposing a secret), real `/health` response, authenticated proxy dispatch and actual browser voice WS path. Validate unused-host consumer/charges before any deprovisioning.
+1. **R1 residual:** Verify authenticated live request behavior (Vercel alias→deployment SHA now verified), specific production `FASTAPI_BASE_URL` target (without exposing a secret), real `/health` response, authenticated proxy dispatch and actual browser voice WS path. Validate unused-host consumer/charges before any deprovisioning.
 2. **R2:** Trace `chat_tool_bridge.build_dynamic_chat_tool_specs` → `connector_execution_matrix` → `chat_connector_execution_service._verify_plan_executable` → `connector_availability_service.find_integration_availability` → `tool_service._hubspot_connector_and_token`. Source edges show action-scoped availability and org OAuth; prove every active ingress uses them, especially direct tool aliases and fail-closed paths. Do not infer a real HubSpot provider action from static wiring.
 3. **R3:** Use existing disposable real PostgreSQL acceptance to verify persisted run/step, approved/denied action, outbox relay and consumer; connect independently observed HubSpot provider receipts only after the restricted test workflow is manually approved. Keep tenant and lifecycle IDs consistent across hops.
 4. **R4:** Opt-in child worker recovery in existing Railway after merge/release gate; no extra paid Railway staging. Isolated OS CI tests do not authorize a live PID kill.
