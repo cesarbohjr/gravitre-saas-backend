@@ -31,7 +31,7 @@ The source-only preflight `backend/scripts/master_qa_wiring_preflight.py` emits 
 
 ## Implementation queue: dependency-aware, no premature closure
 
-**R0 — ledger integrity (in PR #611; source-only).** Preserve all 43 audit IDs; assign accountable subsystem and QA lane; identify candidate chain, concrete remediation and negative tests. Emit two CI artifacts: remediation summary + bounded source-edge graph. This does not imply any finding fixed.
+**R0 — ledger integrity (in PR #611; source-only).** Preserve all 43 audit IDs; assign accountable subsystem and QA lane; identify candidate chain, concrete remediation and negative tests. Emit two CI artifacts: remediation summary + bounded 21-edge source-wiring graph. This does not imply any finding fixed.
 
 **R1 — prove production topology and current active wiring (read-only).** Resolve DEC-013/015/016/017, ECO-008, P27-01: deployment SHAs, actual DNS, backend/voice ingress path, authentic org/environment propagation, runtime config *names* and current billing exposure. Confirm existing Railway's one API replica/Redis and keep the explicit no-new-paid-environment constraint.
 
@@ -60,6 +60,7 @@ The validator makes missing core evidence a hard error when anyone sets PASS or 
 
 - Source `backend/app/services/unified_turn_classical_fallback.py` retains `_MESSAGE_TOOL_SSE_PATTERNS` and `needs_tool_sse` signal. Classification: **SOURCE_CONFIRMED split path; actual runtime usage UNKNOWN**.
 - Source `backend/app/services/chat_tool_bridge.py` builds registered tools via `build_connector_execution_matrix` and `resolve_registry_action`. Classification: **SOURCE_CONFIRMED registration; token scope/provider success UNKNOWN**.
+- Subsequent source audit traces `chat_connector_execution_service._verify_plan_executable` to `find_integration_availability(..., action_key=plan.invoke_action)`, `tool_service._hubspot_connector_and_token` to org-scoped connector retrieval and `ensure_hubspot_access_token`, and the execution matrix to registered handler resolution. These are **real connected source edges**, not proof every ingress uses the guard, nor proof a live token/account was accepted or a provider write succeeded. Connector authorization is therefore **PARTIALLY WIRED / END-TO-END UNVERIFIED**, not simply missing.
 - Source `apps/web/lib/voice-api-proxy.ts` returns `http://localhost:8000` when `FASTAPI_BASE_URL` is absent, otherwise `backendBaseUrl()`. Classification: **SOURCE_CONFIRMED fallback; deployed misconfiguration UNKNOWN**.
 - Source `backend/app/main.py` starts isolated worker supervisor, child process uses `_worker_loop` with in-process worker explicitly suppressed by its opt-in flag. Classification: **SOURCE_CONFIRMED and targeted CI regression; actual Railway child PID test NOT RUN**.
 - Source `backend/app/services/execution_outcome.py` has the canonical terminal writer and documented intentional mirror. Classification: **SOURCE_CONFIRMED; no storage retirement approved**.
