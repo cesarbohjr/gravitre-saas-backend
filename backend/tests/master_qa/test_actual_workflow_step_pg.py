@@ -114,11 +114,25 @@ def test_real_invoke_tool_handler_runs_and_commits_authoritative_sql_outcome(pg,
     monkeypatch.setattr("app.services.action_selection_gate.gate_workflow_invoke", lambda **kw: kw["action"])
     monkeypatch.setattr("app.services.execution_outcome.finalize_execution_outcome", terminal_finalizer)
 
-    definition = {"steps": [{
-        "id": "synthetic-read", "name": "Read synthetic HubSpot contact",
-        "type": "invoke_tool",
-        "config": {"action": "hubspot.contacts.search", "query": "synthetic account", "limit": 1},
-    }]}
+    # Compile an underspecified business objective through the real canvas
+    # graph/step compiler, then execute it with the existing production handler.
+    # Only the vendor transport and the minimal SQL fixture are adapted here.
+    from app.services.sales_growth_goal_compiler import (
+        compile_sales_growth_goal, verified_sales_observations,
+    )
+    goal_plan = compile_sales_growth_goal(
+        goal="I need to increase sales",
+        connected_integrations=["hubspot"],
+        action_entries=[SimpleNamespace(
+            connector_id="hubspot", action_key="hubspot.contacts.search",
+            display_name="Read CRM leads", kind="read",
+            chat_executable=True, invoke_tool_handler="hubspot.contacts.search",
+            implementation_status="executable",
+        )],
+    )
+    assert goal_plan.graph["nodes"][1]["node_type"] == "connector"
+    assert goal_plan.capabilities == ("hubspot.contacts.search",)
+    definition = goal_plan.workflow_definition
     final, steps, errors, limited = execute.execute_workflow_steps(
         settings, ORG, "synthetic-owner", run_id, definition,
         {"play": {"key": "customer-rescue"}}, db, environment_name="synthetic",
@@ -127,6 +141,10 @@ def test_real_invoke_tool_handler_runs_and_commits_authoritative_sql_outcome(pg,
     assert len(steps) == 1
     assert steps[0]["status"] == "completed"
     assert statuses == ["pending", "running", "completed"]
+    observed = verified_sales_observations(goal_plan, completed_steps=steps)
+    assert observed["status"] == "DIAGNOSTIC_READS_OBSERVED"
+    assert observed["verified_actions"][0]["action"] == "hubspot.contacts.search"
+    assert observed["business_outcome"] == "NOT_MEASURED"
     assert local_vendor.call_count == 1
     assert pg.value(f"SELECT status FROM public.workflow_runs WHERE id='{run_id}'") == "completed"
     assert pg.value("SELECT count(*) FROM public.domain_event_outbox") == "1"
