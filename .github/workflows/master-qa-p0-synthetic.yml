@@ -6,6 +6,8 @@ on:
       - 'backend/tests/master_qa/**'
       - 'backend/scripts/master_qa_remediation_guard.py'
       - 'backend/scripts/master_qa_wiring_preflight.py'
+      - 'backend/scripts/master_qa_release_certifier.py'
+      - 'docs/delivery/master-qa-00-90-release-manifest.json'
       - 'docs/delivery/master-qa-remediation-register.v2.json'
       - 'docs/delivery/master-qa-tranche27-findings-evidence-matrix.json'
       - '.github/workflows/master-qa-p0-synthetic.yml'
@@ -51,6 +53,15 @@ jobs:
           python scripts/master_qa_remediation_guard.py --output "$RUNNER_TEMP/master-qa-remediation-summary.json"
           python -m pytest -q --confcutdir=tests/master_qa tests/master_qa/test_master_qa_wiring_preflight.py
           python scripts/master_qa_wiring_preflight.py --output "$RUNNER_TEMP/master-qa-wiring-evidence.json"
+          python -m pytest -q --confcutdir=tests/master_qa tests/master_qa/test_master_qa_release_certifier.py
+          python scripts/master_qa_release_certifier.py --output "$RUNNER_TEMP/master-qa-00-90-release-summary.json"
+      - name: Upload QA00–90 release gate status
+        uses: actions/upload-artifact@v4
+        with:
+          name: master-qa-00-90-release-status
+          path: ${{ runner.temp }}/master-qa-00-90-release-summary.json
+          retention-days: 14
+          if-no-files-found: error
       - name: Upload bounded source-wiring evidence
         uses: actions/upload-artifact@v4
         with:
