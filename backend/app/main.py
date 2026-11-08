@@ -391,6 +391,9 @@ async def lifespan(app: FastAPI):
         stop_capability_marketplace_sync_scheduler,
     )
     from app.workers.workflow_worker import start_workflow_run_worker, stop_workflow_run_worker
+    from app.workers.isolated_workflow_supervisor import (
+        start_isolated_workflow_worker, stop_isolated_workflow_worker,
+    )
 
     temporal_host = (os.environ.get("TEMPORAL_HOST") or "").strip()
     use_temporal = bool(temporal_host)
@@ -513,6 +516,7 @@ async def lifespan(app: FastAPI):
 
     app.state.agent_job_task = start_agent_job_worker()
     app.state.workflow_run_task = start_workflow_run_worker()
+    app.state.isolated_workflow_worker_task = start_isolated_workflow_worker()
     _log_billing_startup_config()
     try:
         yield
@@ -568,6 +572,8 @@ async def lifespan(app: FastAPI):
                 pass
             except Exception as exc:  # noqa: BLE001
                 logger.debug("voice_perceive_warmup_stop_skipped error=%s", exc)
+        await stop_isolated_workflow_worker(
+            getattr(app.state, "isolated_workflow_worker_task", None))
         await stop_workflow_run_worker(getattr(app.state, "workflow_run_task", None))
 
 
