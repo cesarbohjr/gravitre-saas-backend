@@ -217,9 +217,9 @@
       "root_cause": "UNVERIFIED",
       "remediation": "Prove connected, scoped read/write and missing-connector branch by actual governed provider receipts",
       "dependencies": [],
-      "regression_candidate": "backend/tests/master_qa/test_actual_workflow_step_pg.py",
-      "regression_state": "EXISTS_NOT_MAPPED_TO_FULL_FINDING",
-      "implementation_state": "PARTIAL_ENGINEERING_TESTED_NOT_CLOSED",
+      "regression_candidate": "backend/tests/master_qa/test_connector_connected_filter.py",
+      "regression_state": "ADDED_EXACT_HEAD_CI_PENDING",
+      "implementation_state": "PARTIAL_REPAIR_SOURCE_COMMITTED_UNMERGED_NOT_CERTIFIED",
       "implemented_commit": null,
       "synthetic_status": "NOT_CERTIFIED",
       "live_status": "NOT_RUN",
@@ -252,7 +252,17 @@
         "certifies_whole_finding": false
       },
       "audit_evidence_class": "SOURCE_CONFIRMED_WIRING_PARTIAL",
-      "audit_observation": "chat tools built from execution matrix and registry; tenant readiness downstream unverified"
+      "audit_observation": "chat tools built from execution matrix and registry; tenant readiness downstream unverified",
+      "r2_evidence": {
+        "finding": "SOURCE_CONFIRMED_EMPTY_CONNECTED_FILTER_BYPASS",
+        "file": "backend/app/services/connector_execution_matrix.py",
+        "remediation_commit": "d0a2942582d908e520fbfaf175ef94153fe661d2",
+        "regression": "backend/tests/master_qa/test_connector_connected_filter.py",
+        "regression_cases": 7,
+        "scope": "catalog only; server-side tenant/provider credentials still enforced separately",
+        "runtime_status": "CI_PENDING",
+        "live_provider_status": "NOT_RUN"
+      }
     },
     {
       "finding_id": "ECO-006",
@@ -1357,9 +1367,9 @@
       "root_cause": "UNVERIFIED",
       "remediation": "Verify action-level scopes and native/Nango precedence with disconnected, expired and granted accounts",
       "dependencies": [],
-      "regression_candidate": null,
-      "regression_state": "NOT_YET_IMPLEMENTED",
-      "implementation_state": "EVIDENCE_OR_REPAIR_PENDING",
+      "regression_candidate": "backend/tests/master_qa/test_connector_connected_filter.py",
+      "regression_state": "ADDED_EXACT_HEAD_CI_PENDING",
+      "implementation_state": "PARTIAL_REPAIR_SOURCE_COMMITTED_UNMERGED_NOT_CERTIFIED",
       "implemented_commit": null,
       "synthetic_status": "NOT_CERTIFIED",
       "live_status": "NOT_RUN",
@@ -1386,7 +1396,17 @@
       ],
       "partial_test_evidence": null,
       "audit_evidence_class": "SOURCE_CANDIDATE_REQUIRES_RUNTIME_PROOF",
-      "audit_observation": "Original audit and source candidate require caller/runtime evidence; no final root-cause claim."
+      "audit_observation": "Original audit and source candidate require caller/runtime evidence; no final root-cause claim.",
+      "r2_evidence": {
+        "finding": "SOURCE_CONFIRMED_EMPTY_CONNECTED_FILTER_BYPASS",
+        "file": "backend/app/services/connector_execution_matrix.py",
+        "remediation_commit": "d0a2942582d908e520fbfaf175ef94153fe661d2",
+        "regression": "backend/tests/master_qa/test_connector_connected_filter.py",
+        "regression_cases": 7,
+        "scope": "catalog only; server-side tenant/provider credentials still enforced separately",
+        "runtime_status": "CI_PENDING",
+        "live_provider_status": "NOT_RUN"
+      }
     },
     {
       "finding_id": "DEC-005",
