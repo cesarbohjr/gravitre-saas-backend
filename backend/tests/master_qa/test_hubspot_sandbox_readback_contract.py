@@ -88,7 +88,7 @@ def test_existing_portal_same_key_and_cleanup_404(hubspot, monkeypatch):
     assert evidence["cleanup"] == "archived_and_get_404_verified"
     assert evidence["duplicate_record"] is False
     assert [m for m, _, _ in seen] == [
-        "GET", "POST", "GET", "POST", "GET", "DELETE", "GET"]
+        "GET", "POST", "GET", "POST", "GET", "GET", "DELETE", "GET"]
     assert seen[1][2] == seen[3][2]
     assert seen[5][0] == "GET"  # independently prove synthetic owner before DELETE
     assert seen[6][1].endswith("/contacts/90001")
@@ -126,7 +126,7 @@ def test_readback_idempotency_or_cleanup_failure_never_reports_pass(
     monkeypatch.setattr(hubspot, "_request", reply)
     with pytest.raises(RuntimeError):
         _invoke(hubspot)
-    if behavior["mismatch"]:
+    if behavior.get("mismatch", False):
         # Never delete an unverified object just because upsert named it.
         assert not any(m == "DELETE" for m, _, _ in seen)
     else:
