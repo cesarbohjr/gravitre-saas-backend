@@ -27,7 +27,7 @@
       "dependencies": [],
       "regression_candidate": "backend/tests/master_qa/test_actual_agent_selection.py",
       "regression_state": "EXISTS_NOT_MAPPED_TO_FULL_FINDING",
-      "implementation_state": "PARTIAL_OR_UNKNOWN",
+      "implementation_state": "EVIDENCE_OR_REPAIR_PENDING",
       "implemented_commit": null,
       "synthetic_status": "NOT_CERTIFIED",
       "live_status": "NOT_RUN",
@@ -51,7 +51,10 @@
         "positive and negative targeted tests",
         "independent durable consumer/provider observation",
         "exact-SHA CI and release/rollback evidence"
-      ]
+      ],
+      "partial_test_evidence": null,
+      "audit_evidence_class": "SOURCE_HYPOTHESIS",
+      "audit_observation": "multiple orchestration candidates in original audit; active conflicting writers not proven"
     },
     {
       "finding_id": "ECO-002",
@@ -72,7 +75,7 @@
       "dependencies": [],
       "regression_candidate": null,
       "regression_state": "NOT_YET_IMPLEMENTED",
-      "implementation_state": "PARTIAL_OR_UNKNOWN",
+      "implementation_state": "EVIDENCE_OR_REPAIR_PENDING",
       "implemented_commit": null,
       "synthetic_status": "NOT_CERTIFIED",
       "live_status": "NOT_RUN",
@@ -96,7 +99,10 @@
         "positive and negative targeted tests",
         "independent durable consumer/provider observation",
         "exact-SHA CI and release/rollback evidence"
-      ]
+      ],
+      "partial_test_evidence": null,
+      "audit_evidence_class": "SOURCE_CONFIRMED_POTENTIAL_LATENCY",
+      "audit_observation": "sequential awaits observed; impact must be measured"
     },
     {
       "finding_id": "ECO-003",
@@ -117,7 +123,7 @@
       "dependencies": [],
       "regression_candidate": null,
       "regression_state": "NOT_YET_IMPLEMENTED",
-      "implementation_state": "PARTIAL_OR_UNKNOWN",
+      "implementation_state": "EVIDENCE_OR_REPAIR_PENDING",
       "implemented_commit": null,
       "synthetic_status": "NOT_CERTIFIED",
       "live_status": "NOT_RUN",
@@ -141,7 +147,10 @@
         "positive and negative targeted tests",
         "independent durable consumer/provider observation",
         "exact-SHA CI and release/rollback evidence"
-      ]
+      ],
+      "partial_test_evidence": null,
+      "audit_evidence_class": "SOURCE_CONFIRMED_POTENTIAL_LATENCY",
+      "audit_observation": "serial retrieval present; performance impact unmeasured"
     },
     {
       "finding_id": "ECO-004",
@@ -162,7 +171,7 @@
       "dependencies": [],
       "regression_candidate": null,
       "regression_state": "NOT_YET_IMPLEMENTED",
-      "implementation_state": "PARTIAL_OR_UNKNOWN",
+      "implementation_state": "EVIDENCE_OR_REPAIR_PENDING",
       "implemented_commit": null,
       "synthetic_status": "NOT_CERTIFIED",
       "live_status": "NOT_RUN",
@@ -186,7 +195,10 @@
         "positive and negative targeted tests",
         "independent durable consumer/provider observation",
         "exact-SHA CI and release/rollback evidence"
-      ]
+      ],
+      "partial_test_evidence": null,
+      "audit_evidence_class": "HISTORICAL_VOICE_DEFECT",
+      "audit_observation": "relay repair surface documented; real iOS trace not certified"
     },
     {
       "finding_id": "ECO-005",
@@ -207,7 +219,7 @@
       "dependencies": [],
       "regression_candidate": "backend/tests/master_qa/test_actual_workflow_step_pg.py",
       "regression_state": "EXISTS_NOT_MAPPED_TO_FULL_FINDING",
-      "implementation_state": "PARTIAL_OR_UNKNOWN",
+      "implementation_state": "PARTIAL_ENGINEERING_TESTED_NOT_CLOSED",
       "implemented_commit": null,
       "synthetic_status": "NOT_CERTIFIED",
       "live_status": "NOT_RUN",
@@ -231,7 +243,16 @@
         "positive and negative targeted tests",
         "independent durable consumer/provider observation",
         "exact-SHA CI and release/rollback evidence"
-      ]
+      ],
+      "partial_test_evidence": {
+        "test_path": "backend/tests/master_qa/test_actual_workflow_step_pg.py",
+        "scope": "actual step persistence; connector readiness and live provider unverified",
+        "ci_run_url": "https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/42443527022",
+        "executed_head_sha": "757beaed96f816690816e012daca49b318d7135c",
+        "certifies_whole_finding": false
+      },
+      "audit_evidence_class": "SOURCE_CONFIRMED_WIRING_PARTIAL",
+      "audit_observation": "chat tools built from execution matrix and registry; tenant readiness downstream unverified"
     },
     {
       "finding_id": "ECO-006",
@@ -252,7 +273,7 @@
       "dependencies": [],
       "regression_candidate": null,
       "regression_state": "NOT_YET_IMPLEMENTED",
-      "implementation_state": "PARTIAL_OR_UNKNOWN",
+      "implementation_state": "EVIDENCE_OR_REPAIR_PENDING",
       "implemented_commit": null,
       "synthetic_status": "NOT_CERTIFIED",
       "live_status": "NOT_RUN",
@@ -276,7 +297,10 @@
         "positive and negative targeted tests",
         "independent durable consumer/provider observation",
         "exact-SHA CI and release/rollback evidence"
-      ]
+      ],
+      "partial_test_evidence": null,
+      "audit_evidence_class": "SOURCE_CANDIDATE_REQUIRES_RUNTIME_PROOF",
+      "audit_observation": "Original audit and source candidate require caller/runtime evidence; no final root-cause claim."
     },
     {
       "finding_id": "ECO-007",
@@ -297,7 +321,7 @@
       "dependencies": [],
       "regression_candidate": "backend/tests/master_qa/test_workflow_source_audit.py",
       "regression_state": "EXISTS_NOT_MAPPED_TO_FULL_FINDING",
-      "implementation_state": "PARTIAL_OR_UNKNOWN",
+      "implementation_state": "PARTIAL_ENGINEERING_TESTED_NOT_CLOSED",
       "implemented_commit": null,
       "synthetic_status": "NOT_CERTIFIED",
       "live_status": "NOT_RUN",
@@ -321,7 +345,16 @@
         "positive and negative targeted tests",
         "independent durable consumer/provider observation",
         "exact-SHA CI and release/rollback evidence"
-      ]
+      ],
+      "partial_test_evidence": {
+        "test_path": "backend/tests/master_qa/test_workflow_source_audit.py",
+        "scope": "workflow source parser only; required-check/billing state unknown",
+        "ci_run_url": "https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/42443527022",
+        "executed_head_sha": "757beaed96f816690816e012daca49b318d7135c",
+        "certifies_whole_finding": false
+      },
+      "audit_evidence_class": "SOURCE_CANDIDATE_REQUIRES_RUNTIME_PROOF",
+      "audit_observation": "Original audit and source candidate require caller/runtime evidence; no final root-cause claim."
     },
     {
       "finding_id": "ECO-008",
@@ -342,7 +375,7 @@
       "dependencies": [],
       "regression_candidate": null,
       "regression_state": "NOT_YET_IMPLEMENTED",
-      "implementation_state": "PARTIAL_OR_UNKNOWN",
+      "implementation_state": "EVIDENCE_OR_REPAIR_PENDING",
       "implemented_commit": null,
       "synthetic_status": "NOT_CERTIFIED",
       "live_status": "NOT_RUN",
@@ -366,7 +399,10 @@
         "positive and negative targeted tests",
         "independent durable consumer/provider observation",
         "exact-SHA CI and release/rollback evidence"
-      ]
+      ],
+      "partial_test_evidence": null,
+      "audit_evidence_class": "INFRA_INVENTORY_CONFIRMED",
+      "audit_observation": "Railway frontend and Vercel web paths exist; redundancy unproven"
     },
     {
       "finding_id": "ECO-009",
@@ -387,7 +423,7 @@
       "dependencies": [],
       "regression_candidate": null,
       "regression_state": "NOT_YET_IMPLEMENTED",
-      "implementation_state": "PARTIAL_OR_UNKNOWN",
+      "implementation_state": "EVIDENCE_OR_REPAIR_PENDING",
       "implemented_commit": null,
       "synthetic_status": "NOT_CERTIFIED",
       "live_status": "NOT_RUN",
@@ -411,7 +447,10 @@
         "positive and negative targeted tests",
         "independent durable consumer/provider observation",
         "exact-SHA CI and release/rollback evidence"
-      ]
+      ],
+      "partial_test_evidence": null,
+      "audit_evidence_class": "SOURCE_CANDIDATE_REQUIRES_RUNTIME_PROOF",
+      "audit_observation": "Original audit and source candidate require caller/runtime evidence; no final root-cause claim."
     },
     {
       "finding_id": "ECO-010",
@@ -432,7 +471,7 @@
       "dependencies": [],
       "regression_candidate": "backend/tests/master_qa/test_real_guard_postgres_consumer_pg.py",
       "regression_state": "EXISTS_NOT_MAPPED_TO_FULL_FINDING",
-      "implementation_state": "PARTIAL_OR_UNKNOWN",
+      "implementation_state": "PARTIAL_ENGINEERING_TESTED_NOT_CLOSED",
       "implemented_commit": null,
       "synthetic_status": "NOT_CERTIFIED",
       "live_status": "NOT_RUN",
@@ -456,7 +495,16 @@
         "positive and negative targeted tests",
         "independent durable consumer/provider observation",
         "exact-SHA CI and release/rollback evidence"
-      ]
+      ],
+      "partial_test_evidence": {
+        "test_path": "backend/tests/master_qa/test_real_guard_postgres_consumer_pg.py",
+        "scope": "real disposable PostgreSQL outbox consumer; live external effect unknown",
+        "ci_run_url": "https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/42443527022",
+        "executed_head_sha": "757beaed96f816690816e012daca49b318d7135c",
+        "certifies_whole_finding": false
+      },
+      "audit_evidence_class": "SOURCE_CANDIDATE_REQUIRES_RUNTIME_PROOF",
+      "audit_observation": "Original audit and source candidate require caller/runtime evidence; no final root-cause claim."
     },
     {
       "finding_id": "ECO-011",
@@ -477,7 +525,7 @@
       "dependencies": [],
       "regression_candidate": null,
       "regression_state": "NOT_YET_IMPLEMENTED",
-      "implementation_state": "PARTIAL_OR_UNKNOWN",
+      "implementation_state": "EVIDENCE_OR_REPAIR_PENDING",
       "implemented_commit": null,
       "synthetic_status": "NOT_CERTIFIED",
       "live_status": "NOT_RUN",
@@ -501,7 +549,10 @@
         "positive and negative targeted tests",
         "independent durable consumer/provider observation",
         "exact-SHA CI and release/rollback evidence"
-      ]
+      ],
+      "partial_test_evidence": null,
+      "audit_evidence_class": "SOURCE_CONFIRMED_FALLBACK",
+      "audit_observation": "phrase-based fallback still exists, active invocation unknown"
     },
     {
       "finding_id": "ECO-012",
@@ -522,7 +573,7 @@
       "dependencies": [],
       "regression_candidate": "backend/tests/master_qa/test_runtime_guard_integration.py",
       "regression_state": "EXISTS_NOT_MAPPED_TO_FULL_FINDING",
-      "implementation_state": "PARTIAL_OR_UNKNOWN",
+      "implementation_state": "PARTIAL_ENGINEERING_TESTED_NOT_CLOSED",
       "implemented_commit": null,
       "synthetic_status": "NOT_CERTIFIED",
       "live_status": "NOT_RUN",
@@ -546,7 +597,16 @@
         "positive and negative targeted tests",
         "independent durable consumer/provider observation",
         "exact-SHA CI and release/rollback evidence"
-      ]
+      ],
+      "partial_test_evidence": {
+        "test_path": "backend/tests/master_qa/test_runtime_guard_integration.py",
+        "scope": "offline runtime policy; every fallthrough reason not yet audited",
+        "ci_run_url": "https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/42443527022",
+        "executed_head_sha": "757beaed96f816690816e012daca49b318d7135c",
+        "certifies_whole_finding": false
+      },
+      "audit_evidence_class": "SOURCE_CANDIDATE_REQUIRES_RUNTIME_PROOF",
+      "audit_observation": "Original audit and source candidate require caller/runtime evidence; no final root-cause claim."
     },
     {
       "finding_id": "ECO-013",
@@ -567,7 +627,7 @@
       "dependencies": [],
       "regression_candidate": "backend/tests/master_qa/test_canonical_repository_persistence_pg.py",
       "regression_state": "EXISTS_NOT_MAPPED_TO_FULL_FINDING",
-      "implementation_state": "PARTIAL_OR_UNKNOWN",
+      "implementation_state": "PARTIAL_ENGINEERING_TESTED_NOT_CLOSED",
       "implemented_commit": null,
       "synthetic_status": "NOT_CERTIFIED",
       "live_status": "NOT_RUN",
@@ -591,7 +651,16 @@
         "positive and negative targeted tests",
         "independent durable consumer/provider observation",
         "exact-SHA CI and release/rollback evidence"
-      ]
+      ],
+      "partial_test_evidence": {
+        "test_path": "backend/tests/master_qa/test_canonical_repository_persistence_pg.py",
+        "scope": "database projection integration; all terminal writer callsites unverified",
+        "ci_run_url": "https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/42443527022",
+        "executed_head_sha": "757beaed96f816690816e012daca49b318d7135c",
+        "certifies_whole_finding": false
+      },
+      "audit_evidence_class": "SOURCE_CANDIDATE_REQUIRES_RUNTIME_PROOF",
+      "audit_observation": "Original audit and source candidate require caller/runtime evidence; no final root-cause claim."
     },
     {
       "finding_id": "ECO-014",
@@ -612,7 +681,7 @@
       "dependencies": [],
       "regression_candidate": "backend/tests/master_qa/test_canonical_play_outbox_pg.py",
       "regression_state": "EXISTS_NOT_MAPPED_TO_FULL_FINDING",
-      "implementation_state": "PARTIAL_OR_UNKNOWN",
+      "implementation_state": "PARTIAL_ENGINEERING_TESTED_NOT_CLOSED",
       "implemented_commit": null,
       "synthetic_status": "NOT_CERTIFIED",
       "live_status": "NOT_RUN",
@@ -636,7 +705,16 @@
         "positive and negative targeted tests",
         "independent durable consumer/provider observation",
         "exact-SHA CI and release/rollback evidence"
-      ]
+      ],
+      "partial_test_evidence": {
+        "test_path": "backend/tests/master_qa/test_canonical_play_outbox_pg.py",
+        "scope": "durable outbox regression; every historical projection reader not audited",
+        "ci_run_url": "https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/42443527022",
+        "executed_head_sha": "757beaed96f816690816e012daca49b318d7135c",
+        "certifies_whole_finding": false
+      },
+      "audit_evidence_class": "SOURCE_CANDIDATE_REQUIRES_RUNTIME_PROOF",
+      "audit_observation": "Original audit and source candidate require caller/runtime evidence; no final root-cause claim."
     },
     {
       "finding_id": "ECO-015",
@@ -657,7 +735,7 @@
       "dependencies": [],
       "regression_candidate": null,
       "regression_state": "NOT_YET_IMPLEMENTED",
-      "implementation_state": "PARTIAL_OR_UNKNOWN",
+      "implementation_state": "EVIDENCE_OR_REPAIR_PENDING",
       "implemented_commit": null,
       "synthetic_status": "NOT_CERTIFIED",
       "live_status": "NOT_RUN",
@@ -681,7 +759,10 @@
         "positive and negative targeted tests",
         "independent durable consumer/provider observation",
         "exact-SHA CI and release/rollback evidence"
-      ]
+      ],
+      "partial_test_evidence": null,
+      "audit_evidence_class": "SOURCE_CANDIDATE_REQUIRES_RUNTIME_PROOF",
+      "audit_observation": "Original audit and source candidate require caller/runtime evidence; no final root-cause claim."
     },
     {
       "finding_id": "P27-01",
@@ -702,7 +783,7 @@
       "dependencies": [],
       "regression_candidate": null,
       "regression_state": "NOT_YET_IMPLEMENTED",
-      "implementation_state": "PARTIAL_OR_UNKNOWN",
+      "implementation_state": "EVIDENCE_OR_REPAIR_PENDING",
       "implemented_commit": null,
       "synthetic_status": "NOT_CERTIFIED",
       "live_status": "NOT_RUN",
@@ -726,7 +807,10 @@
         "positive and negative targeted tests",
         "independent durable consumer/provider observation",
         "exact-SHA CI and release/rollback evidence"
-      ]
+      ],
+      "partial_test_evidence": null,
+      "audit_evidence_class": "SOURCE_CANDIDATE_REQUIRES_RUNTIME_PROOF",
+      "audit_observation": "Original audit and source candidate require caller/runtime evidence; no final root-cause claim."
     },
     {
       "finding_id": "P27-02",
@@ -747,7 +831,7 @@
       "dependencies": [],
       "regression_candidate": "backend/tests/master_qa/test_joined_agent_play_approval_step_pg.py",
       "regression_state": "EXISTS_NOT_MAPPED_TO_FULL_FINDING",
-      "implementation_state": "PARTIAL_OR_UNKNOWN",
+      "implementation_state": "PARTIAL_ENGINEERING_TESTED_NOT_CLOSED",
       "implemented_commit": null,
       "synthetic_status": "NOT_CERTIFIED",
       "live_status": "NOT_RUN",
@@ -771,7 +855,16 @@
         "positive and negative targeted tests",
         "independent durable consumer/provider observation",
         "exact-SHA CI and release/rollback evidence"
-      ]
+      ],
+      "partial_test_evidence": {
+        "test_path": "backend/tests/master_qa/test_joined_agent_play_approval_step_pg.py",
+        "scope": "joined agent/Play persistence; live provider readback not performed",
+        "ci_run_url": "https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/42443527022",
+        "executed_head_sha": "757beaed96f816690816e012daca49b318d7135c",
+        "certifies_whole_finding": false
+      },
+      "audit_evidence_class": "SOURCE_CANDIDATE_REQUIRES_RUNTIME_PROOF",
+      "audit_observation": "Original audit and source candidate require caller/runtime evidence; no final root-cause claim."
     },
     {
       "finding_id": "P27-03",
@@ -792,7 +885,7 @@
       "dependencies": [],
       "regression_candidate": "backend/tests/master_qa/test_real_guard_postgres_consumer_pg.py",
       "regression_state": "EXISTS_NOT_MAPPED_TO_FULL_FINDING",
-      "implementation_state": "PARTIAL_OR_UNKNOWN",
+      "implementation_state": "PARTIAL_ENGINEERING_TESTED_NOT_CLOSED",
       "implemented_commit": null,
       "synthetic_status": "NOT_CERTIFIED",
       "live_status": "NOT_RUN",
@@ -816,7 +909,16 @@
         "positive and negative targeted tests",
         "independent durable consumer/provider observation",
         "exact-SHA CI and release/rollback evidence"
-      ]
+      ],
+      "partial_test_evidence": {
+        "test_path": "backend/tests/master_qa/test_real_guard_postgres_consumer_pg.py",
+        "scope": "disposable SQL outbox consumer; external downstream live not proven",
+        "ci_run_url": "https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/42443527022",
+        "executed_head_sha": "757beaed96f816690816e012daca49b318d7135c",
+        "certifies_whole_finding": false
+      },
+      "audit_evidence_class": "SOURCE_CANDIDATE_REQUIRES_RUNTIME_PROOF",
+      "audit_observation": "Original audit and source candidate require caller/runtime evidence; no final root-cause claim."
     },
     {
       "finding_id": "P27-04",
@@ -837,7 +939,7 @@
       "dependencies": [],
       "regression_candidate": "backend/tests/master_qa/test_actual_approval_resume_pg.py",
       "regression_state": "EXISTS_NOT_MAPPED_TO_FULL_FINDING",
-      "implementation_state": "PARTIAL_OR_UNKNOWN",
+      "implementation_state": "PARTIAL_ENGINEERING_TESTED_NOT_CLOSED",
       "implemented_commit": null,
       "synthetic_status": "NOT_CERTIFIED",
       "live_status": "NOT_RUN",
@@ -861,7 +963,16 @@
         "positive and negative targeted tests",
         "independent durable consumer/provider observation",
         "exact-SHA CI and release/rollback evidence"
-      ]
+      ],
+      "partial_test_evidence": {
+        "test_path": "backend/tests/master_qa/test_actual_approval_resume_pg.py",
+        "scope": "approval regression in disposable PostgreSQL; production deny-no-write not run",
+        "ci_run_url": "https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/42443527022",
+        "executed_head_sha": "757beaed96f816690816e012daca49b318d7135c",
+        "certifies_whole_finding": false
+      },
+      "audit_evidence_class": "SOURCE_CANDIDATE_REQUIRES_RUNTIME_PROOF",
+      "audit_observation": "Original audit and source candidate require caller/runtime evidence; no final root-cause claim."
     },
     {
       "finding_id": "P27-05",
@@ -882,7 +993,7 @@
       "dependencies": [],
       "regression_candidate": "backend/tests/master_qa/test_worker_process_crash_restart_pg.py",
       "regression_state": "EXISTS_NOT_MAPPED_TO_FULL_FINDING",
-      "implementation_state": "PARTIAL_OR_UNKNOWN",
+      "implementation_state": "PARTIAL_ENGINEERING_TESTED_NOT_CLOSED",
       "implemented_commit": null,
       "synthetic_status": "NOT_CERTIFIED",
       "live_status": "NOT_RUN",
@@ -906,7 +1017,16 @@
         "positive and negative targeted tests",
         "independent durable consumer/provider observation",
         "exact-SHA CI and release/rollback evidence"
-      ]
+      ],
+      "partial_test_evidence": {
+        "test_path": "backend/tests/master_qa/test_worker_process_crash_restart_pg.py",
+        "scope": "two OS processes + disposable SQL simulated provider commit; live HubSpot/Railway not run",
+        "ci_run_url": "https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/42443527022",
+        "executed_head_sha": "757beaed96f816690816e012daca49b318d7135c",
+        "certifies_whole_finding": false
+      },
+      "audit_evidence_class": "SOURCE_CANDIDATE_REQUIRES_RUNTIME_PROOF",
+      "audit_observation": "Original audit and source candidate require caller/runtime evidence; no final root-cause claim."
     },
     {
       "finding_id": "P27-06",
@@ -927,7 +1047,7 @@
       "dependencies": [],
       "regression_candidate": "backend/tests/master_qa/test_runtime_guard_integration.py",
       "regression_state": "EXISTS_NOT_MAPPED_TO_FULL_FINDING",
-      "implementation_state": "PARTIAL_OR_UNKNOWN",
+      "implementation_state": "PARTIAL_ENGINEERING_TESTED_NOT_CLOSED",
       "implemented_commit": null,
       "synthetic_status": "NOT_CERTIFIED",
       "live_status": "NOT_RUN",
@@ -951,7 +1071,16 @@
         "positive and negative targeted tests",
         "independent durable consumer/provider observation",
         "exact-SHA CI and release/rollback evidence"
-      ]
+      ],
+      "partial_test_evidence": {
+        "test_path": "backend/tests/master_qa/test_runtime_guard_integration.py",
+        "scope": "offline guard and synthetic tenant test; production tenancy unverified",
+        "ci_run_url": "https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/42443527022",
+        "executed_head_sha": "757beaed96f816690816e012daca49b318d7135c",
+        "certifies_whole_finding": false
+      },
+      "audit_evidence_class": "SOURCE_CANDIDATE_REQUIRES_RUNTIME_PROOF",
+      "audit_observation": "Original audit and source candidate require caller/runtime evidence; no final root-cause claim."
     },
     {
       "finding_id": "P27-07",
@@ -972,7 +1101,7 @@
       "dependencies": [],
       "regression_candidate": null,
       "regression_state": "NOT_YET_IMPLEMENTED",
-      "implementation_state": "PARTIAL_OR_UNKNOWN",
+      "implementation_state": "EVIDENCE_OR_REPAIR_PENDING",
       "implemented_commit": null,
       "synthetic_status": "NOT_CERTIFIED",
       "live_status": "NOT_RUN",
@@ -996,7 +1125,10 @@
         "positive and negative targeted tests",
         "independent durable consumer/provider observation",
         "exact-SHA CI and release/rollback evidence"
-      ]
+      ],
+      "partial_test_evidence": null,
+      "audit_evidence_class": "SOURCE_CANDIDATE_REQUIRES_RUNTIME_PROOF",
+      "audit_observation": "Original audit and source candidate require caller/runtime evidence; no final root-cause claim."
     },
     {
       "finding_id": "P27-08",
@@ -1017,8 +1149,8 @@
       "dependencies": [],
       "regression_candidate": "backend/tests/master_qa/test_isolated_workflow_supervisor.py",
       "regression_state": "EXISTS_NOT_MAPPED_TO_FULL_FINDING",
-      "implementation_state": "PARTIAL_OR_UNKNOWN",
-      "implemented_commit": null,
+      "implementation_state": "PARTIAL_ENGINEERING_TESTED_NOT_CLOSED",
+      "implemented_commit": "7854229ccf33837072f3619c27251c36a2a7d5e2",
       "synthetic_status": "NOT_CERTIFIED",
       "live_status": "NOT_RUN",
       "fix_verified": false,
@@ -1041,7 +1173,16 @@
         "positive and negative targeted tests",
         "independent durable consumer/provider observation",
         "exact-SHA CI and release/rollback evidence"
-      ]
+      ],
+      "partial_test_evidence": {
+        "test_path": "backend/tests/master_qa/test_isolated_workflow_supervisor.py",
+        "scope": "real OS child SIGKILL/restart and HTTP continuity in CI; actual Railway not run",
+        "ci_run_url": "https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/42443527022",
+        "executed_head_sha": "757beaed96f816690816e012daca49b318d7135c",
+        "certifies_whole_finding": false
+      },
+      "audit_evidence_class": "SOURCE_CONFIRMED_PLUS_CI_PARTIAL",
+      "audit_observation": "in-container worker subprocess supervisor and isolated OS kill regression; deployed verification pending"
     },
     {
       "finding_id": "DEC-001",
@@ -1062,7 +1203,7 @@
       "dependencies": [],
       "regression_candidate": null,
       "regression_state": "NOT_YET_IMPLEMENTED",
-      "implementation_state": "PARTIAL_OR_UNKNOWN",
+      "implementation_state": "EVIDENCE_OR_REPAIR_PENDING",
       "implemented_commit": null,
       "synthetic_status": "NOT_CERTIFIED",
       "live_status": "NOT_RUN",
@@ -1086,7 +1227,10 @@
         "positive and negative targeted tests",
         "independent durable consumer/provider observation",
         "exact-SHA CI and release/rollback evidence"
-      ]
+      ],
+      "partial_test_evidence": null,
+      "audit_evidence_class": "SOURCE_CONFIRMED_FALLBACK",
+      "audit_observation": "reduced phrase-pattern fallback exists, no deletion authorized"
     },
     {
       "finding_id": "DEC-002",
@@ -1107,7 +1251,7 @@
       "dependencies": [],
       "regression_candidate": null,
       "regression_state": "NOT_YET_IMPLEMENTED",
-      "implementation_state": "PARTIAL_OR_UNKNOWN",
+      "implementation_state": "EVIDENCE_OR_REPAIR_PENDING",
       "implemented_commit": null,
       "synthetic_status": "NOT_CERTIFIED",
       "live_status": "NOT_RUN",
@@ -1131,7 +1275,10 @@
         "positive and negative targeted tests",
         "independent durable consumer/provider observation",
         "exact-SHA CI and release/rollback evidence"
-      ]
+      ],
+      "partial_test_evidence": null,
+      "audit_evidence_class": "SOURCE_CANDIDATE_REQUIRES_RUNTIME_PROOF",
+      "audit_observation": "Original audit and source candidate require caller/runtime evidence; no final root-cause claim."
     },
     {
       "finding_id": "DEC-003",
@@ -1152,7 +1299,7 @@
       "dependencies": [],
       "regression_candidate": null,
       "regression_state": "NOT_YET_IMPLEMENTED",
-      "implementation_state": "PARTIAL_OR_UNKNOWN",
+      "implementation_state": "EVIDENCE_OR_REPAIR_PENDING",
       "implemented_commit": null,
       "synthetic_status": "NOT_CERTIFIED",
       "live_status": "NOT_RUN",
@@ -1176,7 +1323,10 @@
         "positive and negative targeted tests",
         "independent durable consumer/provider observation",
         "exact-SHA CI and release/rollback evidence"
-      ]
+      ],
+      "partial_test_evidence": null,
+      "audit_evidence_class": "SOURCE_CANDIDATE_REQUIRES_RUNTIME_PROOF",
+      "audit_observation": "Original audit and source candidate require caller/runtime evidence; no final root-cause claim."
     },
     {
       "finding_id": "DEC-004",
@@ -1197,7 +1347,7 @@
       "dependencies": [],
       "regression_candidate": null,
       "regression_state": "NOT_YET_IMPLEMENTED",
-      "implementation_state": "PARTIAL_OR_UNKNOWN",
+      "implementation_state": "EVIDENCE_OR_REPAIR_PENDING",
       "implemented_commit": null,
       "synthetic_status": "NOT_CERTIFIED",
       "live_status": "NOT_RUN",
@@ -1221,7 +1371,10 @@
         "positive and negative targeted tests",
         "independent durable consumer/provider observation",
         "exact-SHA CI and release/rollback evidence"
-      ]
+      ],
+      "partial_test_evidence": null,
+      "audit_evidence_class": "SOURCE_CANDIDATE_REQUIRES_RUNTIME_PROOF",
+      "audit_observation": "Original audit and source candidate require caller/runtime evidence; no final root-cause claim."
     },
     {
       "finding_id": "DEC-005",
@@ -1242,7 +1395,7 @@
       "dependencies": [],
       "regression_candidate": null,
       "regression_state": "NOT_YET_IMPLEMENTED",
-      "implementation_state": "PARTIAL_OR_UNKNOWN",
+      "implementation_state": "EVIDENCE_OR_REPAIR_PENDING",
       "implemented_commit": null,
       "synthetic_status": "NOT_CERTIFIED",
       "live_status": "NOT_RUN",
@@ -1266,7 +1419,10 @@
         "positive and negative targeted tests",
         "independent durable consumer/provider observation",
         "exact-SHA CI and release/rollback evidence"
-      ]
+      ],
+      "partial_test_evidence": null,
+      "audit_evidence_class": "SOURCE_CANDIDATE_REQUIRES_RUNTIME_PROOF",
+      "audit_observation": "Original audit and source candidate require caller/runtime evidence; no final root-cause claim."
     },
     {
       "finding_id": "DEC-006",
@@ -1287,7 +1443,7 @@
       "dependencies": [],
       "regression_candidate": "backend/tests/master_qa/test_canonical_play_outbox_pg.py",
       "regression_state": "EXISTS_NOT_MAPPED_TO_FULL_FINDING",
-      "implementation_state": "PARTIAL_OR_UNKNOWN",
+      "implementation_state": "PARTIAL_ENGINEERING_TESTED_NOT_CLOSED",
       "implemented_commit": null,
       "synthetic_status": "NOT_CERTIFIED",
       "live_status": "NOT_RUN",
@@ -1311,7 +1467,16 @@
         "positive and negative targeted tests",
         "independent durable consumer/provider observation",
         "exact-SHA CI and release/rollback evidence"
-      ]
+      ],
+      "partial_test_evidence": {
+        "test_path": "backend/tests/master_qa/test_canonical_play_outbox_pg.py",
+        "scope": "bounded durable outcome evidence; competing writer completeness unverified",
+        "ci_run_url": "https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/42443527022",
+        "executed_head_sha": "757beaed96f816690816e012daca49b318d7135c",
+        "certifies_whole_finding": false
+      },
+      "audit_evidence_class": "SOURCE_CANDIDATE_REQUIRES_RUNTIME_PROOF",
+      "audit_observation": "Original audit and source candidate require caller/runtime evidence; no final root-cause claim."
     },
     {
       "finding_id": "DEC-007",
@@ -1332,7 +1497,7 @@
       "dependencies": [],
       "regression_candidate": null,
       "regression_state": "NOT_YET_IMPLEMENTED",
-      "implementation_state": "PARTIAL_OR_UNKNOWN",
+      "implementation_state": "EVIDENCE_OR_REPAIR_PENDING",
       "implemented_commit": null,
       "synthetic_status": "NOT_CERTIFIED",
       "live_status": "NOT_RUN",
@@ -1356,7 +1521,10 @@
         "positive and negative targeted tests",
         "independent durable consumer/provider observation",
         "exact-SHA CI and release/rollback evidence"
-      ]
+      ],
+      "partial_test_evidence": null,
+      "audit_evidence_class": "SOURCE_CANDIDATE_REQUIRES_RUNTIME_PROOF",
+      "audit_observation": "Original audit and source candidate require caller/runtime evidence; no final root-cause claim."
     },
     {
       "finding_id": "DEC-008",
@@ -1377,7 +1545,7 @@
       "dependencies": [],
       "regression_candidate": null,
       "regression_state": "NOT_YET_IMPLEMENTED",
-      "implementation_state": "PARTIAL_OR_UNKNOWN",
+      "implementation_state": "EVIDENCE_OR_REPAIR_PENDING",
       "implemented_commit": null,
       "synthetic_status": "NOT_CERTIFIED",
       "live_status": "NOT_RUN",
@@ -1401,7 +1569,10 @@
         "positive and negative targeted tests",
         "independent durable consumer/provider observation",
         "exact-SHA CI and release/rollback evidence"
-      ]
+      ],
+      "partial_test_evidence": null,
+      "audit_evidence_class": "SOURCE_CANDIDATE_REQUIRES_RUNTIME_PROOF",
+      "audit_observation": "Original audit and source candidate require caller/runtime evidence; no final root-cause claim."
     },
     {
       "finding_id": "DEC-009",
@@ -1422,7 +1593,7 @@
       "dependencies": [],
       "regression_candidate": null,
       "regression_state": "NOT_YET_IMPLEMENTED",
-      "implementation_state": "PARTIAL_OR_UNKNOWN",
+      "implementation_state": "EVIDENCE_OR_REPAIR_PENDING",
       "implemented_commit": null,
       "synthetic_status": "NOT_CERTIFIED",
       "live_status": "NOT_RUN",
@@ -1446,7 +1617,10 @@
         "positive and negative targeted tests",
         "independent durable consumer/provider observation",
         "exact-SHA CI and release/rollback evidence"
-      ]
+      ],
+      "partial_test_evidence": null,
+      "audit_evidence_class": "SOURCE_CANDIDATE_REQUIRES_RUNTIME_PROOF",
+      "audit_observation": "Original audit and source candidate require caller/runtime evidence; no final root-cause claim."
     },
     {
       "finding_id": "DEC-010",
@@ -1467,7 +1641,7 @@
       "dependencies": [],
       "regression_candidate": null,
       "regression_state": "NOT_YET_IMPLEMENTED",
-      "implementation_state": "PARTIAL_OR_UNKNOWN",
+      "implementation_state": "EVIDENCE_OR_REPAIR_PENDING",
       "implemented_commit": null,
       "synthetic_status": "NOT_CERTIFIED",
       "live_status": "NOT_RUN",
@@ -1491,7 +1665,10 @@
         "positive and negative targeted tests",
         "independent durable consumer/provider observation",
         "exact-SHA CI and release/rollback evidence"
-      ]
+      ],
+      "partial_test_evidence": null,
+      "audit_evidence_class": "SOURCE_CANDIDATE_REQUIRES_RUNTIME_PROOF",
+      "audit_observation": "Original audit and source candidate require caller/runtime evidence; no final root-cause claim."
     },
     {
       "finding_id": "DEC-011",
@@ -1512,7 +1689,7 @@
       "dependencies": [],
       "regression_candidate": null,
       "regression_state": "NOT_YET_IMPLEMENTED",
-      "implementation_state": "PARTIAL_OR_UNKNOWN",
+      "implementation_state": "EVIDENCE_OR_REPAIR_PENDING",
       "implemented_commit": null,
       "synthetic_status": "NOT_CERTIFIED",
       "live_status": "NOT_RUN",
@@ -1536,7 +1713,10 @@
         "positive and negative targeted tests",
         "independent durable consumer/provider observation",
         "exact-SHA CI and release/rollback evidence"
-      ]
+      ],
+      "partial_test_evidence": null,
+      "audit_evidence_class": "SOURCE_CANDIDATE_REQUIRES_RUNTIME_PROOF",
+      "audit_observation": "Original audit and source candidate require caller/runtime evidence; no final root-cause claim."
     },
     {
       "finding_id": "DEC-012",
@@ -1557,7 +1737,7 @@
       "dependencies": [],
       "regression_candidate": "backend/tests/master_qa/test_actual_workflow_step_pg.py",
       "regression_state": "EXISTS_NOT_MAPPED_TO_FULL_FINDING",
-      "implementation_state": "PARTIAL_OR_UNKNOWN",
+      "implementation_state": "PARTIAL_ENGINEERING_TESTED_NOT_CLOSED",
       "implemented_commit": null,
       "synthetic_status": "NOT_CERTIFIED",
       "live_status": "NOT_RUN",
@@ -1581,7 +1761,16 @@
         "positive and negative targeted tests",
         "independent durable consumer/provider observation",
         "exact-SHA CI and release/rollback evidence"
-      ]
+      ],
+      "partial_test_evidence": {
+        "test_path": "backend/tests/master_qa/test_actual_workflow_step_pg.py",
+        "scope": "canonical workflow step; full active agent/Play call graph pending",
+        "ci_run_url": "https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/42443527022",
+        "executed_head_sha": "757beaed96f816690816e012daca49b318d7135c",
+        "certifies_whole_finding": false
+      },
+      "audit_evidence_class": "SOURCE_CANDIDATE_REQUIRES_RUNTIME_PROOF",
+      "audit_observation": "Original audit and source candidate require caller/runtime evidence; no final root-cause claim."
     },
     {
       "finding_id": "DEC-013",
@@ -1602,7 +1791,7 @@
       "dependencies": [],
       "regression_candidate": null,
       "regression_state": "NOT_YET_IMPLEMENTED",
-      "implementation_state": "PARTIAL_OR_UNKNOWN",
+      "implementation_state": "EVIDENCE_OR_REPAIR_PENDING",
       "implemented_commit": null,
       "synthetic_status": "NOT_CERTIFIED",
       "live_status": "NOT_RUN",
@@ -1626,7 +1815,10 @@
         "positive and negative targeted tests",
         "independent durable consumer/provider observation",
         "exact-SHA CI and release/rollback evidence"
-      ]
+      ],
+      "partial_test_evidence": null,
+      "audit_evidence_class": "SOURCE_CANDIDATE_REQUIRES_RUNTIME_PROOF",
+      "audit_observation": "Original audit and source candidate require caller/runtime evidence; no final root-cause claim."
     },
     {
       "finding_id": "DEC-014",
@@ -1647,7 +1839,7 @@
       "dependencies": [],
       "regression_candidate": null,
       "regression_state": "NOT_YET_IMPLEMENTED",
-      "implementation_state": "PARTIAL_OR_UNKNOWN",
+      "implementation_state": "EVIDENCE_OR_REPAIR_PENDING",
       "implemented_commit": null,
       "synthetic_status": "NOT_CERTIFIED",
       "live_status": "NOT_RUN",
@@ -1671,7 +1863,10 @@
         "positive and negative targeted tests",
         "independent durable consumer/provider observation",
         "exact-SHA CI and release/rollback evidence"
-      ]
+      ],
+      "partial_test_evidence": null,
+      "audit_evidence_class": "SOURCE_CANDIDATE_REQUIRES_RUNTIME_PROOF",
+      "audit_observation": "Original audit and source candidate require caller/runtime evidence; no final root-cause claim."
     },
     {
       "finding_id": "DEC-015",
@@ -1692,7 +1887,7 @@
       "dependencies": [],
       "regression_candidate": null,
       "regression_state": "NOT_YET_IMPLEMENTED",
-      "implementation_state": "PARTIAL_OR_UNKNOWN",
+      "implementation_state": "EVIDENCE_OR_REPAIR_PENDING",
       "implemented_commit": null,
       "synthetic_status": "NOT_CERTIFIED",
       "live_status": "NOT_RUN",
@@ -1716,7 +1911,10 @@
         "positive and negative targeted tests",
         "independent durable consumer/provider observation",
         "exact-SHA CI and release/rollback evidence"
-      ]
+      ],
+      "partial_test_evidence": null,
+      "audit_evidence_class": "SOURCE_CANDIDATE_REQUIRES_RUNTIME_PROOF",
+      "audit_observation": "Original audit and source candidate require caller/runtime evidence; no final root-cause claim."
     },
     {
       "finding_id": "DEC-016",
@@ -1737,7 +1935,7 @@
       "dependencies": [],
       "regression_candidate": null,
       "regression_state": "NOT_YET_IMPLEMENTED",
-      "implementation_state": "PARTIAL_OR_UNKNOWN",
+      "implementation_state": "EVIDENCE_OR_REPAIR_PENDING",
       "implemented_commit": null,
       "synthetic_status": "NOT_CERTIFIED",
       "live_status": "NOT_RUN",
@@ -1761,7 +1959,10 @@
         "positive and negative targeted tests",
         "independent durable consumer/provider observation",
         "exact-SHA CI and release/rollback evidence"
-      ]
+      ],
+      "partial_test_evidence": null,
+      "audit_evidence_class": "SOURCE_CANDIDATE_REQUIRES_RUNTIME_PROOF",
+      "audit_observation": "Original audit and source candidate require caller/runtime evidence; no final root-cause claim."
     },
     {
       "finding_id": "DEC-017",
@@ -1782,7 +1983,7 @@
       "dependencies": [],
       "regression_candidate": null,
       "regression_state": "NOT_YET_IMPLEMENTED",
-      "implementation_state": "PARTIAL_OR_UNKNOWN",
+      "implementation_state": "EVIDENCE_OR_REPAIR_PENDING",
       "implemented_commit": null,
       "synthetic_status": "NOT_CERTIFIED",
       "live_status": "NOT_RUN",
@@ -1806,7 +2007,10 @@
         "positive and negative targeted tests",
         "independent durable consumer/provider observation",
         "exact-SHA CI and release/rollback evidence"
-      ]
+      ],
+      "partial_test_evidence": null,
+      "audit_evidence_class": "SOURCE_CONFIRMED_CONFIG_RISK",
+      "audit_observation": "voiceFastApiBase falls back to localhost:8000 when FASTAPI_BASE_URL absent; deployed impact unknown"
     },
     {
       "finding_id": "DEC-018",
@@ -1827,7 +2031,7 @@
       "dependencies": [],
       "regression_candidate": null,
       "regression_state": "NOT_YET_IMPLEMENTED",
-      "implementation_state": "PARTIAL_OR_UNKNOWN",
+      "implementation_state": "EVIDENCE_OR_REPAIR_PENDING",
       "implemented_commit": null,
       "synthetic_status": "NOT_CERTIFIED",
       "live_status": "NOT_RUN",
@@ -1851,7 +2055,10 @@
         "positive and negative targeted tests",
         "independent durable consumer/provider observation",
         "exact-SHA CI and release/rollback evidence"
-      ]
+      ],
+      "partial_test_evidence": null,
+      "audit_evidence_class": "SOURCE_CANDIDATE_REQUIRES_RUNTIME_PROOF",
+      "audit_observation": "Original audit and source candidate require caller/runtime evidence; no final root-cause claim."
     },
     {
       "finding_id": "DEC-019",
@@ -1872,7 +2079,7 @@
       "dependencies": [],
       "regression_candidate": null,
       "regression_state": "NOT_YET_IMPLEMENTED",
-      "implementation_state": "PARTIAL_OR_UNKNOWN",
+      "implementation_state": "EVIDENCE_OR_REPAIR_PENDING",
       "implemented_commit": null,
       "synthetic_status": "NOT_CERTIFIED",
       "live_status": "NOT_RUN",
@@ -1896,7 +2103,10 @@
         "positive and negative targeted tests",
         "independent durable consumer/provider observation",
         "exact-SHA CI and release/rollback evidence"
-      ]
+      ],
+      "partial_test_evidence": null,
+      "audit_evidence_class": "SOURCE_CANDIDATE_REQUIRES_RUNTIME_PROOF",
+      "audit_observation": "Original audit and source candidate require caller/runtime evidence; no final root-cause claim."
     },
     {
       "finding_id": "DEC-020",
@@ -1917,7 +2127,7 @@
       "dependencies": [],
       "regression_candidate": null,
       "regression_state": "NOT_YET_IMPLEMENTED",
-      "implementation_state": "PARTIAL_OR_UNKNOWN",
+      "implementation_state": "EVIDENCE_OR_REPAIR_PENDING",
       "implemented_commit": null,
       "synthetic_status": "NOT_CERTIFIED",
       "live_status": "NOT_RUN",
@@ -1941,7 +2151,12 @@
         "positive and negative targeted tests",
         "independent durable consumer/provider observation",
         "exact-SHA CI and release/rollback evidence"
-      ]
+      ],
+      "partial_test_evidence": null,
+      "audit_evidence_class": "SOURCE_CANDIDATE_REQUIRES_RUNTIME_PROOF",
+      "audit_observation": "Original audit and source candidate require caller/runtime evidence; no final root-cause claim."
     }
-  ]
+  ],
+  "partial_test_mappings_count": 14,
+  "note": "Known partial CI tests are references, NOT closure. Historical successful SHA must not be presented as latest-head certification."
 }
