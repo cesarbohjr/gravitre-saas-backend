@@ -4875,6 +4875,69 @@ async def create_workflow_from_goal(
     goal_service: GoalService = Depends(get_goal_service),
 ) -> dict:
     _user, org_id = _admin
+    # Sales reference slice: use an actual canvas graph rather than a model
+    # outline. Executions remain under normal authenticated workflow routes.
+    from app.services.sales_growth_goal_compiler import (
+        GoalCompilationBlocked,
+        _sales_intent,
+        compile_sales_growth_for_org,
+    )
+    if _sales_intent(request.goal) and str(request.department or "sales").lower() == "sales":
+        try:
+            sales_plan = await compile_sales_growth_for_org(
+                org_id=org_id, goal=request.goal, settings=settings,
+            )
+        except GoalCompilationBlocked as exc:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT, detail=str(exc),
+            ) from exc
+        client = get_supabase_client(settings)
+        row = {
+            "org_id": org_id, "name": "Sales growth diagnostic",
+            "goal": request.goal,
+            "description": "Tenant-scoped read-only sales evidence; no campaigns or CRM writes authorized.",
+            "definition": sales_plan.workflow_definition,
+            "schema_version": SCHEMA_VERSION,
+            "status": "draft", "stage": "build", "version": "v1.0.0",
+            "created_by": _user.get("user_id"),
+        }
+        created = client.table("workflow_defs").insert(row).execute()
+        if not created.data:
+            raise HTTPException(status_code=500, detail="Sales diagnostic workflow create failed")
+        workflow_id = str(created.data[0]["id"])
+        mirror_legacy_workflow_row_to_contract(
+            client, dict(created.data[0]), environment_name=environment_name,
+        )
+        stored_nodes, stored_edges, saved_definition = sync_builder_graph(
+            client, org_id=org_id, workflow_id=workflow_id,
+            environment_name=environment_name,
+            nodes=sales_plan.graph["nodes"], edges=sales_plan.graph["edges"],
+            created_by=_user.get("user_id"),
+        )
+        if (len(stored_nodes) != len(sales_plan.graph["nodes"])
+                or len(stored_edges) != len(sales_plan.graph["edges"])):
+            raise HTTPException(status_code=500, detail="Sales workflow canvas persistence incomplete")
+        write_audit_event(
+            client, org_id=org_id, actor_id=_user["user_id"],
+            action="workflow.created.from_goal",
+            resource_type="workflow", resource_id=workflow_id,
+            metadata={"environment": environment_name, "department": "sales",
+                      "goalId": request.goal_id, "compiler": "sales_growth_v1",
+                      "execution_state": "NOT_RUN"},
+        )
+        return {
+            "id": workflow_id,
+            "status": "draft", "execution_status": "NOT_RUN",
+            "workflow": {"name": row["name"], "goal": request.goal,
+                         "department": "sales", "definition": saved_definition},
+            "canvas": {"nodes": [_node_out(n) for n in stored_nodes],
+                       "edges": [_edge_out(e) for e in stored_edges]},
+            "agent_persona": sales_plan.agent_persona,
+            "selected_play": sales_plan.selected_play,
+            "capabilities": list(sales_plan.capabilities),
+            "missing_connections": list(sales_plan.missing_connections),
+            "business_outcome": "NOT_MEASURED",
+        }
     generated = await goal_service.generate_workflow(
         goal=request.goal,
         department=request.department,
