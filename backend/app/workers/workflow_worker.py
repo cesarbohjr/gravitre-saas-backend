@@ -178,6 +178,9 @@ def start_workflow_run_worker() -> asyncio.Task | None:
         if not bool(getattr(settings, "workflow_queue_enabled", True)):
             logger.info("workflow run worker disabled")
             return None
+        if bool(getattr(settings, "workflow_worker_process_isolation_enabled", False)):
+            logger.info("in-process workflow worker disabled: isolated child owns queue")
+            return None
         poll = int(getattr(settings, "workflow_queue_poll_seconds", 5) or 5)
     except Exception as exc:  # noqa: BLE001
         logger.warning("workflow run worker not started: %s", str(exc))
