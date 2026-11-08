@@ -260,7 +260,21 @@ async def test_agent_play_approval_real_step_to_durable_consumer(pg, monkeypatch
         relay = domain_events.DomainEventRelay(
             _PsqlRpcClient(pg), worker_id="qa-p27-joined-worker")
         first, repeated = relay.run_once(), relay.run_once()
+        assert first.delivered == 1 and repeated.claimed == 0
+        # Simulate an already-delivered event being replayed after transport
+        # reconciliation. The business consumer must still persist ONE effect
+        # by the immutable event ID, even if handler bookkeeping were lost.
+        pg.psql(
+            "UPDATE public.domain_event_outbox SET "
+            "status='pending', available_at=now(), delivered_at=NULL, "
+            "delivered_handlers='{}'::text[] "
+            f"WHERE aggregate_id='{run_id}'")
+        replayed = relay.run_once()
     finally:
         domain_events.reset_domain_event_handlers_for_tests()
-    assert first.delivered == 1 and repeated.claimed == 0
+    assert replayed.delivered == 1
+    assert vendor.call_count == 1  # never replay the external provider operation
     assert pg.value("SELECT count(*) FROM public.qa_p27_joined_effects") == "1"
+    assert pg.value(
+        f"SELECT count(*) FROM public.domain_event_outbox "
+        f"WHERE aggregate_id='{run_id}' AND status='delivered'") == "1"
