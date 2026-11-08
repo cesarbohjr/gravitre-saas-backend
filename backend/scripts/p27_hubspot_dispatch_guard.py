@@ -80,6 +80,10 @@ def current_independent_approval(token: str, expected_sha: str) -> bool:
     )
     with urllib.request.urlopen(request, timeout=12) as response:
         reviews = json.load(response)
+    return has_independent_exact_head_review(reviews, expected_sha)
+
+
+def has_independent_exact_head_review(reviews, expected_sha: str) -> bool:
     if not isinstance(reviews, list) or len(reviews) >= 100:
         raise RuntimeError("review listing incomplete; fail closed")
     latest = {}
