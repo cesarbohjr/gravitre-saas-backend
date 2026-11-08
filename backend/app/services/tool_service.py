@@ -5033,17 +5033,22 @@ def list_registered_actions() -> list[str]:
     return sorted(set(_TOOL_REGISTRY.keys()) | set(list_partner_actions()))
 
 
-def registered_actions_fingerprint() -> tuple[object, int, int]:
-    """Cheap identity of the invoke_tool action set, for caches derived from it.
+def registered_actions_fingerprint() -> tuple[object, frozenset[str], frozenset[str]]:
+    """Capture the actual action-key sets for registry-derived discovery caches.
 
-    Returns ``(registry_dict, len(registry), len(partner_actions))``. Callers compare the
-    first element by identity (``is``) so a swapped-in registry dict (e.g. a test's
-    ``patch("...tool_service._TOOL_REGISTRY", {...})``) or a later partner registration
-    invalidates anything built from :func:`list_registered_actions`.
+    A registry dictionary can replace or rename an action without changing its
+    length. Counts alone left cached tool/Play discovery stale, including when
+    partner actions were swapped one-for-one. Preserve registry object identity
+    to detect replacement and compare immutable key snapshots to detect
+    same-size mutations. This is metadata only: no credentials or provider calls.
     """
     from app.connectors.sdk.registry import list_partner_actions
 
-    return (_TOOL_REGISTRY, len(_TOOL_REGISTRY), len(list_partner_actions()))
+    return (
+        _TOOL_REGISTRY,
+        frozenset(_TOOL_REGISTRY),
+        frozenset(list_partner_actions()),
+    )
 
 
 def invoke_tool(ctx: ToolContext, action: str, params: dict[str, Any] | None = None) -> NormalizedResult:
