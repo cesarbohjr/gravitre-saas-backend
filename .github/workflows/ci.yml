@@ -8,9 +8,10 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: ci-${{ github.ref }}
-  # Preserve long-running backend and billing acceptance on new branch updates.
-  cancel-in-progress: false
+  # A PR's prior SHA must not keep the exact current head stuck behind
+  # obsolete full-CI runs. Main branch keeps its in-flight certification.
+  group: ci-${{ github.event_name == 'pull_request' && format('pr-{0}', github.event.pull_request.number) || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   web:
