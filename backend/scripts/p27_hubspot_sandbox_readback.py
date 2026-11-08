@@ -129,9 +129,22 @@ def verify_hubspot(*, token: str, portal_id: str, email_domain: str,
             except Exception as exc:
                 cleanup_error = exc
         if contact_id is not None and cleanup_error is None:
-            # Delete only the just-created, independently verified test ID.
+            # Do not trust an ID in an upsert response as deletion authority.
+            # Before DELETE, independently GET that ID and prove it is OUR
+            # unique contact by the email AND both QA marker fields. This
+            # also protects against incorrect provider responses and ID reuse.
             try:
                 delete_url = BASE + "/crm/v3/objects/contacts/" + quote(contact_id, safe="")
+                owned = _request(
+                    delete_url + "?properties=email,firstname,lastname",
+                    token=token, method="GET")
+                fields = owned.get("properties")
+                if (str(owned.get("id")) != contact_id
+                        or not isinstance(fields, dict)
+                        or any(str(fields.get(k) or "") != v
+                               for k, v in properties.items())):
+                    raise RuntimeError(
+                        "HubSpot QA deletion refused: target is not independently proven synthetic")
                 _request(delete_url, token=token, method="DELETE")
                 try:
                     _request(
