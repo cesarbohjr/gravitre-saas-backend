@@ -287,12 +287,16 @@ def chat_executable_entries(
     *,
     connected_integrations: list[str] | None = None,
 ) -> list[ConnectorActionMatrixEntry]:
-    connected = {c.lower() for c in (connected_integrations or [])}
+    # None means catalog/discovery mode (unfiltered); an explicitly empty
+    # set means no connectors are connected and MUST return no executable tools.
+    # Do not accidentally treat [] as public access to the entire matrix.
+    filter_to_connected = connected_integrations is not None
+    connected = {str(c).strip().lower() for c in (connected_integrations or []) if str(c).strip()}
     result: list[ConnectorActionMatrixEntry] = []
     for entry in build_connector_execution_matrix():
         if not entry.chat_executable:
             continue
-        if connected and entry.connector_id not in connected:
+        if filter_to_connected and entry.connector_id.lower() not in connected:
             continue
         result.append(entry)
     return result
