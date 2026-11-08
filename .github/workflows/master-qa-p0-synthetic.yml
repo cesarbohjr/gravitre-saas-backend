@@ -5,6 +5,7 @@ on:
     paths:
       - 'backend/tests/master_qa/**'
       - 'backend/scripts/master_qa_remediation_guard.py'
+      - 'backend/scripts/master_qa_wiring_preflight.py'
       - 'docs/delivery/master-qa-remediation-register.v2.json'
       - 'docs/delivery/master-qa-tranche27-findings-evidence-matrix.json'
       - '.github/workflows/master-qa-p0-synthetic.yml'
@@ -48,6 +49,15 @@ jobs:
         run: |
           python -m pytest -q --confcutdir=tests/master_qa tests/master_qa/test_master_qa_remediation_guard.py
           python scripts/master_qa_remediation_guard.py --output "$RUNNER_TEMP/master-qa-remediation-summary.json"
+          python -m pytest -q --confcutdir=tests/master_qa tests/master_qa/test_master_qa_wiring_preflight.py
+          python scripts/master_qa_wiring_preflight.py --output "$RUNNER_TEMP/master-qa-wiring-evidence.json"
+      - name: Upload bounded source-wiring evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: master-qa-wiring-source-evidence
+          path: ${{ runner.temp }}/master-qa-wiring-evidence.json
+          retention-days: 14
+          if-no-files-found: error
       - name: Upload strict remediation coverage summary
         uses: actions/upload-artifact@v4
         with:
