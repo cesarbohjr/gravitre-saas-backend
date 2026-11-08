@@ -32,7 +32,7 @@ def env(event="pull_request", **kw):
 
 
 def test_owner_labeled_exact_pr_head_can_be_authorized():
-    result = check_dispatch(env=env(), checked_out_sha=SHA, fetch_head=lambda: SHA)
+    result = check_dispatch(env=env(), checked_out_sha=SHA, fetch_head=lambda: SHA, approved_review=True)
     assert result["result"] == "PASS"
     assert result["event"] == "pull_request"
 
@@ -51,11 +51,21 @@ def test_wrong_actor_repository_pr_sha_or_event_never_authorizes(update):
 
 def test_stale_pr_head_or_wrong_checkout_never_authorizes():
     with pytest.raises(RuntimeError, match="PR head changed"):
-        check_dispatch(env=env(), checked_out_sha=SHA, fetch_head=lambda: "b" * 40)
+        check_dispatch(env=env(), checked_out_sha=SHA, fetch_head=lambda: "b" * 40, approved_review=True)
     with pytest.raises(RuntimeError, match="checkout SHA"):
-        check_dispatch(env=env(), checked_out_sha="b" * 40, fetch_head=lambda: SHA)
+        check_dispatch(env=env(), checked_out_sha="b" * 40, fetch_head=lambda: SHA, approved_review=True)
     with pytest.raises(RuntimeError, match="cannot verify"):
         check_dispatch(env=env(), checked_out_sha=SHA)
+
+
+def test_pr_label_requires_independent_exact_head_approval():
+    with pytest.raises(RuntimeError, match="independent exact-head"):
+        check_dispatch(env=env(), checked_out_sha=SHA, fetch_head=lambda: SHA)
+    with pytest.raises(RuntimeError, match="independent exact-head"):
+        check_dispatch(
+            env=env(), checked_out_sha=SHA,
+            fetch_head=lambda: SHA, approved_review=False,
+        )
 
 
 def test_manual_dispatch_only_allowed_on_main():
