@@ -352,7 +352,7 @@ jobs:
           config = original
           for old, port in ports.items():
               config, changed = re.subn(
-                  rf"(?m)^((?:shadow_)?port\\s*=\\s*){old}$",
+                  rf"(?m)^((?:shadow_)?port\s*=\s*){old}$",
                   lambda match: match.group(1) + str(port),
                   config,
               )
