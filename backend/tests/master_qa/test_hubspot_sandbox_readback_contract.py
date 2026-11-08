@@ -19,9 +19,10 @@ def hubspot(monkeypatch):
 
 def _fake_hubspot_api(*, portal=PORTAL, account_type="STANDARD",
                       mismatch=False, duplicate=False, cleanup_fails=False,
-                      delete_fails=False, first_upsert_fails=False):
+                      delete_fails=False, first_upsert_fails=False,
+                      applied_but_response_lost=False):
     seen = []
-    state = {"deleted": False, "properties": None}
+    state = {"deleted": False, "properties": None, "created": False}
 
     def response(url, *, token, method, payload=None):
         seen.append((method, url, payload))
@@ -37,9 +38,16 @@ def _fake_hubspot_api(*, portal=PORTAL, account_type="STANDARD",
             state["properties"] = dict(item["properties"])
             count = len([m for m, _, _ in seen if m == "POST"])
             if first_upsert_fails and count == 1:
+                if applied_but_response_lost:
+                    state["created"] = True
                 raise RuntimeError("upsert network timeout")
+            state["created"] = True
             return {"status": "COMPLETE",
                     "results": [{"id": "90002" if duplicate and count > 1 else "90001"}]}
+        if "idProperty=email" in url and method == "GET":
+            if not state["created"] or state["deleted"]:
+                raise urllib.error.HTTPError(url, 404, "Not Found", None, None)
+            return {"id": "90001", "properties": dict(state["properties"])}
         if "/crm/v3/objects/contacts/90001" in url and method == "GET":
             if state["deleted"] and not cleanup_fails:
                 raise urllib.error.HTTPError(url, 404, "Not Found", None, None)
@@ -120,3 +128,14 @@ def test_upsert_unconfirmed_never_claims_cleanup(hubspot, monkeypatch):
     with pytest.raises(RuntimeError):
         _invoke(hubspot)
     assert not any(m == "DELETE" for m, _, _ in seen)
+
+def test_provider_applied_then_response_lost_recovers_qa_id_and_cleans_up(
+        hubspot, monkeypatch):
+    reply, seen = _fake_hubspot_api(
+        first_upsert_fails=True, applied_but_response_lost=True)
+    monkeypatch.setattr(hubspot, "_request", reply)
+    with pytest.raises(RuntimeError):
+        _invoke(hubspot)
+    assert [m for m, _, _ in seen] == ["GET", "POST", "GET", "DELETE", "GET"]
+    assert seen[2][1].find("idProperty=email") != -1
+    assert seen[3][1].endswith("/contacts/90001")
