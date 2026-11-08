@@ -233,3 +233,34 @@ def verified_sales_observations(
                         "status": "completed", "observed": True})
     return {"status": "DIAGNOSTIC_READS_OBSERVED", "verified_actions": matched,
             "business_outcome": "NOT_MEASURED"}
+
+
+async def compile_sales_growth_for_org(
+    *,
+    org_id: str,
+    goal: str,
+    settings: Any,
+    installed_plays: Iterable[dict[str, Any]] = (),
+) -> GoalPlan:
+    """Resolve the actual tenant's connectors and agent policy before compiling.
+
+    The caller must already have authenticated and authorized this org_id.
+    This function never manufactures a Play installation, grants an agent role
+    or calls a provider. Persist/execute only through existing workflow routes.
+    """
+    if not org_id or not org_id.strip():
+        raise GoalCompilationBlocked("authenticated_org_required")
+    from app.services.agent_selector import AgentSelector
+
+    selector = AgentSelector(settings=settings)
+    classification = {
+        "department": "sales",
+        "intent": "sales_task",
+        "requires_action": True,
+    }
+    selected_agent = await selector.select(org_id, classification)
+    connected = await selector._get_connected(org_id)
+    return compile_sales_growth_goal(
+        goal=goal, connected_integrations=connected,
+        installed_plays=installed_plays, agent_selection=selected_agent,
+    )
