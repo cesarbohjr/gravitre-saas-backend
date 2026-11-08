@@ -869,6 +869,15 @@ class Settings(BaseSettings):
             "WORKFLOW_ORPHAN_RECOVERY_ENABLED", "workflow_orphan_recovery_enabled",
         ),
     )
+    # P27-08: keep the API alive when a workflow-worker *process* dies.
+    # Disabled by default until a reviewed, controlled existing-Railway rollout.
+    workflow_worker_process_isolation_enabled: bool = Field(
+        default=False,
+        validation_alias=AliasChoices(
+            "WORKFLOW_WORKER_PROCESS_ISOLATION_ENABLED",
+            "workflow_worker_process_isolation_enabled",
+        ),
+    )
     workflow_orphan_recovery_interval_seconds: int = 60
     workflow_orphan_stale_seconds: int = 3600
     workflow_orphan_lease_seconds: int = 600
