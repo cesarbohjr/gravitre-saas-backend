@@ -25,7 +25,7 @@ def test_missing_live_wiring_cannot_be_misreported_as_connected(tmp_path):
     for finding, path, marker, description in namespace["EDGE_PROBES"]:
         source = tmp_path / path
         source.parent.mkdir(parents=True, exist_ok=True)
-        source.write_text(marker + "\n")
+        source.write_text((source.read_text() if source.exists() else "") + marker + "\n")
     initial = inspect(tmp_path)
     assert initial["source_edges_found"] == initial["expected_edges"]
     target = tmp_path / "apps/web/lib/voice-api-proxy.ts"
