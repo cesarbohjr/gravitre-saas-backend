@@ -67,9 +67,11 @@ def verify_hubspot(*, token: str, portal_id: str, email_domain: str,
     }]}
     upsert_url = BASE + "/crm/v3/objects/contacts/batch/upsert"
     contact_id = None
+    write_attempted = False
     primary_error = None
     cleanup_error = None
     try:
+        write_attempted = True
         written = _request(upsert_url, token=token, method="POST", payload=payload)
         if written.get("status") != "COMPLETE":
             raise RuntimeError("HubSpot QA contact upsert incomplete")
@@ -102,7 +104,31 @@ def verify_hubspot(*, token: str, portal_id: str, email_domain: str,
     except Exception as exc:
         primary_error = exc
     finally:
-        if contact_id is not None:
+        if contact_id is None and write_attempted:
+            # Provider may commit a POST then lose the response. Reconcile by
+            # this exact random QA email; never assume no effect occurred.
+            try:
+                by_email_url = (
+                    BASE + "/crm/v3/objects/contacts/"
+                    + quote(email, safe="")
+                    + "?idProperty=email&properties=email,firstname,lastname")
+                try:
+                    located = _request(by_email_url, token=token, method="GET")
+                except urllib.error.HTTPError as exc:
+                    if exc.code != 404:
+                        raise
+                else:
+                    fields = located.get("properties")
+                    identifier = str(located.get("id") or "")
+                    if (not re.fullmatch(r"[0-9]+", identifier)
+                            or not isinstance(fields, dict)
+                            or any(str(fields.get(k) or "") != v
+                                   for k, v in properties.items())):
+                        raise RuntimeError("unverified orphan QA contact; manual cleanup required")
+                    contact_id = identifier
+            except Exception as exc:
+                cleanup_error = exc
+        if contact_id is not None and cleanup_error is None:
             # Delete only the just-created, independently verified test ID.
             try:
                 delete_url = BASE + "/crm/v3/objects/contacts/" + quote(contact_id, safe="")
