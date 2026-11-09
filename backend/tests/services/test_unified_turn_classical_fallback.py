@@ -235,3 +235,30 @@ def test_verified_output_persistence_failure_is_not_reported_as_success(monkeypa
     with pytest.raises(RuntimeError, match="simulated metadata store outage"):
         _persist_run(None, event, "completed", "2026-11-09T00:00:00+00:00")
     assert calls == [("run-test", "completed")]
+
+
+def test_finalizer_does_not_claim_run_persisted_after_storage_failure(monkeypatch):
+    """No-network finalizer regression: failed durable write cannot report success."""
+    from app.services import execution_outcome as outcome
+
+    monkeypatch.setattr(outcome, "_resolve_workflow_id", lambda *_: "workflow-test")
+    monkeypatch.setattr(outcome, "_run_already_finalized", lambda *_: False)
+
+    def fail_persist(*_args):
+        raise RuntimeError("simulated persistence outage")
+
+    monkeypatch.setattr(outcome, "_persist_run", fail_persist)
+    monkeypatch.setattr(outcome, "_write_audit", lambda *_: None)
+    monkeypatch.setattr(outcome, "_emit_notification", lambda *_: None)
+    monkeypatch.setattr(outcome, "_record_learning", lambda *_: None)
+    monkeypatch.setattr(outcome, "_record_play_actioned_result", lambda *_: False)
+    monkeypatch.setattr(outcome, "_enqueue_failure_alert_correlation", lambda *_: False)
+
+    result = outcome.finalize_execution_outcome(
+        None, org_id="org-test", status="cancelled", source="assistant_chat",
+        run_id="run-test", workflow_id="workflow-test",
+        metadata={"conversation_id": ""},
+    )
+    assert result.status == "cancelled"
+    assert result.fanout["run_persisted"] is False
+    assert result.fanout.get("idempotent_skip") is not True
