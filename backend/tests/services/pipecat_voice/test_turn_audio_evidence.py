@@ -78,7 +78,8 @@ def test_audio_timing_and_no_transcript_in_snapshot():
     assert set(e.snapshot()) == {
         "epoch", "eager_candidates", "eager_cancelled", "provider_finals",
         "committed_stops", "duplicate_finals", "duplicate_stops",
-        "suspected_false_finals", "outbound_audio_frames",
+        "suspected_false_finals", "suspected_false_finals_with_audio",
+        "outbound_audio_frames",
         "audio_without_committed_stop", "first_audio_after_stop_ms",
     }
 
@@ -121,3 +122,34 @@ async def test_real_pcm_tap_propagates_frames_and_records_sanitized_trace():
     assert trace.extras[0][0] == "voice_boundary_audio"
     assert "transcript" not in repr(trace.extras[0][1]).lower()
     assert "audio" not in trace.extras[0][1].keys()  # counters only, no PCM bytes
+
+
+@pytest.mark.asyncio
+async def test_hard_false_final_identifies_audio_emitted_before_continuation():
+    """A hard Flux final can trigger output before the next spoken clause."""
+    t = [0.0]
+    evidence = VoiceTurnAudioEvidence(clock=lambda: t[0])
+    barrier = CommittedTurnBarrierProcessor(clock=lambda: t[0], evidence=evidence)
+    await BaseObject.setup(barrier, TaskManager())
+    sent = []
+
+    async def capture(frame, direction=FrameDirection.DOWNSTREAM):
+        sent.append(frame)
+
+    barrier.push_frame = capture
+    for frame in (
+        ProposedUserStartedSpeakingFrame(),
+        TranscriptionFrame("What about the", "u1", "first", finalized=True),
+        ProposedUserStoppedSpeakingFrame(),
+    ):
+        await barrier.process_frame(frame, FrameDirection.DOWNSTREAM)
+    t[0] = 0.25
+    evidence.audio()  # Real output tap records the server PCM frame.
+    t[0] = 0.4
+    await barrier.process_frame(ProposedUserStartedSpeakingFrame(), FrameDirection.DOWNSTREAM)
+    result = evidence.snapshot()
+    assert result["suspected_false_finals"] == 1
+    assert result["suspected_false_finals_with_audio"] == 1
+    assert result["outbound_audio_frames"] == 1
+    # Detection alone cannot retract speech already handed to transport.
+    assert result["first_audio_after_stop_ms"] is None  # reset for new epoch
