@@ -215,7 +215,11 @@ def inspect_opportunity_play_run(
             "sourceReadbacksVerified": bool(verified_writes), "outcomeMeasured": measured,
         })
     # A complete evidence report is NOT a promise of positive business lift.
-    certified = source_verified and all_approved and all_completed and all_verified and all_measured
+    play_not_failed = play.get("status") not in {"failed", "cancelled", "partial_success"}
+    certified = (
+        source_verified and play_not_failed and all_approved and all_completed
+        and all_verified and all_measured
+    )
     return {
         "status": "OBSERVED_CHAIN_COMPLETE" if certified else "ACCEPTANCE_INCOMPLETE",
         "playRunId": play_run_id, "playKey": play.get("play_key"),
@@ -224,6 +228,7 @@ def inspect_opportunity_play_run(
         "sourceEvidenceVerified": source_verified,
         "opportunityId": opportunity_id or None,
         "sourceRuns": source_ids if source_verified else None,
+        "playNotFailed": play_not_failed,
         "humanApprovalVerified": all_approved,
         "executionVerified": all_completed,
         "independentWriteReadbackVerified": all_verified,
