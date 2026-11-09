@@ -162,3 +162,25 @@ async def test_virtual_clock_measures_full_speculative_stop_hold(pause_ms):
     await barrier.process_frame(final, FrameDirection.DOWNSTREAM)
     assert [f for f, _ in forwarded] == [start, final, held_stop]
     assert barrier.last_stop_hold_ms == pytest.approx(pause_ms)
+
+
+@pytest.mark.asyncio
+async def test_duplicate_native_stop_cannot_start_two_assistant_turns():
+    start = ProposedUserStartedSpeakingFrame()
+    final = TranscriptionFrame("What changed today", "u1", "final", finalized=True)
+    stop = ProposedUserStoppedSpeakingFrame()
+    duplicate_stop = ProposedUserStoppedSpeakingFrame()
+    delivered, _ = await _run([start, final, stop, duplicate_stop])
+    assert delivered == [start, final, stop]
+
+
+@pytest.mark.asyncio
+async def test_second_real_utterance_may_commit_after_first_stop():
+    one = ProposedUserStartedSpeakingFrame()
+    first = TranscriptionFrame("yes", "u1", "first", finalized=True)
+    stop1 = ProposedUserStoppedSpeakingFrame()
+    two = ProposedUserStartedSpeakingFrame()
+    second = TranscriptionFrame("and tomorrow too", "u1", "second", finalized=True)
+    stop2 = ProposedUserStoppedSpeakingFrame()
+    delivered, _ = await _run([one, first, stop1, two, second, stop2])
+    assert delivered == [one, first, stop1, two, second, stop2]
