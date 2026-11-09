@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
-import { forwardAuthHeaders, voiceFastApiBase } from "@/lib/voice-api-proxy"
+import { forwardAuthHeaders, proxyVoiceJson, voiceFastApiBase } from "@/lib/voice-api-proxy"
 import { NextRequest } from "next/server"
 import { PRODUCTION_BACKEND_URL } from "@/lib/public-urls"
 
@@ -59,5 +59,70 @@ describe("DEC-016 voice proxy tenant and approval header integrity", () => {
     expect(forwarded.has("authorization")).toBe(false)
     expect(forwarded.has("x-org-id")).toBe(false)
     expect(forwarded.has("x-environment")).toBe(false)
+  })
+})
+
+describe("QA00 real request proxy boundary (synthetic, no provider calls)", () => {
+  it("forwards only the authenticated tenant context to the canonical API", async () => {
+    vi.stubEnv("NODE_ENV", "production")
+    vi.stubEnv("FASTAPI_BASE_URL", "")
+    const upstream = vi.fn(async () => Response.json(
+      { org_id: "tenant-a", environment: "synthetic", status: "ok" },
+      { status: 200 },
+    ))
+    vi.stubGlobal("fetch", upstream)
+
+    const request = new NextRequest("https://gravitre.app/api/voice/sessions", {
+      method: "POST",
+      headers: {
+        authorization: "Bearer synthetic-tenant-a",
+        "x-org-id": "tenant-a",
+        "x-environment": "synthetic",
+        cookie: "session=must-not-forward",
+        "x-admin-override": "must-not-forward",
+      },
+      body: JSON.stringify({ message: "synthetic" }),
+    })
+    const response = await proxyVoiceJson(request, "/api/voice/sessions")
+    expect(response.status).toBe(200)
+    expect(await response.json()).toEqual({
+      org_id: "tenant-a", environment: "synthetic", status: "ok",
+    })
+    expect(upstream).toHaveBeenCalledTimes(1)
+    const [url, init] = upstream.mock.calls[0] as unknown as [string, RequestInit]
+    expect(url).toBe(`${PRODUCTION_BACKEND_URL}/api/voice/sessions`)
+    expect(init.cache).toBe("no-store")
+    expect(init.method).toBe("POST")
+    expect(init.body).toBe(JSON.stringify({ message: "synthetic" }))
+    const sent = new Headers(init.headers)
+    expect(sent.get("authorization")).toBe("Bearer synthetic-tenant-a")
+    expect(sent.get("x-org-id")).toBe("tenant-a")
+    expect(sent.get("x-environment")).toBe("synthetic")
+    expect(sent.get("content-type")).toBe("application/json")
+    expect(sent.has("cookie")).toBe(false)
+    expect(sent.has("x-admin-override")).toBe(false)
+  })
+
+  it("preserves an upstream tenant-denial status without fabricating success", async () => {
+    vi.stubEnv("NODE_ENV", "production")
+    vi.stubEnv("FASTAPI_BASE_URL", "")
+    const upstream = vi.fn(async () => Response.json(
+      { detail: "Tenant access denied" }, { status: 403 },
+    ))
+    vi.stubGlobal("fetch", upstream)
+
+    const request = new NextRequest("https://gravitre.app/api/voice/sessions", {
+      method: "GET",
+      headers: { authorization: "Bearer wrong-tenant", "x-org-id": "tenant-b" },
+    })
+    const response = await proxyVoiceJson(request, "/api/voice/sessions")
+    expect(response.status).toBe(403)
+    expect(await response.json()).toEqual({ detail: "Tenant access denied" })
+    const [, init] = upstream.mock.calls[0] as unknown as [string, RequestInit]
+    const sent = new Headers(init.headers)
+    expect(sent.get("x-org-id")).toBe("tenant-b")
+    expect(sent.has("x-environment")).toBe(false)
+    expect(init.body).toBeUndefined()
+    expect(init.cache).toBe("no-store")
   })
 })
