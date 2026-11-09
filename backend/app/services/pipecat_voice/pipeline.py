@@ -421,7 +421,9 @@ def build_pipecat_voice_task(
             speculative,
             # Speculative eager STT is visible to prefetch, not to the
             # authoritative user-turn aggregator until a final transcript.
-            *([CommittedTurnBarrierProcessor(evidence=boundary_evidence)] if use_flux else []),
+            *([CommittedTurnBarrierProcessor(
+                evidence=boundary_evidence, voice_session=voice_session,
+            )] if use_flux else []),
             user_agg,
             llm,
             interrupt_reporter,
