@@ -127,3 +127,33 @@ def test_needs_tool_sse_structured_defer():
         message="anything about apollo",
         needs_tool_sse=False,
     )
+
+
+def test_live_runtime_provides_explicit_structured_handoff_decision():
+    """ECO-001/011, DEC-001/018: no second wording vote after LIVE adjudication.
+
+    Source contract only; actual deployed routing still requires traced E2E.
+    """
+    path = (
+        Path(__file__).resolve().parents[2]
+        / "app" / "services" / "unified_turn_reasoning_service.py"
+    )
+    tree = ast.parse(path.read_text(encoding="utf-8"))
+    decisions = []
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Call):
+            continue
+        name = node.func.id if isinstance(node.func, ast.Name) else (
+            node.func.attr if isinstance(node.func, ast.Attribute) else ""
+        )
+        if name != "should_defer_unified_turn_live_to_classical":
+            continue
+        decisions.append(node)
+        fields = {kw.arg: kw.value for kw in node.keywords}
+        assert "needs_tool_sse" in fields
+        value = fields["needs_tool_sse"]
+        assert isinstance(value, ast.Call)
+        assert isinstance(value.func, ast.Name) and value.func.id == "bool"
+        assert value.args and isinstance(value.args[0], ast.Attribute)
+        assert value.args[0].attr == "needs_tool_sse"
+    assert len(decisions) == 1, "one decision at LIVE/classical handoff source"
