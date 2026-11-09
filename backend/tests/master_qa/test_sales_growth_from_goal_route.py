@@ -126,7 +126,16 @@ async def test_from_goal_missing_connected_read_fails_before_database_write(monk
 
 
 @pytest.mark.asyncio
-async def test_from_goal_routes_support_objective_to_general_semantic_draft(monkeypatch):
+@pytest.mark.parametrize("department,objective_family", [
+    ("support", "improve_support"),
+    ("finance", "improve_cash_flow"),
+    ("operations", "reduce_costs"),
+    ("hr", "improve_hiring"),
+    ("engineering", "reduce_incidents"),
+])
+async def test_from_goal_routes_support_objective_to_general_semantic_draft(
+    monkeypatch, department, objective_family,
+):
     """Non-sales goals are understood but not misrepresented as executable."""
     from app.routers import workflows
     from app.workflows import sales_growth_recipe
@@ -136,8 +145,8 @@ async def test_from_goal_routes_support_objective_to_general_semantic_draft(monk
     async def analyze(**kwargs):
         calls.append("analyze")
         return GoalAnalysis(
-            intent="investigate tickets", department="support",
-            objective_family="improve_support", key_entities=["tickets"],
+            intent="investigate tickets", department=department,
+            objective_family=objective_family, key_entities=["tickets"],
             required_systems=["zendesk"], complexity="moderate",
             risk_factors=[], success_metrics=["ticket_resolution_time"],
         )
@@ -173,6 +182,8 @@ async def test_from_goal_routes_support_objective_to_general_semantic_draft(monk
     class GoalService:
         analyze_for_org = staticmethod(analyze)
         async def generate_workflow(self, **kwargs):
+            assert kwargs["analysis"].department == department
+            assert kwargs["analysis"].objective_family == objective_family
             calls.append("general_goal_service")
             return Generated()
 
@@ -182,7 +193,8 @@ async def test_from_goal_routes_support_objective_to_general_semantic_draft(monk
         "synthetic", object(), GoalService(),
     )
     assert result["id"] == "support-draft"
-    assert result["business_goal"]["department"] == "support"
+    assert result["business_goal"]["department"] == department
+    assert result["business_goal"]["objective_family"] == objective_family
     assert result["execution_status"] == "NOT_CERTIFIED"
     assert result["business_outcome"] == "NOT_MEASURED"
     assert calls == ["analyze", "general_goal_service", "persist_draft"]

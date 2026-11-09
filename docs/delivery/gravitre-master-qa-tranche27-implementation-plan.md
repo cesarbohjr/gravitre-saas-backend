@@ -2,6 +2,85 @@
 
 # Gravitre Master QA — Tranche 27 integrated implementation and governance plan
 
+## Resume review — 2026-11-08, baseline PR #611 `60c89ba865a`
+
+This checkpoint reconciles the original **Complete Six-Phase Engineering,
+Multimodal Parity and End-to-End Acceptance Plan** (2026-10-24), PR #610 at
+`668ebc48a175202f25c1e6220dedace4490b8013`, this plan, the remediation program,
+the autonomous business mandate and the canonical entrypoint trace. It does
+not replace any of those contracts or create another execution authority.
+
+### Implemented versus certified
+
+| Scope | Branch implementation reviewed | Remaining proof / work |
+| --- | --- | --- |
+| Foundation and release truth | Workflow source audit, deterministic fixtures, 43-finding guard, 28-edge preflight, QA00–90 manifest | Operational workflow dispositions, runtime caller census and per-finding closure. Guard still reports 43 open / 30 P0 / zero certified closures. |
+| Canonical goal understanding | `GoalService.analyze_for_org`, tenant-connected evidence requirements, explicit unverified model fallback | Model-intent quality, authorized retrieval/provenance and executable all-domain coverage. Understanding is not execution certification. |
+| Goal → canvas | Bounded read-only sales recipe uses existing builder/graph/runtime; from-goal route persists graph | Other domains remain model-suggested drafts; authenticated canvas round-trip and provider results remain unverified. |
+| LIVE/classical/ReAct | Structured fallback authority, one-shot tool-choice handoff, typed/voice contract tests | Current-turn ownership repair below; actual ingress traces, streamed terminal-result parity and approval/revocation races. |
+| Agent → Play → workflow → outcome | Joined PostgreSQL tests, canonical run receipt requirement, blocked/partial objective truth | New exact-head PostgreSQL CI; live provider readback and deployed downstream/UI acceptance. |
+| Durability | SQL leases/checkpoints, outbox consumers, isolated process recovery tests and default-off supervisor | Existing Railway child-only recovery and API continuity remain NOT RUN. |
+| Voice #610 V0–V7 | Specification only; #611 tests shared reasoning interfaces | V0 baseline, V1 reproduction then V2 turn commit, V3 honesty, V4 PCM, V5 comparison, V6 integration, V7 live/device/human acceptance. |
+| Original six-phase obligations | Preserved, not discharged by the newer goal mandate | All 26 model readiness states; seven-capability positive/negative invocation **and consumption**; four modalities; E01–E24; dialogue/expressiveness; provider compatibility/A-B; consented verified learning and repeat-turn measurement. |
+| Forecasting and monitoring | Existing mandate defines required outcomes | Inventory and extend existing metrics/forecast/replan/scheduler owners; calibration, insufficient-data abstention, opt-in monitoring and budget controls remain uncertified. |
+
+### Current corrective work
+
+1. **Handoff lifetime:** `consume_handoff()` exhausted only ContextVars while
+   `arm_from_task_state()` retained the original choice/queue in persistable
+   task state. Rehydration could re-arm consumed choices; an interrupted
+   evidence queue could reject a new choice. Transfer the queue out of task
+   state at arming, preserving canonical approval/execution state. Five
+   deterministic regressions cover serialized retry, interrupted queue, ordered
+   execution, cancellation before dispatch and overlapping turn isolation.
+   These tests do not claim provider exactly-once semantics or fix arbitrary
+   historical copies saved before the transfer.
+2. **Non-sales response failure:** general from-goal creation called removed
+   `GoalAnalysis.as_dict()` after persistence. Use its canonical Pydantic
+   `model_dump()`, as the sales path already does. Preserve the analyzed object
+   through draft generation; extend the route regression over support,
+   finance, operations, HR and engineering. They remain explicitly
+   `NOT_CERTIFIED` / `NOT_MEASURED`, with no automatic execution.
+   Baseline [Master QA run 42545727289](https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/42545727289)
+   independently reproduced this same failure (171 passed, one failed);
+   its PostgreSQL step was consequently not run.
+
+Local targeted validation: **135 passed, zero skips**, including the new
+handoff and expanded non-sales cases, goal compilation, objective execution
+truth, typed/voice parity, fallback and release/remediation/preflight tests.
+The exact existing Master QA runtime guard command also passes locally:
+**181 passed, zero skips**. Stored-dict lint: **2 passed**. Local PostgreSQL
+is **NOT RUN**: binaries are absent and package installation cannot change
+UID/groups in this environment. The existing disposable PostgreSQL Actions
+lane remains the execution surface. Exact-head full CI, PostgreSQL, deployed
+acceptance and real voice/provider proof remain distinct gates.
+
+### Next dependency order
+
+1. Restore exact-head Master QA/general CI; execute the joined disposable
+   PostgreSQL lane and investigate failures before widening feature scope.
+2. Finish canonical ingress and execution authority proof: actual
+   chat/voice/agent/Play/builder paths; one terminal result, cancellation,
+   approval/revocation, missing scope, replay and durable downstream outcome.
+   Runtime correlation remains subject to the existing issue #607 scope.
+3. Extend the current goal/capability/Play/builder owners for further domains
+   using actual authorized evidence and schemas; preserve all missing-data and
+   unsupported-action blocks. Finish the sales reference journey's independent
+   readback and baseline/follow-up metrics.
+4. Preserve the original model/intelligence inventory and E01–E24 obligations;
+   verify relevant capability consumption, all four modalities and consented
+   learning. Do not infer readiness from catalog entries or CI job titles.
+5. Extend existing forecasting, recommendation and goal monitoring paths only
+   after evidence/metric semantics are proven; measure accuracy, calibration,
+   latency and cost before optimization.
+6. Complete #610 V0–V7 in its owning PR and ingest QA30 evidence here; finish
+   browser/mobile/tenant/billing/recovery coverage, operational workflow audit,
+   per-finding certification and authorized deployment/rollback/live acceptance.
+
+No merge, deployment, production migration, provider write, telemetry
+activation, extra paid service or certified finding closure is part of this
+checkpoint.
+
 **Status:** ENGINEERING PLAN / NOT CERTIFIED. **Date:** 2026-11-07. **Base snapshot:** `main@cf8b95d25a6a70aa5db3b8eef103e6f86786b773`.
 **Owning implementation branch:** `feat/master-qa-tranche27-orchestration` (new, from main).
 **Companion voice branch:** `feat/qa-master-voice-parity-gates`, PR #610 (draft; authored separately, not yet integrated).

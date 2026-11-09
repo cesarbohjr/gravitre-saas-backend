@@ -5017,7 +5017,7 @@ async def create_workflow_from_goal(
     )
     return {
         "id": workflow_id, "workflow": generated.model_dump(),
-        "business_goal": business_goal.as_dict(),
+        "business_goal": business_goal.model_dump(),
         "execution_status": "NOT_CERTIFIED",
         "business_outcome": "NOT_MEASURED",
         "note": "Model-suggested workflow draft; capabilities, canvas compilation and governed execution not certified.",
