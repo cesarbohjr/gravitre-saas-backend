@@ -79,6 +79,10 @@ def store(monkeypatch):
             "id": RUN, "org_id": ORG, "workflow_id": WORKFLOW,
             "run_type": "execute", "status": "completed",
             "required_approvals": 1, "environment": "synthetic",
+            "definition_snapshot": {"steps": [{
+                "id": "actual-action", "type": "invoke_tool",
+                "config": {"action": "hubspot.deals.update_stage"},
+            }]},
             "parameters": {"play": {
                 "run_id": PLAY, "installation_id": INSTALL,
                 "key": "revenue-leak-hunter",
