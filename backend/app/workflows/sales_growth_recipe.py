@@ -238,6 +238,119 @@ def verified_sales_observations(
             "business_outcome": "NOT_MEASURED"}
 
 
+
+def diagnose_persisted_sales_reads(
+    plan: GoalPlan,
+    *,
+    org_id: str,
+    run_id: str,
+    completed_steps: Iterable[dict[str, Any]],
+) -> dict[str, Any]:
+    """Extract *bounded observations* from actual persisted HubSpot reads.
+
+    Workflows already invoke tenant-authorized tools through InvokeToolHandler.
+    This consumes their persisted step snapshots after execution; it does NOT
+    dispatch provider calls, confer authorization, or infer revenue growth.
+    Search pages without authoritative complete coverage cannot yield totals.
+    """
+    from datetime import datetime, timezone
+    from app.services.goal_service import BusinessMetricEvidence, GoalService
+
+    if not org_id or not run_id:
+        raise GoalCompilationBlocked("authenticated_org_and_persisted_run_required")
+    expected = {
+        step["id"]: str(step["config"]["action"])
+        for step in plan.workflow_definition["steps"]
+        if step.get("type") == "invoke_tool"
+    }
+    actual = list(completed_steps)
+    # Reject duplicated step identities; otherwise a later forged row could
+    # overwrite an earlier persisted record in a dict comprehension.
+    step_ids = [str(step.get("step_id") or step.get("id") or "") for step in actual]
+    if len(step_ids) != len(set(step_ids)):
+        raise GoalCompilationBlocked("duplicate_persisted_step_identity")
+    facts: list[dict[str, Any]] = []
+    metrics: list[BusinessMetricEvidence] = []
+    for step in actual:
+        if step.get("org_id") != org_id or str(step.get("run_id")) != run_id:
+            raise GoalCompilationBlocked("persisted_step_tenant_or_run_mismatch")
+        step_id = str(step.get("step_id") or step.get("id") or "")
+        action = expected.get(step_id)
+        if not action:
+            continue
+        if step.get("status") != "completed":
+            facts.append({"step_id": step_id, "status": "INCOMPLETE"})
+            continue
+        output = step.get("output_snapshot")
+        if not isinstance(output, dict) or output.get("simulated") is True:
+            facts.append({"step_id": step_id, "status": "UNVERIFIED"})
+            continue
+        # The registered action is the compiler authority; also confirm the
+        # persisted provider-reported action matches if one is supplied.
+        reported = str(output.get("action") or output.get("invoke_action") or action)
+        if reported != action:
+            facts.append({"step_id": step_id, "status": "ACTION_MISMATCH"})
+            continue
+        if output.get("success") is False:
+            facts.append({"step_id": step_id, "status": "PROVIDER_ERROR"})
+            continue
+        if action not in {"hubspot.deals.search", "hubspot.contacts.search"}:
+            facts.append({"step_id": step_id, "status": "UNSUPPORTED_METRIC_EXTRACTION"})
+            continue
+        payload = output.get("data") if isinstance(output.get("data"), dict) else output
+        rows = payload.get("results")
+        coverage = payload.get("coverage")
+        # Only a documented *complete* paginated census may assert a total.
+        # A default limited search is informative, but not a pipeline total.
+        if not isinstance(rows, list) or not isinstance(coverage, dict) or coverage.get("complete") is not True:
+            facts.append({"step_id": step_id, "status": "PARTIAL_READ_NO_TOTAL"})
+            continue
+        if coverage.get("returned") != len(rows) or any(not isinstance(row, dict) for row in rows):
+            facts.append({"step_id": step_id, "status": "INVALID_PROVIDER_COVERAGE"})
+            continue
+        reported_total = coverage.get("total_reported")
+        if type(reported_total) is not int or reported_total != len(rows):
+            facts.append({"step_id": step_id, "status": "INCONSISTENT_PROVIDER_TOTAL"})
+            continue
+        completed_at = step.get("completed_at")
+        try:
+            observed_at = datetime.fromisoformat(str(completed_at).replace("Z", "+00:00"))
+            if observed_at.tzinfo is None:
+                raise ValueError("naive")
+        except (TypeError, ValueError):
+            facts.append({"step_id": step_id, "status": "MISSING_PERSISTED_TIMESTAMP"})
+            continue
+        kind = "deals" if action == "hubspot.deals.search" else "contacts"
+        metric = BusinessMetricEvidence(
+            org_id=org_id, system="hubspot",
+            source_record_id=f"{run_id}:{step_id}:{kind}:complete-census",
+            metric_key=f"{kind}_record_count", unit="records",
+            value=float(len(rows)), observed_at=observed_at.astimezone(timezone.utc),
+        )
+        metrics.append(metric)
+        facts.append({
+            "step_id": step_id,
+            "status": "COMPLETE_CENSUS_OBSERVED",
+            "metric_key": metric.metric_key,
+            "value": len(rows),
+            "source_record_id": metric.source_record_id,
+        })
+    # This is a compiler-friendly diagnosis payload, never a forecast or
+    # an assertion that an opportunity caused measurable business impact.
+    return {
+        "status": "OBSERVATIONS_AVAILABLE" if metrics else "INSUFFICIENT_VERIFIED_EVIDENCE",
+        "goal": plan.goal_text,
+        "org_id": org_id,
+        "run_id": run_id,
+        "observations": [item.model_dump(mode="json") for item in metrics],
+        "findings": facts,
+        "hypotheses": [],
+        "recommended_writes": [],
+        "business_outcome": "NOT_MEASURED",
+        "execution_status": "READ_DIAGNOSTIC_ONLY",
+    }
+
+
 async def compile_sales_growth_for_org(
     *,
     org_id: str,
