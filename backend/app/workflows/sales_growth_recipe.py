@@ -379,6 +379,82 @@ def attach_persisted_sales_diagnosis(
     )
 
 
+def diagnose_authenticated_sales_run(
+    *,
+    client: Any,
+    org_id: str,
+    environment_name: str,
+    run_id: str,
+) -> dict[str, Any] | None:
+    """Read-only, tenant/env-scoped sales diagnosis using persisted run truth.
+
+    The run must already have been executed by the canonical workflow runtime.
+    This function never calls a provider or changes goal, workflow or run state.
+    A missing run/workflow returns None; invalid provenance fails closed.
+    """
+    from app.workflows.repository import get_run_with_steps, get_workflow_def
+
+    if not org_id or not environment_name or not run_id:
+        raise GoalCompilationBlocked("authenticated_org_environment_and_run_required")
+    run = get_run_with_steps(client, org_id, run_id, environment_name)
+    if run is None:
+        return None
+    if run.get("org_id") != org_id or run.get("environment") != environment_name:
+        raise GoalCompilationBlocked("run_tenant_or_environment_mismatch")
+    if run.get("run_type") != "execute" or run.get("status") != "completed":
+        raise GoalCompilationBlocked("completed_canonical_execution_required")
+    workflow_id = str(run.get("workflow_id") or "")
+    if not workflow_id:
+        raise GoalCompilationBlocked("persisted_workflow_identity_required")
+    workflow = get_workflow_def(client, org_id, workflow_id)
+    if workflow is None:
+        return None
+    if workflow.get("org_id") != org_id or workflow.get("name") != "Sales growth diagnostic":
+        raise GoalCompilationBlocked("not_a_tenant_sales_diagnostic")
+    goal = str(workflow.get("goal") or "").strip()
+    snapshot = run.get("definition_snapshot")
+    if not goal or not isinstance(snapshot, dict):
+        raise GoalCompilationBlocked("immutable_sales_plan_snapshot_required")
+    steps = snapshot.get("steps")
+    if not isinstance(steps, list) or not 1 <= len(steps) <= 3:
+        raise GoalCompilationBlocked("invalid_sales_plan_steps")
+    allowed_actions = {"hubspot.deals.search", "hubspot.contacts.search"}
+    if any(
+        not isinstance(step, dict)
+        or step.get("type") != "invoke_tool"
+        or not isinstance(step.get("config"), dict)
+        or step["config"].get("action") not in allowed_actions
+        or not str(step.get("id") or "").strip()
+        for step in steps
+    ):
+        raise GoalCompilationBlocked("unsupported_sales_plan_action")
+    ids = [str(step["id"]) for step in steps]
+    if len(set(ids)) != len(ids):
+        raise GoalCompilationBlocked("duplicate_sales_plan_step")
+    # A run's immutable definition is the only source for step identity:
+    # a modified workflow draft must not retroactively redefine its actions.
+    plan = GoalPlan(
+        objective="increase_sales", goal_text=goal, department="sales",
+        status="READ_DIAGNOSTIC_COMPLETED",
+        graph={}, workflow_definition={"steps": steps},
+        capabilities=tuple(str(step["config"]["action"]) for step in steps),
+        missing_connections=(), selected_play=None, selected_workflow_id=workflow_id,
+        agent_persona=None, required_external_approval=False,
+        observation_status="NOT_ASSESSED",
+    )
+    persisted_steps = run.get("steps")
+    if not isinstance(persisted_steps, list):
+        raise GoalCompilationBlocked("persisted_steps_required")
+    return {
+        "workflowId": workflow_id,
+        "environment": environment_name,
+        "runStatus": "completed",
+        "diagnosis": attach_persisted_sales_diagnosis(
+            plan, org_id=org_id, run_id=run_id, completed_steps=persisted_steps,
+        ).diagnostic_evidence,
+    }
+
+
 async def compile_sales_growth_for_org(
     *,
     org_id: str,
