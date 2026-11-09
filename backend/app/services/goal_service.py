@@ -111,19 +111,30 @@ class GoalService:
             goal, department_hint, sorted(connected),
             success_metric, org_context, org_id,
         )
+        return self.normalize_analysis(analysis, connected)
+
+    @staticmethod
+    def normalize_analysis(analysis: GoalAnalysis, connected: set[str]) -> GoalAnalysis:
+        """Annotate semantics with actual tenant connection availability.
+
+        Keep all model-inferred missing systems visible without trusting them
+        as connection or permission grants.
+        """
         required = list(dict.fromkeys(
             str(item).strip().lower()
             for item in analysis.required_systems
             if str(item).strip()
         ))
-        # Preserve requested missing systems as evidence gaps. Never let a
-        # model's required-systems list authorize actual tool execution.
         return analysis.model_copy(update={
             "department": (analysis.department or "cross_functional").strip().lower(),
             "required_systems": required,
             "connected_systems": [item for item in required if item in connected],
             "missing_systems": [item for item in required if item not in connected],
-            "understanding_status": "ANALYZED_UNVERIFIED",
+            "understanding_status": (
+                "FALLBACK_UNVERIFIED"
+                if analysis.understanding_status == "FALLBACK_UNVERIFIED"
+                else "ANALYZED_UNVERIFIED"
+            ),
             "execution_status": "NOT_RUN",
         })
 
