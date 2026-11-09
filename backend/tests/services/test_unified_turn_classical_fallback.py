@@ -262,3 +262,39 @@ def test_finalizer_does_not_claim_run_persisted_after_storage_failure(monkeypatc
     assert result.status == "cancelled"
     assert result.fanout["run_persisted"] is False
     assert result.fanout.get("idempotent_skip") is not True
+
+
+def test_finalized_run_retry_skips_duplicate_terminal_fanout(monkeypatch):
+    """A persisted terminal run must not repeat provider-facing fanout on retry."""
+    from types import SimpleNamespace
+    from app.services import execution_outcome as outcome
+
+    class Query:
+        def select(self, *_args): return self
+        def eq(self, *_args): return self
+        def limit(self, *_args): return self
+        def execute(self):
+            return SimpleNamespace(data=[{
+                "status": "completed",
+                "parameters": {"outcome_finalized": True},
+            }])
+
+    class Client:
+        def table(self, name):
+            assert name == "workflow_runs"
+            return Query()
+
+    monkeypatch.setattr(outcome, "_resolve_workflow_id", lambda *_: "workflow-test")
+
+    def forbidden(*_args, **_kwargs):
+        raise AssertionError("duplicate terminal fanout on retry")
+
+    for name in ("_persist_run", "_write_audit", "_emit_notification", "_record_learning"):
+        monkeypatch.setattr(outcome, name, forbidden)
+
+    result = outcome.finalize_execution_outcome(
+        Client(), org_id="org-test", status="completed", source="assistant_chat",
+        run_id="run-test", workflow_id="workflow-test",
+        metadata={"completion_verified": True},
+    )
+    assert result.fanout["idempotent_skip"] is True
