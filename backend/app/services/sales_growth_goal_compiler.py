@@ -123,6 +123,7 @@ def compile_sales_growth_goal(
     action_entries: Iterable[ConnectorActionMatrixEntry] | None = None,
     installed_plays: Iterable[dict[str, Any]] = (),
     agent_selection: dict[str, Any] | None = None,
+    recognized_objective: str | None = None,
 ) -> GoalPlan:
     """Build a validated **read-only** sales diagnostics graph.
 
@@ -131,7 +132,9 @@ def compile_sales_growth_goal(
     from the model's prompt. A missing connection produces a blocked plan,
     not a deceptive executable graph or silent fallback to all tools.
     """
-    if not _sales_intent(goal):
+    # Prefer the semantic intent analysis from GoalService. Keyword detection
+    # remains only for direct legacy callers and regression fixtures.
+    if recognized_objective != "increase_sales" and not _sales_intent(goal):
         raise GoalCompilationBlocked("unsupported_goal: sales-growth slice only")
     connected = {str(c).strip().lower() for c in connected_integrations if str(c).strip()}
     catalog = tuple(action_entries if action_entries is not None else build_connector_execution_matrix())
@@ -251,6 +254,7 @@ async def compile_sales_growth_for_org(
     settings: Any,
     installed_plays: Iterable[dict[str, Any]] = (),
     environment_name: str | None = None,
+    recognized_objective: str | None = None,
 ) -> GoalPlan:
     """Resolve the actual tenant's connectors and agent policy before compiling.
 
@@ -280,6 +284,7 @@ async def compile_sales_growth_for_org(
     return compile_sales_growth_goal(
         goal=goal, connected_integrations=connected,
         installed_plays=plays, agent_selection=selected_agent,
+        recognized_objective=recognized_objective,
     )
 
 
