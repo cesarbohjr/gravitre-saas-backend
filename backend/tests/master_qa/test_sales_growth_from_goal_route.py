@@ -111,3 +111,66 @@ async def test_from_goal_missing_connected_read_fails_before_database_write(monk
             "synthetic", object(), object(),
         )
     assert info.value.status_code == 409
+
+
+@pytest.mark.asyncio
+async def test_from_goal_routes_support_objective_to_general_semantic_draft(monkeypatch):
+    """Non-sales goals are understood but not misrepresented as executable."""
+    from app.routers import workflows
+    from app.services import business_goal_intelligence, sales_growth_goal_compiler
+    calls = []
+
+    async def analyze(**kwargs):
+        calls.append("analyze")
+        return SimpleNamespace(
+            department="support", objective_family="improve_support",
+            as_dict=lambda: {
+                "department": "support", "objective_family": "improve_support",
+                "execution_status": "NOT_RUN",
+            },
+        )
+    monkeypatch.setattr(business_goal_intelligence, "analyze_business_goal_for_org", analyze)
+
+    async def forbidden_sales_compiler(**kwargs):
+        raise AssertionError("support goals must not be routed to sales compiler")
+    monkeypatch.setattr(sales_growth_goal_compiler, "compile_sales_growth_for_org", forbidden_sales_compiler)
+
+    class Query:
+        def insert(self, payload):
+            calls.append("persist_draft")
+            assert payload["status"] == "draft"
+            return self
+        def execute(self):
+            return SimpleNamespace(data=[{"id": "support-draft"}])
+    monkeypatch.setattr(workflows, "get_supabase_client", lambda settings:
+                        SimpleNamespace(table=lambda name: Query()))
+    monkeypatch.setattr(workflows, "mirror_legacy_workflow_row_to_contract",
+                        lambda *args, **kwargs: None)
+    monkeypatch.setattr(workflows, "write_audit_event",
+                        lambda *args, **kwargs: None)
+
+    class Generated:
+        name = "Support diagnostic"
+        goal = "Why are our support tickets escalating?"
+        description = "Support investigation"
+        department = "support"
+        nodes = []
+        edges = []
+        def model_dump(self):
+            return {"name": self.name, "department": self.department}
+
+    class GoalService:
+        async def generate_workflow(self, **kwargs):
+            calls.append("general_goal_service")
+            return Generated()
+
+    result = await workflows.create_workflow_from_goal(
+        workflows.GoalWorkflowRequest(goal="Why are our support tickets escalating?"),
+        ({"user_id": "operator-1"}, "tenant-1"),
+        "synthetic", object(), GoalService(),
+    )
+    assert result["id"] == "support-draft"
+    assert result["business_goal"]["department"] == "support"
+    assert result["execution_status"] == "NOT_CERTIFIED"
+    assert result["business_outcome"] == "NOT_MEASURED"
+    assert calls == ["analyze", "general_goal_service", "persist_draft"]
