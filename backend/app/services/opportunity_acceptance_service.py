@@ -115,12 +115,12 @@ def inspect_opportunity_play_run(
             or play_params.get("key") != play.get("play_key")
             or play_params.get("execution_authority") != "canonical_workflow_runtime"
         ):
+            raise AcceptanceEvidenceBlocked("unbound_canonical_play_run")
         if (
             play_params.get("opportunity_id") != opportunity_id
             or play_params.get("source_run_ids") != source_ids
         ):
             raise AcceptanceEvidenceBlocked("play_source_lineage_mismatch")
-            raise AcceptanceEvidenceBlocked("unbound_canonical_play_run")
         approval_required = int(run.get("required_approvals") or 0)
         # This gate covers ACT WITH APPROVAL only. Mode and approval are read
         # from persisted records, never from model-suggested workflow metadata.
