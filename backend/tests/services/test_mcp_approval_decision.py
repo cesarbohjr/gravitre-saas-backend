@@ -137,3 +137,51 @@ async def test_revoked_agent_tool_permission_blocks_admin_dispatch(state, monkey
     assert error.value.status_code == 403
     assert state.approval["status"] == "pending"
     state.service.execute_tool.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_rejected_proposal_cannot_later_be_approved_or_retried(state):
+    """Rejection is terminal authorization denial, even if the user retries."""
+    await decide(state, approve=False)
+    for approve in (True, False, True):
+        with pytest.raises(HTTPException) as error:
+            await decide(state, approve=approve)
+        assert error.value.status_code == 409
+    assert state.approval["status"] == "rejected"
+    assert state.execution["status"] == "rejected"
+    state.service.execute_tool.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_approved_resume_requires_current_reviewer_permission(state):
+    """Prior consent cannot override a subsequently revoked reviewer capability."""
+    state.approval.update(status="approved", reviewed_at="2026-10-16T00:00:00Z", consumed_at=None)
+    state.role[0] = "viewer"
+    with pytest.raises(HTTPException) as error:
+        await decide(state)
+    assert error.value.status_code == 403
+    state.service.execute_tool.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_approved_resume_rejects_modified_persisted_arguments(state):
+    """Crash recovery must revalidate the frozen proposal, not trust stale consent."""
+    state.approval.update(status="approved", reviewed_at="2026-10-16T00:00:00Z", consumed_at=None)
+    state.execution["input"]["to"] = "attacker@example.test"
+    with pytest.raises(HTTPException) as error:
+        await decide(state)
+    assert error.value.status_code == 409
+    state.service.execute_tool.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_competing_approval_requests_have_one_claim_and_dispatch(state):
+    """Two concurrent decisions cannot both claim the same pending approval."""
+    import asyncio
+
+    results = await asyncio.gather(decide(state), decide(state), return_exceptions=True)
+    successes = [item for item in results if isinstance(item, dict)]
+    conflicts = [item for item in results if isinstance(item, HTTPException)]
+    assert len(successes) == 1
+    assert len(conflicts) == 1 and conflicts[0].status_code == 409
+    state.service.execute_tool.assert_awaited_once()
