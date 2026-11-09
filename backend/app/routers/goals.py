@@ -165,9 +165,7 @@ class GovernedOpportunityHandoffRequest(CrossSourceOpportunityRequest):
 @router.post("/diagnostics/opportunities/handoff")
 async def handoff_cross_source_opportunity(
     body: GovernedOpportunityHandoffRequest,
-    member: Annotated[tuple, Depends(__import__(
-        "app.auth.dependencies", fromlist=["require_org_member"
-    ).require_org_member)],
+    member: Annotated[tuple, Depends(require_org_member)],
     environment_name: Annotated[str, Depends(get_environment_context)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict[str, Any]:
