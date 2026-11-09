@@ -138,6 +138,17 @@ def inspect_opportunity_play_run(
         approved = len(approvers) >= approval_required and not declined
         all_approved = all_approved and approved
 
+        definition = run.get("definition_snapshot")
+        defined = definition.get("steps") if isinstance(definition, dict) else None
+        if not isinstance(defined, list) or not defined:
+            raise AcceptanceEvidenceBlocked("immutable_workflow_step_definition_required")
+        defined_by_id = {
+            str(item.get("id")): item
+            for item in defined
+            if isinstance(item, dict) and str(item.get("id") or "").strip()
+        }
+        if len(defined_by_id) != len(defined):
+            raise AcceptanceEvidenceBlocked("invalid_immutable_workflow_step_identity")
         step_records = run.get("steps") or []
         if not isinstance(step_records, list) or not step_records:
             all_verified = False
@@ -150,6 +161,16 @@ def inspect_opportunity_play_run(
                 all_verified = False
                 continue
             action = str(snapshot.get("invoke_action") or "")
+            step_def = defined_by_id.get(str(step.get("step_id") or ""))
+            if not isinstance(step_def, dict):
+                raise AcceptanceEvidenceBlocked("unrecognized_persisted_workflow_step")
+            if step_def.get("type") != step.get("step_type"):
+                raise AcceptanceEvidenceBlocked("workflow_step_type_mismatch")
+            if step_def.get("type") == "invoke_tool":
+                config = step_def.get("config")
+                if not isinstance(config, dict) or str(config.get("action") or "") != action:
+                    all_verified = False
+                    continue
             if not action:
                 continue
             from app.services.outcome_verification import is_write_action
