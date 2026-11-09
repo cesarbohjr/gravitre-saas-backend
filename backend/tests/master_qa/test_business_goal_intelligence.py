@@ -4,10 +4,7 @@ from __future__ import annotations
 from types import SimpleNamespace
 import pytest
 
-from app.services.business_goal_intelligence import (
-    analyze_business_goal_for_org, interpret_business_analysis,
-)
-from app.services.goal_service import GoalAnalysis
+from app.services.goal_service import GoalAnalysis, GoalService
 
 
 @pytest.mark.parametrize("department,family,prompt,systems", [
@@ -27,9 +24,7 @@ def test_any_business_goal_preserves_semantic_context_without_keyword_gate(
         complexity="moderate", risk_factors=["data gaps"],
         success_metrics=["baseline and change"],
     )
-    result = interpret_business_analysis(
-        goal=prompt, analysis=analysis, tenant_connectors=["hubspot"],
-    )
+    result = GoalService.normalize_analysis(analysis, {"hubspot"})
     assert result.department == department
     assert result.objective_family == family
     assert result.execution_status == "NOT_RUN"
@@ -61,9 +56,11 @@ async def test_org_goal_analysis_uses_existing_model_semantics_and_tenant_connec
                 success_metrics=["retention"],
             )
 
-    result = await analyze_business_goal_for_org(
+    service = GoalService(model_router=object())
+    service._analyze_goal = ModelGoalService()._analyze_goal
+    result = await service.analyze_for_org(
         goal="Our customers keep leaving. Why?",
-        org_id="tenant-one", settings=object(), goal_service=ModelGoalService(),
+        org_id="tenant-one", settings=object(),
     )
     assert result.department == "customer_success"
     assert result.objective_family == "reduce_churn"
@@ -75,6 +72,27 @@ async def test_org_goal_analysis_uses_existing_model_semantics_and_tenant_connec
 @pytest.mark.asyncio
 async def test_no_org_refuses_semantic_analysis():
     with pytest.raises(ValueError, match="authenticated_org_required"):
-        await analyze_business_goal_for_org(
+        await GoalService(model_router=object()).analyze_for_org(
             goal="Improve margins", org_id="", settings=object(),
         )
+
+
+@pytest.mark.asyncio
+async def test_model_fallback_never_invents_department_kpi_or_executable_state():
+    from types import SimpleNamespace
+    from app.services.goal_service import GoalService
+
+    class UnavailableModel:
+        async def complete(self, **kwargs):
+            raise RuntimeError("LLM unavailable")
+
+    service = GoalService(model_router=UnavailableModel())
+    result = await service._analyze_goal(
+        "What is going wrong with my business?",
+        None, [], None, None, "tenant-one",
+    )
+    assert result.department == "cross_functional"
+    assert result.success_metrics == []
+    assert result.objective_family is None
+    assert result.understanding_status == "FALLBACK_UNVERIFIED"
+    assert result.execution_status == "NOT_RUN"
