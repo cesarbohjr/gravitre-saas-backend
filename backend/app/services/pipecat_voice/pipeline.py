@@ -46,6 +46,7 @@ from app.services.pipecat_voice.stt_factory import STT_FLUX, build_pipecat_stt
 from app.services.pipecat_voice.text_turn_kick import TextTurnKickProcessor
 from app.services.pipecat_voice.transcript_relay import TranscriptRelayProcessor
 from app.services.pipecat_voice.committed_turn_barrier import CommittedTurnBarrierProcessor
+from app.services.pipecat_voice.final_turn_stability import FinalTurnStabilityProcessor
 from app.services.pipecat_voice.turn_audio_evidence import (
     OutboundAudioEvidenceProcessor, VoiceTurnAudioEvidence,
 )
@@ -424,6 +425,13 @@ def build_pipecat_voice_task(
             *([CommittedTurnBarrierProcessor(
                 evidence=boundary_evidence, voice_session=voice_session,
             )] if use_flux else []),
+            # Disabled by default: only opt-in Flux hard-final stabilizes
+            # the canonical words + stop together; raw interruption proceeds.
+            *([FinalTurnStabilityProcessor(
+                voice_session=voice_session,
+                normal_window_ms=settings.voice_final_stability_normal_ms,
+                approval_window_ms=settings.voice_final_stability_approval_ms,
+            )] if use_flux and settings.voice_final_stability_v2 else []),
             user_agg,
             llm,
             interrupt_reporter,
