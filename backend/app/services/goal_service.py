@@ -23,6 +23,10 @@ class GoalAnalysis(BaseModel):
     intent: str
     department: str
     objective_family: str | None = None
+    connected_systems: list[str] = Field(default_factory=list)
+    missing_systems: list[str] = Field(default_factory=list)
+    understanding_status: str = "ANALYZED_UNVERIFIED"
+    execution_status: str = "NOT_RUN"
     key_entities: list[str]
     required_systems: list[str]
     complexity: str
@@ -74,11 +78,54 @@ class GoalService:
         approval_required: bool = True,
         org_context: str | None = None,
         org_id: str | None = None,
+        analysis: GoalAnalysis | None = None,
     ) -> WorkflowDefinition:
-        analysis = await self._analyze_goal(goal, department, connectors, success_metric, org_context, org_id)
+        analysis = analysis or await self._analyze_goal(goal, department, connectors, success_metric, org_context, org_id)
         definition = self._build_definition(goal, analysis, approval_required)
         self._validate_definition(definition)
         return definition
+
+    async def analyze_for_org(
+        self, *,
+        goal: str,
+        org_id: str,
+        settings: Any,
+        department_hint: str | None = None,
+        success_metric: str | None = None,
+        org_context: str | None = None,
+    ) -> GoalAnalysis:
+        """Canonical semantic intake; obtain connectors from the tenant, never prompt.
+
+        Authorization to org_id is verified by the calling router. No execution
+        is initiated here. Inferred required systems are diagnostic requirements,
+        not proof of connection or action permission.
+        """
+        if not org_id or not org_id.strip():
+            raise ValueError("authenticated_org_required")
+        if not goal or not goal.strip():
+            raise ValueError("business_goal_required")
+        from app.services.agent_selector import AgentSelector
+
+        connected = await AgentSelector(settings=settings)._get_connected(org_id)
+        analysis = await self._analyze_goal(
+            goal, department_hint, sorted(connected),
+            success_metric, org_context, org_id,
+        )
+        required = list(dict.fromkeys(
+            str(item).strip().lower()
+            for item in analysis.required_systems
+            if str(item).strip()
+        ))
+        # Preserve requested missing systems as evidence gaps. Never let a
+        # model's required-systems list authorize actual tool execution.
+        return analysis.model_copy(update={
+            "department": (analysis.department or "cross_functional").strip().lower(),
+            "required_systems": required,
+            "connected_systems": [item for item in required if item in connected],
+            "missing_systems": [item for item in required if item not in connected],
+            "understanding_status": "ANALYZED_UNVERIFIED",
+            "execution_status": "NOT_RUN",
+        })
 
     async def _analyze_goal(
         self,
@@ -129,7 +176,9 @@ class GoalService:
         except Exception as exc:  # noqa: BLE001
             logger.warning("goal analysis fallback used: %s", str(exc))
 
-        selected_dept = (department or "operations").lower()
+        # A failed model does NOT justify inventing "operations" ownership,
+        # a business KPI target or an execution-ready plan.
+        selected_dept = (department or "cross_functional").lower()
         selected_connectors = [c for c in (connectors or []) if c in CONNECTOR_ACTIONS]
         return GoalAnalysis(
             intent=goal,
@@ -137,8 +186,10 @@ class GoalService:
             key_entities=["records", "stakeholders"],
             required_systems=selected_connectors,
             complexity="moderate",
-            risk_factors=["data quality", "approval delays"],
-            success_metrics=[success_metric or "completion_rate >= 90%"],
+            risk_factors=["insufficient_verified_context"],
+            success_metrics=[success_metric] if success_metric else [],
+            objective_family=None,
+            understanding_status="FALLBACK_UNVERIFIED",
         )
 
     def _build_definition(self, goal: str, analysis: GoalAnalysis, approval_required: bool) -> WorkflowDefinition:
