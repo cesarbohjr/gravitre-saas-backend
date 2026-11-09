@@ -3,7 +3,13 @@ import { backendBaseUrl } from "@/lib/public-urls"
 
 export function voiceFastApiBase(): string {
   const configured = process.env.FASTAPI_BASE_URL?.trim()
-  if (configured) return backendBaseUrl().replace(/\/+$/, "")
+  // In production, the voice proxy must use the same canonical backend
+  // resolver as all other server-side API routes. Never direct a deployed
+  // Vercel function at its own localhost just because an env var is absent.
+  if (configured || process.env.NODE_ENV === "production") {
+    return backendBaseUrl().replace(/\/+$/, "")
+  }
+  // Preserve the local FastAPI development path, without requiring Railway.
   return "http://localhost:8000"
 }
 
@@ -43,6 +49,11 @@ export async function proxyVoiceJson(
     body: method === "GET" || method === "HEAD" ? undefined : init?.body ?? (await request.text()),
     cache: "no-store",
   })
+  // HTTP 204/205/304 are bodyless. NextResponse rejects a body for these
+  // statuses, even if an upstream transport incorrectly supplied one.
+  if (upstream.status === 204 || upstream.status === 205 || upstream.status === 304) {
+    return new NextResponse(null, { status: upstream.status })
+  }
   const text = await upstream.text()
   try {
     const json = JSON.parse(text)
