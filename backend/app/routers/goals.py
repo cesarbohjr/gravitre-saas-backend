@@ -357,9 +357,30 @@ async def execute_objective(
                 environment_name=environment_name,
                 settings=settings,
             )
+            # A Play router response is not itself proof that a governed
+            # workflow was dispatched. Require the canonical workflow run
+            # receipt before recording objective activity or claiming a start.
+            workflow_runs = result.get("workflowRuns") if isinstance(result, dict) else None
+            has_run = (
+                isinstance(workflow_runs, list)
+                and any(
+                    isinstance(item, dict) and str(item.get("runId") or "").strip()
+                    for item in workflow_runs
+                )
+            )
+            accepted_status = (
+                isinstance(result, dict)
+                and result.get("status") in {"running", "awaiting_approval"}
+                and result.get("executionAuthority") == "canonical_workflow_runtime"
+                and str(result.get("playRunId") or "").strip()
+            )
+            if not (has_run and accepted_status):
+                request["state"] = "not_started"
+                request["reason"] = "No verified canonical workflow run was started"
+                continue
             request["state"] = "started"
-            request["playRunId"] = result.get("playRunId")
-            request["runStatus"] = result.get("status")
+            request["playRunId"] = result["playRunId"]
+            request["runStatus"] = result["status"]
             started.append(request["playKey"])
         except HTTPException as exc:
             request["state"] = "not_started"
