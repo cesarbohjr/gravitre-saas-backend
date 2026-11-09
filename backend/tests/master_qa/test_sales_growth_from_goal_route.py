@@ -6,7 +6,7 @@ from types import SimpleNamespace
 import pytest
 from fastapi import HTTPException
 
-from app.services.sales_growth_goal_compiler import (
+from app.workflows.sales_growth_recipe import (
     GoalCompilationBlocked, compile_sales_growth_goal,
 )
 
@@ -14,6 +14,7 @@ from app.services.sales_growth_goal_compiler import (
 def _plan():
     return compile_sales_growth_goal(
         goal="I need to increase sales",
+        recognized_objective="increase_sales",
         connected_integrations=["hubspot"],
         action_entries=[SimpleNamespace(
             connector_id="hubspot", action_key="hubspot.contacts.search",
@@ -27,12 +28,16 @@ def _plan():
 @pytest.mark.asyncio
 async def test_from_goal_persists_real_canvas_but_never_executes(monkeypatch):
     from app.routers import workflows
-    from app.services import sales_growth_goal_compiler, business_goal_intelligence
+    from app.workflows import sales_growth_recipe
+    from app.services.goal_service import GoalAnalysis
 
     async def analyze(**kwargs):
-        return SimpleNamespace(department="sales", objective_family="grow_revenue",
-                               as_dict=lambda: {"department": "sales", "objective_family": "grow_revenue"})
-    monkeypatch.setattr(business_goal_intelligence, "analyze_business_goal_for_org", analyze)
+        return GoalAnalysis(
+            intent="increase sales", department="sales",
+            objective_family="grow_revenue", key_entities=["deals"],
+            required_systems=["hubspot"], complexity="moderate",
+            risk_factors=[], success_metrics=["pipeline"],
+        )
     plan = _plan()
     calls = []
     row = None
@@ -53,7 +58,7 @@ async def test_from_goal_persists_real_canvas_but_never_executes(monkeypatch):
         assert kwargs["org_id"] == "tenant-1"
         calls.append("tenant_compiler")
         return plan
-    monkeypatch.setattr(sales_growth_goal_compiler, "compile_sales_growth_for_org", compile_for_org)
+    monkeypatch.setattr(sales_growth_recipe, "compile_sales_growth_for_org", compile_for_org)
     monkeypatch.setattr(workflows, "mirror_legacy_workflow_row_to_contract",
                         lambda *_args, **_kwargs: calls.append("mirror"))
 
@@ -71,6 +76,7 @@ async def test_from_goal_persists_real_canvas_but_never_executes(monkeypatch):
                         lambda *_args, **_kwargs: calls.append("audit"))
 
     class ShouldNotGenerate:
+        analyze_for_org = staticmethod(analyze)
         async def generate_workflow(self, **kwargs):
             raise AssertionError("legacy model outline must not replace bounded sales plan")
 
@@ -94,21 +100,22 @@ async def test_from_goal_persists_real_canvas_but_never_executes(monkeypatch):
 @pytest.mark.asyncio
 async def test_from_goal_missing_connected_read_fails_before_database_write(monkeypatch):
     from app.routers import workflows
-    from app.services import sales_growth_goal_compiler, business_goal_intelligence
+    from app.services import sales_growth_recipe, business_goal_intelligence
     async def analyze(**kwargs):
         return SimpleNamespace(department="sales", objective_family="grow_revenue")
     monkeypatch.setattr(business_goal_intelligence, "analyze_business_goal_for_org", analyze)
 
     async def blocked(**kwargs):
         raise GoalCompilationBlocked("no_connected_executable_sales_read")
-    monkeypatch.setattr(sales_growth_goal_compiler, "compile_sales_growth_for_org", blocked)
+    monkeypatch.setattr(sales_growth_recipe, "compile_sales_growth_for_org", blocked)
     monkeypatch.setattr(workflows, "get_supabase_client",
                         lambda *_: (_ for _ in ()).throw(AssertionError("no DB writes")))
     with pytest.raises(HTTPException) as info:
         await workflows.create_workflow_from_goal(
             workflows.GoalWorkflowRequest(goal="increase sales"),
             ({"user_id": "operator-1"}, "tenant-1"),
-            "synthetic", object(), object(),
+            "synthetic", object(),
+            SimpleNamespace(analyze_for_org=analyze),
         )
     assert info.value.status_code == 409
 
@@ -117,23 +124,22 @@ async def test_from_goal_missing_connected_read_fails_before_database_write(monk
 async def test_from_goal_routes_support_objective_to_general_semantic_draft(monkeypatch):
     """Non-sales goals are understood but not misrepresented as executable."""
     from app.routers import workflows
-    from app.services import business_goal_intelligence, sales_growth_goal_compiler
+    from app.workflows import sales_growth_recipe
     calls = []
 
+    from app.services.goal_service import GoalAnalysis
     async def analyze(**kwargs):
         calls.append("analyze")
-        return SimpleNamespace(
-            department="support", objective_family="improve_support",
-            as_dict=lambda: {
-                "department": "support", "objective_family": "improve_support",
-                "execution_status": "NOT_RUN",
-            },
+        return GoalAnalysis(
+            intent="investigate tickets", department="support",
+            objective_family="improve_support", key_entities=["tickets"],
+            required_systems=["zendesk"], complexity="moderate",
+            risk_factors=[], success_metrics=["ticket_resolution_time"],
         )
-    monkeypatch.setattr(business_goal_intelligence, "analyze_business_goal_for_org", analyze)
 
     async def forbidden_sales_compiler(**kwargs):
         raise AssertionError("support goals must not be routed to sales compiler")
-    monkeypatch.setattr(sales_growth_goal_compiler, "compile_sales_growth_for_org", forbidden_sales_compiler)
+    monkeypatch.setattr(sales_growth_recipe, "compile_sales_growth_for_org", forbidden_sales_compiler)
 
     class Query:
         def insert(self, payload):
@@ -160,6 +166,7 @@ async def test_from_goal_routes_support_objective_to_general_semantic_draft(monk
             return {"name": self.name, "department": self.department}
 
     class GoalService:
+        analyze_for_org = staticmethod(analyze)
         async def generate_workflow(self, **kwargs):
             calls.append("general_goal_service")
             return Generated()
