@@ -16,6 +16,7 @@ from __future__ import annotations
 import time
 from collections import deque
 from collections.abc import Callable
+from typing import Any
 
 from pipecat.frames.frames import (
     EagerEndOfTurnCancelFrame,
@@ -31,9 +32,11 @@ from pipecat.processors.frame_processor import FrameDirection, FrameProcessor
 class CommittedTurnBarrierProcessor(FrameProcessor):
     """Never promote probable-EOT into an aggregator-owned committed user turn."""
 
-    def __init__(self, *, clock: Callable[[], float] = time.perf_counter, **kwargs):
+    def __init__(self, *, clock: Callable[[], float] = time.perf_counter,
+                 evidence: Any | None = None, **kwargs):
         super().__init__(**kwargs)
         self._hold_clock = clock
+        self._evidence = evidence
         self._pending_stop: Frame | None = None
         self._pending_stop_at: float | None = None
         self._last_stop_hold_ms: float | None = None
@@ -60,11 +63,15 @@ class CommittedTurnBarrierProcessor(FrameProcessor):
             return
 
         if isinstance(frame, EagerTranscriptionFrame):
+            if self._evidence is not None:
+                self._evidence.eager()
             self._final_seen = False
             self._suppressed_eager += 1
             return
 
         if isinstance(frame, EagerEndOfTurnCancelFrame):
+            if self._evidence is not None:
+                self._evidence.eager_cancel()
             # The speaker continued. Never replay a provisional stop.
             self._pending_stop = None
             self._pending_stop_at = None
@@ -73,6 +80,8 @@ class CommittedTurnBarrierProcessor(FrameProcessor):
             return
 
         if isinstance(frame, ProposedUserStartedSpeakingFrame):
+            if self._evidence is not None:
+                self._evidence.new_start()
             # A fresh utterance invalidates a stop from a previous candidate.
             self._pending_stop = None
             self._pending_stop_at = None
@@ -83,6 +92,8 @@ class CommittedTurnBarrierProcessor(FrameProcessor):
 
         if isinstance(frame, ProposedUserStoppedSpeakingFrame):
             if self._stop_forwarded:
+                if self._evidence is not None:
+                    self._evidence.duplicate_stop()
                 # A duplicate native stop must never trigger a second answer.
                 return
             if not self._final_seen:
@@ -92,6 +103,8 @@ class CommittedTurnBarrierProcessor(FrameProcessor):
                 self._pending_stop = frame
                 return
             self._stop_forwarded = True
+            if self._evidence is not None:
+                self._evidence.stop()
             await self.push_frame(frame, direction)
             return
 
@@ -106,9 +119,13 @@ class CommittedTurnBarrierProcessor(FrameProcessor):
                     str(getattr(frame, "text", "") or ""),
                 )
                 if key in self._recent_final_keys:
+                    if self._evidence is not None:
+                        self._evidence.duplicate_final()
                     return
                 self._recent_final_keys.append(key)
             # Pipecat must receive authoritative words before resolving stop.
+            if self._evidence is not None:
+                self._evidence.final()
             await self.push_frame(frame, direction)
             if self._pending_stop is not None:
                 pending = self._pending_stop
@@ -120,6 +137,8 @@ class CommittedTurnBarrierProcessor(FrameProcessor):
                 self._pending_stop_at = None
                 await self.push_frame(pending, direction)
                 self._stop_forwarded = True
+                if self._evidence is not None:
+                    self._evidence.stop()
             self._final_seen = True
             return
 
