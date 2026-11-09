@@ -184,3 +184,28 @@ async def test_second_real_utterance_may_commit_after_first_stop():
     stop2 = ProposedUserStoppedSpeakingFrame()
     delivered, _ = await _run([one, first, stop1, two, second, stop2])
     assert delivered == [one, first, stop1, two, second, stop2]
+
+
+@pytest.mark.asyncio
+async def test_retransmitted_final_does_not_repeat_llm_context_or_stop():
+    start = ProposedUserStartedSpeakingFrame()
+    original = TranscriptionFrame("Give me the status", "u1", "same-final", finalized=True)
+    retry = TranscriptionFrame("Give me the status", "u1", "same-final", finalized=True)
+    stop = ProposedUserStoppedSpeakingFrame()
+    stop_again = ProposedUserStoppedSpeakingFrame()
+    delivered, _ = await _run([start, original, retry, stop, stop_again])
+    assert delivered == [start, original, stop]
+
+
+@pytest.mark.asyncio
+async def test_repeating_same_words_in_distinct_final_turns_is_not_dropped():
+    first_start = ProposedUserStartedSpeakingFrame()
+    first = TranscriptionFrame("yes", "u1", "turn-1", finalized=True)
+    first_stop = ProposedUserStoppedSpeakingFrame()
+    next_start = ProposedUserStartedSpeakingFrame()
+    second = TranscriptionFrame("yes", "u1", "turn-2", finalized=True)
+    second_stop = ProposedUserStoppedSpeakingFrame()
+    delivered, _ = await _run([
+        first_start, first, first_stop, next_start, second, second_stop,
+    ])
+    assert delivered == [first_start, first, first_stop, next_start, second, second_stop]
