@@ -165,3 +165,83 @@ def test_preview_api_denies_missing_org_and_invalid_uuid(monkeypatch):
             "crmRunId": CRM_RUN, "analyticsRunId": GA_RUN,
         })
     assert response.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_handoff_requires_explicit_confirmation_and_canonical_play(monkeypatch):
+    from app.routers import plays
+
+    called = []
+    async def canonical_play(play_key, request, member, environment_name, settings):
+        called.append((play_key, request.installation_id, member[1], environment_name))
+        return {
+            "status": "awaiting_approval",
+            "executionAuthority": "canonical_workflow_runtime",
+            "playRunId": "approved-by-runtime-only",
+        }
+
+    monkeypatch.setattr(plays, "run_play", canonical_play)
+    async def preview(*args, **kwargs):
+        return {"opportunities": [{
+            "id": "sales_pipeline_review", "status": "REVIEW_REQUIRED",
+            "play_key": "revenue-leak-hunter",
+            "installation_id": "installation-1", "workflow_id": WF,
+        }]}
+
+    monkeypatch.setattr(goals, "preview_cross_source_opportunities", preview)
+    # The handler calls the same canonical preview function synchronously;
+    # supply a normal function rather than an un-awaited coroutine.
+    monkeypatch.setattr(goals, "preview_cross_source_opportunities",
+                        lambda *args, **kwargs: {
+                            "opportunities": [{
+                                "id": "sales_pipeline_review", "status": "REVIEW_REQUIRED",
+                                "play_key": "revenue-leak-hunter",
+                                "installation_id": "installation-1", "workflow_id": WF,
+                            }],
+                        })
+    from app.routers.goals import GovernedOpportunityHandoffRequest
+    body = GovernedOpportunityHandoffRequest(
+        crmRunId=CRM_RUN, analyticsRunId=GA_RUN,
+        opportunityId="sales_pipeline_review",
+    )
+    with pytest.raises(HTTPException) as exc:
+        await goals.handoff_cross_source_opportunity(
+            body, ({"user_id": "reader"}, "tenant-A", "member"), "synthetic", object(),
+        )
+    assert exc.value.status_code == 409
+    assert called == []
+
+    accepted = body.model_copy(update={"confirm_submit_to_play": True})
+    result = await goals.handoff_cross_source_opportunity(
+        accepted, ({"user_id": "reader"}, "tenant-A", "member"), "synthetic", object(),
+    )
+    assert called == [("revenue-leak-hunter", "installation-1", "tenant-A", "synthetic")]
+    assert result["canonicalPlayResult"]["status"] == "awaiting_approval"
+    assert result["approvalGrantedByIntelligence"] is False
+    assert result["businessOutcome"] == "NOT_MEASURED"
+
+
+@pytest.mark.asyncio
+async def test_unbound_opportunity_never_reaches_canonical_play(monkeypatch):
+    from app.routers import plays
+    async def forbidden(*args, **kwargs):
+        raise AssertionError("no canonical Play dispatch allowed")
+    monkeypatch.setattr(plays, "run_play", forbidden)
+    monkeypatch.setattr(goals, "preview_cross_source_opportunities",
+                        lambda *args, **kwargs: {
+                            "opportunities": [{
+                                "id": "sales_pipeline_review", "status": "NEEDS_PLAY_SETUP",
+                                "play_key": None, "installation_id": None,
+                                "workflow_id": None,
+                            }],
+                        })
+    from app.routers.goals import GovernedOpportunityHandoffRequest
+    body = GovernedOpportunityHandoffRequest(
+        crmRunId=CRM_RUN, analyticsRunId=GA_RUN,
+        opportunityId="sales_pipeline_review", confirmSubmitToPlay=True,
+    )
+    with pytest.raises(HTTPException) as exc:
+        await goals.handoff_cross_source_opportunity(
+            body, ({"user_id": "reader"}, "tenant-A", "member"), "synthetic", object(),
+        )
+    assert exc.value.status_code == 409
