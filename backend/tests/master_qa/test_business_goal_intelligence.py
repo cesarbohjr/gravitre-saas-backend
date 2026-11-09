@@ -64,8 +64,8 @@ async def test_org_goal_analysis_uses_existing_model_semantics_and_tenant_connec
     )
     assert result.department == "customer_success"
     assert result.objective_family == "reduce_churn"
-    assert result.connected_systems == ("hubspot",)
-    assert result.missing_systems == ("zendesk",)
+    assert result.connected_systems == ["hubspot"]
+    assert result.missing_systems == ["zendesk"]
     assert result.execution_status == "NOT_RUN"
 
 
