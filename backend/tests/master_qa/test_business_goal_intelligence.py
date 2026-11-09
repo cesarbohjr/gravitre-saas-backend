@@ -253,3 +253,78 @@ def test_metric_evidence_missing_connection_never_claims_diagnosis():
     assert result.missing_systems == ["zendesk"]
     assert result.usable == []
     assert result.business_outcome == "NOT_MEASURED"
+
+
+def test_metric_changes_require_one_identical_source_record_and_unit():
+    from datetime import datetime, timedelta, timezone
+    from app.services.goal_service import BusinessMetricEvidence
+
+    now = datetime(2026, 11, 8, tzinfo=timezone.utc)
+    analysis = GoalAnalysis(
+        intent="Review pipeline", department="sales", key_entities=["deals"],
+        required_systems=["hubspot"], complexity="simple",
+        risk_factors=[], success_metrics=["pipeline_value"],
+    )
+    first = BusinessMetricEvidence(
+        org_id="org-A", system="hubspot", source_record_id="pipeline-aggregate",
+        metric_key="pipeline_value", unit="CAD", value=100.0,
+        observed_at=now - timedelta(days=2),
+    )
+    second = first.model_copy(update={"value": 125.0, "observed_at": now})
+    def assess(items):
+        return GoalService.assess_evidence_for_org(
+            org_id="org-A", analysis=analysis, connected_systems={"hubspot"},
+            observations=items, as_of=now,
+        )
+    change = GoalService.compare_metric_observations(
+        assessment=assess([second, first]), metric_key="pipeline_value",
+    )
+    assert change.status == "OBSERVED_CHANGE_NOT_CAUSAL"
+    assert change.before == 100.0 and change.after == 125.0
+    assert change.absolute_change == 25.0 and change.percentage_change == 25.0
+    assert change.business_outcome == "NOT_MEASURED"
+    assert GoalService.compare_metric_observations(
+        assessment=assess([first]), metric_key="pipeline_value",
+    ).status == "INSUFFICIENT_COMPARABLE_HISTORY"
+    for updates in (
+        {"unit": "USD"},
+        {"source_record_id": "another-pipeline"},
+        {"system": "salesforce"},
+        {"observed_at": first.observed_at},
+    ):
+        incompatible = second.model_copy(update=updates)
+        assert GoalService.compare_metric_observations(
+            assessment=assess([first, incompatible]), metric_key="pipeline_value",
+        ).status != "OBSERVED_CHANGE_NOT_CAUSAL"
+
+
+def test_metric_change_zero_baseline_never_invents_percentage():
+    from datetime import datetime, timedelta, timezone
+    from app.services.goal_service import BusinessMetricEvidence, GoalEvidenceAssessment
+    now = datetime(2026, 11, 8, tzinfo=timezone.utc)
+    first = BusinessMetricEvidence(
+        org_id="A", system="hubspot", source_record_id="aggregate",
+        metric_key="bookings", unit="count", value=0, observed_at=now - timedelta(days=1),
+    )
+    second = first.model_copy(update={"value": 5, "observed_at": now})
+    change = GoalService.compare_metric_observations(
+        assessment=GoalEvidenceAssessment(
+            status="EVIDENCE_AVAILABLE_UNINTERPRETED", usable=[first, second],
+        ),
+        metric_key="bookings",
+    )
+    assert change.absolute_change == 5
+    assert change.percentage_change is None
+
+
+@pytest.mark.parametrize("value", [float("nan"), float("inf"), float("-inf")])
+def test_metric_evidence_rejects_nonfinite_values(value):
+    from datetime import datetime, timezone
+    from pydantic import ValidationError
+    from app.services.goal_service import BusinessMetricEvidence
+    with pytest.raises(ValidationError):
+        BusinessMetricEvidence(
+            org_id="A", system="hubspot", source_record_id="record",
+            metric_key="bookings", unit="count", value=value,
+            observed_at=datetime(2026, 11, 8, tzinfo=timezone.utc),
+        )
