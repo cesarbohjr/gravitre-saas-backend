@@ -215,6 +215,39 @@ async def handoff_cross_source_opportunity(
     }
 
 
+@router.get("/diagnostics/opportunities/play-runs/{play_run_id}/acceptance")
+def inspect_opportunity_acceptance(
+    play_run_id: str,
+    _user: Annotated[dict, Depends(get_current_user)],
+    org_id: Annotated[str | None, Depends(get_org_context)],
+    environment_name: Annotated[str, Depends(get_environment_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict[str, Any]:
+    """Read-only verification of independently persisted Play/outcome facts."""
+    from uuid import UUID
+    from app.workflows.repository import get_supabase_client
+    from app.services.opportunity_acceptance_service import (
+        AcceptanceEvidenceBlocked, inspect_opportunity_play_run,
+    )
+
+    if org_id is None:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
+    try:
+        run_id = str(UUID(play_run_id))
+    except (TypeError, ValueError) as exc:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Invalid Play run ID") from exc
+    try:
+        evidence = inspect_opportunity_play_run(
+            client=get_supabase_client(settings), org_id=org_id,
+            environment_name=environment_name, play_run_id=run_id,
+        )
+    except AcceptanceEvidenceBlocked as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+    if evidence is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Play run not found")
+    return evidence
+
+
 class GeneratePlanRequest(BaseModel):
     objective: str | None = None
     context: str | None = None
