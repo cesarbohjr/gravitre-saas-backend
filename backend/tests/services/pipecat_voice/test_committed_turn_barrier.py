@@ -17,8 +17,8 @@ from pipecat.utils.asyncio.task_manager import TaskManager
 from app.services.pipecat_voice.committed_turn_barrier import CommittedTurnBarrierProcessor
 
 
-async def _run(frames):
-    barrier = CommittedTurnBarrierProcessor()
+async def _run(frames, *, clock=None):
+    barrier = CommittedTurnBarrierProcessor(**({"clock": clock} if clock is not None else {}))
     await BaseObject.setup(barrier, TaskManager())
     delivered = []
 
@@ -132,3 +132,33 @@ def test_live_flux_pipeline_positions_barrier_after_speculation_before_turn_aggr
     listing = source[source.index("pipeline = Pipeline("):]
     assert listing.index("            speculative,") < listing.index("CommittedTurnBarrierProcessor()")
     assert listing.index("CommittedTurnBarrierProcessor()") < listing.index("            user_agg,")
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("pause_ms", [400, 800, 1200])
+async def test_virtual_clock_measures_full_speculative_stop_hold(pause_ms):
+    """No provisional stop can reach the model during the measured pause."""
+    simulated_time = [0.0]
+    barrier = CommittedTurnBarrierProcessor(clock=lambda: simulated_time[0])
+    await BaseObject.setup(barrier, TaskManager())
+    forwarded = []
+
+    async def capture(frame, direction=FrameDirection.DOWNSTREAM):
+        forwarded.append((frame, direction))
+
+    barrier.push_frame = capture
+    start = ProposedUserStartedSpeakingFrame()
+    early = EagerTranscriptionFrame("Please show", "u1", "early")
+    held_stop = ProposedUserStoppedSpeakingFrame()
+    final = TranscriptionFrame("Please show the complete report", "u1", "final", finalized=True)
+    for frame in (start, early, held_stop):
+        await barrier.process_frame(frame, FrameDirection.DOWNSTREAM)
+    assert [f for f, _ in forwarded] == [start]
+    assert barrier.last_stop_hold_ms is None
+
+    simulated_time[0] += pause_ms / 1000.0
+    # Time has moved; candidate stop still cannot start a reply.
+    assert [f for f, _ in forwarded] == [start]
+    await barrier.process_frame(final, FrameDirection.DOWNSTREAM)
+    assert [f for f, _ in forwarded] == [start, final, held_stop]
+    assert barrier.last_stop_hold_ms == pytest.approx(pause_ms)
