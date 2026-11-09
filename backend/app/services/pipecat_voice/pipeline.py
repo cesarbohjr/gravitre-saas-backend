@@ -45,6 +45,7 @@ from app.services.pipecat_voice.spoken_text_tap import (
 from app.services.pipecat_voice.stt_factory import STT_FLUX, build_pipecat_stt
 from app.services.pipecat_voice.text_turn_kick import TextTurnKickProcessor
 from app.services.pipecat_voice.transcript_relay import TranscriptRelayProcessor
+from app.services.pipecat_voice.committed_turn_barrier import CommittedTurnBarrierProcessor
 from app.services.pipecat_voice.tts_warmup import warm_elevenlabs_tts_connection
 from app.services.pipecat_voice.utterance_gate import UtteranceGateProcessor
 from app.services.pipecat_voice.voice_conversational_polish import (
@@ -414,6 +415,9 @@ def build_pipecat_voice_task(
             TranscriptRelayProcessor(voice_session=voice_session if use_flux else None),
             TextTurnKickProcessor(),
             speculative,
+            # Speculative eager STT is visible to prefetch, not to the
+            # authoritative user-turn aggregator until a final transcript.
+            *([CommittedTurnBarrierProcessor()] if use_flux else []),
             user_agg,
             llm,
             interrupt_reporter,
