@@ -364,7 +364,11 @@ async def execute_objective(
         except HTTPException as exc:
             request["state"] = "not_started"
             request["reason"] = exc.detail
-    client.table("goals").update({"status": "active"}).eq("id", objective_id).eq("org_id", org).execute()
+    # Do not mark an objective active merely because execution was requested.
+    # A fully blocked or rejected plan has not started any governed workflow.
+    # Its objective status must not claim otherwise; return the actual reasons.
+    if started:
+        client.table("goals").update({"status": "active"}).eq("id", objective_id).eq("org_id", org).execute()
     return {"objectiveId": objective_id, "started": started, "steps": requests}
 
 
