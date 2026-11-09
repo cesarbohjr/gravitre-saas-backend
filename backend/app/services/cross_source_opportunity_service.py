@@ -7,7 +7,7 @@ Execution and approval continue exclusively through canonical Play/workflow APIs
 """
 from __future__ import annotations
 
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from typing import Any
 
 from app.services.analytics_metric_evidence import diagnose_ga4_run
@@ -76,8 +76,11 @@ def assess_cross_source_opportunities(
     for fact in crm_facts:
         if not isinstance(fact, dict) or fact.get("org_id") != org_id:
             raise OpportunityAssessmentBlocked("crm_evidence_tenant_mismatch")
-        stamped = datetime.fromisoformat(str(fact.get("observed_at", "")).replace("Z", "+00:00"))
-        if stamped.tzinfo is None or stamped > now or (now - stamped).days > 7:
+        try:
+            stamped = datetime.fromisoformat(str(fact.get("observed_at", "")).replace("Z", "+00:00"))
+        except (TypeError, ValueError):
+            continue
+        if stamped.tzinfo is None or stamped > now or now - stamped > timedelta(days=7):
             continue
         if fact.get("system") != "hubspot" or fact.get("metric_key") != "deals_record_count":
             continue
@@ -148,8 +151,13 @@ def assess_cross_source_opportunities(
             "requires_approval": True,
             "execution_route": "canonical_play_or_workflow_only",
         })
-    # Never turn a heuristic into an investment ROI ranking. Stable ordering
-    # is based on evidence presence and source-specific investigation type.
+    # Triage rank is operational readiness, not a claimed ROI ordering.
+    opportunities.sort(key=lambda row: (row["status"] != "REVIEW_REQUIRED", row["id"]))
+    for rank, item in enumerate(opportunities, start=1):
+        item["triage_rank"] = rank
+        item["rank_basis"] = "verified_source_presence_and_play_readiness_only"
+        item["causal_confidence"] = "NOT_ESTABLISHED"
+        item["effort_estimate"] = None
     return {
         "status": "REVIEW_CANDIDATES" if opportunities else "INSUFFICIENT_CROSS_SOURCE_EVIDENCE",
         "org_id": org_id, "environment": environment_name,
