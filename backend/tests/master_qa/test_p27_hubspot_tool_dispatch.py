@@ -32,8 +32,20 @@ def env(event="pull_request", **kw):
     return data
 
 
+def protected_environment():
+    return {
+        "name": "p27-provider-sandbox",
+        "protection_rules": [{
+            "type": "required_reviewers", "prevent_self_review": True,
+            "reviewers": [{"type": "User", "reviewer": {"id": 123, "login": "independent-reviewer"}}],
+        }],
+        "deployment_branch_policy": {"protected_branches": True, "custom_branch_policies": False},
+    }
+
+
 def test_owner_labeled_exact_pr_head_can_be_authorized():
-    result = check_dispatch(env=env(), checked_out_sha=SHA, fetch_head=lambda: SHA, approved_review=True)
+    result = check_dispatch(env=env(), checked_out_sha=SHA, fetch_head=lambda: SHA,
+                            approved_review=True, fetch_environment=protected_environment)
     assert result["result"] == "PASS"
     assert result["event"] == "pull_request"
 
@@ -72,12 +84,102 @@ def test_pr_label_requires_independent_exact_head_approval():
 def test_manual_dispatch_only_allowed_on_main():
     assert check_dispatch(
         env=env("workflow_dispatch"), checked_out_sha=SHA,
+        fetch_environment=protected_environment,
     )["result"] == "PASS"
     with pytest.raises(RuntimeError, match="must run from main"):
         check_dispatch(
             env=env("workflow_dispatch", GITHUB_REF="refs/heads/feature"),
             checked_out_sha=SHA,
         )
+
+
+@pytest.mark.parametrize("event", ["pull_request", "workflow_dispatch"])
+@pytest.mark.parametrize("defect", [
+    "unprotected", "no_branch_policy", "self_review_allowed", "no_reviewers",
+    "author_only", "wrong_environment", "malformed_rules", "malformed_reviewer",
+    "disabled_branch_policy", "ambiguous_branch_policy", "missing_metadata",
+    "malformed_branch_policy", "nonboolean_branch_policy", "reviewer_without_id",
+])
+def test_unprotected_environment_never_authorizes_provider_write(event, defect):
+    metadata = protected_environment()
+    if defect == "unprotected":
+        metadata["protection_rules"] = []
+        metadata["deployment_branch_policy"] = None
+    elif defect == "no_branch_policy":
+        metadata["deployment_branch_policy"] = None
+    elif defect == "self_review_allowed":
+        metadata["protection_rules"][0]["prevent_self_review"] = False
+    elif defect == "no_reviewers":
+        metadata["protection_rules"][0]["reviewers"] = []
+    elif defect == "author_only":
+        metadata["protection_rules"][0]["reviewers"][0]["reviewer"]["login"] = "cesarbohjr"
+    elif defect == "wrong_environment":
+        metadata["name"] = "production"
+    elif defect == "malformed_rules":
+        metadata["protection_rules"] = "required_reviewers"
+    elif defect == "malformed_reviewer":
+        metadata["protection_rules"][0]["reviewers"] = ["independent-reviewer"]
+    elif defect == "disabled_branch_policy":
+        metadata["deployment_branch_policy"] = {"protected_branches": False, "custom_branch_policies": False}
+    elif defect == "ambiguous_branch_policy":
+        metadata["deployment_branch_policy"] = {"protected_branches": True, "custom_branch_policies": True}
+    elif defect == "missing_metadata":
+        metadata = None
+    elif defect == "malformed_branch_policy":
+        metadata["deployment_branch_policy"]["protected_branches"] = []
+    elif defect == "nonboolean_branch_policy":
+        metadata["deployment_branch_policy"]["protected_branches"] = 1
+    elif defect == "reviewer_without_id":
+        del metadata["protection_rules"][0]["reviewers"][0]["reviewer"]["id"]
+    with pytest.raises(RuntimeError, match="environment"):
+        check_dispatch(
+            env=env(event), checked_out_sha=SHA, fetch_head=lambda: SHA,
+            approved_review=True, fetch_environment=lambda: metadata,
+        )
+
+
+def test_environment_inspection_is_required_even_with_exact_head_approval():
+    with pytest.raises(RuntimeError, match="environment"):
+        check_dispatch(env=env(), checked_out_sha=SHA, fetch_head=lambda: SHA,
+                       approved_review=True)
+
+
+def test_unavailable_environment_metadata_never_authorizes():
+    def unavailable():
+        raise RuntimeError("environment metadata unavailable")
+    with pytest.raises(RuntimeError, match="unavailable"):
+        check_dispatch(env=env(), checked_out_sha=SHA, fetch_head=lambda: SHA,
+                       approved_review=True, fetch_environment=unavailable)
+
+
+def test_team_reviewers_and_restricted_branch_environment_can_authorize():
+    metadata = protected_environment()
+    metadata["protection_rules"][0]["reviewers"] = [{"type": "Team", "reviewer": {"id": 321}}]
+    metadata["deployment_branch_policy"] = {"protected_branches": False, "custom_branch_policies": True}
+    result = check_dispatch(env=env(), checked_out_sha=SHA, fetch_head=lambda: SHA,
+                            approved_review=True, fetch_environment=lambda: metadata)
+    assert result["environment_protection_verified"] is True
+
+
+def test_environment_metadata_request_is_read_only_and_scoped(monkeypatch):
+    from unittest.mock import MagicMock
+    import io
+    read = module["current_environment_protection"]
+    requests = []
+    def open_metadata(request, *, timeout):
+        requests.append(request)
+        assert timeout == 12
+        response = MagicMock()
+        response.__enter__.return_value = io.StringIO(json.dumps(protected_environment()))
+        return response
+    monkeypatch.setattr(read.__globals__["urllib"].request, "urlopen", open_metadata)
+    assert read("synthetic-token") == protected_environment()
+    assert len(requests) == 1
+    assert requests[0].get_method() == "GET"
+    assert requests[0].full_url == f"https://api.github.com/repos/{REPO}/environments/p27-provider-sandbox"
+    with pytest.raises(RuntimeError, match="token required"):
+        read("")
+    assert len(requests) == 1
 
 
 def test_exact_head_review_cannot_be_faked_by_author_or_stale_approval():

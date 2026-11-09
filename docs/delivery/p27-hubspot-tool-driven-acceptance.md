@@ -5,6 +5,40 @@
 **Separation:** PR #610 owns Voice 3.0; this workflow only verifies HubSpot provider behavior.
 **Status:** tool-based read-only preflight has executed successfully; live provider acceptance is **NOT RUN**.
 
+## Release gate inspection — 2026-11-08
+
+Read-only GitHub API inspection of
+`GET /repos/cesarbohjr/gravitre-saas-backend/environments/p27-provider-sandbox`
+confirmed **`protection_rules: []` and `deployment_branch_policy: null`**.
+The named environment exists, but it is **not protected**. Independent PR
+reviews were also empty at `e4538637a82276b2961b8b9a5c7964303065ce72`.
+Do not apply the live label or use the manual live path in this state.
+
+The existing `p27_hubspot_dispatch_guard.py` now reads the actual environment
+metadata and rejects both live dispatch paths unless required reviewers,
+prevention of self-review and a deployment branch policy are configured.
+An independent user or team must be eligible to review; absent, malformed or
+unavailable metadata fails closed. GitHub remains responsible for enforcing
+the configured branch compatibility and deployment approval; no new approval
+engine is introduced. No environment settings, secrets or provider records
+were changed by this repair. Regression coverage includes both dispatch paths,
+unprotected/author-only/self-review/branch-policy failures, missing metadata
+and a scoped read-only metadata request.
+
+Pre-repair head evidence:
+- [Master QA 42547495248](https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/42547495248):
+  181 runtime guard tests and 49 disposable PostgreSQL acceptance tests passed,
+  zero skips. SQL provider fixtures remain simulated provider evidence.
+- [Read-only dispatch 42547860494](https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/42547860494):
+  preflight passed; provider write job skipped.
+- Existing backend health returned 200 at SHA `557be844f191767ea51c9f1d1d4958e5b046ca53`;
+  `gravitre.app` mapped to frontend SHA `2e78e03a58e29e03019687b03ad90fd6ad420e84`.
+  Neither deployment contains this PR. Production E2E acceptance of the PR
+  remains NOT RUN; no service restart or migration was performed.
+
+The environment guard repair creates a new head and requires new exact-head
+CI. Passing checks on `e4538637` cannot certify the new commit.
+
 ## Why label dispatch exists
 
 The connected GitHub integration supports `label_pr` but not GitHub's
@@ -28,9 +62,9 @@ specific `pull_request: labeled` event on PR #611. Its manual
 - Configure and independently verify GitHub environment
   `p27-provider-sandbox` on the repository: required reviewer(s) independent
   of the PR author, prohibit self-approval, and a branch/deployment restriction
-  compatible with the intended PR-head test. **The current connector cannot
-  inspect environment protection settings**. This must be confirmed in
-  repository Settings before applying the live label.
+  compatible with the intended PR-head test. Inspect the environment through
+  GitHub's environment API or repository Settings before applying the live
+  label; the live dispatch guard independently checks these controls again.
 - Put `P27_HUBSPOT_LIVE_TEST_TOKEN` in that environment's secrets, not in
   normal repo variables. Restrict it to the least permissions needed for
   account details and CRM contacts read/upsert/delete. Set
@@ -88,6 +122,7 @@ specific `pull_request: labeled` event on PR #611. Its manual
 As of the initial tool-driven implementation, no live HubSpot record has
 been created, updated or deleted by this workflow. The GitHub Actions
 preflight job has passed with the live provider job explicitly skipped.
-Independent review and environment protections remain unverified. The
+Independent review is absent and environment protections were confirmed missing
+at the release-gate inspection above. The
 implementation changes are only on PR #611, not yet in `main`, and have
 not been deployed to Railway.

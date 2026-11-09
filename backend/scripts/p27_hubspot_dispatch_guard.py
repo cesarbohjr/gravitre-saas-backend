@@ -1,7 +1,7 @@
 """Fail-closed GitHub / HubSpot P27 dispatch identity and evidence guard.
 
-This file never writes to GitHub or HubSpot; requests only a public PR HEAD
-document for comparison after a checkout. No token or provider response log.
+This file never writes to GitHub or HubSpot; reads GitHub PR/review and
+environment protection metadata after checkout. No token or provider response log.
 """
 from __future__ import annotations
 
@@ -18,10 +18,57 @@ OWNER = "cesarbohjr"
 PR = "611"
 SHA_RE = re.compile(r"^[a-f0-9]{40}$")
 ALLOWED_EVENTS = {"pull_request", "workflow_dispatch"}
+ENVIRONMENT = "p27-provider-sandbox"
+
+
+def require_protected_environment(metadata) -> None:
+    """Verify the live environment, not merely its name in workflow YAML.
+
+    GitHub enforces branch compatibility and deployment approval. This guard
+    additionally refuses provider writes if those controls have been removed
+    or cannot be inspected, even when an exact-head PR review exists.
+    """
+    if not isinstance(metadata, dict) or metadata.get("name") != ENVIRONMENT:
+        raise RuntimeError("provider environment identity cannot be verified")
+    rules = metadata.get("protection_rules")
+    if not isinstance(rules, list):
+        raise RuntimeError("provider environment reviewer protection missing")
+    independent_reviewer = False
+    for rule in rules:
+        if not isinstance(rule, dict) or rule.get("type") != "required_reviewers":
+            continue
+        if rule.get("prevent_self_review") is not True:
+            continue
+        reviewers = rule.get("reviewers")
+        if not isinstance(reviewers, list):
+            continue
+        for entry in reviewers:
+            if not isinstance(entry, dict):
+                continue
+            reviewer = entry.get("reviewer")
+            if not isinstance(reviewer, dict):
+                continue
+            if entry.get("type") == "User":
+                login = reviewer.get("login")
+                independent_reviewer |= (
+                    isinstance(login, str) and bool(login.strip())
+                    and login.casefold() != OWNER.casefold()
+                    and type(reviewer.get("id")) is int and reviewer["id"] > 0
+                )
+            elif entry.get("type") == "Team":
+                independent_reviewer |= type(reviewer.get("id")) is int and reviewer["id"] > 0
+    if not independent_reviewer:
+        raise RuntimeError("provider environment needs independent reviewers and prevention of self review")
+    policy = metadata.get("deployment_branch_policy")
+    if (not isinstance(policy, dict)
+            or type(policy.get("protected_branches")) is not bool
+            or type(policy.get("custom_branch_policies")) is not bool
+            or policy["protected_branches"] == policy["custom_branch_policies"]):
+        raise RuntimeError("provider environment deployment branch policy missing or invalid")
 
 
 def check_dispatch(*, env: dict[str, str], checked_out_sha: str,
-                   fetch_head=None, approved_review=None) -> dict:
+                   fetch_head=None, approved_review=None, fetch_environment=None) -> dict:
     """Require owner, repo, exact immutable checkout and current PR HEAD."""
     event = env.get("GITHUB_EVENT_NAME", "")
     actor = env.get("GITHUB_ACTOR", "")
@@ -45,8 +92,25 @@ def check_dispatch(*, env: dict[str, str], checked_out_sha: str,
     else:
         if env.get("GITHUB_REF") != "refs/heads/main" or pr_number != "0":
             raise RuntimeError("workflow_dispatch must run from main")
+    if fetch_environment is None:
+        raise RuntimeError("cannot verify provider environment protection")
+    require_protected_environment(fetch_environment())
     return {"result": "PASS", "repository": repo,
-            "checked_out_sha": expected, "event": event}
+            "checked_out_sha": expected, "event": event,
+            "environment_protection_verified": True}
+
+
+def current_environment_protection(token: str) -> dict:
+    if not token:
+        raise RuntimeError("GitHub token required to inspect provider environment")
+    request = urllib.request.Request(
+        f"https://api.github.com/repos/{REPO}/environments/{ENVIRONMENT}",
+        headers={"Authorization": "Bearer " + token,
+                 "Accept": "application/vnd.github+json",
+                 "User-Agent": "gravitre-p27-environment-preflight"},
+    )
+    with urllib.request.urlopen(request, timeout=12) as response:
+        return json.load(response)
 
 
 def current_pr_head(token: str) -> str:
@@ -125,6 +189,7 @@ def main() -> int:
     data = check_dispatch(
         env=dict(os.environ), checked_out_sha=actual,
         fetch_head=lambda: current_pr_head(os.getenv("GH_TOKEN", "")),
+        fetch_environment=lambda: current_environment_protection(os.getenv("GH_TOKEN", "")),
         approved_review=(current_independent_approval(
             os.getenv("GH_TOKEN", ""), os.getenv("EXPECTED_HEAD_SHA", ""))
             if os.getenv("GITHUB_EVENT_NAME") == "pull_request" else None),
