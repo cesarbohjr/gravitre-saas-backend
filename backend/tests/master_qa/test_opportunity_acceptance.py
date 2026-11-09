@@ -231,3 +231,26 @@ def test_provider_write_must_match_immutable_workflow_definition():
     result = inspect(rows)
     assert result["certified"] is False
     assert result["independentWriteReadbackVerified"] is False
+
+
+@pytest.mark.parametrize("verified_at", [
+    "2026-10-31T20:00:00+00:00",  # evidence predates the action
+    "2026-11-09T20:00:00+00:00",  # evidence postdates the outcome measurement
+])
+def test_stale_or_future_provider_receipt_cannot_certify_measured_impact(verified_at):
+    rows = records()
+    rows["workflow_steps"][0]["output_snapshot"]["verification"]["verified_at"] = verified_at
+    result = inspect(rows)
+    assert result["independentWriteReadbackVerified"] is True
+    assert result["measurableOutcomeObserved"] is False
+    assert result["workflowRuns"][0]["observedOutcomes"] == []
+    assert result["certified"] is False
+
+
+def test_verified_provider_timestamp_can_equal_action_or_measurement_boundary():
+    for verified_at in ("2026-11-01T20:00:00+00:00", STAMP):
+        rows = records()
+        rows["workflow_steps"][0]["output_snapshot"]["verification"]["verified_at"] = verified_at
+        result = inspect(rows)
+        assert result["certified"] is True
+        assert result["measurableOutcomeObserved"] is True
