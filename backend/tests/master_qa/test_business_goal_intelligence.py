@@ -125,3 +125,58 @@ async def test_goal_service_discovers_missing_evidence_without_granting_tools():
     assert normalized.connected_systems == ["hubspot"]
     assert normalized.missing_systems == ["zendesk"]
     assert normalized.execution_status == "NOT_RUN"
+
+
+def test_generated_goal_draft_has_valid_structural_contract():
+    service = GoalService(model_router=object())
+    analysis = GoalAnalysis(
+        intent="Investigate revenue", department="sales",
+        key_entities=["deals"], required_systems=["hubspot"],
+        complexity="moderate", risk_factors=[], success_metrics=["pipeline"],
+    )
+    for approval_required in (True, False):
+        draft = service._build_definition("Investigate revenue", analysis, approval_required)
+        service._validate_definition(draft)
+
+
+@pytest.mark.parametrize("mutation,error", [
+    ("duplicate_node", "unique nonempty IDs"),
+    ("duplicate_edge", "unique nonempty IDs"),
+    ("cycle", "cycle"),
+    ("orphan", "disconnected or dead-end"),
+    ("dead_end", "disconnected or dead-end"),
+    ("wrong_start_type", "start/end node types"),
+    ("missing_approval", "requires an approval node"),
+    ("backward_start", "start/end direction"),
+])
+def test_goal_draft_rejects_malformed_or_unsafe_graphs(mutation, error):
+    from app.services.goal_service import WorkflowEdge, WorkflowNode
+
+    service = GoalService(model_router=object())
+    analysis = GoalAnalysis(
+        intent="Investigate revenue", department="sales",
+        key_entities=["deals"], required_systems=["hubspot"],
+        complexity="moderate", risk_factors=[], success_metrics=["pipeline"],
+    )
+    draft = service._build_definition("Investigate revenue", analysis, True)
+    if mutation == "duplicate_node":
+        draft.nodes.append(draft.nodes[1].model_copy())
+    elif mutation == "duplicate_edge":
+        draft.edges.append(draft.edges[0].model_copy())
+    elif mutation == "cycle":
+        draft.edges.append(WorkflowEdge(id="cycle-edge", source="decision", target="process"))
+    elif mutation == "orphan":
+        draft.nodes.append(WorkflowNode(id="orphan", type="action", name="Orphan"))
+    elif mutation == "dead_end":
+        draft.nodes.append(WorkflowNode(id="dead", type="action", name="Dead"))
+        draft.edges.append(WorkflowEdge(id="to-dead", source="start", target="dead"))
+    elif mutation == "wrong_start_type":
+        draft.nodes[0].type = "action"
+    elif mutation == "missing_approval":
+        draft.nodes = [node for node in draft.nodes if node.id != "approval"]
+        draft.edges = [edge for edge in draft.edges if edge.source != "approval" and edge.target != "approval"]
+        draft.edges.append(WorkflowEdge(id="skip-approval", source="decision", target="end"))
+    elif mutation == "backward_start":
+        draft.edges.append(WorkflowEdge(id="backward", source="decision", target="start"))
+    with pytest.raises(ValueError, match=error):
+        service._validate_definition(draft)
