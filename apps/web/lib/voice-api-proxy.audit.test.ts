@@ -5,6 +5,7 @@ import { PRODUCTION_BACKEND_URL } from "@/lib/public-urls"
 
 afterEach(() => {
   vi.unstubAllEnvs()
+  vi.unstubAllGlobals()
 })
 
 describe("DEC-017 production voice API wiring", () => {
@@ -124,5 +125,41 @@ describe("QA00 real request proxy boundary (synthetic, no provider calls)", () =
     expect(sent.has("x-environment")).toBe(false)
     expect(init.body).toBeUndefined()
     expect(init.cache).toBe("no-store")
+  })
+})
+
+describe("QA00 upstream no-body status and failure propagation", () => {
+  it.each([204, 205, 304])("preserves bodyless status %i without constructing an invalid response", async (status) => {
+    vi.stubEnv("NODE_ENV", "production")
+    vi.stubEnv("FASTAPI_BASE_URL", "")
+    const upstream = vi.fn(async () => new Response(null, { status }))
+    vi.stubGlobal("fetch", upstream)
+    const request = new NextRequest("https://gravitre.app/api/voice/status", {
+      headers: { authorization: "Bearer qa-synthetic" },
+    })
+
+    const result = await proxyVoiceJson(request, "/api/voice/status")
+    expect(result.status).toBe(status)
+    expect(await result.text()).toBe("")
+    expect(upstream).toHaveBeenCalledTimes(1)
+  })
+
+  it("preserves a 401 upstream rejection and does not invent authenticated results", async () => {
+    vi.stubEnv("NODE_ENV", "production")
+    vi.stubEnv("FASTAPI_BASE_URL", "")
+    const upstream = vi.fn(async () => new Response("Unauthorized", {
+      status: 401, headers: { "content-type": "text/plain" },
+    }))
+    vi.stubGlobal("fetch", upstream)
+
+    const result = await proxyVoiceJson(
+      new NextRequest("https://gravitre.app/api/voice/status"),
+      "/api/voice/status",
+    )
+    expect(result.status).toBe(401)
+    expect(await result.text()).toBe("Unauthorized")
+    expect(result.headers.get("content-type")).toBe("text/plain")
+    const [, init] = upstream.mock.calls[0] as unknown as [string, RequestInit]
+    expect(new Headers(init.headers).has("authorization")).toBe(false)
   })
 })
