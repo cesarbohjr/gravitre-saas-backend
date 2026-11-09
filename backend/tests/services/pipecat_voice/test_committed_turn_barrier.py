@@ -130,8 +130,8 @@ def test_live_flux_pipeline_positions_barrier_after_speculation_before_turn_aggr
 
     source = inspect.getsource(pipeline.build_pipecat_voice_task)
     listing = source[source.index("pipeline = Pipeline("):]
-    assert listing.index("            speculative,") < listing.index("CommittedTurnBarrierProcessor()")
-    assert listing.index("CommittedTurnBarrierProcessor()") < listing.index("            user_agg,")
+    assert listing.index("            speculative,") < listing.index("CommittedTurnBarrierProcessor(")
+    assert listing.index("CommittedTurnBarrierProcessor(") < listing.index("            user_agg,")
 
 
 @pytest.mark.asyncio
@@ -258,3 +258,17 @@ async def test_filler_drop_from_previous_turn_does_not_release_current_stop():
     final = TranscriptionFrame("yes", "u1", "t", finalized=True)
     await barrier.process_frame(final, FrameDirection.DOWNSTREAM)
     assert delivered == [start, final, stop]
+
+
+def test_actual_pipeline_instruments_flux_commits_and_outbound_pcm():
+    import inspect
+    from app.services.pipecat_voice import pipeline
+
+    source = inspect.getsource(pipeline.build_pipecat_voice_task)
+    listing = source[source.index("pipeline = Pipeline("):]
+    assert "VoiceTurnAudioEvidence()" in source
+    assert "evidence=boundary_evidence, voice_session=voice_session" in source
+    assert "OutboundAudioEvidenceProcessor(" in listing
+    assert listing.index("CommittedTurnBarrierProcessor(") < listing.index("user_agg,")
+    assert listing.index("OutboundAudioEvidenceProcessor(") > listing.index("*playout_processors,")
+    assert listing.index("OutboundAudioEvidenceProcessor(") < listing.index("transport.output(),")
