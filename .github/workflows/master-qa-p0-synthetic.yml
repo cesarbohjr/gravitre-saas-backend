@@ -5,6 +5,9 @@ on:
     paths:
       - 'backend/tests/master_qa/**'
       - 'backend/app/services/sales_growth_goal_compiler.py'
+      - 'backend/app/services/business_goal_intelligence.py'
+      - 'backend/app/services/goal_service.py'
+      - 'backend/app/routers/workflows.py'
       - 'backend/scripts/master_qa_remediation_guard.py'
       - 'backend/scripts/master_qa_wiring_preflight.py'
       - 'backend/scripts/master_qa_release_certifier.py'
@@ -129,7 +132,7 @@ jobs:
           python -m pip install --no-cache-dir --no-compile -r requirements-dev.txt
           python -m pip check
       - name: Exercise actual Gravitre execution safety guards
-        run: python -m pytest -q -rs tests/master_qa/test_sandbox_provider_readback_contract.py tests/master_qa/test_hubspot_sandbox_readback_contract.py tests/master_qa/test_p27_hubspot_tool_dispatch.py tests/master_qa/test_connector_connected_filter.py tests/master_qa/test_sales_growth_goal_compiler.py tests/master_qa/test_sales_growth_from_goal_route.py tests/master_qa/test_worker_orphan_tick.py tests/master_qa/test_isolated_workflow_supervisor.py tests/master_qa/test_actual_agent_selection.py tests/master_qa/test_runtime_guard_integration.py tests/services/test_gate26_cancellation_and_outbox_contract.py
+        run: python -m pytest -q -rs tests/master_qa/test_sandbox_provider_readback_contract.py tests/master_qa/test_hubspot_sandbox_readback_contract.py tests/master_qa/test_p27_hubspot_tool_dispatch.py tests/master_qa/test_connector_connected_filter.py tests/master_qa/test_sales_growth_goal_compiler.py tests/master_qa/test_sales_growth_from_goal_route.py tests/master_qa/test_business_goal_intelligence.py tests/master_qa/test_worker_orphan_tick.py tests/master_qa/test_isolated_workflow_supervisor.py tests/master_qa/test_actual_agent_selection.py tests/master_qa/test_runtime_guard_integration.py tests/services/test_gate26_cancellation_and_outbox_contract.py
       - name: Certify disposable PostgreSQL trigger, relay and idempotency
         run: |
           python - <<'PY'
