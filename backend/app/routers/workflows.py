@@ -4878,14 +4878,13 @@ async def create_workflow_from_goal(
     # Every business goal first passes through shared model-based semantic
     # analysis, including vague questions spanning multiple departments.
     # Never infer connector credentials, execution authority or outcomes.
-    from app.services.business_goal_intelligence import analyze_business_goal_for_org
-    from app.services.sales_growth_goal_compiler import (
+    from app.workflows.sales_growth_recipe import (
         GoalCompilationBlocked, compile_sales_growth_for_org,
     )
-    business_goal = await analyze_business_goal_for_org(
+    business_goal = await goal_service.analyze_for_org(
         goal=request.goal, org_id=org_id, settings=settings,
         department_hint=request.department, success_metric=request.success_metric,
-        org_context=request.org_context, goal_service=goal_service,
+        org_context=request.org_context,
     )
     # The sales diagnostic is the first certified compiler slice, not a
     # hard-coded intent recognizer. Other domains remain understood and
@@ -4952,7 +4951,7 @@ async def create_workflow_from_goal(
             "capabilities": list(sales_plan.capabilities),
             "missing_connections": list(sales_plan.missing_connections),
             "business_outcome": "NOT_MEASURED",
-            "business_goal": business_goal.as_dict(),
+            "business_goal": business_goal.model_dump(),
         }
     generated = await goal_service.generate_workflow(
         goal=request.goal,
@@ -4962,6 +4961,7 @@ async def create_workflow_from_goal(
         approval_required=request.approval_required,
         org_context=request.org_context,
         org_id=org_id,
+        analysis=business_goal,
     )
     client = get_supabase_client(settings)
     definition = {
