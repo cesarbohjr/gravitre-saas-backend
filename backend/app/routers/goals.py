@@ -130,8 +130,9 @@ def preview_cross_source_opportunities(
             if not workflow_id:
                 continue
             verified = (
-                client.table("workflow_defs").select("id")
-                .eq("id", workflow_id).eq("org_id", org_id).limit(1).execute().data or []
+                client.table("workflows").select("id")
+                .eq("id", workflow_id).eq("org_id", org_id)
+                .eq("environment", environment_name).limit(1).execute().data or []
             )
             if not verified:
                 continue
