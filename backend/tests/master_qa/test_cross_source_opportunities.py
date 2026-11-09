@@ -245,3 +245,38 @@ async def test_unbound_opportunity_never_reaches_canonical_play(monkeypatch):
             body, ({"user_id": "reader"}, "tenant-A", "member"), "synthetic", object(),
         )
     assert exc.value.status_code == 409
+
+
+def test_multiple_play_bindings_must_not_be_silently_dispatched(monkeypatch):
+    from app.workflows import repository
+    from app.plays import workflow_bindings
+
+    _patch_sources(monkeypatch)
+    rows = {
+        "play_installations": [{
+            "org_id": "tenant-A", "environment_name": "synthetic",
+            "id": "installation-1", "play_key": "revenue-leak-hunter",
+            "status": "ready",
+        }],
+        "workflows": [{"id": WF, "org_id": "tenant-A", "environment": "synthetic"}],
+    }
+    monkeypatch.setattr(repository, "get_supabase_client", lambda _settings: FakeClient(rows))
+    monkeypatch.setattr(workflow_bindings, "list_all_play_workflow_bindings", lambda client, org: {
+        "revenue-leak-hunter": [
+            {"workflowId": WF, "status": "active"},
+            {"workflowId": "unrelated-workflow", "status": "active"},
+        ],
+    })
+    app = FastAPI()
+    app.include_router(goals.router)
+    app.dependency_overrides[get_current_user] = lambda: {"user_id": "reader"}
+    app.dependency_overrides[get_org_context] = lambda: "tenant-A"
+    app.dependency_overrides[get_environment_context] = lambda: "synthetic"
+    app.dependency_overrides[get_settings] = lambda: object()
+    with TestClient(app) as http:
+        resp = http.post("/api/goals/diagnostics/opportunities", json={
+            "crmRunId": CRM_RUN, "analyticsRunId": GA_RUN,
+        })
+    assert resp.status_code == 200
+    assert resp.json()["opportunities"][0]["status"] == "NEEDS_PLAY_SETUP"
+    assert resp.json()["opportunities"][0]["workflow_id"] is None
