@@ -43,10 +43,31 @@ async def test_agent_play_approval_real_step_to_durable_consumer(pg, monkeypatch
     from app.services.connector_resource_resolver import ResourceResolution
 
     workflow_id = "22222222-2222-4222-8222-222222222222"
-    definition = {"steps": [{
-        "id": "synthetic-read", "name": "Read synthetic CRM", "type": "invoke_tool",
-        "config": {"action": "hubspot.contacts.search", "query": "fixture", "limit": 1},
-    }]}
+    # Start from the actual goal-to-canvas compiler, not a hand-written
+    # workflow definition. The established approval/runtime and canonical
+    # PostgreSQL repository remain the only execution authorities.
+    from app.workflows.sales_growth_recipe import (
+        compile_sales_growth_goal, verified_sales_observations,
+    )
+    from app.workflows.graph_model import build_execution_graph, validate_execution_graph
+    compiled = compile_sales_growth_goal(
+        goal="I need to increase sales",
+        recognized_objective="increase_sales",
+        connected_integrations=["hubspot"],
+        action_entries=[SimpleNamespace(
+            connector_id="hubspot", action_key="hubspot.contacts.search",
+            display_name="Inspect CRM leads", kind="read",
+            chat_executable=True, invoke_tool_handler="hubspot.contacts.search",
+            implementation_status="executable",
+        )],
+    )
+    validate_execution_graph(build_execution_graph(
+        compiled.graph["nodes"], compiled.graph["edges"],
+    ))
+    assert compiled.capabilities == ("hubspot.contacts.search",)
+    assert compiled.status == "READ_DIAGNOSTIC_READY"
+    assert compiled.observation_status == "NOT_RUN"
+    definition = compiled.workflow_definition
     settings = SimpleNamespace(
         disable_execute=False, disable_connectors=False,
         write_authority_mode="enforce",
@@ -234,6 +255,10 @@ async def test_agent_play_approval_real_step_to_durable_consumer(pg, monkeypatch
     steps = repository.get_run_with_steps(PgRepositoryClient(pg), ORG, run_id, "synthetic")["steps"]
     assert steps[0]["status"] == "completed"
     assert steps[0]["output_snapshot"]
+    observed = verified_sales_observations(compiled, completed_steps=steps)
+    assert observed["status"] == "DIAGNOSTIC_READS_OBSERVED"
+    assert observed["verified_actions"][0]["action"] == "hubspot.contacts.search"
+    assert observed["business_outcome"] == "NOT_MEASURED"
     assert pg.value(f"SELECT status FROM public.runs WHERE id='{run_id}'") == "completed"
     assert pg.value(f"SELECT status FROM public.run_steps WHERE run_id='{run_id}'") == "completed"
     assert vendor.call_count == 1
