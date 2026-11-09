@@ -208,3 +208,94 @@ def test_unbound_analytics_schema_cannot_masquerade_as_executable_plan():
             ],
             recognized_objective="increase_sales",
         )
+
+
+def _persisted_hubspot_read(*, step_id="sales-evidence-1", action="hubspot.deals.search",
+                            complete=True, rows=None):
+    results = rows if rows is not None else [{"id": "deal-1"}]
+    return {
+        "org_id": "org-A", "run_id": "run-1", "step_id": step_id,
+        "status": "completed", "completed_at": "2026-11-08T20:00:00+00:00",
+        "output_snapshot": {
+            "action": action, "data": {
+                "results": results,
+                "coverage": {
+                    "complete": complete,
+                    "returned": len(results), "total_reported": len(results),
+                },
+            },
+        },
+    }
+
+
+def test_persisted_hubspot_reads_produce_observed_census_not_revenue_forecast():
+    from app.workflows.sales_growth_recipe import diagnose_persisted_sales_reads
+    plan = _compile()
+    result = diagnose_persisted_sales_reads(
+        plan, org_id="org-A", run_id="run-1",
+        completed_steps=[
+            _persisted_hubspot_read(),
+            _persisted_hubspot_read(
+                step_id="sales-evidence-2", action="hubspot.contacts.search",
+                rows=[{"id": "contact-1"}, {"id": "contact-2"}],
+            ),
+        ],
+    )
+    assert result["status"] == "OBSERVATIONS_AVAILABLE"
+    assert {r["metric_key"] for r in result["observations"]} == {
+        "deals_record_count", "contacts_record_count",
+    }
+    assert result["business_outcome"] == "NOT_MEASURED"
+    assert result["recommended_writes"] == []
+    assert result["hypotheses"] == []
+
+
+def test_incomplete_hubspot_pages_never_claim_total():
+    from app.workflows.sales_growth_recipe import diagnose_persisted_sales_reads
+    result = diagnose_persisted_sales_reads(
+        _compile(), org_id="org-A", run_id="run-1",
+        completed_steps=[_persisted_hubspot_read(complete=False)],
+    )
+    assert result["status"] == "INSUFFICIENT_VERIFIED_EVIDENCE"
+    assert result["observations"] == []
+    assert result["findings"][0]["status"] == "PARTIAL_READ_NO_TOTAL"
+
+
+@pytest.mark.parametrize("mutation", [
+    {"org_id": "org-B"},
+    {"run_id": "run-other"},
+])
+def test_hubspot_diagnostic_fails_closed_on_wrong_tenant_or_run(mutation):
+    from app.workflows.sales_growth_recipe import diagnose_persisted_sales_reads
+    step = _persisted_hubspot_read()
+    step.update(mutation)
+    with pytest.raises(GoalCompilationBlocked, match="persisted_step_tenant_or_run_mismatch"):
+        diagnose_persisted_sales_reads(
+            _compile(), org_id="org-A", run_id="run-1", completed_steps=[step],
+        )
+
+
+def test_hubspot_diagnostic_rejects_duplicate_step_ids_and_simulated_output():
+    from app.workflows.sales_growth_recipe import diagnose_persisted_sales_reads
+    step = _persisted_hubspot_read()
+    with pytest.raises(GoalCompilationBlocked, match="duplicate_persisted_step_identity"):
+        diagnose_persisted_sales_reads(
+            _compile(), org_id="org-A", run_id="run-1", completed_steps=[step, step],
+        )
+    step["output_snapshot"]["simulated"] = True
+    result = diagnose_persisted_sales_reads(
+        _compile(), org_id="org-A", run_id="run-1", completed_steps=[step],
+    )
+    assert result["observations"] == []
+    assert result["findings"][0]["status"] == "UNVERIFIED"
+
+
+def test_hubspot_diagnostic_rejects_inconsistent_provider_coverage():
+    from app.workflows.sales_growth_recipe import diagnose_persisted_sales_reads
+    step = _persisted_hubspot_read()
+    step["output_snapshot"]["data"]["coverage"]["total_reported"] = 8
+    result = diagnose_persisted_sales_reads(
+        _compile(), org_id="org-A", run_id="run-1", completed_steps=[step],
+    )
+    assert result["observations"] == []
+    assert result["findings"][0]["status"] == "INCONSISTENT_PROVIDER_TOTAL"
