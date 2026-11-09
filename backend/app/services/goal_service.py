@@ -1,10 +1,11 @@
 from __future__ import annotations
 
 import uuid
+import math
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from app.core.logging import get_logger
 from app.services.model_router import ModelRouter, TaskType, get_model_router
@@ -50,6 +51,13 @@ class BusinessMetricEvidence(BaseModel):
     value: float
     observed_at: datetime
 
+    @field_validator("value")
+    @classmethod
+    def finite_value(cls, value: float) -> float:
+        if not math.isfinite(value):
+            raise ValueError("metric_value_must_be_finite")
+        return value
+
 
 class GoalEvidenceAssessment(BaseModel):
     status: str
@@ -57,6 +65,23 @@ class GoalEvidenceAssessment(BaseModel):
     excluded: list[dict[str, str]] = Field(default_factory=list)
     missing_systems: list[str] = Field(default_factory=list)
     business_outcome: str = "NOT_MEASURED"
+
+
+
+class ObservedMetricChange(BaseModel):
+    """A bounded arithmetic observation, never a causal lift or forecast."""
+    status: str
+    metric_key: str | None = None
+    system: str | None = None
+    source_record_id: str | None = None
+    unit: str | None = None
+    before: float | None = None
+    after: float | None = None
+    absolute_change: float | None = None
+    percentage_change: float | None = None
+    interpretation: str = "OBSERVATION_ONLY_NOT_CAUSAL"
+    business_outcome: str = "NOT_MEASURED"
+
 
 
 class WorkflowNode(BaseModel):
@@ -218,6 +243,46 @@ class GoalService:
             usable=usable,
             excluded=excluded,
             missing_systems=sorted(required - connected),
+        )
+
+    @staticmethod
+    def compare_metric_observations(
+        *, assessment: GoalEvidenceAssessment,
+        metric_key: str,
+    ) -> ObservedMetricChange:
+        """Compare exactly two same-record snapshots without inventing impact.
+
+        Data must first pass assess_evidence_for_org. Ambiguous source, record,
+        unit, repeated timestamps or incomplete histories are not comparable.
+        Only arithmetic differences are returned; no forecasts or action claims.
+        """
+        records = [item for item in assessment.usable if item.metric_key == metric_key]
+        if assessment.status != "EVIDENCE_AVAILABLE_UNINTERPRETED" or len(records) != 2:
+            return ObservedMetricChange(status="INSUFFICIENT_COMPARABLE_HISTORY")
+        before, after = sorted(records, key=lambda item: item.observed_at)
+        same_series = (
+            before.org_id == after.org_id
+            and before.system.strip().lower() == after.system.strip().lower()
+            and before.source_record_id == after.source_record_id
+            and before.unit == after.unit
+            and before.observed_at < after.observed_at
+        )
+        if not same_series:
+            return ObservedMetricChange(status="INCOMPATIBLE_METRIC_HISTORY")
+        delta = after.value - before.value
+        if not math.isfinite(delta):
+            return ObservedMetricChange(status="INCOMPATIBLE_METRIC_HISTORY")
+        ratio = (delta / abs(before.value)) * 100 if before.value else None
+        if ratio is not None and not math.isfinite(ratio):
+            ratio = None
+        return ObservedMetricChange(
+            status="OBSERVED_CHANGE_NOT_CAUSAL",
+            metric_key=metric_key, system=before.system,
+            source_record_id=before.source_record_id,
+            unit=before.unit,
+            before=before.value, after=after.value,
+            absolute_change=delta,
+            percentage_change=ratio,
         )
 
     async def _analyze_goal(
