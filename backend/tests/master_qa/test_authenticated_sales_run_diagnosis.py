@@ -198,3 +198,36 @@ def test_goal_api_rejects_bad_run_id(monkeypatch):
     with _api(monkeypatch, FakeClient()) as http:
         response = http.get("/api/goals/diagnostics/sales/runs/not-a-uuid")
     assert response.status_code == 422
+
+
+def test_canonical_workflow_mirror_can_omit_goal_but_authoring_metadata_is_required(monkeypatch):
+    from app.workflows import repository
+
+    def contract_without_goal(client, org_id, workflow_id):
+        assert org_id == "tenant-A" and workflow_id == WF_ID
+        return {
+            "id": WF_ID, "org_id": org_id,
+            "name": "Sales growth diagnostic", "goal": None,
+        }
+
+    monkeypatch.setattr(repository, "get_workflow_def", contract_without_goal)
+    result = diagnose_authenticated_sales_run(
+        client=FakeClient(), org_id="tenant-A",
+        environment_name="synthetic", run_id=RUN_ID,
+    )
+    assert result["diagnosis"]["goal"] == "Increase qualified pipeline"
+
+
+def test_missing_original_goal_provenance_fails_closed(monkeypatch):
+    from app.workflows import repository
+
+    monkeypatch.setattr(repository, "get_workflow_def", lambda client, org, wf: {
+        "id": wf, "org_id": org, "name": "Sales growth diagnostic",
+    })
+    rows = _rows()
+    rows["workflow_defs"] = []
+    with pytest.raises(GoalCompilationBlocked, match="original_goal_metadata_required"):
+        diagnose_authenticated_sales_run(
+            client=FakeClient(rows), org_id="tenant-A",
+            environment_name="synthetic", run_id=RUN_ID,
+        )
