@@ -26,7 +26,7 @@ class GoalTable:
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("behavior", ["blocked_request", "denied_dispatch", "started", "partial"])
+@pytest.mark.parametrize("behavior", ["blocked_request", "denied_dispatch", "no_run_receipt", "started", "partial"])
 async def test_existing_objective_execute_uses_actual_play_result_before_active(monkeypatch, behavior):
     from app.routers import goals, plays
     from app.services import objective_capability_composer as composer
@@ -55,7 +55,13 @@ async def test_existing_objective_execute_uses_actual_play_result_before_active(
         assert body.objective_id == "goal-1"
         if behavior == "denied_dispatch" or (behavior == "partial" and key == "revenue-recovery"):
             raise HTTPException(status_code=409, detail="Approval or connector readiness missing")
-        return {"playRunId": "run-1", "status": "awaiting_approval"}
+        if behavior == "no_run_receipt":
+            return {"playRunId": "play-1", "status": "awaiting_approval",
+                    "workflowRuns": [], "executionAuthority": "canonical_workflow_runtime"}
+        return {"playRunId": "play-1", "status": "awaiting_approval",
+                "executionAuthority": "canonical_workflow_runtime",
+                "workflowRuns": [{"workflowId": "workflow-1", "runId": "run-1",
+                                  "status": "pending_approval", "approvalRequired": True}]}
 
     monkeypatch.setattr(plays, "run_play", controlled_play)
     result = await goals.execute_objective(
