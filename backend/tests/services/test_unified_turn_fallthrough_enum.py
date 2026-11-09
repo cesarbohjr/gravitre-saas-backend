@@ -157,3 +157,29 @@ def test_live_runtime_provides_explicit_structured_handoff_decision():
         assert value.args and isinstance(value.args[0], ast.Attribute)
         assert value.args[0].attr == "needs_tool_sse"
     assert len(decisions) == 1, "one decision at LIVE/classical handoff source"
+
+
+def test_read_only_connector_query_probe_is_reconciled_before_structured_handoff():
+    """Do not regress classical connector-status lookup when classifier has no write."""
+    path = (
+        Path(__file__).resolve().parents[2]
+        / "app" / "services" / "unified_turn_reasoning_service.py"
+    )
+    tree = ast.parse(path.read_text(encoding="utf-8"))
+    probes = []
+    for node in ast.walk(tree):
+        if not isinstance(node, ast.Call):
+            continue
+        name = node.func.id if isinstance(node.func, ast.Name) else (
+            node.func.attr if isinstance(node.func, ast.Attribute) else ""
+        )
+        if name == "message_requires_classical_tool_sse":
+            probes.append(node)
+    assert len(probes) == 1
+    # The sole probe must not depend on requires_action: connector-status is a
+    # read-only request and the classifier may reasonably set that to False.
+    source = path.read_text(encoding="utf-8")
+    segment = source[source.index("    if (\n        not human_moment\n        and not result.needs_tool_sse", source.index("async def apply_unified_turn_live")):]
+    segment = segment[:segment.index("    if human_moment:")]
+    assert "classification.get(\"requires_action\")" not in segment
+    assert "result.needs_tool_sse = True" in segment
