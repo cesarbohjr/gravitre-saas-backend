@@ -51,6 +51,39 @@ def sales_run_diagnosis(
     return result
 
 
+@router.get("/diagnostics/analytics/runs/{run_id}")
+def analytics_run_diagnosis(
+    run_id: str,
+    _user: Annotated[dict, Depends(get_current_user)],
+    org_id: Annotated[str | None, Depends(get_org_context)],
+    environment_name: Annotated[str, Depends(get_environment_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict[str, Any]:
+    """Read-only GA4 report evidence from a completed governed workflow."""
+    from uuid import UUID
+    from app.workflows.repository import get_supabase_client
+    from app.services.analytics_metric_evidence import (
+        AnalyticsEvidenceBlocked, diagnose_ga4_run,
+    )
+
+    if org_id is None:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
+    try:
+        validated_run_id = str(UUID(run_id))
+    except (TypeError, ValueError) as exc:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Invalid run ID") from exc
+    try:
+        result = diagnose_ga4_run(
+            client=get_supabase_client(settings), org_id=org_id,
+            environment_name=environment_name, run_id=validated_run_id,
+        )
+    except AnalyticsEvidenceBlocked as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+    if result is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Workflow run not found")
+    return result
+
+
 class GeneratePlanRequest(BaseModel):
     objective: str | None = None
     context: str | None = None
