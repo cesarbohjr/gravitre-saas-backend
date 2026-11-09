@@ -4,8 +4,7 @@ on:
     branches: [main]
     paths:
       - 'backend/tests/master_qa/**'
-      - 'backend/app/services/sales_growth_goal_compiler.py'
-      - 'backend/app/services/business_goal_intelligence.py'
+      - 'backend/app/workflows/sales_growth_recipe.py'
       - 'backend/app/services/goal_service.py'
       - 'backend/app/routers/workflows.py'
       - 'backend/scripts/master_qa_remediation_guard.py'
