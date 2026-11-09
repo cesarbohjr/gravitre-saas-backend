@@ -210,3 +210,12 @@ def test_spoofed_workflow_source_lineage_fails_closed():
     rows["workflow_runs"][0]["parameters"]["play"]["source_run_ids"]["crm"] = "forged"
     with pytest.raises(AcceptanceEvidenceBlocked, match="play_source_lineage_mismatch"):
         inspect(rows)
+
+
+@pytest.mark.parametrize("status", ["cancelled", "failed", "partial_success"])
+def test_cancelled_or_failed_play_cannot_be_certified(status):
+    rows = records()
+    rows["play_runs"][0]["status"] = status
+    result = inspect(rows)
+    assert result["playNotFailed"] is False
+    assert result["certified"] is False
