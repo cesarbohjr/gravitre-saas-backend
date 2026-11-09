@@ -33,10 +33,13 @@ class CommittedTurnBarrierProcessor(FrameProcessor):
     """Never promote probable-EOT into an aggregator-owned committed user turn."""
 
     def __init__(self, *, clock: Callable[[], float] = time.perf_counter,
-                 evidence: Any | None = None, **kwargs):
+                 evidence: Any | None = None, voice_session: Any | None = None,
+                 **kwargs):
         super().__init__(**kwargs)
         self._hold_clock = clock
         self._evidence = evidence
+        self._voice_session = voice_session
+        self._filler_at_start = 0
         self._pending_stop: Frame | None = None
         self._pending_stop_at: float | None = None
         self._last_stop_hold_ms: float | None = None
@@ -80,6 +83,9 @@ class CommittedTurnBarrierProcessor(FrameProcessor):
             return
 
         if isinstance(frame, ProposedUserStartedSpeakingFrame):
+            self._filler_at_start = int(getattr(
+                self._voice_session, 'filler_finals_dropped', 0
+            ) or 0)
             if self._evidence is not None:
                 self._evidence.new_start()
             # A fresh utterance invalidates a stop from a previous candidate.
@@ -91,6 +97,17 @@ class CommittedTurnBarrierProcessor(FrameProcessor):
             return
 
         if isinstance(frame, ProposedUserStoppedSpeakingFrame):
+            if (not self._final_seen and self._voice_session is not None
+                    and int(getattr(self._voice_session, 'filler_finals_dropped', 0) or 0)
+                    > self._filler_at_start):
+                # The upstream utterance gate discarded the only final as
+                # filler. Do not deadlock Pipecat waiting for an impossible
+                # TranscriptionFrame. This is NOT a committed user request.
+                self._pending_stop = None
+                self._pending_stop_at = None
+                self._stop_forwarded = True
+                await self.push_frame(frame, direction)
+                return
             if self._stop_forwarded:
                 if self._evidence is not None:
                     self._evidence.duplicate_stop()
