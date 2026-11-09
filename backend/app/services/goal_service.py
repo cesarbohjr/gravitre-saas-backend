@@ -158,9 +158,12 @@ class GoalService:
             "Analyze this business goal for workflow generation.\n"
             f"Goal: {goal}\n"
             f"Department hint: {department or 'none'}\n"
-            f"Available connectors: {connectors or []}\n"
-            f"Success metric: {success_metric or 'none'}\n"
-            f"Context: {org_context or 'none'}\n"
+            f"Verified tenant-connected providers (availability only): {connectors or []}\n"
+            f"User-suggested success metric (unverified): {success_metric or 'none'}\n"
+            f"User-supplied contextual notes (unverified): {org_context or 'none'}\n"
+            "Identify business systems required for diagnosis even when disconnected; "
+            "never assert the model can access them. Connector connections, scopes "
+            "and external write approvals are checked by runtime policy, not this analysis.\n"
         )
         if recipe_section:
             prompt += f"\n{recipe_section}\n"
@@ -170,7 +173,7 @@ class GoalService:
             '"department": "<owning department, e.g. sales, marketing, operations, finance, support>", '
             '"objective_family": "<semantic goal category e.g. grow_revenue, reduce_cost, reduce_churn, improve_support, improve_operations, improve_security, or other>", '
             '"key_entities": ["..."], '
-            '"required_systems": ["<connector names needed, drawn from Available connectors>"], '
+            '"required_systems": ["<systems needed for diagnosis, even if not connected>"], '
             '"complexity": "<one of: simple, moderate, complex>", '
             '"risk_factors": ["..."], '
             '"success_metrics": ["..."]}'
