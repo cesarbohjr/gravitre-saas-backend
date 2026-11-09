@@ -84,6 +84,75 @@ def analytics_run_diagnosis(
     return result
 
 
+class CrossSourceOpportunityRequest(BaseModel):
+    crm_run_id: str = Field(..., alias="crmRunId")
+    analytics_run_id: str = Field(..., alias="analyticsRunId")
+
+    model_config = {"populate_by_name": True}
+
+
+@router.post("/diagnostics/opportunities")
+def preview_cross_source_opportunities(
+    body: CrossSourceOpportunityRequest,
+    _user: Annotated[dict, Depends(get_current_user)],
+    org_id: Annotated[str | None, Depends(get_org_context)],
+    environment_name: Annotated[str, Depends(get_environment_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict[str, Any]:
+    """Tenant-scoped evidence and advisory Play bindings; never dispatch writes."""
+    from datetime import datetime, timezone
+    from uuid import UUID
+    from app.workflows.repository import get_supabase_client
+    from app.plays.workflow_bindings import list_all_play_workflow_bindings
+    from app.services.cross_source_opportunity_service import (
+        OpportunityAssessmentBlocked, assess_cross_source_opportunities,
+    )
+
+    if org_id is None:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
+    try:
+        crm_run = str(UUID(body.crm_run_id))
+        analytics_run = str(UUID(body.analytics_run_id))
+    except (TypeError, ValueError) as exc:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Invalid source run ID") from exc
+    client = get_supabase_client(settings)
+    installations = (
+        client.table("play_installations").select("id,play_key,status,environment_name,org_id")
+        .eq("org_id", org_id).eq("environment_name", environment_name).execute().data or []
+    )
+    # The binding query is already org-scoped. Verify each referenced workflow
+    # belongs to the same tenant and selected environment before surfacing it.
+    raw_bindings = list_all_play_workflow_bindings(client, org_id)
+    bindings: dict[str, list[dict[str, Any]]] = {}
+    for key, items in raw_bindings.items():
+        for item in items:
+            workflow_id = str(item.get("workflowId") or "")
+            if not workflow_id:
+                continue
+            verified = (
+                client.table("workflow_defs").select("id")
+                .eq("id", workflow_id).eq("org_id", org_id).limit(1).execute().data or []
+            )
+            if not verified:
+                continue
+            bindings.setdefault(key, []).append({
+                **item, "org_id": org_id, "environment_name": environment_name,
+            })
+    try:
+        assessment = assess_cross_source_opportunities(
+            client=client, org_id=org_id, environment_name=environment_name,
+            crm_run_id=crm_run, analytics_run_id=analytics_run,
+            as_of=datetime.now(timezone.utc),
+            installed_plays=[{**item, "installed": True} for item in installations],
+            workflow_bindings=bindings,
+        )
+    except OpportunityAssessmentBlocked as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+    if assessment.get("status") == "SOURCE_RUN_NOT_FOUND":
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Source run not found")
+    return assessment
+
+
 class GeneratePlanRequest(BaseModel):
     objective: str | None = None
     context: str | None = None
