@@ -411,7 +411,17 @@ def diagnose_authenticated_sales_run(
         return None
     if workflow.get("org_id") != org_id or workflow.get("name") != "Sales growth diagnostic":
         raise GoalCompilationBlocked("not_a_tenant_sales_diagnostic")
-    goal = str(workflow.get("goal") or "").strip()
+    # The canonical workflow contract mirrors nodes/edges but can omit the
+    # original goal text. Read that immutable authoring metadata from the
+    # tenant-owned workflow_defs row rather than making up an objective.
+    authoring = (
+        client.table("workflow_defs").select("id,org_id,name,goal")
+        .eq("id", workflow_id).eq("org_id", org_id).limit(1).execute()
+    )
+    original = (authoring.data or [None])[0]
+    if not isinstance(original, dict) or original.get("name") != workflow.get("name"):
+        raise GoalCompilationBlocked("original_goal_metadata_required")
+    goal = str(original.get("goal") or "").strip()
     snapshot = run.get("definition_snapshot")
     if not goal or not isinstance(snapshot, dict):
         raise GoalCompilationBlocked("immutable_sales_plan_snapshot_required")
