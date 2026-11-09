@@ -27,8 +27,12 @@ def _plan():
 @pytest.mark.asyncio
 async def test_from_goal_persists_real_canvas_but_never_executes(monkeypatch):
     from app.routers import workflows
-    from app.services import sales_growth_goal_compiler
+    from app.services import sales_growth_goal_compiler, business_goal_intelligence
 
+    async def analyze(**kwargs):
+        return SimpleNamespace(department="sales", objective_family="grow_revenue",
+                               as_dict=lambda: {"department": "sales", "objective_family": "grow_revenue"})
+    monkeypatch.setattr(business_goal_intelligence, "analyze_business_goal_for_org", analyze)
     plan = _plan()
     calls = []
     row = None
@@ -90,7 +94,10 @@ async def test_from_goal_persists_real_canvas_but_never_executes(monkeypatch):
 @pytest.mark.asyncio
 async def test_from_goal_missing_connected_read_fails_before_database_write(monkeypatch):
     from app.routers import workflows
-    from app.services import sales_growth_goal_compiler
+    from app.services import sales_growth_goal_compiler, business_goal_intelligence
+    async def analyze(**kwargs):
+        return SimpleNamespace(department="sales", objective_family="grow_revenue")
+    monkeypatch.setattr(business_goal_intelligence, "analyze_business_goal_for_org", analyze)
 
     async def blocked(**kwargs):
         raise GoalCompilationBlocked("no_connected_executable_sales_read")
