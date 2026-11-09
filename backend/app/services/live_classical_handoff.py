@@ -71,8 +71,16 @@ def stash_handoff_queue(task_state: dict[str, Any] | None, queue: list[dict[str,
 
 
 def arm_handoff(payload: dict[str, Any] | None) -> None:
+    """Arm one direct handoff, replacing *all* prior one-shot queue state.
+
+    A standalone arming must not retain a prior turn's evidence-plan queue in
+    the same context; that would execute the old queued choice instead of the
+    newly selected tool. Multi-tool evidence queues are armed exclusively by
+    arm_from_task_state below.
+    """
+    _armed_queue.set(None)
     if isinstance(payload, dict) and payload.get("tool_name"):
-        _armed.set(payload)
+        _armed.set(dict(payload))
     else:
         _armed.set(None)
 
@@ -90,7 +98,9 @@ def arm_from_task_state(task_state: dict[str, Any] | None) -> None:
         elif queue:
             payload = queue[0]
     _armed_queue.set(queue)
-    arm_handoff(payload)
+    # Preserve the current turn's intentional multi-tool evidence queue.
+    # arm_handoff is the standalone one-shot API and clears a stale queue.
+    _armed.set(dict(payload) if isinstance(payload, dict) and payload.get("tool_name") else None)
 
 
 def peek_handoff() -> dict[str, Any] | None:
