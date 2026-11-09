@@ -26,6 +26,8 @@ RUN = "22222222-2222-4222-8222-222222222222"
 WF = "33333333-3333-4333-8333-333333333333"
 INSTALL = "44444444-4444-4444-8444-444444444444"
 STAMP = "2026-11-08T20:00:00+00:00"
+CRM_SOURCE_RUN = "66666666-6666-4666-8666-666666666666"
+GA_SOURCE_RUN = "77777777-7777-4777-8777-777777777777"
 
 
 def records():
@@ -34,6 +36,8 @@ def records():
             "id": PLAY_RUN, "org_id": ORG, "play_key": "revenue-leak-hunter",
             "installation_id": INSTALL, "operating_mode": "ACT WITH APPROVAL",
             "workflow_run_ids": [RUN], "status": "completed",
+            "metadata": {"opportunity_id": "sales_pipeline_review",
+                         "source_run_ids": {"crm": CRM_SOURCE_RUN, "analytics": GA_SOURCE_RUN}},
         }],
         "play_installations": [{
             "id": INSTALL, "org_id": ORG, "environment_name": "synthetic",
@@ -47,6 +51,8 @@ def records():
                 "run_id": PLAY_RUN, "key": "revenue-leak-hunter",
                 "installation_id": INSTALL,
                 "execution_authority": "canonical_workflow_runtime",
+                "opportunity_id": "sales_pipeline_review",
+                "source_run_ids": {"crm": CRM_SOURCE_RUN, "analytics": GA_SOURCE_RUN},
             }},
         }],
         "workflow_steps": [{
@@ -79,8 +85,19 @@ def records():
 
 @pytest.fixture(autouse=True)
 def classified_write(monkeypatch):
+    from app.workflows import sales_growth_recipe
+    from app.services import analytics_metric_evidence
+
     monkeypatch.setattr(outcome_verification, "is_write_action",
                         lambda action: action == "hubspot.deals.update_stage")
+    monkeypatch.setattr(sales_growth_recipe, "diagnose_authenticated_sales_run",
+                        lambda **kw: {"diagnosis": {"status": "OBSERVATIONS_AVAILABLE",
+                                                    "observations": [{"value": 1}]}}
+                        if kw["run_id"] == CRM_SOURCE_RUN else None)
+    monkeypatch.setattr(analytics_metric_evidence, "diagnose_ga4_run",
+                        lambda **kw: {"status": "GA4_DAILY_ROWS_OBSERVED_NOT_AGGREGATED",
+                                      "rows": [{"date": "2026-11-08", "value": 12}]}
+                        if kw["run_id"] == GA_SOURCE_RUN else None)
 
 
 def inspect(rows=None, org=ORG, env="synthetic"):
@@ -176,3 +193,20 @@ def test_authenticated_acceptance_api_reads_exact_tenant_only(monkeypatch):
         denied = http.get(url)
         assert denied.status_code == 404
         assert "deal-1" not in denied.text
+
+
+def test_missing_source_run_lineage_never_certifies_completed_play():
+    rows = records()
+    rows["play_runs"][0]["metadata"] = {}
+    rows["workflow_runs"][0]["parameters"]["play"].pop("opportunity_id")
+    rows["workflow_runs"][0]["parameters"]["play"].pop("source_run_ids")
+    result = inspect(rows)
+    assert result["sourceEvidenceVerified"] is False
+    assert result["certified"] is False
+
+
+def test_spoofed_workflow_source_lineage_fails_closed():
+    rows = records()
+    rows["workflow_runs"][0]["parameters"]["play"]["source_run_ids"]["crm"] = "forged"
+    with pytest.raises(AcceptanceEvidenceBlocked, match="play_source_lineage_mismatch"):
+        inspect(rows)
