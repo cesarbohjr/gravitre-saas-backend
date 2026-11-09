@@ -160,8 +160,8 @@ async def test_repeated_provider_final_mirrors_only_once_but_original_frames_pas
         (first, FrameDirection.DOWNSTREAM),
         (retransmit, FrameDirection.DOWNSTREAM),
     ])
-    assert pushed.count(first) == 1
-    assert pushed.count(retransmit) == 1
+    assert sum(frame is first for frame in pushed) == 1
+    assert sum(frame is retransmit for frame in pushed) == 1
     assert len(_transcript_messages(pushed)) == 1
     assert relay.relayed_count == 1
 
