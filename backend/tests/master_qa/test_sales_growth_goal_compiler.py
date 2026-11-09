@@ -45,6 +45,7 @@ def test_goal_compiles_to_actual_canvas_schema_and_registered_reads():
     assert plan.status == "READ_DIAGNOSTIC_READY"
     assert plan.observation_status == "NOT_RUN"
     assert plan.capabilities == ("hubspot.deals.search", "hubspot.contacts.search")
+    assert plan.workflow_definition["steps"][0]["config"]["max_records"] == 250
     assert not plan.required_external_approval
     assert "slack.channels.list" not in plan.capabilities
     assert "hubspot.contacts.create" not in plan.capabilities
@@ -242,9 +243,8 @@ def test_persisted_hubspot_reads_produce_observed_census_not_revenue_forecast():
         ],
     )
     assert result["status"] == "OBSERVATIONS_AVAILABLE"
-    assert {r["metric_key"] for r in result["observations"]} == {
-        "deals_record_count", "contacts_record_count",
-    }
+    assert {r["metric_key"] for r in result["observations"]} == {"deals_record_count"}
+    assert any(f["status"] == "UNSUPPORTED_METRIC_EXTRACTION" for f in result["findings"])
     assert result["business_outcome"] == "NOT_MEASURED"
     assert result["recommended_writes"] == []
     assert result["hypotheses"] == []
