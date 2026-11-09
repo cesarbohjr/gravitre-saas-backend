@@ -7,7 +7,7 @@ from pydantic import BaseModel, Field
 from supabase import create_client
 from app.core.db import shared_service_client
 
-from app.auth.dependencies import get_current_user, get_environment_context, get_org_context
+from app.auth.dependencies import get_current_user, get_environment_context, get_org_context, require_org_member
 from app.config import Settings, get_settings
 from app.services.confidence_honesty import CONFIDENCE_SOURCE_HEURISTIC, label_confidence
 from app.services.goal_service import get_goal_service
@@ -152,6 +152,66 @@ def preview_cross_source_opportunities(
     if assessment.get("status") == "SOURCE_RUN_NOT_FOUND":
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Source run not found")
     return assessment
+
+
+class GovernedOpportunityHandoffRequest(CrossSourceOpportunityRequest):
+    opportunity_id: str = Field(..., alias="opportunityId")
+    confirm_submit_to_play: bool = Field(default=False, alias="confirmSubmitToPlay")
+
+
+@router.post("/diagnostics/opportunities/handoff")
+async def handoff_cross_source_opportunity(
+    body: GovernedOpportunityHandoffRequest,
+    member: Annotated[tuple, Depends(__import__(
+        "app.auth.dependencies", fromlist=["require_org_member"
+    ).require_org_member)],
+    environment_name: Annotated[str, Depends(get_environment_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict[str, Any]:
+    """Explicit user handoff to the existing Play router; never approve writes.
+
+    Recompute evidence and tenant bindings on every request. A submitted Play
+    is still governed by Play readiness, workflow policy and human approval.
+    """
+    from app.routers.plays import RunPlayRequest, run_play
+
+    user, org_id, role = member
+    if not body.confirm_submit_to_play:
+        raise HTTPException(status_code=409, detail="Explicit Play handoff confirmation required")
+    assessment = preview_cross_source_opportunities(
+        CrossSourceOpportunityRequest(
+            crm_run_id=body.crm_run_id, analytics_run_id=body.analytics_run_id,
+        ),
+        _user=user, org_id=org_id, environment_name=environment_name, settings=settings,
+    )
+    candidates = [
+        item for item in assessment.get("opportunities", [])
+        if item.get("id") == body.opportunity_id
+    ]
+    if len(candidates) != 1:
+        raise HTTPException(status_code=404, detail="Opportunity not available")
+    candidate = candidates[0]
+    if candidate["status"] != "REVIEW_REQUIRED" or not (
+        candidate.get("play_key") and candidate.get("installation_id") and candidate.get("workflow_id")
+    ):
+        raise HTTPException(status_code=409, detail="A tenant-installed, workflow-bound Play is required")
+    # This request never supplies approval or writes directly. Existing
+    # run_play enforces all provider, installation, approval and policy checks.
+    result = await run_play(
+        candidate["play_key"],
+        RunPlayRequest(installationId=candidate["installation_id"]),
+        member=(user, org_id, role),
+        environment_name=environment_name,
+        settings=settings,
+    )
+    return {
+        "opportunityId": body.opportunity_id,
+        "playKey": candidate["play_key"],
+        "workflowId": candidate["workflow_id"],
+        "canonicalPlayResult": result,
+        "approvalGrantedByIntelligence": False,
+        "businessOutcome": "NOT_MEASURED",
+    }
 
 
 class GeneratePlanRequest(BaseModel):
