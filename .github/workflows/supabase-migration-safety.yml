@@ -367,7 +367,54 @@ jobs:
           cfg.write_text(config)
           print("Disposable Supabase replay uses isolated ports and project identity.")
           PY
-          supabase start -x studio,imgproxy,edge-runtime,logflare,vector
+          # Docker may race the free-port probe above. Retry only a confirmed
+          # host-port collision with a fresh disposable set; all other
+          # Supabase startup or SQL errors remain hard failures.
+          for attempt in 1 2 3; do
+            if supabase start -x studio,imgproxy,edge-runtime,logflare,vector > "$RUNNER_TEMP/supabase-start.log" 2>&1; then
+              cat "$RUNNER_TEMP/supabase-start.log"
+              break
+            fi
+            cat "$RUNNER_TEMP/supabase-start.log"
+            if ! grep -q 'failed to bind host port.*address already in use' "$RUNNER_TEMP/supabase-start.log" || [ "$attempt" -eq 3 ]; then
+              exit 1
+            fi
+            supabase stop --no-backup > /dev/null 2>&1 || true
+            python3 - <<'PY'
+          from pathlib import Path
+          import random
+          import re
+          import socket
+          cfg = Path("supabase/config.toml")
+          original = cfg.read_text()
+          pattern = re.compile(r"(?m)^((?:shadow_)?port\s*=\s*)(\d+)$")
+          matches = list(pattern.finditer(original))
+          if len(matches) < 6:
+              raise SystemExit("Unexpected isolated port configuration")
+          old_ports = {int(m.group(2)) for m in matches}
+          smallest = min(old_ports)
+          rng = random.SystemRandom()
+          for _ in range(300):
+              base = rng.randint(25000, 49000)
+              mapped = {old: base + (old - smallest) for old in old_ports}
+              if max(mapped.values()) > 65000:
+                  continue
+              def free(port):
+                  with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+                      try:
+                          sock.bind(("0.0.0.0", port))
+                          return True
+                      except OSError:
+                          return False
+              if all(free(port) for port in mapped.values()):
+                  break
+          else:
+              raise SystemExit("No free replacement Supabase port group")
+          cfg.write_text(pattern.sub(lambda match:
+              match.group(1) + str(mapped[int(match.group(2))]), original))
+          print("Retrying local-only Supabase on a new port group.")
+          PY
+          done
           supabase db reset --no-seed
           echo "Local Supabase replayed all migrations on isolated Docker ports (production untouched)."
 
