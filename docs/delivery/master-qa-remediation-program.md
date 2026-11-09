@@ -10,6 +10,12 @@
 
 **Gate:** no stage is complete while an unnecessary parallel authority remains. A compatibility shim may remain only if an identified active caller, persisted approval or older client requires it; document its owner, dependency, migration proof, exact retirement trigger and blocking tests. Do not delete an in-use fallback before a safe replacement is verified. Exact-head CI and independently reproducible acceptance remain mandatory; no merge, deployment or provider writes are authorized by this policy.
 
+## Plain-language explanation requirement — planning documentation only (2026-11-09)
+
+For every finding and engineering sequence in the master plan, include a concise nontechnical explanation of **what the issue means for Gravitre**, which product areas are affected (chat, Voice, agents, Plays, workflows, canvas, connectors, approvals, outcomes and UI as applicable), **what the proposed remediation will do**, why it matters to users, and what remains unverified. Include an accessible cumulative platform-wide summary so the owner can understand the full remediation program without reading source code.
+
+**Scope boundary:** This is a documentation and communication requirement **only**. It does not add implementation tasks, alter technical acceptance criteria, create new engineering gates, or authorize any code changes, test changes, merges or deployments. Keep the existing engineering plan and legacy-retirement requirements unchanged.
+
 ## Implementation checkpoint — canonical goal ownership consolidation (2026-11-08)
 
 **Scope:** first action from the reconciled PR #610/#611 engineering execution queue; no voice-owner changes, merge or deployment.
