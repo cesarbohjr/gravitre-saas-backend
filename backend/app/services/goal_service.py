@@ -22,6 +22,7 @@ CONNECTOR_ACTIONS = _connector_actions()
 class GoalAnalysis(BaseModel):
     intent: str
     department: str
+    objective_family: str | None = None
     key_entities: list[str]
     required_systems: list[str]
     complexity: str
@@ -109,6 +110,7 @@ class GoalService:
             "Return ONLY strict JSON matching this schema (no markdown, no prose):\n"
             '{"intent": "<concise restatement of the goal>", '
             '"department": "<owning department, e.g. sales, marketing, operations, finance, support>", '
+            '"objective_family": "<semantic goal category e.g. grow_revenue, reduce_cost, reduce_churn, improve_support, improve_operations, improve_security, or other>", '
             '"key_entities": ["..."], '
             '"required_systems": ["<connector names needed, drawn from Available connectors>"], '
             '"complexity": "<one of: simple, moderate, complex>", '
