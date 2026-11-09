@@ -117,7 +117,7 @@ def inspect_opportunity_play_run(
         ):
             raise AcceptanceEvidenceBlocked("unbound_canonical_play_run")
         if (
-            play_params.get("opportunity_id") != opportunity_id
+            str(play_params.get("opportunity_id") or "") != opportunity_id
             or play_params.get("source_run_ids") != source_ids
         ):
             raise AcceptanceEvidenceBlocked("play_source_lineage_mismatch")
