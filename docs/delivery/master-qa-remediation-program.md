@@ -15,6 +15,16 @@
 
 **Go/no-go:** keep #611 unmerged and product-wide release unauthorized until root-cause, test and production gate evidence are complete. Keep #610 as Voice 3.0 owner.
 
+## R2 implementation checkpoint — LIVE/classical authority (2026-11-08)
+
+[Source-traced entrypoint and runtime authority report](pr611-r2-canonical-entrypoint-routing-trace.md) covers existing chat/voice/agent/Play/workflow paths, each owning subsystem and explicitly unverified live behaviors.
+
+**Confirmed and repaired:** `unified_turn_classical_fallback.should_defer_unified_turn_live_to_classical` previously allowed a second regex decision to override an explicit structured `needs_tool_sse=False` from LIVE. The existing helper now honors any supplied boolean and reserves legacy text probing for callers passing `None`. Write proposals, human moments and unsupported outcome types retain their hard guardrails. No parallel router, executor or data store was introduced.
+
+**Proof now required in existing CI:** `tests/services/test_unified_turn_classical_fallback.py` and `tests/services/test_unified_turn_fallthrough_enum.py` are explicitly included in the current additive Master QA P0 lane. Exact-head success, full chat/voice/Play/browser end-to-end parity, runtime caller telemetry, durable terminal effect and deployed evidence are **PENDING**. All ECO-001, ECO-011, ECO-012, DEC-001, DEC-002, DEC-003, DEC-018 and associated findings remain open. PR #610 continues to own voice STT/turn/audio repairs.
+
+**Next:** prove real callpath with correlated privacy-safe traces, fix remaining double-owners only after current-caller parity, run fail/deny/approve/cancel/replay/provider readback across chat, voice, agent, Play and canvas; measure p50/p95 latency and test state/approval authority before considering any ReAct/classical retirement.
+
 ## Why the old Master QA ledger was insufficient
 
 The original PR #605 audit found duplicate/competing execution authorities, registry vs actual connector readiness, ambiguity in provider/consumer outcome, historical architecture, potentially overlapping front-end hosts, voice handoff bugs, sequential latency and a large CI estate. Earlier #611 source ledger contained 43 entries but **zero tracked implementation commits, only three regression references, and zero certified synthetic or production closures**; 20 architecture decision entries had QA lane UNMAPPED. Several real regression tests were implemented later but never reconciled against each specific failure. A green CI workflow must **not** close a root cause that was not measured.
