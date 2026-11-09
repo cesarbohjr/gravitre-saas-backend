@@ -29,7 +29,9 @@ class VoiceTurnAudioEvidence:
         self.duplicate_finals = 0
         self.duplicate_stops = 0
         self.suspected_false_finals = 0
+        self.suspected_false_finals_with_audio = 0
         self.outbound_audio_frames = 0
+        self._audio_since_stop = 0
         self.audio_without_committed_stop = 0
         self.first_audio_after_stop_ms: float | None = None
         self._last_final_at: float | None = None
@@ -42,10 +44,13 @@ class VoiceTurnAudioEvidence:
                 and 0 <= now - self._last_final_at <= self._resume_window_s):
             # Ambiguous: this also includes genuinely rapid independent turns.
             self.suspected_false_finals += 1
+            if self._audio_since_stop:
+                self.suspected_false_finals_with_audio += 1
         self.epoch += 1
         self._last_final_at = None
         self._last_stop_at = None
         self._first_audio_epoch = None
+        self._audio_since_stop = 0
         self.first_audio_after_stop_ms = None
 
     def eager(self) -> None:
@@ -64,6 +69,7 @@ class VoiceTurnAudioEvidence:
     def stop(self) -> None:
         self.committed_stops += 1
         self._last_stop_at = self._clock()
+        self._audio_since_stop = 0
 
     def duplicate_stop(self) -> None:
         self.duplicate_stops += 1
@@ -73,6 +79,7 @@ class VoiceTurnAudioEvidence:
         if self._last_stop_at is None:
             self.audio_without_committed_stop += 1
             return
+        self._audio_since_stop += 1
         if self._first_audio_epoch != self.epoch:
             self._first_audio_epoch = self.epoch
             self.first_audio_after_stop_ms = round(
@@ -89,6 +96,7 @@ class VoiceTurnAudioEvidence:
             "duplicate_finals": self.duplicate_finals,
             "duplicate_stops": self.duplicate_stops,
             "suspected_false_finals": self.suspected_false_finals,
+            "suspected_false_finals_with_audio": self.suspected_false_finals_with_audio,
             "outbound_audio_frames": self.outbound_audio_frames,
             "audio_without_committed_stop": self.audio_without_committed_stop,
             "first_audio_after_stop_ms": self.first_audio_after_stop_ms,
