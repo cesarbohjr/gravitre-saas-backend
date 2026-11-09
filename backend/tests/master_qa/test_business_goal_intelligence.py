@@ -328,3 +328,49 @@ def test_metric_evidence_rejects_nonfinite_values(value):
             metric_key="bookings", unit="count", value=value,
             observed_at=datetime(2026, 11, 8, tzinfo=timezone.utc),
         )
+
+
+def test_verified_connector_snapshot_normalizes_to_tenant_metric():
+    from datetime import datetime, timezone
+    now = datetime(2026, 11, 8, tzinfo=timezone.utc)
+    step = {
+        "org_id": "tenant-A", "status": "completed", "kind": "read",
+        "provider": "hubspot", "source_record_id": "pipeline-aggregate",
+        "provider_readback_verified": True,
+        "output_snapshot": {"verified_metric": {
+            "system": "hubspot", "source_record_id": "pipeline-aggregate",
+            "metric_key": "pipeline_value", "unit": "CAD",
+            "value": 500.0, "observed_at": now.isoformat(),
+        }},
+    }
+    metric = GoalService.evidence_from_verified_step(org_id="tenant-A", step=step)
+    assert metric.org_id == "tenant-A"
+    assert metric.value == 500.0
+    assert metric.source_record_id == "pipeline-aggregate"
+
+
+@pytest.mark.parametrize("mutation,error", [
+    ({"org_id": "tenant-B"}, "cross_tenant"),
+    ({"status": "pending"}, "verified_completed_read_required"),
+    ({"kind": "write"}, "verified_completed_read_required"),
+    ({"provider_readback_verified": False}, "independent_provider_readback_required"),
+    ({"provider": "salesforce"}, "metric_provider_mismatch"),
+    ({"source_record_id": "another"}, "metric_source_mismatch"),
+    ({"output_snapshot": {"data": {"results": []}}}, "verified_metric_envelope_required"),
+])
+def test_unverified_connector_snapshot_cannot_be_metric_evidence(mutation, error):
+    from datetime import datetime, timezone
+    now = datetime(2026, 11, 8, tzinfo=timezone.utc)
+    step = {
+        "org_id": "tenant-A", "status": "completed", "kind": "read",
+        "provider": "hubspot", "source_record_id": "metric-1",
+        "provider_readback_verified": True,
+        "output_snapshot": {"verified_metric": {
+            "system": "hubspot", "source_record_id": "metric-1",
+            "metric_key": "bookings", "unit": "count",
+            "value": 1.0, "observed_at": now.isoformat(),
+        }},
+    }
+    step.update(mutation)
+    with pytest.raises(ValueError, match=error):
+        GoalService.evidence_from_verified_step(org_id="tenant-A", step=step)
