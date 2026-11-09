@@ -97,3 +97,38 @@ async def test_upstream_eager_is_not_modified():
     await barrier.process_frame(frame, FrameDirection.UPSTREAM)
     assert emitted == [(frame, FrameDirection.UPSTREAM)]
     assert barrier.suppressed_eager_count == 0
+
+
+@pytest.mark.asyncio
+async def test_probable_stop_before_eager_transcript_is_not_a_commit():
+    """Ordering between the stop proposal and eager transcript can vary."""
+    start = ProposedUserStartedSpeakingFrame()
+    early_stop = ProposedUserStoppedSpeakingFrame()
+    eager = EagerTranscriptionFrame("Show me", "u1", "candidate")
+    cancel = EagerEndOfTurnCancelFrame()
+    final = TranscriptionFrame("Show me the complete chart", "u1", "final", finalized=True)
+    committed_stop = ProposedUserStoppedSpeakingFrame()
+    delivered, _ = await _run([start, early_stop, eager, cancel, final, committed_stop])
+    assert early_stop not in delivered
+    assert eager not in delivered
+    assert delivered == [start, cancel, final, committed_stop]
+
+
+@pytest.mark.asyncio
+async def test_stop_without_any_eager_frame_waits_for_final():
+    """Native end-of-turn must not precede its authoritative transcript."""
+    start = ProposedUserStartedSpeakingFrame()
+    candidate_stop = ProposedUserStoppedSpeakingFrame()
+    final = TranscriptionFrame("Done speaking", "u1", "final", finalized=True)
+    delivered, _ = await _run([start, candidate_stop, final])
+    assert delivered == [start, final, candidate_stop]
+
+
+def test_live_flux_pipeline_positions_barrier_after_speculation_before_turn_aggregator():
+    import inspect
+    from app.services.pipecat_voice import pipeline
+
+    source = inspect.getsource(pipeline.build_pipecat_voice_task)
+    listing = source[source.index("pipeline = Pipeline("):]
+    assert listing.index("            speculative,") < listing.index("CommittedTurnBarrierProcessor()")
+    assert listing.index("CommittedTurnBarrierProcessor()") < listing.index("            user_agg,")
