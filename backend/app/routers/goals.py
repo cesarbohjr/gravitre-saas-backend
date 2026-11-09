@@ -200,7 +200,14 @@ async def handoff_cross_source_opportunity(
     # run_play enforces all provider, installation, approval and policy checks.
     result = await run_play(
         candidate["play_key"],
-        RunPlayRequest(installationId=candidate["installation_id"]),
+        RunPlayRequest(
+            installationId=candidate["installation_id"],
+            opportunityId=body.opportunity_id,
+            sourceRunIds={
+                "crm": assessment["source_runs"]["crm"],
+                "analytics": assessment["source_runs"]["analytics"],
+            },
+        ),
         member=(user, org_id, role),
         environment_name=environment_name,
         settings=settings,
