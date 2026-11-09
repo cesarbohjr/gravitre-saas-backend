@@ -218,6 +218,9 @@ def inspect_opportunity_play_run(
             if not any(
                 receipt["action"] == row.get("action_type")
                 and receipt["resourceId"] == str(row.get("target_entity_id") or "")
+                # A stale or post-measurement verification cannot establish
+                # that the recorded provider action produced the observation.
+                and action_at <= _timestamp(receipt["verifiedAt"]) <= measured_at
                 for receipt in verified_writes
             ):
                 continue
