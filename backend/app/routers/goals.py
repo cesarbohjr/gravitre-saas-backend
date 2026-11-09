@@ -125,20 +125,23 @@ def preview_cross_source_opportunities(
     raw_bindings = list_all_play_workflow_bindings(client, org_id)
     bindings: dict[str, list[dict[str, Any]]] = {}
     for key, items in raw_bindings.items():
-        for item in items:
-            workflow_id = str(item.get("workflowId") or "")
-            if not workflow_id:
-                continue
-            verified = (
-                client.table("workflows").select("id")
-                .eq("id", workflow_id).eq("org_id", org_id)
-                .eq("environment", environment_name).limit(1).execute().data or []
-            )
-            if not verified:
-                continue
-            bindings.setdefault(key, []).append({
+        # Canonical run_play dispatches ALL workflows bound to a Play. Never
+        # advertise a one-workflow intervention if extra bindings might run.
+        if len(items) != 1:
+            continue
+        item = items[0]
+        workflow_id = str(item.get("workflowId") or "")
+        if not workflow_id or item.get("status") in {"archived", "deleted"}:
+            continue
+        verified = (
+            client.table("workflows").select("id")
+            .eq("id", workflow_id).eq("org_id", org_id)
+            .eq("environment", environment_name).limit(1).execute().data or []
+        )
+        if verified:
+            bindings[key] = [{
                 **item, "org_id": org_id, "environment_name": environment_name,
-            })
+            }]
     try:
         assessment = assess_cross_source_opportunities(
             client=client, org_id=org_id, environment_name=environment_name,
