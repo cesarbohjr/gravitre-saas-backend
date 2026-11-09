@@ -284,12 +284,66 @@ class GoalService:
         )
 
     def _validate_definition(self, workflow: WorkflowDefinition) -> None:
-        node_ids = {node.id for node in workflow.nodes}
-        if "start" not in node_ids or "end" not in node_ids:
+        """Fail closed on malformed planning graphs before handing them to the builder.
+
+        This is a structural draft check, NOT proof that actions or connector
+        scopes are executable. Runtime authorization remains authoritative.
+        """
+        node_ids = [node.id for node in workflow.nodes]
+        if any(not node_id.strip() for node_id in node_ids) or len(set(node_ids)) != len(node_ids):
+            raise ValueError("Workflow nodes require unique nonempty IDs")
+        nodes = {node.id: node for node in workflow.nodes}
+        if "start" not in nodes or "end" not in nodes:
             raise ValueError("Workflow must include start and end nodes")
+        if nodes["start"].type != "trigger" or nodes["end"].type != "end":
+            raise ValueError("Workflow start/end node types are invalid")
+        edge_ids: set[str] = set()
+        successors: dict[str, set[str]] = {node_id: set() for node_id in nodes}
+        predecessors: dict[str, set[str]] = {node_id: set() for node_id in nodes}
         for edge in workflow.edges:
-            if edge.source not in node_ids or edge.target not in node_ids:
+            if not edge.id.strip() or edge.id in edge_ids:
+                raise ValueError("Workflow edges require unique nonempty IDs")
+            edge_ids.add(edge.id)
+            if edge.source not in nodes or edge.target not in nodes:
                 raise ValueError("Workflow edge references unknown node")
+            if edge.target == "start" or edge.source == "end":
+                raise ValueError("Workflow start/end direction is invalid")
+            if edge.target in successors[edge.source]:
+                raise ValueError("Workflow contains duplicate connections")
+            successors[edge.source].add(edge.target)
+            predecessors[edge.target].add(edge.source)
+
+        # Kahn's algorithm detects cycles even in an otherwise disconnected
+        # component. A draft with unreachable or dead-end nodes is also unsafe.
+        indegree = {node_id: len(parents) for node_id, parents in predecessors.items()}
+        ready = [node_id for node_id, degree in indegree.items() if degree == 0]
+        visited: set[str] = set()
+        while ready:
+            node_id = ready.pop()
+            visited.add(node_id)
+            for successor in successors[node_id]:
+                indegree[successor] -= 1
+                if indegree[successor] == 0:
+                    ready.append(successor)
+        if len(visited) != len(nodes):
+            raise ValueError("Workflow contains a cycle")
+
+        def reachable(source: str, adjacency: dict[str, set[str]]) -> set[str]:
+            found: set[str] = set()
+            pending = [source]
+            while pending:
+                current = pending.pop()
+                if current in found:
+                    continue
+                found.add(current)
+                pending.extend(adjacency[current] - found)
+            return found
+
+        if reachable("start", successors) != set(nodes) or reachable("end", predecessors) != set(nodes):
+            raise ValueError("Workflow contains disconnected or dead-end nodes")
+        approvals = [node.id for node in workflow.nodes if node.type == "human_approval"]
+        if workflow.requires_approval and not approvals:
+            raise ValueError("Workflow requires an approval node")
 
 
 _goal_service_singleton: GoalService | None = None
