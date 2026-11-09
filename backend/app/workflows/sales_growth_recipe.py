@@ -10,7 +10,7 @@ write approval, no fabricated diagnosis or revenue forecast.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Any, Iterable
 
 from app.services.connector_execution_matrix import (
@@ -58,6 +58,7 @@ class GoalPlan:
     agent_persona: str | None
     required_external_approval: bool
     observation_status: str
+    diagnostic_evidence: dict[str, Any] | None = None
 
     def as_dict(self) -> dict[str, Any]:
         return {
@@ -74,6 +75,7 @@ class GoalPlan:
             "agent_persona": self.agent_persona,
             "required_external_approval": self.required_external_approval,
             "observation_status": self.observation_status,
+            "diagnostic_evidence": self.diagnostic_evidence,
         }
 
 
@@ -351,6 +353,30 @@ def diagnose_persisted_sales_reads(
         "business_outcome": "NOT_MEASURED",
         "execution_status": "READ_DIAGNOSTIC_ONLY",
     }
+
+
+def attach_persisted_sales_diagnosis(
+    plan: GoalPlan,
+    *,
+    org_id: str,
+    run_id: str,
+    completed_steps: Iterable[dict[str, Any]],
+) -> GoalPlan:
+    """Return a new compiler input with verified *observations*, not effects.
+
+    Preserve the same registered tools, workflow graph, approvals and version;
+    a diagnostic cannot silently mutate or extend an executable plan.
+    """
+    diagnosis = diagnose_persisted_sales_reads(
+        plan, org_id=org_id, run_id=run_id, completed_steps=completed_steps,
+    )
+    if diagnosis["goal"] != plan.goal_text or plan.objective != "increase_sales":
+        raise GoalCompilationBlocked("diagnostic_plan_objective_mismatch")
+    return replace(
+        plan,
+        observation_status=diagnosis["status"],
+        diagnostic_evidence=diagnosis,
+    )
 
 
 async def compile_sales_growth_for_org(
