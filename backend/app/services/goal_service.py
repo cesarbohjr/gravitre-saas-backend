@@ -246,6 +246,53 @@ class GoalService:
         )
 
     @staticmethod
+    def evidence_from_verified_step(
+        *,
+        org_id: str,
+        step: dict[str, Any],
+    ) -> BusinessMetricEvidence:
+        """Normalize a single independently verified, persisted read snapshot.
+
+        This adapter cannot authorize a provider read. The existing workflow
+        runtime must already have executed and persisted the result. Never
+        interpret arbitrary free-form model output as verified business data.
+        """
+        if not org_id or not org_id.strip():
+            raise ValueError("authenticated_org_required")
+        if step.get("org_id") != org_id:
+            raise ValueError("cross_tenant_metric_evidence")
+        if step.get("status") != "completed" or step.get("kind") != "read":
+            raise ValueError("verified_completed_read_required")
+        if step.get("provider_readback_verified") is not True:
+            raise ValueError("independent_provider_readback_required")
+        snapshot = step.get("output_snapshot")
+        if not isinstance(snapshot, dict):
+            raise ValueError("structured_metric_snapshot_required")
+        # Only the typed observation envelope is accepted. Generic connector
+        # results need explicit, separately reviewed provider adapters.
+        metric = snapshot.get("verified_metric")
+        if not isinstance(metric, dict):
+            raise ValueError("verified_metric_envelope_required")
+        if not all(key in metric for key in (
+            "system", "source_record_id", "metric_key",
+            "unit", "value", "observed_at",
+        )):
+            raise ValueError("incomplete_verified_metric")
+        if not step.get("source_record_id") or (
+            str(step["source_record_id"]) != str(metric["source_record_id"])
+        ):
+            raise ValueError("metric_source_mismatch")
+        if str(step.get("provider") or "").strip().lower() != str(metric["system"]).strip().lower():
+            raise ValueError("metric_provider_mismatch")
+        return BusinessMetricEvidence.model_validate({
+            "org_id": org_id,
+            **{key: metric[key] for key in (
+                "system", "source_record_id", "metric_key",
+                "unit", "value", "observed_at",
+            )},
+        })
+
+    @staticmethod
     def compare_metric_observations(
         *, assessment: GoalEvidenceAssessment,
         metric_key: str,
