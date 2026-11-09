@@ -169,7 +169,9 @@ def compile_sales_growth_goal(
         if action.action_key == "hubspot.contacts.search":
             config.update({"list_all": True, "limit": 10})
         elif action.action_key == "hubspot.deals.search":
-            config.update({"limit": 25})
+            # Ask the actual HubSpot adapter for a bounded paginated census.
+            # More than 250 deals produces truncated coverage, not a false KPI.
+            config.update({"max_records": 250})
         nodes.append({
             "id": node_id, "node_type": "connector",
             "name": action.display_name,
@@ -254,7 +256,7 @@ def diagnose_persisted_sales_reads(
     Search pages without authoritative complete coverage cannot yield totals.
     """
     from datetime import datetime, timezone
-    from app.services.goal_service import BusinessMetricEvidence, GoalService
+    from app.services.goal_service import BusinessMetricEvidence
 
     if not org_id or not run_id:
         raise GoalCompilationBlocked("authenticated_org_and_persisted_run_required")
@@ -294,7 +296,7 @@ def diagnose_persisted_sales_reads(
         if output.get("success") is False:
             facts.append({"step_id": step_id, "status": "PROVIDER_ERROR"})
             continue
-        if action not in {"hubspot.deals.search", "hubspot.contacts.search"}:
+        if action != "hubspot.deals.search":
             facts.append({"step_id": step_id, "status": "UNSUPPORTED_METRIC_EXTRACTION"})
             continue
         payload = output.get("data") if isinstance(output.get("data"), dict) else output
