@@ -149,3 +149,45 @@ async def test_relay_is_wired_into_the_live_pipeline_before_the_aggregator():
     listing = source[source.index("pipeline = Pipeline(") :]
     assert listing.index("TranscriptRelayProcessor(") < listing.index("user_agg,")
     assert listing.index("stt,") < listing.index("TranscriptRelayProcessor(")
+
+
+@pytest.mark.asyncio
+async def test_repeated_provider_final_mirrors_only_once_but_original_frames_pass():
+    """Exact retransmission must not duplicate client captions or consume STT."""
+    first = TranscriptionFrame(user_id="u1", text="Please finish the report", timestamp="same-final")
+    retransmit = TranscriptionFrame(user_id="u1", text="Please finish the report", timestamp="same-final")
+    pushed, relay = await _drive([
+        (first, FrameDirection.DOWNSTREAM),
+        (retransmit, FrameDirection.DOWNSTREAM),
+    ])
+    assert pushed.count(first) == 1
+    assert pushed.count(retransmit) == 1
+    assert len(_transcript_messages(pushed)) == 1
+    assert relay.relayed_count == 1
+
+
+@pytest.mark.asyncio
+async def test_repeat_words_with_new_timestamp_remain_separate_utterances():
+    """Two real 'yes' replies must not disappear just because text matches."""
+    first = TranscriptionFrame(user_id="u1", text="yes", timestamp="turn-1")
+    second = TranscriptionFrame(user_id="u1", text="yes", timestamp="turn-2")
+    pushed, relay = await _drive([
+        (first, FrameDirection.DOWNSTREAM),
+        (second, FrameDirection.DOWNSTREAM),
+    ])
+    assert len(_transcript_messages(pushed)) == 2
+    assert relay.relayed_count == 2
+
+
+@pytest.mark.asyncio
+async def test_final_dedup_does_not_cross_user_boundary_or_drop_missing_timestamp():
+    shared = "shared-provider-sequence"
+    frames = [
+        TranscriptionFrame(user_id="u1", text="hello", timestamp=shared),
+        TranscriptionFrame(user_id="u2", text="hello", timestamp=shared),
+        TranscriptionFrame(user_id="u1", text="hello", timestamp=""),
+        TranscriptionFrame(user_id="u1", text="hello", timestamp=""),
+    ]
+    pushed, relay = await _drive([(f, FrameDirection.DOWNSTREAM) for f in frames])
+    assert len(_transcript_messages(pushed)) == 4
+    assert relay.relayed_count == 4
