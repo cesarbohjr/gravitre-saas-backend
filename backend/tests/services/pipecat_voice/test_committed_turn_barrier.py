@@ -209,3 +209,52 @@ async def test_repeating_same_words_in_distinct_final_turns_is_not_dropped():
         first_start, first, first_stop, next_start, second, second_stop,
     ])
     assert delivered == [first_start, first, first_stop, next_start, second, second_stop]
+
+
+@pytest.mark.asyncio
+async def test_dropped_filler_final_releases_stop_for_empty_turn_cleanup():
+    """UtteranceGate removes 'um'; stop must not remain pending indefinitely."""
+    from types import SimpleNamespace
+
+    session = SimpleNamespace(filler_finals_dropped=0)
+    barrier = CommittedTurnBarrierProcessor(voice_session=session)
+    await BaseObject.setup(barrier, TaskManager())
+    delivered = []
+
+    async def capture(frame, direction=FrameDirection.DOWNSTREAM):
+        delivered.append(frame)
+
+    barrier.push_frame = capture
+    start = ProposedUserStartedSpeakingFrame()
+    eager = EagerTranscriptionFrame("um", "u1", "eager")
+    stop = ProposedUserStoppedSpeakingFrame()
+    await barrier.process_frame(start, FrameDirection.DOWNSTREAM)
+    await barrier.process_frame(eager, FrameDirection.DOWNSTREAM)
+    # The real UtteranceGate consumed the final and recorded the filler drop.
+    session.filler_finals_dropped += 1
+    await barrier.process_frame(stop, FrameDirection.DOWNSTREAM)
+    assert delivered == [start, stop]
+    assert barrier._pending_stop is None
+
+
+@pytest.mark.asyncio
+async def test_filler_drop_from_previous_turn_does_not_release_current_stop():
+    from types import SimpleNamespace
+
+    session = SimpleNamespace(filler_finals_dropped=2)
+    barrier = CommittedTurnBarrierProcessor(voice_session=session)
+    await BaseObject.setup(barrier, TaskManager())
+    delivered = []
+
+    async def capture(frame, direction=FrameDirection.DOWNSTREAM):
+        delivered.append(frame)
+
+    barrier.push_frame = capture
+    start = ProposedUserStartedSpeakingFrame()
+    stop = ProposedUserStoppedSpeakingFrame()
+    await barrier.process_frame(start, FrameDirection.DOWNSTREAM)
+    await barrier.process_frame(stop, FrameDirection.DOWNSTREAM)
+    assert delivered == [start]
+    final = TranscriptionFrame("yes", "u1", "t", finalized=True)
+    await barrier.process_frame(final, FrameDirection.DOWNSTREAM)
+    assert delivered == [start, final, stop]
