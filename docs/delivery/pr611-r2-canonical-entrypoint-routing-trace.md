@@ -18,7 +18,7 @@
 ## 2. Confirmed R2 repair and regression
 
 - File: `backend/app/services/unified_turn_classical_fallback.py`; defect: `should_defer_unified_turn_live_to_classical` treated legacy pattern match as a second decision after structured `needs_tool_sse=False`. A false structured decision could be overturned merely by mentioning a probe phrase, even when the caller had already evaluated classification/context.
-- New behavior: when `needs_tool_sse` is `True/False`, use it; when `None`, use compatibility `message_requires_classical_tool_sse`. Hard guards continue to protect connector write proposal, ordinary non-text outcomes and human vents.
+- New behavior: the existing LIVE caller evaluates its orchestration/operator signals and exactly one compatibility SSE probe (including read-only connector-status questions) before passing a fully reconciled boolean. The handoff helper honors explicit `True/False`; only caller paths supplying `None` use a legacy pattern fallback. Hard guards continue to protect connector write proposals, ordinary non-text outcomes and human vents.
 - Tests: `backend/tests/services/test_unified_turn_classical_fallback.py` adds structured false/true, legacy compatibility, write-proposal and no-action human-turn cases; `backend/tests/services/test_unified_turn_fallthrough_enum.py` asserts the actual LIVE callsite supplies a structured boolean and has one source handoff call.
 - Evidence: commits and CI run must be attached at exact #611 head; result remains **PENDING** until all required runs pass. No claim of production parity.
 
