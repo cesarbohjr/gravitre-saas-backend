@@ -8,13 +8,16 @@ from pipecat.frames.frames import (
     ProposedUserStartedSpeakingFrame,
     ProposedUserStoppedSpeakingFrame,
     TranscriptionFrame,
+    TTSAudioRawFrame,
 )
 from pipecat.processors.frame_processor import FrameDirection
 from pipecat.utils.base_object import BaseObject
 from pipecat.utils.asyncio.task_manager import TaskManager
 
 from app.services.pipecat_voice.committed_turn_barrier import CommittedTurnBarrierProcessor
-from app.services.pipecat_voice.turn_audio_evidence import VoiceTurnAudioEvidence
+from app.services.pipecat_voice.turn_audio_evidence import (
+    OutboundAudioEvidenceProcessor, VoiceTurnAudioEvidence,
+)
 
 
 @pytest.mark.asyncio
@@ -89,3 +92,32 @@ def test_later_independent_turn_does_not_look_like_false_final():
     t[0] = 3.0
     e.new_start()
     assert e.snapshot()["suspected_false_finals"] == 0
+
+
+@pytest.mark.asyncio
+async def test_real_pcm_tap_propagates_frames_and_records_sanitized_trace():
+    class Trace:
+        def __init__(self):
+            self.extras = []
+
+        def add_extra(self, key, value):
+            self.extras.append((key, value))
+
+    evidence = VoiceTurnAudioEvidence(clock=lambda: 1.0)
+    trace = Trace()
+    tap = OutboundAudioEvidenceProcessor(evidence=evidence, turn_trace=trace)
+    await BaseObject.setup(tap, TaskManager())
+    emitted = []
+
+    async def capture(frame, direction=FrameDirection.DOWNSTREAM):
+        emitted.append((frame, direction))
+
+    tap.push_frame = capture
+    pcm = TTSAudioRawFrame(b"\\x00\\x00" * 160, 16000, 1)
+    await tap.process_frame(pcm, FrameDirection.DOWNSTREAM)
+    assert emitted == [(pcm, FrameDirection.DOWNSTREAM)]
+    assert evidence.outbound_audio_frames == 1
+    assert evidence.audio_without_committed_stop == 1
+    assert trace.extras[0][0] == "voice_boundary_audio"
+    assert "transcript" not in repr(trace.extras[0][1]).lower()
+    assert "audio" not in trace.extras[0][1].keys()  # counters only, no PCM bytes
