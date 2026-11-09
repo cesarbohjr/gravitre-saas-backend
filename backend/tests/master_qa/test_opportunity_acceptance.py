@@ -47,6 +47,10 @@ def records():
             "id": RUN, "org_id": ORG, "environment": "synthetic",
             "workflow_id": WF, "run_type": "execute", "status": "completed",
             "required_approvals": 1,
+            "definition_snapshot": {"steps": [{
+                "id": "update-deal", "type": "invoke_tool",
+                "config": {"action": "hubspot.deals.update_stage"},
+            }]},
             "parameters": {"play": {
                 "run_id": PLAY_RUN, "key": "revenue-leak-hunter",
                 "installation_id": INSTALL,
@@ -57,7 +61,7 @@ def records():
         }],
         "workflow_steps": [{
             "run_id": RUN, "org_id": ORG, "step_id": "update-deal",
-            "step_index": 0, "status": "completed",
+            "step_index": 0, "step_type": "invoke_tool", "status": "completed",
             "output_snapshot": {
                 "invoke_action": "hubspot.deals.update_stage",
                 "success": True, "outcome_verified": True,
@@ -219,3 +223,11 @@ def test_cancelled_or_failed_play_cannot_be_certified(status):
     result = inspect(rows)
     assert result["playNotFailed"] is False
     assert result["certified"] is False
+
+
+def test_provider_write_must_match_immutable_workflow_definition():
+    rows = records()
+    rows["workflow_runs"][0]["definition_snapshot"]["steps"][0]["config"]["action"] = "hubspot.contacts.create"
+    result = inspect(rows)
+    assert result["certified"] is False
+    assert result["independentWriteReadbackVerified"] is False
