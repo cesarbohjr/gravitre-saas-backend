@@ -298,3 +298,29 @@ def test_finalized_run_retry_skips_duplicate_terminal_fanout(monkeypatch):
         metadata={"completion_verified": True},
     )
     assert result.fanout["idempotent_skip"] is True
+
+
+def test_approval_interruption_persists_state_without_verified_completion(monkeypatch):
+    """Approval interruption must retain approval status, not fabricate completion proof."""
+    from app.services.execution_outcome import ExecutionOutcomeEvent, _persist_run
+    from app.workflows import repository
+
+    observed = []
+
+    def record_update(_client, run_id, **kwargs):
+        observed.append((run_id, kwargs))
+
+    def forbidden_merge(*_args, **_kwargs):
+        raise AssertionError("unverified approval interruption must not persist verified output")
+
+    monkeypatch.setattr(repository, "update_run", record_update)
+    monkeypatch.setattr(repository, "merge_run_parameters", forbidden_merge)
+    event = ExecutionOutcomeEvent(
+        org_id="org-test", status="flagged_for_review", source="assistant_chat",
+        run_id="run-test", approval_status="pending", verified_output=None,
+    )
+    _persist_run(None, event, "flagged_for_review", "2026-11-09T00:00:00+00:00")
+    assert len(observed) == 1
+    assert observed[0][0] == "run-test"
+    assert observed[0][1]["status"] == "flagged_for_review"
+    assert observed[0][1]["approval_status"] == "pending"
