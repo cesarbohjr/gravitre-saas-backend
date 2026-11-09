@@ -9,7 +9,7 @@ inspect = namespace["inspect"]
 
 def test_expected_ingress_and_worker_graph_edges_exist():
     evidence = inspect(ROOT)
-    assert evidence["source_edges_found"] == evidence["expected_edges"] == 21
+    assert evidence["source_edges_found"] == evidence["expected_edges"] == 28
     assert not evidence["missing_edges"]
     assert all(edge["proof_level"] == "SOURCE_ONLY_NOT_RUNTIME" for edge in evidence["source_edges"])
     assert evidence["production_certified"] is False
