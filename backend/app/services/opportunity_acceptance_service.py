@@ -58,6 +58,36 @@ def inspect_opportunity_play_run(
     )
     if not install_rows or install_rows[0].get("play_key") != play.get("play_key"):
         return None
+    metadata = play.get("metadata") if isinstance(play.get("metadata"), dict) else {}
+    source_ids = metadata.get("source_run_ids")
+    opportunity_id = str(metadata.get("opportunity_id") or "")
+    source_verified = False
+    if opportunity_id and isinstance(source_ids, dict) and set(source_ids) == {"crm", "analytics"}:
+        crm_id = str(source_ids.get("crm") or "")
+        analytics_id = str(source_ids.get("analytics") or "")
+        if crm_id and analytics_id and crm_id != analytics_id:
+            from app.workflows.sales_growth_recipe import diagnose_authenticated_sales_run
+            from app.services.analytics_metric_evidence import diagnose_ga4_run
+            try:
+                crm = diagnose_authenticated_sales_run(
+                    client=client, org_id=org_id, environment_name=environment_name,
+                    run_id=crm_id,
+                )
+                analytics = diagnose_ga4_run(
+                    client=client, org_id=org_id, environment_name=environment_name,
+                    run_id=analytics_id,
+                )
+                source_verified = bool(
+                    isinstance(crm, dict)
+                    and isinstance(crm.get("diagnosis"), dict)
+                    and crm["diagnosis"].get("status") == "OBSERVATIONS_AVAILABLE"
+                    and isinstance(analytics, dict)
+                    and analytics.get("status") == "GA4_DAILY_ROWS_OBSERVED_NOT_AGGREGATED"
+                    and analytics.get("rows")
+                )
+            except ValueError:
+                source_verified = False
+
     recorded_ids = play.get("workflow_run_ids")
     if not isinstance(recorded_ids, list) or not recorded_ids:
         return {
@@ -85,6 +115,11 @@ def inspect_opportunity_play_run(
             or play_params.get("key") != play.get("play_key")
             or play_params.get("execution_authority") != "canonical_workflow_runtime"
         ):
+        if (
+            play_params.get("opportunity_id") != opportunity_id
+            or play_params.get("source_run_ids") != source_ids
+        ):
+            raise AcceptanceEvidenceBlocked("play_source_lineage_mismatch")
             raise AcceptanceEvidenceBlocked("unbound_canonical_play_run")
         approval_required = int(run.get("required_approvals") or 0)
         # This gate covers ACT WITH APPROVAL only. Mode and approval are read
@@ -180,12 +215,15 @@ def inspect_opportunity_play_run(
             "sourceReadbacksVerified": bool(verified_writes), "outcomeMeasured": measured,
         })
     # A complete evidence report is NOT a promise of positive business lift.
-    certified = all_approved and all_completed and all_verified and all_measured
+    certified = source_verified and all_approved and all_completed and all_verified and all_measured
     return {
         "status": "OBSERVED_CHAIN_COMPLETE" if certified else "ACCEPTANCE_INCOMPLETE",
         "playRunId": play_run_id, "playKey": play.get("play_key"),
         "orgId": org_id, "environment": environment_name,
         "workflowRuns": runs,
+        "sourceEvidenceVerified": source_verified,
+        "opportunityId": opportunity_id or None,
+        "sourceRuns": source_ids if source_verified else None,
         "humanApprovalVerified": all_approved,
         "executionVerified": all_completed,
         "independentWriteReadbackVerified": all_verified,
