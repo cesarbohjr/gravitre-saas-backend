@@ -299,3 +299,19 @@ def test_hubspot_diagnostic_rejects_inconsistent_provider_coverage():
     )
     assert result["observations"] == []
     assert result["findings"][0]["status"] == "INCONSISTENT_PROVIDER_TOTAL"
+
+
+def test_diagnosis_feeds_existing_plan_without_mutating_executable_graph():
+    from app.workflows.sales_growth_recipe import attach_persisted_sales_diagnosis
+    original = _compile()
+    annotated = attach_persisted_sales_diagnosis(
+        original, org_id="org-A", run_id="run-1",
+        completed_steps=[_persisted_hubspot_read()],
+    )
+    assert original.diagnostic_evidence is None
+    assert annotated.graph == original.graph
+    assert annotated.workflow_definition == original.workflow_definition
+    assert annotated.capabilities == original.capabilities
+    assert annotated.required_external_approval == original.required_external_approval
+    assert annotated.as_dict()["diagnostic_evidence"]["observations"][0]["value"] == 1
+    assert annotated.as_dict()["diagnostic_evidence"]["recommended_writes"] == []
