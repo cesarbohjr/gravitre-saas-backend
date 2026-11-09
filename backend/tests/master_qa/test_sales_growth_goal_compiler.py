@@ -5,7 +5,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from app.services.sales_growth_goal_compiler import (
+from app.workflows.sales_growth_recipe import (
     GoalCompilationBlocked,
     compile_sales_growth_goal,
     verified_sales_observations,
@@ -34,6 +34,7 @@ def _compile(**extra):
             _entry("slack", "slack.channels.list"),
             _entry("google_analytics", "google_analytics.reports.run"),
         ],
+        recognized_objective="increase_sales",
         **extra,
     )
 
@@ -60,6 +61,7 @@ def test_missing_connector_is_fail_closed(connected):
         compile_sales_growth_goal(
             goal="Increase sales", connected_integrations=connected,
             action_entries=[_entry("hubspot", "hubspot.contacts.search")],
+            recognized_objective="increase_sales",
         )
 
 
@@ -71,6 +73,7 @@ def test_catalog_only_or_write_only_actions_never_become_executable():
                 _entry("hubspot", "hubspot.contacts.search", implemented=False),
                 _entry("hubspot", "hubspot.contacts.create", kind="write"),
             ],
+            recognized_objective="increase_sales",
         )
 
 
@@ -110,16 +113,18 @@ def test_observation_requires_matching_persisted_completed_steps():
 
 
 def test_non_sales_goal_does_not_silently_route_to_sales():
-    with pytest.raises(GoalCompilationBlocked, match="unsupported_goal"):
+    with pytest.raises(GoalCompilationBlocked, match="requires_verified_semantic_objective"):
         compile_sales_growth_goal(
             goal="reduce support backlog", connected_integrations=["hubspot"],
             action_entries=[_entry("hubspot", "hubspot.contacts.search")],
+            recognized_objective="increase_sales",
         )
 
 
 @pytest.mark.asyncio
 async def test_authenticated_org_selection_uses_real_selector_boundary(monkeypatch):
-    from app.services import agent_selector, sales_growth_goal_compiler
+    from app.services import agent_selector
+    from app.workflows import sales_growth_recipe
     calls = []
 
     class TenantSelector:
@@ -134,10 +139,10 @@ async def test_authenticated_org_selection_uses_real_selector_boundary(monkeypat
 
     monkeypatch.setattr(agent_selector, "AgentSelector", TenantSelector)
     monkeypatch.setattr(
-        sales_growth_goal_compiler, "build_connector_execution_matrix",
+        sales_growth_recipe, "build_connector_execution_matrix",
         lambda: (_entry("hubspot", "hubspot.contacts.search"),),
     )
-    plan = await sales_growth_goal_compiler.compile_sales_growth_for_org(
+    plan = await sales_growth_recipe.compile_sales_growth_for_org(
         org_id="tenant-123", goal="I need to increase sales", settings=object(),
     )
     assert calls == [("select", "tenant-123", "sales"), ("connected", "tenant-123")]
@@ -147,7 +152,7 @@ async def test_authenticated_org_selection_uses_real_selector_boundary(monkeypat
 
 @pytest.mark.asyncio
 async def test_org_boundary_must_be_explicit():
-    from app.services.sales_growth_goal_compiler import compile_sales_growth_for_org
+    from app.workflows.sales_growth_recipe import compile_sales_growth_for_org
     with pytest.raises(GoalCompilationBlocked, match="authenticated_org_required"):
         await compile_sales_growth_for_org(
             org_id="", goal="increase sales", settings=object(),
@@ -155,7 +160,7 @@ async def test_org_boundary_must_be_explicit():
 
 
 def test_installed_play_discovery_requires_same_org_environment_and_workflow_binding(monkeypatch):
-    from app.services.sales_growth_goal_compiler import discover_installed_sales_plays
+    from app.workflows.sales_growth_recipe import discover_installed_sales_plays
     from app.workflows import repository
     from app.plays import workflow_bindings
     checks = []
@@ -201,4 +206,5 @@ def test_unbound_analytics_schema_cannot_masquerade_as_executable_plan():
             action_entries=[
                 _entry("google_analytics", "google_analytics.reports.run"),
             ],
+            recognized_objective="increase_sales",
         )
