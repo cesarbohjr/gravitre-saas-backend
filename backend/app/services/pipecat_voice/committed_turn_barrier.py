@@ -30,7 +30,7 @@ class CommittedTurnBarrierProcessor(FrameProcessor):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self._pending_stop: Frame | None = None
-        self._awaiting_final = False
+        self._final_seen = False
         self._suppressed_eager = 0
 
     @property
@@ -44,25 +44,25 @@ class CommittedTurnBarrierProcessor(FrameProcessor):
             return
 
         if isinstance(frame, EagerTranscriptionFrame):
-            self._awaiting_final = True
+            self._final_seen = False
             self._suppressed_eager += 1
             return
 
         if isinstance(frame, EagerEndOfTurnCancelFrame):
             # The speaker continued. Never replay a provisional stop.
             self._pending_stop = None
-            self._awaiting_final = False
+            self._final_seen = False
             await self.push_frame(frame, direction)
             return
 
         if isinstance(frame, ProposedUserStartedSpeakingFrame):
             # A fresh utterance invalidates a stop from a previous candidate.
             self._pending_stop = None
-            self._awaiting_final = False
+            self._final_seen = False
             await self.push_frame(frame, direction)
             return
 
-        if isinstance(frame, ProposedUserStoppedSpeakingFrame) and self._awaiting_final:
+        if isinstance(frame, ProposedUserStoppedSpeakingFrame) and not self._final_seen:
             self._pending_stop = frame
             return
 
@@ -73,7 +73,7 @@ class CommittedTurnBarrierProcessor(FrameProcessor):
                 pending = self._pending_stop
                 self._pending_stop = None
                 await self.push_frame(pending, direction)
-            self._awaiting_final = False
+            self._final_seen = True
             return
 
         await self.push_frame(frame, direction)
