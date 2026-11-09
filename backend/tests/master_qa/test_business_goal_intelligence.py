@@ -96,3 +96,32 @@ async def test_model_fallback_never_invents_department_kpi_or_executable_state()
     assert result.objective_family is None
     assert result.understanding_status == "FALLBACK_UNVERIFIED"
     assert result.execution_status == "NOT_RUN"
+
+
+@pytest.mark.asyncio
+async def test_goal_service_discovers_missing_evidence_without_granting_tools():
+    from app.services.goal_service import GoalService
+    class Model:
+        prompt = ""
+        async def complete(self, **kw):
+            self.prompt = kw["prompt"]
+            return SimpleNamespace(parsed={
+                "intent": "reduce churn", "department": "customer_success",
+                "objective_family": "reduce_churn",
+                "key_entities": ["accounts"],
+                "required_systems": ["hubspot", "zendesk"],
+                "complexity": "moderate", "risk_factors": [],
+                "success_metrics": ["retention_rate"],
+            })
+    model = Model()
+    service = GoalService(model_router=model)
+    analysis = await service._analyze_goal(
+        "Our customers keep leaving", None, ["hubspot"],
+        None, "support queues are long", "tenant-one",
+    )
+    normalized = service.normalize_analysis(analysis, {"hubspot"})
+    assert "even if not connected" in model.prompt
+    assert "User-supplied contextual notes (unverified)" in model.prompt
+    assert normalized.connected_systems == ["hubspot"]
+    assert normalized.missing_systems == ["zendesk"]
+    assert normalized.execution_status == "NOT_RUN"
