@@ -180,3 +180,76 @@ def test_goal_draft_rejects_malformed_or_unsafe_graphs(mutation, error):
         draft.edges.append(WorkflowEdge(id="backward", source="decision", target="start"))
     with pytest.raises(ValueError, match=error):
         service._validate_definition(draft)
+
+
+def test_tenant_metric_evidence_preserves_lineage_and_no_outcome_claim():
+    from datetime import datetime, timedelta, timezone
+    from app.services.goal_service import BusinessMetricEvidence
+
+    now = datetime(2026, 11, 8, tzinfo=timezone.utc)
+    analysis = GoalAnalysis(
+        intent="Improve pipeline", department="sales",
+        key_entities=["deals"], required_systems=["hubspot", "salesforce"],
+        complexity="moderate", risk_factors=[], success_metrics=["pipeline_value"],
+    )
+    current = BusinessMetricEvidence(
+        org_id="org-A", system="hubspot", source_record_id="deal-1",
+        metric_key="pipeline_value", unit="USD", value=2500,
+        observed_at=now - timedelta(hours=1),
+    )
+    stale = current.model_copy(update={"source_record_id": "deal-2", "observed_at": now - timedelta(days=9)})
+    future = current.model_copy(update={"source_record_id": "deal-3", "observed_at": now + timedelta(minutes=1)})
+    unverified = current.model_copy(update={"system": "unknown"})
+    no_lineage = current.model_copy(update={"source_record_id": ""})
+    naive = current.model_copy(update={"observed_at": datetime(2026, 11, 8)})
+    result = GoalService.assess_evidence_for_org(
+        org_id="org-A", analysis=analysis, connected_systems={"hubspot"},
+        observations=[current, stale, future, unverified, no_lineage, naive], as_of=now,
+    )
+    assert result.status == "EVIDENCE_AVAILABLE_UNINTERPRETED"
+    assert result.usable == [current]
+    assert result.missing_systems == ["salesforce"]
+    assert result.business_outcome == "NOT_MEASURED"
+    assert {item["reason"] for item in result.excluded} == {
+        "stale_observation", "future_observation", "unverified_or_unrequired_source",
+        "missing_metric_provenance", "missing_observation_timezone",
+    }
+
+
+def test_metric_evidence_fails_closed_on_cross_tenant_records():
+    from datetime import datetime, timezone
+    from app.services.goal_service import BusinessMetricEvidence
+
+    now = datetime(2026, 11, 8, tzinfo=timezone.utc)
+    analysis = GoalAnalysis(
+        intent="Audit spend", department="finance", key_entities=["invoices"],
+        required_systems=["quickbooks"], complexity="simple",
+        risk_factors=[], success_metrics=["spend"],
+    )
+    record = BusinessMetricEvidence(
+        org_id="org-B", system="quickbooks", source_record_id="invoice-secret",
+        metric_key="spend", unit="CAD", value=100, observed_at=now,
+    )
+    with pytest.raises(ValueError, match="cross_tenant_metric_evidence"):
+        GoalService.assess_evidence_for_org(
+            org_id="org-A", analysis=analysis, connected_systems={"quickbooks"},
+            observations=[record], as_of=now,
+        )
+
+
+def test_metric_evidence_missing_connection_never_claims_diagnosis():
+    from datetime import datetime, timezone
+
+    analysis = GoalAnalysis(
+        intent="Reduce churn", department="support", key_entities=["accounts"],
+        required_systems=["zendesk"], complexity="moderate",
+        risk_factors=[], success_metrics=["churn"],
+    )
+    result = GoalService.assess_evidence_for_org(
+        org_id="org-A", analysis=analysis, connected_systems=set(),
+        observations=[], as_of=datetime(2026, 11, 8, tzinfo=timezone.utc),
+    )
+    assert result.status == "INSUFFICIENT_EVIDENCE"
+    assert result.missing_systems == ["zendesk"]
+    assert result.usable == []
+    assert result.business_outcome == "NOT_MEASURED"
