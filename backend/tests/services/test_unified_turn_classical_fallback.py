@@ -137,3 +137,74 @@ def test_human_venting_remains_live_even_if_structured_signal_is_true():
         message="This has been such a frustrating day. I'm exhausted.",
         needs_tool_sse=True,
     )
+
+
+def test_handoff_consumed_once_and_removed_from_persistable_state():
+    """ECO-011/DEC-018: a retry cannot re-arm a consumed tool selection."""
+    from types import SimpleNamespace
+    from app.services.live_classical_handoff import (
+        arm_from_task_state, consume_handoff, peek_handoff,
+        stash_live_classical_handoff,
+    )
+
+    state = {}
+    try:
+        proposal = SimpleNamespace(
+            tool_name="getConnectorStatus", tool_invoke_action="getConnectorStatus",
+            tool_arguments={"provider": "slack"},
+        )
+        stashed = stash_live_classical_handoff(
+            state, proposal, reason="read_tool_classical",
+        )
+        assert stashed is not None
+        arm_from_task_state(state)
+        assert "live_classical_handoff" not in state
+        assert consume_handoff() == stashed
+        assert consume_handoff() is None
+        arm_from_task_state(state)  # simulated retry with same conversation state
+        assert peek_handoff() is None
+        assert consume_handoff() is None
+    finally:
+        arm_from_task_state({})  # contextvars must not leak across tests
+
+
+def test_evidence_queue_consumes_each_choice_once_without_stale_rearm():
+    """DEC-002/018: queued handoff choices have bounded one-shot semantics."""
+    from app.services.live_classical_handoff import (
+        arm_from_task_state, consume_handoff, stash_handoff_queue,
+    )
+
+    state = {}
+    try:
+        stash_handoff_queue(state, [
+            {"tool_name": "first_read", "tool_arguments": {"step": 1}},
+            {"tool_name": "second_read", "tool_arguments": {"step": 2}},
+        ])
+        arm_from_task_state(state)
+        assert "live_classical_handoff_queue" not in state
+        assert "live_classical_handoff" not in state
+        assert "evidence_plan_owns_tools" not in state
+        assert consume_handoff()["tool_name"] == "first_read"
+        assert consume_handoff()["tool_name"] == "second_read"
+        assert consume_handoff() is None
+        arm_from_task_state(state)
+        assert consume_handoff() is None
+    finally:
+        arm_from_task_state({})
+
+
+def test_new_direct_handoff_replaces_unconsumed_prior_queue():
+    """DEC-001: a new turn must never inherit the previous turn's queued action."""
+    from app.services.live_classical_handoff import (
+        arm_from_task_state, arm_handoff, consume_handoff, stash_handoff_queue,
+    )
+
+    try:
+        state = {}
+        stash_handoff_queue(state, [{"tool_name": "stale_read"}])
+        arm_from_task_state(state)
+        arm_handoff({"tool_name": "current_read", "tool_arguments": {}})
+        assert consume_handoff()["tool_name"] == "current_read"
+        assert consume_handoff() is None
+    finally:
+        arm_from_task_state({})
