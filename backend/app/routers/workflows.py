@@ -4891,7 +4891,10 @@ async def create_workflow_from_goal(
     # hard-coded intent recognizer. Other domains remain understood and
     # explicitly marked as unverified draft plans until execution contracts
     # are implemented and proven.
-    is_sales_growth = business_goal.department == "sales"
+    is_sales_growth = (
+        business_goal.department == "sales"
+        and business_goal.objective_family == "grow_revenue"
+    )
     if is_sales_growth:
         try:
             sales_plan = await compile_sales_growth_for_org(
