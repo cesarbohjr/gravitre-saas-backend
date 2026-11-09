@@ -4875,18 +4875,29 @@ async def create_workflow_from_goal(
     goal_service: GoalService = Depends(get_goal_service),
 ) -> dict:
     _user, org_id = _admin
-    # Sales reference slice: use an actual canvas graph rather than a model
-    # outline. Executions remain under normal authenticated workflow routes.
+    # Every business goal first passes through shared model-based semantic
+    # analysis, including vague questions spanning multiple departments.
+    # Never infer connector credentials, execution authority or outcomes.
+    from app.services.business_goal_intelligence import analyze_business_goal_for_org
     from app.services.sales_growth_goal_compiler import (
-        GoalCompilationBlocked,
-        _sales_intent,
-        compile_sales_growth_for_org,
+        GoalCompilationBlocked, compile_sales_growth_for_org,
     )
-    if _sales_intent(request.goal) and str(request.department or "sales").lower() == "sales":
+    business_goal = await analyze_business_goal_for_org(
+        goal=request.goal, org_id=org_id, settings=settings,
+        department_hint=request.department, success_metric=request.success_metric,
+        org_context=request.org_context, goal_service=goal_service,
+    )
+    # The sales diagnostic is the first certified compiler slice, not a
+    # hard-coded intent recognizer. Other domains remain understood and
+    # explicitly marked as unverified draft plans until execution contracts
+    # are implemented and proven.
+    is_sales_growth = business_goal.department == "sales"
+    if is_sales_growth:
         try:
             sales_plan = await compile_sales_growth_for_org(
                 org_id=org_id, goal=request.goal, settings=settings,
                 environment_name=environment_name,
+                recognized_objective="increase_sales",
             )
         except GoalCompilationBlocked as exc:
             raise HTTPException(
@@ -4938,6 +4949,7 @@ async def create_workflow_from_goal(
             "capabilities": list(sales_plan.capabilities),
             "missing_connections": list(sales_plan.missing_connections),
             "business_outcome": "NOT_MEASURED",
+            "business_goal": business_goal.as_dict(),
         }
     generated = await goal_service.generate_workflow(
         goal=request.goal,
@@ -5000,7 +5012,13 @@ async def create_workflow_from_goal(
             "goalId": request.goal_id,
         },
     )
-    return {"id": workflow_id, "workflow": generated.model_dump()}
+    return {
+        "id": workflow_id, "workflow": generated.model_dump(),
+        "business_goal": business_goal.as_dict(),
+        "execution_status": "NOT_CERTIFIED",
+        "business_outcome": "NOT_MEASURED",
+        "note": "Model-suggested workflow draft; capabilities, canvas compilation and governed execution not certified.",
+    }
 
 
 @router.get("/{workflow_id}")
