@@ -117,7 +117,6 @@ def test_non_sales_goal_does_not_silently_route_to_sales():
         compile_sales_growth_goal(
             goal="reduce support backlog", connected_integrations=["hubspot"],
             action_entries=[_entry("hubspot", "hubspot.contacts.search")],
-            recognized_objective="increase_sales",
         )
 
 
@@ -144,6 +143,7 @@ async def test_authenticated_org_selection_uses_real_selector_boundary(monkeypat
     )
     plan = await sales_growth_recipe.compile_sales_growth_for_org(
         org_id="tenant-123", goal="I need to increase sales", settings=object(),
+        recognized_objective="increase_sales",
     )
     assert calls == [("select", "tenant-123", "sales"), ("connected", "tenant-123")]
     assert plan.capabilities == ("hubspot.contacts.search",)
