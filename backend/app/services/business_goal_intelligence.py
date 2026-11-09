@@ -19,6 +19,7 @@ class BusinessGoal:
     text: str
     intent: str
     department: str
+    objective_family: str | None
     entities: tuple[str, ...]
     success_metrics: tuple[str, ...]
     risk_factors: tuple[str, ...]
@@ -32,6 +33,7 @@ class BusinessGoal:
         return {
             "text": self.text, "intent": self.intent,
             "department": self.department,
+            "objective_family": self.objective_family,
             "entities": list(self.entities),
             "success_metrics": list(self.success_metrics),
             "risk_factors": list(self.risk_factors),
@@ -65,6 +67,7 @@ def interpret_business_analysis(
         text=goal.strip(),
         intent=analysis.intent.strip() or goal.strip(),
         department=analysis.department.strip().lower() or "cross_functional",
+        objective_family=analysis.objective_family,
         entities=tuple(analysis.key_entities),
         success_metrics=tuple(analysis.success_metrics),
         risk_factors=tuple(analysis.risk_factors),
