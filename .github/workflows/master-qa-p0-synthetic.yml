@@ -9,6 +9,7 @@ on:
       - 'backend/app/services/unified_turn_classical_fallback.py'
       - 'backend/app/services/live_classical_handoff.py'
       - 'backend/tests/services/test_convergence_p0_p6.py'
+      - 'backend/tests/services/test_text_voice_task_execution_parity.py'
       - 'backend/app/services/unified_turn_reasoning_service.py'
       - 'backend/tests/services/test_unified_turn_classical_fallback.py'
       - 'backend/tests/services/test_unified_turn_fallthrough_enum.py'
@@ -137,7 +138,7 @@ jobs:
           python -m pip install --no-cache-dir --no-compile -r requirements-dev.txt
           python -m pip check
       - name: Exercise actual Gravitre execution safety guards
-        run: python -m pytest -q -rs tests/master_qa/test_sandbox_provider_readback_contract.py tests/master_qa/test_hubspot_sandbox_readback_contract.py tests/master_qa/test_p27_hubspot_tool_dispatch.py tests/master_qa/test_connector_connected_filter.py tests/master_qa/test_sales_growth_goal_compiler.py tests/master_qa/test_sales_growth_from_goal_route.py tests/master_qa/test_business_goal_intelligence.py tests/services/test_unified_turn_classical_fallback.py tests/services/test_unified_turn_fallthrough_enum.py tests/services/test_convergence_p0_p6.py tests/master_qa/test_worker_orphan_tick.py tests/master_qa/test_isolated_workflow_supervisor.py tests/master_qa/test_actual_agent_selection.py tests/master_qa/test_runtime_guard_integration.py tests/services/test_gate26_cancellation_and_outbox_contract.py
+        run: python -m pytest -q -rs tests/master_qa/test_sandbox_provider_readback_contract.py tests/master_qa/test_hubspot_sandbox_readback_contract.py tests/master_qa/test_p27_hubspot_tool_dispatch.py tests/master_qa/test_connector_connected_filter.py tests/master_qa/test_sales_growth_goal_compiler.py tests/master_qa/test_sales_growth_from_goal_route.py tests/master_qa/test_business_goal_intelligence.py tests/services/test_unified_turn_classical_fallback.py tests/services/test_unified_turn_fallthrough_enum.py tests/services/test_convergence_p0_p6.py tests/services/test_text_voice_task_execution_parity.py tests/master_qa/test_worker_orphan_tick.py tests/master_qa/test_isolated_workflow_supervisor.py tests/master_qa/test_actual_agent_selection.py tests/master_qa/test_runtime_guard_integration.py tests/services/test_gate26_cancellation_and_outbox_contract.py
       - name: Certify disposable PostgreSQL trigger, relay and idempotency
         run: |
           python - <<'PY'
