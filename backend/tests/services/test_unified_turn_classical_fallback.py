@@ -208,3 +208,30 @@ def test_new_direct_handoff_replaces_unconsumed_prior_queue():
         assert consume_handoff() is None
     finally:
         arm_from_task_state({})
+
+
+def test_verified_output_persistence_failure_is_not_reported_as_success(monkeypatch):
+    """DEC outcome authority: a failed evidence merge must reach the finalizer."""
+    import pytest
+    from app.services.execution_outcome import (
+        ExecutionOutcomeEvent, VerifiedOutputRef, _persist_run,
+    )
+    from app.workflows import repository
+
+    calls = []
+
+    def update_run(_client, run_id, **kwargs):
+        calls.append((run_id, kwargs["status"]))
+
+    def fail_merge(_client, _run_id, _patch):
+        raise RuntimeError("simulated metadata store outage")
+
+    monkeypatch.setattr(repository, "update_run", update_run)
+    monkeypatch.setattr(repository, "merge_run_parameters", fail_merge)
+    event = ExecutionOutcomeEvent(
+        org_id="org-test", status="completed", source="assistant_chat",
+        run_id="run-test", verified_output=VerifiedOutputRef(summary="Verified read"),
+    )
+    with pytest.raises(RuntimeError, match="simulated metadata store outage"):
+        _persist_run(None, event, "completed", "2026-11-09T00:00:00+00:00")
+    assert calls == [("run-test", "completed")]
