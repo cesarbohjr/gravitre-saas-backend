@@ -14,6 +14,7 @@ No provider call, tool action, approval or durable history mutation occurs here.
 from __future__ import annotations
 
 import time
+from collections import deque
 from collections.abc import Callable
 
 from pipecat.frames.frames import (
@@ -38,6 +39,9 @@ class CommittedTurnBarrierProcessor(FrameProcessor):
         self._last_stop_hold_ms: float | None = None
         self._final_seen = False
         self._stop_forwarded = False
+        # Exact provider retransmission is not a second user turn. The
+        # timestamp key avoids suppressing two legitimate identical replies.
+        self._recent_final_keys: deque[tuple[str, str, str]] = deque(maxlen=32)
         self._suppressed_eager = 0
 
     @property
@@ -92,6 +96,18 @@ class CommittedTurnBarrierProcessor(FrameProcessor):
             return
 
         if isinstance(frame, TranscriptionFrame):
+            # A retransmitted provider final must not enter the LLM context
+            # twice. Identical text at a NEW timestamp remains a new utterance.
+            timestamp = str(getattr(frame, "timestamp", "") or "")
+            if timestamp:
+                key = (
+                    str(getattr(frame, "user_id", "") or ""),
+                    timestamp,
+                    str(getattr(frame, "text", "") or ""),
+                )
+                if key in self._recent_final_keys:
+                    return
+                self._recent_final_keys.append(key)
             # Pipecat must receive authoritative words before resolving stop.
             await self.push_frame(frame, direction)
             if self._pending_stop is not None:
