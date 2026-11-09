@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import uuid
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from pydantic import BaseModel, Field
@@ -32,6 +33,30 @@ class GoalAnalysis(BaseModel):
     complexity: str
     risk_factors: list[str]
     success_metrics: list[str]
+
+
+
+class BusinessMetricEvidence(BaseModel):
+    """Read-only metric observation from a tenant-authorized source of record.
+
+    A connection's existence or an LLM's claim is NOT evidence. Callers must
+    supply an independently observed source record and a concrete metric unit.
+    """
+    org_id: str
+    system: str
+    source_record_id: str
+    metric_key: str
+    unit: str
+    value: float
+    observed_at: datetime
+
+
+class GoalEvidenceAssessment(BaseModel):
+    status: str
+    usable: list[BusinessMetricEvidence] = Field(default_factory=list)
+    excluded: list[dict[str, str]] = Field(default_factory=list)
+    missing_systems: list[str] = Field(default_factory=list)
+    business_outcome: str = "NOT_MEASURED"
 
 
 class WorkflowNode(BaseModel):
@@ -137,6 +162,63 @@ class GoalService:
             ),
             "execution_status": "NOT_RUN",
         })
+
+    @staticmethod
+    def assess_evidence_for_org(
+        *,
+        org_id: str,
+        analysis: GoalAnalysis,
+        connected_systems: set[str],
+        observations: list[BusinessMetricEvidence],
+        as_of: datetime,
+        max_age: timedelta = timedelta(days=7),
+    ) -> GoalEvidenceAssessment:
+        """Classify supplied metric records; never fetch, authorize or execute.
+
+        The caller must already have authenticated the tenant and retrieved
+        observations through governed connectors. Missing/stale evidence stays
+        visible and cannot be converted into an asserted business outcome.
+        """
+        if not org_id or not org_id.strip():
+            raise ValueError("authenticated_org_required")
+        if as_of.tzinfo is None or as_of.utcoffset() is None:
+            raise ValueError("timezone_aware_as_of_required")
+        if max_age <= timedelta(0):
+            raise ValueError("positive_evidence_freshness_required")
+        now = as_of.astimezone(timezone.utc)
+        connected = {system.strip().lower() for system in connected_systems}
+        required = {system.strip().lower() for system in analysis.required_systems}
+        usable: list[BusinessMetricEvidence] = []
+        excluded: list[dict[str, str]] = []
+        for record in observations:
+            # A cross-tenant record is a security violation, not merely a
+            # missing-data warning; never expose even its source identifier.
+            if record.org_id != org_id:
+                raise ValueError("cross_tenant_metric_evidence")
+            system = record.system.strip().lower()
+            reason = None
+            if system not in connected or system not in required:
+                reason = "unverified_or_unrequired_source"
+            elif not (record.source_record_id.strip() and record.metric_key.strip() and record.unit.strip()):
+                reason = "missing_metric_provenance"
+            elif record.observed_at.tzinfo is None or record.observed_at.utcoffset() is None:
+                reason = "missing_observation_timezone"
+            else:
+                observed = record.observed_at.astimezone(timezone.utc)
+                if observed > now:
+                    reason = "future_observation"
+                elif now - observed > max_age:
+                    reason = "stale_observation"
+            if reason:
+                excluded.append({"system": system, "metric_key": record.metric_key, "reason": reason})
+            else:
+                usable.append(record)
+        return GoalEvidenceAssessment(
+            status="EVIDENCE_AVAILABLE_UNINTERPRETED" if usable else "INSUFFICIENT_EVIDENCE",
+            usable=usable,
+            excluded=excluded,
+            missing_systems=sorted(required - connected),
+        )
 
     async def _analyze_goal(
         self,
