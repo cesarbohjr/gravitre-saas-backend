@@ -117,11 +117,12 @@ def test_real_invoke_tool_handler_runs_and_commits_authoritative_sql_outcome(pg,
     # Compile an underspecified business objective through the real canvas
     # graph/step compiler, then execute it with the existing production handler.
     # Only the vendor transport and the minimal SQL fixture are adapted here.
-    from app.services.sales_growth_goal_compiler import (
+    from app.workflows.sales_growth_recipe import (
         compile_sales_growth_goal, verified_sales_observations,
     )
     goal_plan = compile_sales_growth_goal(
         goal="I need to increase sales",
+        recognized_objective="increase_sales",
         connected_integrations=["hubspot"],
         action_entries=[SimpleNamespace(
             connector_id="hubspot", action_key="hubspot.contacts.search",
