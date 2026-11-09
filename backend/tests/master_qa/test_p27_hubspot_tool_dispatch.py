@@ -226,6 +226,7 @@ def test_workflow_exposes_preflight_without_provider_secrets():
     assert "p27-hubspot-live-approved" in workflow
     assert "github.actor == 'cesarbohjr'" in workflow
     assert "environment: p27-provider-sandbox" in workflow
+    assert "  actions: read" in workflow
     assert "ref: ${{ github.event.pull_request.head.sha || github.sha }}" in workflow
     assert "python scripts/p27_hubspot_dispatch_guard.py" in workflow
     assert "P27_HUBSPOT_LIVE_TEST_TOKEN: ${{ secrets.P27_HUBSPOT_LIVE_TEST_TOKEN }}" in workflow

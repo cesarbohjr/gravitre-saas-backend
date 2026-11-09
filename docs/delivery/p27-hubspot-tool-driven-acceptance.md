@@ -24,6 +24,9 @@ engine is introduced. No environment settings, secrets or provider records
 were changed by this repair. Regression coverage includes both dispatch paths,
 unprotected/author-only/self-review/branch-policy failures, missing metadata
 and a scoped read-only metadata request.
+The workflow grants only the additional `actions: read` permission required by
+GitHub's [environment metadata endpoint](https://docs.github.com/en/rest/deployments/environments#get-an-environment);
+no repository settings-write permission is added.
 
 Pre-repair head evidence:
 - [Master QA 42547495248](https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/42547495248):

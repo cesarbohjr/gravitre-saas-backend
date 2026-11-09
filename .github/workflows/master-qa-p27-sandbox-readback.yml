@@ -11,6 +11,8 @@ on:
     types: [labeled]
 
 permissions:
+  # Required for the guard's GET of environment protection metadata.
+  actions: read
   contents: read
   pull-requests: read
 
