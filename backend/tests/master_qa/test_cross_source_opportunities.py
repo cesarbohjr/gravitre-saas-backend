@@ -193,6 +193,7 @@ async def test_handoff_requires_explicit_confirmation_and_canonical_play(monkeyp
     # supply a normal function rather than an un-awaited coroutine.
     monkeypatch.setattr(goals, "preview_cross_source_opportunities",
                         lambda *args, **kwargs: {
+                            "source_runs": {"crm": CRM_RUN, "analytics": GA_RUN},
                             "opportunities": [{
                                 "id": "sales_pipeline_review", "status": "REVIEW_REQUIRED",
                                 "play_key": "revenue-leak-hunter",
