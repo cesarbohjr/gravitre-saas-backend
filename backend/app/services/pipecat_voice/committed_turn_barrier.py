@@ -32,11 +32,12 @@ class CommittedTurnBarrierProcessor(FrameProcessor):
 
     def __init__(self, *, clock: Callable[[], float] = time.perf_counter, **kwargs):
         super().__init__(**kwargs)
-        self._clock = clock
+        self._hold_clock = clock
         self._pending_stop: Frame | None = None
         self._pending_stop_at: float | None = None
         self._last_stop_hold_ms: float | None = None
         self._final_seen = False
+        self._stop_forwarded = False
         self._suppressed_eager = 0
 
     @property
@@ -70,15 +71,24 @@ class CommittedTurnBarrierProcessor(FrameProcessor):
         if isinstance(frame, ProposedUserStartedSpeakingFrame):
             # A fresh utterance invalidates a stop from a previous candidate.
             self._pending_stop = None
+            self._pending_stop_at = None
             self._final_seen = False
+            self._stop_forwarded = False
             await self.push_frame(frame, direction)
             return
 
-        if isinstance(frame, ProposedUserStoppedSpeakingFrame) and not self._final_seen:
-            # Retain the earliest proposal time if Flux retries its stop.
-            if self._pending_stop_at is None:
-                self._pending_stop_at = self._clock()
-            self._pending_stop = frame
+        if isinstance(frame, ProposedUserStoppedSpeakingFrame):
+            if self._stop_forwarded:
+                # A duplicate native stop must never trigger a second answer.
+                return
+            if not self._final_seen:
+                # Retain the earliest proposal time if Flux retries its stop.
+                if self._pending_stop_at is None:
+                    self._pending_stop_at = self._hold_clock()
+                self._pending_stop = frame
+                return
+            self._stop_forwarded = True
+            await self.push_frame(frame, direction)
             return
 
         if isinstance(frame, TranscriptionFrame):
@@ -89,10 +99,11 @@ class CommittedTurnBarrierProcessor(FrameProcessor):
                 self._pending_stop = None
                 if self._pending_stop_at is not None:
                     self._last_stop_hold_ms = max(
-                        0.0, (self._clock() - self._pending_stop_at) * 1000.0
+                        0.0, (self._hold_clock() - self._pending_stop_at) * 1000.0
                     )
                 self._pending_stop_at = None
                 await self.push_frame(pending, direction)
+                self._stop_forwarded = True
             self._final_seen = True
             return
 
