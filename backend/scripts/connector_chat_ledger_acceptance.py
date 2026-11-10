@@ -142,11 +142,38 @@ def run():
     }
     negative_approval_ids = []
     try:
-        db.table("approvals").insert({
-            "id": approval_id, "org_id": org_id, "type": "connector_chat",
-            "title": "PR611 isolated ledger route acceptance",
-            "status": "pending", "context": context,
-        }).execute()
+        # Start at the REAL Chat connector queue-writer, not a manually
+        # fabricated approval. This persists the immutable bound action and
+        # requested-by identity that the actual approval HTTP route consumes.
+        with (
+            patch.object(chat_module, "emit_notification"),
+            patch.object(service, "_org_approver_user_ids", return_value=[]),
+            patch("app.services.activity_feed_service.record_activity_event"),
+        ):
+            queued_id = service._queue_chat_write_for_admins(
+                db, org_id=org_id, user_id="qa-chat-requester",
+                conversation_id=conversation_id, plan=plan,
+                pending_params=chat_module.ChatConnectorExecutionService.plan_to_dict(plan),
+            )
+        assert queued_id, "Real Chat queue writer failed to persist approval"
+        approval_id = str(queued_id)
+        expected_ctx = ToolContext(
+            settings=settings, client=db, org_id=org_id, actor_id=REVIEWER,
+            conversation_id=conversation_id, turn_id=approval_id,
+            write_idempotency_required=True,
+        )
+        expected_key, expected_logical = build_write_idempotency_key(
+            expected_ctx, ACTION, ARGS
+        )
+        queued_row = db.table("approvals").select(
+            "id,type,status,requested_by,context"
+        ).eq("org_id", org_id).eq("id", approval_id).single().execute().data
+        assert queued_row["type"] == "connector_chat"
+        assert queued_row["status"] == "pending"
+        assert queued_row["requested_by"] == "qa-chat-requester"
+        assert queued_row["context"]["binding"] == context["binding"]
+        assert queued_row["context"]["parameters"]["args"] == ARGS
+        context = queued_row["context"]
         app.dependency_overrides[get_current_user] = lambda: {"user_id": REVIEWER}
         app.dependency_overrides[get_org_context] = lambda: org_id
         app.dependency_overrides[get_environment_context] = lambda: "production"
