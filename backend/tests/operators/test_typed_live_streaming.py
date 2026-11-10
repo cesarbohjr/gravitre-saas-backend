@@ -430,12 +430,15 @@ async def test_eco001_real_agent_streaming_live_handoff_reaches_governed_registr
         assert handoff is not None, "LIVE failed to hand off the selected read"
         assert handoff["tool_name"] == "hubspot_search_contacts"
         assert handoff["tool_arguments"] == {"query": "qa-eco001"}
-        ctx = ToolContext(
-            settings=SimpleNamespace(
-                write_authority_mode="enforce", private_connector_runtime_enabled=False,
-            ),
-            client=MagicMock(), org_id="org-1", actor_id="user-1",
-        )
+        # Consume the REAL actor/tenant execution context constructed by the
+        # AgentIntelligence caller; a forged test context would miss a broken
+        # route-to-ReAct identity propagation.
+        ctx = _kwargs["ctx"]
+        assert isinstance(ctx, ToolContext)
+        assert ctx.org_id == "org-1"
+        assert ctx.actor_id == "user-1"
+        assert ctx.client is not None
+        assert ctx.conversation_id is None
         result = await get_tool_registry().execute_invoke_action(
             ctx=ctx, invoke_action="hubspot.contacts.search",
             args=dict(handoff["tool_arguments"]),
