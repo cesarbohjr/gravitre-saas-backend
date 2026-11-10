@@ -14,7 +14,7 @@ import pytest
 from app.services import tool_service
 from app.services.tool_types import NormalizedResult, ToolContext
 from app.services.write_authority import write_authority
-from app.services.write_invoke_idempotency import WriteClaimResult
+from app.services.write_invoke_idempotency import WriteClaimResult, WriteFinalizeResult
 from tests.db.test_autonomous_independent_write_pg import IndependentFixture
 
 
@@ -89,7 +89,7 @@ def test_real_invoke_tool_never_reissues_uncertain_autonomous_write(tmp_path):
             stack.enter_context(patch("app.services.workflow_approval_scope.block_invoke_by_approval_scope", return_value=None))
             stack.enter_context(patch("app.services.compensation_service.should_track_compensation", return_value=False))
             stack.enter_context(patch("app.services.write_invoke_idempotency.claim_approved_autonomous_write", side_effect=lambda *a,**k:next(claims)))
-            stack.enter_context(patch("app.services.write_invoke_idempotency.finalize_write_invoke"))
+            stack.enter_context(patch("app.services.write_invoke_idempotency.finalize_write_invoke", return_value=WriteFinalizeResult(outcome="finalized")))
             stack.enter_context(patch("app.workers.workflow_queue.assert_current_workflow_claim_live"))
             assert process_workflow_run_job(settings, raw_job) is True
             assert receiver.writes == 1
