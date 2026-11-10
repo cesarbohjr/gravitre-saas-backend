@@ -73,6 +73,10 @@ def run():
         args=dict(ARGS), requires_approval=True,
     )
     writes = []
+    race_approval_id = None
+    race_entered_provider = threading.Event()
+    race_resume_provider = threading.Event()
+    race_ledger_key = None
 
     class Handler(BaseHTTPRequestHandler):
         def do_POST(self):
@@ -107,6 +111,10 @@ def run():
     service._external_url = MagicMock(return_value=None)
     service._summarize_result = MagicMock(return_value="Synthetic provider write recorded")
     def provider(ctx, params):
+        if race_approval_id and ctx.turn_id == race_approval_id:
+            race_entered_provider.set()
+            if not race_resume_provider.wait(25):
+                raise TimeoutError("In-flight race fixture was not released")
         req = Request(
             f"http://127.0.0.1:{server.server_port}/write",
             data=json.dumps({"email": params.get("email"), "turn_id": ctx.turn_id}).encode(),
@@ -207,7 +215,74 @@ def run():
                 "org_id", org_id
             ).eq("id", rejected_id).single().execute().data
             assert rejected_row["status"] == "rejected"
-        assert writes == [{"email": ARGS["email"], "turn_id": approval_id}], f"Provider writes: {writes}"
+
+            # In-flight revocation race: after durable approval claim and
+            # canonical ledger claim, provider dispatch is deliberately paused.
+            # A concurrent reject MUST lose the CAS; it cannot pretend that an
+            # already-started provider call has been revoked or cancelled.
+            race_approval_id = str(uuid.uuid4())
+            negative_approval_ids.append(race_approval_id)
+            db.table("approvals").insert({
+                "id": race_approval_id, "org_id": org_id,
+                "type": "connector_chat", "status": "pending",
+                "title": "PR611 in-flight revocation race",
+                "context": dict(context),
+            }).execute()
+            race_ctx = ToolContext(
+                settings=settings, client=db, org_id=org_id, actor_id=REVIEWER,
+                conversation_id=conversation_id, turn_id=race_approval_id,
+                write_idempotency_required=True,
+            )
+            race_ledger_key, race_logical_id = build_write_idempotency_key(
+                race_ctx, ACTION, ARGS
+            )
+            race_outcome = {}
+            def execute_racing_approval():
+                try:
+                    race_outcome["response"] = TestClient(app).post(
+                        f"/api/approvals/{race_approval_id}/approve", json={}
+                    )
+                except BaseException as exc:
+                    race_outcome["error"] = repr(exc)
+            racing_thread = threading.Thread(target=execute_racing_approval, daemon=True)
+            racing_thread.start()
+            try:
+                assert race_entered_provider.wait(25), "Provider dispatch never reached"
+                claimed_approval = db.table("approvals").select(
+                    "status,context"
+                ).eq("org_id", org_id).eq(
+                    "id", race_approval_id
+                ).single().execute().data
+                assert claimed_approval["status"] == "approved"
+                assert claimed_approval["context"]["dispatch"]["state"] == "claimed"
+                claimed_ledger = db.table("write_invoke_idempotency").select(
+                    "status,logical_action_id"
+                ).eq("org_id", org_id).eq(
+                    "idempotency_key", race_ledger_key
+                ).single().execute().data
+                assert claimed_ledger["status"] == "in_progress"
+                assert claimed_ledger["logical_action_id"] == race_logical_id
+                revoke = TestClient(app).post(
+                    f"/api/approvals/{race_approval_id}/reject", json={}
+                )
+                assert revoke.status_code == 409, (
+                    f"Claimed approval overwritten by revocation: {revoke.text}"
+                )
+            finally:
+                race_resume_provider.set()
+                racing_thread.join(timeout=25)
+            assert not racing_thread.is_alive(), "Racing approval did not finish"
+            assert "error" not in race_outcome, race_outcome
+            assert race_outcome["response"].status_code == 200, race_outcome["response"].text
+            race_replay = TestClient(app).post(
+                f"/api/approvals/{race_approval_id}/approve", json={}
+            )
+            assert race_replay.status_code == 409
+
+        assert writes == [
+            {"email": ARGS["email"], "turn_id": approval_id},
+            {"email": ARGS["email"], "turn_id": race_approval_id},
+        ], f"Provider writes: {writes}"
         ledger = (
             db.table("write_invoke_idempotency")
             .select("idempotency_key,invoke_action,logical_action_id,status,result,claim_token")
@@ -218,6 +293,14 @@ def run():
         assert ledger[0]["status"] == "completed", ledger
         assert ledger[0]["invoke_action"] == ACTION and ledger[0]["logical_action_id"] == expected_logical
         assert (ledger[0].get("result") or {}).get("success") is True, ledger
+        race_terminal = db.table("write_invoke_idempotency").select(
+            "status,result,logical_action_id"
+        ).eq("org_id", org_id).eq(
+            "idempotency_key", race_ledger_key
+        ).single().execute().data
+        assert race_terminal["status"] == "completed", race_terminal
+        assert race_terminal["logical_action_id"] == race_logical_id
+        assert (race_terminal["result"] or {}).get("success") is True
         # Independent database checks: denied and rejected approvals never
         # acquire canonical ledger claims or produce a second provider write.
         no_write_ledger = db.table("write_invoke_idempotency").select(
@@ -243,6 +326,8 @@ def run():
         print(json.dumps({
             "result": "PASS", "canonical_ledger": "completed",
             "provider_writes": len(writes), "approval_replay_http": 409,
+            "inflight_revocation_http": 409,
+            "inflight_ledger_terminal": "completed",
             "ledger_rows": len(ledger), "approval_id": approval_id,
             "provider_is_synthetic": True,
             "denied_approval_http": 403, "rejected_approval_http": 200,
@@ -252,15 +337,22 @@ def run():
         app.dependency_overrides.clear()
         try:
             db.table("write_invoke_idempotency").delete().eq("org_id", org_id).eq("idempotency_key", expected_key).execute()
+            if race_ledger_key:
+                db.table("write_invoke_idempotency").delete().eq(
+                    "org_id", org_id
+                ).eq("idempotency_key", race_ledger_key).execute()
             db.table("approvals").delete().eq("org_id", org_id).eq("id", approval_id).execute()
             for negative_id in negative_approval_ids:
                 db.table("approvals").delete().eq("org_id", org_id).eq("id", negative_id).execute()
             remaining = db.table("write_invoke_idempotency").select("id").eq("org_id", org_id).eq("idempotency_key", expected_key).execute().data or []
             remaining_approval = db.table("approvals").select("id").eq("org_id", org_id).eq("id", approval_id).execute().data or []
+            race_remaining = db.table("write_invoke_idempotency").select("id").eq(
+                "org_id", org_id
+            ).eq("idempotency_key", race_ledger_key).execute().data if race_ledger_key else []
             negative_remaining = db.table("approvals").select("id").eq(
                 "org_id", org_id
             ).in_("id", negative_approval_ids).execute().data if negative_approval_ids else []
-            if remaining or remaining_approval or negative_remaining:
+            if remaining or remaining_approval or negative_remaining or race_remaining:
                 raise RuntimeError("Isolated test rows not cleaned up")
         finally:
             server.shutdown()
