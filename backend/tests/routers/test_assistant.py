@@ -617,3 +617,35 @@ async def test_stale_stop_from_earlier_turn_does_not_cancel_new_message(async_cl
     assert "You stopped me" not in resp.text
     assert intelligence._captured
     assert not cancel_service.is_stop_requested("org-1", "conv-stale-stop")
+
+
+async def test_eco001_chat_http_ingress_forwards_authoritative_actor_and_tenant_to_agent(async_client, monkeypatch):
+    """Actual assistant HTTP route -> Agent streaming boundary, including agent chat.
+
+    HTTP authentication is controlled, but the real assistant route performs
+    body/identity reconciliation. No synthetic org hint may become execution
+    authority. Downstream agent runtime is covered in the matching Agent test.
+    """
+    _authenticate(org_id="qa-tenant-authorized")
+    _mock_prepare_stream_guardrails(monkeypatch)
+    agent = _mock_agent_intelligence_stream(monkeypatch, content="Queued safely")
+    response = await async_client.post(
+        "/api/assistant/chat",
+        headers={"Authorization": "Bearer scoped-fixture"},
+        json={
+            "messages": [{
+                "role": "user",
+                "content": "Inspect my pipeline before proposing a change",
+            }],
+            "org_id": "qa-foreign-tenant-hint",
+            "agent_id": "qa-agent-revops",
+            "mode": "agent",
+            "tools": ["hubspot_search_contacts"],
+        },
+    )
+    assert response.status_code == 200, response.text[-1000:]
+    assert "Queued safely" in response.text
+    assert agent._captured["org_id"] == "qa-tenant-authorized"
+    assert agent._captured["user_id"] == "user-1"
+    assert agent._captured["agent_id"] == "qa-agent-revops"
+    assert agent._captured["query"] == "Inspect my pipeline before proposing a change"
