@@ -4204,7 +4204,22 @@ async def reject_run_alias(
         }
         if body.comment:
             update["context"] = {**ctx, "rejection_reason": body.comment}
-        client.table("approvals").update(update).eq("id", str(run_id)).eq("org_id", org_id).execute()
+        # Rejection must compete with the same single-winner decision claim used
+        # by approval. A stale reject must never overwrite an approved/in-flight
+        # write or clear another decision's pending conversation state.
+        rejected = (
+            client.table("approvals")
+            .update(update)
+            .eq("id", str(run_id))
+            .eq("org_id", org_id)
+            .eq("status", "pending")
+            .is_("reviewed_at", "null")
+            .execute()
+            .data
+            or []
+        )
+        if not rejected:
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Approval already being decided")
         conversation_id = str(ctx.get("conversation_id") or "")
         if conversation_id:
             from app.services.conversation_state_service import get_conversation_state_service
