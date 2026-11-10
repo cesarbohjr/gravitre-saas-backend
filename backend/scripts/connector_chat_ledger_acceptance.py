@@ -423,6 +423,19 @@ def run():
                 assert revoke.status_code == 409, (
                     f"Claimed approval overwritten by revocation: {revoke.text}"
                 )
+                # A second authenticated approval request while the first
+                # provider invocation is blocked must not acquire a new claim
+                # or dispatch another provider operation. This exercises the
+                # actual HTTP route against the persisted in-progress ledger.
+                concurrent_replay = TestClient(app).post(
+                    f"/api/approvals/{race_approval_id}/approve", json={}
+                )
+                assert concurrent_replay.status_code == 409, (
+                    f"In-flight approval replay was accepted: {concurrent_replay.text}"
+                )
+                assert len(writes) == 1, (
+                    f"In-flight replay duplicated provider write: {writes}"
+                )
                 # The adapter has entered the provider boundary but the local
                 # receiver has not accepted the irreversible write yet.
                 assert len(writes) == 1, (
