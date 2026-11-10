@@ -324,6 +324,36 @@ def run():
                 "org_id", org_id
             ).eq("id", rejected_id).single().execute().data
             assert rejected_row["status"] == "rejected"
+            # Pre-dispatch cancellation certificate: the real reject route
+            # persisted the terminal decision before any provider claim. Check
+            # the provider receiver AND canonical database independently.
+            assert len(writes) == 1, (
+                f"Pre-dispatch rejection invoked the provider: {writes}"
+            )
+            rejected_ctx = ToolContext(
+                settings=settings, client=db, org_id=org_id, actor_id=REVIEWER,
+                conversation_id=conversation_id, turn_id=rejected_id,
+                write_idempotency_required=True,
+            )
+            rejected_key, rejected_logical_id = build_write_idempotency_key(
+                rejected_ctx, ACTION, ARGS
+            )
+            rejected_claims = db.table("write_invoke_idempotency").select(
+                "idempotency_key,status"
+            ).eq("org_id", org_id).eq(
+                "idempotency_key", rejected_key
+            ).execute().data or []
+            assert not rejected_claims, (
+                f"Rejected approval acquired a provider claim: {rejected_claims}"
+            )
+            rejected_logical_claims = db.table("write_invoke_idempotency").select(
+                "idempotency_key"
+            ).eq("org_id", org_id).eq(
+                "logical_action_id", rejected_logical_id
+            ).execute().data or []
+            assert not rejected_logical_claims, (
+                f"Rejected action acquired a logical ledger claim: {rejected_logical_claims}"
+            )
 
             # In-flight revocation race: after durable approval claim and
             # canonical ledger claim, provider dispatch is deliberately paused.
