@@ -177,13 +177,15 @@ async def test_execute_plan_uses_bound_invoke_action():
             plan=plan,
             client=MagicMock(),
             classification={},
-            approved_params=approved,
+            approved_params={**approved, "_approval_queue_id": "queue-approval-1"},
         )
     assert result.success is True
     service._registry.execute_invoke_action.assert_awaited_once()
     call = service._registry.execute_invoke_action.await_args.kwargs
     assert call["invoke_action"] == "hubspot.contacts.create"
     assert call["tool_name"] == "hubspot_contacts_create"
+    assert call["ctx"].write_idempotency_required is True
+    assert call["ctx"].turn_id == "queue-approval-1"
 
 
 """Cross-vendor divergence: (approved tool, approved action, executed tool, executed action).
