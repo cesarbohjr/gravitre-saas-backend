@@ -91,3 +91,66 @@ def test_two_concurrent_turn_contexts_cannot_consume_each_other_handoff():
         ]
     finally:
         arm_from_task_state({})
+
+
+def test_actual_apply_live_caller_stashes_structured_read_choice_without_execution():
+    """ECO-001: exercise the production LIVE caller, not only the helper.
+
+    The model completion and external state/audit boundaries are controlled,
+    while apply_unified_turn_live, routing and handoff storage run as real code.
+    No connector or alternate executor is called.
+    """
+    from unittest.mock import AsyncMock, patch
+    from app.services.unified_turn_reasoning_service import (
+        UnifiedTurnShadowResult, apply_unified_turn_live,
+    )
+
+    outcome = UnifiedTurnShadowResult(
+        outcome_kind="conversational_reply",
+        user_message="I'll read the relevant records.",
+        tool_name="hubspot.deals.list",
+        tool_invoke_action="hubspot.deals.list",
+        tool_arguments={"limit": 3},
+        needs_tool_sse=True,
+    )
+    state = {}
+    async def live():
+        with (
+            patch(
+                "app.services.unified_turn_pending_live.resolve_unified_live_pending_reply",
+                new_callable=AsyncMock, return_value=None,
+            ),
+            patch(
+                "app.services.unified_turn_reasoning_service.run_unified_turn_shadow",
+                new_callable=AsyncMock, return_value=outcome,
+            ) as model,
+            patch("app.services.unified_turn_reasoning_service.emit_unified_turn_shadow_audit"),
+        ):
+            result = await apply_unified_turn_live(
+                org_id="qa-org-1", user_id="qa-actor-1",
+                conversation_id=None, message="Read my deals",
+                task_state=state, conversation_history=[],
+                connected_integrations=["hubspot"],
+                client=None,
+                settings=SimpleNamespace(
+                    unified_turn_live_enabled=True,
+                    convergence_p1_single_selection_v1=True,
+                ),
+                mode_key="standard",
+                classification={"requires_action": True},
+            )
+            model.assert_awaited_once()
+            return result
+
+    try:
+        assert asyncio.run(live()) is None
+        # The real caller must never invoke provider tools during selection.
+        # It only stages the bounded choice for the existing governed executor.
+        saved = state["live_classical_handoff"]
+        assert saved["tool_name"] == "hubspot.deals.list"
+        assert saved["tool_arguments"] == {"limit": 3}
+        arm_from_task_state(state)
+        assert consume_handoff()["tool_name"] == "hubspot.deals.list"
+        assert consume_handoff() is None
+    finally:
+        arm_from_task_state({})
