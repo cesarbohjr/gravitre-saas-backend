@@ -30,3 +30,10 @@
 5. Exact-head focused tests, full CI, protected acceptance gates, and independent side-effect readback before removal/merge/deployment.
 
 **Release posture:** PR #611 remains draft/open as applicable, unmerged and undeployed. No legacy route removed by this audit. Avoid PR #610 voice-plan scope changes.
+
+
+## Follow-up: connector_chat decision claim race (2026-11-09)
+
+The `connector_chat` approve handler conditionally claims `approvals.status = pending AND reviewed_at IS NULL` before provider dispatch. Its reject sibling previously performed an unconditional update after reading the pending row, allowing a stale concurrent reject to overwrite an approved/in-flight decision and clear pending conversation state. PR #611 commit `450d81f` makes rejection use the same atomic predicate, returning HTTP 409 without clearing task state when the claim loses. Commit `3057736` adds regression tests for reject/reject, reject/approve replay and rejected stale claim. **Exact-head CI remains required.**
+
+**Remaining high-risk gap — not yet certified:** the approved `connector_chat` path claims `reviewed_at`, then invokes the provider, then updates approval status. Worker death between these events leaves an unresolved approval and uncertain provider side effects. Existing claim prevents duplicate manual dispatch, but there is not yet evidence of independently verifiable provider readback or a durable recovery machine for this path. Do not auto-retry or retire it as equivalent to MCP; require a durable dispatch/outcome contract and isolated crash/restart acceptance first.
