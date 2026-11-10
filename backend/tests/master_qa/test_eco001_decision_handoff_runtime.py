@@ -154,3 +154,98 @@ def test_actual_apply_live_caller_stashes_structured_read_choice_without_executi
         assert consume_handoff() is None
     finally:
         arm_from_task_state({})
+
+
+def test_actual_live_caller_normal_answer_has_no_tool_handoff_or_provider_dispatch():
+    """ECO-001: one ordinary answer remains LIVE, not a shadow tool execution."""
+    from unittest.mock import AsyncMock, patch
+    from app.services.unified_turn_reasoning_service import (
+        UnifiedTurnShadowResult, apply_unified_turn_live,
+    )
+
+    outcome = UnifiedTurnShadowResult(
+        outcome_kind="conversational_reply",
+        user_message="Four.",
+        needs_tool_sse=False,
+    )
+    state = {}
+
+    async def turn():
+        with (
+            patch(
+                "app.services.unified_turn_pending_live.resolve_unified_live_pending_reply",
+                new_callable=AsyncMock, return_value=None,
+            ),
+            patch(
+                "app.services.unified_turn_reasoning_service.run_unified_turn_shadow",
+                new_callable=AsyncMock, return_value=outcome,
+            ) as model,
+            patch("app.services.unified_turn_reasoning_service.emit_unified_turn_shadow_audit"),
+            patch(
+                "app.services.chat_orchestration_service.ChatOrchestrationService.is_orchestration_intent",
+                return_value=False,
+            ),
+        ):
+            response = await apply_unified_turn_live(
+                org_id="qa-org-1", user_id="qa-actor-1",
+                conversation_id=None, message="What is two plus two?",
+                task_state=state, conversation_history=[],
+                connected_integrations=[], client=None,
+                settings=SimpleNamespace(unified_turn_live_enabled=True),
+                mode_key="standard", classification={"requires_action": False},
+            )
+            model.assert_awaited_once()
+            return response
+
+    try:
+        response = asyncio.run(turn())
+        assert response is not None
+        assert response["stop_pipeline"] is True
+        assert "Four." in response["message"]
+        assert "live_classical_handoff" not in state
+        assert consume_handoff() is None
+    finally:
+        arm_from_task_state({})
+
+
+def test_actual_live_caller_model_error_never_stages_a_tool_or_fake_success():
+    """ECO-001: an error cannot silently inherit the previous turn's tool."""
+    from unittest.mock import AsyncMock, patch
+    from app.services.unified_turn_reasoning_service import (
+        UnifiedTurnShadowResult, apply_unified_turn_live,
+    )
+
+    outcome = UnifiedTurnShadowResult(
+        outcome_kind="error", user_message="", error="synthetic model unavailable",
+    )
+    state = {}
+
+    async def turn():
+        with (
+            patch(
+                "app.services.unified_turn_pending_live.resolve_unified_live_pending_reply",
+                new_callable=AsyncMock, return_value=None,
+            ),
+            patch(
+                "app.services.unified_turn_reasoning_service.run_unified_turn_shadow",
+                new_callable=AsyncMock, return_value=outcome,
+            ) as model,
+            patch("app.services.unified_turn_reasoning_service.emit_unified_turn_shadow_audit"),
+        ):
+            response = await apply_unified_turn_live(
+                org_id="qa-org-1", user_id="qa-actor-1",
+                conversation_id=None, message="Review this request",
+                task_state=state, conversation_history=[],
+                connected_integrations=[], client=None,
+                settings=SimpleNamespace(unified_turn_live_enabled=True),
+                mode_key="standard", classification={"requires_action": False},
+            )
+            model.assert_awaited_once()
+            return response
+
+    try:
+        assert asyncio.run(turn()) is None
+        assert "live_classical_handoff" not in state
+        assert consume_handoff() is None
+    finally:
+        arm_from_task_state({})
