@@ -177,7 +177,7 @@ class _ChatApprovalClient:
 
 def test_approvals_reject_alias_closes_chat_connector_write(monkeypatch: pytest.MonkeyPatch):
     run_id = uuid4()
-    store = {"row": {"id": str(run_id), "type": "connector_chat", "status": "pending", "context": {}}}
+    store = {"row": {"id": str(run_id), "org_id": "org-1", "type": "connector_chat", "status": "pending", "reviewed_at": None, "context": {}}}
 
     async def must_not_run(*_a, **_k):
         raise AssertionError("workflow reject must not run for chat writes")
