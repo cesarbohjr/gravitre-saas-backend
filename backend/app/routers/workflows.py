@@ -4140,10 +4140,15 @@ async def approve_run_alias(
         # is evidence the write failed. No automatic redispatch is authorized.
         verified = bool(execution is not None and getattr(execution, "outcome_verified", False))
         reported_success = bool(execution is not None and execution.success)
+        error_code = str(getattr(execution, "error_code", "") or "").strip().lower()
+        uncertain = execution_error is not None or error_code in {
+            "outcome_uncertain", "connector_timeout", "native_outcome_uncertain",
+            "write_commit_interrupted",
+        }
         outcome_state = (
             "verified" if verified and reported_success
             else "reported_success_unverified" if reported_success
-            else "uncertain" if execution_error is not None
+            else "uncertain" if uncertain
             else "reported_failure_unverified"
         )
         final_dispatch = {
