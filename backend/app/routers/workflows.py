@@ -4127,6 +4127,7 @@ async def approve_run_alias(
                 approved_params={
                     **params,
                     "approval_action_id": str(run_id),
+                    "_approval_queue_id": str(run_id),
                     "bound_tool_name": str(binding["tool_name"]),
                     "bound_invoke_action": str(binding["invoke_action"]),
                     "bound_integration": str(binding["integration"]),
