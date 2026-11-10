@@ -159,6 +159,15 @@ def run():
     }
     negative_approval_ids = []
     try:
+        # The acceptance schema enforces conversations.user_id -> users.id.
+        # Seed a disposable user only inside the already-verified QA org;
+        # do not weaken the FK or reuse a production account.
+        db.table("users").insert({
+            "id": requester_id, "org_id": org_id,
+            "email": f"pr611-{requester_id}@example.invalid",
+            "full_name": "PR611 synthetic Chat requester",
+            "role": "member",
+        }).execute()
         db.table("conversations").insert({
             "id": conversation_id, "org_id": org_id, "user_id": requester_id,
             "title": "PR611 isolated Chat approval acceptance",
@@ -437,6 +446,9 @@ def run():
             db.table("conversations").delete().eq(
                 "org_id", org_id
             ).eq("id", conversation_id).execute()
+            db.table("users").delete().eq(
+                "org_id", org_id
+            ).eq("id", requester_id).execute()
             remaining = db.table("write_invoke_idempotency").select("id").eq("org_id", org_id).eq("idempotency_key", expected_key).execute().data or []
             remaining_approval = db.table("approvals").select("id").eq("org_id", org_id).eq("id", approval_id).execute().data or []
             race_remaining = db.table("write_invoke_idempotency").select("id").eq(
@@ -451,8 +463,12 @@ def run():
             remaining_conversation = db.table("conversations").select("id").eq(
                 "org_id", org_id
             ).eq("id", conversation_id).execute().data or []
+            remaining_requester = db.table("users").select("id").eq(
+                "org_id", org_id
+            ).eq("id", requester_id).execute().data or []
             if (remaining or remaining_approval or negative_remaining or
-                    race_remaining or race_approval_remaining or remaining_conversation):
+                    race_remaining or race_approval_remaining or remaining_conversation or
+                    remaining_requester):
                 raise RuntimeError("Isolated test rows not cleaned up")
         finally:
             server.shutdown()
