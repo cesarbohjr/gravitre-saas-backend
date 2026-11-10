@@ -76,7 +76,7 @@ _TOPICS = iter(
 )
 
 
-async def _run_typed_turn(fake_live, *, streaming: bool = True, query: str | None = None, react_runner=None):
+async def _run_typed_turn(fake_live, *, streaming: bool = True, query: str | None = None, react_runner=None, requested_tools=None):
     # A fresh question per turn: in-process caches remember an org's recent
     # questions, and a repeat would skip LIVE altogether.
     query = query or next(_TOPICS)
@@ -159,7 +159,7 @@ async def _run_typed_turn(fake_live, *, streaming: bool = True, query: str | Non
             user_id="user-1",
             query=query,
             mode="fast",
-            requested_tools=["agent_status"],
+            requested_tools=requested_tools if requested_tools is not None else ["agent_status"],
             client=client,
             spoken_mode=False,
         ):
@@ -466,6 +466,7 @@ async def test_eco001_real_agent_streaming_live_handoff_reaches_governed_registr
             actual_live,
             query="Search my HubSpot contacts for qa-eco001",
             react_runner=governed_react,
+            requested_tools=["hubspot_search_contacts"],
         )
 
     assert len(provider_calls) == 1
