@@ -5503,7 +5503,7 @@ def invoke_tool(ctx: ToolContext, action: str, params: dict[str, Any] | None = N
             if result.success and write_idempotency_key and idempotency_enabled:
                 from app.services.write_invoke_idempotency import finalize_write_invoke
 
-                finalize_write_invoke(
+                finalized = finalize_write_invoke(
                     ctx.client,
                     org_id=ctx.org_id,
                     idempotency_key=write_idempotency_key,
@@ -5511,6 +5511,27 @@ def invoke_tool(ctx: ToolContext, action: str, params: dict[str, Any] | None = N
                     status="completed",
                     result=result,
                 )
+                if finalized.outcome != "finalized":
+                    # The provider may have committed, but we could not record
+                    # durable completion. Never report verified success or
+                    # encourage a retry; the pre-dispatch claim stays fenced.
+                    _write_tool_audit(
+                        ctx, action, result.connector_id or cid,
+                        "tool.invoke.outcome_uncertain",
+                        {"reason": "ledger_finalize_unconfirmed"},
+                    )
+                    return NormalizedResult(
+                        success=False,
+                        action=action,
+                        data={},
+                        error_code="outcome_uncertain",
+                        error_message=(
+                            "The provider accepted the write but the durable "
+                            "completion record was not confirmed; reconcile "
+                            "the provider record before any retry."
+                        ),
+                        connector_id=result.connector_id or cid,
+                    )
             try:
                 from app.services.post_publish_marketing_metrics_service import (
                     maybe_record_post_publish_marketing_baseline,
