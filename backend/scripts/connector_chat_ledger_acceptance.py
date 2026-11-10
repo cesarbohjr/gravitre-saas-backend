@@ -158,16 +158,39 @@ def run():
         "qa": "PR611-canonical-ledger-acceptance",
     }
     negative_approval_ids = []
+    qa_auth_id = None
+    qa_auto_org_id = None
     try:
-        # The acceptance schema enforces conversations.user_id -> users.id.
-        # Seed a disposable user only inside the already-verified QA org;
-        # do not weaken the FK or reuse a production account.
+        # conversations.user_id references auth.users(id), NOT public.users(id).
+        # Admin-create an uninvited, disposable auth identity in the verified
+        # acceptance project. Supabase's signup trigger creates its own trial
+        # workspace; capture and clean up that workspace as part of this test.
+        auth_created = db.auth.admin.create_user({
+            "email": f"pr611-{requester_id}@example.invalid",
+            "email_confirm": True,
+        })
+        qa_auth_id = str(auth_created.user.id)
+        assert qa_auth_id, "Disposable QA auth user was not created"
+        auto_profiles = db.table("users").select(
+            "id,org_id"
+        ).eq("auth_user_id", qa_auth_id).execute().data or []
+        assert len(auto_profiles) == 1, "QA auth trigger did not create exactly one profile"
+        qa_auto_org_id = auto_profiles[0]["org_id"]
+        assert qa_auto_org_id != org_id, "Refusing cleanup of the acceptance organization"
+        requester_id = qa_auth_id
+        # Keep a separate isolated QA-org profile for Chat's tenant-scoped
+        # user lookups. The auth trigger's profile belongs to the disposable
+        # auto-created workspace and must not be reused across orgs.
         db.table("users").insert({
             "id": requester_id, "org_id": org_id,
-            "email": f"pr611-{requester_id}@example.invalid",
+            "email": f"pr611-qa-{requester_id}@example.invalid",
             "full_name": "PR611 synthetic Chat requester",
             "role": "member",
         }).execute()
+        auth_fk = db.auth.admin.get_user_by_id(requester_id)
+        assert auth_fk.user and str(auth_fk.user.id) == requester_id, (
+            "Conversation auth FK not seeded"
+        )
         db.table("conversations").insert({
             "id": conversation_id, "org_id": org_id, "user_id": requester_id,
             "title": "PR611 isolated Chat approval acceptance",
@@ -449,6 +472,28 @@ def run():
             db.table("users").delete().eq(
                 "org_id", org_id
             ).eq("id", requester_id).execute()
+            # The auth creation trigger provisions a second, disposable org.
+            # Delete only the exact trigger-derived workspace; never the
+            # known acceptance organization or another user's records.
+            if qa_auto_org_id and qa_auth_id:
+                assert qa_auto_org_id != org_id
+                db.table("users").delete().eq("org_id", qa_auto_org_id).eq(
+                    "auth_user_id", qa_auth_id
+                ).execute()
+                db.table("organization_members").delete().eq(
+                    "org_id", qa_auto_org_id
+                ).eq("user_id", qa_auth_id).execute()
+                db.table("org_billing").delete().eq(
+                    "org_id", qa_auto_org_id
+                ).execute()
+                db.table("environments").delete().eq(
+                    "org_id", qa_auto_org_id
+                ).execute()
+                db.table("organizations").delete().eq(
+                    "id", qa_auto_org_id
+                ).execute()
+            if qa_auth_id:
+                db.auth.admin.delete_user(qa_auth_id)
             remaining = db.table("write_invoke_idempotency").select("id").eq("org_id", org_id).eq("idempotency_key", expected_key).execute().data or []
             remaining_approval = db.table("approvals").select("id").eq("org_id", org_id).eq("id", approval_id).execute().data or []
             race_remaining = db.table("write_invoke_idempotency").select("id").eq(
