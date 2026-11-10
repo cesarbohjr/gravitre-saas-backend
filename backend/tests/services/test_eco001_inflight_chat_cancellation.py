@@ -26,7 +26,7 @@ async def test_cancelled_chat_waiter_preserves_inflight_write_until_terminal_res
         entered.set()
         await release.wait()
         observed.append("provider_write")
-        observed.append("terminal_outcome_persisted")
+        observed.append("simulated_terminal_callback")
         terminal.set()
         return SimpleNamespace(success=True)
 
@@ -46,7 +46,7 @@ async def test_cancelled_chat_waiter_preserves_inflight_write_until_terminal_res
             release.set()
         await asyncio.wait_for(terminal.wait(), timeout=5)
         await asyncio.sleep(0)
-        assert observed == ["provider_write", "terminal_outcome_persisted"]
+        assert observed == ["provider_write", "simulated_terminal_callback"]
         assert not _DETACHED_WRITES
 
 
