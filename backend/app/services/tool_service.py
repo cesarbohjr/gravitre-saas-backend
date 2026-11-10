@@ -5249,6 +5249,14 @@ def invoke_tool(ctx: ToolContext, action: str, params: dict[str, Any] | None = N
     elif is_f1_write_action(action):
         params = enforce_invoke_write_preflight(ctx, action, params)
 
+    # A queue approval explicitly declares a governed WRITE. If a newly added
+    # action is absent from the write classifier, fail closed rather than using
+    # the read/unfenced path and silently skipping durable idempotency.
+    if getattr(ctx, "write_idempotency_required", False) and not _is_write_invoke(action):
+        raise ToolValidationError(
+            "Queue-approved action is not registered as a write; execution refused",
+            code="WRITE_LEDGER_CLASSIFICATION_REQUIRED",
+        )
     executor = _resolve_tool_executor(action, ctx)
     if not executor:
         raise ToolNotFoundError(f"Unknown tool action: {action}")
