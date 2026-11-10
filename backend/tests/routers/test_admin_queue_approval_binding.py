@@ -155,6 +155,12 @@ def test_admin_approval_executes_once_and_is_audited(api):
     resp = TestClient(app).post(f"/api/approvals/{row['id']}/approve", json={})
     assert resp.status_code == 200, resp.text
     assert api.execute.await_count == 1
+    frozen = api.execute.await_args.kwargs["approved_params"]
+    assert frozen["approval_action_id"] == row["id"]
+    assert frozen["bound_invoke_action"] == "gmail.messages.send"
+    assert frozen["bound_tool_name"] == "gmail"
+    assert frozen["bound_integration"] == "gmail"
+    assert frozen["bound_args_digest"] == digest_plan_args(ARGS)
     assert row["status"] == "approved" and row["reviewed_by"] == "admin-1"
     assert row["context"]["dispatch"]["state"] == "reported_success_unverified"
     assert row["context"]["dispatch"]["independently_verified"] is False
