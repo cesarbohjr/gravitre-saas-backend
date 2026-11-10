@@ -72,3 +72,44 @@ async def test_read_only_execution_remains_cancellable():
         with pytest.raises(asyncio.CancelledError):
             await waiter
         await asyncio.wait_for(cancelled.wait(), timeout=5)
+
+
+@pytest.mark.asyncio
+async def test_cancelled_chat_waiter_preserves_failed_write_outcome(caplog):
+    """A detached provider failure must be observed, not silently discarded."""
+    entered = asyncio.Event()
+    release = asyncio.Event()
+    finished = asyncio.Event()
+
+    async def provider_execution(**kwargs):
+        entered.set()
+        try:
+            await release.wait()
+            raise RuntimeError("synthetic provider terminal failure")
+        finally:
+            finished.set()
+
+    service = object.__new__(ChatConnectorExecutionService)
+    with patch.object(service, "_execute_plan", side_effect=provider_execution):
+        waiter = asyncio.create_task(
+            service._execute_plan_shielded(plan=SimpleNamespace(kind="write"))
+        )
+        try:
+            await asyncio.wait_for(entered.wait(), timeout=5)
+            waiter.cancel()
+            with pytest.raises(asyncio.CancelledError):
+                await waiter
+            assert _DETACHED_WRITES, "Failed write must remain tracked after turn cancellation"
+        finally:
+            release.set()
+        await asyncio.wait_for(finished.wait(), timeout=5)
+        for _ in range(20):
+            if not _DETACHED_WRITES:
+                break
+            await asyncio.sleep(0)
+        assert not _DETACHED_WRITES, "Detached write reference must be cleaned up"
+        assert any(
+            "detached_write_failed" in record.message
+            and "synthetic provider terminal failure" in record.message
+            for record in caplog.records
+        ), "Terminal provider failure must be observed after turn cancellation"
