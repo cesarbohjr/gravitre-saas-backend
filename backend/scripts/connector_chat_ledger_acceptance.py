@@ -378,6 +378,18 @@ def run():
                 assert revoke.status_code == 409, (
                     f"Claimed approval overwritten by revocation: {revoke.text}"
                 )
+                # The adapter has entered the provider boundary but the local
+                # receiver has not accepted the irreversible write yet.
+                assert len(writes) == 1, (
+                    f"Provider write escaped the blocked dispatch boundary: {writes}"
+                )
+                still_claimed = db.table("write_invoke_idempotency").select(
+                    "status,logical_action_id"
+                ).eq("org_id", org_id).eq(
+                    "idempotency_key", race_ledger_key
+                ).single().execute().data
+                assert still_claimed["status"] == "in_progress", still_claimed
+                assert still_claimed["logical_action_id"] == race_logical_id
             finally:
                 race_resume_provider.set()
                 racing_thread.join(timeout=25)
@@ -388,6 +400,18 @@ def run():
                 f"/api/approvals/{race_approval_id}/approve", json={}
             )
             assert race_replay.status_code == 409
+            # Rejected late revocation and duplicate approval cannot mutate
+            # the already-claimed authorization or dispatch a third write.
+            race_final_approval = db.table("approvals").select(
+                "status,context"
+            ).eq("org_id", org_id).eq(
+                "id", race_approval_id
+            ).single().execute().data
+            assert race_final_approval["status"] == "approved", race_final_approval
+            assert race_final_approval["context"]["dispatch"]["state"] in {
+                "reported_success_unverified", "verified"
+            }, race_final_approval
+            assert len(writes) == 2, f"Replay duplicated provider write: {writes}"
 
         assert writes == [
             {"email": ARGS["email"], "turn_id": approval_id},
