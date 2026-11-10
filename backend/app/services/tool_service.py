@@ -326,6 +326,15 @@ def _is_write_invoke(action: str) -> bool:
     return is_write_action(action)
 
 
+def assert_queue_write_ledger_classified(ctx: ToolContext, action: str) -> None:
+    """An approval-queue WRITE may not silently dispatch as an unfenced read."""
+    if getattr(ctx, "write_idempotency_required", False) and not _is_write_invoke(action):
+        raise ToolValidationError(
+            "Queue-approved action is not registered as a write; execution refused",
+            code="WRITE_LEDGER_CLASSIFICATION_REQUIRED",
+        )
+
+
 def _is_statement_timeout(exc: Exception) -> bool:
     """True when Postgres actually canceled the statement (SQLSTATE 57014)."""
     name = type(exc).__name__.lower()
@@ -5252,11 +5261,7 @@ def invoke_tool(ctx: ToolContext, action: str, params: dict[str, Any] | None = N
     # A queue approval explicitly declares a governed WRITE. If a newly added
     # action is absent from the write classifier, fail closed rather than using
     # the read/unfenced path and silently skipping durable idempotency.
-    if getattr(ctx, "write_idempotency_required", False) and not _is_write_invoke(action):
-        raise ToolValidationError(
-            "Queue-approved action is not registered as a write; execution refused",
-            code="WRITE_LEDGER_CLASSIFICATION_REQUIRED",
-        )
+    assert_queue_write_ledger_classified(ctx, action)
     executor = _resolve_tool_executor(action, ctx)
     if not executor:
         raise ToolNotFoundError(f"Unknown tool action: {action}")
