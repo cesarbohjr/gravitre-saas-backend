@@ -221,7 +221,8 @@ def run():
             # A concurrent reject MUST lose the CAS; it cannot pretend that an
             # already-started provider call has been revoked or cancelled.
             race_approval_id = str(uuid.uuid4())
-            negative_approval_ids.append(race_approval_id)
+            # This action IS authorized and must acquire a ledger claim;
+            # do not include it in the deny/reject zero-claim assertion.
             db.table("approvals").insert({
                 "id": race_approval_id, "org_id": org_id,
                 "type": "connector_chat", "status": "pending",
@@ -344,15 +345,22 @@ def run():
             db.table("approvals").delete().eq("org_id", org_id).eq("id", approval_id).execute()
             for negative_id in negative_approval_ids:
                 db.table("approvals").delete().eq("org_id", org_id).eq("id", negative_id).execute()
+            if race_approval_id:
+                db.table("approvals").delete().eq("org_id", org_id).eq(
+                    "id", race_approval_id
+                ).execute()
             remaining = db.table("write_invoke_idempotency").select("id").eq("org_id", org_id).eq("idempotency_key", expected_key).execute().data or []
             remaining_approval = db.table("approvals").select("id").eq("org_id", org_id).eq("id", approval_id).execute().data or []
             race_remaining = db.table("write_invoke_idempotency").select("id").eq(
                 "org_id", org_id
             ).eq("idempotency_key", race_ledger_key).execute().data if race_ledger_key else []
+            race_approval_remaining = db.table("approvals").select("id").eq(
+                "org_id", org_id
+            ).eq("id", race_approval_id).execute().data if race_approval_id else []
             negative_remaining = db.table("approvals").select("id").eq(
                 "org_id", org_id
             ).in_("id", negative_approval_ids).execute().data if negative_approval_ids else []
-            if remaining or remaining_approval or negative_remaining or race_remaining:
+            if remaining or remaining_approval or negative_remaining or race_remaining or race_approval_remaining:
                 raise RuntimeError("Isolated test rows not cleaned up")
         finally:
             server.shutdown()
