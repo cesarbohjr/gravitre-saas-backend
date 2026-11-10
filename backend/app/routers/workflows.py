@@ -4121,6 +4121,17 @@ async def approve_run_alias(
                 client=client,
                 classification={},
                 environment_name=environment_name,
+                # The route's approval check is not enough: the downstream
+                # executor must reassert the immutable action and argument
+                # identity before any connector-side compilation or dispatch.
+                approved_params={
+                    **params,
+                    "approval_action_id": str(run_id),
+                    "bound_tool_name": str(binding["tool_name"]),
+                    "bound_invoke_action": str(binding["invoke_action"]),
+                    "bound_integration": str(binding["integration"]),
+                    "bound_args_digest": str(binding["args_digest"]),
+                },
             )
         except Exception as exc:  # noqa: BLE001
             execution_error = exc
