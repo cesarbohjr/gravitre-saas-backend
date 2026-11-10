@@ -5343,6 +5343,7 @@ def invoke_tool(ctx: ToolContext, action: str, params: dict[str, Any] | None = N
     write_claim_token: str | None = None
     idempotency_enabled = _is_write_invoke(action) and (
         bool(getattr(ctx, "autonomous_write_guarded", False))
+        or bool(getattr(ctx, "write_idempotency_required", False))
         or bool(getattr(ctx.settings, "write_invoke_idempotency_enabled", False))
     )
     if idempotency_enabled:
