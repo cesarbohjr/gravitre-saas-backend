@@ -1,0 +1,207 @@
+"""PR611 real connector_chat route -> registry -> invoke_tool -> DB ledger acceptance.
+
+Only the external provider adapter is replaced with a local HTTP receiver.
+All claims/finalization use real acceptance Supabase RPCs. No HubSpot or
+customer connector is contacted. Explicitly scoped to the dedicated QA org.
+"""
+from __future__ import annotations
+
+import asyncio
+import json
+import os
+import threading
+import uuid
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from pathlib import Path
+from types import SimpleNamespace
+from unittest.mock import AsyncMock, MagicMock, patch
+from urllib.request import Request, urlopen
+import sys
+
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
+
+from app.services.approval_action_binding import digest_plan_args
+from app.services.chat_connector_models import ConnectorActionPlan
+from app.services.tool_types import NormalizedResult
+from app.services.write_invoke_idempotency import build_write_idempotency_key
+from app.services.tool_types import ToolContext
+
+EXPECTED_URL = "https://aadnwmjzrmbvadszroqt.supabase.co"
+QA_NAME = "Gravitre MCP Acceptance QA"
+ACTION = "hubspot.contacts.create"
+TOOL = "hubspot_contacts_create"
+ARGS = {"email": "pr611-ledger-fixture@example.com", "firstname": "QA", "lastname": "Ledger"}
+REVIEWER = "pr611-ledger-reviewer"
+
+
+def client():
+    from supabase import create_client
+    return create_client(os.environ["MCP_ACCEPTANCE_URL"], os.environ["MCP_ACCEPTANCE_SERVICE_KEY"])
+
+
+def check_env():
+    if os.environ.get("MCP_CRASH_ACCEPTANCE") != "1":
+        raise SystemExit("Acceptance must be explicitly enabled")
+    if os.environ.get("MCP_ACCEPTANCE_URL", "").rstrip("/") != EXPECTED_URL:
+        raise SystemExit("Refusing non-acceptance Supabase project")
+    if not os.environ.get("MCP_ACCEPTANCE_SERVICE_KEY") or not os.environ.get("MCP_ACCEPTANCE_ORG_ID"):
+        raise SystemExit("Missing QA credentials or organization")
+
+
+def run():
+    check_env()
+    from fastapi.testclient import TestClient
+    from app.main import app
+    from app.auth.dependencies import get_current_user, get_environment_context, get_org_context
+    from app.config import Settings, get_settings
+    from app.routers import workflows as wf
+    from app.services import chat_connector_execution_service as chat_module
+    from app.services import tool_service
+    from app.workflows import policy
+
+    db = client()
+    org_id = os.environ["MCP_ACCEPTANCE_ORG_ID"]
+    org = db.table("organizations").select("name").eq("id", org_id).single().execute().data
+    if (org or {}).get("name") != QA_NAME:
+        raise SystemExit("Refusing non-isolated QA organization")
+    approval_id = str(uuid.uuid4())
+    conversation_id = f"qa-{approval_id}"
+    plan = ConnectorActionPlan(
+        tool_name=TOOL, invoke_action=ACTION, integration="hubspot",
+        kind="write", label="Isolated QA ledger contact",
+        args=dict(ARGS), requires_approval=True,
+    )
+    writes = []
+
+    class Handler(BaseHTTPRequestHandler):
+        def do_POST(self):
+            body = json.loads(self.rfile.read(int(self.headers.get("Content-Length", "0"))))
+            writes.append(body)
+            self.send_response(200)
+            self.end_headers()
+            self.wfile.write(b"ok")
+        def log_message(self, *_args):
+            pass
+
+    server = ThreadingHTTPServer(("127.0.0.1", 0), Handler)
+    threading.Thread(target=server.serve_forever, daemon=True).start()
+    settings = Settings(
+        app_env="dev", supabase_url=EXPECTED_URL, supabase_anon_key="a",
+        supabase_service_role_key="s", supabase_jwt_secret="j",
+        write_authority_mode="enforce", write_invoke_idempotency_enabled=False,
+    )
+    service = chat_module.ChatConnectorExecutionService(settings)
+    service.plan_action = lambda *_a, **_kw: plan
+    # Conversation-store and downstream notification are not the acceptance
+    # subject. The route approval CAS and shared ledger remain unmocked.
+    service._state = MagicMock()
+    service._state.get_task_state = AsyncMock(return_value={})
+    service._state.update_task_state = AsyncMock()
+    service._state.update_task_state_from = AsyncMock()
+    service._claim_write_before_invoke = AsyncMock(return_value=None)
+    service._replay_existing_write_result = AsyncMock(return_value=None)
+    service._finalize_connector_outcome = MagicMock(return_value=None)
+    service._persist_recent_connector_invocation = AsyncMock()
+    service._persist_canonical_write_outcome = AsyncMock()
+    service._external_url = MagicMock(return_value=None)
+    service._summarize_result = MagicMock(return_value="Synthetic provider write recorded")
+    def provider(ctx, params):
+        req = Request(
+            f"http://127.0.0.1:{server.server_port}/write",
+            data=json.dumps({"email": params.get("email"), "turn_id": ctx.turn_id}).encode(),
+            headers={"Content-Type": "application/json"}, method="POST",
+        )
+        with urlopen(req, timeout=10) as response:
+            assert response.status == 200
+        return NormalizedResult(success=True, action=ACTION, data={"id": "qa-local-1"})
+
+    from app.services.write_invoke_idempotency import build_write_idempotency_key
+    expected_ctx = ToolContext(
+        settings=settings, client=db, org_id=org_id, actor_id=REVIEWER,
+        conversation_id=conversation_id, turn_id=approval_id,
+        write_idempotency_required=True,
+    )
+    expected_key, expected_logical = build_write_idempotency_key(expected_ctx, ACTION, ARGS)
+    context = {
+        "conversation_id": conversation_id,
+        "parameters": {"args": ARGS},
+        "binding": {
+            "tool_name": TOOL, "invoke_action": ACTION,
+            "integration": "hubspot", "args_digest": digest_plan_args(ARGS),
+        },
+        "qa": "PR611-canonical-ledger-acceptance",
+    }
+    try:
+        db.table("approvals").insert({
+            "id": approval_id, "org_id": org_id, "type": "connector_chat",
+            "title": "PR611 isolated ledger route acceptance",
+            "status": "pending", "context": context,
+        }).execute()
+        app.dependency_overrides[get_current_user] = lambda: {"user_id": REVIEWER}
+        app.dependency_overrides[get_org_context] = lambda: org_id
+        app.dependency_overrides[get_environment_context] = lambda: "production"
+        app.dependency_overrides[get_settings] = lambda: settings
+        proof = SimpleNamespace(ok=True, compiled_parameters=dict(ARGS))
+        with (
+            patch.object(wf, "get_supabase_client", return_value=db),
+            patch.object(wf, "get_plan_for_org", return_value={"features": {"approvals": True}}),
+            patch.object(wf, "require_feature"),
+            patch.object(wf, "has_capability", return_value=True),
+            patch.object(wf, "write_audit_event"),
+            patch.object(policy, "get_user_role", return_value="admin"),
+            patch.object(chat_module, "get_chat_connector_execution_service", return_value=service),
+            patch("app.services.object_resolution.revalidate_bound_targets", return_value=None),
+            patch("app.services.write_preflight.compile_write_for_context", return_value=proof),
+            patch("app.services.write_preflight.enforce_invoke_write_preflight", side_effect=lambda ctx, action, params: params),
+            patch("app.services.conversation_write_guard.assert_org_write_allowed"),
+            patch("app.services.agent_guardrail_limits.enforce_agent_guardrail_limits"),
+            patch("app.services.hipaa_service.enforce_hipaa_for_tool_invoke"),
+            patch.object(tool_service, "assert_agent_tool_permission"),
+            patch.object(tool_service, "_resolve_tool_executor", return_value=provider),
+            patch.object(tool_service, "_write_tool_audit"),
+            patch("app.workers.workflow_queue.assert_current_workflow_claim_live"),
+        ):
+            response = TestClient(app).post(f"/api/approvals/{approval_id}/approve", json={})
+            assert response.status_code == 200, f"Approval failed {response.status_code}: {response.text[-1200:]}"
+            retry = TestClient(app).post(f"/api/approvals/{approval_id}/approve", json={})
+            assert retry.status_code == 409, f"Replay not blocked: {retry.status_code}"
+        assert writes == [{"email": ARGS["email"], "turn_id": approval_id}], f"Provider writes: {writes}"
+        ledger = (
+            db.table("write_invoke_idempotency")
+            .select("idempotency_key,invoke_action,logical_action_id,status,result,claim_token")
+            .eq("org_id", org_id).eq("idempotency_key", expected_key)
+            .limit(2).execute().data or []
+        )
+        assert len(ledger) == 1, f"Missing or duplicate canonical ledger row: {ledger}"
+        assert ledger[0]["status"] == "completed", ledger
+        assert ledger[0]["invoke_action"] == ACTION and ledger[0]["logical_action_id"] == expected_logical
+        assert (ledger[0].get("result") or {}).get("success") is True, ledger
+        approval = (
+            db.table("approvals").select("status,context")
+            .eq("id", approval_id).eq("org_id", org_id).single().execute().data
+        )
+        assert approval["status"] == "approved"
+        assert approval["context"]["dispatch"]["state"] in {"reported_success_unverified", "verified"}, approval
+        print(json.dumps({
+            "result": "PASS", "canonical_ledger": "completed",
+            "provider_writes": len(writes), "approval_replay_http": 409,
+            "ledger_rows": len(ledger), "approval_id": approval_id,
+            "provider_is_synthetic": True,
+        }))
+    finally:
+        app.dependency_overrides.clear()
+        try:
+            db.table("write_invoke_idempotency").delete().eq("org_id", org_id).eq("idempotency_key", expected_key).execute()
+            db.table("approvals").delete().eq("org_id", org_id).eq("id", approval_id).execute()
+            remaining = db.table("write_invoke_idempotency").select("id").eq("org_id", org_id).eq("idempotency_key", expected_key).execute().data or []
+            remaining_approval = db.table("approvals").select("id").eq("org_id", org_id).eq("id", approval_id).execute().data or []
+            if remaining or remaining_approval:
+                raise RuntimeError("Isolated test rows not cleaned up")
+        finally:
+            server.shutdown()
+            server.server_close()
+
+
+if __name__ == "__main__":
+    run()
