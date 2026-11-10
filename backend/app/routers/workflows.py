@@ -4072,11 +4072,27 @@ async def approve_run_alias(
                 detail="This approval no longer matches the requested action. Ask for approval again.",
             )
 
-        # Claim once: concurrent approvals of the same row run the write at most once.
+        # The single winning approval claim is also the durable dispatch record.
+        # Committing it BEFORE the provider call ensures a dead worker can never
+        # turn an approved/in-flight write back into a pending, resendable action.
         reviewer = str(current_user.get("user_id") or "")
+        claim_time = datetime.now(timezone.utc).isoformat()
+        dispatch = {
+            "state": "claimed",
+            "claimed_at": claim_time,
+            "approval_id": str(run_id),
+            "args_digest": actual["args_digest"],
+            "invoke_action": actual["invoke_action"],
+            "integration": actual["integration"],
+        }
         claimed = (
             client.table("approvals")
-            .update({"reviewed_by": reviewer, "reviewed_at": datetime.now(timezone.utc).isoformat()})
+            .update({
+                "status": "approved",
+                "reviewed_by": reviewer,
+                "reviewed_at": claim_time,
+                "context": {**ctx, "dispatch": dispatch},
+            })
             .eq("id", str(run_id))
             .eq("org_id", org_id)
             .eq("status", "pending")
@@ -4088,21 +4104,61 @@ async def approve_run_alias(
         if not claimed:
             raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Approval already being decided")
 
+        # Only a persisted consent+claim authorizes dispatch. The downstream
+        # connector also has its own pending-write/ledger fences; this record
+        # captures the HTTP approval route's irreversible crash boundary.
         from app.services.write_authority import declare_write_authority
 
-        declare_write_authority("human", f"approval:{run_id}")  # an admin approved this queued write
-        execution = await service.execute_plan(
-            org_id=org_id,
-            user_id=str(chat_rows[0].get("requested_by") or reviewer),
-            conversation_id=conversation_id,
-            plan=plan,
-            client=client,
-            classification={},
-            environment_name=environment_name,
+        declare_write_authority("human", f"approval:{run_id}")
+        execution = None
+        execution_error = None
+        try:
+            execution = await service.execute_plan(
+                org_id=org_id,
+                user_id=str(chat_rows[0].get("requested_by") or reviewer),
+                conversation_id=conversation_id,
+                plan=plan,
+                client=client,
+                classification={},
+                environment_name=environment_name,
+            )
+        except Exception as exc:  # noqa: BLE001
+            execution_error = exc
+        # An exception or worker death can follow provider acceptance. Neither
+        # is evidence the write failed. No automatic redispatch is authorized.
+        verified = bool(execution is not None and getattr(execution, "outcome_verified", False))
+        reported_success = bool(execution is not None and execution.success)
+        outcome_state = (
+            "verified" if verified and reported_success
+            else "reported_success_unverified" if reported_success
+            else "uncertain" if execution_error is not None
+            else "reported_failure_unverified"
         )
-        client.table("approvals").update(
-            {"status": "approved" if execution.success else "rejected"}
-        ).eq("id", str(run_id)).eq("org_id", org_id).execute()
+        final_dispatch = {
+            **dispatch,
+            "state": outcome_state,
+            "recorded_at": datetime.now(timezone.utc).isoformat(),
+            "provider_reported_success": reported_success,
+            "independently_verified": verified and reported_success,
+            "entity_type": str(getattr(execution, "entity_type", "") or "")[:128],
+            "entity_id": str(getattr(execution, "entity_id", "") or "")[:256],
+        }
+        # Fail closed on a lost outcome write: the durable claim remains
+        # approved/claimed and cannot be dispatched again.
+        persisted = (
+            client.table("approvals")
+            .update({"context": {**ctx, "dispatch": final_dispatch}})
+            .eq("id", str(run_id))
+            .eq("org_id", org_id)
+            .eq("status", "approved")
+            .eq("reviewed_by", reviewer)
+            .eq("reviewed_at", claim_time)
+            .execute()
+            .data
+            or []
+        )
+        if not persisted:
+            raise HTTPException(status_code=503, detail="Approval outcome persistence unconfirmed; do not retry this write")
         write_audit_event(
             client,
             org_id=org_id,
@@ -4112,8 +4168,10 @@ async def approve_run_alias(
             resource_id=str(run_id),
             metadata={
                 "decision": "approved",
-                "executed": True,
-                "success": bool(execution.success),
+                "dispatch_state": outcome_state,
+                "executed": execution is not None,
+                "success": reported_success,
+                "independently_verified": verified and reported_success,
                 "tool_name": actual["tool_name"],
                 "invoke_action": actual["invoke_action"],
                 "integration": actual["integration"],
@@ -4121,6 +4179,11 @@ async def approve_run_alias(
                 "requested_by": chat_rows[0].get("requested_by"),
             },
         )
+        if execution_error is not None:
+            raise HTTPException(
+                status_code=502,
+                detail="Provider outcome is uncertain; inspect the approval record before taking further action",
+            ) from execution_error
         from app.services.conversation_state_service import get_conversation_state_service
 
         await get_conversation_state_service(settings).update_task_state(
@@ -4130,10 +4193,16 @@ async def approve_run_alias(
             client=client,
         )
         return {
-            "success": execution.success,
+            "success": reported_success,
+            "verified": verified and reported_success,
+            "dispatch_state": outcome_state,
             "approval_id": str(run_id),
             "execution_result": execution.__dict__,
-            "message": execution.body if not execution.success else f"Approved and ran {execution.title}.",
+            "message": (
+                execution.body if not reported_success
+                else f"Approved and ran {execution.title}." if verified
+                else "Approval recorded. The provider reported success, but independent verification is pending."
+            ),
         }
     extension = _decide_extension_approval_or_none(
         client,
