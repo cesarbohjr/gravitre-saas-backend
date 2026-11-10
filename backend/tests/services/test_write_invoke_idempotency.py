@@ -106,3 +106,24 @@ def test_claim_fails_closed_without_fencing_token():
     assert out.reason == "missing_claim_token"
     assert out.claim_token is None
     client.rpc.assert_called_once()
+
+
+def test_queue_approval_id_is_stable_ledger_identity_and_separates_distinct_approvals():
+    """Two intentional identical writes cannot share an approval's ledger key."""
+    ctx = dict(
+        settings=SimpleNamespace(),
+        client=MagicMock(),
+        org_id="org-1",
+        actor_id="requester-1",
+        conversation_id="conv-1",
+        write_idempotency_required=True,
+    )
+    params = {"email": "qa@example.invalid", "subject": "Approved", "body": "Fixture"}
+    first = ToolContext(**ctx, turn_id="approval-1")
+    second = ToolContext(**ctx, turn_id="approval-2")
+    k1, logical1 = build_write_idempotency_key(first, "gmail.messages.send", params)
+    replay, logical_replay = build_write_idempotency_key(first, "gmail.messages.send", dict(params))
+    k2, logical2 = build_write_idempotency_key(second, "gmail.messages.send", params)
+    assert k1.startswith("chat:") and k1 == replay
+    assert logical1 == logical_replay
+    assert k1 != k2 and logical1 != logical2
