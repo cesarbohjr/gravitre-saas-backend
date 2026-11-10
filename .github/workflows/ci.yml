@@ -739,3 +739,38 @@ jobs:
           PLAYWRIGHT_BASE_URL: http://localhost:3000
           NEXT_PUBLIC_PLAYWRIGHT_E2E: "1"
 
+
+  mcp-crash-acceptance:
+    name: MCP approval crash/restart acceptance (isolated)
+    # Restricted to this in-repository remediation PR; never runs on forks or push.
+    if: ${{ github.event_name == 'pull_request' && github.event.pull_request.number == 611 && github.event.pull_request.head.repo.full_name == github.repository && github.head_ref == 'feat/master-qa-tranche27-orchestration' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    environment: acceptance
+    defaults:
+      run:
+        working-directory: backend
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+      - name: Prepare acceptance dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install --no-cache-dir --no-compile -r requirements-dev.txt
+      - name: Execute isolated worker-death acceptance
+        env:
+          MCP_CRASH_ACCEPTANCE: "1"
+          MCP_ACCEPTANCE_URL: ${{ vars.MCP_ACCEPTANCE_URL }}
+          MCP_ACCEPTANCE_ORG_ID: ${{ vars.MCP_ACCEPTANCE_ORG_ID }}
+          MCP_ACCEPTANCE_SERVICE_KEY: ${{ secrets.MCP_ACCEPTANCE_SERVICE_KEY }}
+        run: |
+          set -euo pipefail
+          python scripts/mcp_approval_crash_acceptance.py
