@@ -127,3 +127,28 @@ def test_queue_approval_id_is_stable_ledger_identity_and_separates_distinct_appr
     assert k1.startswith("chat:") and k1 == replay
     assert logical1 == logical_replay
     assert k1 != k2 and logical1 != logical2
+
+
+def test_queue_approved_unknown_write_classification_fails_closed():
+    import pytest
+    from app.services.tool_service import assert_queue_write_ledger_classified
+    from app.services.tool_types import ToolValidationError
+
+    ctx = ToolContext(
+        settings=SimpleNamespace(),
+        client=MagicMock(),
+        org_id="org-1",
+        actor_id="reviewer-1",
+        write_idempotency_required=True,
+    )
+    with pytest.raises(ToolValidationError) as exc:
+        assert_queue_write_ledger_classified(ctx, "qa.nonexistent_action")
+    assert exc.value.code == "WRITE_LEDGER_CLASSIFICATION_REQUIRED"
+
+    permissive_ctx = ToolContext(
+        settings=SimpleNamespace(),
+        client=MagicMock(),
+        org_id="org-1",
+        actor_id="reviewer-1",
+    )
+    assert_queue_write_ledger_classified(permissive_ctx, "qa.nonexistent_action") is None
