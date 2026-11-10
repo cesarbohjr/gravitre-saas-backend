@@ -105,18 +105,21 @@ def run():
     # Preserve the real conversation-state persistence code and acceptance
     # database for this test, including calls that omit the client argument.
     service._state = MagicMock()
-    service._state.get_task_state = AsyncMock(side_effect=lambda c, o, **kw:
-        real_state.get_task_state(c, o, client=db))
-    service._state.update_task_state = AsyncMock(side_effect=lambda c, o, update, **kw:
-        real_state.update_task_state(
+    async def qa_get_state(c, o, **_kw):
+        return await real_state.get_task_state(c, o, client=db)
+    async def qa_update_state(c, o, update, **kw):
+        return await real_state.update_task_state(
             c, o, update, client=db,
             effect_record=bool(kw.get("effect_record", False)),
-        ))
-    service._state.update_task_state_from = AsyncMock(side_effect=lambda c, o, builder, **kw:
-        real_state.update_task_state_from(
+        )
+    async def qa_update_state_from(c, o, builder, **kw):
+        return await real_state.update_task_state_from(
             c, o, builder, client=db,
             effect_record=bool(kw.get("effect_record", False)),
-        ))
+        )
+    service._state.get_task_state = qa_get_state
+    service._state.update_task_state = qa_update_state
+    service._state.update_task_state_from = qa_update_state_from
     service._claim_write_before_invoke = AsyncMock(return_value=None)
     service._replay_existing_write_result = AsyncMock(return_value=None)
     service._finalize_connector_outcome = MagicMock(return_value=None)
