@@ -6,7 +6,7 @@ Run ONLY against the isolated acceptance Supabase project with a disposable org:
 
 The child runs the real MCPClientService.execute_tool approval/dispatch path.
 A local synthetic HTTP provider records the side effect before the child is
-SIGKILLed via os._exit(71). A new process retries the same approval.
+terminated via os._exit(71). A separate new process retries the same approval.
 No external provider or customer action is invoked. The test is opt-in.
 """
 from __future__ import annotations
@@ -76,8 +76,11 @@ def main():
     required = ("MCP_ACCEPTANCE_URL", "MCP_ACCEPTANCE_SERVICE_KEY", "MCP_ACCEPTANCE_ORG_ID")
     if any(not os.environ.get(k) for k in required):
         raise SystemExit("Missing isolated acceptance credentials / disposable org")
-    if len(sys.argv) == 4 and sys.argv[1] == "child":
-        result = asyncio.run(dispatch(sys.argv[2], int(sys.argv[3]), crash=True))
+    expected_url = "https://aadnwmjzrmbvadszroqt.supabase.co"
+    if os.environ["MCP_ACCEPTANCE_URL"].rstrip("/") != expected_url:
+        raise SystemExit("Refusing non-acceptance Supabase URL")
+    if len(sys.argv) == 4 and sys.argv[1] in ("child", "restart"):
+        result = asyncio.run(dispatch(sys.argv[2], int(sys.argv[3]), crash=sys.argv[1] == "child"))
         print(json.dumps(result))
         raise SystemExit(0)
 
@@ -116,8 +119,13 @@ def main():
         assert writes == [ARGS], f"unexpected first provider writes: {writes}"
         persisted = db.table("approvals").select("consumed_at").eq("id", approval_id).single().execute().data
         assert persisted["consumed_at"], "claim was not durably committed before provider write"
-        # A fresh service instance simulates worker restart with the same DB.
-        retry = asyncio.run(dispatch(approval_id, server.server_port, crash=False))
+        # A fully separate process starts with new Python state and a new DB client.
+        restart = subprocess.run(
+            [sys.executable, __file__, "restart", approval_id, str(server.server_port)],
+            env=os.environ.copy(), capture_output=True, text=True, timeout=45,
+        )
+        assert restart.returncode == 0, f"restart process failed: {restart.stderr[-800:]}"
+        retry = json.loads(restart.stdout.strip().splitlines()[-1])
         assert retry["status"] == "rejected", retry
         assert writes == [ARGS], "provider was written twice after worker restart"
         print(json.dumps({"result": "PASS", "worker_exit": 71, "provider_writes": len(writes),
