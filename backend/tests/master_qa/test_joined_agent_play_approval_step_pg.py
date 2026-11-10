@@ -263,6 +263,24 @@ async def test_agent_play_approval_real_step_to_durable_consumer(pg, monkeypatch
     assert pg.value(f"SELECT status FROM public.run_steps WHERE run_id='{run_id}'") == "completed"
     assert vendor.call_count == 1
     assert pg.value(f"SELECT status FROM public.workflow_runs WHERE id='{run_id}'") == "completed"
+    # ECO-001 independent readback: the returned HTTP-equivalent result and
+    # in-memory step objects cannot substitute for durable terminal evidence.
+    # Reopen the canonical repository reader after approval/execution.
+    persisted = repository.get_run_with_steps(
+        PgRepositoryClient(pg), ORG, run_id, "synthetic"
+    )
+    assert persisted["steps"][0]["status"] == "completed"
+    assert persisted["steps"][0]["output_snapshot"], (
+        "Agent execution produced no independently readable step output"
+    )
+    assert pg.value(
+        f"SELECT count(*) FROM public.run_steps "
+        f"WHERE run_id='{run_id}' AND status='completed'"
+    ) == "1"
+    assert pg.value(
+        f"SELECT count(*) FROM public.domain_event_outbox "
+        f"WHERE aggregate_id='{run_id}'"
+    ) == "1"
     assert pg.value("SELECT count(*) FROM public.domain_event_outbox") == "1"
     with pytest.raises(HTTPException) as replay:
         await workflows.approve_run(
