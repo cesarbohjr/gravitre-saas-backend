@@ -313,3 +313,28 @@ def test_connector_chat_claimed_without_outcome_is_never_redispatched(api):
     resp = TestClient(app).post(f"/api/approvals/{row['id']}/approve", json={})
     assert resp.status_code == 409, resp.text
     api.execute.assert_not_awaited()
+
+
+def test_connector_chat_uncertain_result_persists_uncertain_dispatch_state(api):
+    """A ledger/provider uncertainty envelope is not an ordinary failed write."""
+    row = _row()
+    _use(api, [row])
+    api.execute.return_value = SimpleNamespace(
+        success=False,
+        title="Write not confirmed",
+        body="Provider may already have applied the write",
+        entity_type="connector",
+        entity_id="",
+        outcome_verified=False,
+        error_code="OUTCOME_UNCERTAIN",
+    )
+    resp = TestClient(app).post(f"/api/approvals/{row['id']}/approve", json={})
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["success"] is False
+    assert resp.json()["dispatch_state"] == "uncertain"
+    assert row["status"] == "approved"
+    assert row["context"]["dispatch"]["state"] == "uncertain"
+    assert row["context"]["dispatch"]["independently_verified"] is False
+    retry = TestClient(app).post(f"/api/approvals/{row['id']}/approve", json={})
+    assert retry.status_code == 409
+    assert api.execute.await_count == 1
