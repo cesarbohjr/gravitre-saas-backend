@@ -110,6 +110,33 @@ def evaluate(root: Path = ROOT, *, original: dict | None = None,
         "schema_version": 1,
         "source_only": True,
         "findings": len(rows),
+        # The reconciliation is deliberately evidence-only. A source file or
+        # candidate test existing is not proof of a running execution path.
+        # Keep the register as the single status/ownership authority.
+        "finding_reconciliation": [
+            {
+                "finding_id": row["finding_id"],
+                "severity": row["severity"],
+                "implementation_owner": row["implementation_owner"],
+                "qa_lane": row["qa_lane"],
+                "source_probe_path": row["source_probe"]["path"],
+                "source_probe_present": (root / row["source_probe"]["path"]).is_file(),
+                "regression_candidate": row.get("regression_candidate"),
+                "regression_candidate_present": bool(
+                    row.get("regression_candidate") and
+                    (root / row["regression_candidate"]).is_file()
+                ),
+                "implemented_commit": row.get("implemented_commit"),
+                "implementation_state": row.get("implementation_state"),
+                "synthetic_status": row.get("synthetic_status"),
+                "live_status": row.get("live_status"),
+                "fix_verified": bool(row.get("fix_verified")),
+                "source_to_runtime_trace": bool(row.get("source_to_runtime_trace")),
+                "evidence_executed_sha": (row.get("evidence") or {}).get("executed_sha"),
+                "still_open": not bool(row.get("fix_verified")),
+            }
+            for row in rows
+        ],
         "severity_counts": dict(sorted(Counter(r["severity"] for r in rows).items())),
         "qa_lanes": dict(sorted(Counter(r["qa_lane"] for r in rows).items())),
         "closure_count": sum(bool(r.get("fix_verified")) for r in rows),
