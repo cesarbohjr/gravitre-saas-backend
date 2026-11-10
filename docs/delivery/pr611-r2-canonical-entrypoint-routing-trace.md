@@ -48,3 +48,14 @@ Never auto-retire ReAct/classical or their callsites from this static trace alon
 - **Current tests:** `test_unified_turn_fallthrough_enum.py` statically asserts one handoff helper callsite, an explicit boolean argument, one compatibility probe, and known fallthrough reasons. These are valuable source contracts but **not** end-to-end guarantees of one finalizer, one visible response, persisted approval, no provider write, tenant safety, or cancellation correctness.
 
 **Next code gate:** add integrated, fake-provider/no-network regressions for the caller's text-like outcome vs structured SSE vs compatibility-probe matrix; then cover each distinct return-None path, pending approval and terminal handoff with persisted outcome assertions. Repair only reproduced defects in existing owners. Do not mark any of the seven routing P0 findings engineering complete from this census alone. Voice #610 remains out of scope until its planned gate.
+
+
+## ECO-001 runtime-decision handoff checkpoint — 2026-11-10
+
+The existing decision owner remains `AgentIntelligence.execute_task_streaming` → `apply_unified_turn_live` → the structured `should_defer_unified_turn_live_to_classical` decision. When deferral is allowed, `stash_live_classical_handoff` and `arm_from_task_state` pass the chosen tool to the existing classical executor without another tool selection. This is a compatibility route, not an independent authorization grant or grounds for retirement.
+
+Regression `backend/tests/master_qa/test_eco001_decision_handoff_runtime.py` added in `7f81e2e` exercises real runtime functions with synthetic inputs: explicit structured `False` suppresses phrase-triggered classical deferral; explicit `True` allows text/read deferral; LIVE `connector_tool_proposal` cannot be sent to the classical route; a single chosen tool is consumed once with no state replay; concurrent Python task contexts cannot consume each other's choices. These are bounded no-network behavioral checks. They do **not** prove a deployed Chat/Voice/Agent caller, actual provider effect, or complete cross-surface convergence.
+
+The register still lists ECO-001 `NOT_CERTIFIED`. Next required evidence: actual ingress-to-decision correlated runtime traces, tenant/actor-bound selected-tool execution and authorized/denied/interrupt/replay regression with canonical persisted outcomes. Do not retire ReAct/compatibility routing, modify PR #610 voice implementation, or close ECO-001 from this limited suite.
+
+**CI note:** repaired test fixture `e52c13c` and reconciliation test import `44e77a9` followed independently confirmed full-CI failures; this new runtime test must pass at the latest exact PR head with all required workflows before any certification.
