@@ -783,6 +783,15 @@ jobs:
         run: |
           set -euo pipefail
           python scripts/connector_chat_crash_acceptance.py
+      - name: Execute connector_chat canonical ledger acceptance (isolated)
+        env:
+          MCP_CRASH_ACCEPTANCE: "1"
+          MCP_ACCEPTANCE_URL: ${{ vars.MCP_ACCEPTANCE_URL }}
+          MCP_ACCEPTANCE_ORG_ID: ${{ vars.MCP_ACCEPTANCE_ORG_ID }}
+          MCP_ACCEPTANCE_SERVICE_KEY: ${{ secrets.MCP_ACCEPTANCE_SERVICE_KEY }}
+        run: |
+          set -euo pipefail
+          python scripts/connector_chat_ledger_acceptance.py
       - name: Execute isolated shared-ledger crash/restart acceptance
         env:
           MCP_CRASH_ACCEPTANCE: "1"
