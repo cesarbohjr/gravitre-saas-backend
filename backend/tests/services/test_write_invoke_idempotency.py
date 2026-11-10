@@ -152,3 +152,44 @@ def test_queue_approved_unknown_write_classification_fails_closed():
         actor_id="reviewer-1",
     )
     assert_queue_write_ledger_classified(permissive_ctx, "qa.nonexistent_action") is None
+
+
+def test_queued_approval_ledger_identity_is_tenant_and_arguments_bound():
+    """Queued approvals must not alias across tenants or changed provider payloads."""
+    base = {
+        "settings": SimpleNamespace(),
+        "client": MagicMock(),
+        "actor_id": "requester-1",
+        "conversation_id": "conv-1",
+        "turn_id": "approval-1",
+        "write_idempotency_required": True,
+    }
+    first = ToolContext(**base, org_id="org-one")
+    foreign = ToolContext(**base, org_id="org-two")
+    action = "hubspot.contacts.create"
+    args = {"email": "pr611-qa@example.invalid", "firstname": "Original"}
+    initial_key, initial_logical = build_write_idempotency_key(first, action, args)
+    foreign_key, foreign_logical = build_write_idempotency_key(foreign, action, args)
+    changed_key, changed_logical = build_write_idempotency_key(
+        first, action, {**args, "firstname": "Tampered"}
+    )
+    assert initial_key != foreign_key
+    assert initial_logical != foreign_logical
+    assert initial_key != changed_key
+    assert initial_logical != changed_logical
+
+
+def test_canonical_ledger_claim_error_fails_closed():
+    """A missing or unavailable ledger must not be silently treated as a claim."""
+    client = MagicMock()
+    client.rpc.side_effect = RuntimeError("write_invoke_idempotency unavailable")
+    claim = claim_write_invoke(
+        client,
+        org_id="org-one",
+        idempotency_key="chat:approval-1",
+        invoke_action="hubspot.contacts.create",
+        logical_action_id_value="logical-1",
+    )
+    assert claim.outcome == "error"
+    assert claim.claim_token is None
+    client.rpc.assert_called_once()
