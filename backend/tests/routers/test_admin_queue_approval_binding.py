@@ -156,6 +156,9 @@ def test_admin_approval_executes_once_and_is_audited(api):
     assert resp.status_code == 200, resp.text
     assert api.execute.await_count == 1
     assert row["status"] == "approved" and row["reviewed_by"] == "admin-1"
+    assert row["context"]["dispatch"]["state"] == "reported_success_unverified"
+    assert row["context"]["dispatch"]["independently_verified"] is False
+    assert resp.json()["verified"] is False
     decided = [a for a in api.audits if a["action"] == "connector.approval.decided"]
     assert decided and decided[0]["metadata"]["args_digest"] == digest_plan_args(ARGS)
     # A second approve of the same row does nothing.
@@ -243,4 +246,64 @@ def test_connector_chat_reject_cannot_overwrite_claimed_approval(api):
     assert response.status_code == 409, response.text
     assert row["status"] == "pending"
     assert row["reviewed_by"] == "admin-2"
+    api.execute.assert_not_awaited()
+
+
+def test_connector_chat_durable_claim_precedes_provider_dispatch(api):
+    row = _row()
+    _use(api, [row])
+
+    async def observe_claim(**_kwargs):
+        assert row["status"] == "approved"
+        assert row["reviewed_by"] == "admin-1"
+        assert row["context"]["dispatch"]["state"] == "claimed"
+        return SimpleNamespace(
+            success=True, title="Send email", body="sent",
+            entity_type="connector", entity_id="provider-123", outcome_verified=True,
+        )
+
+    api.execute.side_effect = observe_claim
+    resp = TestClient(app).post(f"/api/approvals/{row['id']}/approve", json={})
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["verified"] is True
+    assert row["context"]["dispatch"]["state"] == "verified"
+    assert row["context"]["dispatch"]["entity_id"] == "provider-123"
+    assert api.execute.await_count == 1
+
+
+def test_connector_chat_worker_failure_records_uncertain_and_restart_refuses_replay(api):
+    row = _row()
+    _use(api, [row])
+
+    async def provider_accepted_then_connection_lost(**_kwargs):
+        # Once this exception occurs, the provider may already have written.
+        assert row["status"] == "approved"
+        assert row["context"]["dispatch"]["state"] == "claimed"
+        raise ConnectionError("connection lost after provider acceptance")
+
+    api.execute.side_effect = provider_accepted_then_connection_lost
+    resp = TestClient(app).post(f"/api/approvals/{row['id']}/approve", json={})
+    assert resp.status_code == 502, resp.text
+    assert row["context"]["dispatch"]["state"] == "uncertain"
+    assert row["context"]["dispatch"]["independently_verified"] is False
+
+    # A new request/app lifecycle uses the durable approval row, not memory.
+    retry = TestClient(app).post(f"/api/approvals/{row['id']}/approve", json={})
+    assert retry.status_code == 409, retry.text
+    assert api.execute.await_count == 1
+
+
+def test_connector_chat_claimed_without_outcome_is_never_redispatched(api):
+    row = _row()
+    row["status"] = "approved"
+    row["reviewed_by"] = "admin-1"
+    row["reviewed_at"] = "2026-11-09T00:00:00Z"
+    row["context"]["dispatch"] = {
+        "state": "claimed", "approval_id": row["id"],
+        "claimed_at": row["reviewed_at"],
+        "args_digest": digest_plan_args(ARGS),
+    }
+    _use(api, [row])
+    resp = TestClient(app).post(f"/api/approvals/{row['id']}/approve", json={})
+    assert resp.status_code == 409, resp.text
     api.execute.assert_not_awaited()
