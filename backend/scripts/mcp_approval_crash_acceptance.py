@@ -101,6 +101,9 @@ def main():
     approval_id = str(uuid.uuid4())
     db = client()
     org_id = os.environ["MCP_ACCEPTANCE_ORG_ID"]
+    org = db.table("organizations").select("name").eq("id", org_id).single().execute().data
+    if (org or {}).get("name") != "Gravitre MCP Acceptance QA":
+        raise SystemExit("Refusing to mutate a non-dedicated QA organization")
     try:
         db.table("approvals").insert({
             "id": approval_id, "org_id": org_id, "title": "QA611 synthetic process crash",
