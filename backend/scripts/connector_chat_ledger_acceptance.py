@@ -248,6 +248,21 @@ def run():
         assert queued_row["requested_by"] == requester_id
         assert queued_row["context"]["binding"] == context["binding"]
         assert queued_row["context"]["parameters"]["args"] == ARGS
+        # ECO-001 Chat ingress continuity: the real process_turn caller must
+        # bind the authenticated QA identity and tenant to the persisted
+        # conversation and the approval that the decision route later claims.
+        # A service-level caller is exercised here; this is NOT yet proof of
+        # authentication middleware on the public Chat HTTP route.
+        persisted_chat = db.table("conversations").select(
+            "id,org_id,user_id,task_state"
+        ).eq("org_id", org_id).eq(
+            "id", conversation_id
+        ).single().execute().data
+        assert persisted_chat["id"] == conversation_id
+        assert persisted_chat["org_id"] == org_id
+        assert persisted_chat["user_id"] == requester_id
+        assert queued_row["requested_by"] == persisted_chat["user_id"]
+        assert queued_row["context"]["conversation_id"] == persisted_chat["id"]
         context = queued_row["context"]
         pending_persisted = db.table("conversations").select(
             "task_state"
@@ -493,6 +508,18 @@ def run():
             "id", conversation_id
         ).single().execute().data["task_state"]
         assert after_approval_state.get("pending_task") is None, after_approval_state
+        # Reopen the conversation and approval from the database after the
+        # HTTP decision has returned: in-memory turn state is not evidence.
+        final_chat = db.table("conversations").select(
+            "org_id,user_id,task_state"
+        ).eq("org_id", org_id).eq(
+            "id", conversation_id
+        ).single().execute().data
+        assert final_chat["org_id"] == org_id
+        assert final_chat["user_id"] == requester_id
+        assert final_chat["task_state"].get("pending_task") is None
+        assert approval["context"]["conversation_id"] == conversation_id
+        assert ledger[0]["status"] == "completed"
         print(json.dumps({
             "result": "PASS", "canonical_ledger": "completed",
             "provider_writes": len(writes), "approval_replay_http": 409,
