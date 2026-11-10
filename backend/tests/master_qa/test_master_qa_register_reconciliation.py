@@ -1,7 +1,18 @@
 """Master board's first sequence: reconcile all 43 without inventing PASS."""
 from collections import Counter
 
-from scripts.master_qa_remediation_guard import evaluate
+# The guard lives in backend/scripts, which is executed as a script by CI.
+# Load that exact source file rather than relying on a scripts package import
+# (the repository's root scripts directory otherwise shadows it).
+import importlib.util
+from pathlib import Path
+
+_GUARD = Path(__file__).resolve().parents[2] / "scripts" / "master_qa_remediation_guard.py"
+_spec = importlib.util.spec_from_file_location("master_qa_remediation_guard", _GUARD)
+assert _spec is not None and _spec.loader is not None
+_module = importlib.util.module_from_spec(_spec)
+_spec.loader.exec_module(_module)
+evaluate = _module.evaluate
 
 
 def test_register_reconciliation_exposes_every_original_finding_without_fake_closure():
