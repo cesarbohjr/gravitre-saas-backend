@@ -164,6 +164,7 @@ def run():
         ):
             response = TestClient(app).post(f"/api/approvals/{approval_id}/approve", json={})
             assert response.status_code == 200, f"Approval failed {response.status_code}: {response.text[-1200:]}"
+            assert response.json().get("success") is True, f"Provider success was not propagated: {response.text[-1200:]}"
             retry = TestClient(app).post(f"/api/approvals/{approval_id}/approve", json={})
             assert retry.status_code == 409, f"Replay not blocked: {retry.status_code}"
         assert writes == [{"email": ARGS["email"], "turn_id": approval_id}], f"Provider writes: {writes}"
