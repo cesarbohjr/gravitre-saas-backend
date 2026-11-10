@@ -132,6 +132,7 @@ def run():
         },
         "qa": "PR611-canonical-ledger-acceptance",
     }
+    negative_approval_ids = []
     try:
         db.table("approvals").insert({
             "id": approval_id, "org_id": org_id, "type": "connector_chat",
@@ -167,6 +168,45 @@ def run():
             assert response.json().get("success") is True, f"Provider success was not propagated: {response.text[-1200:]}"
             retry = TestClient(app).post(f"/api/approvals/{approval_id}/approve", json={})
             assert retry.status_code == 409, f"Replay not blocked: {retry.status_code}"
+
+            # The same REAL HTTP decision route and REAL acceptance database
+            # must refuse a denied actor before claim or provider dispatch.
+            denied_id = str(uuid.uuid4())
+            negative_approval_ids.append(denied_id)
+            db.table("approvals").insert({
+                "id": denied_id, "org_id": org_id, "type": "connector_chat",
+                "title": "PR611 denied-authority no-write control",
+                "status": "pending", "context": dict(context),
+            }).execute()
+            with patch.object(wf, "has_capability", return_value=False):
+                denied = TestClient(app).post(f"/api/approvals/{denied_id}/approve", json={})
+            assert denied.status_code == 403, f"Authorization bypass: {denied.status_code}"
+            denied_row = db.table("approvals").select("status,reviewed_at").eq(
+                "org_id", org_id
+            ).eq("id", denied_id).single().execute().data
+            assert denied_row["status"] == "pending" and denied_row["reviewed_at"] is None
+            # Rejection/cancellation of an undelivered approval must be a
+            # persisted no-write decision, never an implicit approval.
+            rejected_id = str(uuid.uuid4())
+            negative_approval_ids.append(rejected_id)
+            reject_context = dict(context)
+            reject_context["conversation_id"] = ""  # no actual conversation to clear
+            db.table("approvals").insert({
+                "id": rejected_id, "org_id": org_id, "type": "connector_chat",
+                "title": "PR611 rejected approval no-write control",
+                "status": "pending", "context": reject_context,
+            }).execute()
+            rejected = TestClient(app).post(f"/api/approvals/{rejected_id}/reject", json={})
+            assert rejected.status_code == 200, f"Rejection failed: {rejected.text[-800:]}"
+            assert rejected.json()["status"] == "rejected"
+            rejected_retry = TestClient(app).post(
+                f"/api/approvals/{rejected_id}/approve", json={}
+            )
+            assert rejected_retry.status_code == 409
+            rejected_row = db.table("approvals").select("status").eq(
+                "org_id", org_id
+            ).eq("id", rejected_id).single().execute().data
+            assert rejected_row["status"] == "rejected"
         assert writes == [{"email": ARGS["email"], "turn_id": approval_id}], f"Provider writes: {writes}"
         ledger = (
             db.table("write_invoke_idempotency")
@@ -178,6 +218,22 @@ def run():
         assert ledger[0]["status"] == "completed", ledger
         assert ledger[0]["invoke_action"] == ACTION and ledger[0]["logical_action_id"] == expected_logical
         assert (ledger[0].get("result") or {}).get("success") is True, ledger
+        # Independent database checks: denied and rejected approvals never
+        # acquire canonical ledger claims or produce a second provider write.
+        no_write_ledger = db.table("write_invoke_idempotency").select(
+            "idempotency_key"
+        ).eq("org_id", org_id).in_(
+            "logical_action_id", [
+                build_write_idempotency_key(
+                    ToolContext(
+                        settings=settings, client=db, org_id=org_id, actor_id=REVIEWER,
+                        conversation_id=conversation_id, turn_id=blocked_id,
+                        write_idempotency_required=True,
+                    ), ACTION, ARGS
+                )[1] for blocked_id in negative_approval_ids
+            ],
+        ).execute().data or []
+        assert not no_write_ledger, f"Unauthorized ledger claims: {no_write_ledger}"
         approval = (
             db.table("approvals").select("status,context")
             .eq("id", approval_id).eq("org_id", org_id).single().execute().data
@@ -189,15 +245,22 @@ def run():
             "provider_writes": len(writes), "approval_replay_http": 409,
             "ledger_rows": len(ledger), "approval_id": approval_id,
             "provider_is_synthetic": True,
+            "denied_approval_http": 403, "rejected_approval_http": 200,
+            "rejected_replay_http": 409, "unauthorized_ledger_rows": 0,
         }))
     finally:
         app.dependency_overrides.clear()
         try:
             db.table("write_invoke_idempotency").delete().eq("org_id", org_id).eq("idempotency_key", expected_key).execute()
             db.table("approvals").delete().eq("org_id", org_id).eq("id", approval_id).execute()
+            for negative_id in negative_approval_ids:
+                db.table("approvals").delete().eq("org_id", org_id).eq("id", negative_id).execute()
             remaining = db.table("write_invoke_idempotency").select("id").eq("org_id", org_id).eq("idempotency_key", expected_key).execute().data or []
             remaining_approval = db.table("approvals").select("id").eq("org_id", org_id).eq("id", approval_id).execute().data or []
-            if remaining or remaining_approval:
+            negative_remaining = db.table("approvals").select("id").eq(
+                "org_id", org_id
+            ).in_("id", negative_approval_ids).execute().data if negative_approval_ids else []
+            if remaining or remaining_approval or negative_remaining:
                 raise RuntimeError("Isolated test rows not cleaned up")
         finally:
             server.shutdown()
