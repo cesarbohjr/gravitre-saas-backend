@@ -182,6 +182,10 @@ def test_actual_live_caller_normal_answer_has_no_tool_handoff_or_provider_dispat
             ) as model,
             patch("app.services.unified_turn_reasoning_service.emit_unified_turn_shadow_audit"),
             patch(
+                "app.services.unified_turn_reasoning_service._maybe_prepend_mixed_social_ack",
+                new_callable=AsyncMock, side_effect=lambda **kw: kw["body"],
+            ),
+            patch(
                 "app.services.chat_orchestration_service.ChatOrchestrationService.is_orchestration_intent",
                 return_value=False,
             ),
