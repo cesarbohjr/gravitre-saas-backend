@@ -76,11 +76,13 @@ _TOPICS = iter(
 )
 
 
-async def _run_typed_turn(fake_live, *, streaming: bool = True, query: str | None = None):
+async def _run_typed_turn(fake_live, *, streaming: bool = True, query: str | None = None, react_runner=None):
     # A fresh question per turn: in-process caches remember an org's recent
     # questions, and a repeat would skip LIVE altogether.
     query = query or next(_TOPICS)
     intel = _make_intelligence(streaming=streaming)
+    if react_runner is not None:
+        intel.react_engine.run_streaming = react_runner
     client = MagicMock()
     client.table.return_value.select.return_value.eq.return_value.limit.return_value.execute.return_value = MagicMock(
         data=[]
