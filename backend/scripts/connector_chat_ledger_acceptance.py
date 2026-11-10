@@ -66,7 +66,8 @@ def run():
     if (org or {}).get("name") != QA_NAME:
         raise SystemExit("Refusing non-isolated QA organization")
     approval_id = str(uuid.uuid4())
-    conversation_id = f"qa-{approval_id}"
+    conversation_id = str(uuid.uuid4())
+    requester_id = str(uuid.uuid4())
     plan = ConnectorActionPlan(
         tool_name=TOOL, invoke_action=ACTION, integration="hubspot",
         kind="write", label="Isolated QA ledger contact",
@@ -99,10 +100,23 @@ def run():
     service.plan_action = lambda *_a, **_kw: plan
     # Conversation-store and downstream notification are not the acceptance
     # subject. The route approval CAS and shared ledger remain unmocked.
+    from app.services.conversation_state_service import ConversationStateService
+    real_state = ConversationStateService(settings)
+    # Preserve the real conversation-state persistence code and acceptance
+    # database for this test, including calls that omit the client argument.
     service._state = MagicMock()
-    service._state.get_task_state = AsyncMock(return_value={})
-    service._state.update_task_state = AsyncMock()
-    service._state.update_task_state_from = AsyncMock()
+    service._state.get_task_state = AsyncMock(side_effect=lambda c, o, **kw:
+        real_state.get_task_state(c, o, client=db))
+    service._state.update_task_state = AsyncMock(side_effect=lambda c, o, update, **kw:
+        real_state.update_task_state(
+            c, o, update, client=db,
+            effect_record=bool(kw.get("effect_record", False)),
+        ))
+    service._state.update_task_state_from = AsyncMock(side_effect=lambda c, o, builder, **kw:
+        real_state.update_task_state_from(
+            c, o, builder, client=db,
+            effect_record=bool(kw.get("effect_record", False)),
+        ))
     service._claim_write_before_invoke = AsyncMock(return_value=None)
     service._replay_existing_write_result = AsyncMock(return_value=None)
     service._finalize_connector_outcome = MagicMock(return_value=None)
@@ -142,6 +156,10 @@ def run():
     }
     negative_approval_ids = []
     try:
+        db.table("conversations").insert({
+            "id": conversation_id, "org_id": org_id, "user_id": requester_id,
+            "title": "PR611 isolated Chat approval acceptance",
+        }).execute()
         # Run the real Chat connector intent-to-approval turn. Only upstream
         # cognitive/model/vendor discovery and notifications are fixtures:
         # process_turn and its queue writer persist the actual approval row.
@@ -167,7 +185,7 @@ def run():
             patch("app.services.activity_feed_service.record_activity_event"),
         ):
             turn = asyncio.run(service.process_turn(
-                org_id=org_id, user_id="qa-chat-requester",
+                org_id=org_id, user_id=requester_id,
                 conversation_id=conversation_id, message="Create this isolated HubSpot QA contact",
                 classification={"intent": "crm_write", "risk_level": "high"},
                 task_state={}, connected_integrations=["hubspot"],
@@ -192,10 +210,17 @@ def run():
         ).eq("org_id", org_id).eq("id", approval_id).single().execute().data
         assert queued_row["type"] == "connector_chat"
         assert queued_row["status"] == "pending"
-        assert queued_row["requested_by"] == "qa-chat-requester"
+        assert queued_row["requested_by"] == requester_id
         assert queued_row["context"]["binding"] == context["binding"]
         assert queued_row["context"]["parameters"]["args"] == ARGS
         context = queued_row["context"]
+        pending_persisted = db.table("conversations").select(
+            "task_state"
+        ).eq("org_id", org_id).eq(
+            "id", conversation_id
+        ).single().execute().data["task_state"]
+        assert pending_persisted["pending_task"]["status"] == "awaiting_admin_approval"
+        assert pending_persisted["pending_task"]["params"]["approval_id"] == approval_id
         app.dependency_overrides[get_current_user] = lambda: {"user_id": REVIEWER}
         app.dependency_overrides[get_org_context] = lambda: org_id
         app.dependency_overrides[get_environment_context] = lambda: "production"
@@ -373,6 +398,12 @@ def run():
         )
         assert approval["status"] == "approved"
         assert approval["context"]["dispatch"]["state"] in {"reported_success_unverified", "verified"}, approval
+        after_approval_state = db.table("conversations").select(
+            "task_state"
+        ).eq("org_id", org_id).eq(
+            "id", conversation_id
+        ).single().execute().data["task_state"]
+        assert after_approval_state.get("pending_task") is None, after_approval_state
         print(json.dumps({
             "result": "PASS", "canonical_ledger": "completed",
             "provider_writes": len(writes), "approval_replay_http": 409,
@@ -380,6 +411,8 @@ def run():
             "inflight_ledger_terminal": "completed",
             "ledger_rows": len(ledger), "approval_id": approval_id,
             "provider_is_synthetic": True,
+            "conversation_pending_persisted": True,
+            "conversation_pending_cleared_after_approval": True,
             "denied_approval_http": 403, "rejected_approval_http": 200,
             "rejected_replay_http": 409, "unauthorized_ledger_rows": 0,
         }))
@@ -398,6 +431,9 @@ def run():
                 db.table("approvals").delete().eq("org_id", org_id).eq(
                     "id", race_approval_id
                 ).execute()
+            db.table("conversations").delete().eq(
+                "org_id", org_id
+            ).eq("id", conversation_id).execute()
             remaining = db.table("write_invoke_idempotency").select("id").eq("org_id", org_id).eq("idempotency_key", expected_key).execute().data or []
             remaining_approval = db.table("approvals").select("id").eq("org_id", org_id).eq("id", approval_id).execute().data or []
             race_remaining = db.table("write_invoke_idempotency").select("id").eq(
@@ -409,7 +445,11 @@ def run():
             negative_remaining = db.table("approvals").select("id").eq(
                 "org_id", org_id
             ).in_("id", negative_approval_ids).execute().data if negative_approval_ids else []
-            if remaining or remaining_approval or negative_remaining or race_remaining or race_approval_remaining:
+            remaining_conversation = db.table("conversations").select("id").eq(
+                "org_id", org_id
+            ).eq("id", conversation_id).execute().data or []
+            if (remaining or remaining_approval or negative_remaining or
+                    race_remaining or race_approval_remaining or remaining_conversation):
                 raise RuntimeError("Isolated test rows not cleaned up")
         finally:
             server.shutdown()
