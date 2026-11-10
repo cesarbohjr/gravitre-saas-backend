@@ -59,3 +59,6 @@ Regression `backend/tests/master_qa/test_eco001_decision_handoff_runtime.py` add
 The register still lists ECO-001 `NOT_CERTIFIED`. Next required evidence: actual ingress-to-decision correlated runtime traces, tenant/actor-bound selected-tool execution and authorized/denied/interrupt/replay regression with canonical persisted outcomes. Do not retire ReAct/compatibility routing, modify PR #610 voice implementation, or close ECO-001 from this limited suite.
 
 **CI note:** repaired test fixture `e52c13c` and reconciliation test import `44e77a9` followed independently confirmed full-CI failures; this new runtime test must pass at the latest exact PR head with all required workflows before any certification.
+
+
+**Additional actual LIVE caller regression:** Commit `7923936` extends `test_eco001_decision_handoff_runtime.py` to invoke the real `apply_unified_turn_live` with controlled model outcome and no network. It asserts that a structured read-tool decision creates one bounded `live_classical_handoff` and that consuming the choice is one-shot. Model/API ingress and the downstream provider are still substituted/absent; this is not deployed traffic proof or completion of ECO-001. Exact-head CI remains required.
