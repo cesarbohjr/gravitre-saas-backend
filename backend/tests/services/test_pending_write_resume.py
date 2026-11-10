@@ -164,3 +164,29 @@ def test_verified_observation_clears_frozen_write_pending() -> None:
     ]
     assert frozen_connector_write_params(state) is None
     assert should_resume_frozen_write("yes", state) is False
+
+
+@pytest.mark.asyncio
+async def test_resume_does_not_fabricate_connector_connection_for_cognitive_resolution() -> None:
+    """Frozen approval target is not evidence of a live, authorized integration."""
+    from app.services.pending_write_resume import resume_frozen_write_on_confirm
+
+    with patch(
+        "app.services.chat_connector_execution_service.get_chat_connector_execution_service",
+    ) as get_svc:
+        svc = MagicMock()
+        svc.process_turn = AsyncMock(return_value={"message": "Connection unavailable", "provider_invoked": False})
+        get_svc.return_value = svc
+        await resume_frozen_write_on_confirm(
+            message="yes",
+            task_state=_frozen_hubspot_state(),
+            org_id="org-1",
+            user_id="user-1",
+            conversation_id="conv-1",
+            client=object(),
+            settings=MagicMock(),
+            connected_integrations=[],
+        )
+    kwargs = svc.process_turn.await_args.kwargs
+    assert kwargs["connected_integrations"] == []
+    assert kwargs["pending_reply_intent"] == "confirm"
