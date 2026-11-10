@@ -372,3 +372,104 @@ class TestGate:
         assert not typed_should_stream_live_deltas(
             spoken_mode=False, message="Explain what a churn rate means.", task_state=state
         )
+
+
+@pytest.mark.asyncio
+async def test_eco001_real_agent_streaming_live_handoff_reaches_governed_registry_once():
+    """ECO-001 / DEC-001: actual AgentIntelligence stream, LIVE decision and tool spine.
+
+    Synthetic model, independent local provider stub and provider permissions are
+    controlled; the LIVE caller, one-shot handoff, registry and invoke_tool run.
+    No real CRM request or assertion of deployed parity.
+    """
+    from app.operators.stream_events import ReActStreamEvent
+    from app.services.live_classical_handoff import consume_handoff
+    from app.services.tool_registry import get_tool_registry
+    from app.services.tool_types import ToolContext, NormalizedResult
+    from app.services import tool_service
+    from app.services.unified_turn_reasoning_service import (
+        UnifiedTurnShadowResult, apply_unified_turn_live,
+    )
+
+    selected = UnifiedTurnShadowResult(
+        outcome_kind="conversational_reply",
+        user_message="A read is needed.",
+        tool_name="hubspot_search_contacts",
+        tool_invoke_action="hubspot.contacts.search",
+        tool_arguments={"query": "qa-eco001"},
+        needs_tool_sse=True,
+    )
+    provider_calls = []
+    registry_results = []
+
+    def synthetic_provider(ctx, params):
+        provider_calls.append((ctx.org_id, ctx.actor_id, dict(params)))
+        return NormalizedResult(
+            success=True, action="hubspot.contacts.search",
+            data={"results": [{"id": "isolated-contact-1"}]},
+        )
+
+    async def actual_live(**kwargs):
+        with (
+            patch(
+                "app.services.unified_turn_pending_live.resolve_unified_live_pending_reply",
+                new_callable=AsyncMock, return_value=None,
+            ),
+            patch(
+                "app.services.unified_turn_reasoning_service.run_unified_turn_shadow",
+                new_callable=AsyncMock, return_value=selected,
+            ) as model,
+            patch("app.services.unified_turn_reasoning_service.emit_unified_turn_shadow_audit"),
+        ):
+            decision = await apply_unified_turn_live(**kwargs)
+            model.assert_awaited_once()
+            return decision
+
+    async def governed_react(**_kwargs):
+        handoff = consume_handoff()
+        assert handoff is not None, "LIVE failed to hand off the selected read"
+        assert handoff["tool_name"] == "hubspot_search_contacts"
+        assert handoff["tool_arguments"] == {"query": "qa-eco001"}
+        ctx = ToolContext(
+            settings=SimpleNamespace(
+                write_authority_mode="enforce", private_connector_runtime_enabled=False,
+            ),
+            client=MagicMock(), org_id="org-1", actor_id="user-1",
+        )
+        result = await get_tool_registry().execute_invoke_action(
+            ctx=ctx, invoke_action="hubspot.contacts.search",
+            args=dict(handoff["tool_arguments"]),
+            tool_name=handoff["tool_name"],
+        )
+        registry_results.append(result)
+        assert result["success"] is True
+        assert consume_handoff() is None, "one LIVE decision dispatched twice"
+        yield ReActStreamEvent(
+            kind="done",
+            react_result=ReActResult(
+                status=ReActStatus.COMPLETED, answer="Found one synthetic contact."
+            ),
+        )
+
+    with (
+        patch.object(tool_service, "_resolve_tool_executor", return_value=synthetic_provider),
+        patch.object(tool_service, "assert_agent_tool_permission"),
+        patch.object(tool_service, "_write_tool_audit"),
+        patch("app.services.conversation_write_guard.assert_org_write_allowed"),
+        patch("app.services.hipaa_service.enforce_hipaa_for_tool_invoke"),
+        patch("app.services.agent_guardrail_limits.enforce_agent_guardrail_limits"),
+        patch("app.services.read_preflight.enforce_invoke_preflight", side_effect=lambda ctx, action, params: params),
+        patch("app.services.read_action_result_cache.get_cached_read_result", return_value=None),
+        patch("app.services.read_action_result_cache.set_cached_read_result"),
+    ):
+        timeline = await _run_typed_turn(
+            actual_live,
+            query="Search my HubSpot contacts for qa-eco001",
+            react_runner=governed_react,
+        )
+
+    assert len(provider_calls) == 1
+    assert provider_calls[0][0:2] == ("org-1", "user-1")
+    assert provider_calls[0][2]["query"] == "qa-eco001"
+    assert len(registry_results) == 1
+    assert _complete(timeline).full_content
