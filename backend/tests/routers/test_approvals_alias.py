@@ -129,9 +129,12 @@ def test_approvals_reject_alias_forwards_environment(monkeypatch: pytest.MonkeyP
 
 
 class _ChatApprovalTable:
+    """Minimal row-filtered query fake for atomic approval decision claims."""
+
     def __init__(self, store: dict) -> None:
         self.store = store
         self._update: dict | None = None
+        self._filters = []
 
     def select(self, *_a, **_k):
         return self
@@ -140,17 +143,27 @@ class _ChatApprovalTable:
         self._update = values
         return self
 
-    def eq(self, *_a, **_k):
+    def eq(self, column, value):
+        self._filters.append(lambda row, c=column, v=value: str(row.get(c)) == str(v))
+        return self
+
+    def is_(self, column, value):
+        assert value == "null"
+        self._filters.append(lambda row, c=column: row.get(c) is None)
         return self
 
     def limit(self, *_a, **_k):
         return self
 
     def execute(self):
+        row = self.store["row"]
+        matched = all(predicate(row) for predicate in self._filters)
         if self._update is not None:
-            self.store["update"] = self._update
-            return type("R", (), {"data": []})()
-        return type("R", (), {"data": [self.store["row"]]})()
+            if matched:
+                row.update(self._update)
+                self.store["update"] = dict(self._update)
+            return type("R", (), {"data": [dict(row)] if matched else []})()
+        return type("R", (), {"data": [dict(row)] if matched else []})()
 
 
 class _ChatApprovalClient:
