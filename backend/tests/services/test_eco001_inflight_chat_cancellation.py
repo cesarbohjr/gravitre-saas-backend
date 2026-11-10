@@ -113,3 +113,53 @@ async def test_cancelled_chat_waiter_preserves_failed_write_outcome(caplog):
             and "synthetic provider terminal failure" in record.message
             for record in caplog.records
         ), "Terminal provider failure must be observed after turn cancellation"
+
+
+@pytest.mark.asyncio
+async def test_cancelled_turn_token_reaches_detached_write_before_dispatch():
+    """The shielded child retains its own turn token after its waiter stops.
+
+    This is a task-context regression, not a durable ledger/provider certificate.
+    The production write path checks current_turn_cancelled before its claim.
+    """
+    from app.services.turn_cancellation import (
+        TurnCancellation, bound_turn_cancellation, current_turn_cancelled,
+    )
+
+    entered = asyncio.Event()
+    release = asyncio.Event()
+    finished = asyncio.Event()
+    provider_calls = []
+    token = TurnCancellation()
+
+    async def pending_write(**kwargs):
+        entered.set()
+        try:
+            await release.wait()
+            if not current_turn_cancelled():
+                provider_calls.append("unexpected_write")
+        finally:
+            finished.set()
+        return SimpleNamespace(success=not current_turn_cancelled())
+
+    service = object.__new__(ChatConnectorExecutionService)
+    with patch.object(service, "_execute_plan", side_effect=pending_write):
+        with bound_turn_cancellation(token):
+            waiter = asyncio.create_task(
+                service._execute_plan_shielded(plan=SimpleNamespace(kind="write"))
+            )
+            try:
+                await asyncio.wait_for(entered.wait(), timeout=5)
+                assert token.cancel("user_stop")
+                waiter.cancel()
+                with pytest.raises(asyncio.CancelledError):
+                    await waiter
+            finally:
+                release.set()
+        await asyncio.wait_for(finished.wait(), timeout=5)
+        for _ in range(20):
+            if not _DETACHED_WRITES:
+                break
+            await asyncio.sleep(0)
+        assert not provider_calls, "Cancelled token must block a pre-dispatch write"
+        assert not _DETACHED_WRITES
