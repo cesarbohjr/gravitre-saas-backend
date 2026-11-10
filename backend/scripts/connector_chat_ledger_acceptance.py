@@ -142,19 +142,41 @@ def run():
     }
     negative_approval_ids = []
     try:
-        # Start at the REAL Chat connector queue-writer, not a manually
-        # fabricated approval. This persists the immutable bound action and
-        # requested-by identity that the actual approval HTTP route consumes.
+        # Run the real Chat connector intent-to-approval turn. Only upstream
+        # cognitive/model/vendor discovery and notifications are fixtures:
+        # process_turn and its queue writer persist the actual approval row.
         with (
             patch.object(chat_module, "emit_notification"),
             patch.object(service, "_org_approver_user_ids", return_value=[]),
+            patch.object(service, "_live_connected_integrations", return_value=["hubspot"]),
+            patch.object(service, "_try_inline_preview_turn", new_callable=AsyncMock, return_value=None),
+            patch.object(service, "_evaluate_risk", new_callable=AsyncMock, return_value={
+                "requires_approval": True, "approval_reason": "QA authorized human review",
+            }),
+            patch.object(service, "_resolve_hitl_decision", return_value=SimpleNamespace(
+                requires_approval=True, reason="QA human review",
+                action_kind="write", matched_policy_id=None,
+            )),
+            patch.object(service, "_user_can_approve_writes", return_value=False),
+            patch.object(service, "_verify_plan_executable", return_value=None),
+            patch("app.services.canonical_cognitive_resolution.resolution_already_applied", return_value=True),
+            patch("app.services.analytics_traffic_overview_service.try_analytics_traffic_overview_turn",
+                  new_callable=AsyncMock, return_value=None),
+            patch("app.services.connector_action_workflows.resolve_assignee_disambiguation",
+                  new_callable=AsyncMock, return_value=None),
             patch("app.services.activity_feed_service.record_activity_event"),
         ):
-            queued_id = service._queue_chat_write_for_admins(
-                db, org_id=org_id, user_id="qa-chat-requester",
-                conversation_id=conversation_id, plan=plan,
-                pending_params=chat_module.ChatConnectorExecutionService.plan_to_dict(plan),
-            )
+            turn = asyncio.run(service.process_turn(
+                org_id=org_id, user_id="qa-chat-requester",
+                conversation_id=conversation_id, message="Create this isolated HubSpot QA contact",
+                classification={"intent": "crm_write", "risk_level": "high"},
+                task_state={}, connected_integrations=["hubspot"],
+                client=db, structured_plan=plan,
+            ))
+        assert turn is not None and turn.get("dialogue_mode") == "awaiting_approval", turn
+        assert turn["pending_task"]["status"] == "awaiting_admin_approval"
+        queued_id = turn.get("approval_id")
+        assert queued_id == turn["pending_task"]["params"].get("approval_id")
         assert queued_id, "Real Chat queue writer failed to persist approval"
         approval_id = str(queued_id)
         expected_ctx = ToolContext(
