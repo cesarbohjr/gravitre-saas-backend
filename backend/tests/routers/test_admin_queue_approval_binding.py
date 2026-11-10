@@ -217,3 +217,30 @@ def test_mcp_decision_uses_shared_queue_route(api, endpoint, approve):
     assert decision.call_args.kwargs["org_id"] == ORG
     assert decision.call_args.kwargs["reviewer_id"] == "admin-1"
     api.execute.assert_not_awaited()
+
+
+def test_connector_chat_reject_claims_once_and_prevents_approval(api):
+    row = _row()
+    _use(api, [row])
+    first = TestClient(app).post(f"/api/approvals/{row['id']}/reject", json={})
+    assert first.status_code == 200, first.text
+    assert row["status"] == "rejected"
+    assert row["reviewed_by"] == "admin-1"
+    assert row["reviewed_at"] is not None
+    second = TestClient(app).post(f"/api/approvals/{row['id']}/reject", json={})
+    assert second.status_code == 409, second.text
+    approve = TestClient(app).post(f"/api/approvals/{row['id']}/approve", json={})
+    assert approve.status_code == 409, approve.text
+    api.execute.assert_not_awaited()
+
+
+def test_connector_chat_reject_cannot_overwrite_claimed_approval(api):
+    row = _row()
+    row["reviewed_by"] = "admin-2"
+    row["reviewed_at"] = "2026-11-09T00:00:00Z"
+    _use(api, [row])
+    response = TestClient(app).post(f"/api/approvals/{row['id']}/reject", json={})
+    assert response.status_code == 409, response.text
+    assert row["status"] == "pending"
+    assert row["reviewed_by"] == "admin-2"
+    api.execute.assert_not_awaited()
