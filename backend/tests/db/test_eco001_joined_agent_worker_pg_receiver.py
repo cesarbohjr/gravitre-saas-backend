@@ -12,6 +12,8 @@ import urllib.request
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
+import pytest
+
 from app.services import tool_service
 from app.services.tool_types import NormalizedResult
 from app.services.write_invoke_idempotency import WriteClaimResult, WriteFinalizeResult
