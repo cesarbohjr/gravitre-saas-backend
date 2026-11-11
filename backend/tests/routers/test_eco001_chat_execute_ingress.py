@@ -276,3 +276,53 @@ def test_chat_execute_missing_bearer_rejected_by_real_auth_dependency():
         orchestration.assert_not_called()
     finally:
         app.dependency_overrides.clear()
+
+
+def test_real_signed_jwt_cannot_execute_another_users_chat():
+    """Verify real JWT signature/claims on the mounted HTTP route; the
+    synthetic org dependency is the only auth-related boundary substituted.
+    The user ownership check must still prevent provider dispatch.
+    """
+    import time
+    import jwt
+    from fastapi.testclient import TestClient
+    from app.routers import assistant
+    from app.services import chat_connector_execution_service, chat_orchestration_service
+
+    settings = Settings(
+        app_env="dev", supabase_url="https://test.supabase.co",
+        supabase_anon_key="anon-test", supabase_service_role_key="service-role-test",
+        supabase_jwt_secret="jwt-secret-test",
+    )
+    token = jwt.encode({
+        "sub": "actor-a", "aud": settings.jwt_audience,
+        "iss": settings.jwt_issuer, "iat": int(time.time()),
+        "exp": int(time.time()) + 300,
+    }, settings.supabase_jwt_secret, algorithm="HS256")
+    db = _ScopedClient([{
+        "id": "conversation-a", "org_id": "tenant-a", "user_id": "actor-b",
+    }])
+    app.dependency_overrides.clear()
+    app.dependency_overrides[get_org_context] = lambda: "tenant-a"
+    app.dependency_overrides[get_environment_context] = lambda: "synthetic"
+    app.dependency_overrides[get_settings] = lambda: settings
+    try:
+        with (
+            patch.object(assistant, "get_supabase_client", return_value=db),
+            patch.object(chat_connector_execution_service, "get_chat_connector_execution_service") as connector,
+            patch.object(chat_orchestration_service, "get_chat_orchestration_service") as orchestration,
+        ):
+            response = TestClient(app).post(
+                "/api/assistant/conversation/conversation-a/execute",
+                json={"confirm": True},
+                headers={"Authorization": f"Bearer {token}"},
+            )
+        assert response.status_code == 404, response.text
+        assert db.queries[0].filters == [
+            ("id", "conversation-a"), ("org_id", "tenant-a"),
+            ("user_id", "actor-a"),
+        ]
+        connector.assert_not_called()
+        orchestration.assert_not_called()
+    finally:
+        app.dependency_overrides.clear()
