@@ -59,11 +59,32 @@ class ScopedQuery:
         ) else [])
 
 
+class OrgSettingsQuery:
+    def __init__(self):
+        self.filters = []
+
+    def select(self, *_):
+        return self
+
+    def eq(self, name, value):
+        self.filters.append((name, value))
+        return self
+
+    def limit(self, *_):
+        return self
+
+    def execute(self):
+        assert ("id", ORG_A) in self.filters
+        return SimpleNamespace(data=[{"settings": {}}])
+
+
 class ScopedDb:
     def __init__(self):
         self.lookups = []
 
     def table(self, table):
+        if table == "organizations":
+            return OrgSettingsQuery()
         assert table == "conversations", "Unexpected Supabase read at the tested boundary"
         query = ScopedQuery()
         self.lookups.append(query)
