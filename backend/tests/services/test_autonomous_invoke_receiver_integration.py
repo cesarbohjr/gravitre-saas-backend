@@ -18,7 +18,8 @@ from app.services.write_invoke_idempotency import WriteClaimResult, WriteFinaliz
 from tests.db.test_autonomous_independent_write_pg import IndependentFixture
 
 
-def test_real_invoke_tool_never_reissues_uncertain_autonomous_write(tmp_path):
+@pytest.mark.parametrize("provider_reports_success", [True, False])
+def test_real_invoke_tool_never_reissues_uncertain_autonomous_write(tmp_path, provider_reports_success):
     org_id = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
     run_id = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb"
     action = "hubspot.contacts.update"
@@ -31,7 +32,7 @@ def test_real_invoke_tool_never_reissues_uncertain_autonomous_write(tmp_path):
                                      headers={"Content-Type": "application/json"}, method="POST")
         with urllib.request.urlopen(req, timeout=5) as response:
             assert response.status == 204
-        return NormalizedResult(success=True, action=action, data={"id": "contact-1"})
+        return NormalizedResult(success=provider_reports_success, action=action, data={"id": "contact-1"} if provider_reports_success else {}, error_code=None if provider_reports_success else "provider_rejected")
 
     from app.workers.workflow_worker import process_workflow_run_job
     from app.workers.workflow_queue import WorkflowRunJob
@@ -57,7 +58,9 @@ def test_real_invoke_tool_never_reissues_uncertain_autonomous_write(tmp_path):
             client=kwargs["client"], is_dry_run=False,
         )
         result = handlers._invoke_canvas_registered_tool(step, action, {"id": "contact-1"})
-        assert result.success
+        assert result.success is provider_reports_success
+        if not provider_reports_success:
+            assert result.error_code == "outcome_uncertain"
         return ("completed", [], [], False)
     job = WorkflowRunJob(run_id=run_id, org_id=org_id, workflow_id="wf-1")
     raw_job = json.dumps(job.__dict__)
@@ -89,10 +92,11 @@ def test_real_invoke_tool_never_reissues_uncertain_autonomous_write(tmp_path):
             stack.enter_context(patch("app.services.workflow_approval_scope.block_invoke_by_approval_scope", return_value=None))
             stack.enter_context(patch("app.services.compensation_service.should_track_compensation", return_value=False))
             stack.enter_context(patch("app.services.write_invoke_idempotency.claim_approved_autonomous_write", side_effect=lambda *a,**k:next(claims)))
-            stack.enter_context(patch("app.services.write_invoke_idempotency.finalize_write_invoke", return_value=WriteFinalizeResult(outcome="finalized")))
+            finalize = stack.enter_context(patch("app.services.write_invoke_idempotency.finalize_write_invoke", return_value=WriteFinalizeResult(outcome="finalized")))
             stack.enter_context(patch("app.workers.workflow_queue.assert_current_workflow_claim_live"))
             assert process_workflow_run_job(settings, raw_job) is True
             assert receiver.writes == 1
+            assert finalize.call_args.kwargs["status"] == ("completed" if provider_reports_success else "uncertain")
             # Retry enters the same real worker/handler/invoke path and is
             # refused by the durable claim response before any provider call.
             assert process_workflow_run_job(settings, raw_job) is False
