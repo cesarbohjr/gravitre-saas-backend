@@ -34,7 +34,7 @@ def pg():
 pytestmark = requires_pg
 
 @pytest.mark.asyncio
-async def test_agent_play_approval_real_step_to_durable_consumer(pg, monkeypatch):
+async def test_agent_play_approval_real_step_to_durable_consumer(pg, monkeypatch, tmp_path):
     from app.services import agent_selector, domain_events, work_loop_links
     from app.routers import plays, workflows
     from app.workflows import execute, handlers, repository
@@ -209,9 +209,28 @@ async def test_agent_play_approval_real_step_to_durable_consumer(pg, monkeypatch
     monkeypatch.setattr(handlers, "_enforce_canvas_write_authority",
                         lambda ctx: None if ctx.config["action"] == "hubspot.contacts.search"
                         else (_ for _ in ()).throw(AssertionError("unauthorized write")))
-    vendor = Mock(return_value=NormalizedResult(
-        success=True, action="hubspot.contacts.search",
-        data={"results": [{"id": "synthetic-contact-1"}]}))
+    # An independent receiver persists the vendor observation outside the
+    # application PostgreSQL transaction and outside the process's mock state.
+    import json
+    import urllib.request
+    from tests.db.test_autonomous_independent_write_pg import IndependentFixture
+    receiver = IndependentFixture(
+        tmp_path / "joined-agent-provider.sqlite3", b"<h1>isolated</h1>",
+        capability="joined-agent-cap",
+    )
+    def observed_vendor():
+        request = urllib.request.Request(
+            receiver.origin + "/write",
+            data=json.dumps({"cap": "joined-agent-cap"}).encode(),
+            headers={"Content-Type": "application/json"}, method="POST",
+        )
+        with urllib.request.urlopen(request, timeout=5) as response:
+            assert response.status == 204
+        return NormalizedResult(
+            success=True, action="hubspot.contacts.search",
+            data={"results": [{"id": "synthetic-contact-1"}]},
+        )
+    vendor = Mock(side_effect=observed_vendor)
     resource = ResourceResolution(
         status="resolved", connector_id="hubspot", connection_id="local-conn",
         resource_type="portal", resource_id="99887", display_name="99887",
@@ -262,6 +281,7 @@ async def test_agent_play_approval_real_step_to_durable_consumer(pg, monkeypatch
     assert pg.value(f"SELECT status FROM public.runs WHERE id='{run_id}'") == "completed"
     assert pg.value(f"SELECT status FROM public.run_steps WHERE run_id='{run_id}'") == "completed"
     assert vendor.call_count == 1
+    assert receiver.writes == 1
     assert pg.value(f"SELECT status FROM public.workflow_runs WHERE id='{run_id}'") == "completed"
     # ECO-001 independent readback: the returned HTTP-equivalent result and
     # in-memory step objects cannot substitute for durable terminal evidence.
@@ -317,6 +337,8 @@ async def test_agent_play_approval_real_step_to_durable_consumer(pg, monkeypatch
         domain_events.reset_domain_event_handlers_for_tests()
     assert replayed.delivered == 1
     assert vendor.call_count == 1  # never replay the external provider operation
+    assert receiver.writes == 1  # independently persisted provider observation
+    receiver.close()
     assert pg.value("SELECT count(*) FROM public.qa_p27_joined_effects") == "1"
     assert pg.value(
         f"SELECT count(*) FROM public.domain_event_outbox "
