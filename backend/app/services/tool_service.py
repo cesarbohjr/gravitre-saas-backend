@@ -5409,7 +5409,34 @@ def invoke_tool(ctx: ToolContext, action: str, params: dict[str, Any] | None = N
 
     # Last stop check before the provider call, and the record a cancelled
     # voice turn reads to say what had already been done.
-    write_effect = begin_write_effect(ctx, action)
+    try:
+        write_effect = begin_write_effect(ctx, action)
+    except ToolValidationError:
+        # A stop/pause may win after the durable reservation but before the
+        # provider boundary. No provider call has occurred: finalize the
+        # reserved write as failed rather than stranding an in_progress claim.
+        # Never turn a failed finalization into a replayable authorization.
+        if write_idempotency_key and write_claim_token:
+            from app.services.write_invoke_idempotency import finalize_write_invoke
+
+            stopped_finalization = finalize_write_invoke(
+                ctx.client,
+                org_id=ctx.org_id,
+                idempotency_key=write_idempotency_key,
+                claim_token=write_claim_token,
+                status="failed",
+            )
+            if stopped_finalization.outcome != "finalized":
+                logger.error(
+                    "pre_dispatch_stop_ledger_finalize_unconfirmed org_id=%s action=%s outcome=%s",
+                    ctx.org_id, action, stopped_finalization.outcome,
+                )
+                raise WriteIdempotencyUnavailable(
+                    "Stopped before provider dispatch, but durable ledger finalization "
+                    "could not be confirmed; reconciliation is required.",
+                    code="write_idempotency_unavailable",
+                )
+        raise
     last_error: ToolError | None = None
     # A single autonomous claim may invoke the provider at most once. Even a
     # seemingly pre-send transport failure is not sufficient evidence to issue
