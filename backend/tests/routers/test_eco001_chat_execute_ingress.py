@@ -4,6 +4,7 @@ These focused route tests are not the full provider/ledger integration certifica
 They prove that an authenticated requester cannot execute another tenant's or
 another user's conversation before dispatch is reached.
 """
+from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import pytest
