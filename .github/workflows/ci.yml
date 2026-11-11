@@ -354,6 +354,17 @@ jobs:
       - name: Install pgvector for migration tests
         run: sudo apt-get install -y -q postgresql-16-pgvector || echo "pgvector unavailable; vector migration tests will skip"
 
+      - name: ECO-001 consolidated PostgreSQL and authenticated ingress acceptance
+        timeout-minutes: 20
+        env:
+          APP_ENV: dev
+          SUPABASE_URL: https://test.supabase.co
+          SUPABASE_ANON_KEY: anon-test
+          SUPABASE_SERVICE_ROLE_KEY: service-role-test
+          SUPABASE_JWT_SECRET: jwt-secret-test
+          OPENAI_API_KEY: sk-test-openai
+        run: python scripts/eco001_master_acceptance.py
+
       - name: Lint confidence honesty (Module C)
         working-directory: .
         run: |
