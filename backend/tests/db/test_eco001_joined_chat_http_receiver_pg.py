@@ -9,6 +9,7 @@ notification/state stores are adapted. This is not production deployment proof.
 from __future__ import annotations
 
 import json
+from contextlib import ExitStack
 import time
 import urllib.request
 from types import SimpleNamespace
@@ -198,7 +199,8 @@ def test_signed_approved_chat_http_matches_independent_receiver_and_durable_ledg
             app.dependency_overrides[get_environment_context] = lambda: "synthetic"
             app.dependency_overrides[get_settings] = lambda: settings
             try:
-                with (
+                with ExitStack() as patch_stack:
+                    for context in (
                     patch.object(assistant, "get_supabase_client", return_value=db),
                     patch.object(conversation_state_service, "get_conversation_state_service", return_value=store),
                     patch.object(chat_connector_execution_service, "get_chat_connector_execution_service", return_value=connector),
@@ -222,7 +224,8 @@ def test_signed_approved_chat_http_matches_independent_receiver_and_durable_ledg
                     patch("app.capability_ontology.resolver.resolve_capability_invoke_action", return_value=None),
                     patch("app.services.write_invoke_idempotency.claim_write_invoke", side_effect=claim),
                     patch("app.services.write_invoke_idempotency.finalize_write_invoke", side_effect=finalize),
-                ):
+                    ):
+                        patch_stack.enter_context(context)
                     http = TestClient(app)
                     responses = [
                         http.post(
