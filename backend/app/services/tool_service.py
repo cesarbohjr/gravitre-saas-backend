@@ -2,8 +2,11 @@
 from __future__ import annotations
 
 import time
+import logging
 from collections.abc import Callable
 from typing import Any
+
+logger = logging.getLogger(__name__)
 
 from app.config import Settings
 from app.connectors.email import body_hash as _body_hash
