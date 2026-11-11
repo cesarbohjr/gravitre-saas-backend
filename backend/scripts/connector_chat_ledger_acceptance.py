@@ -339,6 +339,21 @@ def run():
                 "org_id", org_id
             ).eq("id", rejected_id).single().execute().data
             assert rejected_row["status"] == "rejected"
+            # A second rejection must not reopen the authorization decision.
+            # Check both decision endpoints before examining the provider and
+            # canonical ledger, so cancellation cannot be undone by replay.
+            rejected_again = TestClient(app).post(
+                f"/api/approvals/{rejected_id}/reject", json={}
+            )
+            assert rejected_again.status_code == 409, (
+                f"Terminal rejection was not immutable: {rejected_again.text[-800:]}"
+            )
+            rejected_after_replay = db.table("approvals").select(
+                "status,reviewed_at"
+            ).eq("org_id", org_id).eq(
+                "id", rejected_id
+            ).single().execute().data
+            assert rejected_after_replay["status"] == "rejected"
             # Pre-dispatch cancellation certificate: the real reject route
             # persisted the terminal decision before any provider claim. Check
             # the provider receiver AND canonical database independently.
