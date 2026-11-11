@@ -5527,6 +5527,35 @@ def invoke_tool(ctx: ToolContext, action: str, params: dict[str, Any] | None = N
                         connector_id=result.connector_id or cid,
                         snapshot=compensation_snapshot,
                     )
+            if not result.success and write_idempotency_key and idempotency_enabled:
+                # A provider returned a failure response after dispatch. It may
+                # still have committed the side effect; never release the claim
+                # as a safe-to-retry failure without independent confirmation.
+                from app.services.write_invoke_idempotency import finalize_write_invoke
+
+                uncertain_finalization = finalize_write_invoke(
+                    ctx.client,
+                    org_id=ctx.org_id,
+                    idempotency_key=write_idempotency_key,
+                    claim_token=write_claim_token,
+                    status="uncertain",
+                )
+                if uncertain_finalization.outcome != "finalized":
+                    logger.error(
+                        "write_provider_failure_finalize_unconfirmed org_id=%s action=%s outcome=%s",
+                        ctx.org_id, action, uncertain_finalization.outcome,
+                    )
+                return NormalizedResult(
+                    success=False,
+                    action=action,
+                    error_code="outcome_uncertain",
+                    error_message=(
+                        "The provider reported a failure after dispatch; the write "
+                        "may have been applied. Reconcile the provider record "
+                        "before any retry."
+                    ),
+                    connector_id=result.connector_id or cid,
+                )
             if result.success and write_idempotency_key and idempotency_enabled:
                 from app.services.write_invoke_idempotency import finalize_write_invoke
 
