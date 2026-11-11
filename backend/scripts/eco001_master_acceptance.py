@@ -21,6 +21,7 @@ SUITES = (
     "tests/services/test_write_invoke_idempotency.py",
     "tests/db/test_write_invoke_idempotency_pg.py",
     "tests/db/test_autonomous_independent_write_pg.py",
+    "tests/db/test_eco001_chat_invoke_pg_receiver.py",
     "tests/master_qa/test_joined_agent_play_approval_step_pg.py",
 )
 
