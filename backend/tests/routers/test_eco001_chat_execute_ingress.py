@@ -87,3 +87,76 @@ def test_authenticated_chat_execute_refuses_unowned_conversation(rows):
         ]
     finally:
         app.dependency_overrides.clear()
+
+
+@pytest.mark.parametrize("pending_type", ["connector_action", "connector_orchestration"])
+def test_authenticated_chat_execute_denied_approval_never_dispatches(pending_type):
+    """An owned conversation is insufficient authority for a connector write.
+
+    Exercise the actual authenticated HTTP route and its HITL decision, while
+    asserting that neither Chat execution adapter can be reached on denial.
+    This is an ingress regression, not the independent provider/PG certificate.
+    """
+    from fastapi.testclient import TestClient
+    from app.routers import assistant
+    from app.services import chat_connector_execution_service, chat_orchestration_service
+    from app.services import conversation_state_service
+    from app.workflows import policy
+
+    settings = Settings(
+        app_env="dev", supabase_url="https://test.supabase.co",
+        supabase_anon_key="anon-test",
+        supabase_service_role_key="service-role-test",
+        supabase_jwt_secret="jwt-secret-test",
+    )
+    db = _ScopedClient([
+        {"id": "conversation-a", "org_id": "tenant-a", "user_id": "actor-a"},
+    ])
+    state = {
+        "pending_task": {
+            "type": pending_type,
+            "status": "awaiting_confirm",
+            "params": {
+                "kind": "write",
+                "invoke_action": "hubspot.contacts.update",
+                "hitl_action_kind": "write",
+            },
+        },
+    }
+    state_service = MagicMock()
+    from unittest.mock import AsyncMock
+    state_service.get_task_state = AsyncMock(return_value=state)
+    hitl = MagicMock()
+    hitl.can_approve.return_value = False
+    policy_service = MagicMock()
+    policy_service.resolve.return_value = hitl
+
+    app.dependency_overrides[get_current_user] = lambda: {"user_id": "actor-a"}
+    app.dependency_overrides[get_org_context] = lambda: "tenant-a"
+    app.dependency_overrides[get_environment_context] = lambda: "production"
+    app.dependency_overrides[get_settings] = lambda: settings
+    try:
+        with (
+            patch.object(assistant, "get_supabase_client", return_value=db),
+            patch.object(conversation_state_service, "get_conversation_state_service", return_value=state_service),
+            patch.object(policy, "get_user_role", return_value="member"),
+            patch("app.services.hitl_policy_service.get_hitl_policy_service", return_value=policy_service),
+            patch.object(chat_connector_execution_service, "get_chat_connector_execution_service") as connector_dispatch,
+            patch.object(chat_orchestration_service, "get_chat_orchestration_service") as orchestration_dispatch,
+        ):
+            response = TestClient(app).post(
+                "/api/assistant/conversation/conversation-a/execute",
+                json={"confirm": True},
+            )
+        assert response.status_code == 403, response.text
+        assert "approval" in response.json()["detail"].lower()
+        connector_dispatch.assert_not_called()
+        orchestration_dispatch.assert_not_called()
+        hitl.can_approve.assert_called_once_with(role="member", user_id="actor-a")
+        assert db.queries[0].filters == [
+            ("id", "conversation-a"),
+            ("org_id", "tenant-a"),
+            ("user_id", "actor-a"),
+        ]
+    finally:
+        app.dependency_overrides.clear()
