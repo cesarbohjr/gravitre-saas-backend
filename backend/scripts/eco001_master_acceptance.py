@@ -16,6 +16,9 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 SUITES = (
     "tests/routers/test_eco001_chat_execute_ingress.py",
+    "tests/master_qa/test_eco001_decision_handoff_runtime.py",
+    "tests/services/test_approval_action_binding.py",
+    "tests/master_qa/test_actual_approval_resume_pg.py",
     "tests/services/test_eco001_inflight_chat_cancellation.py",
     "tests/services/test_autonomous_invoke_receiver_integration.py",
     "tests/services/test_write_invoke_idempotency.py",
