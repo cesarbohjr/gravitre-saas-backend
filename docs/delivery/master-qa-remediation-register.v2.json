@@ -102,7 +102,10 @@
       ],
       "partial_test_evidence": null,
       "audit_evidence_class": "SOURCE_CONFIRMED_POTENTIAL_LATENCY",
-      "audit_observation": "sequential awaits observed; impact must be measured"
+      "audit_observation": "sequential awaits observed; impact must be measured",
+      "research_derived_acceptance_checks": [
+        "Record prompt/context payload size and time-to-first-audio for voice, with baseline-derived acceptance thresholds and per-stage p50/p95; do not assert arbitrary targets."
+      ]
     },
     {
       "finding_id": "ECO-003",
@@ -568,7 +571,10 @@
       ],
       "partial_test_evidence": null,
       "audit_evidence_class": "SOURCE_CONFIRMED_FALLBACK",
-      "audit_observation": "phrase-based fallback still exists, active invocation unknown"
+      "audit_observation": "phrase-based fallback still exists, active invocation unknown",
+      "research_derived_acceptance_checks": [
+        "Production fast conversational path: prove lightweight chat/voice routing is enabled for eligible turns, with negative tests for unauthorized downgrade and measured latency."
+      ]
     },
     {
       "finding_id": "ECO-012",
@@ -1150,7 +1156,10 @@
       ],
       "partial_test_evidence": null,
       "audit_evidence_class": "SOURCE_CANDIDATE_REQUIRES_RUNTIME_PROOF",
-      "audit_observation": "Original audit and source candidate require caller/runtime evidence; no final root-cause claim."
+      "audit_observation": "Original audit and source candidate require caller/runtime evidence; no final root-cause claim.",
+      "research_derived_acceptance_checks": [
+        "Run controlled existing Pipecat vs native realtime/LiveKit comparison only where warranted, with consistent ChatGPT/Claude-style conversational evaluation for pacing, interruptions, continuity, reliability, latency, and cost. No automatic provider migration."
+      ]
     },
     {
       "finding_id": "P27-08",
