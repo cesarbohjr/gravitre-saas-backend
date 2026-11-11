@@ -198,12 +198,12 @@ def test_authenticated_approved_chat_routes_to_correct_execution_owner(pending_t
     hitl.can_approve.return_value = True
     policy_service = MagicMock()
     policy_service.resolve.return_value = hitl
-    execution = MagicMock()
-    execution.success = True
-    execution.title = "Approved write"
-    execution.body = "Recorded."
-    execution.result_url = "/runs/synthetic"
-    execution.__dict__.update(success=True, title="Approved write", body="Recorded.")
+    # The HTTP response serializes execution.__dict__; MagicMock internals
+    # contain sentinel values that Pydantic cannot JSON-encode.
+    execution = SimpleNamespace(
+        success=True, title="Approved write", body="Recorded.",
+        result_url="/runs/synthetic",
+    )
     connector = MagicMock()
     connector.execute_confirmed_task = AsyncMock(return_value=execution)
     orchestration = MagicMock()
