@@ -423,6 +423,30 @@ def run():
                 assert revoke.status_code == 409, (
                     f"Claimed approval overwritten by revocation: {revoke.text}"
                 )
+                # Read back authority AND write ledger independently while the
+                # provider is blocked. A failed revocation must never be
+                # misreported as a durable cancellation, nor finalize a write.
+                after_revoke_approval = db.table("approvals").select(
+                    "status,context"
+                ).eq("org_id", org_id).eq(
+                    "id", race_approval_id
+                ).single().execute().data
+                after_revoke_ledger = db.table("write_invoke_idempotency").select(
+                    "status,logical_action_id,result"
+                ).eq("org_id", org_id).eq(
+                    "idempotency_key", race_ledger_key
+                ).single().execute().data
+                assert after_revoke_approval["status"] == "approved", (
+                    "Rejected revocation must not become a cancellation"
+                )
+                assert after_revoke_approval["context"]["dispatch"]["state"] == "claimed"
+                assert after_revoke_ledger["status"] == "in_progress", (
+                    "Rejected revocation prematurely finalized the ledger"
+                )
+                assert after_revoke_ledger["logical_action_id"] == race_logical_id
+                assert len(writes) == 1, (
+                    "Rejected revocation crossed the blocked provider boundary"
+                )
                 # A second authenticated approval request while the first
                 # provider invocation is blocked must not acquire a new claim
                 # or dispatch another provider operation. This exercises the
