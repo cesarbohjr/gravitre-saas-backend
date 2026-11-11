@@ -9,6 +9,8 @@ from __future__ import annotations
 import os
 import subprocess
 import sys
+import tempfile
+import xml.etree.ElementTree as ET
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -36,11 +38,30 @@ def main() -> int:
     env = os.environ.copy()
     env["GRAVITRE_REQUIRE_PG"] = "1"
     env["PYTHONDONTWRITEBYTECODE"] = "1"
-    command = [sys.executable, "-m", "pytest", "-q", "-ra", "--strict-markers", *SUITES]
-    result = subprocess.run(command, cwd=ROOT, env=env, check=False)
-    if result.returncode:
-        print(f"ECO-001 NOT CERTIFIED: suite failed ({result.returncode})", file=sys.stderr)
-        return result.returncode
+    with tempfile.TemporaryDirectory(prefix="eco001-acceptance-") as output:
+        report = Path(output) / "junit.xml"
+        command = [sys.executable, "-m", "pytest", "-q", "-ra", "--strict-markers",
+                   f"--junitxml={report}", *SUITES]
+        result = subprocess.run(command, cwd=ROOT, env=env, check=False)
+        if result.returncode:
+            print(f"ECO-001 NOT CERTIFIED: suite failed ({result.returncode})", file=sys.stderr)
+            return result.returncode
+        if not report.is_file():
+            print("ECO-001 NOT CERTIFIED: pytest produced no JUnit report", file=sys.stderr)
+            return 2
+        try:
+            root = ET.parse(report).getroot()
+            cases = root.findall(".//testcase")
+            skipped = [case for case in cases if case.find("skipped") is not None]
+            failed = [case for case in cases if case.find("failure") is not None
+                      or case.find("error") is not None]
+        except ET.ParseError as exc:
+            print(f"ECO-001 NOT CERTIFIED: invalid JUnit report: {exc}", file=sys.stderr)
+            return 2
+        if not cases or skipped or failed:
+            print(f"ECO-001 NOT CERTIFIED: cases={len(cases)}, "
+                  f"skipped={len(skipped)}, failed={len(failed)}", file=sys.stderr)
+            return 2
     # A green local suite is a prerequisite, not exact-head CI or live
     # acceptance infrastructure certification.
     print("ECO-001 local acceptance suite passed; exact-head CI and isolated QA "
