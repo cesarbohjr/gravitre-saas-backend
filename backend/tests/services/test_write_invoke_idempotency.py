@@ -317,7 +317,7 @@ def test_eco001_pre_provider_ownership_rejection_with_unconfirmed_finalization_f
     from unittest.mock import patch
     from app.services import tool_service
     from app.services.write_authority import write_authority
-    from app.services.write_invoke_idempotency import WriteFinalizeResult
+    from app.services.write_invoke_idempotency import WriteFinalizeResult, WriteIdempotencyUnavailable
 
     action = "hubspot.contacts.update"
     provider = MagicMock(return_value=NormalizedResult(success=True, action=action, data={"id": "1"}))
@@ -354,10 +354,64 @@ def test_eco001_pre_provider_ownership_rejection_with_unconfirmed_finalization_f
             return_value=WriteFinalizeResult(outcome="error", reason="ledger_unavailable"),
         ))
         with write_authority("human", "approval:approved-queue-id"):
-            with pytest.raises(Exception) as raised:
+            with pytest.raises(WriteIdempotencyUnavailable) as raised:
                 tool_service.invoke_tool(ctx, action, {"id": "isolated-contact"})
     claim.assert_called_once()
     provider.assert_not_called()
     finalize.assert_called_once()
     assert finalize.call_args.kwargs["status"] == "failed"
     assert "reconciliation" in str(raised.value).lower()
+
+
+def test_eco001_pre_provider_approval_revocation_finalizes_claim_without_dispatch():
+    """Focused regression; independent PostgreSQL/provider acceptance remains separate."""
+    import pytest
+    from contextlib import ExitStack
+    from unittest.mock import patch
+    from app.services import tool_service
+    from app.services.write_authority import write_authority
+    from app.services.write_invoke_idempotency import WriteFinalizeResult
+
+    action = "hubspot.contacts.update"
+    provider = MagicMock(return_value=NormalizedResult(success=True, action=action, data={"id": "1"}))
+    ctx = ToolContext(
+        settings=SimpleNamespace(
+            write_authority_mode="enforce",
+            write_invoke_idempotency_enabled=False,
+            private_connector_runtime_enabled=False,
+        ),
+        client=MagicMock(), org_id="org-qa", actor_id="member-qa",
+        conversation_id="conv-qa", turn_id="approved-queue-id",
+        write_idempotency_required=True,
+    )
+    with ExitStack() as stack:
+        stack.enter_context(patch("app.services.capability_availability.is_capability_action", return_value=False))
+        stack.enter_context(patch("app.capability_ontology.resolver.resolve_capability_invoke_action", return_value=None))
+        stack.enter_context(patch("app.services.conversation_write_guard.assert_org_write_allowed"))
+        stack.enter_context(patch("app.services.write_preflight.enforce_invoke_write_preflight", side_effect=lambda c, a, p: p))
+        stack.enter_context(patch.object(tool_service, "_resolve_tool_executor", return_value=provider))
+        stack.enter_context(patch("app.services.hipaa_service.enforce_hipaa_for_tool_invoke"))
+        stack.enter_context(patch("app.services.agent_guardrail_limits.enforce_agent_guardrail_limits"))
+        stack.enter_context(patch.object(tool_service, "assert_agent_tool_permission"))
+        stack.enter_context(patch.object(tool_service, "_write_tool_audit"))
+        stack.enter_context(patch("app.workers.workflow_queue.assert_current_workflow_claim_live"))
+        ctx.autonomous_write_guarded = True
+        ctx.run_id = "run-qa"
+        stack.enter_context(patch("app.services.canvas_write_gate.require_approved_authority_run", side_effect=RuntimeError("approval revoked")))
+        claim = stack.enter_context(patch(
+            "app.services.write_invoke_idempotency.claim_approved_autonomous_write",
+            return_value=WriteClaimResult(outcome="claimed", claim_token="qa-claim"),
+        ))
+        finalize = stack.enter_context(patch(
+            "app.services.write_invoke_idempotency.finalize_write_invoke",
+            return_value=WriteFinalizeResult(outcome="finalized"),
+        ))
+        with write_authority("human", "approval:approved-queue-id"):
+            result = tool_service.invoke_tool(ctx, action, {"id": "isolated-contact"})
+    claim.assert_called_once()
+    provider.assert_not_called()
+    finalize.assert_called_once()
+    assert finalize.call_args.kwargs["status"] == "failed"
+    assert result.success is False
+
+
