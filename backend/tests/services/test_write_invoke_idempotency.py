@@ -395,8 +395,8 @@ def test_eco001_pre_provider_approval_revocation_finalizes_claim_without_dispatc
         stack.enter_context(patch.object(tool_service, "assert_agent_tool_permission"))
         stack.enter_context(patch.object(tool_service, "_write_tool_audit"))
         stack.enter_context(patch("app.workers.workflow_queue.assert_current_workflow_claim_live"))
-        ctx.autonomous_write_guarded = True
-        ctx.run_id = "run-qa"
+        from dataclasses import replace
+        ctx = replace(ctx, autonomous_write_guarded=True, run_id="run-qa")
         approval_check = stack.enter_context(patch(
             "app.services.canvas_write_gate.require_approved_authority_run",
             side_effect=[{"approved": True}, {"approved": True}, RuntimeError("approval revoked")],
