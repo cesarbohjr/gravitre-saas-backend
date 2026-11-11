@@ -26,6 +26,10 @@ SUITES = (
 
 
 def main() -> int:
+    # Direct script execution sets sys.path[0] to backend/scripts, not backend.
+    # Match `python -m pytest` import semantics before loading the PG harness.
+    if str(ROOT) not in sys.path:
+        sys.path.insert(0, str(ROOT))
     from tests.db.pg_harness import PG_BIN
 
     if PG_BIN is None:
