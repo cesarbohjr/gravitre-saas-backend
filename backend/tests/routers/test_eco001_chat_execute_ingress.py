@@ -160,3 +160,86 @@ def test_authenticated_chat_execute_denied_approval_never_dispatches(pending_typ
         ]
     finally:
         app.dependency_overrides.clear()
+
+
+@pytest.mark.parametrize("pending_type", ["connector_action", "connector_orchestration"])
+def test_authenticated_approved_chat_routes_to_correct_execution_owner(pending_type):
+    """The owned, approved HTTP path must preserve tenant, actor and environment.
+
+    The adapter is substituted only at its downstream service boundary. This
+    certifies ingress-to-adapter routing, not durable provider execution.
+    """
+    from fastapi.testclient import TestClient
+    from unittest.mock import AsyncMock
+    from app.routers import assistant
+    from app.services import chat_connector_execution_service, chat_orchestration_service
+    from app.services import conversation_state_service
+    from app.workflows import policy
+
+    settings = Settings(
+        app_env="dev", supabase_url="https://test.supabase.co",
+        supabase_anon_key="anon-test",
+        supabase_service_role_key="service-role-test",
+        supabase_jwt_secret="jwt-secret-test",
+    )
+    db = _ScopedClient([
+        {"id": "conversation-a", "org_id": "tenant-a", "user_id": "actor-a"},
+    ])
+    state_service = MagicMock()
+    state_service.get_task_state = AsyncMock(return_value={
+        "pending_task": {
+            "type": pending_type,
+            "status": "awaiting_confirm",
+            "params": {"kind": "write", "invoke_action": "hubspot.contacts.update",
+                       "hitl_action_kind": "write"},
+        },
+    })
+    hitl = MagicMock()
+    hitl.can_approve.return_value = True
+    policy_service = MagicMock()
+    policy_service.resolve.return_value = hitl
+    execution = MagicMock()
+    execution.success = True
+    execution.title = "Approved write"
+    execution.body = "Recorded."
+    execution.result_url = "/runs/synthetic"
+    execution.__dict__.update(success=True, title="Approved write", body="Recorded.")
+    connector = MagicMock()
+    connector.execute_confirmed_task = AsyncMock(return_value=execution)
+    orchestration = MagicMock()
+    orchestration.execute_confirmed_task = AsyncMock(return_value=execution)
+
+    app.dependency_overrides[get_current_user] = lambda: {"user_id": "actor-a"}
+    app.dependency_overrides[get_org_context] = lambda: "tenant-a"
+    app.dependency_overrides[get_environment_context] = lambda: "synthetic"
+    app.dependency_overrides[get_settings] = lambda: settings
+    try:
+        with (
+            patch.object(assistant, "get_supabase_client", return_value=db),
+            patch.object(conversation_state_service, "get_conversation_state_service", return_value=state_service),
+            patch.object(policy, "get_user_role", return_value="admin"),
+            patch("app.services.hitl_policy_service.get_hitl_policy_service", return_value=policy_service),
+            patch.object(chat_connector_execution_service, "get_chat_connector_execution_service", return_value=connector),
+            patch.object(chat_orchestration_service, "get_chat_orchestration_service", return_value=orchestration),
+            patch.object(assistant, "_persist_conversation_turn", return_value=(True, "synthetic-message")),
+            patch("app.services.response_composer.compose_user_reply", new_callable=AsyncMock, return_value="Recorded."),
+        ):
+            response = TestClient(app).post(
+                "/api/assistant/conversation/conversation-a/execute",
+                json={"confirm": True},
+            )
+        assert response.status_code == 200, response.text
+        assert response.json()["success"] is True
+        selected, other = (
+            (connector, orchestration) if pending_type == "connector_action"
+            else (orchestration, connector)
+        )
+        selected.execute_confirmed_task.assert_awaited_once_with(
+            org_id="tenant-a", user_id="actor-a",
+            conversation_id="conversation-a", client=db,
+            environment_name="synthetic",
+        )
+        other.execute_confirmed_task.assert_not_awaited()
+        hitl.can_approve.assert_called_once_with(role="admin", user_id="actor-a")
+    finally:
+        app.dependency_overrides.clear()
