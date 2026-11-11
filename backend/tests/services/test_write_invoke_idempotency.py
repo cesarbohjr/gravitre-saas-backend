@@ -397,7 +397,10 @@ def test_eco001_pre_provider_approval_revocation_finalizes_claim_without_dispatc
         stack.enter_context(patch("app.workers.workflow_queue.assert_current_workflow_claim_live"))
         ctx.autonomous_write_guarded = True
         ctx.run_id = "run-qa"
-        stack.enter_context(patch("app.services.canvas_write_gate.require_approved_authority_run", side_effect=RuntimeError("approval revoked")))
+        approval_check = stack.enter_context(patch(
+            "app.services.canvas_write_gate.require_approved_authority_run",
+            side_effect=[{"approved": True}, {"approved": True}, RuntimeError("approval revoked")],
+        ))
         claim = stack.enter_context(patch(
             "app.services.write_invoke_idempotency.claim_approved_autonomous_write",
             return_value=WriteClaimResult(outcome="claimed", claim_token="qa-claim"),
@@ -406,8 +409,9 @@ def test_eco001_pre_provider_approval_revocation_finalizes_claim_without_dispatc
             "app.services.write_invoke_idempotency.finalize_write_invoke",
             return_value=WriteFinalizeResult(outcome="finalized"),
         ))
-        with write_authority("human", "approval:approved-queue-id"):
+        with write_authority("run", "run-qa"):
             result = tool_service.invoke_tool(ctx, action, {"id": "isolated-contact"})
+    assert approval_check.call_count >= 2
     claim.assert_called_once()
     provider.assert_not_called()
     finalize.assert_called_once()
