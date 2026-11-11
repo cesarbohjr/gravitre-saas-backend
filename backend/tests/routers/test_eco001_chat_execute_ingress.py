@@ -243,3 +243,36 @@ def test_authenticated_approved_chat_routes_to_correct_execution_owner(pending_t
         hitl.can_approve.assert_called_once_with(role="admin", user_id="actor-a")
     finally:
         app.dependency_overrides.clear()
+
+
+def test_chat_execute_missing_bearer_rejected_by_real_auth_dependency():
+    """Do not override authentication: the mounted endpoint must reject an
+    unauthenticated request before conversation or provider dispatch.
+    """
+    from fastapi.testclient import TestClient
+    from app.routers import assistant
+    from app.services import chat_connector_execution_service, chat_orchestration_service
+
+    settings = Settings(
+        app_env="dev", supabase_url="https://test.supabase.co",
+        supabase_anon_key="anon-test", supabase_service_role_key="service-role-test",
+        supabase_jwt_secret="jwt-secret-test",
+    )
+    app.dependency_overrides.clear()
+    app.dependency_overrides[get_settings] = lambda: settings
+    try:
+        with (
+            patch.object(assistant, "get_supabase_client") as database,
+            patch.object(chat_connector_execution_service, "get_chat_connector_execution_service") as connector,
+            patch.object(chat_orchestration_service, "get_chat_orchestration_service") as orchestration,
+        ):
+            response = TestClient(app).post(
+                "/api/assistant/conversation/conversation-a/execute",
+                json={"confirm": True},
+            )
+        assert response.status_code == 401, response.text
+        database.assert_not_called()
+        connector.assert_not_called()
+        orchestration.assert_not_called()
+    finally:
+        app.dependency_overrides.clear()
