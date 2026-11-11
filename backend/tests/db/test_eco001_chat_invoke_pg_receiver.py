@@ -4,6 +4,8 @@ Only external Supabase RPC transport, provider credentials and unrelated guards
 are substituted. This does not certify mounted HTTP or Agent ingress.
 """
 from contextlib import ExitStack
+
+import pytest
 import json
 import urllib.request
 from types import SimpleNamespace
