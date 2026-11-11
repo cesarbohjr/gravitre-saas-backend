@@ -5639,13 +5639,26 @@ def invoke_tool(ctx: ToolContext, action: str, params: dict[str, Any] | None = N
     if write_idempotency_key and idempotency_enabled and last_error is not None:
         from app.services.write_invoke_idempotency import finalize_write_invoke
 
-        finalize_write_invoke(
+        failed_finalization = finalize_write_invoke(
             ctx.client,
             org_id=ctx.org_id,
             idempotency_key=write_idempotency_key,
             claim_token=write_claim_token,
             status="uncertain" if isinstance(last_error, ToolOutcomeUncertainError) else "failed",
         )
+        if failed_finalization.outcome != "finalized":
+            # A rejected pre-provider ownership/approval check also reaches this
+            # path. The claim is fenced, but its terminal state is unverified.
+            # Never present the original rejection as a fully settled outcome.
+            logger.error(
+                "write_failure_ledger_finalize_unconfirmed org_id=%s action=%s outcome=%s",
+                ctx.org_id, action, failed_finalization.outcome,
+            )
+            raise WriteIdempotencyUnavailable(
+                "Write failure ledger finalization could not be confirmed; "
+                "reconciliation is required before retry.",
+                code="write_idempotency_unavailable",
+            )
 
     finish_write_effect(
         write_effect,
