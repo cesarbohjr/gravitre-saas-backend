@@ -52,7 +52,22 @@ jobs:
           assert data['correlated_trace_count']==300, data['correlated_trace_count']
           assert len(walls)==300, len(walls)
           assert sum('scenario=governed_action' in line for line in walls)==100
-          print(json.dumps({'correlated_trace_count':data['correlated_trace_count'],'wall_clock_samples':len(walls),'stage_rankings':data['ranked_by_stage_p95']}, indent=2))
+          import statistics
+          by_scenario={}
+          for line in walls:
+              match=re.search(r'eco002_request_wall scenario=(\w+) sample=([\w-]+) duration_ms=([0-9.]+)',line)
+              assert match, line
+              scenario, sample, duration=match.groups()
+              by_scenario.setdefault(scenario,[]).append(float(duration))
+          def percentile(values, pct):
+              ordered=sorted(values)
+              return round(ordered[max(0, int((len(ordered)-1)*pct))],3)
+          wall_summary={name:{'count':len(values),'p50_ms':percentile(values,.50),'p95_ms':percentile(values,.95)} for name,values in by_scenario.items()}
+          assert set(wall_summary)=={'clarification','knowledge','governed_action'}, wall_summary
+          assert all(v['count']==100 for v in wall_summary.values()), wall_summary
+          with open('/tmp/eco002-wall-summary.json','w') as output:
+              json.dump(wall_summary,output,indent=2)
+          print(json.dumps({'correlated_trace_count':data['correlated_trace_count'],'wall_clock_samples':len(walls),'wall_summary':wall_summary,'stage_rankings':data['ranked_by_stage_p95']}, indent=2))
           PY
       - name: Upload offline router timing evidence
         if: always()
@@ -64,4 +79,5 @@ jobs:
             /tmp/eco002-route-report.json
             /tmp/eco002-delayed-route.log
             /tmp/eco002-delayed-report.json
+            /tmp/eco002-wall-summary.json
           if-no-files-found: ignore
