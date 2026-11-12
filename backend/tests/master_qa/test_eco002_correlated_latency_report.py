@@ -28,5 +28,5 @@ def test_real_model_and_execution_still_require_verified_provenance():
         "eco002_request_wall scenario=governed_action sample=governed_action-0001 duration_ms=100",
     ]
     assert not summarize(lines)["eligible_for_optimization"]
-    assert summarize(lines, provenance="verified_nonproduction")["eligible_for_optimization"]
+    assert not summarize(lines, provenance="verified_nonproduction")["eligible_for_optimization"]
     assert not summarize(lines, provenance="verified_nonproduction")["actual_external_provider_observed"]
