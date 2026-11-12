@@ -9,7 +9,7 @@ mod = importlib.import_module("p27_hubspot_sandbox_readback")
 
 
 @pytest.mark.parametrize("receipt", [
-    None, {}, {"status": "COMPLETE"}, {"status": "COMPLETE", "results": []},
+    None, {}, {"status": "COMPLETE"},
     {"status": "COMPLETE", "results": [{"id": None}]},
     {"status": "COMPLETE", "results": [{"id": "abc"}]},
     {"status": "PENDING", "results": [{"id": "123"}]},
@@ -25,3 +25,9 @@ def test_accept_candidate_id_but_not_persistence_proof():
     assert mod._validated_upsert_receipt(
         {"status": "COMPLETE", "results": [{"id": "123"}]}, phase="initial"
     ) == "123"
+
+
+def test_empty_complete_receipt_requires_independent_get():
+    assert mod._validated_upsert_receipt(
+        {"status": "COMPLETE", "results": []}, phase="initial"
+    ) is None
