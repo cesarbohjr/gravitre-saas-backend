@@ -36,9 +36,23 @@ jobs:
           python - <<'PY'
           import json
           data=json.load(open('/tmp/eco002-route-report.json'))
-          assert data['correlated_trace_count'] == 200, data['correlated_trace_count']
-          assert data['sample_count'] >= 1000, data['sample_count']
+          assert data['correlated_trace_count'] == 300, data['correlated_trace_count']
+          assert data['sample_count'] >= 2000, data['sample_count']
           print(json.dumps({'sample_count':data['sample_count'],'correlated_trace_count':data['correlated_trace_count'],'ranked_by_stage_p95':data['ranked_by_stage_p95'],'ranked_observed_stage_share':data['ranked_observed_stage_share']}, indent=2))
+          PY
+      - name: Execute delayed fixture benchmark with governed action and wall-clock measurements
+        run: |
+          PYTHONPATH=backend python backend/scripts/eco002_router_method_harness.py --samples 100 --realistic > /tmp/eco002-delayed-route.log 2>&1
+          python backend/scripts/eco002_stage_latency_report.py /tmp/eco002-delayed-route.log > /tmp/eco002-delayed-report.json
+          python - <<'PY'
+          import json, re
+          data=json.load(open('/tmp/eco002-delayed-report.json'))
+          lines=open('/tmp/eco002-delayed-route.log').readlines()
+          walls=[line for line in lines if 'eco002_request_wall ' in line]
+          assert data['correlated_trace_count']==300, data['correlated_trace_count']
+          assert len(walls)==300, len(walls)
+          assert sum('scenario=governed_action' in line for line in walls)==100
+          print(json.dumps({'correlated_trace_count':data['correlated_trace_count'],'wall_clock_samples':len(walls),'stage_rankings':data['ranked_by_stage_p95']}, indent=2))
           PY
       - name: Upload offline router timing evidence
         if: always()
@@ -48,4 +62,6 @@ jobs:
           path: |
             /tmp/eco002-route.log
             /tmp/eco002-route-report.json
+            /tmp/eco002-delayed-route.log
+            /tmp/eco002-delayed-report.json
           if-no-files-found: ignore
