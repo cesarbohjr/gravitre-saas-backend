@@ -52,6 +52,13 @@ def verify_hubspot(*, token: str, portal_id: str, email_domain: str,
     # This read must succeed before any write and identify this exact account.
     details = _request(BASE + "/account-info/v3/details",
                        token=token, method="GET")
+    # HubSpot may return a successful HTTP response with JSON null or another
+    # unexpected shape. Never allow an unverified account to reach a write.
+    if not isinstance(details, dict):
+        raise RuntimeError(
+            "HubSpot account verification returned a non-object JSON response; "
+            "provider write refused"
+        )
     if str(details.get("portalId")) != portal_id:
         raise RuntimeError("HubSpot portal mismatch: write refused")
     if str(details.get("accountType") or "").upper() != "STANDARD":
