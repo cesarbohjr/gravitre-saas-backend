@@ -28,7 +28,9 @@ def percentile(values, p):
     return round(ordered[lower] + (ordered[upper] - ordered[lower]) * (index - lower), 3)
 
 
-def summarize(lines, *, provenance):
+def summarize(lines, *, provenance, min_samples=1):
+    if not isinstance(min_samples, int) or isinstance(min_samples, bool) or min_samples < 1:
+        raise ValueError("min_samples must be a positive integer")
     if provenance != "verified_nonproduction":
         raise ValueError("verified_nonproduction provenance required")
     groups = defaultdict(lambda: defaultdict(list))
@@ -48,6 +50,9 @@ def summarize(lines, *, provenance):
         groups[scenario]["retrieval_failures"].append(match["ok"] == "False")
     if not groups:
         raise ValueError("no emitted ECO-003 timing observations")
+    for scenario, rows in groups.items():
+        if len(rows["total"]) < min_samples:
+            raise ValueError(f"insufficient observations for {scenario}: {len(rows['total'])} < {min_samples}")
     return {
         "provenance": provenance,
         "caveat": "Timing telemetry is not independent proof of provider identity, tenant isolation, or real external I/O. Stages may overlap; do not sum stage times as wall-clock.",
@@ -70,8 +75,10 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("log", type=Path)
     parser.add_argument("--provenance", choices=["verified_nonproduction"], required=True)
+    parser.add_argument("--min-samples", type=int, default=30,
+                        help="Minimum observations per present scenario (default: 30)")
     args = parser.parse_args()
-    print(json.dumps(summarize(args.log.read_text().splitlines(), provenance=args.provenance), indent=2))
+    print(json.dumps(summarize(args.log.read_text().splitlines(), provenance=args.provenance, min_samples=args.min_samples), indent=2))
 
 
 if __name__ == "__main__":
