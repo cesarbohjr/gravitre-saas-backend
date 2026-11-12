@@ -108,7 +108,6 @@ def verify_hubspot(*, token: str, portal_id: str, email_domain: str,
     payload = {"inputs": [{
         "idProperty": "email", "id": email,
         "properties": properties,
-        "objectWriteTraceId": marker,
     }]}
     upsert_url = BASE + "/crm/v3/objects/contacts/batch/upsert"
     contact_id = None
