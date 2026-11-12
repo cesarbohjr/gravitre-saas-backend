@@ -58,8 +58,8 @@ jobs:
               && github.actor == 'cesarbohjr'
               && github.event.pull_request.number == 611
               && github.event.pull_request.head.repo.full_name == github.repository) }}
-    # This must be configured in GitHub Settings with required reviewers,
-    # deployment branch policy and all three dedicated P27 credentials/values.
+    # Owner-only required environment reviewer (self-review enabled),
+    # custom branch policies and dedicated P27 credentials must be configured.
     # A workflow declaration alone does not establish environment protection.
     environment: p27-provider-sandbox
     runs-on: ubuntu-latest
@@ -75,6 +75,9 @@ jobs:
       GH_TOKEN: ${{ github.token }}
       EXPECTED_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
       EVENT_PR_NUMBER: ${{ github.event.pull_request.number || '0' }}
+      GITHUB_EVENT_ACTION: ${{ github.event.action || '' }}
+      OWNER_APPROVAL_LABEL: ${{ github.event.label.name || '' }}
+      OWNER_DISPATCH_APPROVAL: ${{ inputs.approval || '' }}
     steps:
       - uses: actions/checkout@v4
         with:
