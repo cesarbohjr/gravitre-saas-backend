@@ -49,6 +49,30 @@ def _get_with_bounded_404_retry(url: str, *, token: str, attempts: int = 5, dela
             time.sleep(delay)
 
 
+def _validated_upsert_receipt(receipt, *, phase: str) -> str:
+    """Require one successful contact result before readback or replay.
+
+    A candidate ID is not persistence proof until independently read.
+    """
+    if not isinstance(receipt, dict):
+        raise RuntimeError(f"HubSpot {phase} write receipt is not an object")
+    status = receipt.get("status")
+    results = receipt.get("results")
+    errors = receipt.get("errors")
+    if (status != "COMPLETE" or not isinstance(results, list)
+            or len(results) != 1 or errors
+            or not isinstance(results[0], dict)):
+        raise RuntimeError(
+            f"HubSpot {phase} write not confirmed: status={str(status)[:32]} "
+            f"result_count={len(results) if isinstance(results, list) else -1} "
+            f"has_errors={bool(errors)}"
+        )
+    candidate = str(results[0].get("id") or "")
+    if not re.fullmatch(r"[0-9]+", candidate):
+        raise RuntimeError(f"HubSpot {phase} write receipt missing valid contact ID")
+    return candidate
+
+
 def verify_hubspot(*, token: str, portal_id: str, email_domain: str,
                    approved: bool, approve_existing_live_portal: bool = False):
     """One synthetic upsert, authoritative GET, identical replay, delete/404.
@@ -102,18 +126,7 @@ def verify_hubspot(*, token: str, portal_id: str, email_domain: str,
                  and len(written["results"]) == 1 and isinstance(written["results"][0], dict)
                  and written["results"][0].get("id")),
         )
-        if written.get("status") != "COMPLETE":
-            raise RuntimeError("HubSpot QA contact upsert incomplete")
-        results = written.get("results")
-        # HubSpot may acknowledge a batch without returning a usable ID.
-        # Recover only by an authoritative lookup of our unique QA email;
-        # never infer an ID or operate on a non-owned contact.
-        response_id = (
-            str(results[0].get("id"))
-            if isinstance(results, list) and len(results) == 1
-            and isinstance(results[0], dict) and results[0].get("id")
-            else None
-        )
+        response_id = _validated_upsert_receipt(written, phase="initial")
         by_email_url = (
             BASE + "/crm/v3/objects/contacts/" + quote(email, safe="")
             + "?idProperty=email&properties=email,firstname,lastname"
@@ -148,12 +161,8 @@ def verify_hubspot(*, token: str, portal_id: str, email_domain: str,
 
         readback()
         repeated = _request(upsert_url, token=token, method="POST", payload=payload)
-        again = repeated.get("results")
-        if repeated.get("status") != "COMPLETE":
-            raise RuntimeError("HubSpot QA replay incomplete")
-        if (isinstance(again, list) and len(again) == 1
-                and isinstance(again[0], dict) and again[0].get("id")
-                and str(again[0]["id"]) != contact_id):
+        replay_id = _validated_upsert_receipt(repeated, phase="replay")
+        if replay_id != contact_id:
             raise RuntimeError("HubSpot QA replay receipt changed contact ID")
         # The same unique email must still resolve to exactly the original ID.
         replay_record = _request(by_email_url, token=token, method="GET")
