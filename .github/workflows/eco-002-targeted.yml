@@ -1,0 +1,26 @@
+name: ECO-002 targeted routing timing tests
+on:
+  push:
+    branches:
+      - feat/eco-002-routing-latency
+  pull_request:
+    paths:
+      - 'backend/app/services/router_stage_timing.py'
+      - 'backend/app/services/intelligence_router.py'
+      - 'backend/tests/master_qa/test_eco002_router_stage_timing.py'
+      - '.github/workflows/eco-002-targeted.yml'
+jobs:
+  targeted:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install isolated test dependencies
+        run: python -m pip install pytest pytest-asyncio
+      - name: Run five ECO-002 targeted tests
+        run: PYTHONPATH=backend python -m pytest -q backend/tests/master_qa/test_eco002_router_stage_timing.py
+      - name: Compile modified production modules
+        run: python -m py_compile backend/app/services/router_stage_timing.py backend/app/services/intelligence_router.py
