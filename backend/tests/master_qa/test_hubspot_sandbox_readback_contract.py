@@ -88,10 +88,10 @@ def test_existing_portal_same_key_and_cleanup_404(hubspot, monkeypatch):
     assert evidence["cleanup"] == "archived_and_get_404_verified"
     assert evidence["duplicate_record"] is False
     assert [m for m, _, _ in seen] == [
-        "GET", "POST", "GET", "POST", "GET", "GET", "DELETE", "GET"]
-    assert seen[1][2] == seen[3][2]
-    assert seen[5][0] == "GET"  # independently prove synthetic owner before DELETE
-    assert seen[6][1].endswith("/contacts/90001")
+        "GET", "POST", "GET", "GET", "POST", "GET", "GET", "GET", "DELETE", "GET"]
+    assert seen[1][2] == seen[4][2]
+    assert seen[7][0] == "GET"  # independently prove synthetic owner before DELETE
+    assert seen[8][1].endswith("/contacts/90001")
 
 
 @pytest.mark.parametrize("kwargs,returned_portal,returned_type", [
@@ -159,6 +159,11 @@ def test_unexpected_provider_id_never_deletes_real_contact(
     monkeypatch.setattr(hubspot, "_request", reply)
     with pytest.raises(RuntimeError):
         _invoke(hubspot)
-    assert any("/contacts/90002" in url and method == "GET"
+    # Conflicting receipt is never trusted. Independently verify and clean up
+    # only the uniquely owned QA record, never the foreign receipt ID.
+    assert any("idProperty=email" in url and method == "GET"
                for method, url, _ in seen)
-    assert not any(method == "DELETE" for method, _, _ in seen)
+    assert any(method == "DELETE" and url.endswith("/contacts/90001")
+               for method, url, _ in seen)
+    assert not any("/contacts/90002" in url and method in ("GET", "DELETE")
+                   for method, url, _ in seen)
