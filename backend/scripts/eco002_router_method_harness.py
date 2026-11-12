@@ -88,6 +88,8 @@ async def run_samples(count=100, realistic=False):
             "get_dialogue_policy_engine": lambda **kw: SimpleNamespace(select_mode=lambda *a: {"mode": "answer", "reason": "fixture", "next_move": ""}),
         })
         for scenario, clarify, action in (("clarification", True, False), ("knowledge", False, False), ("governed_action", False, True)):
+            modules["app.services.knowledge_intelligence_service"]["enrich_classification_with_query_cluster"] = Awaiting({"classification_confidence": 0.8, "requires_action": action})
+            sys.modules["app.services.knowledge_intelligence_service"].enrich_classification_with_query_cluster = modules["app.services.knowledge_intelligence_service"]["enrich_classification_with_query_cluster"]
             for i in range(count):
                 with router_sample(f"{scenario}-{i:04d}"):
                     start = perf_counter()
