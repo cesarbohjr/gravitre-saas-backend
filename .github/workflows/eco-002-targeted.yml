@@ -9,6 +9,7 @@ on:
       - 'backend/app/services/intelligence_router.py'
       - 'backend/tests/master_qa/test_eco002_router_stage_timing.py'
       - 'backend/scripts/eco002_stage_latency_report.py'
+      - 'backend/tests/master_qa/test_eco002_stage_latency_report.py'
       - '.github/workflows/eco-002-targeted.yml'
 jobs:
   targeted:
@@ -22,7 +23,7 @@ jobs:
       - name: Install isolated test dependencies
         run: python -m pip install pytest pytest-asyncio
       - name: Run ECO-002 targeted tests
-        run: PYTHONPATH=backend python -m pytest --noconftest -q backend/tests/master_qa/test_eco002_router_stage_timing.py
+        run: PYTHONPATH=backend python -m pytest --noconftest -q backend/tests/master_qa/test_eco002_router_stage_timing.py backend/tests/master_qa/test_eco002_stage_latency_report.py
       - name: Measure CI instrumentation overhead (not actual routing latency)
         run: PYTHONPATH=backend python backend/scripts/eco002_timer_overhead_benchmark.py
       - name: Compile modified production modules
