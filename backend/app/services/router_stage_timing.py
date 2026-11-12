@@ -32,7 +32,7 @@ _ALLOWED = frozenset({
     "overview_policy", "dialogue_settings", "understanding", "classification",
     "query_cluster", "clarification", "context", "risk_evaluation",
     "model_selection", "enrichments", "knowledge_response", "execution",
-    "proactive_guidance", "decision_visibility",
+    "proactive_guidance", "decision_visibility", "model_provider",
 })
 _SURFACES = frozenset({"api", "chat", "voice", "agent", "play", "canvas"})
 
