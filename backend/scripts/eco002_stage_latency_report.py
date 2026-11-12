@@ -13,11 +13,11 @@ import re
 from collections import defaultdict, Counter
 from pathlib import Path
 
-SAMPLE_PATTERN = re.compile(r"(?:^|\\s)sample=(?P<sample>[A-Za-z0-9_-]{1,48})(?:\\s|$)")
+SAMPLE_PATTERN = re.compile(r"(?:^|\s)sample=(?P<sample>[A-Za-z0-9_-]{1,48})(?:\s|$)")
 PATTERN = re.compile(
     r"router_stage_timing stage=(?P<stage>[a-z_]+) "
     r"surface=(?P<surface>[a-z_]+) outcome=(?P<outcome>ok|error) "
-    r"duration_ms=(?P<ms>[0-9]+(?:\\.[0-9]+)?)"
+    r"duration_ms=(?P<ms>[0-9]+(?:\.[0-9]+)?)"
 )
 
 
