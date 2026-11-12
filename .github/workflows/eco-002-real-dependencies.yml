@@ -1,0 +1,56 @@
+name: ECO-002 real dependency latency baseline
+on:
+  push:
+    branches: [feat/eco-002-routing-latency]
+  pull_request:
+    paths:
+      - 'backend/scripts/eco002_real_dependency_probe.py'
+      - '.github/workflows/eco-002-real-dependencies.yml'
+jobs:
+  real-dependency-baseline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: eco002_ci_only
+          POSTGRES_USER: eco002
+          POSTGRES_DB: eco002
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U eco002 -d eco002"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+      redis:
+        image: redis:7
+        ports: ['6379:6379']
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install dependency drivers
+        run: python -m pip install 'asyncpg>=0.29,<1' 'redis>=5,<7'
+      - name: Real nonproduction database and cache I/O
+        env:
+          ECO002_POSTGRES_DSN: postgresql://eco002:eco002_ci_only@127.0.0.1:5432/eco002
+          ECO002_REDIS_URL: redis://127.0.0.1:6379/0
+          ECO002_SAMPLES: '100'
+        run: |
+          python backend/scripts/eco002_real_dependency_probe.py | tee eco002-real-dependencies.json
+          python - <<'PY'
+          import json
+          d=json.load(open('eco002-real-dependencies.json'))
+          assert len(d['results']) == 2
+          assert all(x['samples'] == 100 and x['p95_ms'] >= x['p50_ms'] >= 0 for x in d['results'])
+          assert 'router_end_to_end' in d['missing_measurements']
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: eco002-real-dependency-baseline
+          path: eco002-real-dependencies.json
+          if-no-files-found: ignore
