@@ -1,0 +1,31 @@
+name: ECO-003 context assembly instrumentation
+on:
+  push:
+    branches:
+      - feat/eco-003-context-assembly
+  pull_request:
+    paths:
+      - 'backend/app/services/context_assembler.py'
+      - 'backend/tests/master_qa/test_eco003_context_stage_timing_contract.py'
+      - 'backend/tests/master_qa/test_eco003_context_latency_report.py'
+      - 'backend/scripts/eco003_context_latency_report.py'
+      - '.github/workflows/eco-003-context-assembly.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  context-instrumentation:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Compile context assembler
+        run: python -m py_compile backend/app/services/context_assembler.py
+      - name: Run ECO-003 isolated contract tests
+        run: |
+          python -m pip install pytest
+          python -m pytest --noconftest -q backend/tests/master_qa/test_eco003_context_stage_timing_contract.py backend/tests/master_qa/test_eco003_context_latency_report.py

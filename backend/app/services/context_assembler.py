@@ -1,6 +1,7 @@
 """Parallel context assembly for intelligence router endpoints."""
 from __future__ import annotations
 
+from time import perf_counter
 from types import SimpleNamespace
 from typing import Any
 
@@ -38,6 +39,9 @@ class ContextAssembler:
         agent_payload = agent or {"id": "router", "name": "Intelligence Router"}
         strict_mode = bool(classification.get("strict_assignment_mode"))
 
+        started = perf_counter()
+        retrieval_started = perf_counter()
+        retrieval_ok = True
         try:
             bundle = await get_unified_retrieval_service().retrieve(
                 org_id=org_id,
@@ -55,7 +59,8 @@ class ContextAssembler:
                 scopes=RetrievalScopes(knowledge=True, org_context=True, agent_memory=True),
             )
         except Exception as exc:  # noqa: BLE001
-            logger.warning("context_assembler_retrieve_failed org_id=%s error=%s", org_id, exc)
+            retrieval_ok = False
+            logger.warning("context_assembler_retrieve_failed error_type=%s", type(exc).__name__)
             bundle = SimpleNamespace(
                 rag_sources=[],
                 memory_context={},
@@ -66,6 +71,7 @@ class ContextAssembler:
                 retrieval_effectiveness={},
             )
 
+        retrieval_ms = (perf_counter() - retrieval_started) * 1000
         rag_context: list[dict[str, Any]] = []
         for source in bundle.rag_sources:
             rag_context.append(
@@ -78,14 +84,28 @@ class ContextAssembler:
                 }
             )
 
-        company_intelligence = await get_company_intelligence_orchestrator().get_context_for_prompt(org_id)
+        company_started = perf_counter()
+        try:
+            company_intelligence = await get_company_intelligence_orchestrator().get_context_for_prompt(org_id)
+        finally:
+            company_ms = (perf_counter() - company_started) * 1000
         external_context: dict[str, Any] = {}
+        research_ms = 0.0
         if classification.get("requires_web_search"):
-            external_context = await get_research_service(self.settings).research(
-                org_id,
-                request,
-                depth="standard",
-            )
+            research_started = perf_counter()
+            try:
+                external_context = await get_research_service(self.settings).research(
+                    org_id,
+                    request,
+                    depth="standard",
+                )
+            finally:
+                research_ms = (perf_counter() - research_started) * 1000
+        logger.info(
+            "eco003_context_stage_timing retrieval_ms=%.3f company_ms=%.3f research_ms=%.3f total_ms=%.3f retrieval_ok=%s research_requested=%s",
+            retrieval_ms, company_ms, research_ms, (perf_counter() - started) * 1000,
+            retrieval_ok, bool(classification.get("requires_web_search")),
+        )
 
         return {
             "rag_context": rag_context,
