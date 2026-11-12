@@ -1,6 +1,11 @@
 """ECO-002 correlated latency evidence acceptance."""
+import importlib
+import sys
+from pathlib import Path
 import pytest
-from scripts.eco002_correlated_latency_report import summarize
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / 'scripts'))
+summarize = importlib.import_module('eco002_correlated_latency_report').summarize
 
 
 def test_fixture_correlation_never_authorizes_optimization():
