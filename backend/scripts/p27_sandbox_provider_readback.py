@@ -44,7 +44,8 @@ def _request(url: str, *, token: str, method: str, payload=None):
         body = response.read(32768)
         if response.read(1):
             raise RuntimeError("provider response exceeds maximum size")
-        # REST DELETE commonly returns HTTP 204 with no JSON body.\n        return json.loads(body) if body else {}
+        # REST DELETE commonly returns HTTP 204 with no JSON body.
+        return json.loads(body) if body else {}
 
 
 def verify(*, base: str, allowed_host: str, token: str, approved: bool):
