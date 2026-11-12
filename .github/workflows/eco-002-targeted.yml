@@ -21,6 +21,6 @@ jobs:
       - name: Install isolated test dependencies
         run: python -m pip install pytest pytest-asyncio
       - name: Run five ECO-002 targeted tests
-        run: PYTHONPATH=backend python -m pytest -q backend/tests/master_qa/test_eco002_router_stage_timing.py
+        run: PYTHONPATH=backend python -m pytest --noconftest -q backend/tests/master_qa/test_eco002_router_stage_timing.py
       - name: Compile modified production modules
         run: python -m py_compile backend/app/services/router_stage_timing.py backend/app/services/intelligence_router.py
