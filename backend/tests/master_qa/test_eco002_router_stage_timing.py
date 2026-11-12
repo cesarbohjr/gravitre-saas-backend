@@ -4,7 +4,7 @@ import logging
 
 import pytest
 
-from app.services.router_stage_timing import timed_router_stage
+from app.services.router_stage_timing import timed_router_stage, router_sample
 
 
 @pytest.mark.asyncio
@@ -78,3 +78,32 @@ async def test_unknown_stage_rejected_without_running(monkeypatch):
     finally:
         coro.close()
     assert not ran
+
+
+@pytest.mark.asyncio
+async def test_synthetic_sample_correlates_and_resets(monkeypatch, caplog):
+    monkeypatch.setenv("GRAVITRE_ROUTER_STAGE_TIMING_ENABLED", "1")
+
+    async def operation():
+        await asyncio.sleep(0)
+        return "ok"
+
+    with caplog.at_level(logging.INFO):
+        with router_sample("ci-route-0001"):
+            assert await timed_router_stage("classification", "chat", operation()) == "ok"
+            assert await timed_router_stage("context", "chat", operation()) == "ok"
+        assert await timed_router_stage("enrichments", "chat", operation()) == "ok"
+    lines = [r.message for r in caplog.records if "router_stage_timing" in r.message]
+    assert len(lines) == 3
+    assert all("sample=ci-route-0001" in line for line in lines[:2])
+    assert "sample=" not in lines[2]
+
+
+@pytest.mark.asyncio
+async def test_sample_rejects_unbounded_or_private_identifiers():
+    with pytest.raises(ValueError, match="invalid synthetic sample identifier"):
+        with router_sample("contains@email.example"):
+            pass
+    with pytest.raises(ValueError, match="invalid synthetic sample identifier"):
+        with router_sample("x" * 49):
+            pass
