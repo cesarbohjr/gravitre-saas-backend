@@ -12,6 +12,7 @@ import argparse
 import json
 import os
 import re
+import time
 import urllib.error
 from urllib.parse import quote
 from uuid import uuid4
@@ -33,6 +34,17 @@ def _qa_domain_valid(domain: str) -> bool:
         and domain not in {"gmail.com", "outlook.com", "yahoo.com",
                            "hotmail.com", "icloud.com"}
     )
+
+
+def _get_with_bounded_404_retry(url: str, *, token: str, attempts: int = 5, delay: float = 0.75):
+    """Retry only eventual-consistency 404s; never retry a write or mask other errors."""
+    for attempt in range(attempts):
+        try:
+            return _request(url, token=token, method="GET")
+        except urllib.error.HTTPError as exc:
+            if exc.code != 404 or attempt == attempts - 1:
+                raise
+            time.sleep(delay)
 
 
 def verify_hubspot(*, token: str, portal_id: str, email_domain: str,
@@ -96,7 +108,7 @@ def verify_hubspot(*, token: str, portal_id: str, email_domain: str,
             BASE + "/crm/v3/objects/contacts/" + quote(email, safe="")
             + "?idProperty=email&properties=email,firstname,lastname"
         )
-        located = _request(by_email_url, token=token, method="GET")
+        located = _get_with_bounded_404_retry(by_email_url, token=token)
         fields = located.get("properties") if isinstance(located, dict) else None
         located_id = str(located.get("id") or "") if isinstance(located, dict) else ""
         if (not re.fullmatch(r"[0-9]+", located_id)
