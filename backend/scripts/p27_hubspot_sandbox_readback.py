@@ -83,11 +83,29 @@ def verify_hubspot(*, token: str, portal_id: str, email_domain: str,
         if written.get("status") != "COMPLETE":
             raise RuntimeError("HubSpot QA contact upsert incomplete")
         results = written.get("results")
-        if not isinstance(results, list) or len(results) != 1 or not results[0].get("id"):
-            raise RuntimeError("HubSpot QA contact id missing; inspect portal for marker " + marker)
-        contact_id = str(results[0]["id"])
-        if not re.fullmatch(r"[0-9]+", contact_id):
-            raise RuntimeError("non-numeric provider contact id")
+        # HubSpot may acknowledge a batch without returning a usable ID.
+        # Recover only by an authoritative lookup of our unique QA email;
+        # never infer an ID or operate on a non-owned contact.
+        response_id = (
+            str(results[0].get("id"))
+            if isinstance(results, list) and len(results) == 1
+            and isinstance(results[0], dict) and results[0].get("id")
+            else None
+        )
+        by_email_url = (
+            BASE + "/crm/v3/objects/contacts/" + quote(email, safe="")
+            + "?idProperty=email&properties=email,firstname,lastname"
+        )
+        located = _request(by_email_url, token=token, method="GET")
+        fields = located.get("properties") if isinstance(located, dict) else None
+        located_id = str(located.get("id") or "") if isinstance(located, dict) else ""
+        if (not re.fullmatch(r"[0-9]+", located_id)
+                or not isinstance(fields, dict)
+                or any(str(fields.get(k) or "") != v for k, v in properties.items())):
+            raise RuntimeError("HubSpot QA upsert not independently verified by unique email")
+        if response_id is not None and response_id != located_id:
+            raise RuntimeError("HubSpot QA upsert receipt conflicts with authoritative GET")
+        contact_id = located_id
 
         get_url = (BASE + "/crm/v3/objects/contacts/" + quote(contact_id, safe="")
                    + "?properties=email,firstname,lastname")
@@ -104,9 +122,17 @@ def verify_hubspot(*, token: str, portal_id: str, email_domain: str,
         readback()
         repeated = _request(upsert_url, token=token, method="POST", payload=payload)
         again = repeated.get("results")
-        if (repeated.get("status") != "COMPLETE" or not isinstance(again, list)
-                or len(again) != 1 or str(again[0].get("id")) != contact_id):
-            raise RuntimeError("HubSpot QA identical upsert created another contact")
+        if repeated.get("status") != "COMPLETE":
+            raise RuntimeError("HubSpot QA replay incomplete")
+        if (isinstance(again, list) and len(again) == 1
+                and isinstance(again[0], dict) and again[0].get("id")
+                and str(again[0]["id"]) != contact_id):
+            raise RuntimeError("HubSpot QA replay receipt changed contact ID")
+        # The same unique email must still resolve to exactly the original ID.
+        replay_record = _request(by_email_url, token=token, method="GET")
+        if (not isinstance(replay_record, dict)
+                or str(replay_record.get("id")) != contact_id):
+            raise RuntimeError("HubSpot QA replay changed email identity")
         readback()
     except Exception as exc:
         primary_error = exc
