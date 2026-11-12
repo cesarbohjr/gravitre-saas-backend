@@ -60,7 +60,7 @@ class ContextAssembler:
             )
         except Exception as exc:  # noqa: BLE001
             retrieval_ok = False
-            logger.warning("context_assembler_retrieve_failed org_id=%s error=%s", org_id, exc)
+            logger.warning("context_assembler_retrieve_failed error_type=%s", type(exc).__name__)
             bundle = SimpleNamespace(
                 rag_sources=[],
                 memory_context={},
