@@ -67,3 +67,64 @@ def test_sandbox_readback_fails_on_mismatched_authoritative_get(monkeypatch):
         readback.verify(base="https://sandbox.invalid",
                         allowed_host="sandbox.invalid",
                         token="fake-acceptance-token", approved=True)
+
+
+@pytest.mark.parametrize("body,expected", [
+    (b'{"portalId":343328749,"accountType":"STANDARD"}',
+     {"portalId": 343328749, "accountType": "STANDARD"}),
+    (b"", {}),
+])
+def test_http_helper_returns_decoded_json_or_empty_204(monkeypatch, body, expected):
+    """Exercise the actual shared HTTP helper, not a mocked _request."""
+    readback = _load_readback()
+
+    class FakeResponse:
+        def __init__(self):
+            self.read_count = 0
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_):
+            return False
+
+        def read(self, size):
+            self.read_count += 1
+            return body if self.read_count == 1 else b""
+
+    class FakeOpener:
+        def open(self, request, timeout):
+            assert timeout == 15
+            assert request.get_method() == "GET"
+            return FakeResponse()
+
+    monkeypatch.setattr(readback.urllib.request, "build_opener",
+                        lambda *handlers: FakeOpener())
+    result = readback._request("https://api.hubapi.com/account-info/v3/details",
+                               token="fake-acceptance-token", method="GET")
+    assert result == expected
+    assert isinstance(result, dict)
+
+
+def test_http_helper_rejects_oversized_provider_response(monkeypatch):
+    readback = _load_readback()
+
+    class FakeResponse:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_):
+            return False
+
+        def read(self, size):
+            return b'{"ok":true}' if size == 32768 else b"x"
+
+    class FakeOpener:
+        def open(self, request, timeout):
+            return FakeResponse()
+
+    monkeypatch.setattr(readback.urllib.request, "build_opener",
+                        lambda *handlers: FakeOpener())
+    with pytest.raises(RuntimeError, match="maximum size"):
+        readback._request("https://api.hubapi.com/account-info/v3/details",
+                          token="fake-acceptance-token", method="GET")
