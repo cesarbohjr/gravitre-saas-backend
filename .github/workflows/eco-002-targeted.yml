@@ -9,6 +9,7 @@ on:
       - 'backend/app/services/intelligence_router.py'
       - 'backend/tests/master_qa/test_eco002_router_stage_timing.py'
       - 'backend/scripts/eco002_stage_latency_report.py'
+      - 'backend/scripts/eco002_router_method_harness.py'
       - 'backend/tests/master_qa/test_eco002_stage_latency_report.py'
       - '.github/workflows/eco-002-targeted.yml'
 jobs:
@@ -28,3 +29,23 @@ jobs:
         run: PYTHONPATH=backend python backend/scripts/eco002_timer_overhead_benchmark.py
       - name: Compile modified production modules
         run: python -m py_compile backend/app/services/router_stage_timing.py backend/app/services/intelligence_router.py
+      - name: Execute 100 actual route-method fixture requests per scenario
+        run: |
+          PYTHONPATH=backend python backend/scripts/eco002_router_method_harness.py --samples 100 > /tmp/eco002-route.log 2>&1
+          python backend/scripts/eco002_stage_latency_report.py /tmp/eco002-route.log > /tmp/eco002-route-report.json
+          python - <<'PY'
+          import json
+          data=json.load(open('/tmp/eco002-route-report.json'))
+          assert data['correlated_trace_count'] == 200, data['correlated_trace_count']
+          assert data['sample_count'] >= 1000, data['sample_count']
+          print(json.dumps({'sample_count':data['sample_count'],'correlated_trace_count':data['correlated_trace_count'],'ranked_by_stage_p95':data['ranked_by_stage_p95'],'ranked_observed_stage_share':data['ranked_observed_stage_share']}, indent=2))
+          PY
+      - name: Upload offline router timing evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: eco002-offline-route-timings
+          path: |
+            /tmp/eco002-route.log
+            /tmp/eco002-route-report.json
+          if-no-files-found: ignore
