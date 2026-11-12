@@ -1,6 +1,6 @@
 """Fail-closed GitHub / HubSpot P27 dispatch identity and evidence guard.
 
-This file never writes to GitHub or HubSpot; reads GitHub PR/review and
+This file never writes to GitHub or HubSpot; reads GitHub PR head and
 environment protection metadata after checkout. No token or provider response log.
 """
 from __future__ import annotations
@@ -25,50 +25,50 @@ def require_protected_environment(metadata) -> None:
     """Verify the live environment, not merely its name in workflow YAML.
 
     GitHub enforces branch compatibility and deployment approval. This guard
-    additionally refuses provider writes if those controls have been removed
-    or cannot be inspected, even when an exact-head PR review exists.
+    additionally refuses provider writes if owner-only environment approval
+    or branch restrictions cannot be inspected.
     """
     if not isinstance(metadata, dict) or metadata.get("name") != ENVIRONMENT:
         raise RuntimeError("provider environment identity cannot be verified")
     rules = metadata.get("protection_rules")
     if not isinstance(rules, list):
         raise RuntimeError("provider environment reviewer protection missing")
-    independent_reviewer = False
+    owner_reviewer = False
     for rule in rules:
         if not isinstance(rule, dict) or rule.get("type") != "required_reviewers":
             continue
-        if rule.get("prevent_self_review") is not True:
+        # Owner explicitly authorized sole-reviewer control. The environment
+        # still requires manual approval; self-review prevention must be off.
+        if rule.get("prevent_self_review") is not False:
             continue
         reviewers = rule.get("reviewers")
-        if not isinstance(reviewers, list):
+        if not isinstance(reviewers, list) or len(reviewers) != 1:
             continue
-        for entry in reviewers:
-            if not isinstance(entry, dict):
-                continue
-            reviewer = entry.get("reviewer")
-            if not isinstance(reviewer, dict):
-                continue
-            if entry.get("type") == "User":
-                login = reviewer.get("login")
-                independent_reviewer |= (
-                    isinstance(login, str) and bool(login.strip())
-                    and login.casefold() != OWNER.casefold()
-                    and type(reviewer.get("id")) is int and reviewer["id"] > 0
-                )
-            elif entry.get("type") == "Team":
-                independent_reviewer |= type(reviewer.get("id")) is int and reviewer["id"] > 0
-    if not independent_reviewer:
-        raise RuntimeError("provider environment needs independent reviewers and prevention of self review")
+        entry = reviewers[0]
+        if not isinstance(entry, dict) or entry.get("type") != "User":
+            continue
+        reviewer = entry.get("reviewer")
+        owner_reviewer = (
+            isinstance(reviewer, dict)
+            and str(reviewer.get("login") or "").casefold() == OWNER
+            and type(reviewer.get("id")) is int
+            and reviewer["id"] > 0
+        )
+        if owner_reviewer:
+            break
+    if not owner_reviewer:
+        raise RuntimeError("provider environment requires sole owner reviewer with self review allowed")
     policy = metadata.get("deployment_branch_policy")
     if (not isinstance(policy, dict)
             or type(policy.get("protected_branches")) is not bool
             or type(policy.get("custom_branch_policies")) is not bool
-            or policy["protected_branches"] == policy["custom_branch_policies"]):
+            or policy["protected_branches"] is not False
+            or policy["custom_branch_policies"] is not True):
         raise RuntimeError("provider environment deployment branch policy missing or invalid")
 
 
 def check_dispatch(*, env: dict[str, str], checked_out_sha: str,
-                   fetch_head=None, approved_review=None, fetch_environment=None) -> dict:
+                   fetch_head=None, fetch_environment=None) -> dict:
     """Require owner, repo, exact immutable checkout and current PR HEAD."""
     event = env.get("GITHUB_EVENT_NAME", "")
     actor = env.get("GITHUB_ACTOR", "")
@@ -87,11 +87,14 @@ def check_dispatch(*, env: dict[str, str], checked_out_sha: str,
         head = fetch_head()
         if not SHA_RE.fullmatch(head) or head != expected:
             raise RuntimeError("PR head changed after owner label; refusing write")
-        if approved_review is not True:
-            raise RuntimeError("independent exact-head reviewer approval required")
+        if (env.get("GITHUB_EVENT_ACTION") != "labeled"
+                or env.get("OWNER_APPROVAL_LABEL") != "p27-hubspot-live-approved"):
+            raise RuntimeError("owner live approval label required")
     else:
         if env.get("GITHUB_REF") != "refs/heads/main" or pr_number != "0":
             raise RuntimeError("workflow_dispatch must run from main")
+        if env.get("OWNER_DISPATCH_APPROVAL") != "APPROVE_LIVE_TEST_CONTACT":
+            raise RuntimeError("explicit owner manual approval required")
     if fetch_environment is None:
         raise RuntimeError("cannot verify provider environment protection")
     require_protected_environment(fetch_environment())
@@ -128,40 +131,6 @@ def current_pr_head(token: str) -> str:
     return str(payload.get("head", {}).get("sha", ""))
 
 
-def current_independent_approval(token: str, expected_sha: str) -> bool:
-    """Require an independently submitted APPROVED review on this exact HEAD.
-
-    Never count PR author's review or a stale approval from another commit.
-    Last submitted review per reviewer is authoritative for that reviewer.
-    """
-    if not token:
-        raise RuntimeError("GitHub token required to read independent review")
-    url = f"https://api.github.com/repos/{REPO}/pulls/{PR}/reviews?per_page=100"
-    request = urllib.request.Request(
-        url, headers={"Authorization": "Bearer " + token,
-                      "Accept": "application/vnd.github+json",
-                      "User-Agent": "gravitre-p27-review-preflight"},
-    )
-    with urllib.request.urlopen(request, timeout=12) as response:
-        reviews = json.load(response)
-    return has_independent_exact_head_review(reviews, expected_sha)
-
-
-def has_independent_exact_head_review(reviews, expected_sha: str) -> bool:
-    if not isinstance(reviews, list) or len(reviews) >= 100:
-        raise RuntimeError("review listing incomplete; fail closed")
-    latest = {}
-    for item in reviews:
-        reviewer = (item.get("user") or {}).get("login")
-        if not reviewer or reviewer == OWNER:
-            continue
-        if item.get("state") in {"APPROVED", "CHANGES_REQUESTED", "DISMISSED"}:
-            latest[reviewer] = item
-    return any(r.get("state") == "APPROVED"
-               and r.get("commit_id") == expected_sha
-               for r in latest.values())
-
-
 def summarize(path: Path) -> dict:
     """Emit only success and bounded evidence, never credentials or markers."""
     obj = json.loads(path.read_text())
@@ -190,9 +159,6 @@ def main() -> int:
         env=dict(os.environ), checked_out_sha=actual,
         fetch_head=lambda: current_pr_head(os.getenv("GH_TOKEN", "")),
         fetch_environment=lambda: current_environment_protection(os.getenv("GH_TOKEN", "")),
-        approved_review=(current_independent_approval(
-            os.getenv("GH_TOKEN", ""), os.getenv("EXPECTED_HEAD_SHA", ""))
-            if os.getenv("GITHUB_EVENT_NAME") == "pull_request" else None),
     )
     print(json.dumps(data, sort_keys=True))
     return 0
