@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import logging
 import os
 import re
 import time
@@ -19,6 +20,7 @@ from uuid import uuid4
 
 from p27_sandbox_provider_readback import _request
 
+logger = logging.getLogger(__name__)
 BASE = "https://api.hubapi.com"
 GRAVITRE_HUBSPOT_PORTAL_ID = "343328749"
 QA_TYPES = frozenset({"DEVELOPER_TEST", "APP_DEVELOPER", "SANDBOX"})
@@ -92,6 +94,14 @@ def verify_hubspot(*, token: str, portal_id: str, email_domain: str,
     try:
         write_attempted = True
         written = _request(upsert_url, token=token, method="POST", payload=payload)
+        logger.warning(
+            "p27_upsert_receipt status=%s result_count=%s has_result_id=%s",
+            str(written.get("status"))[:32] if isinstance(written, dict) else "invalid",
+            len(written.get("results")) if isinstance(written, dict) and isinstance(written.get("results"), list) else -1,
+            bool(isinstance(written, dict) and isinstance(written.get("results"), list)
+                 and len(written["results"]) == 1 and isinstance(written["results"][0], dict)
+                 and written["results"][0].get("id")),
+        )
         if written.get("status") != "COMPLETE":
             raise RuntimeError("HubSpot QA contact upsert incomplete")
         results = written.get("results")
@@ -108,7 +118,12 @@ def verify_hubspot(*, token: str, portal_id: str, email_domain: str,
             BASE + "/crm/v3/objects/contacts/" + quote(email, safe="")
             + "?idProperty=email&properties=email,firstname,lastname"
         )
-        located = _get_with_bounded_404_retry(by_email_url, token=token)
+        try:
+            located = _get_with_bounded_404_retry(by_email_url, token=token)
+        except urllib.error.HTTPError as exc:
+            logger.error("p27_readback_failure http_status=%d receipt_id_present=%s",
+                         exc.code, response_id is not None)
+            raise
         fields = located.get("properties") if isinstance(located, dict) else None
         located_id = str(located.get("id") or "") if isinstance(located, dict) else ""
         if (not re.fullmatch(r"[0-9]+", located_id)
