@@ -1,8 +1,11 @@
 """P27: transient read-after-write 404s cannot trigger another write."""
 import urllib.error
-from unittest.mock import Mock
+import importlib
+import sys
+from pathlib import Path
 import pytest
-from scripts import p27_hubspot_sandbox_readback as mod
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / 'scripts'))
+mod = importlib.import_module('p27_hubspot_sandbox_readback')
 
 
 def test_transient_404_is_bounded_and_read_only(monkeypatch):
