@@ -34,7 +34,8 @@ def _fake_hubspot_api(*, portal=PORTAL, account_type="STANDARD",
             assert item["idProperty"] == "email"
             assert item["id"] == item["properties"]["email"]
             assert item["properties"]["email"].startswith("p27qa")
-            assert item["properties"]["lastname"] == item["objectWriteTraceId"]
+            assert "objectWriteTraceId" not in item
+            assert item["properties"]["lastname"] == item["properties"]["email"].split("@", 1)[0]
             state["properties"] = dict(item["properties"])
             count = len([m for m, _, _ in seen if m == "POST"])
             if first_upsert_fails and count == 1:
