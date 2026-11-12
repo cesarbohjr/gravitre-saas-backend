@@ -25,3 +25,15 @@ def test_rejects_fixture_provenance_and_empty_logs():
         module.summarize([], provenance="fixture")
     with pytest.raises(ValueError, match="no emitted"):
         module.summarize([], provenance="verified_nonproduction")
+
+
+def test_acceptance_report_requires_sufficient_samples_per_scenario():
+    lines = [
+        "eco003_context_stage_timing retrieval_ms=20 company_ms=10 research_ms=0 total_ms=35 retrieval_ok=True research_requested=False",
+        "eco003_context_stage_timing retrieval_ms=30 company_ms=15 research_ms=50 total_ms=100 retrieval_ok=True research_requested=True",
+    ]
+    with pytest.raises(ValueError, match="insufficient observations for"):
+        module.summarize(lines, provenance="verified_nonproduction", min_samples=2)
+    assert module.summarize(lines[:1] * 2, provenance="verified_nonproduction", min_samples=2)["scenarios"]["no_research"]["samples"] == 2
+    with pytest.raises(ValueError, match="min_samples"):
+        module.summarize(lines, provenance="verified_nonproduction", min_samples=0)
