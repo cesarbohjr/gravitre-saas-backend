@@ -163,14 +163,14 @@ class IntelligenceRouter:
             class_is_estimate = bool(classification.get("confidence_is_estimate", True))
             class_source = str(classification.get("confidence_source") or "heuristic")
 
-        clarification = await self._clarification.should_clarify(
+        clarification = await timed_router_stage("clarification", surface, self._clarification.should_clarify(
             classification,
             {},
             conversation_history,
             conversation_id=conversation_id,
             org_id=org_id,
             understanding=understanding,
-        )
+        ))
         if clarification["should_clarify"]:
             wrapped = get_ai_trust_layer().wrap_response(
                 answer=clarification["question"] or "Could you clarify?",
@@ -197,13 +197,13 @@ class IntelligenceRouter:
         risk_evaluation: dict[str, Any] = {"requires_approval": False, "can_proceed_without_approval": True}
         if classification.get("requires_action"):
             action = {"type": classification.get("intent"), "estimated_impact": "medium", "is_destructive": False}
-            risk_evaluation = await self._risk_evaluator.evaluate(
+            risk_evaluation = await timed_router_stage("risk_evaluation", surface, self._risk_evaluator.evaluate(
                 org_id,
                 user_id,
                 action,
                 classification,
                 {},
-            )
+            ))
 
         policy = get_dialogue_policy_engine(
             clarification_threshold=float(dialogue_settings.get("clarification_threshold") or 0.65),
