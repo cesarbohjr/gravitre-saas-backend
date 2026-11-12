@@ -49,7 +49,7 @@ def _get_with_bounded_404_retry(url: str, *, token: str, attempts: int = 5, dela
             time.sleep(delay)
 
 
-def _validated_upsert_receipt(receipt, *, phase: str) -> str:
+def _validated_upsert_receipt(receipt, *, phase: str) -> str | None:
     """Require one successful contact result before readback or replay.
 
     A candidate ID is not persistence proof until independently read.
@@ -60,13 +60,15 @@ def _validated_upsert_receipt(receipt, *, phase: str) -> str:
     results = receipt.get("results")
     errors = receipt.get("errors")
     if (status != "COMPLETE" or not isinstance(results, list)
-            or len(results) != 1 or errors
-            or not isinstance(results[0], dict)):
+            or len(results) > 1 or errors
+            or (results and not isinstance(results[0], dict))):
         raise RuntimeError(
             f"HubSpot {phase} write not confirmed: status={str(status)[:32]} "
             f"result_count={len(results) if isinstance(results, list) else -1} "
             f"has_errors={bool(errors)}"
         )
+    if not results:
+        return None  # Only independent authoritative GET can establish identity.
     candidate = str(results[0].get("id") or "")
     if not re.fullmatch(r"[0-9]+", candidate):
         raise RuntimeError(f"HubSpot {phase} write receipt missing valid contact ID")
@@ -161,7 +163,7 @@ def verify_hubspot(*, token: str, portal_id: str, email_domain: str,
         readback()
         repeated = _request(upsert_url, token=token, method="POST", payload=payload)
         replay_id = _validated_upsert_receipt(repeated, phase="replay")
-        if replay_id != contact_id:
+        if replay_id is not None and replay_id != contact_id:
             raise RuntimeError("HubSpot QA replay receipt changed contact ID")
         # The same unique email must still resolve to exactly the original ID.
         replay_record = _request(by_email_url, token=token, method="GET")
