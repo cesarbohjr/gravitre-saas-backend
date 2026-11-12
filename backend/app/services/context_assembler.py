@@ -85,11 +85,8 @@ class ContextAssembler:
             )
 
         company_started = perf_counter()
-        company_ok = False
-        research_ok = True
         try:
             company_intelligence = await get_company_intelligence_orchestrator().get_context_for_prompt(org_id)
-            company_ok = True
         finally:
             company_ms = (perf_counter() - company_started) * 1000
         external_context: dict[str, Any] = {}
@@ -102,9 +99,6 @@ class ContextAssembler:
                     request,
                     depth="standard",
                 )
-            except Exception:
-                research_ok = False
-                raise
             finally:
                 research_ms = (perf_counter() - research_started) * 1000
         logger.info(
