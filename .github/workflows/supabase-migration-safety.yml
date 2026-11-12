@@ -477,13 +477,14 @@ jobs:
           PYTHON: python
         run: npx playwright test --config playwright.billing.acceptance.config.ts
       - name: Upload sanitized billing acceptance evidence
-        if: always() && startsWith(github.head_ref, 'fix/billing-acceptance')
+        if: always() && steps.gate.outputs.billing == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: billing-isolated-acceptance
           path: |
             test-results/billing-acceptance-summary.json
             test-results/**/*.png
+            test-results/**/error-context.md
           if-no-files-found: warn
 
       - name: Remote staging reconcile (when configured)
