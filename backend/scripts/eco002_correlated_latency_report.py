@@ -54,7 +54,7 @@ def summarize(lines, *, provenance="fixture"):
         "model_provider_observed": model_seen,
         "governed_execution_observed": provider_seen,
         "actual_external_provider_observed": False,
-        "eligible_for_optimization": provenance == "verified_nonproduction" and model_seen and provider_seen and not incomplete,
+        "eligible_for_optimization": False,  # External provider I/O and authorization evidence not yet established.
         "caveat": "Stage boundaries may overlap; never subtract summed stage times from wall clock. Execution stage does not establish external provider I/O. Fixture traces are not live latency evidence.",
     }
 
