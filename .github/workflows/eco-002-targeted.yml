@@ -7,6 +7,9 @@ on:
     paths:
       - 'backend/app/services/router_stage_timing.py'
       - 'backend/app/services/intelligence_router.py'
+      - 'backend/app/services/model_router.py'
+      - 'backend/scripts/eco002_correlated_latency_report.py'
+      - 'backend/tests/master_qa/test_eco002_correlated_latency_report.py'
       - 'backend/tests/master_qa/test_eco002_router_stage_timing.py'
       - 'backend/scripts/eco002_stage_latency_report.py'
       - 'backend/scripts/eco002_router_method_harness.py'
@@ -24,11 +27,11 @@ jobs:
       - name: Install isolated test dependencies
         run: python -m pip install pytest pytest-asyncio
       - name: Run ECO-002 targeted tests
-        run: PYTHONPATH=backend python -m pytest --noconftest -q backend/tests/master_qa/test_eco002_router_stage_timing.py backend/tests/master_qa/test_eco002_stage_latency_report.py
+        run: PYTHONPATH=backend python -m pytest --noconftest -q backend/tests/master_qa/test_eco002_router_stage_timing.py backend/tests/master_qa/test_eco002_stage_latency_report.py backend/tests/master_qa/test_eco002_correlated_latency_report.py
       - name: Measure CI instrumentation overhead (not actual routing latency)
         run: PYTHONPATH=backend python backend/scripts/eco002_timer_overhead_benchmark.py
       - name: Compile modified production modules
-        run: python -m py_compile backend/app/services/router_stage_timing.py backend/app/services/intelligence_router.py
+        run: python -m py_compile backend/app/services/router_stage_timing.py backend/app/services/intelligence_router.py backend/app/services/model_router.py backend/scripts/eco002_correlated_latency_report.py
       - name: Execute 100 actual route-method fixture requests per scenario
         run: |
           PYTHONPATH=backend python backend/scripts/eco002_router_method_harness.py --samples 100 > /tmp/eco002-route.log 2>&1
@@ -69,6 +72,10 @@ jobs:
               json.dump(wall_summary,output,indent=2)
           print(json.dumps({'correlated_trace_count':data['correlated_trace_count'],'wall_clock_samples':len(walls),'wall_summary':wall_summary,'stage_rankings':data['ranked_by_stage_p95']}, indent=2))
           PY
+      - name: Correlate 300 fixture traces with wall-clock timings
+        run: |
+          PYTHONPATH=backend python backend/scripts/eco002_correlated_latency_report.py /tmp/eco002-delayed-route.log > /tmp/eco002-correlated-report.json
+          python -c 'import json; d=json.load(open("/tmp/eco002-correlated-report.json")); assert d["request_count"]==300; assert set(d["scenarios"])=={"clarification","knowledge","governed_action"}; assert not d["eligible_for_optimization"]; print(d["scenarios"])'
       - name: Upload offline router timing evidence
         if: always()
         uses: actions/upload-artifact@v4
@@ -80,4 +87,5 @@ jobs:
             /tmp/eco002-delayed-route.log
             /tmp/eco002-delayed-report.json
             /tmp/eco002-wall-summary.json
+            /tmp/eco002-correlated-report.json
           if-no-files-found: ignore
