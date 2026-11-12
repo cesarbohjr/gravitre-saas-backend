@@ -22,5 +22,7 @@ jobs:
         run: python -m pip install pytest pytest-asyncio
       - name: Run five ECO-002 targeted tests
         run: PYTHONPATH=backend python -m pytest --noconftest -q backend/tests/master_qa/test_eco002_router_stage_timing.py
+      - name: Measure CI instrumentation overhead (not actual routing latency)
+        run: PYTHONPATH=backend python backend/scripts/eco002_timer_overhead_benchmark.py
       - name: Compile modified production modules
         run: python -m py_compile backend/app/services/router_stage_timing.py backend/app/services/intelligence_router.py
