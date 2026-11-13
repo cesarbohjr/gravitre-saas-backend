@@ -11,6 +11,7 @@ from __future__ import annotations
 import json
 from contextlib import ExitStack
 import time
+from time import perf_counter
 import urllib.request
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -227,13 +228,41 @@ def test_signed_approved_chat_http_matches_independent_receiver_and_durable_ledg
                     ):
                         patch_stack.enter_context(context)
                     http = TestClient(app)
-                    responses = [
-                        http.post(
-                            f"/api/assistant/conversation/{CONVERSATION}/execute",
-                            json={"confirm": True},
-                            headers={"Authorization": f"Bearer {token}"},
-                        ) for _ in range(2)
-                    ]
+                    # ECO-002: measure real signed HTTP ingress through the
+                    # independent receiver and SQL-confirmed terminal ledger.
+                    start = perf_counter()
+                    first = http.post(
+                        f"/api/assistant/conversation/{CONVERSATION}/execute",
+                        json={"confirm": True},
+                        headers={"Authorization": f"Bearer {token}"},
+                    )
+                    http_ms = (perf_counter() - start) * 1000
+                    assert first.status_code == 200 and first.json()["success"]
+                    assert keys and receiver.writes == 1
+                    assert pg.value(
+                        "SELECT status FROM public.write_invoke_idempotency "
+                        f"WHERE org_id='{ORG_A}' AND idempotency_key='{keys[0]}'"
+                    ) == "completed"
+                    verified_ms = (perf_counter() - start) * 1000
+                    print(
+                        f"eco002_ingress_ledger surface=chat outcome=completed "
+                        f"provenance=isolated_receiver samples=1 "
+                        f"ingress_ms={http_ms:.3f} verified_ms={verified_ms:.3f}",
+                        flush=True,
+                    )
+                    replay_start = perf_counter()
+                    replay = http.post(
+                        f"/api/assistant/conversation/{CONVERSATION}/execute",
+                        json={"confirm": True},
+                        headers={"Authorization": f"Bearer {token}"},
+                    )
+                    print(
+                        f"eco002_ingress_ledger surface=chat outcome=replay "
+                        f"provenance=isolated_receiver samples=1 "
+                        f"ingress_ms={(perf_counter() - replay_start) * 1000:.3f}",
+                        flush=True,
+                    )
+                    responses = [first, replay]
                 assert all(r.status_code == 200 for r in responses), [
                     (r.status_code, r.text) for r in responses
                 ]

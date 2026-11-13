@@ -37,6 +37,7 @@ from app.services.outcome_tracker import get_outcome_tracker
 from app.services.proactive_guidance_service import get_proactive_guidance_service
 from app.services.risk_approval_evaluator import get_risk_approval_evaluator
 from app.services.sentiment_friction_service import get_sentiment_friction_service
+from app.services.router_stage_timing import timed_router_stage
 from app.services.task_classifier import get_task_classifier
 from app.services.tool_connector_selector import get_tool_connector_selector
 
@@ -119,35 +120,37 @@ class IntelligenceRouter:
         conversation_history: list[dict] | None = None,
         conversation_id: str | None = None,
     ) -> dict[str, Any]:
+        from app.services.router_stage_timing import record_router_request_shape
+        record_router_request_shape(request, len(conversation_history or []), surface)
         from app.services.intelligence_overview_policy import load_overview_policy
         from app.core.io_pool import run_io
-        overview_policy = await run_io(lambda: load_overview_policy(org_id, self.settings))
-        dialogue_settings = await load_chat_dialogue_settings(org_id, self.settings)
+        overview_policy = await timed_router_stage("overview_policy", surface, run_io(lambda: load_overview_policy(org_id, self.settings)))
+        dialogue_settings = await timed_router_stage("dialogue_settings", surface, load_chat_dialogue_settings(org_id, self.settings))
         sentiment = (
             self._sentiment.analyze(request, conversation_history or [])
             if dialogue_settings.get("sentiment_detection_enabled", True)
             else {"recommended_adaptation": "none", "frustration_score": 0.0}
         )
 
-        understanding = await self._understanding.understand(
+        understanding = await timed_router_stage("understanding", surface, self._understanding.understand(
             request,
             conversation_history,
             org_id,
-        )
-        classification = await self._task_classifier.classify(
+        ))
+        classification = await timed_router_stage("classification", surface, self._task_classifier.classify(
             org_id,
             request,
             conversation_history,
             understanding=understanding,
-        )
+        ))
         from app.services.knowledge_intelligence_service import enrich_classification_with_query_cluster
 
-        classification = await enrich_classification_with_query_cluster(
+        classification = await timed_router_stage("query_cluster", surface, enrich_classification_with_query_cluster(
             classification,
             org_id,
             request,
             self.settings,
-        )
+        ))
         raw_class_conf = classification.get("classification_confidence")
         # Prefer real classification score; heuristic default is explicitly labeled below.
         if raw_class_conf is None:
@@ -162,14 +165,14 @@ class IntelligenceRouter:
             class_is_estimate = bool(classification.get("confidence_is_estimate", True))
             class_source = str(classification.get("confidence_source") or "heuristic")
 
-        clarification = await self._clarification.should_clarify(
+        clarification = await timed_router_stage("clarification", surface, self._clarification.should_clarify(
             classification,
             {},
             conversation_history,
             conversation_id=conversation_id,
             org_id=org_id,
             understanding=understanding,
-        )
+        ))
         if clarification["should_clarify"]:
             wrapped = get_ai_trust_layer().wrap_response(
                 answer=clarification["question"] or "Could you clarify?",
@@ -188,7 +191,7 @@ class IntelligenceRouter:
                 wrapped["entities"] = understanding["entities"]
             return wrapped
 
-        context = await self._context_assembler.assemble(org_id, user_id, request, classification)
+        context = await timed_router_stage("context", surface, self._context_assembler.assemble(org_id, user_id, request, classification))
         context.update(understanding=understanding, sentiment=sentiment,
                        sentiment_detection_enabled=dialogue_settings.get("sentiment_detection_enabled", True))
         context["connected_integrations"] = context.get("connected_integrations") or []
@@ -196,13 +199,13 @@ class IntelligenceRouter:
         risk_evaluation: dict[str, Any] = {"requires_approval": False, "can_proceed_without_approval": True}
         if classification.get("requires_action"):
             action = {"type": classification.get("intent"), "estimated_impact": "medium", "is_destructive": False}
-            risk_evaluation = await self._risk_evaluator.evaluate(
+            risk_evaluation = await timed_router_stage("risk_evaluation", surface, self._risk_evaluator.evaluate(
                 org_id,
                 user_id,
                 action,
                 classification,
                 {},
-            )
+            ))
 
         policy = get_dialogue_policy_engine(
             clarification_threshold=float(dialogue_settings.get("clarification_threshold") or 0.65),
@@ -233,8 +236,8 @@ class IntelligenceRouter:
                 wrapped["entities"] = understanding["entities"]
             return wrapped
 
-        model_selection = await self._model_selector.select(org_id, classification)
-        enrichments = await self._run_enrichments(org_id, request, classification, {**context, "overview_policy": overview_policy})
+        model_selection = await timed_router_stage("model_selection", surface, self._model_selector.select(org_id, classification))
+        enrichments = await timed_router_stage("enrichments", surface, self._run_enrichments(org_id, request, classification, {**context, "overview_policy": overview_policy}))
         enrichments["policy_modes"] = overview_policy
         if (context.get("external_context") or {}).get("findings"):
             enrichments = {**enrichments, "web": context["external_context"]}
@@ -242,7 +245,7 @@ class IntelligenceRouter:
         segment_key = parse_segment_key(classification)
 
         if classification.get("requires_action"):
-            result = await self._route_to_execution(
+            result = await timed_router_stage("execution", surface, self._route_to_execution(
                 org_id,
                 user_id,
                 request,
@@ -253,9 +256,9 @@ class IntelligenceRouter:
                 surface,
                 strategy_key=strategy_key,
                 segment_key=segment_key,
-            )
+            ))
         else:
-            result = await self._route_to_knowledge_response(
+            result = await timed_router_stage("knowledge_response", surface, self._route_to_knowledge_response(
                 org_id,
                 user_id,
                 request,
@@ -266,7 +269,7 @@ class IntelligenceRouter:
                 surface,
                 strategy_key=strategy_key,
                 segment_key=segment_key,
-            )
+            ))
 
         result["strategy_key"] = strategy_key
         result["segment_key"] = segment_key

@@ -399,8 +399,10 @@ class ModelRouter:
             with trace_span(
                 "model_router.complete", task_type=task_type.value, org_id=org_id
             ):
-                result = await run_failover(
-                    self._adapters, priority, messages, options, self._breaker
+                from app.services.router_stage_timing import timed_router_stage
+                result = await timed_router_stage(
+                    "model_provider", "api",
+                    run_failover(self._adapters, priority, messages, options, self._breaker),
                 )
         except ProviderInvalidResponseError as exc:
             self._log_call_failure(task_type, model, "varied", start, exc)

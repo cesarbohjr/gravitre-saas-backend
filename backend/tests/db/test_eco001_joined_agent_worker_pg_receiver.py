@@ -9,6 +9,7 @@ from __future__ import annotations
 from contextlib import ExitStack
 import json
 import urllib.request
+from time import perf_counter
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
@@ -129,11 +130,33 @@ def test_authorized_agent_worker_matches_independent_receiver_and_durable_ledger
                 stack.enter_context(patch("app.services.write_invoke_idempotency.finalize_write_invoke",
                                           side_effect=finalize))
                 stack.enter_context(patch("app.workers.workflow_queue.assert_current_workflow_claim_live"))
+                # ECO-002: real worker/handler/invoke boundary, then independent
+                # SQL readback. This single diagnostic is not a p95 baseline.
+                start = perf_counter()
                 assert process_workflow_run_job(settings, raw_job) is True
-                assert receiver.writes == 1
-                # Replay takes the same production worker -> handler -> invoke path,
-                # but the durable claim prevents a second HTTP provider write.
+                worker_ms = (perf_counter() - start) * 1000
+                assert receiver.writes == 1 and keys
+                assert pg.value(
+                    "SELECT status FROM public.write_invoke_idempotency "
+                    f"WHERE org_id='{ORG_A}' AND idempotency_key='{keys[0]}'"
+                ) == "completed"
+                verified_ms = (perf_counter() - start) * 1000
+                print(
+                    f"eco002_ingress_ledger surface=agent outcome=completed "
+                    f"provenance=isolated_receiver samples=1 "
+                    f"ingress_ms={worker_ms:.3f} verified_ms={verified_ms:.3f}",
+                    flush=True,
+                )
+                # Replay uses the same production worker -> handler -> invoke
+                # path; the durable claim must prevent a second provider write.
+                replay_start = perf_counter()
                 process_workflow_run_job(settings, raw_job)
+                print(
+                    f"eco002_ingress_ledger surface=agent outcome=replay "
+                    f"provenance=isolated_receiver samples=1 "
+                    f"ingress_ms={(perf_counter() - replay_start) * 1000:.3f}",
+                    flush=True,
+                )
                 assert receiver.writes == 1
             assert len(keys) == 2 and keys[0] == keys[1]
             assert pg.value(
