@@ -68,3 +68,40 @@ async def timed_router_stage(stage: str, surface: str, operation: Awaitable[T]) 
         except Exception:
             # Observability is non-authoritative and must never break routing.
             pass
+
+
+def record_router_request_shape(request: str, history_count: int, surface: str) -> None:
+    """Emit only bounded request-size buckets for an explicitly correlated sample.
+
+    No text, identity, content hashes, or conversation identifiers leave here.
+    Requests without a synthetic trace sample never generate a shape record.
+    """
+    if os.getenv("GRAVITRE_ROUTER_STAGE_TIMING_ENABLED") != "1":
+        return
+    sample_id = _REQUEST_SAMPLE.get()
+    if sample_id is None:
+        return
+    try:
+        request_bytes = len(request.encode("utf-8"))
+        # Logarithmic buckets avoid per-request sensitive exact-length fingerprints.
+        def bucket(value: int) -> str:
+            if value <= 0:
+                return "zero"
+            if value <= 128:
+                return "1_128"
+            if value <= 512:
+                return "129_512"
+            if value <= 2048:
+                return "513_2048"
+            if value <= 8192:
+                return "2049_8192"
+            return "8193_plus"
+
+        safe_surface = surface if surface in _SURFACES else "other"
+        _LOG.info(
+            "eco002_request_shape sample=%s surface=%s request_bytes_bucket=%s history_count_bucket=%s",
+            sample_id, safe_surface, bucket(request_bytes), bucket(max(0, history_count)),
+        )
+    except Exception:
+        # Metrics may never alter the route or leak request data on error.
+        pass
