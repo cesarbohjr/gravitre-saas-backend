@@ -23,3 +23,16 @@
 - PR #611 helper fix `ce68f98`: General CI 43163057076 PASS; Master QA P0 43163057125 PASS.
 - Protected P27 HubSpot retest: pending **fresh explicit owner authorization**. This branch must not trigger or reuse it.
 - ECO-001: NOT CERTIFIED; no merge, deployment or register PASS authorized.
+
+
+## Entry-point and measurement provenance checkpoint (2026-11-12)
+
+**Source-derived paths, not production traffic proof:**
+
+- Full `IntelligenceRouter.route` executes in series: overview policy → dialogue settings → understanding → classification → query cluster → clarification; non-clarification turns continue through context, optional risk evaluation, policy/mode decision, model selection → optional enrichments → knowledge response or governed-action proposal. Some optional enrichment tasks already use bounded `asyncio.gather`. This DAG is conditional: no assumption that all stages execute on every turn.
+- Actual assistant/agent execution authority remains `AgentIntelligence`; `ChatIntelligenceFacade` reuses *helper methods* such as `_run_enrichments`, not automatically the full `IntelligenceRouter.route` pipeline. The 300 fixture runs exercise the extracted real route method with replaced collaborators. They do **not** measure full authenticated HTTP Chat, the worker, voice audio, an external model, or actual connector/provider latency.
+- PostgreSQL/Redis probes use real disposable CI service containers, but are not time inside actual router entrypoints. They must not be added to fixture stage latency and represented as end-to-end latency.
+
+**New request-shape evidence:** opt-in, sampled route-method traces emit only a logarithmic UTF-8 request-byte bucket and a conversation-history-count bucket, tied to a synthetic 48-character sample label. No prompt, context payload, org/user ID, query hash, or token is logged. The targeted CI validates one shape record per each of 300 wall-clock fixture traces; orphan/missing/duplicate shape records fail correlation. This does not yet measure assembled model context/token size or time-to-first-audio.
+
+**Unmet end-to-end gate:** establish an explicitly authorized nonproduction Chat/Agent ingress harness with real mounted request paths, retained governance/approval decisions, trace-scoped monotonic boundaries around actual model calls and finalization, and independently observed persisted outcome. For voice, preserve PR #610 ownership of acoustic TTFA evidence. Require at least 100 samples per measured scenario or document the reason for a smaller sample, include p50/p95, test-environment provenance, request/context-size buckets, incomplete/error sample counts, and actual critical-path dependency evidence. No parallelization, release/merge, or ECO-002 closure from the fixture-only results.
