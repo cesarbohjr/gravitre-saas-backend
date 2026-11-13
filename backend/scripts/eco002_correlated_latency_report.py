@@ -14,13 +14,22 @@ from pathlib import Path
 from eco002_stage_latency_report import percentile
 
 WALL = re.compile(r"eco002_request_wall scenario=(?P<scenario>[a-z_]+) sample=(?P<sample>[A-Za-z0-9_-]{1,48}) duration_ms=(?P<ms>[0-9.]+)")
+SHAPE = re.compile(r"eco002_request_shape sample=(?P<sample>[A-Za-z0-9_-]{1,48}) surface=(?P<surface>[a-z_]+) request_bytes_bucket=(?P<request>[a-z0-9_]+) history_count_bucket=(?P<history>[a-z0-9_]+)")
 STAGE = re.compile(r"router_stage_timing stage=(?P<stage>[a-z_]+) surface=(?P<surface>[a-z_]+) outcome=(?P<outcome>ok|error) duration_ms=(?P<ms>[0-9.]+) sample=(?P<sample>[A-Za-z0-9_-]{1,48})")
 
 
-def summarize(lines, *, provenance="fixture"):
+def summarize(lines, *, provenance="fixture", require_shapes=False):
     walls = {}
     stages = defaultdict(list)
+    shapes = {}
+    duplicate_shapes = set()
     for line in lines:
+        shape = SHAPE.search(line)
+        if shape:
+            sample_id = shape["sample"]
+            if sample_id in shapes:
+                duplicate_shapes.add(sample_id)
+            shapes[sample_id] = (shape["surface"], shape["request"], shape["history"])
         m = WALL.search(line)
         if m:
             key = m["sample"]
@@ -54,6 +63,13 @@ def summarize(lines, *, provenance="fixture"):
         return {"count": len(values), "p50_ms": round(percentile(values, .5), 3),
                 "p95_ms": round(percentile(values, .95), 3)}
     orphan_samples = sorted(set(stages) - set(walls))
+    orphan_shapes = sorted(set(shapes) - set(walls))
+    missing_shapes = sorted(set(walls) - set(shapes))
+    request_shapes = defaultdict(lambda: defaultdict(int))
+    for sample, (surface, request_bucket, history_bucket) in shapes.items():
+        if sample in walls:
+            scenario = walls[sample][0]
+            request_shapes[scenario][f"{surface}/{request_bucket}/{history_bucket}"] += 1
     model_seen = any(stage == "model_provider" for (_, stage) in by_boundary)
     provider_seen = any(stage == "execution" for (_, stage) in by_boundary)
     return {
@@ -64,8 +80,13 @@ def summarize(lines, *, provenance="fixture"):
         "unmatched_request_count": len(incomplete),
         "orphan_stage_sample_count": len(orphan_samples),
         "failed_request_count": len(failed_requests),
+        "shape_coverage_count": len(set(walls) & set(shapes)),
+        "missing_shape_count": len(missing_shapes),
+        "orphan_shape_count": len(orphan_shapes),
+        "duplicate_shape_count": len(duplicate_shapes),
+        "request_shape_buckets": {k: dict(sorted(v.items())) for k, v in sorted(request_shapes.items())},
         "invalid_duration_count": len(invalid_durations),
-        "correlation_complete": bool(walls) and not (incomplete or orphan_samples or invalid_durations),
+        "correlation_complete": bool(walls) and not (incomplete or orphan_samples or invalid_durations or (require_shapes and (missing_shapes or orphan_shapes or duplicate_shapes))),
         "model_provider_observed": model_seen,
         "governed_execution_observed": provider_seen,
         "actual_external_provider_observed": False,
@@ -79,8 +100,9 @@ def main():
     parser.add_argument("log", type=Path)
     parser.add_argument("--provenance", choices=("fixture", "verified_nonproduction"), default="fixture")
     parser.add_argument("--require-live", action="store_true")
+    parser.add_argument("--require-shapes", action="store_true", help="Require one privacy-safe request-shape record per wall-clock trace")
     args = parser.parse_args()
-    result = summarize(args.log.read_text().splitlines(), provenance=args.provenance)
+    result = summarize(args.log.read_text().splitlines(), provenance=args.provenance, require_shapes=args.require_shapes)
     print(json.dumps(result, indent=2, sort_keys=True))
     if not result["correlation_complete"]:
         raise SystemExit("Missing, orphaned, or invalid router timing traces")
