@@ -137,7 +137,50 @@ test("customer completes real sandbox checkout and signed webhook persists subsc
   // Exercise card checkout without enrolling in optional Link/SMS signup.
   const saveWithLink = page.getByRole("checkbox", { name: /Save my information|Save my payment/i })
   if (await saveWithLink.isVisible()) await saveWithLink.uncheck()
-  await page.getByRole("button", { name: /Start trial|Subscribe|Start free trial/i }).click()
+  // The previous failure artifact did not include the button in the 720px
+  // viewport and its error-context.md contained no DOM snapshot. Inspect
+  // rendered button metadata across Checkout frames, without copying inputs,
+  // payment values, identity, cookies, tokens, or arbitrary page content.
+  const submitCandidates = async () => {
+    const matches: ReturnType<typeof page.locator>[] = []
+    const diagnostics: Array<{ frame: number; buttons: Array<{ type: string; label: string; testid: string }> }> = []
+    for (const [index, frame] of page.frames().entries()) {
+      const buttons = await frame.locator('button:visible, input[type="submit"]:visible')
+        .evaluateAll((els) => els.slice(0, 32).map((el) => ({
+          type: el.getAttribute("type") || "",
+          label: (el.getAttribute("aria-label") || el.textContent || "")
+            .replace(/[^a-zA-Z0-9 $-]/g, " ").trim().slice(0, 80),
+          testid: (el.getAttribute("data-testid") || "").slice(0, 80),
+        })))
+        .catch(() => [])
+      diagnostics.push({ frame: index, buttons })
+      // Stripe's card Checkout submit is part of a form. The semantic submit
+      // attribute is stable across marketing-label changes and secure frames.
+      const candidate = frame.locator(
+        'button[type="submit"]:visible, input[type="submit"]:visible, button[data-testid="hosted-payment-submit-button"]:visible'
+      )
+      const count = await candidate.count()
+      if (count > 1) throw new Error("Ambiguous Stripe checkout submit controls in one frame")
+      if (count === 1) matches.push(candidate)
+    }
+    return { matches, diagnostics }
+  }
+  let checkoutSubmit: ReturnType<typeof page.locator> | undefined
+  await expect.poll(async () => {
+    const { matches, diagnostics } = await submitCandidates()
+    if (matches.length !== 1) {
+      fs.writeFileSync("test-results/stripe-submit-dom.json",
+        JSON.stringify({ provenance: "hosted-checkout-button-only", candidates: diagnostics }, null, 2))
+    }
+    checkoutSubmit = matches.length === 1 ? matches[0] : undefined
+    return matches.length
+  }, {
+    timeout: 30_000,
+    message: "Stripe Checkout must expose exactly one visible form-submit control across frames",
+  }).toBe(1)
+  if (!checkoutSubmit) throw new Error("No unique Stripe Checkout submit control")
+  await expect(checkoutSubmit).toBeEnabled()
+  await checkoutSubmit.click()
   await expect(page).toHaveURL(/localhost:3000\/settings\/billing/, { timeout: 90_000 })
   await expect.poll(() => stripeProof(sessionId).checkout_status, { timeout: 45_000 }).toBe("complete")
   const proof = stripeProof(sessionId)
