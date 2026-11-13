@@ -134,9 +134,33 @@ test("customer completes real sandbox checkout and signed webhook persists subsc
   const postal = await stripeField("postal code",
     'input:is([autocomplete="postal-code"],[name="postalCode"],[placeholder*="ZIP code" i],[placeholder*="Postal code" i],[aria-label*="ZIP code" i]):visible')
   await postal.fill("94107")
-  // Exercise card checkout without enrolling in optional Link/SMS signup.
-  const saveWithLink = page.getByRole("checkbox", { name: /Save my information|Save my payment/i })
-  if (await saveWithLink.isVisible()) await saveWithLink.uncheck()
+  // The post-submit failure screenshot shows an enabled Link opt-in and
+  // "Your phone number is incomplete." Stripe keeps this checkbox in its
+  // hosted form; the top-page role lookup silently missed it. Discover the
+  // unique visible opt-in across Checkout frames, explicitly uncheck it, and
+  // require the unchecked state before payment. Never fill a fabricated phone
+  // number or bypass Stripe's real payment and webhook processing.
+  const linkOptIns = async () => {
+    const matches: ReturnType<typeof page.locator>[] = []
+    for (const frame of page.frames()) {
+      const named = frame.getByRole("checkbox", {
+        name: /Save my information|Save my payment/i,
+      })
+      const field = await named.count() ? named : frame.locator('input[type="checkbox"]:visible')
+      const count = await field.count()
+      if (count > 1) throw new Error("Ambiguous Stripe Link opt-in fields")
+      if (count === 1 && await field.isVisible()) matches.push(field)
+    }
+    return matches
+  }
+  await expect.poll(async () => (await linkOptIns()).length, {
+    timeout: 30_000,
+    message: "Exactly one visible Stripe Link opt-in must be available",
+  }).toBe(1)
+  const [saveWithLink] = await linkOptIns()
+  await expect(saveWithLink).toBeEnabled()
+  await saveWithLink.uncheck()
+  await expect(saveWithLink).not.toBeChecked()
   // The previous failure artifact did not include the button in the 720px
   // viewport and its error-context.md contained no DOM snapshot. Inspect
   // rendered button metadata across Checkout frames, without copying inputs,
