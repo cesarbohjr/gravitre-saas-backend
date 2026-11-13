@@ -90,7 +90,34 @@
           "deployment and rollback evidence",
           "owner approval"
         ],
-        "reason_not_certified": "Source-hypothesis for competing authority not independently proven; test receiver is isolated; no owner review, live acceptance or rollback evidence."
+        "reason_not_certified": "Source-hypothesis for competing authority not independently proven; test receiver is isolated; no owner review, live acceptance or rollback evidence.",
+        "runtime_gate": {
+          "status": "BLOCKED_NO_CONFIRMED_PR611_FASTAPI_NONPRODUCTION_DEPLOYMENT",
+          "checked_at": "2026-11-13",
+          "source_evidence": "docs/delivery/eco-001-authority-acceptance-certification.md",
+          "preview": {
+            "provider": "Vercel",
+            "deployment_id": "dpl_B2TsnSDmrS3EdvoWPQpHmc73yUY4",
+            "commit": "a8c270cc621dd95472b5f26468bf69404ba55e00",
+            "framework": "nextjs",
+            "runtime_acceptance": "NOT_RUN"
+          },
+          "production_backend": {
+            "provider": "Railway",
+            "deployment_id": "78fb8af7-2c90-4a4f-9a34-180398ad20fb",
+            "commit": "557be844f191767ea51c9f1d1d4958e5b046ca53",
+            "deployed_pr611": false
+          },
+          "acceptance_db": {
+            "project_ref": "aadnwmjzrmbvadszroqt",
+            "write_ledger_table_present": true,
+            "write_ledger_observed_rows": 0,
+            "verified_read_only": true
+          },
+          "deployed_readonly_preflight": "backend/scripts/eco001_deployed_ingress_preflight.py",
+          "manual_workflow": ".github/workflows/eco-001-deployed-ingress.yml",
+          "write_or_provider_execution_performed": false
+        }
       },
       "audit_evidence_class": "SOURCE_HYPOTHESIS",
       "audit_observation": "Bounded source-to-caller trace and authenticated Chat/Agent PostgreSQL receiver acceptance documented in docs/delivery/eco-001-authority-acceptance-certification.md. Original competing-orchestration-writers hypothesis remains unverified in deployed production; release/rollback and owner approval outstanding."
