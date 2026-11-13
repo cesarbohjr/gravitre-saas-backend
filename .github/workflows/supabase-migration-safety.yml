@@ -483,6 +483,7 @@ jobs:
           name: billing-isolated-acceptance
           path: |
             test-results/billing-acceptance-summary.json
+            test-results/stripe-submit-dom.json
             test-results/**/*.png
             test-results/**/error-context.md
           if-no-files-found: warn
