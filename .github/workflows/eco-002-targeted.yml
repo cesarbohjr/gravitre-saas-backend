@@ -74,8 +74,8 @@ jobs:
           PY
       - name: Correlate 300 fixture traces with wall-clock timings
         run: |
-          PYTHONPATH=backend python backend/scripts/eco002_correlated_latency_report.py /tmp/eco002-delayed-route.log > /tmp/eco002-correlated-report.json
-          python -c 'import json; d=json.load(open("/tmp/eco002-correlated-report.json")); assert d["request_count"]==300; assert set(d["scenarios"])=={"clarification","knowledge","governed_action"}; assert not d["eligible_for_optimization"]; print(d["scenarios"])'
+          PYTHONPATH=backend python backend/scripts/eco002_correlated_latency_report.py /tmp/eco002-delayed-route.log --require-shapes > /tmp/eco002-correlated-report.json
+          python -c 'import json; d=json.load(open("/tmp/eco002-correlated-report.json")); assert d["request_count"]==300; assert d["shape_coverage_count"]==300; assert d["correlation_complete"]; assert set(d["scenarios"])=={"clarification","knowledge","governed_action"}; assert not d["eligible_for_optimization"]; print(d["scenarios"])'
       - name: Upload offline router timing evidence
         if: always()
         uses: actions/upload-artifact@v4
