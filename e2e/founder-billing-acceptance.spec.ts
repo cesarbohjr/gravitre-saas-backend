@@ -74,19 +74,14 @@ test("customer completes real sandbox checkout and signed webhook persists subsc
   const sessionId = checkoutUrl.match(/cs_test_[A-Za-z0-9]+/)?.[0]
   if (!sessionId) throw new Error("Stripe sandbox checkout session required")
   await page.goto(checkoutUrl)
-  // Stripe renders this required field asynchronously. Counting immediately
-  // after navigation skipped it and left checkout blocked on REQUIRED.
-  // Stripe may prefill the authenticated customer's email and omit its input.
-  // An absent field is acceptable only when the server-side Checkout Session
-  // independently confirms the exact expected customer email.
-  const email = page.getByRole("textbox", { name: "Email", exact: true })
-  const emailVisible = await email.isVisible({ timeout: 15_000 })
-  if (emailVisible) {
-    await email.fill(fixtures.founderTrialCustomer.email)
-  } else {
-    const session = stripeProof(sessionId)
-    expect(session.customer_email).toBe(fixtures.founderTrialCustomer.email)
-  }
+  // Stripe's hosted Checkout email input is visible with this placeholder,
+  // but its accessible name is not reliably "Email" across Checkout versions.
+  // Wait for the actual editable field; never treat a pre-payment null session
+  // email as evidence that the customer identity has been established.
+  const email = page.getByPlaceholder("you@example.com", { exact: true })
+  await expect(email).toBeVisible({ timeout: 30_000 })
+  await email.fill(fixtures.founderTrialCustomer.email)
+  await expect(email).toHaveValue(fixtures.founderTrialCustomer.email)
   await page.getByRole("textbox", { name: /Card number/i }).fill("4242424242424242")
   await page.getByRole("textbox", { name: /Expiration|Expiry/i }).fill("1230")
   await page.getByRole("textbox", { name: /Security code|CVC/i }).fill("123")
