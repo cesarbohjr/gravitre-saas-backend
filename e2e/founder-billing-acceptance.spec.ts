@@ -97,13 +97,43 @@ test("customer completes real sandbox checkout and signed webhook persists subsc
   await expect(email).toBeEditable()
   await email.fill(fixtures.founderTrialCustomer.email)
   await expect(email).toHaveValue(fixtures.founderTrialCustomer.email)
-  await page.getByRole("textbox", { name: /Card number/i }).fill("4242424242424242")
-  await page.getByRole("textbox", { name: /Expiration|Expiry/i }).fill("1230")
-  await page.getByRole("textbox", { name: /Security code|CVC/i }).fill("123")
-  const name = page.getByLabel(/Cardholder name|Name on card|Full name/i)
-  if (await name.count()) await name.fill("Sandbox Acceptance")
-  const postal = page.getByLabel(/ZIP|Postal code/i)
-  if (await postal.count()) await postal.fill("94107")
+  // The actual Stripe Checkout failure screenshot shows card number, MM / YY,
+  // and security code, but the page-level accessible textbox query sees none.
+  // Stripe hosts card inputs in PCI-isolated frames. Discover a *unique visible*
+  // field by its payment-specific input attributes across all frames, and fail
+  // closed if it is missing or ambiguous; never simulate payment or skip fields.
+  const stripeField = async (label: string, selector: string) => {
+    let found: ReturnType<typeof page.locator> | undefined
+    await expect.poll(async () => {
+      const matches: ReturnType<typeof page.locator>[] = []
+      for (const frame of page.frames()) {
+        const candidate = frame.locator(selector)
+        const count = await candidate.count()
+        if (count > 1) throw new Error(`Ambiguous Stripe ${label} inputs within a frame`)
+        if (count === 1) matches.push(candidate)
+      }
+      found = matches.length === 1 ? matches[0] : undefined
+      return matches.length
+    }, { timeout: 30_000, message: `Stripe Checkout must expose one visible ${label} input across frames` }).toBe(1)
+    if (!found) throw new Error(`Missing Stripe ${label} input`)
+    await expect(found).toBeEditable()
+    return found
+  }
+  const card = await stripeField("card number",
+    'input:is([autocomplete="cc-number"],[name="cardnumber"],[placeholder*="Card number" i],[aria-label*="Card number" i]):visible')
+  await card.fill("4242424242424242")
+  const expiry = await stripeField("expiry",
+    'input:is([autocomplete="cc-exp"],[name="exp-date"],[placeholder*="MM / YY" i],[placeholder*="MM/YY" i],[aria-label*="expiration" i],[aria-label*="expiry" i]):visible')
+  await expiry.fill("1230")
+  const security = await stripeField("security code",
+    'input:is([autocomplete="cc-csc"],[name="cvc"],[placeholder*="Security code" i],[placeholder*="CVC" i],[aria-label*="Security code" i]):visible')
+  await security.fill("123")
+  const name = await stripeField("cardholder name",
+    'input:is([autocomplete="cc-name"],[name="billingName"],[placeholder*="First and last name" i],[placeholder*="Name on card" i],[aria-label*="Name on card" i]):visible')
+  await name.fill("Sandbox Acceptance")
+  const postal = await stripeField("postal code",
+    'input:is([autocomplete="postal-code"],[name="postalCode"],[placeholder*="ZIP code" i],[placeholder*="Postal code" i],[aria-label*="ZIP code" i]):visible')
+  await postal.fill("94107")
   // Exercise card checkout without enrolling in optional Link/SMS signup.
   const saveWithLink = page.getByRole("checkbox", { name: /Save my information|Save my payment/i })
   if (await saveWithLink.isVisible()) await saveWithLink.uncheck()
