@@ -74,12 +74,12 @@ test("customer completes real sandbox checkout and signed webhook persists subsc
   const sessionId = checkoutUrl.match(/cs_test_[A-Za-z0-9]+/)?.[0]
   if (!sessionId) throw new Error("Stripe sandbox checkout session required")
   await page.goto(checkoutUrl)
-  // Stripe's hosted Checkout email input is visible with this placeholder,
-  // but its accessible name is not reliably "Email" across Checkout versions.
-  // Wait for the actual editable field; never treat a pre-payment null session
-  // email as evidence that the customer identity has been established.
-  const email = page.getByPlaceholder("you@example.com", { exact: true })
-  await expect(email).toBeVisible({ timeout: 30_000 })
+  // Stripe-hosted Checkout changes the email field placeholder and accessible
+  // label across versions. Require exactly one visible email-typed input rather
+  // than relying on presentation copy; never bypass customer identity evidence.
+  const email = page.locator('input[type="email"]:visible')
+  await expect(email).toHaveCount(1, { timeout: 30_000 })
+  await expect(email).toBeEditable()
   await email.fill(fixtures.founderTrialCustomer.email)
   await expect(email).toHaveValue(fixtures.founderTrialCustomer.email)
   await page.getByRole("textbox", { name: /Card number/i }).fill("4242424242424242")
