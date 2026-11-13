@@ -6,7 +6,7 @@ FROM python:3.13-slim-bookworm
 WORKDIR /app
 
 # Bounded media decoding for connector-backed audio and video analysis.
-RUN apt-get update && apt-get install -y --no-install-recommends ffmpeg \
+RUN apt-get update && apt-get install -y --no-install-recommends ffmpeg libatomic1 \
     && rm -rf /var/lib/apt/lists/*
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
