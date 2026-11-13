@@ -35,3 +35,33 @@ def test_real_model_and_execution_still_require_verified_provenance():
     assert not summarize(lines)["eligible_for_optimization"]
     assert not summarize(lines, provenance="verified_nonproduction")["eligible_for_optimization"]
     assert not summarize(lines, provenance="verified_nonproduction")["actual_external_provider_observed"]
+
+
+def test_orphaned_stage_samples_do_not_count_as_correlated_requests():
+    lines = [
+        "router_stage_timing stage=knowledge_response surface=chat outcome=ok duration_ms=3 sample=knowledge-0001",
+        "eco002_request_wall scenario=knowledge sample=knowledge-0001 duration_ms=9",
+        "router_stage_timing stage=model_provider surface=chat outcome=ok duration_ms=7 sample=unpaired-0002",
+    ]
+    report = summarize(lines)
+    assert report["request_count"] == 1
+    assert report["orphan_stage_sample_count"] == 1
+    assert not report["correlation_complete"]
+    assert "knowledge/model_provider" not in report["boundaries"]
+
+
+def test_stage_errors_remain_visible_without_becoming_success_samples():
+    lines = [
+        "router_stage_timing stage=execution surface=chat outcome=error duration_ms=3 sample=governed_action-0001",
+        "eco002_request_wall scenario=governed_action sample=governed_action-0001 duration_ms=9",
+    ]
+    report = summarize(lines)
+    assert report["correlation_complete"]
+    assert report["failed_request_count"] == 1
+    assert "governed_action/execution" not in report["boundaries"]
+
+
+def test_missing_stages_fail_correlation():
+    report = summarize(["eco002_request_wall scenario=knowledge sample=knowledge-0001 duration_ms=9"])
+    assert report["unmatched_request_count"] == 1
+    assert not report["correlation_complete"]
