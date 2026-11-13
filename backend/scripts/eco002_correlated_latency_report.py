@@ -7,6 +7,7 @@ explicitly identified nonproduction provider provenance.
 from __future__ import annotations
 import argparse
 import json
+import math
 import re
 from collections import defaultdict
 from pathlib import Path
@@ -32,17 +33,27 @@ def summarize(lines, *, provenance="fixture"):
     by_scenario = defaultdict(list)
     by_boundary = defaultdict(list)
     incomplete = []
+    failed_requests = set()
+    invalid_durations = []
     for sample, (scenario, wall_ms) in walls.items():
+        if not math.isfinite(wall_ms) or wall_ms < 0:
+            invalid_durations.append(sample)
         by_scenario[scenario].append(wall_ms)
         observed = stages.get(sample, [])
         if not observed:
             incomplete.append(sample)
+        if any(outcome == "error" for _, outcome, _ in observed):
+            failed_requests.add(sample)
         for stage, outcome, duration in observed:
+            if not math.isfinite(duration) or duration < 0:
+                invalid_durations.append(sample)
+                continue
             if outcome == "ok":
                 by_boundary[(scenario, stage)].append(duration)
     def stats(values):
         return {"count": len(values), "p50_ms": round(percentile(values, .5), 3),
                 "p95_ms": round(percentile(values, .95), 3)}
+    orphan_samples = sorted(set(stages) - set(walls))
     model_seen = any(stage == "model_provider" for (_, stage) in by_boundary)
     provider_seen = any(stage == "execution" for (_, stage) in by_boundary)
     return {
@@ -51,6 +62,10 @@ def summarize(lines, *, provenance="fixture"):
         "scenarios": {k: stats(v) for k, v in sorted(by_scenario.items())},
         "boundaries": {f"{scenario}/{stage}": stats(v) for (scenario, stage), v in sorted(by_boundary.items())},
         "unmatched_request_count": len(incomplete),
+        "orphan_stage_sample_count": len(orphan_samples),
+        "failed_request_count": len(failed_requests),
+        "invalid_duration_count": len(invalid_durations),
+        "correlation_complete": bool(walls) and not (incomplete or orphan_samples or invalid_durations),
         "model_provider_observed": model_seen,
         "governed_execution_observed": provider_seen,
         "actual_external_provider_observed": False,
@@ -67,8 +82,8 @@ def main():
     args = parser.parse_args()
     result = summarize(args.log.read_text().splitlines(), provenance=args.provenance)
     print(json.dumps(result, indent=2, sort_keys=True))
-    if not result["request_count"] or result["unmatched_request_count"]:
-        raise SystemExit("Missing or uncorrelated router traces")
+    if not result["correlation_complete"]:
+        raise SystemExit("Missing, orphaned, or invalid router timing traces")
     if args.require_live and not result["eligible_for_optimization"]:
         raise SystemExit("Missing verified nonproduction model/provider traces; no optimization authorized")
 
