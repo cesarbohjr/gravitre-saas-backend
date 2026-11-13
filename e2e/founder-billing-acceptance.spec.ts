@@ -77,13 +77,24 @@ test("customer completes real sandbox checkout and signed webhook persists subsc
   // Stripe Checkout sometimes renders the contact address as type=text.
   // Identify it by its email-specific attributes in all hosted frames.
   // Never fill an arbitrary textbox or bypass Stripe's customer identity.
+  // Stripe replaces PCI-isolated iframes while Checkout initializes. A
+  // detached frame is not a payment failure: ignore only that transient frame
+  // and retry the uniqueness assertion. Preserve all other errors.
+  const liveFrameCount = async (field: ReturnType<typeof page.locator>) => {
+    try {
+      return await field.count()
+    } catch (error) {
+      if (/Frame was detached|Execution context was destroyed/.test(String(error))) return 0
+      throw error
+    }
+  }
   const emailCandidates = async () => {
     const matches = []
     for (const frame of page.frames()) {
       const field = frame.locator(
         'input:is([type="email"],[autocomplete="email"],[name="email"],[id="email"],[placeholder*="example.com"]):visible'
       )
-      const count = await field.count()
+      const count = await liveFrameCount(field)
       if (count === 1) matches.push(field)
       else if (count > 1) throw new Error("Ambiguous Stripe Checkout email fields")
     }
@@ -108,7 +119,7 @@ test("customer completes real sandbox checkout and signed webhook persists subsc
       const matches: ReturnType<typeof page.locator>[] = []
       for (const frame of page.frames()) {
         const candidate = frame.locator(selector)
-        const count = await candidate.count()
+        const count = await liveFrameCount(candidate)
         if (count > 1) throw new Error(`Ambiguous Stripe ${label} inputs within a frame`)
         if (count === 1) matches.push(candidate)
       }
@@ -146,10 +157,16 @@ test("customer completes real sandbox checkout and signed webhook persists subsc
       const named = frame.getByRole("checkbox", {
         name: /Save my information|Save my payment/i,
       })
-      const field = await named.count() ? named : frame.locator('input[type="checkbox"]:visible')
-      const count = await field.count()
+      const field = await liveFrameCount(named) ? named : frame.locator('input[type="checkbox"]:visible')
+      const count = await liveFrameCount(field)
       if (count > 1) throw new Error("Ambiguous Stripe Link opt-in fields")
-      if (count === 1 && await field.isVisible()) matches.push(field)
+      if (count === 1) {
+        try {
+          if (await field.isVisible()) matches.push(field)
+        } catch (error) {
+          if (!/Frame was detached|Execution context was destroyed/.test(String(error))) throw error
+        }
+      }
     }
     return matches
   }
