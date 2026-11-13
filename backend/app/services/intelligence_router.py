@@ -120,6 +120,8 @@ class IntelligenceRouter:
         conversation_history: list[dict] | None = None,
         conversation_id: str | None = None,
     ) -> dict[str, Any]:
+        from app.services.router_stage_timing import record_router_request_shape
+        record_router_request_shape(request, len(conversation_history or []), surface)
         from app.services.intelligence_overview_policy import load_overview_policy
         from app.core.io_pool import run_io
         overview_policy = await timed_router_stage("overview_policy", surface, run_io(lambda: load_overview_policy(org_id, self.settings)))
