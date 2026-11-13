@@ -40,8 +40,8 @@
       "retirement_authorized": false,
       "release_blocking": true,
       "evidence": {
-        "ci_run_url": null,
-        "executed_sha": null,
+        "ci_run_url": "https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/43385836750",
+        "executed_sha": "74d678f667ee8de4adfc44167367566fbc2d5803",
         "deploy_sha": null,
         "provider_readback": null
       },
@@ -52,9 +52,48 @@
         "independent durable consumer/provider observation",
         "exact-SHA CI and release/rollback evidence"
       ],
-      "partial_test_evidence": null,
+      "partial_test_evidence": {
+        "scope": "ISOLATED_SOURCE_AND_EXECUTABLE_RUNTIME_ACCEPTANCE_NOT_COMPLETE_FINDING",
+        "certification_record": "docs/delivery/eco-001-authority-acceptance-certification.md",
+        "exact_source_sha": "74d678f667ee8de4adfc44167367566fbc2d5803",
+        "exact_sha_workflows_passed": 20,
+        "consolidated_cases_passed": 77,
+        "consolidated_cases_skipped": 0,
+        "independent_pg_receiver_run_url": "https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/43385836556",
+        "independent_pg_receiver_case_groups_passed": [
+          9,
+          34
+        ],
+        "master_qa_run_url": "https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/43385836687",
+        "master_qa_case_groups_passed": [
+          320,
+          54
+        ],
+        "signed_chat_and_agent_joined_pg": [
+          "backend/tests/db/test_eco001_joined_chat_http_receiver_pg.py",
+          "backend/tests/db/test_eco001_joined_agent_worker_pg_receiver.py"
+        ],
+        "negative_test_scope": [
+          "unauthorized_chat_actor",
+          "unowned_conversation",
+          "approval_denial_no_dispatch",
+          "pre_dispatch_cancellation",
+          "inflight_failure_terminal_observation",
+          "cross_tenant_denial",
+          "idempotent_replay",
+          "lost_provider_ack"
+        ],
+        "unresolved": [
+          "live production ingress caller and feature flags",
+          "real third-party consumer/provider readback",
+          "all surface ownership and parity",
+          "deployment and rollback evidence",
+          "owner approval"
+        ],
+        "reason_not_certified": "Source-hypothesis for competing authority not independently proven; test receiver is isolated; no owner review, live acceptance or rollback evidence."
+      },
       "audit_evidence_class": "SOURCE_HYPOTHESIS",
-      "audit_observation": "multiple orchestration candidates in original audit; active conflicting writers not proven"
+      "audit_observation": "Bounded source-to-caller trace and authenticated Chat/Agent PostgreSQL receiver acceptance documented in docs/delivery/eco-001-authority-acceptance-certification.md. Original competing-orchestration-writers hypothesis remains unverified in deployed production; release/rollback and owner approval outstanding."
     },
     {
       "finding_id": "ECO-002",
