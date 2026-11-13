@@ -65,3 +65,31 @@ def test_missing_stages_fail_correlation():
     report = summarize(["eco002_request_wall scenario=knowledge sample=knowledge-0001 duration_ms=9"])
     assert report["unmatched_request_count"] == 1
     assert not report["correlation_complete"]
+
+
+def test_correlated_request_shape_buckets_are_required_only_for_shape_gate():
+    lines = [
+        "eco002_request_shape sample=knowledge-0001 surface=chat request_bytes_bucket=1_128 history_count_bucket=zero",
+        "router_stage_timing stage=knowledge_response surface=chat outcome=ok duration_ms=3 sample=knowledge-0001",
+        "eco002_request_wall scenario=knowledge sample=knowledge-0001 duration_ms=9",
+    ]
+    report = summarize(lines, require_shapes=True)
+    assert report["correlation_complete"]
+    assert report["shape_coverage_count"] == 1
+    assert report["request_shape_buckets"]["knowledge"]["chat/1_128/zero"] == 1
+    assert not summarize(lines[1:], require_shapes=True)["correlation_complete"]
+
+
+def test_duplicate_or_orphan_shape_fails_closed():
+    shape = "eco002_request_shape sample=knowledge-0001 surface=chat request_bytes_bucket=1_128 history_count_bucket=zero"
+    base = [
+        shape,
+        "router_stage_timing stage=knowledge_response surface=chat outcome=ok duration_ms=3 sample=knowledge-0001",
+        "eco002_request_wall scenario=knowledge sample=knowledge-0001 duration_ms=9",
+    ]
+    duplicated = summarize([shape, *base], require_shapes=True)
+    assert duplicated["duplicate_shape_count"] == 1
+    assert not duplicated["correlation_complete"]
+    orphaned = summarize([*base, shape.replace("knowledge-0001", "unpaired-0002")], require_shapes=True)
+    assert orphaned["orphan_shape_count"] == 1
+    assert not orphaned["correlation_complete"]
