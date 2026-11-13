@@ -74,22 +74,24 @@ test("customer completes real sandbox checkout and signed webhook persists subsc
   const sessionId = checkoutUrl.match(/cs_test_[A-Za-z0-9]+/)?.[0]
   if (!sessionId) throw new Error("Stripe sandbox checkout session required")
   await page.goto(checkoutUrl)
-  // Stripe Checkout can render the customer form inside a hosted iframe.
-  // The failure artifact shows the email field on screen even though querying
-  // only the top-level document returns zero matches. Search every frame and
-  // require exactly one visible candidate; do not bypass customer identity.
+  // Stripe Checkout sometimes renders the contact address as type=text.
+  // Identify it by its email-specific attributes in all hosted frames.
+  // Never fill an arbitrary textbox or bypass Stripe's customer identity.
   const emailCandidates = async () => {
     const matches = []
     for (const frame of page.frames()) {
-      const field = frame.locator('input[type="email"]:visible')
-      if (await field.count() === 1) matches.push(field)
-      else if (await field.count() > 1) throw new Error("Ambiguous Stripe Checkout email fields")
+      const field = frame.locator(
+        'input:is([type="email"],[autocomplete="email"],[name="email"],[id="email"],[placeholder*="example.com"]):visible'
+      )
+      const count = await field.count()
+      if (count === 1) matches.push(field)
+      else if (count > 1) throw new Error("Ambiguous Stripe Checkout email fields")
     }
     return matches
   }
   await expect.poll(async () => (await emailCandidates()).length, {
     timeout: 30_000,
-    message: "Stripe Checkout must expose exactly one visible email input across frames",
+    message: "Stripe Checkout must expose exactly one email-identified input across frames",
   }).toBe(1)
   const [email] = await emailCandidates()
   await expect(email).toBeEditable()
