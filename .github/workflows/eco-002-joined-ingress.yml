@@ -1,0 +1,65 @@
+name: ECO-002 joined Chat Agent to durable ledger latency
+on:
+  push:
+    branches: [feat/eco-002-routing-latency]
+  pull_request:
+    paths:
+      - 'backend/tests/db/test_eco001_joined_chat_http_receiver_pg.py'
+      - 'backend/tests/db/test_eco001_joined_agent_worker_pg_receiver.py'
+      - 'backend/scripts/eco002_ingress_ledger_latency_report.py'
+      - 'backend/tests/master_qa/test_eco002_ingress_ledger_latency_report.py'
+      - '.github/workflows/eco-002-joined-ingress.yml'
+jobs:
+  joined-ingress:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    defaults:
+      run:
+        working-directory: backend
+    env:
+      APP_ENV: dev
+      SUPABASE_URL: https://test.supabase.co
+      SUPABASE_ANON_KEY: anon-test
+      SUPABASE_SERVICE_ROLE_KEY: service-role-test
+      SUPABASE_JWT_SECRET: jwt-secret-test
+      OPENAI_API_KEY: sk-test-openai
+      GRAVITRE_REQUIRE_PG: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+      - name: Reclaim unused runner SDKs
+        run: |
+          set -euo pipefail
+          for dir in /usr/local/lib/android /usr/share/dotnet /opt/ghc /usr/local/share/powershell; do
+            if [ -d "$dir" ]; then sudo rm -rf -- "$dir"; fi
+          done
+          python -m pip cache purge || true
+      - name: Install Python and disposable PostgreSQL requirements
+        run: |
+          set -euo pipefail
+          python -m pip install --no-cache-dir --no-compile -r requirements-dev.txt
+          sudo apt-get update -qq
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq postgresql postgresql-client
+          PGVER="$(ls /usr/lib/postgresql | sort -V | tail -1)"
+          echo "GRAVITRE_PG_BIN=/usr/lib/postgresql/${PGVER}/bin" >> "$GITHUB_ENV"
+      - name: Independently verified Chat and Agent ingress measurements
+        run: |
+          set -euo pipefail
+          python -m pytest -q -s \
+            tests/db/test_eco001_joined_chat_http_receiver_pg.py \
+            tests/db/test_eco001_joined_agent_worker_pg_receiver.py \
+            | tee "$RUNNER_TEMP/eco002-joined-ingress.log"
+          python scripts/eco002_ingress_ledger_latency_report.py \
+            "$RUNNER_TEMP/eco002-joined-ingress.log" \
+            --output "$RUNNER_TEMP/eco002-joined-ingress-report.json"
+      - name: Upload isolated ingress timing evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: eco002-joined-ingress-ledger
+          path: ${{ runner.temp }}/eco002-joined-ingress-report.json
+          if-no-files-found: warn
