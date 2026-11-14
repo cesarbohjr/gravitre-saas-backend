@@ -1,4 +1,4 @@
-name: PR587 local cancellation acoustic qualification (no provider credits)
+name: Master QA | QA30 Acoustic Qualification (Manual, No Provider Credits)
 # Dedicated issue #594 research: manual-only until a trained model and corpus exist.
 # Do not automatically block PR #587 core voice CI on unavailable R&D assets.
 on:

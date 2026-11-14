@@ -155,7 +155,16 @@ def test_admin_approval_executes_once_and_is_audited(api):
     resp = TestClient(app).post(f"/api/approvals/{row['id']}/approve", json={})
     assert resp.status_code == 200, resp.text
     assert api.execute.await_count == 1
+    frozen = api.execute.await_args.kwargs["approved_params"]
+    assert frozen["approval_action_id"] == row["id"]
+    assert frozen["bound_invoke_action"] == "gmail.messages.send"
+    assert frozen["bound_tool_name"] == "gmail"
+    assert frozen["bound_integration"] == "gmail"
+    assert frozen["bound_args_digest"] == digest_plan_args(ARGS)
     assert row["status"] == "approved" and row["reviewed_by"] == "admin-1"
+    assert row["context"]["dispatch"]["state"] == "reported_success_unverified"
+    assert row["context"]["dispatch"]["independently_verified"] is False
+    assert resp.json()["verified"] is False
     decided = [a for a in api.audits if a["action"] == "connector.approval.decided"]
     assert decided and decided[0]["metadata"]["args_digest"] == digest_plan_args(ARGS)
     # A second approve of the same row does nothing.
@@ -217,3 +226,115 @@ def test_mcp_decision_uses_shared_queue_route(api, endpoint, approve):
     assert decision.call_args.kwargs["org_id"] == ORG
     assert decision.call_args.kwargs["reviewer_id"] == "admin-1"
     api.execute.assert_not_awaited()
+
+
+def test_connector_chat_reject_claims_once_and_prevents_approval(api):
+    row = _row()
+    _use(api, [row])
+    first = TestClient(app).post(f"/api/approvals/{row['id']}/reject", json={})
+    assert first.status_code == 200, first.text
+    assert row["status"] == "rejected"
+    assert row["reviewed_by"] == "admin-1"
+    assert row["reviewed_at"] is not None
+    second = TestClient(app).post(f"/api/approvals/{row['id']}/reject", json={})
+    assert second.status_code == 409, second.text
+    approve = TestClient(app).post(f"/api/approvals/{row['id']}/approve", json={})
+    assert approve.status_code == 409, approve.text
+    api.execute.assert_not_awaited()
+
+
+def test_connector_chat_reject_cannot_overwrite_claimed_approval(api):
+    row = _row()
+    row["reviewed_by"] = "admin-2"
+    row["reviewed_at"] = "2026-11-09T00:00:00Z"
+    _use(api, [row])
+    response = TestClient(app).post(f"/api/approvals/{row['id']}/reject", json={})
+    assert response.status_code == 409, response.text
+    assert row["status"] == "pending"
+    assert row["reviewed_by"] == "admin-2"
+    api.execute.assert_not_awaited()
+
+
+def test_connector_chat_durable_claim_precedes_provider_dispatch(api):
+    row = _row()
+    _use(api, [row])
+
+    async def observe_claim(**_kwargs):
+        assert row["status"] == "approved"
+        assert row["reviewed_by"] == "admin-1"
+        assert row["context"]["dispatch"]["state"] == "claimed"
+        return SimpleNamespace(
+            success=True, title="Send email", body="sent",
+            entity_type="connector", entity_id="provider-123", outcome_verified=True,
+        )
+
+    api.execute.side_effect = observe_claim
+    resp = TestClient(app).post(f"/api/approvals/{row['id']}/approve", json={})
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["verified"] is True
+    assert row["context"]["dispatch"]["state"] == "verified"
+    assert row["context"]["dispatch"]["entity_id"] == "provider-123"
+    assert api.execute.await_count == 1
+
+
+def test_connector_chat_worker_failure_records_uncertain_and_restart_refuses_replay(api):
+    row = _row()
+    _use(api, [row])
+
+    async def provider_accepted_then_connection_lost(**_kwargs):
+        # Once this exception occurs, the provider may already have written.
+        assert row["status"] == "approved"
+        assert row["context"]["dispatch"]["state"] == "claimed"
+        raise ConnectionError("connection lost after provider acceptance")
+
+    api.execute.side_effect = provider_accepted_then_connection_lost
+    resp = TestClient(app).post(f"/api/approvals/{row['id']}/approve", json={})
+    assert resp.status_code == 502, resp.text
+    assert row["context"]["dispatch"]["state"] == "uncertain"
+    assert row["context"]["dispatch"]["independently_verified"] is False
+
+    # A new request/app lifecycle uses the durable approval row, not memory.
+    retry = TestClient(app).post(f"/api/approvals/{row['id']}/approve", json={})
+    assert retry.status_code == 409, retry.text
+    assert api.execute.await_count == 1
+
+
+def test_connector_chat_claimed_without_outcome_is_never_redispatched(api):
+    row = _row()
+    row["status"] = "approved"
+    row["reviewed_by"] = "admin-1"
+    row["reviewed_at"] = "2026-11-09T00:00:00Z"
+    row["context"]["dispatch"] = {
+        "state": "claimed", "approval_id": row["id"],
+        "claimed_at": row["reviewed_at"],
+        "args_digest": digest_plan_args(ARGS),
+    }
+    _use(api, [row])
+    resp = TestClient(app).post(f"/api/approvals/{row['id']}/approve", json={})
+    assert resp.status_code == 409, resp.text
+    api.execute.assert_not_awaited()
+
+
+def test_connector_chat_uncertain_result_persists_uncertain_dispatch_state(api):
+    """A ledger/provider uncertainty envelope is not an ordinary failed write."""
+    row = _row()
+    _use(api, [row])
+    api.execute.return_value = SimpleNamespace(
+        success=False,
+        title="Write not confirmed",
+        body="Provider may already have applied the write",
+        entity_type="connector",
+        entity_id="",
+        outcome_verified=False,
+        error_code="OUTCOME_UNCERTAIN",
+    )
+    resp = TestClient(app).post(f"/api/approvals/{row['id']}/approve", json={})
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["success"] is False
+    assert resp.json()["dispatch_state"] == "uncertain"
+    assert row["status"] == "approved"
+    assert row["context"]["dispatch"]["state"] == "uncertain"
+    assert row["context"]["dispatch"]["independently_verified"] is False
+    retry = TestClient(app).post(f"/api/approvals/{row['id']}/approve", json={})
+    assert retry.status_code == 409
+    assert api.execute.await_count == 1

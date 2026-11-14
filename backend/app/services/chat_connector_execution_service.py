@@ -2050,6 +2050,10 @@ class ChatConnectorExecutionService:
         Module A fanout here — the orchestration run owns the single terminal
         outcome so Runs/Notifications/Audit do not double-write.
         """
+        # The immutable approval-row ID is the identity of a queued write.
+        # Carry it to the canonical ledger rather than deriving a second
+        # identity solely from a conversation and possibly repeated arguments.
+        queue_approval_id = str((approved_params or {}).get("_approval_queue_id") or "").strip()
         ctx = ToolContext(
             settings=self.settings,
             client=client,
@@ -2057,6 +2061,8 @@ class ChatConnectorExecutionService:
             actor_id=user_id,
             environment_name=environment_name,
             conversation_id=conversation_id or None,
+            turn_id=queue_approval_id or None,
+            write_idempotency_required=bool(queue_approval_id and plan.kind == "write"),
         )
         from app.services.approval_action_binding import (
             ApprovalActionMismatchError,

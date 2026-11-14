@@ -1,4 +1,4 @@
-name: Voice gates 2 and 3 execution
+name: Master QA | QA30 Voice Safety and Acceptance
 on:
   pull_request:
     paths:

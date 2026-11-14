@@ -2,8 +2,11 @@
 from __future__ import annotations
 
 import time
+import logging
 from collections.abc import Callable
 from typing import Any
+
+logger = logging.getLogger(__name__)
 
 from app.config import Settings
 from app.connectors.email import body_hash as _body_hash
@@ -324,6 +327,15 @@ def _is_write_invoke(action: str) -> bool:
     from app.services.outcome_verification import is_write_action
 
     return is_write_action(action)
+
+
+def assert_queue_write_ledger_classified(ctx: ToolContext, action: str) -> None:
+    """An approval-queue WRITE may not silently dispatch as an unfenced read."""
+    if getattr(ctx, "write_idempotency_required", False) and not _is_write_invoke(action):
+        raise ToolValidationError(
+            "Queue-approved action is not registered as a write; execution refused",
+            code="WRITE_LEDGER_CLASSIFICATION_REQUIRED",
+        )
 
 
 def _is_statement_timeout(exc: Exception) -> bool:
@@ -5033,17 +5045,22 @@ def list_registered_actions() -> list[str]:
     return sorted(set(_TOOL_REGISTRY.keys()) | set(list_partner_actions()))
 
 
-def registered_actions_fingerprint() -> tuple[object, int, int]:
-    """Cheap identity of the invoke_tool action set, for caches derived from it.
+def registered_actions_fingerprint() -> tuple[object, frozenset[str], frozenset[str]]:
+    """Capture the actual action-key sets for registry-derived discovery caches.
 
-    Returns ``(registry_dict, len(registry), len(partner_actions))``. Callers compare the
-    first element by identity (``is``) so a swapped-in registry dict (e.g. a test's
-    ``patch("...tool_service._TOOL_REGISTRY", {...})``) or a later partner registration
-    invalidates anything built from :func:`list_registered_actions`.
+    A registry dictionary can replace or rename an action without changing its
+    length. Counts alone left cached tool/Play discovery stale, including when
+    partner actions were swapped one-for-one. Preserve registry object identity
+    to detect replacement and compare immutable key snapshots to detect
+    same-size mutations. This is metadata only: no credentials or provider calls.
     """
     from app.connectors.sdk.registry import list_partner_actions
 
-    return (_TOOL_REGISTRY, len(_TOOL_REGISTRY), len(list_partner_actions()))
+    return (
+        _TOOL_REGISTRY,
+        frozenset(_TOOL_REGISTRY),
+        frozenset(list_partner_actions()),
+    )
 
 
 def invoke_tool(ctx: ToolContext, action: str, params: dict[str, Any] | None = None) -> NormalizedResult:
@@ -5244,6 +5261,10 @@ def invoke_tool(ctx: ToolContext, action: str, params: dict[str, Any] | None = N
     elif is_f1_write_action(action):
         params = enforce_invoke_write_preflight(ctx, action, params)
 
+    # A queue approval explicitly declares a governed WRITE. If a newly added
+    # action is absent from the write classifier, fail closed rather than using
+    # the read/unfenced path and silently skipping durable idempotency.
+    assert_queue_write_ledger_classified(ctx, action)
     executor = _resolve_tool_executor(action, ctx)
     if not executor:
         raise ToolNotFoundError(f"Unknown tool action: {action}")
@@ -5338,6 +5359,7 @@ def invoke_tool(ctx: ToolContext, action: str, params: dict[str, Any] | None = N
     write_claim_token: str | None = None
     idempotency_enabled = _is_write_invoke(action) and (
         bool(getattr(ctx, "autonomous_write_guarded", False))
+        or bool(getattr(ctx, "write_idempotency_required", False))
         or bool(getattr(ctx.settings, "write_invoke_idempotency_enabled", False))
     )
     if idempotency_enabled:
@@ -5390,7 +5412,34 @@ def invoke_tool(ctx: ToolContext, action: str, params: dict[str, Any] | None = N
 
     # Last stop check before the provider call, and the record a cancelled
     # voice turn reads to say what had already been done.
-    write_effect = begin_write_effect(ctx, action)
+    try:
+        write_effect = begin_write_effect(ctx, action)
+    except ToolValidationError:
+        # A stop/pause may win after the durable reservation but before the
+        # provider boundary. No provider call has occurred: finalize the
+        # reserved write as failed rather than stranding an in_progress claim.
+        # Never turn a failed finalization into a replayable authorization.
+        if write_idempotency_key and write_claim_token:
+            from app.services.write_invoke_idempotency import finalize_write_invoke
+
+            stopped_finalization = finalize_write_invoke(
+                ctx.client,
+                org_id=ctx.org_id,
+                idempotency_key=write_idempotency_key,
+                claim_token=write_claim_token,
+                status="failed",
+            )
+            if stopped_finalization.outcome != "finalized":
+                logger.error(
+                    "pre_dispatch_stop_ledger_finalize_unconfirmed org_id=%s action=%s outcome=%s",
+                    ctx.org_id, action, stopped_finalization.outcome,
+                )
+                raise WriteIdempotencyUnavailable(
+                    "Stopped before provider dispatch, but durable ledger finalization "
+                    "could not be confirmed; reconciliation is required.",
+                    code="write_idempotency_unavailable",
+                )
+        raise
     last_error: ToolError | None = None
     # A single autonomous claim may invoke the provider at most once. Even a
     # seemingly pre-send transport failure is not sufficient evidence to issue
@@ -5481,10 +5530,39 @@ def invoke_tool(ctx: ToolContext, action: str, params: dict[str, Any] | None = N
                         connector_id=result.connector_id or cid,
                         snapshot=compensation_snapshot,
                     )
+            if not result.success and write_idempotency_key and idempotency_enabled:
+                # A provider returned a failure response after dispatch. It may
+                # still have committed the side effect; never release the claim
+                # as a safe-to-retry failure without independent confirmation.
+                from app.services.write_invoke_idempotency import finalize_write_invoke
+
+                uncertain_finalization = finalize_write_invoke(
+                    ctx.client,
+                    org_id=ctx.org_id,
+                    idempotency_key=write_idempotency_key,
+                    claim_token=write_claim_token,
+                    status="uncertain",
+                )
+                if uncertain_finalization.outcome != "finalized":
+                    logger.error(
+                        "write_provider_failure_finalize_unconfirmed org_id=%s action=%s outcome=%s",
+                        ctx.org_id, action, uncertain_finalization.outcome,
+                    )
+                return NormalizedResult(
+                    success=False,
+                    action=action,
+                    error_code="outcome_uncertain",
+                    error_message=(
+                        "The provider reported a failure after dispatch; the write "
+                        "may have been applied. Reconcile the provider record "
+                        "before any retry."
+                    ),
+                    connector_id=result.connector_id or cid,
+                )
             if result.success and write_idempotency_key and idempotency_enabled:
                 from app.services.write_invoke_idempotency import finalize_write_invoke
 
-                finalize_write_invoke(
+                finalized = finalize_write_invoke(
                     ctx.client,
                     org_id=ctx.org_id,
                     idempotency_key=write_idempotency_key,
@@ -5492,6 +5570,27 @@ def invoke_tool(ctx: ToolContext, action: str, params: dict[str, Any] | None = N
                     status="completed",
                     result=result,
                 )
+                if finalized.outcome != "finalized":
+                    # The provider may have committed, but we could not record
+                    # durable completion. Never report verified success or
+                    # encourage a retry; the pre-dispatch claim stays fenced.
+                    _write_tool_audit(
+                        ctx, action, result.connector_id or cid,
+                        "tool.invoke.outcome_uncertain",
+                        {"reason": "ledger_finalize_unconfirmed"},
+                    )
+                    return NormalizedResult(
+                        success=False,
+                        action=action,
+                        data={},
+                        error_code="outcome_uncertain",
+                        error_message=(
+                            "The provider accepted the write but the durable "
+                            "completion record was not confirmed; reconcile "
+                            "the provider record before any retry."
+                        ),
+                        connector_id=result.connector_id or cid,
+                    )
             try:
                 from app.services.post_publish_marketing_metrics_service import (
                     maybe_record_post_publish_marketing_baseline,
@@ -5572,13 +5671,26 @@ def invoke_tool(ctx: ToolContext, action: str, params: dict[str, Any] | None = N
     if write_idempotency_key and idempotency_enabled and last_error is not None:
         from app.services.write_invoke_idempotency import finalize_write_invoke
 
-        finalize_write_invoke(
+        failed_finalization = finalize_write_invoke(
             ctx.client,
             org_id=ctx.org_id,
             idempotency_key=write_idempotency_key,
             claim_token=write_claim_token,
             status="uncertain" if isinstance(last_error, ToolOutcomeUncertainError) else "failed",
         )
+        if failed_finalization.outcome != "finalized":
+            # A rejected pre-provider ownership/approval check also reaches this
+            # path. The claim is fenced, but its terminal state is unverified.
+            # Never present the original rejection as a fully settled outcome.
+            logger.error(
+                "write_failure_ledger_finalize_unconfirmed org_id=%s action=%s outcome=%s",
+                ctx.org_id, action, failed_finalization.outcome,
+            )
+            raise WriteIdempotencyUnavailable(
+                "Write failure ledger finalization could not be confirmed; "
+                "reconciliation is required before retry.",
+                code="write_idempotency_unavailable",
+            )
 
     finish_write_effect(
         write_effect,

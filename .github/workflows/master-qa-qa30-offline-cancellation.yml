@@ -1,11 +1,11 @@
-name: PR587 offline cancellation safety gate
+name: Master QA | QA30 Offline Cancellation Safety
 on:
   pull_request:
     paths:
       - 'scripts/pr587_offline_cancel_gate.py'
       - 'docs/delivery/pr587-stt-control-latency-3980a8d.json'
       - 'docs/delivery/pr587-local-control-decoder-rejections.json'
-      - '.github/workflows/pr587-offline-cancellation.yml'
+      - '.github/workflows/master-qa-qa30-offline-cancellation.yml'
   workflow_dispatch:
 permissions:
   contents: read

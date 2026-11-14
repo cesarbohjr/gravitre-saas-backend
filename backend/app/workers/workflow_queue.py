@@ -264,3 +264,23 @@ def assert_current_workflow_claim_live() -> None:
         saved, expires = client.pipeline().hget(WORKFLOW_RUN_CLAIMS, token).zscore(WORKFLOW_RUN_LEASES, token).execute()
         if saved != payload or expires is None or expires <= now:
             raise RuntimeError("workflow queue claim lost; write refused")
+
+    # A separate SQL recovery owner can atomically park an abandoned graph
+    # while an old queue worker is still stalled inside a connector. Even if
+    # its Redis heartbeat survives, that old worker must not dispatch ANY
+    # subsequent write after the SQL takeover.
+    if getattr(settings, "workflow_orphan_recovery_enabled", False) is True:
+        job = parse_workflow_run_job(raw)
+        if job is None:
+            raise RuntimeError("unparseable workflow claim; write refused")
+        from app.workflows.repository import get_supabase_client
+
+        database = get_supabase_client(settings)
+        result = (
+            database.table("workflow_runs").select("status")
+            .eq("id", job.run_id).eq("org_id", job.org_id)
+            .limit(1).execute()
+        )
+        rows = result.data or []
+        if len(rows) != 1 or rows[0].get("status") != "running":
+            raise RuntimeError("workflow was parked or completed; write refused")

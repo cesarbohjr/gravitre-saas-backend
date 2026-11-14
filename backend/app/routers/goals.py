@@ -7,12 +7,252 @@ from pydantic import BaseModel, Field
 from supabase import create_client
 from app.core.db import shared_service_client
 
-from app.auth.dependencies import get_current_user, get_environment_context, get_org_context
+from app.auth.dependencies import get_current_user, get_environment_context, get_org_context, require_org_member
 from app.config import Settings, get_settings
 from app.services.confidence_honesty import CONFIDENCE_SOURCE_HEURISTIC, label_confidence
 from app.services.goal_service import get_goal_service
 
 router = APIRouter(prefix="/api/goals", tags=["goals"])
+
+
+@router.get("/diagnostics/sales/runs/{run_id}")
+def sales_run_diagnosis(
+    run_id: str,
+    _user: Annotated[dict, Depends(get_current_user)],
+    org_id: Annotated[str | None, Depends(get_org_context)],
+    environment_name: Annotated[str, Depends(get_environment_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict[str, Any]:
+    """Inspect an already executed, tenant-bound sales workflow; never dispatch."""
+    from uuid import UUID
+    from app.workflows.repository import get_supabase_client
+    from app.workflows.sales_growth_recipe import (
+        GoalCompilationBlocked,
+        diagnose_authenticated_sales_run,
+    )
+
+    if org_id is None:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
+    try:
+        validated_run_id = str(UUID(run_id))
+    except (TypeError, ValueError) as exc:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Invalid run ID") from exc
+    try:
+        result = diagnose_authenticated_sales_run(
+            client=get_supabase_client(settings),
+            org_id=org_id,
+            environment_name=environment_name,
+            run_id=validated_run_id,
+        )
+    except GoalCompilationBlocked as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+    if result is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Workflow run not found")
+    return result
+
+
+@router.get("/diagnostics/analytics/runs/{run_id}")
+def analytics_run_diagnosis(
+    run_id: str,
+    _user: Annotated[dict, Depends(get_current_user)],
+    org_id: Annotated[str | None, Depends(get_org_context)],
+    environment_name: Annotated[str, Depends(get_environment_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict[str, Any]:
+    """Read-only GA4 report evidence from a completed governed workflow."""
+    from uuid import UUID
+    from app.workflows.repository import get_supabase_client
+    from app.services.analytics_metric_evidence import (
+        AnalyticsEvidenceBlocked, diagnose_ga4_run,
+    )
+
+    if org_id is None:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
+    try:
+        validated_run_id = str(UUID(run_id))
+    except (TypeError, ValueError) as exc:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Invalid run ID") from exc
+    try:
+        result = diagnose_ga4_run(
+            client=get_supabase_client(settings), org_id=org_id,
+            environment_name=environment_name, run_id=validated_run_id,
+        )
+    except AnalyticsEvidenceBlocked as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+    if result is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Workflow run not found")
+    return result
+
+
+class CrossSourceOpportunityRequest(BaseModel):
+    crm_run_id: str = Field(..., alias="crmRunId")
+    analytics_run_id: str = Field(..., alias="analyticsRunId")
+
+    model_config = {"populate_by_name": True}
+
+
+@router.post("/diagnostics/opportunities")
+def preview_cross_source_opportunities(
+    body: CrossSourceOpportunityRequest,
+    _user: Annotated[dict, Depends(get_current_user)],
+    org_id: Annotated[str | None, Depends(get_org_context)],
+    environment_name: Annotated[str, Depends(get_environment_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict[str, Any]:
+    """Tenant-scoped evidence and advisory Play bindings; never dispatch writes."""
+    from datetime import datetime, timezone
+    from uuid import UUID
+    from app.workflows.repository import get_supabase_client
+    from app.plays.workflow_bindings import list_all_play_workflow_bindings
+    from app.services.cross_source_opportunity_service import (
+        OpportunityAssessmentBlocked, assess_cross_source_opportunities,
+    )
+
+    if org_id is None:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
+    try:
+        crm_run = str(UUID(body.crm_run_id))
+        analytics_run = str(UUID(body.analytics_run_id))
+    except (TypeError, ValueError) as exc:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Invalid source run ID") from exc
+    client = get_supabase_client(settings)
+    installations = (
+        client.table("play_installations").select("id,play_key,status,environment_name,org_id")
+        .eq("org_id", org_id).eq("environment_name", environment_name).execute().data or []
+    )
+    # The binding query is already org-scoped. Verify each referenced workflow
+    # belongs to the same tenant and selected environment before surfacing it.
+    raw_bindings = list_all_play_workflow_bindings(client, org_id)
+    bindings: dict[str, list[dict[str, Any]]] = {}
+    for key, items in raw_bindings.items():
+        # Canonical run_play dispatches ALL workflows bound to a Play. Never
+        # advertise a one-workflow intervention if extra bindings might run.
+        if len(items) != 1:
+            continue
+        item = items[0]
+        workflow_id = str(item.get("workflowId") or "")
+        if not workflow_id or item.get("status") in {"archived", "deleted"}:
+            continue
+        verified = (
+            client.table("workflows").select("id")
+            .eq("id", workflow_id).eq("org_id", org_id)
+            .eq("environment", environment_name).limit(1).execute().data or []
+        )
+        if verified:
+            bindings[key] = [{
+                **item, "org_id": org_id, "environment_name": environment_name,
+            }]
+    try:
+        assessment = assess_cross_source_opportunities(
+            client=client, org_id=org_id, environment_name=environment_name,
+            crm_run_id=crm_run, analytics_run_id=analytics_run,
+            as_of=datetime.now(timezone.utc),
+            installed_plays=[{**item, "installed": True} for item in installations],
+            workflow_bindings=bindings,
+        )
+    except OpportunityAssessmentBlocked as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+    if assessment.get("status") == "SOURCE_RUN_NOT_FOUND":
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Source run not found")
+    return assessment
+
+
+class GovernedOpportunityHandoffRequest(CrossSourceOpportunityRequest):
+    opportunity_id: str = Field(..., alias="opportunityId")
+    confirm_submit_to_play: bool = Field(default=False, alias="confirmSubmitToPlay")
+
+
+@router.post("/diagnostics/opportunities/handoff")
+async def handoff_cross_source_opportunity(
+    body: GovernedOpportunityHandoffRequest,
+    member: Annotated[tuple, Depends(require_org_member)],
+    environment_name: Annotated[str, Depends(get_environment_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict[str, Any]:
+    """Explicit user handoff to the existing Play router; never approve writes.
+
+    Recompute evidence and tenant bindings on every request. A submitted Play
+    is still governed by Play readiness, workflow policy and human approval.
+    """
+    from app.routers.plays import RunPlayRequest, run_play
+
+    user, org_id, role = member
+    if not body.confirm_submit_to_play:
+        raise HTTPException(status_code=409, detail="Explicit Play handoff confirmation required")
+    assessment = preview_cross_source_opportunities(
+        CrossSourceOpportunityRequest(
+            crm_run_id=body.crm_run_id, analytics_run_id=body.analytics_run_id,
+        ),
+        _user=user, org_id=org_id, environment_name=environment_name, settings=settings,
+    )
+    candidates = [
+        item for item in assessment.get("opportunities", [])
+        if item.get("id") == body.opportunity_id
+    ]
+    if len(candidates) != 1:
+        raise HTTPException(status_code=404, detail="Opportunity not available")
+    candidate = candidates[0]
+    if candidate["status"] != "REVIEW_REQUIRED" or not (
+        candidate.get("play_key") and candidate.get("installation_id") and candidate.get("workflow_id")
+    ):
+        raise HTTPException(status_code=409, detail="A tenant-installed, workflow-bound Play is required")
+    # This request never supplies approval or writes directly. Existing
+    # run_play enforces all provider, installation, approval and policy checks.
+    result = await run_play(
+        candidate["play_key"],
+        RunPlayRequest(
+            installationId=candidate["installation_id"],
+            opportunityId=body.opportunity_id,
+            sourceRunIds={
+                "crm": assessment["source_runs"]["crm"],
+                "analytics": assessment["source_runs"]["analytics"],
+            },
+        ),
+        member=(user, org_id, role),
+        environment_name=environment_name,
+        settings=settings,
+    )
+    return {
+        "opportunityId": body.opportunity_id,
+        "playKey": candidate["play_key"],
+        "workflowId": candidate["workflow_id"],
+        "canonicalPlayResult": result,
+        "approvalGrantedByIntelligence": False,
+        "businessOutcome": "NOT_MEASURED",
+    }
+
+
+@router.get("/diagnostics/opportunities/play-runs/{play_run_id}/acceptance")
+def inspect_opportunity_acceptance(
+    play_run_id: str,
+    _user: Annotated[dict, Depends(get_current_user)],
+    org_id: Annotated[str | None, Depends(get_org_context)],
+    environment_name: Annotated[str, Depends(get_environment_context)],
+    settings: Annotated[Settings, Depends(get_settings)],
+) -> dict[str, Any]:
+    """Read-only verification of independently persisted Play/outcome facts."""
+    from uuid import UUID
+    from app.workflows.repository import get_supabase_client
+    from app.services.opportunity_acceptance_service import (
+        AcceptanceEvidenceBlocked, inspect_opportunity_play_run,
+    )
+
+    if org_id is None:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Organization context required")
+    try:
+        run_id = str(UUID(play_run_id))
+    except (TypeError, ValueError) as exc:
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="Invalid Play run ID") from exc
+    try:
+        evidence = inspect_opportunity_play_run(
+            client=get_supabase_client(settings), org_id=org_id,
+            environment_name=environment_name, play_run_id=run_id,
+        )
+    except AcceptanceEvidenceBlocked as exc:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc)) from exc
+    if evidence is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Play run not found")
+    return evidence
 
 
 class GeneratePlanRequest(BaseModel):
@@ -357,14 +597,39 @@ async def execute_objective(
                 environment_name=environment_name,
                 settings=settings,
             )
+            # A Play router response is not itself proof that a governed
+            # workflow was dispatched. Require the canonical workflow run
+            # receipt before recording objective activity or claiming a start.
+            workflow_runs = result.get("workflowRuns") if isinstance(result, dict) else None
+            has_run = (
+                isinstance(workflow_runs, list)
+                and any(
+                    isinstance(item, dict) and str(item.get("runId") or "").strip()
+                    for item in workflow_runs
+                )
+            )
+            accepted_status = (
+                isinstance(result, dict)
+                and result.get("status") in {"running", "awaiting_approval"}
+                and result.get("executionAuthority") == "canonical_workflow_runtime"
+                and str(result.get("playRunId") or "").strip()
+            )
+            if not (has_run and accepted_status):
+                request["state"] = "not_started"
+                request["reason"] = "No verified canonical workflow run was started"
+                continue
             request["state"] = "started"
-            request["playRunId"] = result.get("playRunId")
-            request["runStatus"] = result.get("status")
+            request["playRunId"] = result["playRunId"]
+            request["runStatus"] = result["status"]
             started.append(request["playKey"])
         except HTTPException as exc:
             request["state"] = "not_started"
             request["reason"] = exc.detail
-    client.table("goals").update({"status": "active"}).eq("id", objective_id).eq("org_id", org).execute()
+    # Do not mark an objective active merely because execution was requested.
+    # A fully blocked or rejected plan has not started any governed workflow.
+    # Its objective status must not claim otherwise; return the actual reasons.
+    if started:
+        client.table("goals").update({"status": "active"}).eq("id", objective_id).eq("org_id", org).execute()
     return {"objectiveId": objective_id, "started": started, "steps": requests}
 
 

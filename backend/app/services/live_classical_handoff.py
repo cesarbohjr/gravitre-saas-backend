@@ -71,26 +71,45 @@ def stash_handoff_queue(task_state: dict[str, Any] | None, queue: list[dict[str,
 
 
 def arm_handoff(payload: dict[str, Any] | None) -> None:
+    """Arm one direct handoff, replacing *all* prior one-shot queue state.
+
+    A standalone arming must not retain a prior turn's evidence-plan queue in
+    the same context; that would execute the old queued choice instead of the
+    newly selected tool. Multi-tool evidence queues are armed exclusively by
+    arm_from_task_state below.
+    """
+    _armed_queue.set(None)
     if isinstance(payload, dict) and payload.get("tool_name"):
-        _armed.set(payload)
+        _armed.set(dict(payload))
     else:
         _armed.set(None)
 
 
 def arm_from_task_state(task_state: dict[str, Any] | None) -> None:
+    """Transfer this turn's choices out of persistable conversation state.
+
+    The ReAct context is the sole owner after arming. Leaving a copy in task
+    state allowed a later turn (or a retry after interruption) to arm the same
+    selection again, even after consume_handoff had exhausted the context.
+    Approval and durable execution state remain owned by their existing gates;
+    a tool-selection handoff is not a resumable execution checkpoint.
+    """
     payload = None
     queue: list[dict[str, Any]] | None = None
     if isinstance(task_state, dict):
-        raw_q = task_state.get("live_classical_handoff_queue")
+        raw_q = task_state.pop("live_classical_handoff_queue", None)
+        raw = task_state.pop("live_classical_handoff", None)
+        task_state.pop("evidence_plan_owns_tools", None)
         if isinstance(raw_q, list) and raw_q:
             queue = [dict(x) for x in raw_q if isinstance(x, dict)]
-        raw = task_state.get("live_classical_handoff")
         if isinstance(raw, dict):
             payload = raw
         elif queue:
             payload = queue[0]
     _armed_queue.set(queue)
-    arm_handoff(payload)
+    # Preserve the current turn's intentional multi-tool evidence queue.
+    # arm_handoff is the standalone one-shot API and clears a stale queue.
+    _armed.set(dict(payload) if isinstance(payload, dict) and payload.get("tool_name") else None)
 
 
 def peek_handoff() -> dict[str, Any] | None:

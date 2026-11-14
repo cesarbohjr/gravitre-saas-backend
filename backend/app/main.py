@@ -309,6 +309,15 @@ async def lifespan(app: FastAPI):
             registry_summary["warnings"],
             registry_summary.get("byCode"),
         )
+    # Isolated ECO-001 ingress certification must never start scheduled writers.
+    # This gate is opt-in and refuses to run outside the dedicated QA environment.
+    if os.environ.get("ECO001_QA_HTTP_PREFLIGHT_ONLY", "").strip().lower() in {"1", "true", "yes"}:
+        if os.environ.get("APP_ENV", "").strip().lower() != "qa":
+            raise RuntimeError("ECO001_QA_HTTP_PREFLIGHT_ONLY requires APP_ENV=qa")
+        logger.warning("eco001_qa_http_preflight_only enabled=true background_workers_started=false")
+        yield
+        return
+
     # Background loops: hourly usage-sync (idempotent Stripe metering) + the
     # durable async agent-job worker. Both are gated by env flags.
     from app.billing.usage_scheduler import start_usage_sync_scheduler, stop_usage_sync_scheduler
@@ -391,6 +400,9 @@ async def lifespan(app: FastAPI):
         stop_capability_marketplace_sync_scheduler,
     )
     from app.workers.workflow_worker import start_workflow_run_worker, stop_workflow_run_worker
+    from app.workers.isolated_workflow_supervisor import (
+        start_isolated_workflow_worker, stop_isolated_workflow_worker,
+    )
 
     temporal_host = (os.environ.get("TEMPORAL_HOST") or "").strip()
     use_temporal = bool(temporal_host)
@@ -513,6 +525,7 @@ async def lifespan(app: FastAPI):
 
     app.state.agent_job_task = start_agent_job_worker()
     app.state.workflow_run_task = start_workflow_run_worker()
+    app.state.isolated_workflow_worker_task = start_isolated_workflow_worker()
     _log_billing_startup_config()
     try:
         yield
@@ -568,6 +581,8 @@ async def lifespan(app: FastAPI):
                 pass
             except Exception as exc:  # noqa: BLE001
                 logger.debug("voice_perceive_warmup_stop_skipped error=%s", exc)
+        await stop_isolated_workflow_worker(
+            getattr(app.state, "isolated_workflow_worker_task", None))
         await stop_workflow_run_worker(getattr(app.state, "workflow_run_task", None))
 
 

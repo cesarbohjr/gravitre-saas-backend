@@ -1,0 +1,163 @@
+name: Master QA | QA00–QA90 Core Evidence & Runtime
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'backend/tests/master_qa/**'
+      - 'backend/app/services/intelligence_router.py'
+      - 'backend/app/services/routing_stage_metrics.py'
+      - 'backend/app/services/context_assembler.py'
+      - 'backend/app/services/context_stage_metrics.py'
+      - 'backend/app/services/unified_retrieval_service.py'
+      - 'backend/app/services/pipecat_voice/**'
+      - 'docs/delivery/master-qa-workflow-consolidation.md'
+      - 'backend/app/workflows/sales_growth_recipe.py'
+      - 'backend/app/services/goal_service.py'
+      - 'backend/app/services/unified_turn_classical_fallback.py'
+      - 'backend/app/services/live_classical_handoff.py'
+      - 'backend/tests/services/test_convergence_p0_p6.py'
+      - 'backend/tests/services/test_text_voice_task_execution_parity.py'
+      - 'backend/app/services/unified_turn_reasoning_service.py'
+      - 'backend/tests/services/test_unified_turn_classical_fallback.py'
+      - 'backend/tests/services/test_unified_turn_fallthrough_enum.py'
+      - 'backend/app/routers/workflows.py'
+      - 'backend/app/routers/goals.py'
+      - 'backend/tests/master_qa/test_objective_execution_truth.py'
+      - 'backend/scripts/master_qa_remediation_guard.py'
+      - 'backend/scripts/master_qa_wiring_preflight.py'
+      - 'backend/scripts/master_qa_release_certifier.py'
+      - 'backend/scripts/p27_hubspot_dispatch_guard.py'
+      - '.github/workflows/master-qa-p27-sandbox-readback.yml'
+      - 'docs/delivery/master-qa-00-90-release-manifest.json'
+      - 'docs/delivery/master-qa-remediation-register.v2.json'
+      - 'docs/delivery/master-qa-tranche27-findings-evidence-matrix.json'
+      - '.github/workflows/master-qa-p0-synthetic.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: master-qa-p0-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  synthetic-fixtures:
+    name: Master QA synthetic fixture contracts
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install minimal offline test runner
+        run: python -m pip install --disable-pip-version-check pytest
+      - name: Run seven fixture tests with zero accepted skips
+        run: |
+          python -m pytest --confcutdir=tests/master_qa -q -rs tests/master_qa/test_synthetic_fixture_factory.py tests/master_qa/test_workflow_source_audit.py
+          python - <<'PY'
+          import subprocess
+          p = subprocess.run(
+              ['python', '-m', 'pytest', '--collect-only', '-q', '--confcutdir=tests/master_qa',
+               'tests/master_qa/test_synthetic_fixture_factory.py'],
+              capture_output=True, text=True, check=True
+          )
+          assert '7 tests collected' in p.stdout or '7 tests collected' in p.stderr, p.stdout
+          PY
+
+      - name: Verify consolidated workflow coverage and protected manual lanes
+        run: python -m pytest -q --confcutdir=tests/master_qa tests/master_qa/test_master_qa_workflow_consolidation.py
+      - name: Fail closed on missing audit findings, unproven PASS or retirement
+        run: |
+          python -m pytest -q --confcutdir=tests/master_qa tests/master_qa/test_master_qa_remediation_guard.py
+          python scripts/master_qa_remediation_guard.py --output "$RUNNER_TEMP/master-qa-remediation-summary.json"
+          python -m pytest -q --confcutdir=tests/master_qa tests/master_qa/test_master_qa_wiring_preflight.py
+          python scripts/master_qa_wiring_preflight.py --output "$RUNNER_TEMP/master-qa-wiring-evidence.json"
+          python -m pytest -q --confcutdir=tests/master_qa tests/master_qa/test_master_qa_release_certifier.py
+          python scripts/master_qa_release_certifier.py --output "$RUNNER_TEMP/master-qa-00-90-release-summary.json"
+      - name: Upload QA00–90 release gate status
+        uses: actions/upload-artifact@v4
+        with:
+          name: master-qa-00-90-release-status
+          path: ${{ runner.temp }}/master-qa-00-90-release-summary.json
+          retention-days: 14
+          if-no-files-found: error
+      - name: Upload bounded source-wiring evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: master-qa-wiring-source-evidence
+          path: ${{ runner.temp }}/master-qa-wiring-evidence.json
+          retention-days: 14
+          if-no-files-found: error
+      - name: Upload strict remediation coverage summary
+        uses: actions/upload-artifact@v4
+        with:
+          name: master-qa-audit-remediation-summary
+          path: ${{ runner.temp }}/master-qa-remediation-summary.json
+          retention-days: 14
+          if-no-files-found: error
+
+      - name: Generate static workflow governance artifact (no secrets or API calls)
+        run: python scripts/master_qa_workflow_audit.py --output "$RUNNER_TEMP/master-qa-workflow-audit.json"
+      - name: Upload workflow governance artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: master-qa-workflow-source-audit
+          path: ${{ runner.temp }}/master-qa-workflow-audit.json
+          retention-days: 5
+          if-no-files-found: error
+
+  actual-runtime-and-postgres:
+    name: Master QA actual guards and disposable PostgreSQL
+    runs-on: ubuntu-latest
+    timeout-minutes: 28
+    defaults:
+      run:
+        working-directory: backend
+    env:
+      APP_ENV: dev
+      SUPABASE_URL: https://test.supabase.co
+      SUPABASE_ANON_KEY: anon-test
+      SUPABASE_SERVICE_ROLE_KEY: service-role-test
+      SUPABASE_JWT_SECRET: jwt-secret-test
+      OPENAI_API_KEY: sk-test-openai
+      GRAVITRE_REQUIRE_PG: "1"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Reclaim unrelated runner SDK caches
+        run: |
+          set -euo pipefail
+          for dir in /usr/local/lib/android /usr/share/dotnet /opt/ghc /usr/local/share/powershell; do
+            if [ -d "$dir" ]; then sudo rm -rf -- "$dir"; fi
+          done
+      - name: Install disposable local PostgreSQL
+        run: |
+          set -euo pipefail
+          sudo env DEBIAN_FRONTEND=noninteractive timeout 120s apt-get -o Acquire::Retries=1 update -qq
+          sudo env DEBIAN_FRONTEND=noninteractive timeout 120s apt-get -o Acquire::Retries=1 install -y -qq postgresql postgresql-client
+          test -n "$(find /usr/lib/postgresql -name initdb -type f -print -quit)"
+      - name: Install existing backend development dependencies
+        run: |
+          python -m pip install --no-cache-dir --no-compile -r requirements-dev.txt
+          python -m pip check
+      - name: Exercise actual Gravitre execution safety guards
+        run: python -m pytest -q -rs tests/master_qa/test_sandbox_provider_readback_contract.py tests/master_qa/test_hubspot_sandbox_readback_contract.py tests/master_qa/test_p27_hubspot_tool_dispatch.py tests/master_qa/test_connector_connected_filter.py tests/master_qa/test_sales_growth_goal_compiler.py tests/master_qa/test_authenticated_sales_run_diagnosis.py tests/master_qa/test_analytics_metric_evidence.py tests/master_qa/test_cross_source_opportunities.py tests/master_qa/test_opportunity_acceptance.py tests/master_qa/test_sales_growth_from_goal_route.py tests/master_qa/test_business_goal_intelligence.py tests/master_qa/test_objective_execution_truth.py tests/master_qa/test_handoff_state_ownership.py tests/services/test_unified_turn_classical_fallback.py tests/services/test_unified_turn_fallthrough_enum.py tests/services/test_convergence_p0_p6.py tests/services/test_text_voice_task_execution_parity.py tests/master_qa/test_worker_orphan_tick.py tests/master_qa/test_isolated_workflow_supervisor.py tests/master_qa/test_actual_agent_selection.py tests/master_qa/test_runtime_guard_integration.py tests/services/test_gate26_cancellation_and_outbox_contract.py
+      - name: ECO-002 and ECO-003 routing, context and tenant-scope regression contracts
+        run: |
+          python -m pytest -q -rs tests/master_qa/test_eco002_route_stage_metrics.py tests/master_qa/test_eco003_context_stage_metrics.py tests/master_qa/test_eco003_context_scope_parity.py tests/master_qa/test_eco003_context_stage_latency_report.py tests/master_qa/test_eco002_route_stage_latency_report.py
+      - name: Certify disposable PostgreSQL trigger, relay and idempotency
+        run: |
+          python - <<'PY'
+          from tests.db.pg_harness import PG_BIN
+          if PG_BIN is None:
+              raise SystemExit("PostgreSQL unavailable: not certifying skipped tests")
+          PY
+          python -m pytest -q -rs tests/db/test_domain_event_outbox_pg.py tests/master_qa/test_real_guard_postgres_consumer_pg.py tests/master_qa/test_canonical_play_outbox_pg.py tests/master_qa/test_actual_workflow_step_pg.py tests/master_qa/test_actual_approval_resume_pg.py tests/master_qa/test_joined_agent_play_approval_step_pg.py tests/master_qa/test_canonical_repository_persistence_pg.py tests/master_qa/test_authenticated_sales_run_diagnosis_pg.py tests/master_qa/test_opportunity_acceptance_pg.py tests/master_qa/test_graph_checkpoint_process_recovery_pg.py tests/master_qa/test_ambiguous_provider_commit_recovery_pg.py tests/master_qa/test_orphan_graph_claim_pg.py tests/master_qa/test_graph_pre_dispatch_journal_pg.py tests/master_qa/test_auto_orphan_reconciliation_pg.py tests/master_qa/test_worker_process_crash_restart_pg.py

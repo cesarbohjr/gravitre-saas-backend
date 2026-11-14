@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import asyncio
+import time
 from typing import Any
 
 from app.config import Settings, get_settings
@@ -38,12 +39,31 @@ def process_workflow_run_job(settings: Settings, job_raw: str) -> bool:
         )
         return True
 
-    # Redelivered terminal runs must never repeat provider effects.
-    if str(run.get("status") or "").lower() in {"completed", "failed", "cancelled", "rejected"}:
+    # A queued redelivery must not bypass human approval, operator pauses,
+    # or a P27 orphan graph checkpoint. In particular, a crashed worker can
+    # leave the run 'running' even after the provider applied its write.
+    # ONLY the fenced SQL orphan reconciler may settle that uncertain effect.
+    state = str(run.get("status") or "").lower()
+    if state in {
+        "completed", "failed", "cancelled", "rejected", "paused",
+        "pending_approval", "awaiting_approval", "flagged_for_review",
+        "verification_inconclusive",
+    }:
         return True
 
     definition = run.get("definition_snapshot") or {}
     parameters = run.get("parameters") or {}
+    checkpoint = parameters.get("_graph_execution") if isinstance(parameters, dict) else None
+    if (
+        state == "running"
+        and isinstance(checkpoint, dict)
+        and checkpoint.get("pause_reason") == "executor_in_flight"
+    ):
+        logger.warning(
+            "workflow_worker_uncertain_write_redelivery_blocked org_id=%s run_id=%s",
+            job.org_id, job.run_id,
+        )
+        return True
     actor_id = str(run.get("triggered_by") or "system")
     environment_name = str(run.get("environment") or "default")
 
@@ -116,8 +136,20 @@ async def _renew_claim_until_done(raw: str) -> None:
 
 
 async def _worker_loop(poll_seconds: int, settings: Settings) -> None:
+    # Existing durable queue owns normal executions; the separate SQL sweep
+    # only claims abandoned graph runs with an in-flight step + checkpoint.
+    next_orphan_check = 0.0
     while True:
         try:
+            if (bool(getattr(settings, "workflow_orphan_recovery_enabled", False))
+                    and time.monotonic() >= next_orphan_check):
+                next_orphan_check = time.monotonic() + max(
+                    30, int(getattr(settings, "workflow_orphan_recovery_interval_seconds", 60)))
+                try:
+                    from app.services.workflow_orphan_reconciler import recover_one_stale_graph_run
+                    await asyncio.to_thread(recover_one_stale_graph_run, settings)
+                except Exception as exc:  # noqa: BLE001
+                    logger.warning("workflow_orphan_sweep_failed reason=%s", type(exc).__name__)
             raw = await dequeue_workflow_run(timeout_seconds=poll_seconds)
             if raw:
                 heartbeat = asyncio.create_task(_renew_claim_until_done(raw))
@@ -145,6 +177,9 @@ def start_workflow_run_worker() -> asyncio.Task | None:
         settings = get_settings()
         if not bool(getattr(settings, "workflow_queue_enabled", True)):
             logger.info("workflow run worker disabled")
+            return None
+        if bool(getattr(settings, "workflow_worker_process_isolation_enabled", False)):
+            logger.info("in-process workflow worker disabled: isolated child owns queue")
             return None
         poll = int(getattr(settings, "workflow_queue_poll_seconds", 5) or 5)
     except Exception as exc:  # noqa: BLE001

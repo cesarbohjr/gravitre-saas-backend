@@ -1,0 +1,40 @@
+name: Master QA | QA20 Governed Ingress Read-Only Preflight
+on:
+  workflow_dispatch:
+    inputs:
+      backend_url:
+        description: 'HTTPS URL of an already-deployed, isolated FastAPI nonproduction backend (not frontend or production)'
+        required: true
+        type: string
+      runtime_sha:
+        description: 'Exact Git commit deployed to that backend; /health git_sha must match'
+        required: true
+        type: string
+permissions:
+  contents: read
+jobs:
+  deployed-ingress-preflight:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Verify protected backend runtime without dispatching work
+        env:
+          QA_BACKEND_URL: ${{ inputs.backend_url }}
+          QA_EXPECTED_SHA: ${{ inputs.runtime_sha }}
+        run: |
+          set -euo pipefail
+          python backend/scripts/eco001_deployed_ingress_preflight.py \
+            --url "$QA_BACKEND_URL" \
+            --sha "$QA_EXPECTED_SHA" \
+            --output "$RUNNER_TEMP/eco001-deployed-ingress.json"
+      - name: Upload sanitized nonproduction runtime identity evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: eco001-deployed-ingress-readonly
+          path: ${{ runner.temp }}/eco001-deployed-ingress.json
+          if-no-files-found: warn

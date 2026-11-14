@@ -294,3 +294,101 @@ async def test_changed_target_or_legacy_contract_never_reaches_server(service, c
             await service.execute_tool("tool-write", "org-1", {"name": "x"}, approval_id="appr-1")
     call.assert_not_awaited()
     assert approvals.row["consumed_at"] is None
+
+
+@pytest.mark.asyncio
+async def test_concurrent_provider_dispatch_claims_exactly_once(service) -> None:
+    """Shared conditional consumed_at claim admits only one concurrent remote write."""
+    import asyncio
+
+    approvals = _Approvals(_approval({"name": "x"}))
+    remote_calls = AsyncMock(return_value={"created": True})
+    async def attempt():
+        try:
+            return await _run_with(service, approvals, call=remote_calls)
+        except ValueError:
+            return {"status": "rejected"}
+    first, second = await asyncio.gather(attempt(), attempt())
+    assert sorted([first["status"], second["status"]]) == ["rejected", "verification_inconclusive"]
+    remote_calls.assert_awaited_once()
+    assert approvals.row["consumed_at"] is not None
+
+
+@pytest.mark.asyncio
+async def test_cancelled_remote_dispatch_keeps_durable_claim_and_blocks_restart(service) -> None:
+    """CancelledError can represent a crashed worker after a provider write landed."""
+    import asyncio
+
+    approvals = _Approvals(_approval({"name": "x"}))
+    writes = []
+    async def write_then_cancel(_server, _tool, args):
+        writes.append(dict(args))
+        raise asyncio.CancelledError()
+
+    with pytest.raises(asyncio.CancelledError):
+        await _run_with(service, approvals, call=AsyncMock(side_effect=write_then_cancel))
+    assert approvals.row["consumed_at"] is not None
+    restarted, remote = await _run(service, _client(approvals), {"name": "x"})
+    assert restarted["status"] == "rejected"
+    remote.assert_not_awaited()
+    assert len(writes) == 1
+
+
+@pytest.mark.asyncio
+async def test_consumption_failure_blocks_remote_dispatch(service) -> None:
+    """Database claim errors fail closed before any provider side effect."""
+    approvals = _Approvals(_approval({"name": "x"}), consume_error=RuntimeError("database unavailable"))
+    result, remote = await _run(service, _client(approvals), {"name": "x"})
+    assert result["status"] == "rejected"
+    remote.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_fresh_worker_after_ambiguous_provider_response_never_replays_write() -> None:
+    """Real execute_tool path, new service instance, same persisted approval claim."""
+    approvals = _Approvals(_approval({"name": "x"}))
+    first_worker = MCPClientService(settings=SimpleNamespace(connector_secrets_encryption_key="k" * 32))
+    second_worker = MCPClientService(settings=SimpleNamespace(connector_secrets_encryption_key="k" * 32))
+    effects: list[dict] = []
+
+    async def provider_commits_then_disconnects(_server, _name, args):
+        effects.append(dict(args))
+        raise ConnectionResetError("response lost after provider accepted write")
+
+    initial = await _run_with(
+        first_worker, approvals, call=AsyncMock(side_effect=provider_commits_then_disconnects),
+    )
+    assert initial["status"] == "verification_inconclusive"
+    assert initial["verification"]["verified"] is False
+    assert approvals.row["consumed_at"] is not None
+
+    retry, remote = await _run(second_worker, _client(approvals), {"name": "x"})
+    assert retry["status"] == "rejected"
+    remote.assert_not_awaited()
+    assert effects == [{"name": "x"}]
+
+
+@pytest.mark.asyncio
+async def test_fresh_worker_after_cancelled_dispatch_never_replays_write() -> None:
+    """Cancelled task simulates abrupt worker exit after entering provider dispatch."""
+    import asyncio
+
+    approvals = _Approvals(_approval({"name": "x"}))
+    first_worker = MCPClientService(settings=SimpleNamespace(connector_secrets_encryption_key="k" * 32))
+    second_worker = MCPClientService(settings=SimpleNamespace(connector_secrets_encryption_key="k" * 32))
+    effects: list[dict] = []
+
+    async def provider_commits_then_worker_exits(_server, _name, args):
+        effects.append(dict(args))
+        raise asyncio.CancelledError()
+
+    with pytest.raises(asyncio.CancelledError):
+        await _run_with(
+            first_worker, approvals, call=AsyncMock(side_effect=provider_commits_then_worker_exits),
+        )
+    assert approvals.row["consumed_at"] is not None
+
+    retry, remote = await _run(second_worker, _client(approvals), {"name": "x"})
+    assert retry["status"] == "rejected"
+    remote.assert_not_awaited()
+    assert effects == [{"name": "x"}]

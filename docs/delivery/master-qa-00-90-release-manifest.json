@@ -1,0 +1,79 @@
+{
+  "schema_version": 1,
+  "release_authorized": false,
+  "pr611_head_at_creation": "7ee56785b71114e5b82df68820e1aa7e473a878e",
+  "voice_dependency": {
+    "owner_pr": 610,
+    "head": "668ebc48a175202f25c1e6220dedace4490b8013",
+    "required_milestones": [
+      "V0",
+      "V1",
+      "V2",
+      "V3",
+      "V4",
+      "V5",
+      "V6",
+      "V7"
+    ],
+    "implementation_evidence": "NOT_PROVIDED",
+    "human_acoustic_acceptance": "NOT_RUN",
+    "certified": false
+  },
+  "policy": {
+    "no_extra_paid_staging": true,
+    "production_mutation_requires_separate_approval": true,
+    "synthetic_ci_is_not_live_acceptance": true,
+    "zero_production_certifications": true
+  },
+  "lanes": [
+    {
+      "id": "QA00",
+      "domain": "production identity, topology, route and owner",
+      "state": "PARTIAL",
+      "evidence": "docs/delivery/pr611-r1-production-topology-and-routing-evidence.md",
+      "remaining": "authenticated origin/tenant routing, active deployment configuration, legacy host ownership"
+    },
+    {
+      "id": "QA10",
+      "domain": "SQL persistence, tenant fencing, outbox",
+      "state": "PARTIAL",
+      "evidence": "backend/tests/master_qa/test_real_guard_postgres_consumer_pg.py",
+      "remaining": "live migration/app database binding, downstream production consumption"
+    },
+    {
+      "id": "QA20",
+      "domain": "agent, Play, workflow, connector, approvals",
+      "state": "PARTIAL",
+      "evidence": "backend/tests/master_qa/test_joined_agent_play_approval_step_pg.py",
+      "remaining": "authenticated app flow and independent real provider-backed outcome"
+    },
+    {
+      "id": "QA30",
+      "domain": "Voice 3.0 and conversational quality",
+      "state": "BLOCKED",
+      "evidence": "PR610 V0–V7 plan",
+      "remaining": "PR610 Voice 3.0 implementation, exact source SHA, measured audio and human signoff"
+    },
+    {
+      "id": "QA40",
+      "domain": "frontend routing, browser/mobile, WS",
+      "state": "PARTIAL",
+      "evidence": "apps/web/lib/voice-api-proxy.audit.test.ts",
+      "remaining": "exact SHA green Vitest, authenticated browser-to-Railway trace and device tests"
+    },
+    {
+      "id": "QA50",
+      "domain": "existing-account live provider and worker recovery",
+      "state": "BLOCKED",
+      "evidence": "backend/scripts/p27_hubspot_sandbox_readback.py",
+      "remaining": "protected manual approval, scoped credentials, HubSpot QA GET/DELETE and Railway child-only crash without API loss"
+    },
+    {
+      "id": "QA90",
+      "domain": "unified release audit, CI, rollback and billing/cost",
+      "state": "BLOCKED",
+      "evidence": "docs/delivery/master-qa-remediation-register.v2.json",
+      "remaining": "all P0 audit findings signed closed, exact-head general CI, review, deployed SHA, rollback and cost attestation"
+    }
+  ]
+}

@@ -376,6 +376,9 @@ def _persist_run(client: Any, event: ExecutionOutcomeEvent, status: TerminalStat
                 event.run_id,
                 exc,
             )
+            # Propagate partial persistence to the canonical finalizer: a terminal
+            # status alone does not prove verified output was durably recorded.
+            raise
 
 
 def _write_audit(client: Any, event: ExecutionOutcomeEvent, status: TerminalStatus) -> str | None:

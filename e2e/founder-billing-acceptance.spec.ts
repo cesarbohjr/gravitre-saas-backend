@@ -74,22 +74,154 @@ test("customer completes real sandbox checkout and signed webhook persists subsc
   const sessionId = checkoutUrl.match(/cs_test_[A-Za-z0-9]+/)?.[0]
   if (!sessionId) throw new Error("Stripe sandbox checkout session required")
   await page.goto(checkoutUrl)
-  // Stripe renders this required field asynchronously. Counting immediately
-  // after navigation skipped it and left checkout blocked on REQUIRED.
-  const email = page.getByRole("textbox", { name: "Email", exact: true })
-  await expect(email).toBeVisible()
+  // Stripe Checkout sometimes renders the contact address as type=text.
+  // Identify it by its email-specific attributes in all hosted frames.
+  // Never fill an arbitrary textbox or bypass Stripe's customer identity.
+  // Stripe replaces PCI-isolated iframes while Checkout initializes. A
+  // detached frame is not a payment failure: ignore only that transient frame
+  // and retry the uniqueness assertion. Preserve all other errors.
+  const liveFrameCount = async (field: ReturnType<typeof page.locator>) => {
+    try {
+      return await field.count()
+    } catch (error) {
+      if (/Frame was detached|Execution context was destroyed/.test(String(error))) return 0
+      throw error
+    }
+  }
+  const emailCandidates = async () => {
+    const matches = []
+    for (const frame of page.frames()) {
+      const field = frame.locator(
+        'input:is([type="email"],[autocomplete="email"],[name="email"],[id="email"],[placeholder*="example.com"]):visible'
+      )
+      const count = await liveFrameCount(field)
+      if (count === 1) matches.push(field)
+      else if (count > 1) throw new Error("Ambiguous Stripe Checkout email fields")
+    }
+    return matches
+  }
+  await expect.poll(async () => (await emailCandidates()).length, {
+    timeout: 30_000,
+    message: "Stripe Checkout must expose exactly one email-identified input across frames",
+  }).toBe(1)
+  const [email] = await emailCandidates()
+  await expect(email).toBeEditable()
   await email.fill(fixtures.founderTrialCustomer.email)
-  await page.getByRole("textbox", { name: /Card number/i }).fill("4242424242424242")
-  await page.getByRole("textbox", { name: /Expiration|Expiry/i }).fill("1230")
-  await page.getByRole("textbox", { name: /Security code|CVC/i }).fill("123")
-  const name = page.getByLabel(/Cardholder name|Name on card|Full name/i)
-  if (await name.count()) await name.fill("Sandbox Acceptance")
-  const postal = page.getByLabel(/ZIP|Postal code/i)
-  if (await postal.count()) await postal.fill("94107")
-  // Exercise card checkout without enrolling in optional Link/SMS signup.
-  const saveWithLink = page.getByRole("checkbox", { name: /Save my information|Save my payment/i })
-  if (await saveWithLink.isVisible()) await saveWithLink.uncheck()
-  await page.getByRole("button", { name: /Start trial|Subscribe|Start free trial/i }).click()
+  await expect(email).toHaveValue(fixtures.founderTrialCustomer.email)
+  // The actual Stripe Checkout failure screenshot shows card number, MM / YY,
+  // and security code, but the page-level accessible textbox query sees none.
+  // Stripe hosts card inputs in PCI-isolated frames. Discover a *unique visible*
+  // field by its payment-specific input attributes across all frames, and fail
+  // closed if it is missing or ambiguous; never simulate payment or skip fields.
+  const stripeField = async (label: string, selector: string) => {
+    let found: ReturnType<typeof page.locator> | undefined
+    await expect.poll(async () => {
+      const matches: ReturnType<typeof page.locator>[] = []
+      for (const frame of page.frames()) {
+        const candidate = frame.locator(selector)
+        const count = await liveFrameCount(candidate)
+        if (count > 1) throw new Error(`Ambiguous Stripe ${label} inputs within a frame`)
+        if (count === 1) matches.push(candidate)
+      }
+      found = matches.length === 1 ? matches[0] : undefined
+      return matches.length
+    }, { timeout: 30_000, message: `Stripe Checkout must expose one visible ${label} input across frames` }).toBe(1)
+    if (!found) throw new Error(`Missing Stripe ${label} input`)
+    await expect(found).toBeEditable()
+    return found
+  }
+  const card = await stripeField("card number",
+    'input:is([autocomplete="cc-number"],[name="cardnumber"],[placeholder*="Card number" i],[aria-label*="Card number" i]):visible')
+  await card.fill("4242424242424242")
+  const expiry = await stripeField("expiry",
+    'input:is([autocomplete="cc-exp"],[name="exp-date"],[placeholder*="MM / YY" i],[placeholder*="MM/YY" i],[aria-label*="expiration" i],[aria-label*="expiry" i]):visible')
+  await expiry.fill("1230")
+  const security = await stripeField("security code",
+    'input:is([autocomplete="cc-csc"],[name="cvc"],[placeholder*="Security code" i],[placeholder*="CVC" i],[aria-label*="Security code" i]):visible')
+  await security.fill("123")
+  const name = await stripeField("cardholder name",
+    'input:is([autocomplete="cc-name"],[name="billingName"],[placeholder*="First and last name" i],[placeholder*="Name on card" i],[aria-label*="Name on card" i]):visible')
+  await name.fill("Sandbox Acceptance")
+  const postal = await stripeField("postal code",
+    'input:is([autocomplete="postal-code"],[name="postalCode"],[placeholder*="ZIP code" i],[placeholder*="Postal code" i],[aria-label*="ZIP code" i]):visible')
+  await postal.fill("94107")
+  // The post-submit failure screenshot shows an enabled Link opt-in and
+  // "Your phone number is incomplete." Stripe keeps this checkbox in its
+  // hosted form; the top-page role lookup silently missed it. Discover the
+  // unique visible opt-in across Checkout frames, explicitly uncheck it, and
+  // require the unchecked state before payment. Never fill a fabricated phone
+  // number or bypass Stripe's real payment and webhook processing.
+  const linkOptIns = async () => {
+    const matches: ReturnType<typeof page.locator>[] = []
+    for (const frame of page.frames()) {
+      const named = frame.getByRole("checkbox", {
+        name: /Save my information|Save my payment/i,
+      })
+      const field = await liveFrameCount(named) ? named : frame.locator('input[type="checkbox"]:visible')
+      const count = await liveFrameCount(field)
+      if (count > 1) throw new Error("Ambiguous Stripe Link opt-in fields")
+      if (count === 1) {
+        try {
+          if (await field.isVisible()) matches.push(field)
+        } catch (error) {
+          if (!/Frame was detached|Execution context was destroyed/.test(String(error))) throw error
+        }
+      }
+    }
+    return matches
+  }
+  await expect.poll(async () => (await linkOptIns()).length, {
+    timeout: 30_000,
+    message: "Exactly one visible Stripe Link opt-in must be available",
+  }).toBe(1)
+  const [saveWithLink] = await linkOptIns()
+  await expect(saveWithLink).toBeEnabled()
+  await saveWithLink.uncheck()
+  await expect(saveWithLink).not.toBeChecked()
+  // The previous failure artifact did not include the button in the 720px
+  // viewport and its error-context.md contained no DOM snapshot. Inspect
+  // rendered button metadata across Checkout frames, without copying inputs,
+  // payment values, identity, cookies, tokens, or arbitrary page content.
+  const submitCandidates = async () => {
+    const matches: ReturnType<typeof page.locator>[] = []
+    const diagnostics: Array<{ frame: number; buttons: Array<{ type: string; label: string; testid: string }> }> = []
+    for (const [index, frame] of page.frames().entries()) {
+      const buttons = await frame.locator('button:visible, input[type="submit"]:visible')
+        .evaluateAll((els) => els.slice(0, 32).map((el) => ({
+          type: el.getAttribute("type") || "",
+          label: (el.getAttribute("aria-label") || el.textContent || "")
+            .replace(/[^a-zA-Z0-9 $-]/g, " ").trim().slice(0, 80),
+          testid: (el.getAttribute("data-testid") || "").slice(0, 80),
+        })))
+        .catch(() => [])
+      diagnostics.push({ frame: index, buttons })
+      // Stripe's card Checkout submit is part of a form. The semantic submit
+      // attribute is stable across marketing-label changes and secure frames.
+      const candidate = frame.locator(
+        'button[type="submit"]:visible, input[type="submit"]:visible, button[data-testid="hosted-payment-submit-button"]:visible'
+      )
+      const count = await candidate.count()
+      if (count > 1) throw new Error("Ambiguous Stripe checkout submit controls in one frame")
+      if (count === 1) matches.push(candidate)
+    }
+    return { matches, diagnostics }
+  }
+  let checkoutSubmit: ReturnType<typeof page.locator> | undefined
+  await expect.poll(async () => {
+    const { matches, diagnostics } = await submitCandidates()
+    if (matches.length !== 1) {
+      fs.writeFileSync("test-results/stripe-submit-dom.json",
+        JSON.stringify({ provenance: "hosted-checkout-button-only", candidates: diagnostics }, null, 2))
+    }
+    checkoutSubmit = matches.length === 1 ? matches[0] : undefined
+    return matches.length
+  }, {
+    timeout: 30_000,
+    message: "Stripe Checkout must expose exactly one visible form-submit control across frames",
+  }).toBe(1)
+  if (!checkoutSubmit) throw new Error("No unique Stripe Checkout submit control")
+  await expect(checkoutSubmit).toBeEnabled()
+  await checkoutSubmit.click()
   await expect(page).toHaveURL(/localhost:3000\/settings\/billing/, { timeout: 90_000 })
   await expect.poll(() => stripeProof(sessionId).checkout_status, { timeout: 45_000 }).toBe("complete")
   const proof = stripeProof(sessionId)

@@ -86,6 +86,7 @@ class _GraphRunContext:
     node_outputs: dict[str, Any]
     skipped_nodes: list[str]
     step_index: int = 0
+    recovery_token: str | None = None
     lock: threading.Lock = field(default_factory=threading.Lock)
 
 
@@ -541,6 +542,13 @@ def _skip_untaken_branch_node(
 
 
 def _execute_graph_node(ctx: _GraphRunContext, node_id: str, step_index: int) -> _NodeRunResult:
+    if ctx.recovery_token:
+        alive = ctx.client.rpc("assert_graph_recovery_lease", {
+            "p_run_id": ctx.run_id, "p_token": ctx.recovery_token,
+        }).execute().data
+        if alive is not True:
+            return _NodeRunResult(node_id, step_index, halt="failed",
+                                  error="Recovery lease lost; new provider action refused")
     try:
         enforce_interrupt(ctx.client, ctx.org_id, "workflow_run", ctx.run_id, actor_id=ctx.user_id)
     except AgentExecutionInterrupted as exc:
@@ -630,6 +638,47 @@ def _execute_graph_node(ctx: _GraphRunContext, node_id: str, step_index: int) ->
     step_uuid = str(created["id"])
     step_started = datetime.now(timezone.utc).isoformat()
     set_step_running(ctx.client, step_uuid, step_started)
+
+    # A direct external write or nested workflow must not dispatch before a
+    # durable pre-dispatch graph checkpoint exists. Delegated agent execution
+    # remains under its own queue safeguards, not this recovery sweep.
+    # A crash between provider commit
+    # and the step receipt leaves a 'running' SQL step and this checkpoint,
+    # which the orphan reconciler can identify and read back safely.
+    if _recovery_kind(step_type, config) in {"write", "workflow"}:
+        # Preserve narrow, deterministic lookup selectors before any outbound
+        # call. Without them a process-loss readback could be inconclusive
+        # even though the source resource is uniquely addressable.
+        from app.services.tool_service import params_for_step
+
+        prepared = (
+            params_for_step(
+                step_type, config, merged_parameters,
+                step_outputs=dict(ctx.node_outputs),
+            )
+            if step_type == "invoke_tool" else {}
+        )
+        selectors = {
+            k: v for k, v in (prepared or {}).items()
+            if k in {"id", "record_id", "object_id", "contact_id", "company_id",
+                     "deal_id", "ticket_id", "entity_id", "email", "domain",
+                     "external_id", "externalId", "sku", "phone"}
+            and isinstance(v, (str, int))
+        }
+        recovery_config = {**config, "params": selectors}
+        update_step(
+            client=ctx.client,
+            step_uuid=step_uuid,
+            status="running",
+            input_snapshot={"config": recovery_config},
+        )
+        with ctx.lock:
+            _save_graph_checkpoint(
+                ctx,
+                paused_at_node=node_id,
+                batch_index=_batch_index_for_node(_graph.topological_batches(ctx.graph), node_id),
+                pause_reason="executor_in_flight",
+            )
 
     active_branch = resolve_active_branch(ctx.node_outputs)
     if should_skip_for_branch(config, active_branch):
@@ -1024,7 +1073,21 @@ def _handle_node_failure(
 def _batch_requires_serial(ctx: _GraphRunContext, batch: list[str]) -> bool:
     if len(batch) <= 1:
         return True
-    return any(_is_approval_node(ctx.graph.nodes_by_id[nid]) for nid in batch)
+    # Shared run parameters contain a single graph checkpoint. Serialize
+    # direct connector writes and nested workflows so their durable journals
+    # cannot overwrite one another. Parallel agent delegation stays unchanged;
+    # it is NOT yet eligible for automatic stale graph restart.
+    for nid in batch:
+        node = ctx.graph.nodes_by_id[nid]
+        if _is_approval_node(node):
+            return True
+        step = _node_to_step(node, ctx.graph.nodes_by_id, ctx.edge_dicts)
+        if step and _recovery_kind(
+            str(step.get("type") or ""),
+            safe_normalize_stored_dict(step, key="config"),
+        ) in {"write", "workflow"}:
+            return True
+    return False
 
 
 def _batch_index_for_node(batches: list[list[str]], node_id: str) -> int:
@@ -1551,6 +1614,108 @@ def resume_workflow_graph(
     return _finalize_run(ctx, final_status=final_status, errors=errors, run_error_message=run_error_message, rate_limited=rate_limited)
 
 
+
+def _reconcile_interrupted_graph_steps(
+    ctx: _GraphRunContext,
+    *,
+    steps: list[dict[str, Any]],
+) -> None:
+    """Fail closed on an in-flight write before clearing a durable pause checkpoint.
+
+    A worker can die after the external provider commits but before updating
+    workflow_steps or the graph node_outputs checkpoint. A persisted 'running'
+    step without an output is NOT evidence that the operation was absent.
+    Provider reconciliation must settle the write before normal graph resume.
+    """
+    from app.workflows.repository import update_step as _persist_step_update
+
+    for step in steps:
+        if str(step.get("status") or "") not in {"running", "pending"}:
+            continue
+        node_id = str(step.get("step_id") or "")
+        if not node_id or node_id in ctx.node_outputs:
+            continue
+        node = ctx.graph.nodes_by_id.get(node_id)
+        if not node:
+            # If a row cannot be mapped back to a graph node, it cannot be
+            # safely classified as non-mutating.
+            raise GraphValidationError("Interrupted step is missing from the saved graph")
+        step_def = _node_to_step(node, ctx.graph.nodes_by_id, ctx.edge_dicts)
+        if step_def is None:
+            raise GraphValidationError("Interrupted step cannot be reconstructed")
+        step_type = str(step.get("step_type") or step_def.get("type") or "")
+        saved_input = safe_normalize_stored_dict(step, key="input_snapshot")
+        config = safe_normalize_stored_dict(saved_input, key="config")
+        if not config:
+            config = safe_normalize_stored_dict(step_def, key="config")
+        if _recovery_kind(step_type, config) not in {"write", "agent_delegation", "workflow"}:
+            continue
+        # 'pending' is not a send receipt. Only running (or a step with
+        # evidence of dispatch) could have sent the action.
+        if str(step.get("status")) == "pending":
+            continue
+        evidence = safe_normalize_stored_dict(step, key="output_snapshot")
+        if evidence.get("outcome_verified") is True:
+            ctx.node_outputs[node_id] = evidence
+            continue
+        from app.services.outcome_reconciliation import ReconciliationResult
+
+        recon = _reconcile_step(
+            ctx,
+            step_type=step_type,
+            config=config,
+            exc=TimeoutError("executor terminated before provider receipt"),
+        )
+        if not isinstance(recon, ReconciliationResult) or recon.state not in {"applied", "not_applied"}:
+            raise GraphValidationError(
+                "Interrupted external action could not be reconciled with the provider; "
+                "resume is blocked to prevent duplicate writes"
+            )
+        # A state label alone is insufficient: provider-specific adapters
+        # must supply evidence. Paginated or unfiltered search absence is
+        # not authoritative and must never authorize a replay.
+        proof = dict(recon.evidence or {})
+        if recon.state == "applied" and proof.get("verified") is not True:
+            raise GraphValidationError(
+                "Provider reported applied without verified readback evidence"
+            )
+        if recon.state == "not_applied" and not (
+            proof.get("complete_result_set") is True
+            or (proof.get("method") in {"entity_get", "provider_authoritative_get"}
+                and proof.get("verified") is False
+                and recon.detail == "requested_values_absent")
+        ):
+            raise GraphValidationError(
+                "Provider absence is not authoritative; interrupted write cannot be retried"
+            )
+        if recon.state == "not_applied":
+            # Provider-verified absence permits *one* fresh, governed attempt
+            # using the original approval and the existing graph runtime.
+            _persist_step_update(
+                client=ctx.client,
+                step_uuid=str(step["id"]),
+                status=STEP_STATUS_FAILED,
+                error_code="reconciled_not_applied",
+                error_message="Provider readback proved the action absent before resume",
+                completed_at=datetime.now(timezone.utc).isoformat(),
+            )
+            continue
+        output = {
+            "reconciled": True,
+            "resource_id": recon.resource_id,
+            "verification": dict(recon.evidence or {}),
+            "outcome_verified": True,
+            "recovery": "provider_readback",
+        }
+        _persist_step_update(
+            client=ctx.client,
+            step_uuid=str(step["id"]),
+            status=STEP_STATUS_COMPLETED,
+            output_snapshot=output,
+            completed_at=datetime.now(timezone.utc).isoformat(),
+        )
+        ctx.node_outputs[node_id] = output
+
 def resume_paused_workflow_graph(
     settings: Settings,
     org_id: str,
@@ -1559,6 +1724,7 @@ def resume_paused_workflow_graph(
     *,
     client: Any,
     environment_name: str = "default",
+    recovery_token: str | None = None,
 ) -> tuple[str, list[dict], list[str], bool]:
     """Resume a graph run paused by operator interrupt (STA-170)."""
     run = get_run_with_steps(client, org_id, run_id, environment_name)
@@ -1566,6 +1732,22 @@ def resume_paused_workflow_graph(
         raise GraphValidationError("Run not found")
     if run.get("status") != RUN_STATUS_PAUSED:
         raise GraphValidationError(f"Run is not paused (status={run.get('status')})")
+
+    # Recovery ownership is process-independent. A concurrent manual resume
+    # cannot bypass an active SQL claim while the recovering worker is about
+    # to reconcile an ambiguous provider effect.
+    if recovery_token:
+        valid = client.rpc("assert_graph_recovery_lease", {
+            "p_run_id": run_id, "p_token": recovery_token,
+        }).execute().data
+        if valid is not True:
+            raise GraphValidationError("Recovery claim missing or expired")
+    else:
+        active = client.rpc("graph_recovery_lease_active", {
+            "p_run_id": run_id,
+        }).execute().data
+        if active is True:
+            raise GraphValidationError("A recovery worker already owns this workflow")
 
     params = safe_normalize_stored_dict(run, key='parameters')
     checkpoint = params.get(_CHECKPOINT_KEY) or {}
@@ -1587,7 +1769,18 @@ def resume_paused_workflow_graph(
         node_outputs=safe_normalize_stored_dict(checkpoint, key='node_outputs'),
         skipped_nodes=list(checkpoint.get("skipped_nodes") or []),
         step_index=int(checkpoint.get("step_index") or 0),
+        recovery_token=recovery_token,
     )
+    # A completed SQL step can have committed just before the worker died,
+    # even when the checkpoint node_outputs snapshot predates its receipt.
+    # Restore those outputs before deciding which nodes remain executable.
+    step_rows = list(run.get("steps") or [])
+    for node_id, output in _node_outputs_from_completed_steps(step_rows).items():
+        ctx.node_outputs.setdefault(node_id, output)
+
+    # Never consume the checkpoint before reconciling an in-flight external
+    # write. Unknown readback must preserve the paused run and approval state.
+    _reconcile_interrupted_graph_steps(ctx, steps=step_rows)
     merge_run_parameters(
         client,
         run_id,

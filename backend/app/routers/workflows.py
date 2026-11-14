@@ -4072,11 +4072,27 @@ async def approve_run_alias(
                 detail="This approval no longer matches the requested action. Ask for approval again.",
             )
 
-        # Claim once: concurrent approvals of the same row run the write at most once.
+        # The single winning approval claim is also the durable dispatch record.
+        # Committing it BEFORE the provider call ensures a dead worker can never
+        # turn an approved/in-flight write back into a pending, resendable action.
         reviewer = str(current_user.get("user_id") or "")
+        claim_time = datetime.now(timezone.utc).isoformat()
+        dispatch = {
+            "state": "claimed",
+            "claimed_at": claim_time,
+            "approval_id": str(run_id),
+            "args_digest": actual["args_digest"],
+            "invoke_action": actual["invoke_action"],
+            "integration": actual["integration"],
+        }
         claimed = (
             client.table("approvals")
-            .update({"reviewed_by": reviewer, "reviewed_at": datetime.now(timezone.utc).isoformat()})
+            .update({
+                "status": "approved",
+                "reviewed_by": reviewer,
+                "reviewed_at": claim_time,
+                "context": {**ctx, "dispatch": dispatch},
+            })
             .eq("id", str(run_id))
             .eq("org_id", org_id)
             .eq("status", "pending")
@@ -4088,21 +4104,78 @@ async def approve_run_alias(
         if not claimed:
             raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Approval already being decided")
 
+        # Only a persisted consent+claim authorizes dispatch. The downstream
+        # connector also has its own pending-write/ledger fences; this record
+        # captures the HTTP approval route's irreversible crash boundary.
         from app.services.write_authority import declare_write_authority
 
-        declare_write_authority("human", f"approval:{run_id}")  # an admin approved this queued write
-        execution = await service.execute_plan(
-            org_id=org_id,
-            user_id=str(chat_rows[0].get("requested_by") or reviewer),
-            conversation_id=conversation_id,
-            plan=plan,
-            client=client,
-            classification={},
-            environment_name=environment_name,
+        declare_write_authority("human", f"approval:{run_id}")
+        execution = None
+        execution_error = None
+        try:
+            execution = await service.execute_plan(
+                org_id=org_id,
+                user_id=str(chat_rows[0].get("requested_by") or reviewer),
+                conversation_id=conversation_id,
+                plan=plan,
+                client=client,
+                classification={},
+                environment_name=environment_name,
+                # The route's approval check is not enough: the downstream
+                # executor must reassert the immutable action and argument
+                # identity before any connector-side compilation or dispatch.
+                approved_params={
+                    **params,
+                    "approval_action_id": str(run_id),
+                    "_approval_queue_id": str(run_id),
+                    "bound_tool_name": str(binding["tool_name"]),
+                    "bound_invoke_action": str(binding["invoke_action"]),
+                    "bound_integration": str(binding["integration"]),
+                    "bound_args_digest": str(binding["args_digest"]),
+                },
+            )
+        except Exception as exc:  # noqa: BLE001
+            execution_error = exc
+        # An exception or worker death can follow provider acceptance. Neither
+        # is evidence the write failed. No automatic redispatch is authorized.
+        verified = bool(execution is not None and getattr(execution, "outcome_verified", False))
+        reported_success = bool(execution is not None and execution.success)
+        error_code = str(getattr(execution, "error_code", "") or "").strip().lower()
+        uncertain = execution_error is not None or error_code in {
+            "outcome_uncertain", "connector_timeout", "native_outcome_uncertain",
+            "write_commit_interrupted",
+        }
+        outcome_state = (
+            "verified" if verified and reported_success
+            else "reported_success_unverified" if reported_success
+            else "uncertain" if uncertain
+            else "reported_failure_unverified"
         )
-        client.table("approvals").update(
-            {"status": "approved" if execution.success else "rejected"}
-        ).eq("id", str(run_id)).eq("org_id", org_id).execute()
+        final_dispatch = {
+            **dispatch,
+            "state": outcome_state,
+            "recorded_at": datetime.now(timezone.utc).isoformat(),
+            "provider_reported_success": reported_success,
+            "independently_verified": verified and reported_success,
+            "entity_type": str(getattr(execution, "entity_type", "") or "")[:128],
+            "entity_id": str(getattr(execution, "entity_id", "") or "")[:256],
+        }
+        # Fail closed on a lost outcome write: the durable claim remains
+        # approved/claimed and cannot be dispatched again.
+        persisted = (
+            client.table("approvals")
+            .update({"context": {**ctx, "dispatch": final_dispatch}})
+            .eq("id", str(run_id))
+            .eq("org_id", org_id)
+            .eq("status", "approved")
+            .eq("reviewed_by", reviewer)
+            .eq("reviewed_at", claim_time)
+            .execute()
+            .data
+            or []
+        )
+        if not persisted:
+            raise HTTPException(status_code=503, detail="Approval outcome persistence unconfirmed; do not retry this write")
         write_audit_event(
             client,
             org_id=org_id,
@@ -4112,8 +4185,10 @@ async def approve_run_alias(
             resource_id=str(run_id),
             metadata={
                 "decision": "approved",
-                "executed": True,
-                "success": bool(execution.success),
+                "dispatch_state": outcome_state,
+                "executed": execution is not None,
+                "success": reported_success,
+                "independently_verified": verified and reported_success,
                 "tool_name": actual["tool_name"],
                 "invoke_action": actual["invoke_action"],
                 "integration": actual["integration"],
@@ -4121,6 +4196,11 @@ async def approve_run_alias(
                 "requested_by": chat_rows[0].get("requested_by"),
             },
         )
+        if execution_error is not None:
+            raise HTTPException(
+                status_code=502,
+                detail="Provider outcome is uncertain; inspect the approval record before taking further action",
+            ) from execution_error
         from app.services.conversation_state_service import get_conversation_state_service
 
         await get_conversation_state_service(settings).update_task_state(
@@ -4130,10 +4210,16 @@ async def approve_run_alias(
             client=client,
         )
         return {
-            "success": execution.success,
+            "success": reported_success,
+            "verified": verified and reported_success,
+            "dispatch_state": outcome_state,
             "approval_id": str(run_id),
             "execution_result": execution.__dict__,
-            "message": execution.body if not execution.success else f"Approved and ran {execution.title}.",
+            "message": (
+                execution.body if not reported_success
+                else f"Approved and ran {execution.title}." if verified
+                else "Approval recorded. The provider reported success, but independent verification is pending."
+            ),
         }
     extension = _decide_extension_approval_or_none(
         client,
@@ -4204,7 +4290,22 @@ async def reject_run_alias(
         }
         if body.comment:
             update["context"] = {**ctx, "rejection_reason": body.comment}
-        client.table("approvals").update(update).eq("id", str(run_id)).eq("org_id", org_id).execute()
+        # Rejection must compete with the same single-winner decision claim used
+        # by approval. A stale reject must never overwrite an approved/in-flight
+        # write or clear another decision's pending conversation state.
+        rejected = (
+            client.table("approvals")
+            .update(update)
+            .eq("id", str(run_id))
+            .eq("org_id", org_id)
+            .eq("status", "pending")
+            .is_("reviewed_at", "null")
+            .execute()
+            .data
+            or []
+        )
+        if not rejected:
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Approval already being decided")
         conversation_id = str(ctx.get("conversation_id") or "")
         if conversation_id:
             from app.services.conversation_state_service import get_conversation_state_service
@@ -4875,6 +4976,84 @@ async def create_workflow_from_goal(
     goal_service: GoalService = Depends(get_goal_service),
 ) -> dict:
     _user, org_id = _admin
+    # Every business goal first passes through shared model-based semantic
+    # analysis, including vague questions spanning multiple departments.
+    # Never infer connector credentials, execution authority or outcomes.
+    from app.workflows.sales_growth_recipe import (
+        GoalCompilationBlocked, compile_sales_growth_for_org,
+    )
+    business_goal = await goal_service.analyze_for_org(
+        goal=request.goal, org_id=org_id, settings=settings,
+        department_hint=request.department, success_metric=request.success_metric,
+        org_context=request.org_context,
+    )
+    # The sales diagnostic is the first certified compiler slice, not a
+    # hard-coded intent recognizer. Other domains remain understood and
+    # explicitly marked as unverified draft plans until execution contracts
+    # are implemented and proven.
+    is_sales_growth = (
+        business_goal.department == "sales"
+        and business_goal.objective_family == "grow_revenue"
+    )
+    if is_sales_growth:
+        try:
+            sales_plan = await compile_sales_growth_for_org(
+                org_id=org_id, goal=request.goal, settings=settings,
+                environment_name=environment_name,
+                recognized_objective="increase_sales",
+            )
+        except GoalCompilationBlocked as exc:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT, detail=str(exc),
+            ) from exc
+        client = get_supabase_client(settings)
+        row = {
+            "org_id": org_id, "name": "Sales growth diagnostic",
+            "goal": request.goal,
+            "description": "Tenant-scoped read-only sales evidence; no campaigns or CRM writes authorized.",
+            "definition": sales_plan.workflow_definition,
+            "schema_version": SCHEMA_VERSION,
+            "status": "draft", "stage": "build", "version": "v1.0.0",
+            "created_by": _user.get("user_id"),
+        }
+        created = client.table("workflow_defs").insert(row).execute()
+        if not created.data:
+            raise HTTPException(status_code=500, detail="Sales diagnostic workflow create failed")
+        workflow_id = str(created.data[0]["id"])
+        mirror_legacy_workflow_row_to_contract(
+            client, dict(created.data[0]), environment_name=environment_name,
+        )
+        stored_nodes, stored_edges, saved_definition = sync_builder_graph(
+            client, org_id=org_id, workflow_id=workflow_id,
+            environment_name=environment_name,
+            nodes=sales_plan.graph["nodes"], edges=sales_plan.graph["edges"],
+            created_by=_user.get("user_id"),
+        )
+        if (len(stored_nodes) != len(sales_plan.graph["nodes"])
+                or len(stored_edges) != len(sales_plan.graph["edges"])):
+            raise HTTPException(status_code=500, detail="Sales workflow canvas persistence incomplete")
+        write_audit_event(
+            client, org_id=org_id, actor_id=_user["user_id"],
+            action="workflow.created.from_goal",
+            resource_type="workflow", resource_id=workflow_id,
+            metadata={"environment": environment_name, "department": "sales",
+                      "goalId": request.goal_id, "compiler": "sales_growth_v1",
+                      "execution_state": "NOT_RUN"},
+        )
+        return {
+            "id": workflow_id,
+            "status": "draft", "execution_status": "NOT_RUN",
+            "workflow": {"name": row["name"], "goal": request.goal,
+                         "department": "sales", "definition": saved_definition},
+            "canvas": {"nodes": [_node_out(n) for n in stored_nodes],
+                       "edges": [_edge_out(e) for e in stored_edges]},
+            "agent_persona": sales_plan.agent_persona,
+            "selected_play": sales_plan.selected_play,
+            "capabilities": list(sales_plan.capabilities),
+            "missing_connections": list(sales_plan.missing_connections),
+            "business_outcome": "NOT_MEASURED",
+            "business_goal": business_goal.model_dump(),
+        }
     generated = await goal_service.generate_workflow(
         goal=request.goal,
         department=request.department,
@@ -4883,6 +5062,7 @@ async def create_workflow_from_goal(
         approval_required=request.approval_required,
         org_context=request.org_context,
         org_id=org_id,
+        analysis=business_goal,
     )
     client = get_supabase_client(settings)
     definition = {
@@ -4936,7 +5116,13 @@ async def create_workflow_from_goal(
             "goalId": request.goal_id,
         },
     )
-    return {"id": workflow_id, "workflow": generated.model_dump()}
+    return {
+        "id": workflow_id, "workflow": generated.model_dump(),
+        "business_goal": business_goal.model_dump(),
+        "execution_status": "NOT_CERTIFIED",
+        "business_outcome": "NOT_MEASURED",
+        "note": "Model-suggested workflow draft; capabilities, canvas compilation and governed execution not certified.",
+    }
 
 
 @router.get("/{workflow_id}")

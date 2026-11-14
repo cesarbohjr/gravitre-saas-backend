@@ -322,3 +322,42 @@ async def test_p2_canned_literal_skips_llm_when_evidence_present() -> None:
     )
     assert called == []
     assert text
+
+
+def test_p1_direct_handoff_replaces_stale_queued_tool_choice() -> None:
+    """ECO-001/013, DEC-001/012: one live decision cannot execute prior turn's queue."""
+    from app.services.live_classical_handoff import (
+        arm_from_task_state, arm_handoff, consume_handoff,
+    )
+
+    previous_turn = {
+        "live_classical_handoff_queue": [
+            {"tool_name": "hubspot.contacts.search", "tool_arguments": {"limit": 2}},
+            {"tool_name": "google_ads.reports.performance", "tool_arguments": {}},
+        ],
+        "live_classical_handoff": {"tool_name": "hubspot.contacts.search"},
+    }
+    arm_from_task_state(previous_turn)
+    arm_handoff({"tool_name": "slack.conversations.list", "tool_arguments": {}})
+    first = consume_handoff()
+    assert first is not None
+    assert first["tool_name"] == "slack.conversations.list"
+    assert consume_handoff() is None
+    arm_from_task_state(None)
+    assert consume_handoff() is None
+
+
+def test_p1_current_evidence_queue_preserved_in_order() -> None:
+    from app.services.live_classical_handoff import (
+        arm_from_task_state, consume_handoff,
+    )
+    turn = {
+        "live_classical_handoff_queue": [
+            {"tool_name": "hubspot.contacts.search", "tool_arguments": {}},
+            {"tool_name": "google_ads.reports.performance", "tool_arguments": {}},
+        ],
+    }
+    arm_from_task_state(turn)
+    assert consume_handoff()["tool_name"] == "hubspot.contacts.search"
+    assert consume_handoff()["tool_name"] == "google_ads.reports.performance"
+    assert consume_handoff() is None

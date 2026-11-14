@@ -1,4 +1,4 @@
-name: Outcome Ownership Contract
+name: Master QA | QA10-QA20 Durable Outcome Ownership
 
 on:
   pull_request:

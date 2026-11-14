@@ -320,9 +320,103 @@ jobs:
 
           PY
           cd "$replay_dir"
-          supabase start -x studio,imgproxy,edge-runtime,logflare,vector
+          # A GitHub hosted runner can already have the default Supabase
+          # 54322/tcp bound by unrelated jobs. Configure unique local-only
+          # ports *in this disposable copy* before starting Docker. Do not
+          # change the tracked Supabase config or use production services.
+          python3 - <<'PY'
+          from pathlib import Path
+          import os
+          import random
+          import re
+          import socket
+          cfg = Path("supabase/config.toml")
+          original = cfg.read_text()
+          defaults = (54320, 54321, 54322, 54323, 54324, 54329)
+          randomizer = random.SystemRandom()
+          def available(port):
+              for family, host in ((socket.AF_INET, "127.0.0.1"),):
+                  with socket.socket(family, socket.SOCK_STREAM) as sock:
+                      try:
+                          sock.bind((host, port))
+                      except OSError:
+                          return False
+              return True
+          for _ in range(200):
+              base = randomizer.randint(25000, 49000)
+              ports = {old: base + (old - 54320) for old in defaults}
+              if all(available(port) for port in ports.values()):
+                  break
+          else:
+              raise SystemExit("Unable to reserve a free local Supabase port group")
+          config = original
+          for old, port in ports.items():
+              config, changed = re.subn(
+                  rf"(?m)^((?:shadow_)?port\s*=\s*){old}$",
+                  lambda match: match.group(1) + str(port),
+                  config,
+              )
+              if changed != 1:
+                  raise SystemExit(f"Unexpected local Supabase port config for {old}: {changed}")
+          old_name = "gravitre-operator-ai"
+          if config.count(old_name) != 1:
+              raise SystemExit("Missing unique local project identifier")
+          config = config.replace(
+              old_name, "gravitre-qa-" + os.environ.get("GITHUB_RUN_ID", "local"), 1
+          )
+          cfg.write_text(config)
+          print("Disposable Supabase replay uses isolated ports and project identity.")
+          PY
+          # Docker may race the free-port probe above. Retry only a confirmed
+          # host-port collision with a fresh disposable set; all other
+          # Supabase startup or SQL errors remain hard failures.
+          for attempt in 1 2 3; do
+            if supabase start -x studio,imgproxy,edge-runtime,logflare,vector > "$RUNNER_TEMP/supabase-start.log" 2>&1; then
+              cat "$RUNNER_TEMP/supabase-start.log"
+              break
+            fi
+            cat "$RUNNER_TEMP/supabase-start.log"
+            if ! grep -q 'failed to bind host port.*address already in use' "$RUNNER_TEMP/supabase-start.log" || [ "$attempt" -eq 3 ]; then
+              exit 1
+            fi
+            supabase stop --no-backup > /dev/null 2>&1 || true
+            python3 - <<'PY'
+          from pathlib import Path
+          import random
+          import re
+          import socket
+          cfg = Path("supabase/config.toml")
+          original = cfg.read_text()
+          pattern = re.compile(r"(?m)^((?:shadow_)?port\s*=\s*)(\d+)$")
+          matches = list(pattern.finditer(original))
+          if len(matches) < 6:
+              raise SystemExit("Unexpected isolated port configuration")
+          old_ports = {int(m.group(2)) for m in matches}
+          smallest = min(old_ports)
+          rng = random.SystemRandom()
+          for _ in range(300):
+              base = rng.randint(25000, 49000)
+              mapped = {old: base + (old - smallest) for old in old_ports}
+              if max(mapped.values()) > 65000:
+                  continue
+              def free(port):
+                  with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+                      try:
+                          sock.bind(("0.0.0.0", port))
+                          return True
+                      except OSError:
+                          return False
+              if all(free(port) for port in mapped.values()):
+                  break
+          else:
+              raise SystemExit("No free replacement Supabase port group")
+          cfg.write_text(pattern.sub(lambda match:
+              match.group(1) + str(mapped[int(match.group(2))]), original))
+          print("Retrying local-only Supabase on a new port group.")
+          PY
+          done
           supabase db reset --no-seed
-          echo "Local Supabase replayed all migrations with the two declared historical DROP FUNCTION compatibility statements (production not touched)."
+          echo "Local Supabase replayed all migrations on isolated Docker ports (production untouched)."
 
       - name: Set up isolated billing browser acceptance
         if: steps.gate.outputs.billing == 'true'
@@ -383,13 +477,15 @@ jobs:
           PYTHON: python
         run: npx playwright test --config playwright.billing.acceptance.config.ts
       - name: Upload sanitized billing acceptance evidence
-        if: always() && startsWith(github.head_ref, 'fix/billing-acceptance')
+        if: always() && steps.gate.outputs.billing == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: billing-isolated-acceptance
           path: |
             test-results/billing-acceptance-summary.json
+            test-results/stripe-submit-dom.json
             test-results/**/*.png
+            test-results/**/error-context.md
           if-no-files-found: warn
 
       - name: Remote staging reconcile (when configured)

@@ -1,4 +1,4 @@
-name: Issue 535 voice confirmation replay
+name: Master QA | QA30 Voice Confirmed-Turn Replay
 on:
   pull_request:
     paths:
@@ -6,7 +6,7 @@ on:
       - 'backend/tests/e2e/voice_scenarios/fakes.py'
       - 'backend/tests/e2e/voice_scenarios/metrics.py'
       - 'backend/tests/services/pipecat_voice/test_phase3_provider_commit_gate.py'
-      - '.github/workflows/issue-535-voice-confirmation.yml'
+      - '.github/workflows/master-qa-qa30-voice-confirmed-turns.yml'
   workflow_dispatch:
 jobs:
   replay:
