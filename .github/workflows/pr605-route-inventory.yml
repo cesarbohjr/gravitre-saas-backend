@@ -1,4 +1,4 @@
-name: PR605 registered route inventory certification
+name: Master QA | QA00 Routing Inventory Certification
 
 on:
   pull_request:
