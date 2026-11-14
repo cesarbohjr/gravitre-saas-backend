@@ -246,7 +246,11 @@ def test_intelligence_router_remains_single_hot_path_orchestrator():
     assert "understand" in source
     assert "DynamicDomainRouter" not in source
     assert "DomainIntelligenceService" not in source
-    assert source.count("await self._model_selector.select") >= 1
+    # Keep one model-selection owner in the active route. ECO-002 timing wraps
+    # the await, so inspecting the old literal `await self._model_selector.select`
+    # would falsely report zero calls without indicating any behavior change.
+    assert source.count("self._model_selector.select(") == 1
+    assert source.count('measure_route_stage("model_selection", self._model_selector.select(') == 1
 
 
 def test_no_dynamic_domain_router_module_as_orchestrator():
