@@ -369,9 +369,26 @@
         "independent durable consumer/provider observation",
         "exact-SHA CI and release/rollback evidence"
       ],
-      "partial_test_evidence": null,
+      "partial_test_evidence": {
+        "scope": "SOURCE_TO_CALLER_AUDIT_AND_EXISTING_EXECUTABLE_CASES_NOT_CERTIFIED",
+        "gate_document": "docs/delivery/eco-004-voice-stt-turn-authority-gate.md",
+        "voice_implementation_owner": "PR610",
+        "pr610_draft_sha": "0edac995ea12ae73827a07156461905b7f820157",
+        "pr610_workflow_status": "11_SUCCESS_1_FAILURE_UNMERGED",
+        "existing_tests": [
+          "backend/tests/services/pipecat_voice/test_transcript_relay.py",
+          "backend/tests/services/pipecat_voice/test_transcript_relay_backchannel.py",
+          "backend/tests/services/pipecat_voice/test_flux_partial_bridge.py",
+          "backend/tests/services/pipecat_voice/test_speculative_bounds_and_revisions.py"
+        ],
+        "runtime_duplicate_final_rejection": null,
+        "real_ios_trace": null,
+        "live_provider_trace": null,
+        "owner_approval": false,
+        "reason_not_certified": "PR610 voice repair not certified; historical duplicate final and STT turn authority need real provider turn-index to persisted-turn and independent device/provider proof"
+      },
       "audit_evidence_class": "HISTORICAL_VOICE_DEFECT",
-      "audit_observation": "relay repair surface documented; real iOS trace not certified",
+      "audit_observation": "relay repair surface documented; real iOS trace not certified Source trace and existing fixtures inventoried on PR611, pending PR610 certified handoff; no live iOS/duplicate-final runtime proof.",
       "research_derived_acceptance_checks": [
         "On actual PR610 Voice 3.0 head, verify Deepgram probable-EOT speculation and confirmed-turn adoption are wired and enabled; test stale transcript/revision cancellation, duplicate-final rejection, bounded speculative work, and zero speculative connector writes or approval consumption."
       ]
