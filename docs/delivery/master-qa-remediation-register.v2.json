@@ -297,7 +297,30 @@
         "independent durable consumer/provider observation",
         "exact-SHA CI and release/rollback evidence"
       ],
-      "partial_test_evidence": null,
+      "partial_test_evidence": {
+        "scope": "SOURCE_INSTRUMENTATION_AND_TESTS_COMMITTED_NOT_CERTIFIED",
+        "baseline_plan": "docs/delivery/eco-003-context-latency-baseline.md",
+        "metric_module": "backend/app/services/context_stage_metrics.py",
+        "instrumented_sources": [
+          "backend/app/services/context_assembler.py",
+          "backend/app/services/unified_retrieval_service.py"
+        ],
+        "targeted_tests": "backend/tests/master_qa/test_eco003_context_stage_metrics.py",
+        "stages": [
+          "unified_retrieval",
+          "org_context",
+          "agent_memory",
+          "rag_retrieval",
+          "company_intelligence",
+          "external_research"
+        ],
+        "static_labels_only": true,
+        "live_p50_p95": null,
+        "tenant_negative_runtime_tests": null,
+        "parallelization_performed": false,
+        "caching_changes_performed": false,
+        "reason_not_certified": "Exact-head CI and independent deployed-runtime tenant-negative acceptance outstanding; no representative measured latency distributions or owner approval"
+      },
       "audit_evidence_class": "SOURCE_CONFIRMED_POTENTIAL_LATENCY",
       "audit_observation": "serial retrieval present; performance impact unmeasured"
     },
