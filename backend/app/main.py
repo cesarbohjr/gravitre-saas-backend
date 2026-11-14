@@ -309,6 +309,15 @@ async def lifespan(app: FastAPI):
             registry_summary["warnings"],
             registry_summary.get("byCode"),
         )
+    # Isolated ECO-001 ingress certification must never start scheduled writers.
+    # This gate is opt-in and refuses to run outside the dedicated QA environment.
+    if os.environ.get("ECO001_QA_HTTP_PREFLIGHT_ONLY", "").strip().lower() in {"1", "true", "yes"}:
+        if os.environ.get("APP_ENV", "").strip().lower() != "qa":
+            raise RuntimeError("ECO001_QA_HTTP_PREFLIGHT_ONLY requires APP_ENV=qa")
+        logger.warning("eco001_qa_http_preflight_only enabled=true background_workers_started=false")
+        yield
+        return
+
     # Background loops: hourly usage-sync (idempotent Stripe metering) + the
     # durable async agent-job worker. Both are gated by env flags.
     from app.billing.usage_scheduler import start_usage_sync_scheduler, stop_usage_sync_scheduler
