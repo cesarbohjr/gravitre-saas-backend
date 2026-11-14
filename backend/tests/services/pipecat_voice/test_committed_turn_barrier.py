@@ -271,4 +271,5 @@ def test_actual_pipeline_instruments_flux_commits_and_outbound_pcm():
     assert "OutboundAudioEvidenceProcessor(" in listing
     assert listing.index("CommittedTurnBarrierProcessor(") < listing.index("user_agg,")
     assert listing.index("OutboundAudioEvidenceProcessor(") > listing.index("*playout_processors,")
-    assert listing.index("OutboundAudioEvidenceProcessor(") < listing.index("transport.output(),")
+    # Match the actual pipeline element, not an earlier comment mentioning transport.output().
+    assert listing.index("OutboundAudioEvidenceProcessor(") < listing.index("\n            transport.output(),")
