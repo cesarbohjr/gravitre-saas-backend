@@ -166,7 +166,20 @@
         "independent durable consumer/provider observation",
         "exact-SHA CI and release/rollback evidence"
       ],
-      "partial_test_evidence": null,
+      "partial_test_evidence": {
+        "scope": "OPT_IN_STAGE_INSTRUMENTATION_SOURCE_COMMITTED_NOT_CI_CERTIFIED",
+        "source_trace": "docs/delivery/eco-002-routing-latency-baseline.md",
+        "instrumentation": "backend/app/services/routing_stage_metrics.py",
+        "router_integration": "backend/app/services/intelligence_router.py",
+        "targeted_tests": "backend/tests/master_qa/test_eco002_route_stage_metrics.py",
+        "stage_labels_fixed": true,
+        "metric": "gravitre_intelligence_route_stage_duration_seconds",
+        "sampled_p50_p95": null,
+        "live_runtime_profile": null,
+        "parallelization_performed": false,
+        "owner_approval": false,
+        "reason_not_certified": "Exact-head CI pending, no sampled baseline or independent runtime metrics, no release or rollback evidence"
+      },
       "audit_evidence_class": "SOURCE_CONFIRMED_POTENTIAL_LATENCY",
       "audit_observation": "sequential awaits observed; impact must be measured",
       "research_derived_acceptance_checks": [
