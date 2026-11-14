@@ -1,4 +1,4 @@
-name: ECO-001 deployed nonproduction ingress preflight
+name: Master QA | QA20 Governed Ingress Read-Only Preflight
 on:
   workflow_dispatch:
     inputs:
