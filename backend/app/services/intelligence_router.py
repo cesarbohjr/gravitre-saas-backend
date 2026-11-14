@@ -38,6 +38,7 @@ from app.services.proactive_guidance_service import get_proactive_guidance_servi
 from app.services.risk_approval_evaluator import get_risk_approval_evaluator
 from app.services.sentiment_friction_service import get_sentiment_friction_service
 from app.services.task_classifier import get_task_classifier
+from app.services.routing_stage_metrics import measure as measure_route_stage
 from app.services.tool_connector_selector import get_tool_connector_selector
 
 logger = get_logger(__name__)
@@ -121,33 +122,33 @@ class IntelligenceRouter:
     ) -> dict[str, Any]:
         from app.services.intelligence_overview_policy import load_overview_policy
         from app.core.io_pool import run_io
-        overview_policy = await run_io(lambda: load_overview_policy(org_id, self.settings))
-        dialogue_settings = await load_chat_dialogue_settings(org_id, self.settings)
+        overview_policy = await measure_route_stage("overview_policy", run_io(lambda: load_overview_policy(org_id, self.settings)))
+        dialogue_settings = await measure_route_stage("dialogue_settings", load_chat_dialogue_settings(org_id, self.settings))
         sentiment = (
             self._sentiment.analyze(request, conversation_history or [])
             if dialogue_settings.get("sentiment_detection_enabled", True)
             else {"recommended_adaptation": "none", "frustration_score": 0.0}
         )
 
-        understanding = await self._understanding.understand(
+        understanding = await measure_route_stage("understanding", self._understanding.understand(
             request,
             conversation_history,
             org_id,
-        )
-        classification = await self._task_classifier.classify(
+        ))
+        classification = await measure_route_stage("classification", self._task_classifier.classify(
             org_id,
             request,
             conversation_history,
             understanding=understanding,
-        )
+        ))
         from app.services.knowledge_intelligence_service import enrich_classification_with_query_cluster
 
-        classification = await enrich_classification_with_query_cluster(
+        classification = await measure_route_stage("query_cluster", enrich_classification_with_query_cluster(
             classification,
             org_id,
             request,
             self.settings,
-        )
+        ))
         raw_class_conf = classification.get("classification_confidence")
         # Prefer real classification score; heuristic default is explicitly labeled below.
         if raw_class_conf is None:
@@ -162,14 +163,14 @@ class IntelligenceRouter:
             class_is_estimate = bool(classification.get("confidence_is_estimate", True))
             class_source = str(classification.get("confidence_source") or "heuristic")
 
-        clarification = await self._clarification.should_clarify(
+        clarification = await measure_route_stage("clarification", self._clarification.should_clarify(
             classification,
             {},
             conversation_history,
             conversation_id=conversation_id,
             org_id=org_id,
             understanding=understanding,
-        )
+        ))
         if clarification["should_clarify"]:
             wrapped = get_ai_trust_layer().wrap_response(
                 answer=clarification["question"] or "Could you clarify?",
@@ -188,7 +189,7 @@ class IntelligenceRouter:
                 wrapped["entities"] = understanding["entities"]
             return wrapped
 
-        context = await self._context_assembler.assemble(org_id, user_id, request, classification)
+        context = await measure_route_stage("context_assembly", self._context_assembler.assemble(org_id, user_id, request, classification))
         context.update(understanding=understanding, sentiment=sentiment,
                        sentiment_detection_enabled=dialogue_settings.get("sentiment_detection_enabled", True))
         context["connected_integrations"] = context.get("connected_integrations") or []
@@ -196,13 +197,13 @@ class IntelligenceRouter:
         risk_evaluation: dict[str, Any] = {"requires_approval": False, "can_proceed_without_approval": True}
         if classification.get("requires_action"):
             action = {"type": classification.get("intent"), "estimated_impact": "medium", "is_destructive": False}
-            risk_evaluation = await self._risk_evaluator.evaluate(
+            risk_evaluation = await measure_route_stage("risk_evaluation", self._risk_evaluator.evaluate(
                 org_id,
                 user_id,
                 action,
                 classification,
                 {},
-            )
+            ))
 
         policy = get_dialogue_policy_engine(
             clarification_threshold=float(dialogue_settings.get("clarification_threshold") or 0.65),
@@ -233,8 +234,8 @@ class IntelligenceRouter:
                 wrapped["entities"] = understanding["entities"]
             return wrapped
 
-        model_selection = await self._model_selector.select(org_id, classification)
-        enrichments = await self._run_enrichments(org_id, request, classification, {**context, "overview_policy": overview_policy})
+        model_selection = await measure_route_stage("model_selection", self._model_selector.select(org_id, classification))
+        enrichments = await measure_route_stage("enrichments", self._run_enrichments(org_id, request, classification, {**context, "overview_policy": overview_policy}))
         enrichments["policy_modes"] = overview_policy
         if (context.get("external_context") or {}).get("findings"):
             enrichments = {**enrichments, "web": context["external_context"]}
@@ -316,7 +317,7 @@ class IntelligenceRouter:
                     result["consensus_mode"] = "chat_refinement"
                     result["minority_opinions"] = refined.get("minority_opinions") or []
 
-        suggestions = await self._guidance.get_suggestions(
+        suggestions = await measure_route_stage("guidance", self._guidance.get_suggestions(
             org_id,
             user_id,
             conversation_id,
@@ -324,7 +325,7 @@ class IntelligenceRouter:
             policy["mode"],
             str(result.get("answer") or ""),
             connected_integrations=context.get("connected_integrations") or [],
-        )
+        ))
         # Conservative mode narrows unsolicited guidance; no mode changes execution grants.
         result["proactive_suggestions"] = [] if overview_policy["adaptive"] == "conservative" else suggestions
         result["intelligence_overview_policy"] = overview_policy
