@@ -68,6 +68,8 @@ jobs:
           assert '7 tests collected' in p.stdout or '7 tests collected' in p.stderr, p.stdout
           PY
 
+      - name: Verify consolidated workflow coverage and protected manual lanes
+        run: python -m pytest -q --confcutdir=tests/master_qa tests/master_qa/test_master_qa_workflow_consolidation.py
       - name: Fail closed on missing audit findings, unproven PASS or retirement
         run: |
           python -m pytest -q --confcutdir=tests/master_qa tests/master_qa/test_master_qa_remediation_guard.py
