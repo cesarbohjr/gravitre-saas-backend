@@ -41,8 +41,10 @@ At audit, PR #611 had **95** workflow YAML files. These are *not* all test workf
 
 ### Retire only proven obsolete automation
 
-- `.github/workflows/pr587-controlled-reconcile.yml`: branch-specific **automated merge/reconciliation** workflow for `feat/phase2-dialogue-intelligence`, not a test; hardcoded conflict choices, `contents: write`, no matching open PR in the 11-PR inventory. **Retire from PR #611**; keep Git history as an audit/recovery reference.
-- Other `pr587-*` and `issue-535-*` paths still provide specialized replay/acoustic checks. Do not delete them without test-equivalent migration and any required-check readback. Remove misleading names only when preserving job/status identities or obtaining branch-rule owner approval.
+- `.github/workflows/pr587-controlled-reconcile.yml`: removed from PR #611 as a branch-specific write-capable reconciliation action that was not a test.
+- `.github/workflows/pr587-local-acoustic.yml` migrated (same command, manual authorization semantics and artifact outputs) to `.github/workflows/master-qa-qa30-acoustic-qualification.yml`. Original filename removed; acoustic qualification remains intentionally manual.
+- `.github/workflows/pr587-offline-cancellation.yml` migrated (identical verification command, artifact upload and old evidence input paths) to `.github/workflows/master-qa-qa30-offline-cancellation.yml`; the workflow self-trigger path was updated. Original filename removed.
+- `backend/tests/master_qa/test_master_qa_workflow_consolidation.py` enforces retained specialist coverage and these retirements. **Do not retire any additional distinct source-change or provider-live workflows without a passing replacement and required-check/readback evidence.**
 
 ## Before closing/repointing PR #615/#616
 
