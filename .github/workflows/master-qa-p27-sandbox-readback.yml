@@ -1,4 +1,4 @@
-name: P27 controlled existing HubSpot portal QA — protected tool dispatch
+name: Master QA | QA50 Authorized HubSpot Provider Readback
 on:
   workflow_dispatch:
     inputs:
