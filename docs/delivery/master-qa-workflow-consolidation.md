@@ -44,6 +44,7 @@ At audit, PR #611 had **95** workflow YAML files. These are *not* all test workf
 - `.github/workflows/pr587-controlled-reconcile.yml`: removed from PR #611 as a branch-specific write-capable reconciliation action that was not a test.
 - `.github/workflows/pr587-local-acoustic.yml` migrated (same command, manual authorization semantics and artifact outputs) to `.github/workflows/master-qa-qa30-acoustic-qualification.yml`. Original filename removed; acoustic qualification remains intentionally manual.
 - `.github/workflows/pr587-offline-cancellation.yml` migrated (identical verification command, artifact upload and old evidence input paths) to `.github/workflows/master-qa-qa30-offline-cancellation.yml`; the workflow self-trigger path was updated. Original filename removed.
+- `.github/workflows/issue-535-voice-confirmation.yml` migrated (identical voice approval-race replay, provider-commit pytest checks, no-paid-provider test environment, and artifact output) to `.github/workflows/master-qa-qa30-voice-confirmed-turns.yml`; only the display name and self-trigger path changed. Original filename removed.
 - `backend/tests/master_qa/test_master_qa_workflow_consolidation.py` enforces retained specialist coverage and these retirements. **Do not retire any additional distinct source-change or provider-live workflows without a passing replacement and required-check/readback evidence.**
 
 ## Before closing/repointing PR #615/#616
