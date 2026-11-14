@@ -243,7 +243,7 @@ class IntelligenceRouter:
         segment_key = parse_segment_key(classification)
 
         if classification.get("requires_action"):
-            result = await self._route_to_execution(
+            result = await measure_route_stage("response_dispatch", self._route_to_execution(
                 org_id,
                 user_id,
                 request,
@@ -254,9 +254,9 @@ class IntelligenceRouter:
                 surface,
                 strategy_key=strategy_key,
                 segment_key=segment_key,
-            )
+            ))
         else:
-            result = await self._route_to_knowledge_response(
+            result = await measure_route_stage("response_dispatch", self._route_to_knowledge_response(
                 org_id,
                 user_id,
                 request,
@@ -267,7 +267,7 @@ class IntelligenceRouter:
                 surface,
                 strategy_key=strategy_key,
                 segment_key=segment_key,
-            )
+            ))
 
         result["strategy_key"] = strategy_key
         result["segment_key"] = segment_key
