@@ -27,7 +27,7 @@
       "dependencies": [],
       "regression_candidate": "backend/tests/master_qa/test_actual_agent_selection.py",
       "regression_state": "EXISTS_NOT_MAPPED_TO_FULL_FINDING",
-      "implementation_state": "EVIDENCE_OR_REPAIR_PENDING",
+      "implementation_state": "CONSOLIDATED_INTO_ECO-002",
       "implemented_commit": null,
       "synthetic_status": "NOT_CERTIFIED",
       "live_status": "NOT_RUN",
@@ -38,7 +38,7 @@
       "rollback_verified": false,
       "owner_approval": false,
       "retirement_authorized": false,
-      "release_blocking": true,
+      "release_blocking": false,
       "evidence": {
         "ci_run_url": "https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/43385836750",
         "executed_sha": "74d678f667ee8de4adfc44167367566fbc2d5803",
@@ -120,7 +120,11 @@
         }
       },
       "audit_evidence_class": "SOURCE_HYPOTHESIS",
-      "audit_observation": "Bounded source-to-caller trace and authenticated Chat/Agent PostgreSQL receiver acceptance documented in docs/delivery/eco-001-authority-acceptance-certification.md. Original competing-orchestration-writers hypothesis remains unverified in deployed production; release/rollback and owner approval outstanding."
+      "audit_observation": "Bounded source-to-caller trace and authenticated Chat/Agent PostgreSQL receiver acceptance documented in docs/delivery/eco-001-authority-acceptance-certification.md. Original competing-orchestration-writers hypothesis remains unverified in deployed production; release/rollback and owner approval outstanding. Administratively consolidated into ECO-002, without verified remediation; ECO-002 inherits every outstanding ECO-001 acceptance and release gate.",
+      "administrative_closed": true,
+      "closure_disposition": "CONSOLIDATED_NOT_REMEDIATED",
+      "consolidated_into": "ECO-002",
+      "consolidation_record": "docs/delivery/eco-001-to-eco-002-consolidation.md"
     },
     {
       "finding_id": "ECO-002",
@@ -130,14 +134,14 @@
       "owner": "PR611/routing-latency",
       "implementation_owner": "PR611-cross-platform",
       "qa_lane": "QA30",
-      "affected_chain": "intelligence routing stages",
+      "affected_chain": "Chat/Agent/Voice/Play/Canvas canonical governed routing and execution + intelligence routing latency stages",
       "source_probe": {
         "path": "backend/app/services/intelligence_router.py",
         "level": "SOURCE_CANDIDATE_NOT_LIVE_PROVEN"
       },
       "observed_issue": "routing/performance",
       "root_cause": "UNVERIFIED",
-      "remediation": "Record per-stage p50/p95 and dependency DAG; parallelize only independent stages after baseline",
+      "remediation": "Own all ECO-001 ingress, canonical authority, approval/denial/cancellation/revocation/replay/durable outcome and independent provider-readback acceptance; additionally record router-stage p50/p95 and dependency DAG, and parallelize only independent stages after baseline and governance parity.",
       "dependencies": [],
       "regression_candidate": null,
       "regression_state": "NOT_YET_IMPLEMENTED",
@@ -184,7 +188,70 @@
       "audit_observation": "sequential awaits observed; impact must be measured",
       "research_derived_acceptance_checks": [
         "Record prompt/context payload size and time-to-first-audio for voice, with baseline-derived acceptance thresholds and per-stage p50/p95; do not assert arbitrary targets."
-      ]
+      ],
+      "consolidates_findings": [
+        "ECO-001"
+      ],
+      "consolidation_record": "docs/delivery/eco-001-to-eco-002-consolidation.md",
+      "consolidated_acceptance_requirements": [
+        {
+          "from": "ECO-001",
+          "qa_lane": "QA20",
+          "source_probe": {
+            "path": "backend/app/operators/agent_intelligence.py",
+            "level": "SOURCE_CANDIDATE_NOT_LIVE_PROVEN"
+          },
+          "required": [
+            "source-to-caller trace with authoritative owner",
+            "bounded repair or documented no-change justification",
+            "positive and negative targeted tests",
+            "independent durable consumer/provider observation",
+            "exact-SHA CI and release/rollback evidence"
+          ],
+          "negative_tests": [
+            "unauthorized_chat_actor",
+            "unowned_conversation",
+            "approval_denial_no_dispatch",
+            "pre_dispatch_cancellation",
+            "inflight_failure_terminal_observation",
+            "cross_tenant_denial",
+            "idempotent_replay",
+            "lost_provider_ack"
+          ],
+          "runtime_preflight": "backend/scripts/eco001_deployed_ingress_preflight.py",
+          "manual_workflow": ".github/workflows/eco-001-deployed-ingress.yml",
+          "unresolved": [
+            "live production ingress caller and feature flags",
+            "real third-party consumer/provider readback",
+            "all surface ownership and parity",
+            "deployment and rollback evidence",
+            "owner approval"
+          ]
+        },
+        {
+          "from": "ECO-002",
+          "qa_lane": "QA30",
+          "required": [
+            "source-to-caller trace with authoritative owner",
+            "bounded repair or documented no-change justification",
+            "positive and negative targeted tests",
+            "independent durable consumer/provider observation",
+            "exact-SHA CI and release/rollback evidence"
+          ],
+          "measured_p50_p95": "NOT_COLLECTED",
+          "baseline": "docs/delivery/eco-002-routing-latency-baseline.md"
+        }
+      ],
+      "inherited_regression_evidence": {
+        "from": "ECO-001",
+        "evidence_record": "docs/delivery/eco-001-authority-acceptance-certification.md",
+        "isolated_ci_run": "https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/43385836750",
+        "isolated_ci_sha": "74d678f667ee8de4adfc44167367566fbc2d5803",
+        "joined_db_tests": [
+          "backend/tests/db/test_eco001_joined_chat_http_receiver_pg.py",
+          "backend/tests/db/test_eco001_joined_agent_worker_pg_receiver.py"
+        ]
+      }
     },
     {
       "finding_id": "ECO-003",
@@ -2313,5 +2380,5 @@
     }
   ],
   "partial_test_mappings_count": 14,
-  "note": "R1: live hosting identity and API CNAME verified read-only; DEC-017 source defect repaired with six tests, unmerged/undeployed; all 43 remain open. Do not promote any partial evidence into PASS."
+  "note": "Consolidation: ECO-001 administratively closed into ECO-002 (NOT remediated, certified, or retired); its full unresolved acceptance debt is inherited by P0 ECO-002, which alone remains release-blocking for both. The 43 original finding IDs are retained for traceability (42 separately tracked active entries, 1 consolidated), and global release remains unauthorized."
 }
