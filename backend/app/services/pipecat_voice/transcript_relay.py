@@ -38,6 +38,7 @@ the reason in ``"turn_taking"`` so the client can leave the reply alone.
 """
 from __future__ import annotations
 
+from collections import deque
 from typing import Any
 
 from pipecat.frames.frames import (
@@ -105,6 +106,9 @@ class TranscriptRelayProcessor(FrameProcessor):
         super().__init__(**kwargs)
         self._relayed = 0
         self._voice_session = voice_session
+        # Only suppress exact retransmissions of the same provider final frame.
+        # Text alone is not identity: a person may say 'yes' twice.
+        self._recent_final_keys: deque[tuple[str, str, str]] = deque(maxlen=32)
 
     @property
     def relayed_count(self) -> int:
@@ -127,6 +131,14 @@ class TranscriptRelayProcessor(FrameProcessor):
         text = str(getattr(frame, "text", None) or "").strip()
         if not text:
             return
+
+        user_id = str(getattr(frame, "user_id", None) or "")
+        timestamp = str(getattr(frame, "timestamp", None) or "")
+        if timestamp:
+            key = (user_id, timestamp, text)
+            if key in self._recent_final_keys:
+                return
+            self._recent_final_keys.append(key)
 
         self._relayed += 1
         message: dict[str, Any] = {

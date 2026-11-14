@@ -45,6 +45,11 @@ from app.services.pipecat_voice.spoken_text_tap import (
 from app.services.pipecat_voice.stt_factory import STT_FLUX, build_pipecat_stt
 from app.services.pipecat_voice.text_turn_kick import TextTurnKickProcessor
 from app.services.pipecat_voice.transcript_relay import TranscriptRelayProcessor
+from app.services.pipecat_voice.committed_turn_barrier import CommittedTurnBarrierProcessor
+from app.services.pipecat_voice.final_turn_stability import FinalTurnStabilityProcessor
+from app.services.pipecat_voice.turn_audio_evidence import (
+    OutboundAudioEvidenceProcessor, VoiceTurnAudioEvidence,
+)
 from app.services.pipecat_voice.tts_warmup import warm_elevenlabs_tts_connection
 from app.services.pipecat_voice.utterance_gate import UtteranceGateProcessor
 from app.services.pipecat_voice.voice_conversational_polish import (
@@ -243,6 +248,7 @@ def build_pipecat_voice_task(
         if stt_info.get("stt_provider_key") != STT_FLUX and not dg_key and stt_info.get("stt_provider_key") != "openai":
             raise RuntimeError("DEEPGRAM_API_KEY required for Pipecat voice")
     use_flux = stt_info.get("stt_provider_key") == STT_FLUX
+    boundary_evidence = VoiceTurnAudioEvidence() if use_flux else None
     if use_flux and hasattr(stt, "partial_control_enabled"):
         stt.partial_control_enabled = lambda: bool(
             voice_session.work_active or voice_session.turn_state in {SPEAKING, WARMING}
@@ -414,6 +420,18 @@ def build_pipecat_voice_task(
             TranscriptRelayProcessor(voice_session=voice_session if use_flux else None),
             TextTurnKickProcessor(),
             speculative,
+            # Speculative eager STT is visible to prefetch, not to the
+            # authoritative user-turn aggregator until a final transcript.
+            *([CommittedTurnBarrierProcessor(
+                evidence=boundary_evidence, voice_session=voice_session,
+            )] if use_flux else []),
+            # Disabled by default: only opt-in Flux hard-final stabilizes
+            # the canonical words + stop together; raw interruption proceeds.
+            *([FinalTurnStabilityProcessor(
+                voice_session=voice_session,
+                normal_window_ms=settings.voice_final_stability_normal_ms,
+                approval_window_ms=settings.voice_final_stability_approval_ms,
+            )] if use_flux and settings.voice_final_stability_v2 else []),
             user_agg,
             llm,
             interrupt_reporter,
@@ -425,6 +443,10 @@ def build_pipecat_voice_task(
             # (maps the browser's played ms to heard text).
             GeneratedSpeechTapProcessor(playback_tracker, voice_session=voice_session),
             *playout_processors,
+            # Observe PCM at the last server-side hop, not as client-heard audio.
+            *([OutboundAudioEvidenceProcessor(
+                evidence=boundary_evidence, turn_trace=turn_trace,
+            )] if boundary_evidence is not None else []),
             transport.output(),
             # After the output transport: word-level TTSTextFrames ride the
             # transport clock queue, so this position tracks real playback rather
