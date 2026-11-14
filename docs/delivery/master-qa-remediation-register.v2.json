@@ -298,7 +298,7 @@
         "exact-SHA CI and release/rollback evidence"
       ],
       "partial_test_evidence": {
-        "scope": "SOURCE_INSTRUMENTATION_AND_TESTS_COMMITTED_NOT_CERTIFIED",
+        "scope": "SOURCE_INSTRUMENTATION_AND_SEVEN_PLUS_THREE_TEST_CASES_COMMITTED_NOT_CI_CERTIFIED",
         "baseline_plan": "docs/delivery/eco-003-context-latency-baseline.md",
         "metric_module": "backend/app/services/context_stage_metrics.py",
         "instrumented_sources": [
@@ -319,7 +319,8 @@
         "tenant_negative_runtime_tests": null,
         "parallelization_performed": false,
         "caching_changes_performed": false,
-        "reason_not_certified": "Exact-head CI and independent deployed-runtime tenant-negative acceptance outstanding; no representative measured latency distributions or owner approval"
+        "reason_not_certified": "Exact-head CI and independent deployed-runtime tenant-negative acceptance outstanding; no representative measured latency distributions or owner approval",
+        "tenant_scope_and_fallback_tests": "backend/tests/master_qa/test_eco003_context_scope_parity.py"
       },
       "audit_evidence_class": "SOURCE_CONFIRMED_POTENTIAL_LATENCY",
       "audit_observation": "serial retrieval present; performance impact unmeasured"
