@@ -1,4 +1,4 @@
-name: Connector Governance
+name: Master QA | QA20 Connector Governance
 
 # Merge-blocking scoped suite for connector chat execution and governance debt shrink.
 # Full CI (ci.yml) may still have known pre-existing failures — see docs/delivery/CI_TRIAGE_BUCKETS.md.
