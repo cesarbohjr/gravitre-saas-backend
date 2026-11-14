@@ -260,6 +260,46 @@ async def test_filler_drop_from_previous_turn_does_not_release_current_stop():
     assert delivered == [start, final, stop]
 
 
+@pytest.mark.asyncio
+async def test_late_duplicate_final_after_next_turn_is_not_recommitted():
+    """A delayed provider retry must not cross the boundary into another turn."""
+    start1 = ProposedUserStartedSpeakingFrame()
+    first = TranscriptionFrame("approve the report", "u1", "provider-turn-1", finalized=True)
+    stop1 = ProposedUserStoppedSpeakingFrame()
+    start2 = ProposedUserStartedSpeakingFrame()
+    second = TranscriptionFrame("cancel that", "u1", "provider-turn-2", finalized=True)
+    stale = TranscriptionFrame("approve the report", "u1", "provider-turn-1", finalized=True)
+    stop2 = ProposedUserStoppedSpeakingFrame()
+    delivered, _ = await _run([start1, first, stop1, start2, second, stale, stop2])
+    assert delivered == [start1, first, stop1, start2, second, stop2]
+
+
+@pytest.mark.asyncio
+async def test_same_text_and_timestamp_for_different_users_is_not_text_deduped():
+    """The retry key includes the user identity, not merely recognized words."""
+    start1 = ProposedUserStartedSpeakingFrame()
+    first = TranscriptionFrame("yes", "user-one", "provider-time", finalized=True)
+    stop1 = ProposedUserStoppedSpeakingFrame()
+    start2 = ProposedUserStartedSpeakingFrame()
+    second = TranscriptionFrame("yes", "user-two", "provider-time", finalized=True)
+    stop2 = ProposedUserStoppedSpeakingFrame()
+    delivered, _ = await _run([start1, first, stop1, start2, second, stop2])
+    assert delivered == [start1, first, stop1, start2, second, stop2]
+
+
+@pytest.mark.asyncio
+async def test_duplicate_final_during_pending_probable_stop_cannot_repeat_commit():
+    start = ProposedUserStartedSpeakingFrame()
+    eager = EagerTranscriptionFrame("let me", "u1", "candidate")
+    pending_stop = ProposedUserStoppedSpeakingFrame()
+    final = TranscriptionFrame("let me finish", "u1", "confirmed", finalized=True)
+    retry = TranscriptionFrame("let me finish", "u1", "confirmed", finalized=True)
+    duplicate_stop = ProposedUserStoppedSpeakingFrame()
+    delivered, barrier = await _run([start, eager, pending_stop, final, retry, duplicate_stop])
+    assert delivered == [start, final, pending_stop]
+    assert barrier.suppressed_eager_count == 1
+
+
 def test_actual_pipeline_instruments_flux_commits_and_outbound_pcm():
     import inspect
     from app.services.pipecat_voice import pipeline
