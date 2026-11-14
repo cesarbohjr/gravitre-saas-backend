@@ -1,8 +1,10 @@
 """ECO-003 timing and isolation guards: no authorization or routing changes."""
 from __future__ import annotations
 
+import ast
 import asyncio
 import inspect
+import textwrap
 from unittest.mock import Mock
 
 import pytest
@@ -94,7 +96,8 @@ def test_context_assembler_scopes_and_serial_policy_are_preserved():
     assert 'RetrievalScopes(knowledge=True, org_context=True, agent_memory=True)' in source
     assert 'user_id=user_id' in source
     assert 'environment_name=environment_name' in source
-    assert "asyncio.gather" not in source
+    calls = (node for node in ast.walk(ast.parse(textwrap.dedent(source))) if isinstance(node, ast.Call))
+    assert not any(isinstance(call.func, ast.Attribute) and call.func.attr == "gather" and isinstance(call.func.value, ast.Name) and call.func.value.id == "asyncio" for call in calls)
     assert "create_task(" not in source
 
 
@@ -107,4 +110,5 @@ def test_unified_retrieval_preserves_tenant_and_environment_scopes():
     assert 'user_id=user_id' in source
     assert 'environment_name=environment_name' in source
     assert 'filters: dict[str, Any] = {"environment": environment_name}' in source
-    assert "asyncio.gather" not in source
+    calls = (node for node in ast.walk(ast.parse(textwrap.dedent(source))) if isinstance(node, ast.Call))
+    assert not any(isinstance(call.func, ast.Attribute) and call.func.attr == "gather" and isinstance(call.func.value, ast.Name) and call.func.value.id == "asyncio" for call in calls)
