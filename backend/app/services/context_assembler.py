@@ -56,7 +56,7 @@ class ContextAssembler:
                 scopes=RetrievalScopes(knowledge=True, org_context=True, agent_memory=True),
             ))
         except Exception as exc:  # noqa: BLE001
-            logger.warning("context_assembler_retrieve_failed org_id=%s error=%s", org_id, exc)
+            logger.warning("context_assembler_retrieve_failed error_type=%s", type(exc).__name__)
             bundle = SimpleNamespace(
                 rag_sources=[],
                 memory_context={},
