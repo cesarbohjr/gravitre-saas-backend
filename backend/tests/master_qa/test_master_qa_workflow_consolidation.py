@@ -43,6 +43,7 @@ def test_required_specialist_coverage_and_manual_live_approval_are_retained():
         "voice-gates-2-3.yml",
         "master-qa-qa30-acoustic-qualification.yml",
         "master-qa-qa30-offline-cancellation.yml",
+        "master-qa-qa30-voice-confirmed-turns.yml",
         "voice-duplex-guard.yml",
         "department-eval-suites.yml",
         "phase3-offline-12-scenarios.yml",
@@ -63,10 +64,12 @@ def test_obsolete_write_capable_branch_reconcile_not_reintroduced():
         "pr587-controlled-reconcile.yml",
         "pr587-local-acoustic.yml",
         "pr587-offline-cancellation.yml",
+        "issue-535-voice-confirmation.yml",
     ):
         assert not (WORKFLOWS / legacy).exists(), legacy
     assert "pr587_offline_cancel_gate.py" in workflow("master-qa-qa30-offline-cancellation.yml")
     assert "pr587_kws_qualification.py" in workflow("master-qa-qa30-acoustic-qualification.yml")
+    assert "test_phase3_provider_commit_gate.py" in workflow("master-qa-qa30-voice-confirmed-turns.yml")
 
 
 def test_full_ci_preserves_comprehensive_backend_and_web_jobs():
