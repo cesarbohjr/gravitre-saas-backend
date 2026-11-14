@@ -9,6 +9,7 @@ from pydantic import BaseModel, Field
 
 from app.config import Settings, get_settings
 from app.core.io_pool import run_io
+from app.services.context_stage_metrics import measure as measure_context_stage
 from app.core.logging import get_logger
 from app.services.org_context_service import get_org_context_service
 from app.services.agent_memory_service import build_task_retrieval_context, format_retrieval_prompt_section
@@ -111,19 +112,19 @@ class UnifiedRetrievalService:
         # timeout and failed the turn.
         org_context: dict[str, Any] = {}
         if active_scopes.org_context:
-            org_context = await run_io(
+            org_context = await measure_context_stage("org_context", run_io(
                 get_org_context_service().get_snapshot,
                 client,
                 org_id,
                 environment_name=environment_name,
                 depth=str(params.get("org_context_depth") or "standard"),
                 user_id=user_id,
-            )
+            ))
 
         memory_context: dict[str, Any] = {}
         memory_section = ""
         if active_scopes.agent_memory:
-            memory_context = await run_io(
+            memory_context = await measure_context_stage("agent_memory", run_io(
                 build_task_retrieval_context,
                 self.settings,
                 client,
@@ -131,7 +132,7 @@ class UnifiedRetrievalService:
                 agent=agent,
                 task=query,
                 parameters=params,
-            )
+            ))
             memory_section = format_retrieval_prompt_section(memory_context)
 
         rag_sources: list[dict[str, Any]] = []
@@ -156,7 +157,7 @@ class UnifiedRetrievalService:
                 filters: dict[str, Any] = {"environment": environment_name}
                 if reranking_enabled is False:
                     filters["disable_rerank"] = True
-                rows, metrics = await self.rag_service.retrieve_hybrid_rows(
+                rows, metrics = await measure_context_stage("rag_retrieval", self.rag_service.retrieve_hybrid_rows(
                     org_id,
                     retrieval_query,
                     scope="agent",
@@ -164,7 +165,7 @@ class UnifiedRetrievalService:
                     agent_id=agent_id or None,
                     message_id=message_id,
                     filters=filters,
-                )
+                ))
                 rag_sources = [
                     {
                         "id": str(row.get("id") or row.get("chunk_id") or ""),
