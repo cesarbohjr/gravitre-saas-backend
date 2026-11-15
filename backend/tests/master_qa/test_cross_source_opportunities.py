@@ -5,7 +5,7 @@ advisory handoff, not a live business outcome or provider mutation.
 """
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 import pytest
 from fastapi import FastAPI, HTTPException
@@ -20,7 +20,7 @@ from tests.master_qa.test_authenticated_sales_run_diagnosis import FakeClient
 CRM_RUN = "11111111-1111-4111-8111-111111111111"
 GA_RUN = "22222222-2222-4222-8222-222222222222"
 WF = "33333333-3333-4333-8333-333333333333"
-NOW = datetime(2026, 11, 8, 22, tzinfo=timezone.utc)
+NOW = datetime.now(timezone.utc)
 
 
 def _patch_sources(monkeypatch, *, crm_count=2, ga_rows=True):
@@ -30,7 +30,7 @@ def _patch_sources(monkeypatch, *, crm_count=2, ga_rows=True):
                 "org_id": kwargs["org_id"], "system": "hubspot",
                 "metric_key": "deals_record_count", "value": crm_count,
                 "source_record_id": "run:step:deals:complete-census",
-                "observed_at": "2026-11-08T20:00:00+00:00",
+                "observed_at": (NOW - timedelta(hours=2)).isoformat(),
             }],
         },
     })
@@ -116,6 +116,23 @@ def test_run_and_timestamp_guards(monkeypatch):
             crm_run_id=CRM_RUN, analytics_run_id=CRM_RUN,
             as_of=NOW, installed_plays=[], workflow_bindings={},
         )
+
+
+
+def test_expired_crm_evidence_cannot_produce_actionable_opportunity(monkeypatch):
+    """Keep the seven-day source-freshness guard while using current positive fixtures."""
+    _patch_sources(monkeypatch)
+    monkeypatch.setattr(service, "diagnose_authenticated_sales_run", lambda **kwargs: {
+        "diagnosis": {"observations": [{
+            "org_id": kwargs["org_id"], "system": "hubspot",
+            "metric_key": "deals_record_count", "value": 2,
+            "source_record_id": "run:step:deals:stale",
+            "observed_at": (NOW - timedelta(days=8)).isoformat(),
+        }]},
+    })
+    result = _assess()
+    assert not any(item["department"] == "sales" for item in result["opportunities"])
+
 
 
 def test_preview_api_keeps_play_binding_tenant_and_environment_scoped(monkeypatch):
