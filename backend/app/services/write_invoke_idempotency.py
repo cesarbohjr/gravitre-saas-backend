@@ -259,8 +259,11 @@ def finalize_write_invoke(
 
 
 def inject_provider_idempotency(params: dict[str, Any], idempotency_key: str) -> dict[str, Any]:
+    # The provider must receive the exact key reserved in the canonical ledger.
+    # A caller-supplied value must never override the computed claim identity:
+    # mismatched provider/ledger keys can defeat crash/retry deduplication.
     out = dict(params)
-    out.setdefault("_gravitre_idempotency_key", idempotency_key)
+    out["_gravitre_idempotency_key"] = idempotency_key
     return out
 
 
