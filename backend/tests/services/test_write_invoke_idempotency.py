@@ -9,6 +9,7 @@ from app.services.write_invoke_idempotency import (
     build_write_idempotency_key,
     claim_write_invoke,
     finalize_write_invoke,
+    inject_provider_idempotency,
 )
 
 
@@ -697,3 +698,24 @@ def test_eco002_incomplete_or_unrecognized_write_claim_cannot_dispatch(
     assert getattr(raised.value, "code", None) in {
         "write_idempotency_blocked", "write_idempotency_unavailable",
     }
+
+
+def test_eco002_provider_idempotency_always_matches_durable_ledger_claim():
+    """Untrusted invocation parameters cannot override canonical provider deduplication."""
+    params = {
+        "contact_id": "qa-contact",
+        "_gravitre_idempotency_key": "attacker-provided-different-key",
+    }
+    result = inject_provider_idempotency(params, "invoke:verified-ledger-claim")
+    assert result["_gravitre_idempotency_key"] == "invoke:verified-ledger-claim"
+    assert result["contact_id"] == "qa-contact"
+    assert params["_gravitre_idempotency_key"] == "attacker-provided-different-key"
+
+
+def test_eco002_provider_idempotency_is_stable_on_replay():
+    """All sends for an identical claim carry the same canonical provider key."""
+    claim = "chat:immutable-ledger-key"
+    first = inject_provider_idempotency({"id": "qa", "_gravitre_idempotency_key": "other"}, claim)
+    replay = inject_provider_idempotency(first, claim)
+    assert first == replay
+    assert replay["_gravitre_idempotency_key"] == claim
