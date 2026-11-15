@@ -5388,7 +5388,15 @@ def invoke_tool(ctx: ToolContext, action: str, params: dict[str, Any] | None = N
                 invoke_action=action,
                 logical_action_id_value=write_logical_action_id,
             )
-        if claim.outcome == "replay" and claim.replay is not None:
+        if claim.outcome == "replay":
+            # A completed claim is not authorization to issue the write again.
+            # Missing or invalid cached evidence must fail closed rather than
+            # falling through to the provider executor with no claim token.
+            if claim.replay is None or not claim.replay.success:
+                raise WriteIdempotencyUnavailable(
+                    "Completed write has no verified replay result; reconciliation required",
+                    code="write_idempotency_blocked",
+                )
             _write_tool_audit(
                 ctx,
                 action,
@@ -5397,6 +5405,11 @@ def invoke_tool(ctx: ToolContext, action: str, params: dict[str, Any] | None = N
                 {"idempotency_replay": True, "idempotency_key": write_idempotency_key[:16]},
             )
             return claim.replay
+        if claim.outcome not in {"claimed", "blocked", "error"}:
+            raise WriteIdempotencyUnavailable(
+                "Unexpected write claim outcome; refusing provider dispatch",
+                code="write_idempotency_unavailable",
+            )
         if claim.outcome == "blocked":
             raise WriteIdempotencyUnavailable(
                 f"Write already in progress or requires reconciliation ({claim.status or claim.reason})",
