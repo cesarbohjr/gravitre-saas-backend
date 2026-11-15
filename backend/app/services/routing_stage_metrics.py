@@ -43,6 +43,11 @@ async def measure(stage: str, task: Awaitable[T]) -> T:
         outcome = "ok"
         return value
     finally:
-        elapsed = max(0.0, perf_counter() - start)
-        ROUTE_STAGE_SECONDS.labels(stage=stage, outcome=outcome).observe(elapsed)
-        logger.info("eco002_route_stage stage=%s outcome=%s duration_ms=%.3f", stage, outcome, elapsed * 1000.0)
+        # Monitoring is advisory. A broken metrics collector or log sink must
+        # never replace a governed routing result, error, or cancellation.
+        try:
+            elapsed = max(0.0, perf_counter() - start)
+            ROUTE_STAGE_SECONDS.labels(stage=stage, outcome=outcome).observe(elapsed)
+            logger.info("eco002_route_stage stage=%s outcome=%s duration_ms=%.3f", stage, outcome, elapsed * 1000.0)
+        except Exception:  # noqa: BLE001
+            pass
