@@ -38,8 +38,11 @@ def _patch_sources(monkeypatch, *, crm_count=2, ga_rows=True):
         "org_id": kwargs["org_id"], "environment": kwargs["environment_name"],
         "status": "GA4_DAILY_ROWS_OBSERVED_NOT_AGGREGATED",
         "metric_key": "sessions", "property_id": "1234",
-        "date_range": {"start": "2026-11-01", "end": "2026-11-02"},
-        "rows": [{"date": "2026-11-01", "value": 10}] if ga_rows else [],
+        "date_range": {
+            "start": (NOW.date() - timedelta(days=2)).isoformat(),
+            "end": (NOW.date() - timedelta(days=1)).isoformat(),
+        },
+        "rows": [{"date": (NOW.date() - timedelta(days=2)).isoformat(), "value": 10}] if ga_rows else [],
     })
 
 
