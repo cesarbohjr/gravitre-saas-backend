@@ -719,3 +719,47 @@ def test_eco002_provider_idempotency_is_stable_on_replay():
     replay = inject_provider_idempotency(first, claim)
     assert first == replay
     assert replay["_gravitre_idempotency_key"] == claim
+
+
+@pytest.mark.parametrize("with_conversation", [True, False])
+def test_eco002_provider_transport_key_does_not_change_durable_claim_identity(with_conversation):
+    """A generated or caller-supplied transport key never creates a new write claim."""
+    args = {
+        "email": "stable@example.invalid",
+        "pending_action_id": "approved-1",
+    }
+    ctx = ToolContext(
+        settings=SimpleNamespace(), client=MagicMock(),
+        org_id="org-qa", actor_id="actor-qa",
+        conversation_id="conv-qa" if with_conversation else None,
+        turn_id="approval-1", run_id=None if with_conversation else "run-qa",
+        step_id=None if with_conversation else "step-qa",
+    )
+    original_key, original_logical = build_write_idempotency_key(
+        ctx, "hubspot.contacts.create", args,
+    )
+    injected = inject_provider_idempotency(args, original_key)
+    replay_key, replay_logical = build_write_idempotency_key(
+        ctx, "hubspot.contacts.create", injected,
+    )
+    attacker_key, attacker_logical = build_write_idempotency_key(
+        ctx, "hubspot.contacts.create",
+        {**args, "_gravitre_idempotency_key": "forged-duplicate-bypass"},
+    )
+    assert original_key == replay_key == attacker_key
+    assert original_logical == replay_logical == attacker_logical
+    assert "_gravitre_idempotency_key" not in args
+
+
+def test_eco002_explicit_repeat_nonce_still_produces_distinct_claim():
+    ctx = ToolContext(
+        settings=SimpleNamespace(), client=MagicMock(), org_id="org-qa",
+        actor_id="actor-qa", run_id="run-qa", step_id="step-qa",
+    )
+    args = {"email": "qa@example.invalid"}
+    first, _ = build_write_idempotency_key(ctx, "hubspot.contacts.create", args)
+    repeated, _ = build_write_idempotency_key(
+        ctx, "hubspot.contacts.create",
+        {**args, "_gravitre_idempotency_key": first, "_write_idempotency_nonce": "repeat-approved"},
+    )
+    assert first != repeated
