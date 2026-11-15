@@ -51,6 +51,10 @@ def build_write_idempotency_key(
 ) -> tuple[str, str | None]:
     """Return (idempotency_key, logical_action_id)."""
     params = params if isinstance(params, dict) else {}
+    # Provider-facing deduplication metadata is an output of this calculation,
+    # never part of the input identity. Retaining it allows the same logical
+    # write to mint distinct ledger claims across an injected/replayed call.
+    params = {key: value for key, value in params.items() if key != "_gravitre_idempotency_key"}
     nonce = str(params.get("_write_idempotency_nonce") or params.get("write_idempotency_nonce") or "").strip()
     connector = str(params.get("connector_id") or ctx.connector_id or "")
     logical_id: str | None = None
