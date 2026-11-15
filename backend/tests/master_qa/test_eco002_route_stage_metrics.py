@@ -68,3 +68,50 @@ async def test_dynamic_stage_labels_are_rejected(monkeypatch):
             await metrics.measure("org_123_user_request_text", task)
     finally:
         task.close()
+
+
+@pytest.mark.asyncio
+async def test_telemetry_failure_cannot_replace_successful_router_result(monkeypatch):
+    monkeypatch.setenv("ECO002_ROUTING_LATENCY_TRACE", "true")
+
+    def unavailable_collector(**kwargs):
+        raise RuntimeError("metrics endpoint unavailable")
+
+    monkeypatch.setattr(metrics.ROUTE_STAGE_SECONDS, "labels", unavailable_collector)
+
+    async def action():
+        return {"approved_route": "unchanged"}
+
+    assert await metrics.measure("response_dispatch", action()) == {
+        "approved_route": "unchanged",
+    }
+
+
+@pytest.mark.asyncio
+async def test_telemetry_failure_cannot_mask_router_exception(monkeypatch):
+    monkeypatch.setenv("ECO002_ROUTING_LATENCY_TRACE", "true")
+    monkeypatch.setattr(
+        metrics.ROUTE_STAGE_SECONDS, "labels",
+        lambda **kwargs: (_ for _ in ()).throw(RuntimeError("collector down")),
+    )
+
+    async def action():
+        raise PermissionError("governed dispatch denied")
+
+    with pytest.raises(PermissionError, match="governed dispatch denied"):
+        await metrics.measure("response_dispatch", action())
+
+
+@pytest.mark.asyncio
+async def test_log_sink_failure_preserves_routing_result(monkeypatch):
+    monkeypatch.setenv("ECO002_ROUTING_LATENCY_TRACE", "true")
+    monkeypatch.setattr(metrics.ROUTE_STAGE_SECONDS, "labels", Mock(return_value=Mock()))
+    monkeypatch.setattr(
+        metrics.logger, "info",
+        lambda *args, **kwargs: (_ for _ in ()).throw(RuntimeError("logger unavailable")),
+    )
+
+    async def action():
+        return 42
+
+    assert await metrics.measure("classification", action()) == 42
