@@ -1,3 +1,34 @@
+## Corrected execution mandate — 12-workflow consolidation precedes bulk remediation (2026-11-15)
+
+**Owner instruction takes precedence over the earlier temporary retention strategy.** Consolidate the repository's CI/testing and necessary deploy/operational automation into a comprehensible **target of 12 canonical workflow YAML files** before resuming bulk engineering of the 43 findings. The current branch inventory is **94 files** in `.github/workflows/` (not merely the 23 workflows run on the most recent PR commit); the older 95-file count is historical. A passing PR workflow subset does not certify the entire installed workflow inventory.
+
+The 12 target *responsibilities*, to be implemented by preserving existing commands, permissions, environment protection, artifact names, and branch-check context, are:
+
+| Canonical lane | Essential scope | Safety and trigger policy |
+|---|---|---|
+| 01. Core CI and build | Web lint/typecheck/build, backend pytest, integration smoke, dependencies, unit/regression and billing smoke | PR/main; changed-path optimization must not hide release blockers |
+| 02. Auth, identity, tenant and privacy | Login, memberships/RLS, authorization, tenant isolation, privacy deletion and security/credentials | PR/main plus protected scheduled credential audit |
+| 03. Data, migrations and recovery | Supabase migrations, PG ledger, schema history, backup/recovery and durable consumer/outbox | PR for static/isolated; manual protected staging for destructive/live |
+| 04. Governed execution and connectors | Chat/Agents/Plays/Canvas tool invocation, approvals, revocation, denial, provider write fencing, connector OAuth and replay/crash safety | PR isolated receiver; manual guarded disposable provider readback |
+| 05. Intelligence and agent quality | Routing, contextual retrieval, seven intelligence controls, scenario golden tests, department/agent evaluation, source freshness | PR/main; representative perf baselines separately reviewed |
+| 06. Voice, realtime and devices | Confirmed turns, interruption/barge-in, duplex, STT/TTS, live transports, acoustic and physical device gates | Offline PR/daily; explicitly authorized paid/live device runs |
+| 07. Browser and end-to-end product | Desktop, extension, onboarding, conversation UI, navigation, signup, authenticated browser, Playwright | PR/main with isolated test accounts |
+| 08. Billing, marketplace and revenue | Stripe/Klarna-style billing contract, marketplace install/entitlement/usage, commercial enforcement, attribution, paid checkout | PR isolated; paid/live checks manual with protected credentials |
+| 09. Marketing, SEO and acquisition | Analytics, social, SEO publish safeguards, publishing, acquisition data, Lighthouse and IndexNow | PR static; scheduled or event-triggered production publishing stays protected |
+| 10. Scheduled operations and observability | Health, connector monitoring, metrics rollups, sync, ingestion, retries, knowledge refresh, operational diagnostics | Explicit schedule/push triggers with tenant protections and write-authorization semantics preserved |
+| 11. Release and production delivery | Railway/Vercel release, commit identity, production smoke, rollback, prod variables, deployment integrity | Main/release only, require approved environment and release checks |
+| 12. Master audit independent acceptance | 43-finding register, QA00–QA90, isolated PostgreSQL/synthetic receivers, exact-head evidence, nonproduction ingress and independent readback | PR offline + protected manual QA and rollback gates; never infer owner sign-off |
+
+These lanes are **coverage buckets**, not proof they are implemented or that all 94 files can be removed immediately. Several current workflows perform production deploys, recurring business operations, or manual destructive/provider-live approvals; they must be migrated into appropriate guarded lanes before removing their former YAML files. Do not replace a required check with a skipped job that falsely reports success. Preserve each workflow's audit trail and external consumers.
+
+**Deletion rule:** for each source workflow, record (a) its exact current triggers/inputs, (b) jobs and scripts, (c) artifacts/environment/secrets/permissions and callers, (d) target lane and verified parity, (e) required branch-protection status context, (f) replacement run URL on exact SHA, and only then mark `DELETE_SAFE`. If any field is unknown, mark `MIGRATION_BLOCKED` and keep source active; never silently remove security, scheduled operations, or authorized production functionality. Existing GitHub connector was denied main-branch protection read, so required status contexts remain **UNKNOWN** until verified by someone with repository admin access.
+
+**Priority order (binding):** inventory all 94 → implement and verify 12 canonical workflows → migrate and disable old auto triggers in controlled batches → delete redundant source files only after parity/required-check readback → run the 12-lane full end-to-end gate → resume **bulk** engineering remediation against the 43-finding register in original dependency order. ECO-002 remains P0 release-blocking meanwhile; don't prematurely call the findings closed. Do not repeatedly restart 17k+ backend pytest after each small repair during this consolidation.
+
+**Current status:** inventory confirmed 94 files, 12-lane target written, **migration/deletion not yet completed**, production unchanged, no workflows retired by this update. This section supersedes the earlier paragraph that treated broad specialist workflow retention as the final state.
+
+---
+
 # Master QA consolidation — canonical register, branches and workflow ownership
 
 Date: 2026-11-14. **Engineering scope only. No automatic production deployments, real-provider writes, or release-approval claims.**
