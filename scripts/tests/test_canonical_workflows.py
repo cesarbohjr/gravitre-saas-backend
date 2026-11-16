@@ -28,7 +28,7 @@ class CanonicalContracts(unittest.TestCase):
         actual = {str(p.relative_to(ROOT)) for p in (ROOT / '.github/workflows').glob('*.y*ml')}
         self.assertIn(actual, [{r['source'] for r in self.records},
                                {'.github/workflows/' + filename for filename in self.lanes}])
-        self.assertEqual(sum(len(r['jobs']) for r in self.records), 120)
+        self.assertEqual(sum(len(r['jobs']) for r in self.records), 121)
         for record in self.records:
             source = self.contracts[Path(record['source']).stem]
             target = self.lanes['qa-' + record['lane'] + '.yml']
@@ -44,7 +44,7 @@ class CanonicalContracts(unittest.TestCase):
                             'container', 'continue-on-error'):
                     expected = original.get(key, source.get(key) if key == 'permissions' else None)
                     if key == 'permissions' and 'uses' in original:
-                        expected = {**(expected or {}), 'actions': 'read'}
+                        expected = {**(expected or {}), 'actions': 'read', 'pull-requests': 'read'}
                     self.assertEqual(migrated.get(key), expected, (record['source'], old_id, key))
                 old_needs = original.get('needs', [])
                 old_needs = [old_needs] if isinstance(old_needs, str) else old_needs
@@ -210,6 +210,19 @@ class CanonicalContracts(unittest.TestCase):
             'Shared runtime text/voice gate', 'Web (lint + typecheck + build)',
         })
         self.assertFalse(report['retirement_authorized'])
+
+    def test_initialization_remote_readiness_is_manual_and_has_no_expired_default(self):
+        source = self.contracts['acceptance-db-preflight']
+        remote = source['jobs']['schema-preflight']
+        self.assertIn("github.event_name == 'workflow_dispatch'", remote['if'])
+        self.assertEqual(remote['needs'], ['static-contracts'])
+        config = source['on']['workflow_dispatch']['inputs']['verified_migration_run_id']
+        self.assertTrue(config['required'])
+        self.assertNotIn('default', config)
+        static = source['jobs']['static-contracts']
+        self.assertEqual(static['permissions'], {'contents': 'read'})
+        self.assertNotIn('secrets.', json.dumps(static))
+        self.assertIn('test_acceptance_initialization_preflight.py', json.dumps(static))
 
     def test_yaml_loader_preserves_on_and_boolean_input_types(self):
         import yaml

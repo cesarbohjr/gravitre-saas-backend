@@ -288,7 +288,7 @@ with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
                     job['uses'] = './.github/workflows/qa-12-independent-acceptance.yml'
                 if job.get('uses', '').startswith('./.github/workflows/qa-'):
                     # The called route reads only upstream Actions metadata.
-                    job['permissions'] = {**job.get('permissions', {}), 'actions': 'read'}
+                    job['permissions'] = {**job.get('permissions', {}), 'actions': 'read', 'pull-requests': 'read'}
                 if 'uses' not in job and source.get('concurrency'):
                     section = source['concurrency']
                     section = {'group': section} if isinstance(section, str) else section
