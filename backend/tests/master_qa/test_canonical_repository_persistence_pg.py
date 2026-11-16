@@ -424,3 +424,178 @@ def test_atomic_parameter_rpc_missing_run_role_boundary_and_shallow_merge():
         client = PgRepositoryClient(pg)
         repository.merge_run_parameters(client, run_id, {"nested": {"old": True}, "unrelated": 1})
         assert repository.merge_run_parameters(client, run_id, {"nested": {"new": True}}) == {"nested": {"new": True}, "unrelated": 1}
+
+
+def _atomic_outcome(client, run_id, status="completed", org_id=ORG, **overrides):
+    from app.workflows import repository
+    kwargs = dict(org_id=org_id, status=status,
+        parameters={"verified_output": {"summary": status}},
+        completed_at="2026-11-16T00:00:00Z", error_message=None,
+        approval_status=None, completion_proven=False, actor_id="synthetic-actor")
+    kwargs.update(overrides)
+    return repository.persist_run_outcome(client, run_id, **kwargs)
+
+
+def test_concurrent_terminal_writers_preserve_one_status_proof_and_outbox():
+    from concurrent.futures import ThreadPoolExecutor
+    from threading import Barrier
+    with canonical_pg_cluster() as pg:
+        run_id, _ = _fanout_run(pg)
+        barrier = Barrier(2)
+        def write(status):
+            barrier.wait(timeout=10)
+            return _atomic_outcome(PgRepositoryClient(pg), run_id, status)
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            results = list(pool.map(write, ("completed", "cancelled")))
+        assert sum(result["accepted"] for result in results) == 1
+        winner = next(result["status"] for result in results if result["accepted"])
+        assert all(result["status"] == winner for result in results)
+        assert pg.value(f"SELECT status FROM public.workflow_runs WHERE id='{run_id}'") == winner
+        assert pg.value(f"SELECT parameters->'verified_output'->>'summary' FROM public.workflow_runs WHERE id='{run_id}'") == winner
+        assert pg.value("SELECT count(*) FROM public.domain_event_outbox") == "1"
+
+
+def test_terminal_constraint_failure_rolls_back_proof_and_outbox():
+    import psycopg
+    with canonical_pg_cluster() as pg:
+        run_id, _ = _fanout_run(pg)
+        # The existing fixture rejects completed before verified_output exists.
+        with pytest.raises(psycopg.errors.RaiseException):
+            _atomic_outcome(PgRepositoryClient(pg), run_id, parameters={"uncommitted": True})
+        assert pg.value(f"SELECT status FROM public.workflow_runs WHERE id='{run_id}'") == "running"
+        assert pg.value(f"SELECT parameters FROM public.workflow_runs WHERE id='{run_id}'") == "{}"
+        assert pg.value("SELECT count(*) FROM public.domain_event_outbox") == "0"
+
+
+def test_same_terminal_retry_preserves_first_proof_actor_and_timestamp():
+    with canonical_pg_cluster() as pg:
+        run_id, _ = _fanout_run(pg)
+        first = _atomic_outcome(PgRepositoryClient(pg), run_id)
+        second = _atomic_outcome(PgRepositoryClient(pg), run_id,
+            parameters={"verified_output": {"summary": "late"}}, actor_id="different",
+            completed_at="2026-11-17T00:00:00Z")
+        assert first["parameters"] == second["parameters"]
+        assert second["parameters"]["outcome_actor_id"] == "synthetic-actor"
+        assert pg.value(f"SELECT completed_at::date FROM public.workflow_runs WHERE id='{run_id}'") == "2026-11-16"
+        assert pg.value("SELECT count(*) FROM public.domain_event_outbox") == "1"
+
+
+def test_uncertain_promotion_requires_proof_and_resets_status_bound_receipts():
+    from app.workflows import repository
+    with canonical_pg_cluster() as pg:
+        run_id, _ = _fanout_run(pg)
+        client = PgRepositoryClient(pg)
+        _atomic_outcome(client, run_id, "verification_inconclusive")
+        repository.checkpoint_outcome_fanout(client, run_id, org_id=ORG,
+            status="verification_inconclusive", receipt={"run_persisted": True, "audit_written": True},
+            finalize=False, actor_required=True)
+        assert _atomic_outcome(client, run_id)["accepted"] is False
+        assert _atomic_outcome(client, run_id, completion_proven=True)["accepted"] is True
+        assert pg.value(f"SELECT parameters->'outcome_fanout'->>'audit_written' FROM public.workflow_runs WHERE id='{run_id}'") == ""
+        assert pg.value(f"SELECT parameters->>'outcome_finalized' FROM public.workflow_runs WHERE id='{run_id}'") == "false"
+
+
+def test_concurrent_receipts_or_acknowledgements_without_completion_downgrade():
+    from concurrent.futures import ThreadPoolExecutor
+    from threading import Barrier
+    from app.workflows import repository
+    keys = ("run_persisted", "audit_written", "notification_emitted", "learning_recorded")
+    with canonical_pg_cluster() as pg:
+        run_id, _ = _fanout_run(pg)
+        _atomic_outcome(PgRepositoryClient(pg), run_id)
+        barrier = Barrier(8)
+        def checkpoint(index):
+            barrier.wait(timeout=10)
+            return repository.checkpoint_outcome_fanout(PgRepositoryClient(pg), run_id,
+                org_id=ORG, status="completed", receipt={key: key == keys[index % 4] for key in keys},
+                finalize=index == 0, actor_required=True)
+        with ThreadPoolExecutor(max_workers=8) as pool:
+            assert all(result["accepted"] for result in pool.map(checkpoint, range(8)))
+        result = repository.checkpoint_outcome_fanout(PgRepositoryClient(pg), run_id,
+            org_id=ORG, status="completed", receipt={key: False for key in keys},
+            finalize=False, actor_required=False)
+        assert all(result["receipt"][key] for key in (*keys, "complete"))
+        assert pg.value(f"SELECT parameters->>'outcome_finalized' FROM public.workflow_runs WHERE id='{run_id}'") == "true"
+        assert pg.value("SELECT count(*) FROM public.domain_event_outbox") == "1"
+
+
+def test_actorless_retry_cannot_weaken_required_channels_or_change_status():
+    from app.workflows import repository
+    with canonical_pg_cluster() as pg:
+        run_id, _ = _fanout_run(pg)
+        client = PgRepositoryClient(pg)
+        _atomic_outcome(client, run_id)
+        result = repository.checkpoint_outcome_fanout(client, run_id, org_id=ORG,
+            status="completed", receipt={"run_persisted": True, "learning_recorded": True},
+            finalize=True, actor_required=False)
+        assert result["receipt"]["complete"] is False
+        before = pg.value(f"SELECT parameters FROM public.workflow_runs WHERE id='{run_id}'")
+        assert not repository.checkpoint_outcome_fanout(client, run_id, org_id=ORG,
+            status="failed", receipt={"audit_written": True}, finalize=True, actor_required=False)["accepted"]
+        assert pg.value(f"SELECT parameters FROM public.workflow_runs WHERE id='{run_id}'") == before
+
+
+@pytest.mark.parametrize("boundary", ["persist", "checkpoint"])
+def test_outcome_transactions_reject_cross_tenant_mutations_and_public_roles(boundary):
+    import psycopg
+    from app.workflows import repository
+    with canonical_pg_cluster() as pg:
+        run_id, _ = _fanout_run(pg)
+        foreign = "33333333-3333-4333-8333-333333333333"
+        with pytest.raises(psycopg.errors.NoDataFound):
+            if boundary == "persist":
+                _atomic_outcome(PgRepositoryClient(pg), run_id, org_id=foreign)
+            else:
+                repository.checkpoint_outcome_fanout(PgRepositoryClient(pg), run_id,
+                    org_id=foreign, status="running", receipt={}, finalize=True, actor_required=False)
+        function = ("public.persist_workflow_run_outcome(uuid,uuid,text,jsonb,timestamptz,text,text,boolean,text)"
+            if boundary == "persist" else "public.checkpoint_workflow_run_outcome(uuid,uuid,text,jsonb,boolean,boolean)")
+        for role in ("anon", "authenticated"):
+            assert pg.value(f"SELECT has_function_privilege('{role}','{function}','EXECUTE')") == "f"
+        assert pg.value(f"SELECT has_function_privilege('service_role','{function}','EXECUTE')") == "t"
+        assert pg.value(f"SELECT prosecdef FROM pg_proc WHERE oid='{function}'::regprocedure") == "f"
+        assert pg.value(f"SELECT status FROM public.workflow_runs WHERE id='{run_id}'") == "running"
+
+
+def test_actual_finalizer_rejects_cancellation_between_preread_and_atomic_write(monkeypatch):
+    from app.services import execution_outcome as outcome
+    with canonical_pg_cluster() as pg:
+        run_id, workflow_id = _fanout_run(pg)
+        persist = outcome._persist_run
+        def cancel_then_persist(client, event, status, timestamp):
+            _atomic_outcome(client, run_id, "cancelled")
+            return persist(client, event, status, timestamp)
+        monkeypatch.setattr(outcome, "_persist_run", cancel_then_persist)
+        for function in ("_write_audit", "_emit_notification", "_record_learning"):
+            monkeypatch.setattr(outcome, function, _sql_delivery_channel(pg, function))
+        result = outcome.finalize_execution_outcome(PgRepositoryClient(pg), org_id=ORG,
+            status="completed", source="api", actor_id="synthetic-actor", run_id=run_id,
+            workflow_id=workflow_id, verified_output=outcome.VerifiedOutputRef(summary="late success"))
+        assert result.status == "cancelled"
+        assert result.fanout["terminal_conflict"] is True
+        assert pg.value("SELECT count(*) FROM public.qa_fanout_effects") == "0"
+        assert pg.value(f"SELECT parameters->'verified_output'->>'summary' FROM public.workflow_runs WHERE id='{run_id}'") == "cancelled"
+        assert pg.value("SELECT count(*) FROM public.domain_event_outbox") == "1"
+
+
+def test_actual_finalizer_database_failure_suppresses_all_delivery(monkeypatch):
+    from app.services import execution_outcome as outcome
+    with canonical_pg_cluster() as pg:
+        run_id, workflow_id = _fanout_run(pg)
+        pg.psql("""
+CREATE FUNCTION public.qa_fail_terminal_commit() RETURNS trigger LANGUAGE plpgsql AS $$
+BEGIN RAISE EXCEPTION 'synthetic terminal write outage'; END $$;
+CREATE TRIGGER qa_fail_terminal BEFORE UPDATE OF status ON public.workflow_runs
+FOR EACH ROW EXECUTE FUNCTION public.qa_fail_terminal_commit();
+""")
+        for function in ("_write_audit", "_emit_notification", "_record_learning"):
+            monkeypatch.setattr(outcome, function, _sql_delivery_channel(pg, function))
+        result = outcome.finalize_execution_outcome(PgRepositoryClient(pg), org_id=ORG,
+            status="completed", source="api", actor_id="synthetic-actor", run_id=run_id,
+            workflow_id=workflow_id, verified_output=outcome.VerifiedOutputRef(summary="uncommitted"))
+        assert result.status == "verification_inconclusive"
+        assert result.fanout["persistence_failed"] is True
+        assert pg.value("SELECT count(*) FROM public.qa_fanout_effects") == "0"
+        assert pg.value(f"SELECT status FROM public.workflow_runs WHERE id='{run_id}'") == "running"
+        assert pg.value(f"SELECT parameters FROM public.workflow_runs WHERE id='{run_id}'") == "{}"
+        assert pg.value("SELECT count(*) FROM public.domain_event_outbox") == "0"

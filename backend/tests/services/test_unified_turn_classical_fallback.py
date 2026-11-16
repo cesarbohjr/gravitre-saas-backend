@@ -223,11 +223,11 @@ def test_verified_output_persistence_failure_is_not_reported_as_success(monkeypa
     def update_run(_client, run_id, **kwargs):
         calls.append((run_id, kwargs["status"]))
 
-    def fail_merge(_client, _run_id, _patch):
+    def fail_merge(_client, _run_id, **_kwargs):
         raise RuntimeError("simulated metadata store outage")
 
     monkeypatch.setattr(repository, "update_run", update_run)
-    monkeypatch.setattr(repository, "merge_run_parameters", fail_merge)
+    monkeypatch.setattr(repository, "persist_run_outcome", fail_merge)
     event = ExecutionOutcomeEvent(
         org_id="org-test", status="completed", source="assistant_chat",
         run_id="run-test", verified_output=VerifiedOutputRef(summary="Verified read"),
@@ -310,11 +310,12 @@ def test_approval_interruption_persists_state_without_verified_completion(monkey
 
     def record_update(_client, run_id, **kwargs):
         observed.append((run_id, kwargs))
+        return {"accepted": True, "status": kwargs["status"], "parameters": kwargs["parameters"]}
 
     def forbidden_merge(*_args, **_kwargs):
         raise AssertionError("unverified approval interruption must not persist verified output")
 
-    monkeypatch.setattr(repository, "update_run", record_update)
+    monkeypatch.setattr(repository, "persist_run_outcome", record_update)
     monkeypatch.setattr(repository, "merge_run_parameters", forbidden_merge)
     event = ExecutionOutcomeEvent(
         org_id="org-test", status="flagged_for_review", source="assistant_chat",

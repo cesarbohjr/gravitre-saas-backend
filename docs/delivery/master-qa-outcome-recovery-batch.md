@@ -104,3 +104,52 @@ Remaining work under the same register/owners: atomically arbitrate terminal
 status with proof, merge fanout acknowledgements monotonically, and make core
 consumer effects idempotent across concurrent finalizers and the effect-to-receipt
 crash gap. This patch does not claim any of those gates or close a finding.
+
+
+## Atomic terminal and monotonic receipt follow-up (2026-11-16)
+
+The previous `bd99007274f4a34ed05cabea380d80f20accb19a` atomic-parameter
+checkpoint passed actual PostgreSQL acceptance: [QA12 job 133432648793](https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/43905289807/job/133432648793)
+reported **321 runtime guards, 43 routing/context and 70 real PostgreSQL cases**.
+That proves the 16-writer parameter merge and its database boundaries at that
+revision; full backend CI remains separate.
+
+The canonical finalizer now calls `persist_workflow_run_outcome`. A tenant-scoped
+row lock arbitrates the proof and terminal transition in one transaction. A
+conflicting definite terminal wins without any caller proof write. Uncertain
+promotion still requires the canonical service's attributed verification. A
+status/outbox constraint failure rolls back the proof. Same-status retries retain
+the first committed proof, actor, error and completion timestamp. The finalizer
+uses that canonical proof/actor and performs work-object attribution only after
+successful arbitration. New attribution references use the atomic parameter
+merge. A rejected or failed persistence transaction suppresses all downstream
+channels; failed completion persistence returns verification_inconclusive.
+
+`checkpoint_workflow_run_outcome` merges same-status channel acknowledgements
+with boolean OR under the row lock. A stale snapshot cannot erase an acknowledged
+channel or finalization request. Completion derives from the merged required
+channels. An actorless retry cannot weaken actor-required delivery. A new outcome
+status resets the prior status's receipts; version-one same-status receipts are
+preserved when upgrading to the new terminal writer. These are durable receipt
+semantics, **not** an exclusive delivery claim or exactly-once external delivery.
+
+**193 focused local checks pass**: 130 outcome/lifecycle/ownership and 63 neighboring
+workflow/approval/recovery checks. Two negative finalizer regressions fail against
+the previous finalizer. Five new unit regressions cover late cancellation,
+failed persistence, canonical retry proof/actor, stale receipts and stale-status
+checkpoint rejection. Ten new real PostgreSQL cases extend the existing selected
+acceptance file: competing terminals, transaction rollback, stable same-status
+proof/actor/timestamp, verified uncertain promotion, concurrent acknowledgements,
+actorless retries/stale status, two tenant/role boundaries, and two actual-finalizer
+negative journeys. Actual database validation awaits this revision's QA12 job;
+unit transports do not certify SQL locking or rollback.
+
+Both additive function migrations must precede backend activation. Both functions
+are SECURITY INVOKER; PUBLIC/anon/authenticated execution is revoked and service_role
+execution granted. No hosted migration or deployment was performed. Roll back the
+backend before removing any function; leave additive functions for workers to drain.
+
+Remaining gates under the original owners: core-channel effect idempotency across
+concurrent finalizers and effect-to-receipt process death; optional/legacy fanout;
+generic lifecycle-writer/contract-mirror races; full Chat/Agent/provider readback;
+deployed rollback and owner acceptance. All 43 findings remain open.

@@ -225,6 +225,13 @@ class PgRepositoryClient:
     def rpc(self, name, params):
         # Only recovery SQL functions used by offline acceptance are exposed.
         commands = {
+            "persist_workflow_run_outcome": (
+                "SELECT public.persist_workflow_run_outcome(%s,%s,%s,%s,%s,%s,%s,%s,%s)",
+                ("p_run_id", "p_org_id", "p_status", "p_patch", "p_completed_at",
+                 "p_error_message", "p_approval_status", "p_completion_proven", "p_actor_id"), False),
+            "checkpoint_workflow_run_outcome": (
+                "SELECT public.checkpoint_workflow_run_outcome(%s,%s,%s,%s,%s,%s)",
+                ("p_run_id", "p_org_id", "p_status", "p_receipt", "p_finalize", "p_actor_required"), False),
             "merge_workflow_run_parameters": (
                 "SELECT public.merge_workflow_run_parameters(%s,%s)",
                 ("p_run_id", "p_patch"), False),
@@ -277,6 +284,7 @@ def canonical_pg_cluster():
             CLAIM_TYPES_MIGRATION.read_text(),
             (MIGRATIONS / "20261107235500_p27_graph_recovery_leases.sql").read_text(),
             (MIGRATIONS / "20261116160849_atomic_workflow_run_parameters.sql").read_text(),
+            (MIGRATIONS / "20261116161807_atomic_outcome_and_monotonic_receipts.sql").read_text(),
         ) as server:
             yield server
     except subprocess.CalledProcessError as exc:

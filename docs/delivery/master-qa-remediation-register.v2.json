@@ -771,9 +771,26 @@
         "migration": "supabase/migrations/20261116160849_atomic_workflow_run_parameters.sql",
         "regression": "backend/tests/master_qa/test_canonical_repository_persistence_pg.py",
         "local_validation": "67 focused checks passed; seven new fail-closed regression cases fail on the pre-repair method.",
-        "postgres_validation": "PENDING_EXACT_HEAD_CI: 11 added PG cases in the existing acceptance file, including 16 simultaneous independent connections held at a deterministic database lock.",
+        "postgres_validation": "PASS at bd99007274f4a34ed05cabea380d80f20accb19a: QA12 run 43905289807 job 133432648793; 321 runtime guards, 43 routing/context and 70 real PostgreSQL cases. Full backend CI remains separate; no full finding closure.",
         "rollout": "Apply additive function migration before backend activation. No hosted migration or deployment performed. Roll back backend first; leave additive function present for in-flight new callers.",
         "remaining": "Same-key nested object replacement remains shallow last-writer-wins. Monotonic fanout receipts, atomic terminal/proof arbitration, concurrent channel idempotency and effect-to-receipt crash recovery are not certified by this repair. Existing live, rollback and owner gates remain open.",
+        "release_certified": false
+      },
+      "atomic_terminal_receipt_batch_evidence": {
+        "scope": "Canonical finalizer tenant-scoped transaction arbitrates terminal status/proof/actor; same-status retry preserves committed proof. Receipt transaction ORs acknowledgements, preserves finalization requests, rejects stale-status/cross-tenant updates and prevents actorless requirement weakening. Conflict/storage failure prevents downstream fanout and work-object attribution.",
+        "source": [
+          "backend/app/services/execution_outcome.py",
+          "backend/app/workflows/repository.py"
+        ],
+        "migration": "supabase/migrations/20261116161807_atomic_outcome_and_monotonic_receipts.sql",
+        "tests": [
+          "backend/tests/services/test_execution_outcome_restart_receipts.py",
+          "backend/tests/master_qa/test_canonical_repository_persistence_pg.py"
+        ],
+        "local_validation": "193 focused checks pass (130 outcome/lifecycle/ownership and 63 workflow/approval/recovery). Two negative finalizer regressions fail against the previous finalizer.",
+        "postgres_validation": "PENDING_EXACT_HEAD_CI: ten new PG cases extend existing QA12 acceptance; no local database pass inferred.",
+        "activation": "Apply both additive function migrations before backend activation. No hosted migration/deployment performed. Backend rollback first; keep additive functions for in-flight workers.",
+        "remaining": "Concurrent core-channel idempotency and effect-to-receipt crash gap remain open. Generic legacy lifecycle writers/contract mirrors, optional fanout, full cross-surface/provider readback, deployed rollback and owner acceptance are not certified.",
         "release_certified": false
       }
     },
@@ -1023,9 +1040,26 @@
         "migration": "supabase/migrations/20261116160849_atomic_workflow_run_parameters.sql",
         "regression": "backend/tests/master_qa/test_canonical_repository_persistence_pg.py",
         "local_validation": "67 focused checks passed; seven new fail-closed regression cases fail on the pre-repair method.",
-        "postgres_validation": "PENDING_EXACT_HEAD_CI: 11 added PG cases in the existing acceptance file, including 16 simultaneous independent connections held at a deterministic database lock.",
+        "postgres_validation": "PASS at bd99007274f4a34ed05cabea380d80f20accb19a: QA12 run 43905289807 job 133432648793; 321 runtime guards, 43 routing/context and 70 real PostgreSQL cases. Full backend CI remains separate; no full finding closure.",
         "rollout": "Apply additive function migration before backend activation. No hosted migration or deployment performed. Roll back backend first; leave additive function present for in-flight new callers.",
         "remaining": "Same-key nested object replacement remains shallow last-writer-wins. Monotonic fanout receipts, atomic terminal/proof arbitration, concurrent channel idempotency and effect-to-receipt crash recovery are not certified by this repair. Existing live, rollback and owner gates remain open.",
+        "release_certified": false
+      },
+      "atomic_terminal_receipt_batch_evidence": {
+        "scope": "Canonical finalizer tenant-scoped transaction arbitrates terminal status/proof/actor; same-status retry preserves committed proof. Receipt transaction ORs acknowledgements, preserves finalization requests, rejects stale-status/cross-tenant updates and prevents actorless requirement weakening. Conflict/storage failure prevents downstream fanout and work-object attribution.",
+        "source": [
+          "backend/app/services/execution_outcome.py",
+          "backend/app/workflows/repository.py"
+        ],
+        "migration": "supabase/migrations/20261116161807_atomic_outcome_and_monotonic_receipts.sql",
+        "tests": [
+          "backend/tests/services/test_execution_outcome_restart_receipts.py",
+          "backend/tests/master_qa/test_canonical_repository_persistence_pg.py"
+        ],
+        "local_validation": "193 focused checks pass (130 outcome/lifecycle/ownership and 63 workflow/approval/recovery). Two negative finalizer regressions fail against the previous finalizer.",
+        "postgres_validation": "PENDING_EXACT_HEAD_CI: ten new PG cases extend existing QA12 acceptance; no local database pass inferred.",
+        "activation": "Apply both additive function migrations before backend activation. No hosted migration/deployment performed. Backend rollback first; keep additive functions for in-flight workers.",
+        "remaining": "Concurrent core-channel idempotency and effect-to-receipt crash gap remain open. Generic legacy lifecycle writers/contract mirrors, optional fanout, full cross-surface/provider readback, deployed rollback and owner acceptance are not certified.",
         "release_certified": false
       }
     },
@@ -1271,9 +1305,26 @@
         "migration": "supabase/migrations/20261116160849_atomic_workflow_run_parameters.sql",
         "regression": "backend/tests/master_qa/test_canonical_repository_persistence_pg.py",
         "local_validation": "67 focused checks passed; seven new fail-closed regression cases fail on the pre-repair method.",
-        "postgres_validation": "PENDING_EXACT_HEAD_CI: 11 added PG cases in the existing acceptance file, including 16 simultaneous independent connections held at a deterministic database lock.",
+        "postgres_validation": "PASS at bd99007274f4a34ed05cabea380d80f20accb19a: QA12 run 43905289807 job 133432648793; 321 runtime guards, 43 routing/context and 70 real PostgreSQL cases. Full backend CI remains separate; no full finding closure.",
         "rollout": "Apply additive function migration before backend activation. No hosted migration or deployment performed. Roll back backend first; leave additive function present for in-flight new callers.",
         "remaining": "Same-key nested object replacement remains shallow last-writer-wins. Monotonic fanout receipts, atomic terminal/proof arbitration, concurrent channel idempotency and effect-to-receipt crash recovery are not certified by this repair. Existing live, rollback and owner gates remain open.",
+        "release_certified": false
+      },
+      "atomic_terminal_receipt_batch_evidence": {
+        "scope": "Canonical finalizer tenant-scoped transaction arbitrates terminal status/proof/actor; same-status retry preserves committed proof. Receipt transaction ORs acknowledgements, preserves finalization requests, rejects stale-status/cross-tenant updates and prevents actorless requirement weakening. Conflict/storage failure prevents downstream fanout and work-object attribution.",
+        "source": [
+          "backend/app/services/execution_outcome.py",
+          "backend/app/workflows/repository.py"
+        ],
+        "migration": "supabase/migrations/20261116161807_atomic_outcome_and_monotonic_receipts.sql",
+        "tests": [
+          "backend/tests/services/test_execution_outcome_restart_receipts.py",
+          "backend/tests/master_qa/test_canonical_repository_persistence_pg.py"
+        ],
+        "local_validation": "193 focused checks pass (130 outcome/lifecycle/ownership and 63 workflow/approval/recovery). Two negative finalizer regressions fail against the previous finalizer.",
+        "postgres_validation": "PENDING_EXACT_HEAD_CI: ten new PG cases extend existing QA12 acceptance; no local database pass inferred.",
+        "activation": "Apply both additive function migrations before backend activation. No hosted migration/deployment performed. Backend rollback first; keep additive functions for in-flight workers.",
+        "remaining": "Concurrent core-channel idempotency and effect-to-receipt crash gap remain open. Generic legacy lifecycle writers/contract mirrors, optional fanout, full cross-surface/provider readback, deployed rollback and owner acceptance are not certified.",
         "release_certified": false
       }
     },
@@ -1585,9 +1636,26 @@
         "migration": "supabase/migrations/20261116160849_atomic_workflow_run_parameters.sql",
         "regression": "backend/tests/master_qa/test_canonical_repository_persistence_pg.py",
         "local_validation": "67 focused checks passed; seven new fail-closed regression cases fail on the pre-repair method.",
-        "postgres_validation": "PENDING_EXACT_HEAD_CI: 11 added PG cases in the existing acceptance file, including 16 simultaneous independent connections held at a deterministic database lock.",
+        "postgres_validation": "PASS at bd99007274f4a34ed05cabea380d80f20accb19a: QA12 run 43905289807 job 133432648793; 321 runtime guards, 43 routing/context and 70 real PostgreSQL cases. Full backend CI remains separate; no full finding closure.",
         "rollout": "Apply additive function migration before backend activation. No hosted migration or deployment performed. Roll back backend first; leave additive function present for in-flight new callers.",
         "remaining": "Same-key nested object replacement remains shallow last-writer-wins. Monotonic fanout receipts, atomic terminal/proof arbitration, concurrent channel idempotency and effect-to-receipt crash recovery are not certified by this repair. Existing live, rollback and owner gates remain open.",
+        "release_certified": false
+      },
+      "atomic_terminal_receipt_batch_evidence": {
+        "scope": "Canonical finalizer tenant-scoped transaction arbitrates terminal status/proof/actor; same-status retry preserves committed proof. Receipt transaction ORs acknowledgements, preserves finalization requests, rejects stale-status/cross-tenant updates and prevents actorless requirement weakening. Conflict/storage failure prevents downstream fanout and work-object attribution.",
+        "source": [
+          "backend/app/services/execution_outcome.py",
+          "backend/app/workflows/repository.py"
+        ],
+        "migration": "supabase/migrations/20261116161807_atomic_outcome_and_monotonic_receipts.sql",
+        "tests": [
+          "backend/tests/services/test_execution_outcome_restart_receipts.py",
+          "backend/tests/master_qa/test_canonical_repository_persistence_pg.py"
+        ],
+        "local_validation": "193 focused checks pass (130 outcome/lifecycle/ownership and 63 workflow/approval/recovery). Two negative finalizer regressions fail against the previous finalizer.",
+        "postgres_validation": "PENDING_EXACT_HEAD_CI: ten new PG cases extend existing QA12 acceptance; no local database pass inferred.",
+        "activation": "Apply both additive function migrations before backend activation. No hosted migration/deployment performed. Backend rollback first; keep additive functions for in-flight workers.",
+        "remaining": "Concurrent core-channel idempotency and effect-to-receipt crash gap remain open. Generic legacy lifecycle writers/contract mirrors, optional fanout, full cross-surface/provider readback, deployed rollback and owner acceptance are not certified.",
         "release_certified": false
       }
     },
@@ -1937,9 +2005,26 @@
         "migration": "supabase/migrations/20261116160849_atomic_workflow_run_parameters.sql",
         "regression": "backend/tests/master_qa/test_canonical_repository_persistence_pg.py",
         "local_validation": "67 focused checks passed; seven new fail-closed regression cases fail on the pre-repair method.",
-        "postgres_validation": "PENDING_EXACT_HEAD_CI: 11 added PG cases in the existing acceptance file, including 16 simultaneous independent connections held at a deterministic database lock.",
+        "postgres_validation": "PASS at bd99007274f4a34ed05cabea380d80f20accb19a: QA12 run 43905289807 job 133432648793; 321 runtime guards, 43 routing/context and 70 real PostgreSQL cases. Full backend CI remains separate; no full finding closure.",
         "rollout": "Apply additive function migration before backend activation. No hosted migration or deployment performed. Roll back backend first; leave additive function present for in-flight new callers.",
         "remaining": "Same-key nested object replacement remains shallow last-writer-wins. Monotonic fanout receipts, atomic terminal/proof arbitration, concurrent channel idempotency and effect-to-receipt crash recovery are not certified by this repair. Existing live, rollback and owner gates remain open.",
+        "release_certified": false
+      },
+      "atomic_terminal_receipt_batch_evidence": {
+        "scope": "Canonical finalizer tenant-scoped transaction arbitrates terminal status/proof/actor; same-status retry preserves committed proof. Receipt transaction ORs acknowledgements, preserves finalization requests, rejects stale-status/cross-tenant updates and prevents actorless requirement weakening. Conflict/storage failure prevents downstream fanout and work-object attribution.",
+        "source": [
+          "backend/app/services/execution_outcome.py",
+          "backend/app/workflows/repository.py"
+        ],
+        "migration": "supabase/migrations/20261116161807_atomic_outcome_and_monotonic_receipts.sql",
+        "tests": [
+          "backend/tests/services/test_execution_outcome_restart_receipts.py",
+          "backend/tests/master_qa/test_canonical_repository_persistence_pg.py"
+        ],
+        "local_validation": "193 focused checks pass (130 outcome/lifecycle/ownership and 63 workflow/approval/recovery). Two negative finalizer regressions fail against the previous finalizer.",
+        "postgres_validation": "PENDING_EXACT_HEAD_CI: ten new PG cases extend existing QA12 acceptance; no local database pass inferred.",
+        "activation": "Apply both additive function migrations before backend activation. No hosted migration/deployment performed. Backend rollback first; keep additive functions for in-flight workers.",
+        "remaining": "Concurrent core-channel idempotency and effect-to-receipt crash gap remain open. Generic legacy lifecycle writers/contract mirrors, optional fanout, full cross-surface/provider readback, deployed rollback and owner acceptance are not certified.",
         "release_certified": false
       }
     },
@@ -2014,9 +2099,26 @@
         "migration": "supabase/migrations/20261116160849_atomic_workflow_run_parameters.sql",
         "regression": "backend/tests/master_qa/test_canonical_repository_persistence_pg.py",
         "local_validation": "67 focused checks passed; seven new fail-closed regression cases fail on the pre-repair method.",
-        "postgres_validation": "PENDING_EXACT_HEAD_CI: 11 added PG cases in the existing acceptance file, including 16 simultaneous independent connections held at a deterministic database lock.",
+        "postgres_validation": "PASS at bd99007274f4a34ed05cabea380d80f20accb19a: QA12 run 43905289807 job 133432648793; 321 runtime guards, 43 routing/context and 70 real PostgreSQL cases. Full backend CI remains separate; no full finding closure.",
         "rollout": "Apply additive function migration before backend activation. No hosted migration or deployment performed. Roll back backend first; leave additive function present for in-flight new callers.",
         "remaining": "Same-key nested object replacement remains shallow last-writer-wins. Monotonic fanout receipts, atomic terminal/proof arbitration, concurrent channel idempotency and effect-to-receipt crash recovery are not certified by this repair. Existing live, rollback and owner gates remain open.",
+        "release_certified": false
+      },
+      "atomic_terminal_receipt_batch_evidence": {
+        "scope": "Canonical finalizer tenant-scoped transaction arbitrates terminal status/proof/actor; same-status retry preserves committed proof. Receipt transaction ORs acknowledgements, preserves finalization requests, rejects stale-status/cross-tenant updates and prevents actorless requirement weakening. Conflict/storage failure prevents downstream fanout and work-object attribution.",
+        "source": [
+          "backend/app/services/execution_outcome.py",
+          "backend/app/workflows/repository.py"
+        ],
+        "migration": "supabase/migrations/20261116161807_atomic_outcome_and_monotonic_receipts.sql",
+        "tests": [
+          "backend/tests/services/test_execution_outcome_restart_receipts.py",
+          "backend/tests/master_qa/test_canonical_repository_persistence_pg.py"
+        ],
+        "local_validation": "193 focused checks pass (130 outcome/lifecycle/ownership and 63 workflow/approval/recovery). Two negative finalizer regressions fail against the previous finalizer.",
+        "postgres_validation": "PENDING_EXACT_HEAD_CI: ten new PG cases extend existing QA12 acceptance; no local database pass inferred.",
+        "activation": "Apply both additive function migrations before backend activation. No hosted migration/deployment performed. Backend rollback first; keep additive functions for in-flight workers.",
+        "remaining": "Concurrent core-channel idempotency and effect-to-receipt crash gap remain open. Generic legacy lifecycle writers/contract mirrors, optional fanout, full cross-surface/provider readback, deployed rollback and owner acceptance are not certified.",
         "release_certified": false
       }
     },
@@ -2652,9 +2754,26 @@
         "migration": "supabase/migrations/20261116160849_atomic_workflow_run_parameters.sql",
         "regression": "backend/tests/master_qa/test_canonical_repository_persistence_pg.py",
         "local_validation": "67 focused checks passed; seven new fail-closed regression cases fail on the pre-repair method.",
-        "postgres_validation": "PENDING_EXACT_HEAD_CI: 11 added PG cases in the existing acceptance file, including 16 simultaneous independent connections held at a deterministic database lock.",
+        "postgres_validation": "PASS at bd99007274f4a34ed05cabea380d80f20accb19a: QA12 run 43905289807 job 133432648793; 321 runtime guards, 43 routing/context and 70 real PostgreSQL cases. Full backend CI remains separate; no full finding closure.",
         "rollout": "Apply additive function migration before backend activation. No hosted migration or deployment performed. Roll back backend first; leave additive function present for in-flight new callers.",
         "remaining": "Same-key nested object replacement remains shallow last-writer-wins. Monotonic fanout receipts, atomic terminal/proof arbitration, concurrent channel idempotency and effect-to-receipt crash recovery are not certified by this repair. Existing live, rollback and owner gates remain open.",
+        "release_certified": false
+      },
+      "atomic_terminal_receipt_batch_evidence": {
+        "scope": "Canonical finalizer tenant-scoped transaction arbitrates terminal status/proof/actor; same-status retry preserves committed proof. Receipt transaction ORs acknowledgements, preserves finalization requests, rejects stale-status/cross-tenant updates and prevents actorless requirement weakening. Conflict/storage failure prevents downstream fanout and work-object attribution.",
+        "source": [
+          "backend/app/services/execution_outcome.py",
+          "backend/app/workflows/repository.py"
+        ],
+        "migration": "supabase/migrations/20261116161807_atomic_outcome_and_monotonic_receipts.sql",
+        "tests": [
+          "backend/tests/services/test_execution_outcome_restart_receipts.py",
+          "backend/tests/master_qa/test_canonical_repository_persistence_pg.py"
+        ],
+        "local_validation": "193 focused checks pass (130 outcome/lifecycle/ownership and 63 workflow/approval/recovery). Two negative finalizer regressions fail against the previous finalizer.",
+        "postgres_validation": "PENDING_EXACT_HEAD_CI: ten new PG cases extend existing QA12 acceptance; no local database pass inferred.",
+        "activation": "Apply both additive function migrations before backend activation. No hosted migration/deployment performed. Backend rollback first; keep additive functions for in-flight workers.",
+        "remaining": "Concurrent core-channel idempotency and effect-to-receipt crash gap remain open. Generic legacy lifecycle writers/contract mirrors, optional fanout, full cross-surface/provider readback, deployed rollback and owner acceptance are not certified.",
         "release_certified": false
       }
     },

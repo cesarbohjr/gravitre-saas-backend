@@ -339,6 +339,51 @@ def merge_run_parameters(client: Client, run_id: str, patch: dict[str, Any]) -> 
     return result.data
 
 
+def persist_run_outcome(
+    client: Client, run_id: str, *, org_id: str, status: str,
+    parameters: dict[str, Any], completed_at: str, error_message: str | None,
+    approval_status: str | None, completion_proven: bool, actor_id: str | None,
+) -> dict[str, Any]:
+    """Arbitrate proof and terminal state under a tenant-scoped database lock."""
+    data = client.rpc("persist_workflow_run_outcome", {
+        "p_run_id": run_id, "p_org_id": org_id, "p_status": status,
+        "p_patch": parameters, "p_completed_at": completed_at,
+        "p_error_message": error_message, "p_approval_status": approval_status,
+        "p_completion_proven": completion_proven, "p_actor_id": actor_id,
+    }).execute().data
+    if (not isinstance(data, dict) or type(data.get("accepted")) is not bool
+            or not isinstance(data.get("status"), str)):
+        raise RuntimeError("atomic outcome mutation was not acknowledged")
+    if data["accepted"]:
+        if data["status"] != status or not isinstance(data.get("parameters"), dict):
+            raise RuntimeError("atomic outcome proof was not acknowledged")
+        mirror_legacy_run_to_contract(client, run_id)
+    return data
+
+
+def checkpoint_outcome_fanout(
+    client: Client, run_id: str, *, org_id: str, status: str,
+    receipt: dict[str, bool], finalize: bool, actor_required: bool,
+) -> dict[str, Any]:
+    """OR durable acknowledgements against the current outcome, never replace."""
+    data = client.rpc("checkpoint_workflow_run_outcome", {
+        "p_run_id": run_id, "p_org_id": org_id, "p_status": status,
+        "p_receipt": receipt, "p_finalize": finalize,
+        "p_actor_required": actor_required,
+    }).execute().data
+    if (not isinstance(data, dict) or type(data.get("accepted")) is not bool
+            or not isinstance(data.get("status"), str)):
+        raise RuntimeError("outcome receipt was not acknowledged")
+    if data["accepted"]:
+        stored = data.get("receipt")
+        if (data["status"] != status or not isinstance(stored, dict)
+                or stored.get("status") != status
+                or any(type(stored.get(key)) is not bool for key in (
+                    "run_persisted", "audit_written", "notification_emitted", "learning_recorded", "complete"))):
+            raise RuntimeError("outcome receipt acknowledgement is incomplete")
+    return data
+
+
 def try_mark_run_running(client: Client, run_id: str, org_id: str) -> bool:
     """Transition pending_approval -> running; returns True if claimed."""
     r = (

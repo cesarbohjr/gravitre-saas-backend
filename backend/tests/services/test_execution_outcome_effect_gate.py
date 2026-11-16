@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from typing import Any
+from app.workflows import repository
 from unittest.mock import MagicMock, patch
 
 from app.services.execution_outcome import VerifiedOutputRef, finalize_execution_outcome
@@ -49,12 +50,17 @@ class _Client:
     def table(self, name: str) -> _Table:
         return _Table(name, self.store)
 
+    def rpc(self, name, args):
+        from tests.services.outcome_rpc_fake import outcome_rpc
+        if not hasattr(self, "outcome_row"):
+            self.outcome_row = {"status": "running", "parameters": {}}
+        return outcome_rpc(self.outcome_row, name, args)
+
 
 def test_finalize_unproven_write_with_unknown_effect_is_inconclusive() -> None:
     client = _Client()
     with (
-        patch("app.workflows.repository.update_run") as update_run,
-        patch("app.workflows.repository.merge_run_parameters") as merge_params,
+        patch("app.workflows.repository.persist_run_outcome", wraps=repository.persist_run_outcome) as update_run,
         patch("app.workflows.repository.emit_execute_completed", return_value=True) as emit_completed,
         patch("app.services.notification_emitter.emit_notification", return_value="notification-test") as emit_notification,
     ):
@@ -86,21 +92,14 @@ def test_finalize_unproven_write_with_unknown_effect_is_inconclusive() -> None:
     assert update_run.call_args.kwargs["status"] == "verification_inconclusive"
     emit_notification.assert_called_once()
     assert emit_notification.call_args.kwargs["event_type"] != "run_completed"
-    # outcome_effect persisted onto run parameters
-    merge_params.assert_called()
-    # Delivery receipts are subsequent merges; proof must survive the complete
-    # sequence rather than being present only in whichever merge ran last.
-    merged = {}
-    for call in merge_params.call_args_list:
-        merged.update(call.args[2])
-    assert merged.get("outcome_effect") == "unknown"
+    # Proof and terminal state cross one atomic repository boundary.
+    assert update_run.call_args.kwargs["parameters"]["outcome_effect"] == "unknown"
 
 
 def test_finalize_keeps_completed_when_create_proven_by_read_back() -> None:
     client = _Client()
     with (
-        patch("app.workflows.repository.update_run") as update_run,
-        patch("app.workflows.repository.merge_run_parameters"),
+        patch("app.workflows.repository.persist_run_outcome", wraps=repository.persist_run_outcome) as update_run,
         patch("app.workflows.repository.emit_execute_completed", return_value=True),
         patch("app.services.notification_emitter.emit_notification", return_value="notification-test"),
     ):
@@ -138,8 +137,7 @@ def test_finalize_keeps_completed_when_create_proven_by_read_back() -> None:
 def test_finalize_apollo_already_existed_stays_partial_success() -> None:
     client = _Client()
     with (
-        patch("app.workflows.repository.update_run") as update_run,
-        patch("app.workflows.repository.merge_run_parameters"),
+        patch("app.workflows.repository.persist_run_outcome", wraps=repository.persist_run_outcome) as update_run,
         patch("app.workflows.repository.emit_execute_completed", return_value=True),
         patch("app.services.notification_emitter.emit_notification", return_value="notification-test"),
     ):

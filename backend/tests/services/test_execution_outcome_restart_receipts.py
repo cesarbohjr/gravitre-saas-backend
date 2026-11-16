@@ -28,6 +28,10 @@ class Store:
     def execute(self):
         return SimpleNamespace(data=[deepcopy(self.row)])
 
+    def rpc(self, name, args):
+        from tests.services.outcome_rpc_fake import outcome_rpc
+        return outcome_rpc(self.row, name, args)
+
 
 @pytest.fixture
 def delivery(monkeypatch):
@@ -36,9 +40,6 @@ def delivery(monkeypatch):
     failed = set()
 
     monkeypatch.setattr(outcome, "_resolve_workflow_id", lambda *_: "workflow-test")
-    monkeypatch.setattr(repository, "update_run", lambda c, rid, **kw: store.row.update(status=kw["status"]))
-    monkeypatch.setattr(repository, "merge_run_parameters",
-                        lambda c, rid, patch: store.row["parameters"].update(deepcopy(patch)))
 
     def handler(name):
         def invoke(*_):
@@ -83,14 +84,15 @@ def test_verification_is_persisted_before_terminal_status(monkeypatch, delivery)
     store, _, _, finalize = delivery
     seen = []
 
+    persist = repository.persist_run_outcome
     def update(c, rid, **kw):
-        assert store.row["parameters"]["verified_output"]["summary"] == "Isolated result"
+        assert kw["parameters"]["verified_output"]["summary"] == "Isolated result"
         assert not store.row["parameters"].get("notification_emitted")
         assert not store.row["parameters"].get("outcome_finalized")
         seen.append(kw["status"])
-        store.row["status"] = kw["status"]
+        return persist(c, rid, **kw)
 
-    monkeypatch.setattr(repository, "update_run", update)
+    monkeypatch.setattr(repository, "persist_run_outcome", update)
     finalize()
     assert seen == ["completed"]
 
@@ -105,14 +107,12 @@ def test_rollup_completion_proof_is_durable_alongside_verified_output(delivery):
 
 def test_checkpoint_failure_is_not_a_delivery_acknowledgement(monkeypatch, delivery):
     store, _, _, finalize = delivery
-    merge = repository.merge_run_parameters
+    merge = repository.checkpoint_outcome_fanout
 
-    def fail_receipt(c, rid, patch):
-        if "outcome_fanout" in patch:
-            raise RuntimeError("receipt store unavailable")
-        return merge(c, rid, patch)
+    def fail_receipt(c, rid, **kwargs):
+        raise RuntimeError("receipt store unavailable")
 
-    monkeypatch.setattr(repository, "merge_run_parameters", fail_receipt)
+    monkeypatch.setattr(repository, "checkpoint_outcome_fanout", fail_receipt)
     result = finalize()
     assert result.fanout["fanout_checkpoint_persisted"] is False
     assert not store.row["parameters"].get("outcome_finalized")
@@ -217,3 +217,63 @@ def test_speculative_audit_is_not_acknowledged_before_adoption(monkeypatch):
         raise AssertionError("unadopted speculative audit reached storage")
     assert audit.write_audit_event(SimpleNamespace(table=forbidden), "org-test", "actor-test",
                                   "workflow.execute.completed", "workflow_run", "run-test") is False
+
+
+def test_atomic_conflict_after_preread_suppresses_all_channels(monkeypatch, delivery):
+    store, calls, _, finalize = delivery
+    persist = repository.persist_run_outcome
+    def cancellation_wins(client, run_id, **kwargs):
+        store.row["status"] = "cancelled"
+        return persist(client, run_id, **kwargs)
+    monkeypatch.setattr(repository, "persist_run_outcome", cancellation_wins)
+    result = finalize()
+    assert result.status == "cancelled"
+    assert result.fanout["terminal_conflict"] is True
+    assert calls == {name: 0 for name in calls}
+    assert store.row["parameters"] == {}
+
+
+def test_persistence_failure_suppresses_terminal_fanout(monkeypatch, delivery):
+    store, calls, _, finalize = delivery
+    def unavailable(*args, **kwargs):
+        raise RuntimeError("transaction unavailable")
+    monkeypatch.setattr(outcome, "_persist_run", unavailable)
+    result = finalize()
+    assert result.status == "verification_inconclusive"
+    assert result.fanout["persistence_failed"] is True
+    assert not result.fanout["run_persisted"]
+    assert calls == {name: 0 for name in calls}
+    assert store.row["status"] == "running"
+
+
+def test_same_status_retry_uses_committed_proof_and_actor(delivery):
+    store, _, _, _ = delivery
+    first = outcome.ExecutionOutcomeEvent(org_id="org-test", status="completed", source="api",
+        run_id="run-test", actor_id="original", verified_output=outcome.VerifiedOutputRef(summary="first"))
+    second = outcome.ExecutionOutcomeEvent(org_id="org-test", status="completed", source="api",
+        run_id="run-test", actor_id="different", verified_output=outcome.VerifiedOutputRef(summary="late"))
+    outcome._persist_run(store, first, "completed", "2026-11-16T00:00:00Z")
+    outcome._persist_run(store, second, "completed", "2026-11-16T00:00:01Z")
+    assert second.verified_output.summary == "first"
+    assert second.actor_id == "original"
+    assert store.row["parameters"]["verified_output"]["summary"] == "first"
+
+
+def test_stale_checkpoint_preserves_acknowledgements_and_completion(delivery):
+    store, _, _, finalize = delivery
+    finalize()
+    event = outcome.ExecutionOutcomeEvent(org_id="org-test", status="completed", source="api",
+        run_id="run-test", actor_id="actor-test")
+    stale = {key: key == "run_persisted" for key in outcome._DURABLE_FANOUT_CHANNELS}
+    assert outcome._checkpoint_fanout(store, event, stale)
+    assert all(stale[key] for key in outcome._DURABLE_FANOUT_CHANNELS)
+    assert store.row["parameters"]["outcome_finalized"] is True
+
+
+def test_checkpoint_status_conflict_never_changes_receipt(delivery):
+    store, _, _, finalize = delivery
+    finalize()
+    before = deepcopy(store.row)
+    event = outcome.ExecutionOutcomeEvent(org_id="org-test", status="failed", source="api", run_id="run-test")
+    assert not outcome._checkpoint_fanout(store, event, {key: True for key in outcome._DURABLE_FANOUT_CHANNELS})
+    assert store.row == before
