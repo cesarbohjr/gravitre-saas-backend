@@ -27,6 +27,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Any, Literal
 from uuid import uuid4
+from app.core.durable_insert import insert_once, outcome_delivery_id
 
 from app.core.logging import get_logger
 from app.core.safe_dict import safe_normalize_stored_dict
@@ -410,12 +411,14 @@ def _write_audit(client: Any, event: ExecutionOutcomeEvent, status: TerminalStat
             emit_execute_failed,
         )
 
+        delivery = ({"delivery_id": outcome_delivery_id(event.org_id, resource_id, status, "audit")}
+                    if event.persist_run else {})
         if status == "failed":
-            acknowledged = emit_execute_failed(client, event.org_id, actor, resource_id, voiced_error)
+            acknowledged = emit_execute_failed(client, event.org_id, actor, resource_id, voiced_error, **delivery)
         elif status == "cancelled":
-            acknowledged = emit_execute_cancelled(client, event.org_id, actor, resource_id)
+            acknowledged = emit_execute_cancelled(client, event.org_id, actor, resource_id, **delivery)
         else:
-            acknowledged = emit_execute_completed(client, event.org_id, actor, resource_id, status)
+            acknowledged = emit_execute_completed(client, event.org_id, actor, resource_id, status, **delivery)
         return _audit_action_for(status) if acknowledged is True else None
 
     # Assistant/connector paths without a workflow run still need audit integrity.
@@ -479,6 +482,8 @@ def _emit_notification(
         entity_ref=verified.as_entity_ref(run_id=event.run_id),
         channel_hints=dict(event.channel_hints or {"bell": True, "email": False}),
         email_context=event.email_context,
+        **({"delivery_id": outcome_delivery_id(event.org_id, event.run_id, status, "notification")}
+           if event.persist_run and event.run_id else {}),
     )
     return notify_event if isinstance(notification_id, str) and notification_id.strip() else None
 
@@ -508,7 +513,8 @@ def _record_learning(client: Any, event: ExecutionOutcomeEvent, status: Terminal
     workflow_id = event.workflow_id or ""
     run_id = event.run_id or ""
     payload = {
-        "id": str(uuid4()),
+        "id": (outcome_delivery_id(event.org_id, run_id, status, "learning")
+               if event.persist_run and run_id else str(uuid4())),
         "org_id": event.org_id,
         "outcome_event": learning_event,
         "entity_type": "workflow" if (workflow_id or run_id) else "execution",
@@ -536,9 +542,15 @@ def _record_learning(client: Any, event: ExecutionOutcomeEvent, status: Terminal
     }
 
     try:
-        response = client.table("intelligence_outcome_events").insert(payload).execute()
-        if not isinstance(response.data, list) or not response.data:
-            return None
+        if event.persist_run and run_id:
+            acknowledged, _ = insert_once(client, "intelligence_outcome_events", payload,
+                identity=("org_id", "outcome_event", "workflow_run_id", "workflow_id", "entity_type", "entity_id"))
+            if not acknowledged:
+                return None
+        else:
+            response = client.table("intelligence_outcome_events").insert(payload).execute()
+            if not isinstance(response.data, list) or not response.data:
+                return None
     except Exception as exc:  # noqa: BLE001
         logger.warning(
             "execution_outcome_learning_skipped org_id=%s run_id=%s error=%s",

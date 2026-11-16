@@ -116,7 +116,8 @@ class PgTable:
         assert name in {
             "workflow_runs", "workflow_steps", "run_approvals", "play_runs",
             "workflows", "workflow_defs", "runs", "run_steps",
-            "play_installations", "agent_action_outcomes",
+            "play_installations", "agent_action_outcomes", "audit_logs", "audit_events",
+            "notifications", "intelligence_outcome_events",
         }, name
         self.pg = pg
         self.name = name

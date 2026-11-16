@@ -788,9 +788,27 @@
           "backend/tests/master_qa/test_canonical_repository_persistence_pg.py"
         ],
         "local_validation": "193 focused checks pass (130 outcome/lifecycle/ownership and 63 workflow/approval/recovery). Two negative finalizer regressions fail against the previous finalizer.",
-        "postgres_validation": "PENDING_EXACT_HEAD_CI: ten new PG cases extend existing QA12 acceptance; no local database pass inferred.",
+        "postgres_validation": "PASS at bfd359c55bd7453781418357b09d772344e66302: QA12 run 43907748123 job 133441212071; 321 runtime guards, 43 routing/context and 80 real PostgreSQL cases. Full CI/live/owner gates remain separate.",
         "activation": "Apply both additive function migrations before backend activation. No hosted migration/deployment performed. Backend rollback first; keep additive functions for in-flight workers.",
         "remaining": "Concurrent core-channel idempotency and effect-to-receipt crash gap remain open. Generic legacy lifecycle writers/contract mirrors, optional fanout, full cross-surface/provider readback, deployed rollback and owner acceptance are not certified.",
+        "release_certified": false
+      },
+      "core_delivery_idempotency_batch_evidence": {
+        "scope": "Stable tenant/run/status/channel UUIDs for canonical audit_logs/audit_events, notification inbox and learning rows. Insert-only effects; unique-key conflicts require exact tenant/context readback. Core duplicate acknowledgement never overwrites mutable inbox state or repeats optional delivery.",
+        "source": [
+          "backend/app/core/durable_insert.py",
+          "backend/app/services/execution_outcome.py",
+          "backend/app/services/notification_emitter.py",
+          "backend/app/workflows/audit.py",
+          "backend/app/workflows/repository.py"
+        ],
+        "tests": [
+          "backend/tests/services/test_durable_outcome_delivery.py",
+          "backend/tests/master_qa/test_canonical_repository_persistence_pg.py"
+        ],
+        "local_validation": "209 focused checks pass: 145 outcome/delivery/lifecycle/ownership and 64 workflow/approval/recovery/audit cases.",
+        "postgres_validation": "PENDING_EXACT_HEAD_CI: four new cases use actual core writers with real SQL uniqueness, three process deaths after channel commit before receipt, and four concurrent actual finalizers.",
+        "remaining": "Historical unkeyed effects require reconciliation; no legacy exactly-once claim. Optional email/Slack/SIEM/activity/bus delivery remains best effort and is not replayed on duplicate core acknowledgement. Provider effects, full surface parity, generic lifecycle/mirror races, deployed migration/rollback and owner gates remain open.",
         "release_certified": false
       }
     },
@@ -1057,9 +1075,27 @@
           "backend/tests/master_qa/test_canonical_repository_persistence_pg.py"
         ],
         "local_validation": "193 focused checks pass (130 outcome/lifecycle/ownership and 63 workflow/approval/recovery). Two negative finalizer regressions fail against the previous finalizer.",
-        "postgres_validation": "PENDING_EXACT_HEAD_CI: ten new PG cases extend existing QA12 acceptance; no local database pass inferred.",
+        "postgres_validation": "PASS at bfd359c55bd7453781418357b09d772344e66302: QA12 run 43907748123 job 133441212071; 321 runtime guards, 43 routing/context and 80 real PostgreSQL cases. Full CI/live/owner gates remain separate.",
         "activation": "Apply both additive function migrations before backend activation. No hosted migration/deployment performed. Backend rollback first; keep additive functions for in-flight workers.",
         "remaining": "Concurrent core-channel idempotency and effect-to-receipt crash gap remain open. Generic legacy lifecycle writers/contract mirrors, optional fanout, full cross-surface/provider readback, deployed rollback and owner acceptance are not certified.",
+        "release_certified": false
+      },
+      "core_delivery_idempotency_batch_evidence": {
+        "scope": "Stable tenant/run/status/channel UUIDs for canonical audit_logs/audit_events, notification inbox and learning rows. Insert-only effects; unique-key conflicts require exact tenant/context readback. Core duplicate acknowledgement never overwrites mutable inbox state or repeats optional delivery.",
+        "source": [
+          "backend/app/core/durable_insert.py",
+          "backend/app/services/execution_outcome.py",
+          "backend/app/services/notification_emitter.py",
+          "backend/app/workflows/audit.py",
+          "backend/app/workflows/repository.py"
+        ],
+        "tests": [
+          "backend/tests/services/test_durable_outcome_delivery.py",
+          "backend/tests/master_qa/test_canonical_repository_persistence_pg.py"
+        ],
+        "local_validation": "209 focused checks pass: 145 outcome/delivery/lifecycle/ownership and 64 workflow/approval/recovery/audit cases.",
+        "postgres_validation": "PENDING_EXACT_HEAD_CI: four new cases use actual core writers with real SQL uniqueness, three process deaths after channel commit before receipt, and four concurrent actual finalizers.",
+        "remaining": "Historical unkeyed effects require reconciliation; no legacy exactly-once claim. Optional email/Slack/SIEM/activity/bus delivery remains best effort and is not replayed on duplicate core acknowledgement. Provider effects, full surface parity, generic lifecycle/mirror races, deployed migration/rollback and owner gates remain open.",
         "release_certified": false
       }
     },
@@ -1322,9 +1358,27 @@
           "backend/tests/master_qa/test_canonical_repository_persistence_pg.py"
         ],
         "local_validation": "193 focused checks pass (130 outcome/lifecycle/ownership and 63 workflow/approval/recovery). Two negative finalizer regressions fail against the previous finalizer.",
-        "postgres_validation": "PENDING_EXACT_HEAD_CI: ten new PG cases extend existing QA12 acceptance; no local database pass inferred.",
+        "postgres_validation": "PASS at bfd359c55bd7453781418357b09d772344e66302: QA12 run 43907748123 job 133441212071; 321 runtime guards, 43 routing/context and 80 real PostgreSQL cases. Full CI/live/owner gates remain separate.",
         "activation": "Apply both additive function migrations before backend activation. No hosted migration/deployment performed. Backend rollback first; keep additive functions for in-flight workers.",
         "remaining": "Concurrent core-channel idempotency and effect-to-receipt crash gap remain open. Generic legacy lifecycle writers/contract mirrors, optional fanout, full cross-surface/provider readback, deployed rollback and owner acceptance are not certified.",
+        "release_certified": false
+      },
+      "core_delivery_idempotency_batch_evidence": {
+        "scope": "Stable tenant/run/status/channel UUIDs for canonical audit_logs/audit_events, notification inbox and learning rows. Insert-only effects; unique-key conflicts require exact tenant/context readback. Core duplicate acknowledgement never overwrites mutable inbox state or repeats optional delivery.",
+        "source": [
+          "backend/app/core/durable_insert.py",
+          "backend/app/services/execution_outcome.py",
+          "backend/app/services/notification_emitter.py",
+          "backend/app/workflows/audit.py",
+          "backend/app/workflows/repository.py"
+        ],
+        "tests": [
+          "backend/tests/services/test_durable_outcome_delivery.py",
+          "backend/tests/master_qa/test_canonical_repository_persistence_pg.py"
+        ],
+        "local_validation": "209 focused checks pass: 145 outcome/delivery/lifecycle/ownership and 64 workflow/approval/recovery/audit cases.",
+        "postgres_validation": "PENDING_EXACT_HEAD_CI: four new cases use actual core writers with real SQL uniqueness, three process deaths after channel commit before receipt, and four concurrent actual finalizers.",
+        "remaining": "Historical unkeyed effects require reconciliation; no legacy exactly-once claim. Optional email/Slack/SIEM/activity/bus delivery remains best effort and is not replayed on duplicate core acknowledgement. Provider effects, full surface parity, generic lifecycle/mirror races, deployed migration/rollback and owner gates remain open.",
         "release_certified": false
       }
     },
@@ -1653,9 +1707,27 @@
           "backend/tests/master_qa/test_canonical_repository_persistence_pg.py"
         ],
         "local_validation": "193 focused checks pass (130 outcome/lifecycle/ownership and 63 workflow/approval/recovery). Two negative finalizer regressions fail against the previous finalizer.",
-        "postgres_validation": "PENDING_EXACT_HEAD_CI: ten new PG cases extend existing QA12 acceptance; no local database pass inferred.",
+        "postgres_validation": "PASS at bfd359c55bd7453781418357b09d772344e66302: QA12 run 43907748123 job 133441212071; 321 runtime guards, 43 routing/context and 80 real PostgreSQL cases. Full CI/live/owner gates remain separate.",
         "activation": "Apply both additive function migrations before backend activation. No hosted migration/deployment performed. Backend rollback first; keep additive functions for in-flight workers.",
         "remaining": "Concurrent core-channel idempotency and effect-to-receipt crash gap remain open. Generic legacy lifecycle writers/contract mirrors, optional fanout, full cross-surface/provider readback, deployed rollback and owner acceptance are not certified.",
+        "release_certified": false
+      },
+      "core_delivery_idempotency_batch_evidence": {
+        "scope": "Stable tenant/run/status/channel UUIDs for canonical audit_logs/audit_events, notification inbox and learning rows. Insert-only effects; unique-key conflicts require exact tenant/context readback. Core duplicate acknowledgement never overwrites mutable inbox state or repeats optional delivery.",
+        "source": [
+          "backend/app/core/durable_insert.py",
+          "backend/app/services/execution_outcome.py",
+          "backend/app/services/notification_emitter.py",
+          "backend/app/workflows/audit.py",
+          "backend/app/workflows/repository.py"
+        ],
+        "tests": [
+          "backend/tests/services/test_durable_outcome_delivery.py",
+          "backend/tests/master_qa/test_canonical_repository_persistence_pg.py"
+        ],
+        "local_validation": "209 focused checks pass: 145 outcome/delivery/lifecycle/ownership and 64 workflow/approval/recovery/audit cases.",
+        "postgres_validation": "PENDING_EXACT_HEAD_CI: four new cases use actual core writers with real SQL uniqueness, three process deaths after channel commit before receipt, and four concurrent actual finalizers.",
+        "remaining": "Historical unkeyed effects require reconciliation; no legacy exactly-once claim. Optional email/Slack/SIEM/activity/bus delivery remains best effort and is not replayed on duplicate core acknowledgement. Provider effects, full surface parity, generic lifecycle/mirror races, deployed migration/rollback and owner gates remain open.",
         "release_certified": false
       }
     },
@@ -2022,9 +2094,27 @@
           "backend/tests/master_qa/test_canonical_repository_persistence_pg.py"
         ],
         "local_validation": "193 focused checks pass (130 outcome/lifecycle/ownership and 63 workflow/approval/recovery). Two negative finalizer regressions fail against the previous finalizer.",
-        "postgres_validation": "PENDING_EXACT_HEAD_CI: ten new PG cases extend existing QA12 acceptance; no local database pass inferred.",
+        "postgres_validation": "PASS at bfd359c55bd7453781418357b09d772344e66302: QA12 run 43907748123 job 133441212071; 321 runtime guards, 43 routing/context and 80 real PostgreSQL cases. Full CI/live/owner gates remain separate.",
         "activation": "Apply both additive function migrations before backend activation. No hosted migration/deployment performed. Backend rollback first; keep additive functions for in-flight workers.",
         "remaining": "Concurrent core-channel idempotency and effect-to-receipt crash gap remain open. Generic legacy lifecycle writers/contract mirrors, optional fanout, full cross-surface/provider readback, deployed rollback and owner acceptance are not certified.",
+        "release_certified": false
+      },
+      "core_delivery_idempotency_batch_evidence": {
+        "scope": "Stable tenant/run/status/channel UUIDs for canonical audit_logs/audit_events, notification inbox and learning rows. Insert-only effects; unique-key conflicts require exact tenant/context readback. Core duplicate acknowledgement never overwrites mutable inbox state or repeats optional delivery.",
+        "source": [
+          "backend/app/core/durable_insert.py",
+          "backend/app/services/execution_outcome.py",
+          "backend/app/services/notification_emitter.py",
+          "backend/app/workflows/audit.py",
+          "backend/app/workflows/repository.py"
+        ],
+        "tests": [
+          "backend/tests/services/test_durable_outcome_delivery.py",
+          "backend/tests/master_qa/test_canonical_repository_persistence_pg.py"
+        ],
+        "local_validation": "209 focused checks pass: 145 outcome/delivery/lifecycle/ownership and 64 workflow/approval/recovery/audit cases.",
+        "postgres_validation": "PENDING_EXACT_HEAD_CI: four new cases use actual core writers with real SQL uniqueness, three process deaths after channel commit before receipt, and four concurrent actual finalizers.",
+        "remaining": "Historical unkeyed effects require reconciliation; no legacy exactly-once claim. Optional email/Slack/SIEM/activity/bus delivery remains best effort and is not replayed on duplicate core acknowledgement. Provider effects, full surface parity, generic lifecycle/mirror races, deployed migration/rollback and owner gates remain open.",
         "release_certified": false
       }
     },
@@ -2116,9 +2206,27 @@
           "backend/tests/master_qa/test_canonical_repository_persistence_pg.py"
         ],
         "local_validation": "193 focused checks pass (130 outcome/lifecycle/ownership and 63 workflow/approval/recovery). Two negative finalizer regressions fail against the previous finalizer.",
-        "postgres_validation": "PENDING_EXACT_HEAD_CI: ten new PG cases extend existing QA12 acceptance; no local database pass inferred.",
+        "postgres_validation": "PASS at bfd359c55bd7453781418357b09d772344e66302: QA12 run 43907748123 job 133441212071; 321 runtime guards, 43 routing/context and 80 real PostgreSQL cases. Full CI/live/owner gates remain separate.",
         "activation": "Apply both additive function migrations before backend activation. No hosted migration/deployment performed. Backend rollback first; keep additive functions for in-flight workers.",
         "remaining": "Concurrent core-channel idempotency and effect-to-receipt crash gap remain open. Generic legacy lifecycle writers/contract mirrors, optional fanout, full cross-surface/provider readback, deployed rollback and owner acceptance are not certified.",
+        "release_certified": false
+      },
+      "core_delivery_idempotency_batch_evidence": {
+        "scope": "Stable tenant/run/status/channel UUIDs for canonical audit_logs/audit_events, notification inbox and learning rows. Insert-only effects; unique-key conflicts require exact tenant/context readback. Core duplicate acknowledgement never overwrites mutable inbox state or repeats optional delivery.",
+        "source": [
+          "backend/app/core/durable_insert.py",
+          "backend/app/services/execution_outcome.py",
+          "backend/app/services/notification_emitter.py",
+          "backend/app/workflows/audit.py",
+          "backend/app/workflows/repository.py"
+        ],
+        "tests": [
+          "backend/tests/services/test_durable_outcome_delivery.py",
+          "backend/tests/master_qa/test_canonical_repository_persistence_pg.py"
+        ],
+        "local_validation": "209 focused checks pass: 145 outcome/delivery/lifecycle/ownership and 64 workflow/approval/recovery/audit cases.",
+        "postgres_validation": "PENDING_EXACT_HEAD_CI: four new cases use actual core writers with real SQL uniqueness, three process deaths after channel commit before receipt, and four concurrent actual finalizers.",
+        "remaining": "Historical unkeyed effects require reconciliation; no legacy exactly-once claim. Optional email/Slack/SIEM/activity/bus delivery remains best effort and is not replayed on duplicate core acknowledgement. Provider effects, full surface parity, generic lifecycle/mirror races, deployed migration/rollback and owner gates remain open.",
         "release_certified": false
       }
     },
@@ -2771,9 +2879,27 @@
           "backend/tests/master_qa/test_canonical_repository_persistence_pg.py"
         ],
         "local_validation": "193 focused checks pass (130 outcome/lifecycle/ownership and 63 workflow/approval/recovery). Two negative finalizer regressions fail against the previous finalizer.",
-        "postgres_validation": "PENDING_EXACT_HEAD_CI: ten new PG cases extend existing QA12 acceptance; no local database pass inferred.",
+        "postgres_validation": "PASS at bfd359c55bd7453781418357b09d772344e66302: QA12 run 43907748123 job 133441212071; 321 runtime guards, 43 routing/context and 80 real PostgreSQL cases. Full CI/live/owner gates remain separate.",
         "activation": "Apply both additive function migrations before backend activation. No hosted migration/deployment performed. Backend rollback first; keep additive functions for in-flight workers.",
         "remaining": "Concurrent core-channel idempotency and effect-to-receipt crash gap remain open. Generic legacy lifecycle writers/contract mirrors, optional fanout, full cross-surface/provider readback, deployed rollback and owner acceptance are not certified.",
+        "release_certified": false
+      },
+      "core_delivery_idempotency_batch_evidence": {
+        "scope": "Stable tenant/run/status/channel UUIDs for canonical audit_logs/audit_events, notification inbox and learning rows. Insert-only effects; unique-key conflicts require exact tenant/context readback. Core duplicate acknowledgement never overwrites mutable inbox state or repeats optional delivery.",
+        "source": [
+          "backend/app/core/durable_insert.py",
+          "backend/app/services/execution_outcome.py",
+          "backend/app/services/notification_emitter.py",
+          "backend/app/workflows/audit.py",
+          "backend/app/workflows/repository.py"
+        ],
+        "tests": [
+          "backend/tests/services/test_durable_outcome_delivery.py",
+          "backend/tests/master_qa/test_canonical_repository_persistence_pg.py"
+        ],
+        "local_validation": "209 focused checks pass: 145 outcome/delivery/lifecycle/ownership and 64 workflow/approval/recovery/audit cases.",
+        "postgres_validation": "PENDING_EXACT_HEAD_CI: four new cases use actual core writers with real SQL uniqueness, three process deaths after channel commit before receipt, and four concurrent actual finalizers.",
+        "remaining": "Historical unkeyed effects require reconciliation; no legacy exactly-once claim. Optional email/Slack/SIEM/activity/bus delivery remains best effort and is not replayed on duplicate core acknowledgement. Provider effects, full surface parity, generic lifecycle/mirror races, deployed migration/rollback and owner gates remain open.",
         "release_certified": false
       }
     },

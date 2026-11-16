@@ -154,7 +154,7 @@ def test_uncertain_outcome_needs_attributable_proof_before_success(delivery, sto
 
 @pytest.mark.parametrize("ack", [False, None, "not-a-storage-ack"])
 def test_audit_channel_does_not_acknowledge_an_unstored_event(monkeypatch, ack):
-    monkeypatch.setattr(repository, "emit_execute_completed", lambda *args: ack)
+    monkeypatch.setattr(repository, "emit_execute_completed", lambda *args, **kwargs: ack)
     event = outcome.ExecutionOutcomeEvent(org_id="org-test", status="completed", source="api",
                                           actor_id="actor-test", run_id="run-test")
     assert outcome._write_audit(Store(), event, "completed") is None
@@ -170,13 +170,13 @@ def test_notification_channel_requires_a_durable_row_identity(monkeypatch, notif
     assert result == ("run_completed" if notification_id else None)
 
 
-@pytest.mark.parametrize("rows", [None, [], [{"id": "learning-test"}]])
+@pytest.mark.parametrize("rows", [None, [], [{"id": outcome.outcome_delivery_id("org-test", "run-test", "completed", "learning")}], [{"id": "wrong-row"}]])
 def test_learning_channel_requires_insert_acknowledgement(rows):
     client = SimpleNamespace(table=lambda name: SimpleNamespace(insert=lambda payload:
                              SimpleNamespace(execute=lambda: SimpleNamespace(data=rows))))
     event = outcome.ExecutionOutcomeEvent(org_id="org-test", status="completed", source="api", run_id="run-test")
     assert outcome._record_learning(client, event, "completed", "2026-01-01T00:00:00Z") == (
-        "workflow_executed" if rows else None)
+        "workflow_executed" if rows and rows[0]["id"] == outcome.outcome_delivery_id("org-test", "run-test", "completed", "learning") else None)
 
 
 @pytest.mark.parametrize("failed_tables", [set(), {"audit_events"}, {"audit_logs"}, {"audit_events", "audit_logs"}])

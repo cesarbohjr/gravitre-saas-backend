@@ -115,7 +115,8 @@ def _insert_notification_row(
     title: str,
     body: str,
     entity_ref: dict[str, Any],
-) -> str | None:
+    delivery_id: str | None = None,
+) -> tuple[str | None, bool]:
     entity_id = entity_ref.get("entity_id")
     if entity_id is not None and not _is_uuid(entity_id):
         # Defense in depth — never send non-UUID to the uuid column.
@@ -133,6 +134,12 @@ def _insert_notification_row(
         "is_archived": False,
     }
     try:
+        if delivery_id:
+            from app.core.durable_insert import insert_once
+            row["id"] = delivery_id
+            acknowledged, created = insert_once(client, "notifications", row,
+                identity=("org_id", "user_id", "type", "entity_type", "entity_id"))
+            return (delivery_id if acknowledged else None), created
         response = client.table("notifications").insert(row).execute()
     except Exception as exc:  # noqa: BLE001
         logger.warning(
@@ -142,10 +149,10 @@ def _insert_notification_row(
             event_type,
             exc,
         )
-        return None
+        return None, False
     if response.data and isinstance(response.data, list) and response.data:
-        return str(response.data[0].get("id") or "") or None
-    return None
+        return (str(response.data[0].get("id") or "") or None), True
+    return None, False
 
 
 def _record_connector_activity(
@@ -232,6 +239,7 @@ def emit_notification(
     entity_ref: dict[str, Any] | None = None,
     channel_hints: dict[str, bool] | None = None,
     email_context: dict[str, Any] | None = None,
+    delivery_id: str | None = None,
 ) -> str | None:
     """Persist a notification durably, then optionally trigger ephemeral channels."""
     if not org_id or not user_id:
@@ -241,17 +249,20 @@ def emit_notification(
     canonical_type = normalize_event_type(event_type)
     ref = _resolve_entity_ref(entity_ref)
 
-    notification_id = _insert_notification_row(
+    notification_id, created = _insert_notification_row(
         client,
         org_id=org_id,
         user_id=user_id,
         event_type=canonical_type,
         title=title,
         body=body,
-        entity_ref=ref,
+        entity_ref=ref, delivery_id=delivery_id,
     )
     if notification_id is None:
         return None
+    if not created:
+        # Core inbox effect exists. Do not repeat best-effort external channels.
+        return notification_id
 
     from app.services.notification_preference_service import channel_enabled, held_by_quiet_hours
 

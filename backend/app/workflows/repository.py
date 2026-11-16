@@ -1258,6 +1258,7 @@ def emit_execute_completed(
     actor_id: str,
     run_id: str,
     status: str,
+    *, delivery_id: str | None = None,
 ) -> bool:
     return write_audit_event(
         client,
@@ -1267,6 +1268,7 @@ def emit_execute_completed(
         resource_type=RESOURCE_TYPE_WORKFLOW_RUN,
         resource_id=run_id,
         metadata={"status": status},
+        **({"delivery_id": delivery_id} if delivery_id else {}),
     )
 
 
@@ -1276,6 +1278,7 @@ def emit_execute_failed(
     actor_id: str,
     run_id: str,
     error_message: str | None = None,
+    *, delivery_id: str | None = None,
 ) -> bool:
     return write_audit_event(
         client,
@@ -1285,6 +1288,7 @@ def emit_execute_failed(
         resource_type=RESOURCE_TYPE_WORKFLOW_RUN,
         resource_id=run_id,
         metadata={"error_message": (error_message or "")[:200]},
+        **({"delivery_id": delivery_id} if delivery_id else {}),
     )
 
 
@@ -1293,6 +1297,7 @@ def emit_execute_cancelled(
     org_id: str,
     actor_id: str,
     run_id: str,
+    *, delivery_id: str | None = None,
 ) -> bool:
     return write_audit_event(
         client,
@@ -1302,4 +1307,5 @@ def emit_execute_cancelled(
         resource_type=RESOURCE_TYPE_WORKFLOW_RUN,
         resource_id=run_id,
         metadata=None,
+        **({"delivery_id": delivery_id} if delivery_id else {}),
     )

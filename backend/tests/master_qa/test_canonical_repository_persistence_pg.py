@@ -599,3 +599,98 @@ FOR EACH ROW EXECUTE FUNCTION public.qa_fail_terminal_commit();
         assert pg.value(f"SELECT status FROM public.workflow_runs WHERE id='{run_id}'") == "running"
         assert pg.value(f"SELECT parameters FROM public.workflow_runs WHERE id='{run_id}'") == "{}"
         assert pg.value("SELECT count(*) FROM public.domain_event_outbox") == "0"
+
+
+def _core_effect_tables(pg):
+    # Actual durable channel writers, using their existing production columns.
+    # No external provider, preference service or SIEM delivery is inferred.
+    pg.psql("""
+CREATE TABLE public.audit_logs(id uuid PRIMARY KEY, org_id uuid, action text,
+ resource_type text, resource_id uuid, actor_id uuid, details jsonb);
+CREATE TABLE public.audit_events(id uuid PRIMARY KEY, org_id uuid, action text,
+ resource_type text, resource_id uuid, actor_id uuid, metadata jsonb);
+CREATE TABLE public.notifications(id uuid PRIMARY KEY, org_id uuid, user_id uuid,
+ type text, title text, body text, url text, entity_type text, entity_id uuid,
+ is_read boolean, is_archived boolean);
+CREATE TABLE public.intelligence_outcome_events(id uuid PRIMARY KEY, org_id uuid,
+ outcome_event text, entity_type text, entity_id text, workflow_id uuid,
+ workflow_run_id uuid, metadata jsonb, measured_at timestamptz,
+ measurement_status text, created_at timestamptz);
+""")
+
+
+def _disable_optional_delivery(monkeypatch):
+    from app.workflows import audit
+    from app.services import notification_preference_service as preferences
+    monkeypatch.setattr(audit, "_get_org_pii_mode", lambda *_: "standard")
+    monkeypatch.setattr(audit, "_schedule_siem_dispatch", lambda *_: None)
+    monkeypatch.setattr(preferences, "channel_enabled", lambda *_: False)
+
+
+def _real_core_finalize(pg, run_id, workflow_id):
+    from app.services import execution_outcome as outcome
+    return outcome.finalize_execution_outcome(PgRepositoryClient(pg), org_id=ORG,
+        status="completed", source="api", actor_id="44444444-4444-4444-8444-444444444444",
+        run_id=run_id, workflow_id=workflow_id, channel_hints={"bell": False, "email": False},
+        verified_output=outcome.VerifiedOutputRef(summary="Synthetic internal outcome"))
+
+
+@pytest.mark.parametrize("channel", ["audit_written", "notification_emitted", "learning_recorded"])
+def test_real_channel_commit_process_death_before_receipt_does_not_duplicate(monkeypatch, channel):
+    import os
+    import subprocess
+    import sys
+    _disable_optional_delivery(monkeypatch)
+    with canonical_pg_cluster() as pg:
+        run_id, workflow_id = _fanout_run(pg)
+        _core_effect_tables(pg)
+        script = """
+import os
+from pathlib import Path
+from unittest.mock import patch
+from tests.db.pg_harness import Pg
+from tests.master_qa.test_canonical_repository_persistence_pg import _real_core_finalize
+from app.services import execution_outcome as outcome
+pg=Pg(Path(os.environ['QA_PG_ROOT']), [])
+checkpoint=outcome._checkpoint_fanout
+def die_after_commit(client, event, fanout, **kwargs):
+    if fanout.get(os.environ['QA_CHANNEL']):
+        os._exit(92)
+    return checkpoint(client, event, fanout, **kwargs)
+with patch('app.workflows.audit._get_org_pii_mode', return_value='standard'), patch('app.workflows.audit._schedule_siem_dispatch'), patch('app.services.notification_preference_service.channel_enabled', return_value=False), patch.object(outcome, '_checkpoint_fanout', die_after_commit):
+    _real_core_finalize(pg, os.environ['QA_RUN'], os.environ['QA_WORKFLOW'])
+"""
+        child = subprocess.run([sys.executable, "-c", script], capture_output=True, text=True, timeout=30,
+            env={**os.environ, "QA_PG_ROOT": str(pg.root), "QA_RUN": run_id,
+                 "QA_WORKFLOW": workflow_id, "QA_CHANNEL": channel})
+        assert child.returncode == 92, child.stderr
+        assert pg.value(f"SELECT parameters->'outcome_fanout'->>'{channel}' FROM public.workflow_runs WHERE id='{run_id}'") != "true"
+        result = _real_core_finalize(pg, run_id, workflow_id)
+        assert all(result.fanout[key] for key in ("run_persisted", "audit_written", "notification_emitted", "learning_recorded"))
+        for table in ("audit_logs", "audit_events", "notifications", "intelligence_outcome_events"):
+            assert pg.value(f"SELECT count(*) FROM public.{table}") == "1"
+        assert pg.value(f"SELECT parameters->>'outcome_finalized' FROM public.workflow_runs WHERE id='{run_id}'") == "true"
+
+
+def test_concurrent_actual_finalizers_create_one_core_record_per_channel(monkeypatch):
+    from concurrent.futures import ThreadPoolExecutor
+    from threading import Barrier
+    from app.services import execution_outcome as outcome
+    _disable_optional_delivery(monkeypatch)
+    with canonical_pg_cluster() as pg:
+        run_id, workflow_id = _fanout_run(pg)
+        _core_effect_tables(pg)
+        barrier = Barrier(4)
+        persist = outcome._persist_run
+        def synchronize(*args):
+            barrier.wait(timeout=20)
+            return persist(*args)
+        monkeypatch.setattr(outcome, "_persist_run", synchronize)
+        with ThreadPoolExecutor(max_workers=4) as pool:
+            results = list(pool.map(lambda _: _real_core_finalize(pg, run_id, workflow_id), range(4)))
+        assert all(result.status == "completed" for result in results)
+        assert all(result.fanout["run_persisted"] for result in results)
+        for table in ("audit_logs", "audit_events", "notifications", "intelligence_outcome_events"):
+            assert pg.value(f"SELECT count(*) FROM public.{table}") == "1"
+        assert pg.value(f"SELECT parameters->>'outcome_finalized' FROM public.workflow_runs WHERE id='{run_id}'") == "true"
+        assert pg.value("SELECT count(*) FROM public.domain_event_outbox") == "1"

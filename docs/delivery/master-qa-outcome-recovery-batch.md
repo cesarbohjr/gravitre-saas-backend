@@ -153,3 +153,43 @@ Remaining gates under the original owners: core-channel effect idempotency acros
 concurrent finalizers and effect-to-receipt process death; optional/legacy fanout;
 generic lifecycle-writer/contract-mirror races; full Chat/Agent/provider readback;
 deployed rollback and owner acceptance. All 43 findings remain open.
+
+
+## Core delivery idempotency follow-up (2026-11-16)
+
+The prior terminal/receipt checkpoint `bfd359c55bd7453781418357b09d772344e66302`
+passed [QA12 job 133441212071](https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/43907748123/job/133441212071):
+**321 runtime guards, 43 routing/context and 80 real PostgreSQL cases**, including
+the ten new transaction/race cases. This is bounded gate evidence, not a finding
+or release certificate.
+
+Canonical persisted-run finalization now derives stable UUIDs from tenant, run,
+terminal status and channel. Audit dual-writes, inbox notifications and learning
+rows insert with these identities. They never replace existing effects. Only a
+unique-key violation can trigger duplicate readback; the exact ID and tenant plus
+channel context must match before acknowledgement. Other-key conflicts, missing
+rows, wrong tenant/context and ambiguous writes are not acknowledged. A retry
+with the same ID can recover an already committed but unacknowledged effect.
+
+Duplicate inbox acknowledgement returns the durable ID without repeating email,
+Slack, live bell or activity fanout and without resetting read/archive flags.
+Duplicate audit rows do not repeat optional SIEM scheduling. Existing callers
+without a delivery ID retain their previous insert behavior. Canonical audit_logs
+acknowledgement and secondary audit_events diagnostics remain distinct.
+
+**209 focused local checks pass** (145 outcome/delivery/lifecycle/ownership and
+64 workflow/approval/recovery/audit). Four new PostgreSQL cases extend the existing
+acceptance file: three actual finalizer subprocess deaths, each after a real core
+channel commits and before its receipt, followed by restart with one row per core
+store; and four simultaneous actual finalizers with one row per core store. Core
+SQL writers are real; external/preference/SIEM channels are disabled explicitly.
+Current-head database acceptance is pending. No new workflow or migration is
+needed for delivery IDs; existing UUID primary keys enforce uniqueness.
+
+This applies to effects written with stable delivery identities. Historical
+unkeyed effects still need reconciliation; no automatic backfill or historical
+exactly-once certificate is claimed. Optional external delivery remains best
+effort: a crash after inbox insertion can leave an optional channel unattempted,
+and duplicate core delivery does not replay it. Core idempotency does not prove
+provider effect idempotency, generic lifecycle/mirror fencing, deployed migration
+or rollback, full Chat/Agent parity or owner acceptance. All 43 findings stay open.

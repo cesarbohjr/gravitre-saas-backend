@@ -113,6 +113,7 @@ def write_audit_event(
     resource_type: str,
     resource_id: UUID | str,
     metadata: dict[str, Any] | None = None,
+    *, delivery_id: str | None = None,
 ) -> bool:
     """Insert audit rows; acknowledge canonical audit_logs storage without raising."""
     from app.services.speculative_execution import defer_if_speculative
@@ -127,6 +128,7 @@ def write_audit_event(
         resource_type,
         resource_id,
         metadata,
+        **({"delivery_id": delivery_id} if delivery_id else {}),
     ):
         # Speculative (unconfirmed) voice run: the row lands only if adopted.
         return False
@@ -143,6 +145,8 @@ def write_audit_event(
     events_ok = False
     events_attempted = False
     logs_ok = False
+    newly_created = False
+    from app.core.durable_insert import insert_once
     if actor_uuid and resource_uuid:
         events_attempted = True
         events_row: dict[str, Any] = {
@@ -154,8 +158,14 @@ def write_audit_event(
             "metadata": meta,
         }
         try:
-            client.table("audit_events").insert(events_row).execute()
-            events_ok = True
+            if delivery_id:
+                events_row["id"] = delivery_id
+                events_ok, created = insert_once(client, "audit_events", events_row,
+                    identity=("org_id", "action", "resource_type", "resource_id", "actor_id"))
+                newly_created = newly_created or created
+            else:
+                client.table("audit_events").insert(events_row).execute()
+                events_ok = newly_created = True
         except Exception as exc:  # noqa: BLE001
             logger.warning("audit_events insert failed action=%s: %s", action, exc)
     else:
@@ -190,8 +200,16 @@ def write_audit_event(
 
     for row in (contract_row, legacy_row):
         try:
-            client.table("audit_logs").insert(row).execute()
-            logs_ok = True
+            if delivery_id:
+                row["id"] = delivery_id
+                keys = tuple(key for key in ("org_id", "action", "resource_type", "actor_id", "resource_id", "actor", "resource") if key in row)
+                logs_ok, created = insert_once(client, "audit_logs", row, identity=keys)
+                newly_created = newly_created or created
+                if not logs_ok:
+                    continue
+            else:
+                client.table("audit_logs").insert(row).execute()
+                logs_ok = newly_created = True
             break
         except Exception as exc:  # noqa: BLE001
             logger.debug("audit_logs insert attempt failed action=%s: %s", action, exc)
@@ -209,7 +227,7 @@ def write_audit_event(
             action,
         )
 
-    if events_ok or logs_ok:
+    if (events_ok or logs_ok) and newly_created:
         try:
             _schedule_siem_dispatch(client, org_id, action, resource_type, resource_id_str, meta)
         except Exception as exc:  # noqa: BLE001 — optional export cannot undo durable audit storage
