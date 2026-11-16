@@ -1,0 +1,137 @@
+# STAGED: not installed in .github/workflows; automatic trigger cutover pending.
+name: QA 09-marketing
+'on':
+  workflow_dispatch:
+    inputs:
+      source:
+        description: Original workflow contract to execute
+        required: true
+        type: choice
+        options:
+        - indexnow-on-publish
+        - marketing-lighthouse
+        - seo-publishing
+        default: indexnow-on-publish
+      indexnow_on_publish__published_url:
+        description: 'indexnow-on-publish: Published, canonical https://gravitre.app URL'
+        required: false
+        type: string
+concurrency:
+  group: ${{ format('candidate-{0}', (inputs.source == 'marketing-lighthouse' && (format('marketing-lighthouse-{0}', github.ref)))
+    || github.run_id) }}
+  cancel-in-progress: ${{ (inputs.source == 'marketing-lighthouse' && (true)) || false }}
+jobs:
+  dispatch_contract:
+    name: Validate selected source inputs
+    runs-on: ubuntu-latest
+    permissions: {}
+    timeout-minutes: 2
+    steps:
+    - name: Validate source contract
+      shell: python
+      env:
+        SOURCE_SCHEMAS: '{"indexnow-on-publish": {"published_url": {"description": "Published, canonical https://gravitre.app
+          URL", "required": true, "type": "string"}}, "marketing-lighthouse": {}, "seo-publishing": {}, "social-intelligence-regression":
+          {}}'
+        MANUAL_SOURCES: '["indexnow-on-publish", "marketing-lighthouse", "seo-publishing"]'
+        DISPATCH_VALUES: ${{ toJSON(inputs) }}
+        EVENT_NAME: ${{ github.event_name }}
+      run: "import json, os\nschemas = json.loads(os.environ['SOURCE_SCHEMAS'])\nvalues = json.loads(os.environ['DISPATCH_VALUES'])\n\
+        source = values.get('source')\nif source not in schemas:\n    raise SystemExit('Unknown source workflow')\nif os.environ['EVENT_NAME']\
+        \ == 'workflow_dispatch' and source not in json.loads(os.environ['MANUAL_SOURCES']):\n    raise SystemExit('Source\
+        \ has no manual trigger')\nif os.environ['EVENT_NAME'] != 'workflow_dispatch' and source != 'isolated-acceptance':\n\
+        \    raise SystemExit('Unsupported reusable source')\nfor key, config in schemas[source].items():\n    value = values.get(source.replace('-',\
+        \ '_') + '__' + key)\n    if os.environ['EVENT_NAME'] != 'workflow_dispatch' and key == 'suite':\n        value =\
+        \ values.get('suite')\n    if config.get('required') and (value is None or value == ''):\n        raise SystemExit('Required\
+        \ selected-source input missing: ' + key)\nprint('Selected source input contract validated; this is not execution\
+        \ acceptance')\n"
+  indexnow_on_publish__ping-indexnow:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-node@v4
+      with:
+        node-version: 22
+    - name: Submit verified published page
+      env:
+        INDEXNOW_KEY: ${{ secrets.INDEXNOW_KEY }}
+        PUBLISHED_URL: ${{ inputs.indexnow_on_publish__published_url }}
+      run: node scripts/ping-indexnow.mjs "$PUBLISHED_URL"
+    name: ping-indexnow
+    needs:
+    - dispatch_contract
+    if: ${{ needs.dispatch_contract.result == 'success' && inputs.source == 'indexnow-on-publish' && (success()) }}
+  marketing_lighthouse__lighthouse:
+    name: Lighthouse (home + pricing)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: apps/web
+    steps:
+    - uses: actions/checkout@v4
+    - uses: pnpm/action-setup@v4
+      with:
+        version: 10
+    - uses: actions/setup-node@v4
+      with:
+        node-version: 22
+        cache: pnpm
+        cache-dependency-path: apps/web/pnpm-lock.yaml
+    - name: Install dependencies
+      run: pnpm install --frozen-lockfile
+    - name: Production build
+      run: pnpm build
+      env:
+        NEXT_PUBLIC_SUPABASE_URL: https://placeholder.supabase.co
+        NEXT_PUBLIC_SUPABASE_ANON_KEY: placeholder-anon-key
+        FASTAPI_BASE_URL: http://127.0.0.1:8000
+    - name: Run Lighthouse CI
+      run: 'npx --yes @lhci/cli@0.14.0 autorun --config=lighthouserc.json
+
+        '
+      env:
+        LHCI_GITHUB_APP_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    needs:
+    - dispatch_contract
+    if: ${{ needs.dispatch_contract.result == 'success' && inputs.source == 'marketing-lighthouse' && (success()) }}
+  seo_publishing__seo-publishing:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+    - uses: actions/setup-node@v4
+      with:
+        node-version: 22
+    - name: Validate new public content and metadata contracts
+      env:
+        SEO_BASE_REF: ${{ github.event_name == 'pull_request' && format('origin/{0}', github.base_ref) || 'HEAD~1' }}
+      run: node scripts/check-seo-publishing.mjs
+    - name: Verify marketing and private route registry stays synchronized
+      run: node scripts/check-route-root-access.mjs
+    name: seo-publishing
+    needs:
+    - dispatch_contract
+    if: ${{ needs.dispatch_contract.result == 'success' && inputs.source == 'seo-publishing' && (success()) }}
+  social_intelligence_regression__evaluator-contracts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-node@v4
+      with:
+        node-version: '24'
+    - name: Offline evaluator schema, failure and paired-channel contracts
+      run: node --test scripts/social_intelligence/evaluator.test.ts scripts/social_intelligence/durable_results.test.ts scripts/social_intelligence/conversation_evaluator.test.ts
+    - name: Self-contained runner payload contracts
+      run: python3 scripts/social_intelligence/test_build_railway_runner.py
+    name: evaluator-contracts
+    needs:
+    - dispatch_contract
+    if: ${{ needs.dispatch_contract.result == 'success' && inputs.source == 'social-intelligence-regression' && (success())
+      }}
+    permissions:
+      contents: read

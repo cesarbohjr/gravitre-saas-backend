@@ -1,0 +1,124 @@
+# STAGED: not installed in .github/workflows; automatic trigger cutover pending.
+name: QA 08-billing-marketplace
+'on':
+  workflow_dispatch:
+    inputs:
+      source:
+        description: Original workflow contract to execute
+        required: true
+        type: choice
+        options:
+        - live-signup-billing-http
+        - marketplace-production-smoke
+        - run-acceptance-billing
+        default: live-signup-billing-http
+      marketplace_production_smoke__reason:
+        description: 'marketplace-production-smoke: Reason for manual trigger'
+        required: false
+concurrency:
+  group: ${{ format('candidate-{0}', (inputs.source == 'marketplace-production-smoke' && ('marketplace-production-smoke'))
+    || github.run_id) }}
+  cancel-in-progress: ${{ (inputs.source == 'marketplace-production-smoke' && (false)) || false }}
+jobs:
+  dispatch_contract:
+    name: Validate selected source inputs
+    runs-on: ubuntu-latest
+    permissions: {}
+    timeout-minutes: 2
+    steps:
+    - name: Validate source contract
+      shell: python
+      env:
+        SOURCE_SCHEMAS: '{"live-signup-billing-http": {}, "marketplace-production-smoke": {"reason": {"description": "Reason
+          for manual trigger", "required": false}}, "run-acceptance-billing": {}}'
+        MANUAL_SOURCES: '["live-signup-billing-http", "marketplace-production-smoke", "run-acceptance-billing"]'
+        DISPATCH_VALUES: ${{ toJSON(inputs) }}
+        EVENT_NAME: ${{ github.event_name }}
+      run: "import json, os\nschemas = json.loads(os.environ['SOURCE_SCHEMAS'])\nvalues = json.loads(os.environ['DISPATCH_VALUES'])\n\
+        source = values.get('source')\nif source not in schemas:\n    raise SystemExit('Unknown source workflow')\nif os.environ['EVENT_NAME']\
+        \ == 'workflow_dispatch' and source not in json.loads(os.environ['MANUAL_SOURCES']):\n    raise SystemExit('Source\
+        \ has no manual trigger')\nif os.environ['EVENT_NAME'] != 'workflow_dispatch' and source != 'isolated-acceptance':\n\
+        \    raise SystemExit('Unsupported reusable source')\nfor key, config in schemas[source].items():\n    value = values.get(source.replace('-',\
+        \ '_') + '__' + key)\n    if os.environ['EVENT_NAME'] != 'workflow_dispatch' and key == 'suite':\n        value =\
+        \ values.get('suite')\n    if config.get('required') and (value is None or value == ''):\n        raise SystemExit('Required\
+        \ selected-source input missing: ' + key)\nprint('Selected source input contract validated; this is not execution\
+        \ acceptance')\n"
+  live_signup_billing_http__production-billing-boundaries:
+    runs-on: ubuntu-latest
+    environment: production
+    timeout-minutes: 8
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+    - run: pip install "PyJWT>=2.8,<3" "supabase>=2,<3"
+    - name: Mint isolated actor
+      env:
+        SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+        SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        SUPABASE_JWT_SECRET: ${{ secrets.SUPABASE_JWT_SECRET }}
+      run: python scripts/mint_smoke_org_session.py --github-env
+    - name: Validate live public and tenant billing boundaries
+      run: python scripts/verify_live_signup_billing_http.py
+    - uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: live-signup-billing-http-evidence
+        path: docs/delivery/live-signup-billing-http-acceptance.json
+        if-no-files-found: ignore
+    name: production-billing-boundaries
+    needs:
+    - dispatch_contract
+    if: ${{ needs.dispatch_contract.result == 'success' && inputs.source == 'live-signup-billing-http' && (success()) }}
+    permissions:
+      contents: read
+  marketplace_production_smoke__marketplace-smoke:
+    name: Marketplace API smoke (STA-229 / STA-239)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+        cache: pip
+        cache-dependency-path: backend/requirements.txt
+    - name: Install dependencies
+      working-directory: backend
+      run: 'python -m pip install --upgrade pip
+
+        pip install -r requirements-dev.txt
+
+        '
+    - name: Run marketplace production smoke
+      env:
+        BACKEND_URL: https://gravitre-saas-backend-production.up.railway.app
+        SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+        SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        SUPABASE_JWT_SECRET: ${{ secrets.SUPABASE_JWT_SECRET }}
+      run: "if [ -z \"$SUPABASE_URL\" ] || [ -z \"$SUPABASE_SERVICE_ROLE_KEY\" ] || [ -z \"$SUPABASE_JWT_SECRET\" ]; then\n\
+        \  echo \"Set SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, and SUPABASE_JWT_SECRET in repo Actions secrets.\" >&2\n  exit\
+        \ 1\nfi\npython scripts/smoke-marketplace-production.py \\\n  --json docs/delivery/smoke-marketplace-production-latest.json\n"
+    - name: Upload smoke report
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: smoke-marketplace-production
+        path: docs/delivery/smoke-marketplace-production-latest.json
+        if-no-files-found: ignore
+    needs:
+    - dispatch_contract
+    if: ${{ needs.dispatch_contract.result == 'success' && inputs.source == 'marketplace-production-smoke' && (success())
+      }}
+  run_acceptance_billing__billing:
+    name: Dedicated acceptance-project billing suite
+    uses: ./.github/workflows/qa-12-independent-acceptance.yml
+    with:
+      suite: billing
+    secrets: inherit
+    needs:
+    - dispatch_contract
+    if: ${{ needs.dispatch_contract.result == 'success' && inputs.source == 'run-acceptance-billing' && (success()) }}
+    permissions:
+      contents: read

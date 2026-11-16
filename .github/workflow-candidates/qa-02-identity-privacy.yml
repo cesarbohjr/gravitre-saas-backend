@@ -1,0 +1,324 @@
+# STAGED: not installed in .github/workflows; automatic trigger cutover pending.
+name: QA 02-identity-privacy
+'on':
+  workflow_dispatch:
+    inputs:
+      source:
+        description: Original workflow contract to execute
+        required: true
+        type: choice
+        options:
+        - auth-config-sync
+        - credential-db-bypass-daily
+        - deletion-lifecycle-readiness
+        - msp-isolated-database-security
+        - snowflake-isolated-security
+        - release1-role-execution-matrix
+        default: auth-config-sync
+      auth_config_sync__skip_vercel_deploy:
+        description: 'auth-config-sync: Skip Vercel production deploy'
+        required: false
+        default: 'false'
+        type: choice
+        options:
+        - 'false'
+        - 'true'
+concurrency:
+  group: ${{ format('candidate-{0}', (inputs.source == 'auth-config-sync' && ('auth-config-sync')) || (inputs.source == 'credential-db-bypass-daily'
+    && ('credential-db-bypass-daily')) || github.run_id) }}
+  cancel-in-progress: ${{ (inputs.source == 'auth-config-sync' && (false)) || (inputs.source == 'credential-db-bypass-daily'
+    && (false)) || false }}
+jobs:
+  dispatch_contract:
+    name: Validate selected source inputs
+    runs-on: ubuntu-latest
+    permissions: {}
+    timeout-minutes: 2
+    steps:
+    - name: Validate source contract
+      shell: python
+      env:
+        SOURCE_SCHEMAS: '{"auth-config-sync": {"skip_vercel_deploy": {"description": "Skip Vercel production deploy", "required":
+          false, "default": "false", "type": "choice", "options": ["false", "true"]}}, "credential-db-bypass-daily": {}, "deletion-lifecycle-readiness":
+          {}, "msp-isolated-database-security": {}, "snowflake-isolated-security": {}, "release1-role-execution-matrix": {}}'
+        MANUAL_SOURCES: '["auth-config-sync", "credential-db-bypass-daily", "deletion-lifecycle-readiness", "msp-isolated-database-security",
+          "snowflake-isolated-security", "release1-role-execution-matrix"]'
+        DISPATCH_VALUES: ${{ toJSON(inputs) }}
+        EVENT_NAME: ${{ github.event_name }}
+      run: "import json, os\nschemas = json.loads(os.environ['SOURCE_SCHEMAS'])\nvalues = json.loads(os.environ['DISPATCH_VALUES'])\n\
+        source = values.get('source')\nif source not in schemas:\n    raise SystemExit('Unknown source workflow')\nif os.environ['EVENT_NAME']\
+        \ == 'workflow_dispatch' and source not in json.loads(os.environ['MANUAL_SOURCES']):\n    raise SystemExit('Source\
+        \ has no manual trigger')\nif os.environ['EVENT_NAME'] != 'workflow_dispatch' and source != 'isolated-acceptance':\n\
+        \    raise SystemExit('Unsupported reusable source')\nfor key, config in schemas[source].items():\n    value = values.get(source.replace('-',\
+        \ '_') + '__' + key)\n    if os.environ['EVENT_NAME'] != 'workflow_dispatch' and key == 'suite':\n        value =\
+        \ values.get('suite')\n    if config.get('required') and (value is None or value == ''):\n        raise SystemExit('Required\
+        \ selected-source input missing: ' + key)\nprint('Selected source input contract validated; this is not execution\
+        \ acceptance')\n"
+  auth_config_sync__sync:
+    name: Sync Supabase + Vercel auth config
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+    - uses: actions/checkout@v4
+    - name: Require Supabase Management API token
+      run: "if [[ -z \"${{ secrets.SUPABASE_ACCESS_TOKEN }}\" ]]; then\n  echo \"::error::Missing GitHub secret SUPABASE_ACCESS_TOKEN.\
+        \ Run: npm run platform:github-secrets\"\n  exit 1\nfi\n"
+    - name: Configure auth via CLI/API
+      env:
+        SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+        SUPABASE_PROJECT_NAME_HINT: gravitre
+        VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+        VERCEL_PROJECT: gravitre-saas-backend
+        NEXT_PUBLIC_APP_URL: https://gravitre.app
+        NEXT_PUBLIC_SUPABASE_AUTH_URL: https://gravitre.app
+        NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+        SUPABASE_PROJECT_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+        NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+        SKIP_VERCEL_DEPLOY: ${{ inputs.auth_config_sync__skip_vercel_deploy }}
+      run: 'chmod +x scripts/configure-auth-production.sh
+
+        bash scripts/configure-auth-production.sh
+
+        '
+    needs:
+    - dispatch_contract
+    if: ${{ needs.dispatch_contract.result == 'success' && inputs.source == 'auth-config-sync' && (success()) }}
+  credential_db_bypass_daily__db-bypass-guard:
+    name: Prod DB bypass refuse
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+        cache: pip
+        cache-dependency-path: backend/requirements.txt
+    - name: Install dependencies
+      working-directory: backend
+      run: 'python -m pip install --upgrade pip
+
+        pip install -r requirements-dev.txt
+
+        '
+    - name: Record prod health git_sha
+      env:
+        BACKEND_URL: https://gravitre-saas-backend-production.up.railway.app
+      run: 'curl -sf --max-time 30 "${BACKEND_URL}/health" | tee /tmp/health.json
+
+        python3 - <<''PY''
+
+        import json
+
+        health = json.load(open("/tmp/health.json"))
+
+        print(f"prod_git_sha={health.get(''git_sha'')}")
+
+        PY
+
+        '
+    - name: Run DB credential-bypass guard against prod
+      env:
+        SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+        SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        SUPABASE_JWT_SECRET: ${{ secrets.SUPABASE_JWT_SECRET }}
+        APP_ENV: production
+      run: "if [ -z \"$SUPABASE_URL\" ] || [ -z \"$SUPABASE_SERVICE_ROLE_KEY\" ]; then\n  echo \"Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY\
+        \ secrets.\" >&2\n  exit 1\nfi\npython scripts/verify-credential-db-bypass-guard.py\n"
+    - name: Upload evidence artifact
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: module-0-db-guard-live
+        path: docs/delivery/module-0-db-guard-live.json
+        if-no-files-found: ignore
+    needs:
+    - dispatch_contract
+    if: ${{ needs.dispatch_contract.result == 'success' && inputs.source == 'credential-db-bypass-daily' && (success()) }}
+  deletion_lifecycle_readiness__readiness:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+    - name: Probe Railway ingestion interlock (read-only)
+      env:
+        INTERNAL_API_SECRET: ${{ secrets.INTERNAL_API_SECRET }}
+      run: "set -euo pipefail\npython3 - <<'PY'\nimport json, os, pathlib, time, urllib.request\nurl = \"https://gravitre-saas-backend-production.up.railway.app/api/internal/ops/ingestion-interlock\"\
+        \nreport = {\"replica_count\": 1, \"calls\": 8, \"lifecycle_ready_true\": 0,\n          \"lifecycle_ready_false\"\
+        : 0, \"other_failures\": 0, \"failing_responses\": []}\nsecret = os.environ.get(\"INTERNAL_API_SECRET\", \"\")\nif\
+        \ not secret:\n    report[\"other_failures\"] += 1\n    report[\"failing_responses\"].append({\"error\": \"GitHub\
+        \ INTERNAL_API_SECRET not configured\"})\nelse:\n    for index in range(8):\n        try:\n            req = urllib.request.Request(url,\
+        \ headers={\"X-Internal-Secret\": secret}, method=\"GET\")\n            with urllib.request.urlopen(req, timeout=15)\
+        \ as response:\n                payload = json.load(response)\n            if not isinstance(payload, dict):\n   \
+        \             raise ValueError(\"non-object JSON\")\n            runtime = payload.get(\"runtime\")\n            runtime\
+        \ = runtime if isinstance(runtime, dict) else {}\n            heartbeat = runtime.get(\"heartbeat_age_s\")\n     \
+        \       window = runtime.get(\"heartbeat_window_s\")\n            valid = (\n                payload.get(\"lifecycle_ready\"\
+        ) is True and payload.get(\"missing\") == []\n                and runtime.get(\"ready\") is True and runtime.get(\"\
+        blockers\") == []\n                and runtime.get(\"relay_task\") == \"running\"\n                and isinstance(heartbeat,\
+        \ (int, float)) and not isinstance(heartbeat, bool)\n                and isinstance(window, (int, float)) and not\
+        \ isinstance(window, bool)\n                and 0 <= heartbeat < window\n            )\n            if payload.get(\"\
+        lifecycle_ready\") is True:\n                report[\"lifecycle_ready_true\"] += 1\n            elif payload.get(\"\
+        lifecycle_ready\") is False:\n                report[\"lifecycle_ready_false\"] += 1\n            else:\n        \
+        \        report[\"other_failures\"] += 1\n            if not valid:\n                report[\"failing_responses\"\
+        ].append({\"call\": index+1, \"response\": payload})\n        except Exception as exc:\n            report[\"other_failures\"\
+        ] += 1\n            # No error string: HTTP exception messages might expose URLs; never include credentials.\n   \
+        \         report[\"failing_responses\"].append({\"call\": index+1, \"error_type\": type(exc).__name__})\n        if\
+        \ index != 7: time.sleep(2)\nreport[\"result\"] = \"PASS\" if (report[\"lifecycle_ready_true\"] == 8 and not report[\"\
+        failing_responses\"]) else \"FAIL\"\nreport[\"coverage_note\"] = \"Railway reported one running production replica\
+        \ at workflow authoring time. Revalidate count before treating PASS as complete.\"\ntarget = pathlib.Path(\"deletion-lifecycle-readiness.json\"\
+        )\ntarget.write_text(json.dumps(report, indent=2, sort_keys=True) + \"\\n\")\nprint(json.dumps(report, indent=2, sort_keys=True))\n\
+        if report[\"result\"] != \"PASS\": raise SystemExit(1)\nPY\n"
+    - name: Upload readiness evidence
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: deletion-lifecycle-readiness
+        path: deletion-lifecycle-readiness.json
+        if-no-files-found: warn
+    name: readiness
+    needs:
+    - dispatch_contract
+    if: ${{ needs.dispatch_contract.result == 'success' && inputs.source == 'deletion-lifecycle-readiness' && (success())
+      }}
+    permissions:
+      contents: read
+  msp_isolated_database_security__msp-database-security:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+    - uses: actions/checkout@v4
+    - uses: supabase/setup-cli@v1
+      with:
+        version: latest
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+    - name: Install database test dependencies
+      run: python -m pip install pytest 'psycopg[binary]' fastapi pydantic-settings 'supabase>=2.3,<3' 'PyJWT>=2.8,<3' httpx
+        python-dotenv cryptography redis stripe requests passlib email-validator python-multipart apscheduler
+    - name: Prepare dedicated MSP migration test project
+      run: "mkdir -p \"$RUNNER_TEMP/msp-db/supabase/migrations\"\ncat > \"$RUNNER_TEMP/msp-db/supabase/config.toml\" <<'EOF'\n\
+        project_id = \"gravitre-msp-ci\"\n\n[db]\nport = 54322\nshadow_port = 54320\nmajor_version = 15\n\n[db.migrations]\n\
+        enabled = true\n\n[db.seed]\nenabled = false\n\n[api]\nport = 54321\n\n[studio]\nenabled = false\n\n[inbucket]\nenabled\
+        \ = false\n\n[auth.email]\nenable_confirmations = false\nEOF\ncat > \"$RUNNER_TEMP/msp-db/supabase/migrations/20261017210000_msp_test_organizations.sql\"\
+        \ <<'EOF'\n-- Minimal isolated fixture only; does not replace full-stack migration safety.\nCREATE TABLE public.organizations\
+        \ (\n  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),\n  name text NOT NULL,\n  slug text NOT NULL UNIQUE,\n  status\
+        \ text NOT NULL DEFAULT 'active',\n  parent_org_id uuid REFERENCES public.organizations(id)\n);\nCREATE TABLE public.organization_members\
+        \ (\n  org_id uuid NOT NULL REFERENCES public.organizations(id),\n  user_id uuid NOT NULL,\n  role text NOT NULL,\n\
+        \  PRIMARY KEY (org_id, user_id)\n);\nEOF\ncp supabase/migrations/20261018032455_msp_delegations_restricted.sql \"\
+        $RUNNER_TEMP/msp-db/supabase/migrations/\"\ncp supabase/migrations/20261018032503_msp_delegation_atomic_audit.sql\
+        \ \"$RUNNER_TEMP/msp-db/supabase/migrations/\"\n"
+    - name: Start disposable local Supabase and apply MSP migrations
+      run: 'cd "$RUNNER_TEMP/msp-db"
+
+        supabase start
+
+        supabase db reset --local
+
+        '
+    - name: Seed two disposable customer organizations
+      env:
+        MSP_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:54322/postgres
+      run: python backend/tests/integration/seed_msp_test_organizations.py
+    - name: Run real PostgreSQL security tests
+      env:
+        MSP_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:54322/postgres
+        MSP_TEST_PROJECT_DIR: ${{ runner.temp }}/msp-db
+      run: python -m pytest --confcutdir=backend/tests/integration -q backend/tests/integration/test_msp_database_security.py
+        backend/tests/integration/test_msp_rest_isolation.py -rs
+    - name: Run real authorized-access and cross-session revocation acceptance
+      env:
+        MSP_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:54322/postgres
+        MSP_TEST_PROJECT_DIR: ${{ runner.temp }}/msp-db
+        PYTHONPATH: backend
+      run: python -m pytest --confcutdir=backend/tests/integration -q backend/tests/integration/test_msp_live_acceptance.py
+        -rs
+    - name: Stop disposable database
+      if: always()
+      run: 'cd "$RUNNER_TEMP/msp-db"
+
+        supabase stop --no-backup || true
+
+        '
+    name: msp-database-security
+    needs:
+    - dispatch_contract
+    if: ${{ needs.dispatch_contract.result == 'success' && inputs.source == 'msp-isolated-database-security' && (success())
+      }}
+  snowflake_isolated_security__snowflake-isolated:
+    name: Snowflake isolated install and audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+    - name: Install isolated connector
+      working-directory: backend
+      run: 'python -m pip install --upgrade pip
+
+        python -m pip install -r requirements-extras-snowflake.txt pip-audit
+
+        python -m pip check
+
+        python -c "import snowflake.connector; print(''Snowflake connector imports successfully'')"
+
+        '
+    - name: Audit installed Snowflake environment (fail closed)
+      working-directory: backend
+      run: 'python -m pip_audit --progress-spinner off
+
+        '
+    needs:
+    - dispatch_contract
+    if: ${{ needs.dispatch_contract.result == 'success' && inputs.source == 'snowflake-isolated-security' && (success()) }}
+  release1_role_execution_matrix__role-and-execution:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: postgres
+        ports:
+        - 5432:5432
+        options: --health-cmd "pg_isready -U postgres" --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      APP_ENV: test
+      SUPABASE_URL: https://test.supabase.co
+      SUPABASE_ANON_KEY: anon-test
+      SUPABASE_SERVICE_ROLE_KEY: service-role-test
+      SUPABASE_JWT_SECRET: jwt-secret-test
+      OPENAI_API_KEY: sk-test-openai
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+    - name: Install PostgreSQL tooling
+      run: sudo apt-get update -qq && sudo apt-get install -y postgresql-client
+    - name: Install isolated security test dependencies
+      run: pip install -r backend/requirements-dev.txt
+    - name: Execute member/admin database authorization tests and MCP execution-denial tests
+      working-directory: backend
+      run: "set -euo pipefail\npython -m pytest -q \\\n  tests/db/test_emergency_membership_lockdown_pg.py \\\n  tests/db/test_governance_member_write_lockdown_pg.py\
+        \ \\\n  tests/services/test_mcp_stdio_and_network_policy.py \\\n  --junitxml=../docs/delivery/release1-role-execution-matrix.xml\n"
+    - name: Upload attributable matrix result
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: release1-role-execution-matrix
+        path: docs/delivery/release1-role-execution-matrix.xml
+        if-no-files-found: error
+    name: role-and-execution
+    needs:
+    - dispatch_contract
+    if: ${{ needs.dispatch_contract.result == 'success' && inputs.source == 'release1-role-execution-matrix' && (success())
+      }}
+    permissions:
+      contents: read

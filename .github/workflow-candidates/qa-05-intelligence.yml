@@ -1,0 +1,1143 @@
+# STAGED: not installed in .github/workflows; automatic trigger cutover pending.
+name: QA 05-intelligence
+'on':
+  workflow_dispatch:
+    inputs:
+      source:
+        description: Original workflow contract to execute
+        required: true
+        type: choice
+        options:
+        - agent-roi-live
+        - catalog-enrichment-nl-variance
+        - conversation-engineering
+        - conversation-parity-contract
+        - department-eval-suites
+        - federated-runtime
+        - golden-benchmark-live
+        - intelligence-lifecycle-e2e
+        - intelligence-offline-acceptance
+        - live-generated-response-quality
+        - milestone2-latency-ab
+        - milestone2-performance-audit
+        - native-langfuse-certification
+        - phase3-intelligence-coverage
+        - phase3-offline-12-scenarios
+        - phase3-phase5-evidence
+        - research-cascade-prod-smoke
+        - unified-turn-phase2-live
+        - unified-turn-standing-batteries
+        default: agent-roi-live
+      department_eval_suites__department:
+        description: 'department-eval-suites: Optional department (marketing|sales|finance|legal|hr|msp)'
+        required: false
+        default: ''
+      live_generated_response_quality__deployed_sha:
+        description: 'live-generated-response-quality: Production backend Git SHA to certify (must equal checked-out main
+          HEAD)'
+        required: false
+        type: string
+      milestone2_latency_ab__reason:
+        description: 'milestone2-latency-ab: Reason for manual trigger (pre/post RM latency guardrail)'
+        required: false
+        default: milestone2-latency-ab
+      milestone2_performance_audit__reason:
+        description: 'milestone2-performance-audit: Reason for manual trigger'
+        required: false
+      research_cascade_prod_smoke__reason:
+        description: 'research-cascade-prod-smoke: Reason for manual trigger'
+        required: false
+      unified_turn_phase2_live__commit_sha:
+        description: 'unified-turn-phase2-live: Expected health git_sha prefix (empty = this checkout)'
+        required: false
+        default: ''
+      unified_turn_phase2_live__enable_shadow:
+        description: 'unified-turn-phase2-live: Set UNIFIED_TURN_SHADOW_ENABLED=true on Railway'
+        required: false
+        default: 'true'
+      unified_turn_phase2_live__enable_live:
+        description: 'unified-turn-phase2-live: Phase 4: Set UNIFIED_TURN_LIVE_ENABLED=true on Railway'
+        required: false
+        default: 'false'
+      unified_turn_phase2_live__railway_environment:
+        description: 'unified-turn-phase2-live: Railway environment name'
+        required: false
+        default: production
+concurrency:
+  group: ${{ format('candidate-{0}', (inputs.source == 'agent-roi-live' && ('agent-roi-live')) || (inputs.source == 'catalog-enrichment-nl-variance'
+    && ('catalog-enrichment-nl-variance')) || (inputs.source == 'department-eval-suites' && (format('department-eval-{0}',
+    github.ref))) || (inputs.source == 'golden-benchmark-live' && ('golden-benchmark-live')) || (inputs.source == 'intelligence-lifecycle-e2e'
+    && ('intelligence-lifecycle-e2e')) || (inputs.source == 'milestone2-latency-ab' && ('milestone2-latency-ab')) || (inputs.source
+    == 'milestone2-performance-audit' && ('milestone2-performance-audit')) || (inputs.source == 'native-langfuse-certification'
+    && (format('native-langfuse-{0}', github.ref))) || (inputs.source == 'research-cascade-prod-smoke' && ('research-cascade-prod-smoke'))
+    || (inputs.source == 'unified-turn-phase2-live' && ('unified-turn-phase2-live')) || (inputs.source == 'unified-turn-standing-batteries'
+    && ('unified-turn-standing-batteries')) || github.run_id) }}
+  cancel-in-progress: ${{ (inputs.source == 'agent-roi-live' && (false)) || (inputs.source == 'catalog-enrichment-nl-variance'
+    && (false)) || (inputs.source == 'department-eval-suites' && (true)) || (inputs.source == 'golden-benchmark-live' && (false))
+    || (inputs.source == 'intelligence-lifecycle-e2e' && (false)) || (inputs.source == 'milestone2-latency-ab' && (false))
+    || (inputs.source == 'milestone2-performance-audit' && (false)) || (inputs.source == 'native-langfuse-certification' &&
+    (false)) || (inputs.source == 'research-cascade-prod-smoke' && (false)) || (inputs.source == 'unified-turn-phase2-live'
+    && (false)) || (inputs.source == 'unified-turn-standing-batteries' && (false)) || false }}
+jobs:
+  dispatch_contract:
+    name: Validate selected source inputs
+    runs-on: ubuntu-latest
+    permissions: {}
+    timeout-minutes: 2
+    steps:
+    - name: Validate source contract
+      shell: python
+      env:
+        SOURCE_SCHEMAS: '{"agent-roi-live": {}, "catalog-enrichment-nl-variance": {}, "conversation-engineering": {}, "conversation-parity-contract":
+          {}, "department-eval-suites": {"department": {"description": "Optional department (marketing|sales|finance|legal|hr|msp)",
+          "required": false, "default": ""}}, "federated-runtime": {}, "golden-benchmark-live": {}, "intelligence-lifecycle-e2e":
+          {}, "intelligence-offline-acceptance": {}, "live-generated-response-quality": {"deployed_sha": {"description": "Production
+          backend Git SHA to certify (must equal checked-out main HEAD)", "required": true, "type": "string"}}, "milestone2-latency-ab":
+          {"reason": {"description": "Reason for manual trigger (pre/post RM latency guardrail)", "required": false, "default":
+          "milestone2-latency-ab"}}, "milestone2-performance-audit": {"reason": {"description": "Reason for manual trigger",
+          "required": false}}, "native-langfuse-certification": {}, "phase3-intelligence-coverage": {}, "phase3-offline-12-scenarios":
+          {}, "phase3-phase5-evidence": {}, "research-cascade-prod-smoke": {"reason": {"description": "Reason for manual trigger",
+          "required": false}}, "unified-turn-phase2-live": {"commit_sha": {"description": "Expected health git_sha prefix
+          (empty = this checkout)", "required": false, "default": ""}, "enable_shadow": {"description": "Set UNIFIED_TURN_SHADOW_ENABLED=true
+          on Railway", "required": false, "default": "true"}, "enable_live": {"description": "Phase 4: Set UNIFIED_TURN_LIVE_ENABLED=true
+          on Railway", "required": false, "default": "false"}, "railway_environment": {"description": "Railway environment
+          name", "required": false, "default": "production"}}, "unified-turn-standing-batteries": {}}'
+        MANUAL_SOURCES: '["agent-roi-live", "catalog-enrichment-nl-variance", "conversation-engineering", "conversation-parity-contract",
+          "department-eval-suites", "federated-runtime", "golden-benchmark-live", "intelligence-lifecycle-e2e", "intelligence-offline-acceptance",
+          "live-generated-response-quality", "milestone2-latency-ab", "milestone2-performance-audit", "native-langfuse-certification",
+          "phase3-intelligence-coverage", "phase3-offline-12-scenarios", "phase3-phase5-evidence", "research-cascade-prod-smoke",
+          "unified-turn-phase2-live", "unified-turn-standing-batteries"]'
+        DISPATCH_VALUES: ${{ toJSON(inputs) }}
+        EVENT_NAME: ${{ github.event_name }}
+      run: "import json, os\nschemas = json.loads(os.environ['SOURCE_SCHEMAS'])\nvalues = json.loads(os.environ['DISPATCH_VALUES'])\n\
+        source = values.get('source')\nif source not in schemas:\n    raise SystemExit('Unknown source workflow')\nif os.environ['EVENT_NAME']\
+        \ == 'workflow_dispatch' and source not in json.loads(os.environ['MANUAL_SOURCES']):\n    raise SystemExit('Source\
+        \ has no manual trigger')\nif os.environ['EVENT_NAME'] != 'workflow_dispatch' and source != 'isolated-acceptance':\n\
+        \    raise SystemExit('Unsupported reusable source')\nfor key, config in schemas[source].items():\n    value = values.get(source.replace('-',\
+        \ '_') + '__' + key)\n    if os.environ['EVENT_NAME'] != 'workflow_dispatch' and key == 'suite':\n        value =\
+        \ values.get('suite')\n    if config.get('required') and (value is None or value == ''):\n        raise SystemExit('Required\
+        \ selected-source input missing: ' + key)\nprint('Selected source input contract validated; this is not execution\
+        \ acceptance')\n"
+  agent_roi_live__verify:
+    if: ${{ needs.dispatch_contract.result == 'success' && inputs.source == 'agent-roi-live' && (github.event_name != 'workflow_run'
+      || github.event.workflow_run.conclusion == 'success') }}
+    name: Live agent ROI honesty
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        ref: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+    - name: Install dependencies
+      run: pip install httpx PyJWT python-dotenv supabase
+    - name: Run live agent ROI probe
+      env:
+        SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+        SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        SUPABASE_JWT_SECRET: ${{ secrets.SUPABASE_JWT_SECRET }}
+        LIVE_API_BASE: https://api.gravitre.app
+      run: "set -euo pipefail\nif [ -z \"${SUPABASE_URL:-}\" ] || [ -z \"${SUPABASE_SERVICE_ROLE_KEY:-}\" ] || [ -z \"${SUPABASE_JWT_SECRET:-}\"\
+        \ ]; then\n  echo \"Missing Supabase secrets\" >&2\n  exit 1\nfi\npython3 scripts/verify-agent-roi-live.py\n"
+    - name: Upload report
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: agent-roi-live
+        path: docs/delivery/agent-roi-live.json
+        if-no-files-found: ignore
+    needs:
+    - dispatch_contract
+  catalog_enrichment_nl_variance__enrichment-probe:
+    name: Catalog enrichment NL-variance probe
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+        cache: pip
+        cache-dependency-path: backend/requirements.txt
+    - name: Install deps
+      working-directory: backend
+      run: 'python -m pip install --upgrade pip
+
+        pip install -r requirements-dev.txt
+
+        '
+    - name: Schema lint (examples + tags coverage)
+      working-directory: backend
+      run: python -m pytest tests/connectors/test_action_schema_standard_lint.py -q
+      env:
+        APP_ENV: dev
+        SUPABASE_URL: https://test.supabase.co
+        SUPABASE_ANON_KEY: anon-test
+        SUPABASE_SERVICE_ROLE_KEY: service-role-test
+        SUPABASE_JWT_SECRET: jwt-secret-test
+        OPENAI_API_KEY: sk-test-openai
+    - name: Full NL-variance + latency probe
+      env:
+        APP_ENV: dev
+        SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+        SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        SUPABASE_JWT_SECRET: ${{ secrets.SUPABASE_JWT_SECRET }}
+        OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        GRAVITRE_ACTION_ENRICHMENT_ENABLED: 'true'
+      run: python scripts/probe-catalog-enrichment-nl-variance.py
+    - name: Upload artifact
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: catalog-enrichment-nl-variance
+        path: docs/delivery/catalog-enrichment-nl-variance-live.json
+        if-no-files-found: ignore
+    needs:
+    - dispatch_contract
+    if: ${{ needs.dispatch_contract.result == 'success' && inputs.source == 'catalog-enrichment-nl-variance' && (success())
+      }}
+  conversation_engineering__deepeval-tool-experiment:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+    - name: Install isolated exact-tool evaluator experiment
+      run: 'python -m venv "$RUNNER_TEMP/deepeval-venv"
+
+        "$RUNNER_TEMP/deepeval-venv/bin/pip" install --require-hashes -r scripts/framework_benchmarks/requirements-deepeval.lock
+
+        "$RUNNER_TEMP/deepeval-venv/bin/pip" check
+
+        '
+    - name: Compare real SDK metric with a strict trace reference
+      run: timeout 90s "$RUNNER_TEMP/deepeval-venv/bin/python" scripts/framework_benchmarks/deepeval_tools.py --output "$RUNNER_TEMP/deepeval-tool-report.json"
+    - name: Audit every isolated candidate dependency
+      run: 'python -m pip install pip-audit
+
+        python -m pip_audit --no-deps --disable-pip -r scripts/framework_benchmarks/requirements-deepeval.lock --format json
+        --output "$RUNNER_TEMP/deepeval-audit.json"
+
+        '
+    - uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: deepeval-tool-experiment
+        path: '${{ runner.temp }}/deepeval-tool-report.json
+
+          ${{ runner.temp }}/deepeval-audit.json
+
+          '
+        if-no-files-found: error
+    name: deepeval-tool-experiment
+    needs:
+    - dispatch_contract
+    if: ${{ needs.dispatch_contract.result == 'success' && inputs.source == 'conversation-engineering' && (success()) }}
+    permissions:
+      contents: read
+  conversation_engineering__dspy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+    - name: Install isolated hash-pinned offline tooling
+      run: 'python -m venv "$RUNNER_TEMP/dspy-venv"
+
+        "$RUNNER_TEMP/dspy-venv/bin/pip" install --require-hashes -r scripts/guidance_optimization/requirements.lock
+
+        '
+    - name: Compile actual SDK with credentials and network denied
+      run: timeout 120s "$RUNNER_TEMP/dspy-venv/bin/python" scripts/guidance_optimization/verify_compilation.py "$RUNNER_TEMP/dspy-compilation.json"
+    - name: Exercise actual SDK HTTP transport against a local fixture
+      run: timeout 120s "$RUNNER_TEMP/dspy-venv/bin/python" scripts/guidance_optimization/verify_transport.py "$RUNNER_TEMP/dspy-transport.json"
+    - name: Audit isolated dependencies and explicit offline containment
+      run: 'python -m pip install pip-audit
+
+        python scripts/guidance_optimization/audit.py "$RUNNER_TEMP/dspy-audit.json"
+
+        '
+    - uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: conversational-guidance-engineering
+        path: '${{ runner.temp }}/dspy-compilation.json
+
+          ${{ runner.temp }}/dspy-audit.json
+
+          ${{ runner.temp }}/dspy-transport.json
+
+          '
+    name: dspy
+    needs:
+    - dispatch_contract
+    if: ${{ needs.dispatch_contract.result == 'success' && inputs.source == 'conversation-engineering' && (success()) }}
+    permissions:
+      contents: read
+  conversation_parity_contract__parity-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+    - name: Reclaim unused toolchains for heavy backend dependencies
+      run: 'df -h /
+
+        sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/hostedtoolcache/CodeQL
+
+        df -h /
+
+        '
+    - name: Install focused test dependencies without wheel cache
+      env:
+        PIP_NO_CACHE_DIR: '1'
+      run: 'python -m pip install --no-cache-dir -r requirements.txt pytest pytest-asyncio
+
+        df -h /
+
+        '
+    - name: Run conversation parity contract
+      run: PYTHONPATH=. pytest -q tests/services/test_conversation_parity_benchmark.py tests/services/test_conversation_parity_model_routing.py
+        tests/services/test_conversation_parity_no_canned_eval_answers.py tests/services/pipecat_voice/test_durable_conversation_parity.py
+        tests/services/pipecat_voice/test_interrupt_reporter_durable_behaviour.py tests/services/pipecat_voice/test_cognitive_llm_barge_in_and_seed.py
+        tests/services/test_few_shot_benchmark_isolation.py
+    - name: Prove benchmark template builds
+      working-directory: .
+      run: python scripts/run-conversation-parity-benchmark.py --template --out /tmp/conversation-parity-template.json
+    name: parity-contract
+    needs:
+    - dispatch_contract
+    if: ${{ needs.dispatch_contract.result == 'success' && inputs.source == 'conversation-parity-contract' && (success())
+      }}
+  department_eval_suites__department-eval:
+    name: Department eval suites
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+        cache: pip
+        cache-dependency-path: backend/requirements*.txt
+    - name: Install backend deps
+      run: 'python -m pip install -U pip
+
+        pip install -r requirements.txt
+
+        pip install -r requirements-dev.txt || true
+
+        '
+    - name: Print eval manifest
+      run: python ../scripts/run-department-eval-suite.py --manifest-only
+    - name: Run consolidated department eval suites
+      run: "if [ -n \"${{ github.event.inputs.department_eval_suites__department }}\" ]; then\n  python ../scripts/run-department-eval-suite.py\
+        \ -q --department \"${{ github.event.inputs.department_eval_suites__department }}\"\nelse\n  python ../scripts/run-department-eval-suite.py\
+        \ -q\nfi\n"
+      env:
+        APP_ENV: dev
+        SUPABASE_URL: https://test.supabase.co
+        SUPABASE_ANON_KEY: anon-test
+        SUPABASE_SERVICE_ROLE_KEY: service-role-test
+        SUPABASE_JWT_SECRET: jwt-secret-test
+        OPENAI_API_KEY: sk-test-openai
+    needs:
+    - dispatch_contract
+    if: ${{ needs.dispatch_contract.result == 'success' && inputs.source == 'department-eval-suites' && (success()) }}
+  federated_runtime__runtime:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: backend
+    env:
+      FLWR_TELEMETRY_ENABLED: '0'
+      SUPABASE_URL: https://test.supabase.co
+      SUPABASE_ANON_KEY: anon-test
+      SUPABASE_SERVICE_ROLE_KEY: service-role-test
+      OPENAI_API_KEY: sk-test-offline
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+    - name: Install optional audited protocol libraries
+      run: 'pip install torch --index-url https://download.pytorch.org/whl/cpu
+
+        pip install -r requirements-dev.txt -r federated-runtime/requirements.txt
+
+        '
+    - name: Require actual protocol and privacy libraries
+      run: python -c "import flwr, pydp; assert flwr.__version__ == '1.41.0'"
+    - name: Build actual Flower bundle
+      run: 'python -c "from app.ml.federated_runtime import server, client; assert server.app and client.app"
+
+        flwr build --app federated-runtime
+
+        '
+    - name: Offline runtime contracts
+      run: python -m pytest -p tests.offline_network_guard tests/ml/test_federated_runtime.py tests/ml/test_federated_adoption.py
+        tests/ml/test_federated_adoption_boundaries.py -q
+    name: runtime
+    needs:
+    - dispatch_contract
+    if: ${{ needs.dispatch_contract.result == 'success' && inputs.source == 'federated-runtime' && (success()) }}
+  golden_benchmark_live__live:
+    name: Golden traffic live smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+    - name: Skip if live secrets missing
+      id: secrets
+      env:
+        SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+        SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        SUPABASE_JWT_SECRET: ${{ secrets.SUPABASE_JWT_SECRET }}
+      run: "if [ -z \"$SUPABASE_URL\" ] || [ -z \"$SUPABASE_SERVICE_ROLE_KEY\" ] || [ -z \"$SUPABASE_JWT_SECRET\" ]; then\n\
+        \  echo \"skip=1\" >> \"$GITHUB_OUTPUT\"\n  echo \"Skipping golden benchmark live smoke \u2014 SUPABASE secrets not\
+        \ configured\"\nelse\n  echo \"skip=0\" >> \"$GITHUB_OUTPUT\"\nfi\n"
+    - name: Run isolated-org live smoke
+      if: steps.secrets.outputs.skip != '1'
+      env:
+        LIVE_API_BASE: https://api.gravitre.app
+        SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+        SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        SUPABASE_JWT_SECRET: ${{ secrets.SUPABASE_JWT_SECRET }}
+      run: "pip install httpx PyJWT python-dotenv supabase\nset +e\npython scripts/smoke-golden-benchmark-live.py\nCODE=$?\n\
+        set -e\necho \"exit=$CODE\"\nif [ \"$CODE\" -eq 1 ]; then\n  exit 1\nfi\n"
+    - name: Upload artifact
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: smoke-golden-benchmark-live
+        path: docs/delivery/smoke-golden-benchmark-live.json
+        if-no-files-found: ignore
+    needs:
+    - dispatch_contract
+    if: ${{ needs.dispatch_contract.result == 'success' && inputs.source == 'golden-benchmark-live' && (success()) }}
+  intelligence_lifecycle_e2e__intelligence-lifecycle:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        persist-credentials: false
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+    - name: Install session dependencies
+      run: python -m pip install --disable-pip-version-check "httpx>=0.27,<1" "PyJWT>=2.8,<3" python-dotenv supabase
+    - name: Mint short-lived smoke-org session
+      env:
+        SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+        SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        SUPABASE_JWT_SECRET: ${{ secrets.SUPABASE_JWT_SECRET }}
+      run: python scripts/mint_smoke_org_session.py --github-env
+    - name: Run the synthetic lifecycle
+      run: "python3 scripts/run-intelligence-isolated-live.py \\\n  --allow-synthetic-write \\\n  --out \"$RUNNER_TEMP/intelligence-e2e-report.json\"\
+        \n"
+    - name: Clear session and check the report for token leaks
+      if: always()
+      shell: bash
+      run: "if [ -n \"${PLATFORM_LIVE_BEARER_TOKEN:-}\" ] && [ -f \"$RUNNER_TEMP/intelligence-e2e-report.json\" ] && grep\
+        \ -qF \"$PLATFORM_LIVE_BEARER_TOKEN\" \"$RUNNER_TEMP/intelligence-e2e-report.json\"; then\n  echo \"::error::report\
+        \ contains the session token\"; rm -f \"$RUNNER_TEMP/intelligence-e2e-report.json\"; exit 1\nfi\necho \"PLATFORM_LIVE_BEARER_TOKEN=\"\
+        \ >> \"$GITHUB_ENV\"\n"
+    - name: Upload report
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: intelligence-e2e-report
+        path: ${{ runner.temp }}/intelligence-e2e-report.json
+        if-no-files-found: ignore
+    name: intelligence-lifecycle
+    needs:
+    - dispatch_contract
+    if: ${{ needs.dispatch_contract.result == 'success' && inputs.source == 'intelligence-lifecycle-e2e' && (success()) }}
+    permissions:
+      contents: read
+  intelligence_offline_acceptance__offline-backend:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: backend
+    env:
+      APP_ENV: dev
+      SUPABASE_URL: https://test.supabase.co
+      SUPABASE_ANON_KEY: anon-test
+      SUPABASE_SERVICE_ROLE_KEY: service-role-test
+      SUPABASE_JWT_SECRET: jwt-secret-test
+      OPENAI_API_KEY: sk-test-openai
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+        cache: pip
+        cache-dependency-path: backend/requirements.txt
+    - name: Install test dependencies
+      run: python -m pip install -r requirements-dev.txt
+    - name: Run offline isolation, recovery, billing, history, governed handoff, and migration contract tests
+      run: "python -m pytest -q --no-header \\\n  tests/e2e/test_intelligence_tenant_recovery_regression.py \\\n  tests/e2e/test_intelligence_migration_security_contract.py\
+        \ \\\n  tests/e2e/test_intelligence_recommendation_full_lifecycle.py \\\n  tests/e2e/test_intelligence_evidence_play_handoff.py\
+        \ \\\n  tests/e2e/test_intelligence_overview_offline_contract.py \\\n  tests/billing/test_intelligence_sweep_atomic_meter.py\
+        \ \\\n  tests/services/test_intelligence_history_pipeline.py \\\n  tests/services/test_intelligence_history_adapters.py\
+        \ \\\n  tests/services/test_intelligence_outcome_verification.py \\\n  tests/services/test_intelligence_overview_sweep_worker.py\
+        \ \\\n  tests/routers/test_intelligence_overview_atomic_admission.py \\\n  tests/routers/test_intelligence_overview_tenant_isolation.py\
+        \ \\\n  tests/services/test_connector_api_import_boundaries.py \\\n  tests/services/test_connector_catalog_audit.py\
+        \ \\\n  tests/services/test_connector_registry_verification.py \\\n  tests/services/test_stripe_tools.py\n"
+    name: offline-backend
+    needs:
+    - dispatch_contract
+    if: ${{ needs.dispatch_contract.result == 'success' && inputs.source == 'intelligence-offline-acceptance' && (success())
+      }}
+  intelligence_offline_acceptance__offline-web:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: apps/web
+    steps:
+    - uses: actions/checkout@v4
+    - uses: pnpm/action-setup@v4
+      with:
+        version: 10
+    - uses: actions/setup-node@v4
+      with:
+        node-version: '22'
+        cache: pnpm
+        cache-dependency-path: apps/web/pnpm-lock.yaml
+    - run: pnpm install --frozen-lockfile
+    - name: Evidence journey tests
+      run: pnpm test -- intelligence-evidence-api
+    - name: TypeScript check
+      run: pnpm typecheck
+    name: offline-web
+    needs:
+    - dispatch_contract
+    if: ${{ needs.dispatch_contract.result == 'success' && inputs.source == 'intelligence-offline-acceptance' && (success())
+      }}
+  live_generated_response_quality__generated-response-quality:
+    if: ${{ needs.dispatch_contract.result == 'success' && inputs.source == 'live-generated-response-quality' && (github.ref
+      == 'refs/heads/main') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    environment: production-evaluation
+    env:
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      SOCIAL_EVAL_MODEL: claude-sonnet-4-6
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        persist-credentials: false
+    - name: Verify evaluated revision is deployed
+      shell: bash
+      env:
+        DEPLOYED_SHA: ${{ inputs.live_generated_response_quality__deployed_sha }}
+      run: "test \"$DEPLOYED_SHA\" = \"$(git rev-parse HEAD)\" || { echo \"Production SHA does not match main; refusing certification\"\
+        ; exit 1; }\npython - <<'PYHEALTH'\nimport json, os, urllib.request\nwith urllib.request.urlopen(\"https://api.gravitre.app/health\"\
+        , timeout=20) as response:\n    health = json.load(response)\nif health.get(\"git_sha\") != os.environ[\"DEPLOYED_SHA\"\
+        ]:\n    raise SystemExit(\"Live backend SHA does not match evaluated source; refusing certification\")\nprint(\"Live\
+        \ backend revision matches evaluated source\")\nPYHEALTH\n"
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+    - uses: actions/setup-node@v4
+      with:
+        node-version: '24'
+    - name: Install backend prompt-builder dependencies
+      run: pip install -r backend/requirements.txt
+    - name: Offline evaluator contracts
+      run: node --test scripts/social_intelligence/evaluator.test.ts scripts/social_intelligence/durable_results.test.ts
+    - name: Freeze actual prompt builders (synthetic data only)
+      run: python scripts/social_intelligence/build_bundle.py --output /tmp/social-eval-bundle.json
+    - name: Evaluate all roles, paths, channels and adversarial cases
+      shell: bash
+      run: 'if [ -z "$ANTHROPIC_API_KEY" ]; then echo "Missing GitHub Actions ANTHROPIC_API_KEY secret"; exit 1; fi
+
+        node scripts/social_intelligence/run_github_eval.mjs /tmp/social-eval-bundle.json /tmp/social-eval-report.json
+
+        '
+    - name: Upload synthetic evaluation evidence
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: generated-response-quality-${{ github.sha }}
+        path: /tmp/social-eval-report.json
+        if-no-files-found: ignore
+        retention-days: 14
+    name: generated-response-quality
+    needs:
+    - dispatch_contract
+    permissions:
+      contents: read
+  milestone2_latency_ab__latency-ab:
+    name: Pre/post Research Manager latency A/B on prod
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+        cache: pip
+        cache-dependency-path: backend/requirements.txt
+    - name: Install dependencies
+      working-directory: backend
+      run: 'python -m pip install --upgrade pip
+
+        pip install -r requirements-dev.txt
+
+        '
+    - name: Run full latency A/B (brief pre-RM rollback + restore tip)
+      env:
+        RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+        BACKEND_URL: https://gravitre-saas-backend-production.up.railway.app
+        SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+        SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        SUPABASE_JWT_SECRET: ${{ secrets.SUPABASE_JWT_SECRET }}
+        OAUTH_SMOKE_ORG_ID: ${{ secrets.OAUTH_SMOKE_ORG_ID }}
+      run: "set -euo pipefail\nif [ -n \"${RAILWAY_TOKEN:-}\" ]; then\n  echo \"Using automated Railway deploy (RAILWAY_TOKEN\
+        \ set)\"\n  python3 scripts/smoke-milestone2-latency-ab.py \\\n    --full-ab \\\n    --json docs/delivery/milestone2-latency-ab-latest.json\n\
+        else\n  echo \"::warning::RAILWAY_TOKEN not set \u2014 falling back to manual-wait mode.\"\n  echo \"Rollback prod\
+        \ to ${PRE_RM_SHA:-09e57595} in Railway UI when prompted in logs.\"\n  python3 scripts/smoke-milestone2-latency-ab.py\
+        \ \\\n    --manual-wait-ab \\\n    --json docs/delivery/milestone2-latency-ab-latest.json\nfi\n"
+    - name: Re-run Milestone 2 audit with latency baseline attached
+      if: always()
+      env:
+        BACKEND_URL: https://gravitre-saas-backend-production.up.railway.app
+        SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+        SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        SUPABASE_JWT_SECRET: ${{ secrets.SUPABASE_JWT_SECRET }}
+        OAUTH_SMOKE_ORG_ID: ${{ secrets.OAUTH_SMOKE_ORG_ID }}
+      run: "PRE=$(python3 - <<'PY'\nimport json\nfrom pathlib import Path\np = Path(\"docs/delivery/milestone2-latency-ab-latest.json\"\
+        )\nif not p.is_file():\n    print(\"\")\n    raise SystemExit(0)\ndata = json.loads(p.read_text())\npre = (data.get(\"\
+        phases\") or {}).get(\"probe_pre_rm\") or {}\nout = Path(\"docs/delivery/milestone2-latency-pre-rm-probe.json\")\n\
+        out.write_text(json.dumps(pre, indent=2) + \"\\n\")\nprint(str(out))\nPY\n)\nEXTRA=\"\"\nif [ -n \"$PRE\" ] && [ -f\
+        \ \"$PRE\" ]; then\n  EXTRA=\"--latency-baseline $PRE\"\nfi\npython3 scripts/smoke-milestone2-performance-audit.py\
+        \ \\\n  $EXTRA \\\n  --json docs/delivery/milestone2-performance-audit-latest.json\n"
+    - name: Upload latency A/B artifacts
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: milestone2-latency-ab
+        path: 'docs/delivery/milestone2-latency-ab-latest.json
+
+          docs/delivery/milestone2-latency-pre-rm-probe.json
+
+          docs/delivery/milestone2-performance-audit-latest.json
+
+          '
+        if-no-files-found: ignore
+    needs:
+    - dispatch_contract
+    if: ${{ needs.dispatch_contract.result == 'success' && inputs.source == 'milestone2-latency-ab' && (success()) }}
+  milestone2_performance_audit__performance-audit:
+    name: Milestone 2 prod performance audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+        cache: pip
+        cache-dependency-path: backend/requirements.txt
+    - name: Install dependencies
+      working-directory: backend
+      run: 'python -m pip install --upgrade pip
+
+        pip install -r requirements-dev.txt
+
+        '
+    - name: Run Milestone 2 performance audit (prod)
+      env:
+        BACKEND_URL: https://gravitre-saas-backend-production.up.railway.app
+        SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+        SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        SUPABASE_JWT_SECRET: ${{ secrets.SUPABASE_JWT_SECRET }}
+        OAUTH_SMOKE_ORG_ID: ${{ secrets.OAUTH_SMOKE_ORG_ID }}
+      run: "python3 scripts/smoke-milestone2-performance-audit.py \\\n  --json docs/delivery/milestone2-performance-audit-latest.json\n"
+    - name: Upload performance audit artifact
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: milestone2-performance-audit
+        path: docs/delivery/milestone2-performance-audit-latest.json
+        if-no-files-found: ignore
+    needs:
+    - dispatch_contract
+    if: ${{ needs.dispatch_contract.result == 'success' && inputs.source == 'milestone2-performance-audit' && (success())
+      }}
+  native_langfuse_certification__real-delivery:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      TELEMETRY_ENABLED: 'false'
+      OTEL_SDK_DISABLED: 'true'
+      LANGFUSE_INIT_ORG_ID: native-fixture-org
+      LANGFUSE_INIT_ORG_NAME: Isolated CI fixture
+      LANGFUSE_INIT_PROJECT_ID: native-fixture-project
+      LANGFUSE_INIT_PROJECT_NAME: Synthetic metrics only
+      LANGFUSE_INIT_PROJECT_PUBLIC_KEY: pk-lf-native-fixture
+      LANGFUSE_INIT_PROJECT_SECRET_KEY: sk-lf-native-fixture-local-only
+      LANGFUSE_INIT_USER_EMAIL: native-fixture@example.invalid
+      LANGFUSE_INIT_USER_PASSWORD: isolated-fixture-not-a-live-credential
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+        cache: pip
+        cache-dependency-path: backend/native-workers/requirements-langfuse.txt
+    - name: Install application transport dependencies
+      run: pip install -r backend/native-workers/requirements-langfuse.txt
+    - name: Prepare pinned isolated actual Langfuse server
+      run: "curl --fail --location --silent --show-error https://raw.githubusercontent.com/langfuse/langfuse/d89f49b82620dc9a773bd2f97449289f4f6c199e/docker-compose.yml\
+        \ -o \"$RUNNER_TEMP/langfuse-upstream.yml\"\npython - <<'PY'\nimport os,pathlib,yaml\nsource=pathlib.Path(os.environ['RUNNER_TEMP'])/'langfuse-upstream.yml'\n\
+        config=yaml.safe_load(source.read_text())\nfor name,service in config['services'].items():\n    service['ports']=[p\
+        \ if p.startswith('127.0.0.1:') else '127.0.0.1:'+p for p in service.get('ports',[])]\n    if name in ('langfuse-web','langfuse-worker'):\n\
+        \        service['image']=service['image'].rsplit(':',1)[0]+':4.71.0'\nconfig['networks']={'default':{'internal':True}}\n\
+        (source.parent/'langfuse-cert.yml').write_text(yaml.safe_dump(config))\nPY\ndocker compose -p native-langfuse-cert\
+        \ -f \"$RUNNER_TEMP/langfuse-cert.yml\" up -d\npython - <<'PYHOST'\nimport ipaddress,json,os,pathlib,subprocess\n\
+        config=pathlib.Path(os.environ['RUNNER_TEMP'])/'langfuse-cert.yml'\ncontainer=subprocess.check_output(['docker','compose','-p','native-langfuse-cert','-f',str(config),'ps','-q','langfuse-web'],text=True).strip()\n\
+        networks=json.loads(subprocess.check_output(['docker','inspect','--format','{{json .NetworkSettings.Networks}}',container],text=True))\n\
+        address=ipaddress.ip_address(networks['native-langfuse-cert_default']['IPAddress'])\nassert address.version==4 and\
+        \ address.is_private and not address.is_loopback\n# Internal-only bridges have no published ports. On Linux the host\n\
+        # can reach this private interface without granting server egress.\nwith open(os.environ['GITHUB_ENV'],'a') as env:env.write(f'LANGFUSE_CERT_HTTP_HOST={address}\\\
+        n')\nPYHOST\n"
+    - name: Wait for the actual application
+      run: "python - <<'PY'\nimport os,time,urllib.request\nopener=urllib.request.build_opener(urllib.request.ProxyHandler({}))\n\
+        deadline=time.monotonic()+420\nwhile time.monotonic()<deadline:\n    try:\n        with opener.open('http://'+os.environ['LANGFUSE_CERT_HTTP_HOST']+':3000/api/public/health',timeout=5)\
+        \ as r:\n            if r.status==200:break\n    except Exception:pass\n    time.sleep(3)\nelse:raise SystemExit('Isolated\
+        \ Langfuse did not become healthy')\nPY\n"
+    - name: Verify real durable OTLP acknowledgement and deletion
+      run: python backend/native-workers/langfuse_contract.py
+    - uses: actions/upload-artifact@v4
+      with:
+        name: langfuse-delivery-certification
+        path: langfuse-runtime-evidence.json
+        if-no-files-found: error
+    - name: Diagnose isolated startup or delivery failure without payloads
+      if: failure()
+      run: python backend/native-workers/langfuse_diagnostics.py
+    - name: Remove only this job's disposable services and volumes
+      if: always()
+      run: docker compose -p native-langfuse-cert -f "$RUNNER_TEMP/langfuse-cert.yml" down --volumes --remove-orphans
+    name: real-delivery
+    needs:
+    - dispatch_contract
+    if: ${{ needs.dispatch_contract.result == 'success' && inputs.source == 'native-langfuse-certification' && (success())
+      }}
+    permissions:
+      contents: read
+  phase3_intelligence_coverage__coverage-inventory:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+    - name: Reclaim hosted-runner disk before CPU-only dependencies
+      run: "set -euo pipefail\necho \"Phase 3 disk before cleanup:\"\ndf -h / /tmp\nfor dir in /usr/local/lib/android /usr/share/dotnet\
+        \ /opt/ghc /usr/local/share/powershell; do\n  if [ -d \"$dir\" ]; then\n    sudo rm -rf -- \"$dir\"\n  fi\ndone\n\
+        python -m pip cache purge || true\nsudo apt-get clean\necho \"Phase 3 disk after cleanup:\"\ndf -h / /tmp\nfree_kib=$(df\
+        \ -Pk / | awk 'NR==2 {print $4}')\nif [ \"$free_kib\" -lt 10485760 ]; then\n  echo \"::error::Phase 3 coverage requires\
+        \ 10 GiB free before heavy Python install; KiB=$free_kib\"\n  exit 1\nfi\n"
+    - name: Install backend test dependencies (CPU torch; no wheel caches)
+      working-directory: backend
+      env:
+        PIP_NO_CACHE_DIR: '1'
+        PIP_DISABLE_PIP_VERSION_CHECK: '1'
+        PYTHONDONTWRITEBYTECODE: '1'
+      run: 'set -euo pipefail
+
+        python -m pip install --no-cache-dir --no-compile --upgrade pip
+
+        # This contract-only job must not download multi-GB CUDA runtimes.
+
+        # Match the existing offline Phase 3 CPU build before requirements.
+
+        python -m pip install --no-cache-dir --no-compile torch --index-url https://download.pytorch.org/whl/cpu
+
+        python -m pip install --no-cache-dir --no-compile -r requirements-dev.txt
+
+        python -c "import torch; assert torch.version.cuda is None, ''Phase 3 must use CPU-only torch''"
+
+        python -m pip check
+
+        df -h / /tmp
+
+        '
+    - name: Validate 56-cell inventory and fail-closed evidence rules
+      run: 'cd backend
+
+        python -m pytest -q tests/test_phase3_intelligence_coverage.py
+
+        python scripts/phase3_intelligence_coverage.py --output ../phase3-evidence/intelligence-coverage.json
+
+        '
+    - name: Shared One Brain handoff and governed execution contracts
+      working-directory: backend
+      run: 'python -m pytest -q -p tests.offline_network_guard -o junit_family=xunit1 --junitxml=../phase3-evidence/shared-runtime.xml
+        tests/services/test_phase3_one_brain_contract.py tests/services/test_phase3_read_execution_integrity.py tests/services/test_phase3_measured_feedback.py
+        tests/services/test_execution_intelligence_context.py tests/test_msp_delegation_policy.py tests/test_msp_delegation_preflight.py
+        tests/services/test_agent_tool_permissions.py tests/services/pipecat_voice/test_phase3_provider_commit_gate.py tests/services/test_outcome_ownership_learning_contamination.py
+        tests/services/test_react_write_gate_catalog_authority.py tests/services/test_write_invoke_idempotency.py tests/services/test_compensation_service.py
+        tests/e2e/test_phase3_required_play_routing.py tests/e2e/test_intelligence_evidence_play_handoff.py tests/e2e/test_intelligence_recommendation_full_lifecycle.py
+        tests/e2e/test_intelligence_tenant_recovery_regression.py
+
+        python scripts/phase3_intelligence_coverage.py --junit ../phase3-evidence/shared-runtime.xml --require-offline --output
+        ../phase3-evidence/shared-runtime-coverage.json
+
+        '
+    - name: Run three offline business-domain contract bundles
+      run: 'cd backend
+
+        python scripts/phase3_intelligence_scenario_bundles.py
+
+        '
+    - name: Publish coverage evidence (not certification)
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: phase3-intelligence-coverage
+        path: 'phase3-evidence/
+
+          backend/phase3-evidence/
+
+          '
+    name: coverage-inventory
+    needs:
+    - dispatch_contract
+    if: ${{ needs.dispatch_contract.result == 'success' && inputs.source == 'phase3-intelligence-coverage' && (success())
+      }}
+  phase3_offline_12_scenarios__evaluate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+    - name: Install backend test dependencies
+      run: 'python -m pip install --upgrade pip
+
+        # This CPU-only offline job exhausted runner disk installing CUDA
+
+        # torch wheels. Match federated-runtime.yml''s CPU selection; retain
+
+        # every dependency, scenario and safety assertion. Avoid restoring or
+
+        # retaining multi-GB GPU wheel caches on this job''s runner.
+
+        pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cpu
+
+        pip install --no-cache-dir -r requirements.txt
+
+        pip install --no-cache-dir pytest pytest-asyncio
+
+        python -c "import torch; assert torch.version.cuda is None, ''Offline evaluation requires the CPU torch build''"
+
+        '
+    - name: Execute 12 offline scenario contract suites
+      run: python scripts/phase3_offline_12_scenarios.py
+      env:
+        PHASE3_OUTPUT_DIR: ${{ runner.temp }}/gravitre-phase3-evidence
+        OPENAI_API_KEY: fake-phase3-key
+        ANTHROPIC_API_KEY: fake-phase3-key
+        GEMINI_API_KEY: fake-phase3-key
+    - name: Run virtual-clock voice turn benchmark (scripted providers; not physical voice)
+      run: python scripts/bench_voice_scenarios.py --runs 5 --seed 1000 --profile production_inferred --out "${{ runner.temp
+        }}/gravitre-phase3-evidence/voice-virtual-clock" --label phase3-pr534
+      env:
+        OPENAI_API_KEY: fake-phase3-key
+        ANTHROPIC_API_KEY: fake-phase3-key
+        GEMINI_API_KEY: fake-phase3-key
+    - name: Enforce all graded voice replay safety outcomes
+      run: python scripts/phase3_voice_replay_gate.py "${{ runner.temp }}/gravitre-phase3-evidence/voice-virtual-clock/results.json"
+    - name: Upload full evidence even on failure
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: phase3-12-scenario-offline-${{ github.sha }}
+        path: ${{ runner.temp }}/gravitre-phase3-evidence/
+        if-no-files-found: warn
+    name: evaluate
+    needs:
+    - dispatch_contract
+    if: ${{ needs.dispatch_contract.result == 'success' && inputs.source == 'phase3-offline-12-scenarios' && (success()) }}
+  phase3_phase5_evidence__evidence:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+        cache: pip
+        cache-dependency-path: backend/requirements.txt
+    - name: Install backend dependencies
+      run: 'python -m pip install --upgrade pip
+
+        pip install -r requirements.txt
+
+        pip install pytest pytest-asyncio
+
+        '
+    - name: Compile Python sources before contract tests
+      run: python -m py_compile app/operators/agent_intelligence.py
+    - name: Strict Phase 3 contract evidence
+      run: python scripts/phase3_offline_12_scenarios.py
+      env:
+        PHASE3_OUTPUT_DIR: ${{ runner.temp }}/phase3-evidence
+        OPENAI_API_KEY: fake-phase3
+        ANTHROPIC_API_KEY: fake-phase3
+        GEMINI_API_KEY: fake-phase3
+    - name: Strict Phase 5 learning prerequisites
+      if: success() || failure()
+      run: python scripts/phase5_learning_evidence_gate.py
+      env:
+        PHASE5_OUTPUT_DIR: ${{ runner.temp }}/phase5-evidence
+        OPENAI_API_KEY: fake-phase5
+        ANTHROPIC_API_KEY: fake-phase5
+        GEMINI_API_KEY: fake-phase5
+    - name: Upload evidence on success or failure
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: phase3-phase5-evidence-${{ github.sha }}
+        path: '${{ runner.temp }}/phase3-evidence/
+
+          ${{ runner.temp }}/phase5-evidence/
+
+          '
+        if-no-files-found: warn
+    name: evidence
+    needs:
+    - dispatch_contract
+    if: ${{ needs.dispatch_contract.result == 'success' && inputs.source == 'phase3-phase5-evidence' && (success()) }}
+  research_cascade_prod_smoke__prod-smoke:
+    name: Research cascade prod SSE smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+        cache: pip
+        cache-dependency-path: backend/requirements.txt
+    - name: Install dependencies
+      working-directory: backend
+      run: 'python -m pip install --upgrade pip
+
+        pip install -r requirements-dev.txt
+
+        '
+    - name: Run research cascade production smoke
+      env:
+        BACKEND_URL: https://gravitre-saas-backend-production.up.railway.app
+        SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+        SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        SUPABASE_JWT_SECRET: ${{ secrets.SUPABASE_JWT_SECRET }}
+      run: "python scripts/smoke-research-cascade-prod.py \\\n  --json docs/delivery/smoke-research-cascade-prod-latest.json\n"
+    - name: Upload smoke report
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: smoke-research-cascade-prod
+        path: docs/delivery/smoke-research-cascade-prod-latest.json
+        if-no-files-found: ignore
+    needs:
+    - dispatch_contract
+    if: ${{ needs.dispatch_contract.result == 'success' && inputs.source == 'research-cascade-prod-smoke' && (success()) }}
+  unified_turn_phase2_live__deploy-and-battery:
+    name: Deploy prod, enable shadow, run live batteries
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+        cache: pip
+        cache-dependency-path: backend/requirements.txt
+    - name: Install backend deps
+      working-directory: backend
+      run: 'python -m pip install --upgrade pip
+
+        pip install -r requirements-dev.txt
+
+        '
+    - name: Install Railway CLI
+      run: npm install -g @railway/cli@4.65.0
+    - name: Force railway up on production + verify tip
+      env:
+        RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+        RAILWAY_ENV: ${{ inputs.unified_turn_phase2_live__railway_environment }}
+      run: "set -euo pipefail\nSHA=\"${{ inputs.unified_turn_phase2_live__commit_sha }}\"\nif [ -z \"$SHA\" ]; then\n  SHA=\"\
+        $(git rev-parse --short=8 HEAD)\"\nfi\nFULL=\"$(git rev-parse HEAD)\"\nENV_NAME=\"${RAILWAY_ENV:-production}\"\nSVC=\"\
+        gravitre-saas-backend\"\necho \"Expect health git_sha prefix=$SHA full=$FULL env=$ENV_NAME\"\n\nrailway whoami ||\
+        \ true\nrailway status --json || true\n\n# Do not pin a stale GIT_SHA. Prefer Railway's commit SHA from a GitHub\n\
+        # deploy; only set GIT_SHA to this tip when health is still on an old tip\n# (CLI upload path does not always populate\
+        \ RAILWAY_GIT_COMMIT_SHA).\nif [ \"${{ inputs.unified_turn_phase2_live__enable_shadow }}\" = \"true\" ]; then\n  railway\
+        \ variables set \"UNIFIED_TURN_SHADOW_ENABLED=true\" --service \"$SVC\" --environment \"$ENV_NAME\"\nfi\nif [ \"${{\
+        \ inputs.unified_turn_phase2_live__enable_live }}\" = \"true\" ]; then\n  railway variables set \"UNIFIED_TURN_LIVE_ENABLED=true\"\
+        \ --service \"$SVC\" --environment \"$ENV_NAME\"\nfi\n\nCURRENT=\"$(curl -fsS https://api.gravitre.app/health | python3\
+        \ -c 'import sys,json; print(json.load(sys.stdin).get(\"git_sha\",\"\"))' || true)\"\necho \"current_health_sha=$CURRENT\"\
+        \nTIP_OK=0\nif [[ \"$CURRENT\" == \"$FULL\"* ]] || [[ \"$CURRENT\" == \"$SHA\"* ]]; then\n  TIP_OK=1\nelif [ -n \"\
+        $CURRENT\" ] && git merge-base --is-ancestor \"$SHA\" \"$CURRENT\" 2>/dev/null; then\n  # Tip already past requested\
+        \ SHA (auto-deploy raced ahead).\n  TIP_OK=1\nfi\nif [ \"$TIP_OK\" = \"1\" ]; then\n  echo \"Prod tip already at/after\
+        \ checkout; skip railway up\"\n  # Settings are process-scoped \u2014 restart so LIVE/SHADOW env flips take effect.\n\
+        \  if [ \"${{ inputs.unified_turn_phase2_live__enable_live }}\" = \"true\" ]; then\n    echo \"Redeploying current\
+        \ image to load UNIFIED_TURN_LIVE_ENABLED\"\n    railway redeploy --service \"$SVC\" --environment \"$ENV_NAME\" --yes\
+        \ || true\n    sleep 20\n  fi\nelse\n  railway variables set \"GIT_SHA=$FULL\" --service \"$SVC\" --environment \"\
+        $ENV_NAME\"\n  echo \"$FULL $(date -u +%Y-%m-%dT%H:%M:%SZ)\" > backend/.railway-deploy-stamp\n  echo \"stamp=$(cat\
+        \ backend/.railway-deploy-stamp)\"\n  railway up ./backend --path-as-root --ci \\\n    --service \"$SVC\" \\\n   \
+        \ --environment \"$ENV_NAME\" \\\n    --message \"unified-turn-phase4 $SHA\"\nfi\n\nrailway deployment list --service\
+        \ \"$SVC\" --environment \"$ENV_NAME\" --json > /tmp/deps.json || true\npython3 - <<'PY'\nimport json\nfrom pathlib\
+        \ import Path\np = Path(\"/tmp/deps.json\")\nif not p.is_file():\n    raise SystemExit(0)\nrows = json.loads(p.read_text()\
+        \ or \"[]\")\nif not isinstance(rows, list):\n    raise SystemExit(0)\nfor r in rows[:5]:\n    print(f\"{r.get('id','')}\
+        \ status={r.get('status','')} created={r.get('createdAt','')}\")\nPY\n\n# Wait for tip at/after requested SHA (descendant\
+        \ tips count as success).\n# If Railway is stuck (WAITING/SKIPPED) but tip already has a known-good\n# battery tip,\
+        \ continue \u2014 do not block batteries on a tip-wait race.\nset +e\npython3 scripts/railway_prod_deploy.py \\\n\
+        \  --wait-health-only \\\n  --timeout-s 900 \\\n  --health-url https://gravitre-saas-backend-production.up.railway.app/health\
+        \ \\\n  --commit-sha \"$SHA\"\nWAIT1=$?\npython3 scripts/railway_prod_deploy.py \\\n  --wait-health-only \\\n  --timeout-s\
+        \ 120 \\\n  --health-url https://api.gravitre.app/health \\\n  --commit-sha \"$SHA\"\nWAIT2=$?\nset -e\nLIVE_NOW=\"\
+        $(curl -fsS https://api.gravitre.app/health | python3 -c 'import sys,json; print(json.load(sys.stdin).get(\"git_sha\"\
+        ,\"\"))' || true)\"\necho \"post_wait_tip=$LIVE_NOW wait1=$WAIT1 wait2=$WAIT2\"\nif [ \"$WAIT1\" != \"0\" ] || [ \"\
+        $WAIT2\" != \"0\" ]; then\n  # Minimum tips that already proved batteries green on prod.\n  if git merge-base --is-ancestor\
+        \ 444371f9 \"$LIVE_NOW\" 2>/dev/null \\\n    || git merge-base --is-ancestor 2f764ef6 \"$LIVE_NOW\" 2>/dev/null \\\
+        \n    || [[ \"$LIVE_NOW\" == 444371f9* ]] || [[ \"$LIVE_NOW\" == 2f764ef6* ]]; then\n    echo \"WARN: tip wait missed\
+        \ $SHA but live tip $LIVE_NOW already carries Phase 2 code; continuing to batteries\"\n  else\n    echo \"ERROR: tip\
+        \ wait failed and live tip $LIVE_NOW is not a known Phase 2 tip\"\n    exit 1\n  fi\nfi\n"
+    - name: Phase 2 live batteries (classical + shadow)
+      env:
+        LIVE_API_BASE: https://api.gravitre.app
+        SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+        SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        SUPABASE_JWT_SECRET: ${{ secrets.SUPABASE_JWT_SECRET }}
+        SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        OAUTH_SMOKE_ORG_ID: ${{ secrets.OAUTH_SMOKE_ORG_ID }}
+      run: "set -euo pipefail\n# Prefer live tip prefix so batteries don't fail when tip raced ahead of input SHA.\nLIVE_SHA=\"\
+        $(curl -fsS https://api.gravitre.app/health | python3 -c 'import sys,json; print(json.load(sys.stdin).get(\"git_sha\"\
+        ,\"\")[:8])')\"\nif [ -n \"${{ inputs.unified_turn_phase2_live__commit_sha }}\" ]; then\n  export EXPECT_SHA=\"${{\
+        \ inputs.unified_turn_phase2_live__commit_sha }}\"\nelif [ -n \"$LIVE_SHA\" ]; then\n  export EXPECT_SHA=\"$LIVE_SHA\"\
+        \nelse\n  export EXPECT_SHA=\"$(git rev-parse --short=8 HEAD)\"\nfi\necho \"EXPECT_SHA=$EXPECT_SHA LIVE_SHA=$LIVE_SHA\"\
+        \npython3 scripts/verify-unified-turn-phase2-live.py\n"
+    - name: Upload Phase 2 artifacts
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: unified-turn-phase2-live
+        path: 'docs/delivery/unified-turn-phase2-battery-live.json
+
+          docs/delivery/pending-reply-classifier-battery-live.json
+
+          docs/delivery/conversational-path-battery-live.json
+
+          '
+    needs:
+    - dispatch_contract
+    if: ${{ needs.dispatch_contract.result == 'success' && inputs.source == 'unified-turn-phase2-live' && (success()) }}
+  unified_turn_standing_batteries__standing-batteries:
+    name: Weekly unified-turn batteries
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+    - name: Install deps
+      run: pip install httpx PyJWT python-dotenv supabase
+    - name: Pending-reply battery (24)
+      env:
+        SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+        SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        SUPABASE_JWT_SECRET: ${{ secrets.SUPABASE_JWT_SECRET }}
+      run: python scripts/verify-pending-reply-classifier-live.py
+    - name: Conversational battery (20)
+      env:
+        SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+        SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        SUPABASE_JWT_SECRET: ${{ secrets.SUPABASE_JWT_SECRET }}
+      run: python scripts/verify-conversational-path-live.py
+    - name: Knowledge-boundary (phase2 subset)
+      env:
+        SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+        SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        SUPABASE_JWT_SECRET: ${{ secrets.SUPABASE_JWT_SECRET }}
+        PHASE2_CASE_FILTER: imperfect
+      run: python scripts/verify-unified-turn-phase2-live.py
+    - name: Persona-drift (30-turn)
+      env:
+        SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+        SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        SUPABASE_JWT_SECRET: ${{ secrets.SUPABASE_JWT_SECRET }}
+      run: python scripts/verify-unified-turn-persona-drift-live.py
+    - name: Prompt-injection resistance
+      env:
+        SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+        SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        SUPABASE_JWT_SECRET: ${{ secrets.SUPABASE_JWT_SECRET }}
+      run: python scripts/verify-unified-turn-prompt-injection-live.py
+    - name: Upload battery artifacts
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: unified-turn-standing-batteries
+        path: 'docs/delivery/pending-reply-classifier-battery-live.json
+
+          docs/delivery/conversational-path-battery-live.json
+
+          docs/delivery/unified-turn-phase2-battery-live.json
+
+          docs/delivery/unified-turn-persona-drift-live.json
+
+          docs/delivery/unified-turn-prompt-injection-live.json
+
+          '
+        if-no-files-found: ignore
+    needs:
+    - dispatch_contract
+    if: ${{ needs.dispatch_contract.result == 'success' && inputs.source == 'unified-turn-standing-batteries' && (success())
+      }}

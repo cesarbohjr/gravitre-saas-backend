@@ -1,3 +1,11 @@
+## Replacement implementation checkpoint — staged manual candidates
+
+Twelve candidate YAML files are implemented under `.github/workflow-candidates/`, covering all 94 source workflows and 120 source jobs. `scripts/build-canonical-workflows.py --check` compares them with current source contracts; `scripts/tests/test_canonical_workflows.py` has eight focused checks for job/step retention, permissions/environments, dependencies, typed inputs/defaults, manual approval input validation, reusable-call resolution and tamper rejection. The existing Master QA synthetic job now checks candidates and lints an isolated twelve-file layout using actionlint v1.7.12, without running candidate jobs or changing its existing check name.
+
+**Scope limitation:** these candidates implement selected-source manual dispatch, not automatic-trigger cutover. The parity report explicitly records automatic parity as NOT_IMPLEMENTED and runtime parity as NOT_RUN. All source automatic triggers remain active. Candidate concurrency groups are isolated from originals. Dynamic GitHub workflow identity, environment workflow restrictions, repository-wide callers, protected required checks, exact-head replacement runs and automatic event routing remain unverified. A successful static check does not authorize installation or deletion. Installed workflow count remains 94, with zero retirements in this checkpoint.
+
+GitHub main-branch protection still returns HTTP 403 through the integration. The browser fallback reaches GitHub sign-in; no authenticated admin session is available yet. This access gap blocks required-check readback but is not the only outstanding implementation item.
+
 ## Corrected execution mandate — 12-workflow consolidation precedes bulk remediation (2026-11-15)
 
 **Owner instruction takes precedence over the earlier temporary retention strategy.** Consolidate the repository's CI/testing and necessary deploy/operational automation into a comprehensible **target of 12 canonical workflow YAML files** before resuming bulk engineering of the 43 findings. The current branch inventory is **94 files** in `.github/workflows/` (not merely the 23 workflows run on the most recent PR commit); the older 95-file count is historical. A passing PR workflow subset does not certify the entire installed workflow inventory.
