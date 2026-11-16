@@ -1,3 +1,13 @@
+## Verified consolidation checkpoint and remediation continuation
+
+PR #611 at `2702736d0ab798511dde594265010d598e44f17a` has exactly **12** active workflow files, replacing **94** historical source definitions. All **10 automatic PR lanes passed**, including all five protected Core CI checks. The backend run passed **16,987 tests**, with **44 skips** and **14 passed subtests**. [Exact-SHA Core CI](https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/43801223572). The two manual/release lanes were not dispatched. Main and production are unchanged; this is branch-level verification, not production qualification. Earlier checkpoints below are historical.
+
+Code remediation now advances across the original 43-finding register wherever actual prerequisites are met. ECO-002/003 live acceptance is not a blanket engineering dependency. The current canonical-authority batch repairs specific scope-readiness and stale terminal-plan defects across ECO-005, ECO-015, DEC-004, ECO-013 and DEC-005. It also carries the already-prepared ECO-002 report-integrity repair without creating another workflow. The original owners, finding order, closure criteria and release gates remain authoritative.
+
+The previously authorized isolated QA source change to the certified SHA was staged. The deployment tool rejected execution with “user did not approve this action”; no QA deployment occurred. This acceptance blocker does not stop unrelated code remediation.
+
+---
+
 ## Runtime repair checkpoint after the development cutover
 
 The first installed-12 run exposed two concrete issues. The Voice wrapper's reusable call did not provide the read-only `pull-requests` permission ceiling required by the called lane's existing protected PR preflight; wrapper ceilings now include contents/actions/pull-requests **read only**, while execution jobs retain their narrower source permissions. This changes no provider grant and adds no write permission.

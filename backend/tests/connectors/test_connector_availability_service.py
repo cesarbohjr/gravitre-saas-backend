@@ -144,6 +144,39 @@ def test_hubspot_missing_scope(_configured, mock_tokens, _auth, _actions):
     assert "missing scope" in message.lower() or "scopes are missing" in message.lower()
 
 
+@pytest.mark.parametrize("scopes", [None, [], {}, "crm.objects.contacts.write", [None]])
+@pytest.mark.parametrize("action", ["hubspot.contacts.search", "hubspot.contacts.create", "hubspot.deals.update"])
+@patch("app.connectors.connector_availability_service.resolve_connector_auth_status", return_value="connected")
+@patch("app.connectors.connector_availability_service.load_oauth_tokens")
+@patch("app.connectors.connector_availability_service._hubspot_oauth_configured", return_value=True)
+def test_unknown_grants_do_not_authorize_a_registered_action(
+    _configured, mock_tokens, _auth, scopes, action,
+):
+    mock_tokens.return_value = {"access_token": "tok", "scopes": scopes}
+    with patch("app.connectors.connector_availability_service.list_registered_actions", return_value=[action]):
+        result = evaluate_connector_availability(
+            MagicMock(), "org-1", _hubspot_row(), _settings(), action_key=action,
+        )
+    assert result["connected"] is True
+    assert result["scopes_valid"] is False
+    assert result["blocking_reason"] == "missing_scope"
+    assert result["execution_available"] is False
+    assert result["read_available"] is False
+    assert result["write_available"] is False
+
+
+@patch("app.connectors.connector_availability_service.resolve_connector_auth_status", return_value="connected")
+@patch("app.connectors.connector_availability_service.load_oauth_tokens", return_value={"access_token": "tok"})
+@patch("app.connectors.connector_availability_service._hubspot_oauth_configured", return_value=True)
+def test_unknown_grants_do_not_mislabel_connected_account_as_disconnected(*_mocks):
+    result = evaluate_connector_availability(
+        MagicMock(), "org-1", _hubspot_row(), _settings(), action_key=None,
+    )
+    assert result["connected"] is True
+    assert result["blocking_reason"] is None
+
+
+
 @patch("app.connectors.connector_availability_service.list_registered_actions", return_value=[])
 @patch("app.connectors.connector_availability_service.resolve_connector_auth_status", return_value="connected")
 @patch("app.connectors.connector_availability_service.load_oauth_tokens")

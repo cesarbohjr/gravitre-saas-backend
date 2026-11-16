@@ -253,6 +253,13 @@
           "backend/tests/db/test_eco001_joined_chat_http_receiver_pg.py",
           "backend/tests/db/test_eco001_joined_agent_worker_pg_receiver.py"
         ]
+      },
+      "engineering_reporting_repair": {
+        "scope": "Reject malformed timing records among valid samples; support JSON log messages without exporting identity fields",
+        "source": "backend/scripts/eco002_route_stage_latency_report.py",
+        "regression": "backend/tests/master_qa/test_eco002_route_stage_latency_report.py",
+        "measured_runtime_baseline": null,
+        "optimization_authorized": false
       }
     },
     {
@@ -457,6 +464,15 @@
         "scope": "catalog only; server-side tenant/provider credentials still enforced separately",
         "runtime_status": "CI_PENDING",
         "live_provider_status": "NOT_RUN"
+      },
+      "engineering_batch_evidence": {
+        "batch": "canonical-authority",
+        "scope": "Known HubSpot action readiness rejects absent, empty or malformed grant metadata; connected-account listing remains connected.",
+        "source": "backend/app/connectors/connector_availability_service.py",
+        "regression": "backend/tests/connectors/test_connector_availability_service.py",
+        "targeted_result": "28 passed locally; 9 selected regression cases fail against pre-repair source",
+        "remaining": "Full CI and actual governed provider receipts/scopes, native/managed precedence and deployed cross-surface qualification remain open.",
+        "release_certified": false
       }
     },
     {
@@ -559,7 +575,19 @@
         "certifies_whole_finding": false
       },
       "audit_evidence_class": "SOURCE_CANDIDATE_REQUIRES_RUNTIME_PROOF",
-      "audit_observation": "Original audit and source candidate require caller/runtime evidence; no final root-cause claim."
+      "audit_observation": "Original audit and source candidate require caller/runtime evidence; no final root-cause claim.",
+      "engineering_batch_evidence": {
+        "scope": "94 historical workflow definitions consolidated into 12 active files on PR611; 121 mapped jobs; five required check names preserved",
+        "verified_sha": "2702736d0ab798511dde594265010d598e44f17a",
+        "ci_run": "https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/43801223572",
+        "automatic_lanes_passed": 10,
+        "backend_tests_passed": 16987,
+        "backend_tests_skipped": 44,
+        "subtests_passed": 14,
+        "main_merged": false,
+        "remaining": "Protected manual/live qualification, external consumers, operations concurrency/cost and main release remain separately gated.",
+        "release_certified": false
+      }
     },
     {
       "finding_id": "ECO-008",
@@ -877,7 +905,17 @@
         "certifies_whole_finding": false
       },
       "audit_evidence_class": "SOURCE_CANDIDATE_REQUIRES_RUNTIME_PROOF",
-      "audit_observation": "Original audit and source candidate require caller/runtime evidence; no final root-cause claim."
+      "audit_observation": "Original audit and source candidate require caller/runtime evidence; no final root-cause claim.",
+      "engineering_batch_evidence": {
+        "batch": "canonical-authority",
+        "scope": "Protect inconclusive write terminals and reject older revisions before accepting approval or terminal patches; newer verified outcomes and distinct next actions remain supported.",
+        "source": "backend/app/services/execution_plan_authority.py",
+        "regression": "backend/tests/services/test_execution_plan_authority.py",
+        "caller": "conversation_state_service -> execution_plan_adapters.enrich_task_state_patch -> prefer_persisted_write_plan",
+        "targeted_result": "90 authority/lifecycle/convergence cases passed locally; 3 selected regressions fail against pre-repair source",
+        "remaining": "Concurrent persisted cancellation/revocation races, equal-revision authority, all surface/device parity and deployed readback remain open.",
+        "release_certified": false
+      }
     },
     {
       "finding_id": "ECO-014",
@@ -952,7 +990,7 @@
       "dependencies": [],
       "regression_candidate": null,
       "regression_state": "NOT_YET_IMPLEMENTED",
-      "implementation_state": "EVIDENCE_OR_REPAIR_PENDING",
+      "implementation_state": "PARTIAL_REPAIR_SOURCE_COMMITTED_UNMERGED_NOT_CERTIFIED",
       "implemented_commit": null,
       "synthetic_status": "NOT_CERTIFIED",
       "live_status": "NOT_RUN",
@@ -979,7 +1017,16 @@
       ],
       "partial_test_evidence": null,
       "audit_evidence_class": "SOURCE_CANDIDATE_REQUIRES_RUNTIME_PROOF",
-      "audit_observation": "Original audit and source candidate require caller/runtime evidence; no final root-cause claim."
+      "audit_observation": "Original audit and source candidate require caller/runtime evidence; no final root-cause claim.",
+      "engineering_batch_evidence": {
+        "batch": "canonical-authority",
+        "scope": "Known HubSpot action readiness rejects absent, empty or malformed grant metadata; connected-account listing remains connected.",
+        "source": "backend/app/connectors/connector_availability_service.py",
+        "regression": "backend/tests/connectors/test_connector_availability_service.py",
+        "targeted_result": "28 passed locally; 9 selected regression cases fail against pre-repair source",
+        "remaining": "Full CI and actual governed provider receipts/scopes, native/managed precedence and deployed cross-surface qualification remain open.",
+        "release_certified": false
+      }
     },
     {
       "finding_id": "P27-01",
@@ -1612,6 +1659,15 @@
         "scope": "catalog only; server-side tenant/provider credentials still enforced separately",
         "runtime_status": "CI_PENDING",
         "live_provider_status": "NOT_RUN"
+      },
+      "engineering_batch_evidence": {
+        "batch": "canonical-authority",
+        "scope": "Known HubSpot action readiness rejects absent, empty or malformed grant metadata; connected-account listing remains connected.",
+        "source": "backend/app/connectors/connector_availability_service.py",
+        "regression": "backend/tests/connectors/test_connector_availability_service.py",
+        "targeted_result": "28 passed locally; 9 selected regression cases fail against pre-repair source",
+        "remaining": "Full CI and actual governed provider receipts/scopes, native/managed precedence and deployed cross-surface qualification remain open.",
+        "release_certified": false
       }
     },
     {
@@ -1633,7 +1689,7 @@
       "dependencies": [],
       "regression_candidate": null,
       "regression_state": "NOT_YET_IMPLEMENTED",
-      "implementation_state": "EVIDENCE_OR_REPAIR_PENDING",
+      "implementation_state": "PARTIAL_ENGINEERING_TESTED_NOT_CLOSED",
       "implemented_commit": null,
       "synthetic_status": "NOT_CERTIFIED",
       "live_status": "NOT_RUN",
@@ -1660,7 +1716,17 @@
       ],
       "partial_test_evidence": null,
       "audit_evidence_class": "SOURCE_CANDIDATE_REQUIRES_RUNTIME_PROOF",
-      "audit_observation": "Original audit and source candidate require caller/runtime evidence; no final root-cause claim."
+      "audit_observation": "Original audit and source candidate require caller/runtime evidence; no final root-cause claim.",
+      "engineering_batch_evidence": {
+        "batch": "canonical-authority",
+        "scope": "Protect inconclusive write terminals and reject older revisions before accepting approval or terminal patches; newer verified outcomes and distinct next actions remain supported.",
+        "source": "backend/app/services/execution_plan_authority.py",
+        "regression": "backend/tests/services/test_execution_plan_authority.py",
+        "caller": "conversation_state_service -> execution_plan_adapters.enrich_task_state_patch -> prefer_persisted_write_plan",
+        "targeted_result": "90 authority/lifecycle/convergence cases passed locally; 3 selected regressions fail against pre-repair source",
+        "remaining": "Concurrent persisted cancellation/revocation races, equal-revision authority, all surface/device parity and deployed readback remain open.",
+        "release_certified": false
+      }
     },
     {
       "finding_id": "DEC-006",
@@ -2423,5 +2489,11 @@
     }
   ],
   "partial_test_mappings_count": 14,
-  "note": "Consolidation: ECO-001 administratively closed into ECO-002 (NOT remediated, certified, or retired); its full unresolved acceptance debt is inherited by P0 ECO-002, which alone remains release-blocking for both. The 43 original finding IDs are retained for traceability (42 separately tracked active entries, 1 consolidated), and global release remains unauthorized."
+  "note": "Consolidation: ECO-001 administratively closed into ECO-002 (NOT remediated, certified, or retired); its full unresolved acceptance debt is inherited by P0 ECO-002, which alone remains release-blocking for both. The 43 original finding IDs are retained for traceability (42 separately tracked active entries, 1 consolidated), and global release remains unauthorized.",
+  "engineering_execution_policy": {
+    "scope": "Existing 43-finding register; original IDs, owners, order and closure criteria retained",
+    "rule": "Advance code remediation for findings whose actual prerequisites are met. A blocked live acceptance check does not block unrelated engineering.",
+    "validation": "Targeted regression and neighboring lifecycle checks per coherent batch; full CI at integration checkpoints; no unchanged-head reruns without a confirmed failure.",
+    "completion": "Track source repair separately from exact-SHA CI, deployed acceptance, provider readback, rollback and owner approval. No release certification inferred from code-only checks."
+  }
 }

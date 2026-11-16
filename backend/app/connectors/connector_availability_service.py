@@ -49,9 +49,6 @@ def _hubspot_oauth_configured(settings: Settings, environment_name: str | None) 
 def _hubspot_scopes_valid(tokens: dict[str, Any] | None, action_key: str | None) -> tuple[bool, str | None]:
     if not tokens:
         return False, "missing_scope"
-    scopes = {str(scope) for scope in (tokens.get("scopes") or [])}
-    if not scopes:
-        return True, None
     # Connected-integration listing (no action_key) must not require the full
     # authorize-time scope set. Smoke / partial grants (contacts+deals+lists
     # without companies/tickets/notes) are still a connected HubSpot connector;
@@ -61,6 +58,14 @@ def _hubspot_scopes_valid(tokens: dict[str, Any] | None, action_key: str | None)
     required = HUBSPOT_ACTION_REQUIRED_SCOPES.get(action_key, ())
     if not required:
         return True, None
+    # Account connection is separate from authorization for a specific action.
+    # Missing or malformed grant metadata cannot establish required scopes.
+    granted = tokens.get("scopes")
+    if not isinstance(granted, (list, tuple, set, frozenset)) or not all(
+        isinstance(scope, str) for scope in granted
+    ):
+        return False, "missing_scope"
+    scopes = {scope.strip() for scope in granted if scope.strip()}
     missing = [scope for scope in required if scope not in scopes]
     if missing:
         return False, "missing_scope"

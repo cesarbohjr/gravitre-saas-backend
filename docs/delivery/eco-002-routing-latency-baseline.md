@@ -41,3 +41,7 @@ The 15-minute range is illustrative only; sampling windows, cold/warm starts, br
 - Collect reproducible per-stage p50/p95, request-shape/context-size strata, critical-path and sample-count evidence.
 - Measure observed effects before any concurrency change; use positive/negative parity tests including clarification early return, error propagation, cancellation, authority and side-effect boundaries.
 - Independently verify downstream consumer behavior, release/rollback and owner approval; keep register `live_status=NOT_RUN`, `fix_verified=false`, `release_blocking=true` until proven.
+
+## Report integrity repair
+
+The reporter rejects malformed timing records even among otherwise valid samples, including negative/non-finite values, truncated numbers and unknown outcomes. It supports ordinary logs and JSONFormatter message records without exporting identity metadata. This repair does not supply a measured runtime baseline or authorize concurrency changes.

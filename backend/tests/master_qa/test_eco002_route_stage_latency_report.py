@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import importlib.util
+import json
 from pathlib import Path
 
 import pytest
@@ -47,3 +48,50 @@ def test_stage_samples_are_not_claimed_to_be_complete_request_traces():
     assert "stage_summaries" in report
     assert "request_count" not in report
     assert report["eligible_for_optimization"] is False
+
+
+@pytest.mark.parametrize("record", [
+    "stage=classification outcome=ok duration_ms=-3.000",
+    "stage=classification outcome=ok duration_ms=nan",
+    "stage=classification outcome=ok duration_ms=inf",
+    "stage=classification outcome=ok duration_ms=3.0garbage",
+    "stage=classification outcome=ok duration_ms=3.0.1",
+    "stage=classification outcome=unknown duration_ms=3.000",
+    "stage=classification outcome=ok duration_ms=",
+    "stage=classification duration_ms=3.000",
+])
+def test_malformed_timing_cannot_hide_among_valid_samples(record):
+    with pytest.raises(ValueError, match="malformed ECO-002"):
+        module.summarize([
+            "eco002_route_stage stage=classification outcome=ok duration_ms=5.000",
+            "eco002_route_stage " + record,
+        ], provenance="verified_nonproduction", min_samples=1)
+
+
+def test_unrelated_logs_and_structured_log_suffix_do_not_drop_valid_samples():
+    report = module.summarize([
+        "INFO unrelated operation completed",
+        "INFO eco002_route_stage stage=classification outcome=ok duration_ms=0.000 logger=router",
+        "INFO eco002_route_stage stage=classification outcome=ok duration_ms=8.000",
+    ], provenance="verified_nonproduction", min_samples=2)
+    assert report["stage_summaries"]["classification"] == {
+        "samples": 2, "errors": 0, "p50_ms": 4, "p95_ms": 7.6,
+    }
+
+
+def test_json_formatter_records_parse_message_without_exporting_identity_fields():
+    report = module.summarize([json.dumps({
+        "message": "eco002_route_stage stage=classification outcome=ok duration_ms=5.000",
+        "org_id": "private-tenant",
+        "request_id": "private-request",
+    })], provenance="verified_nonproduction", min_samples=1)
+    assert report["stage_summaries"]["classification"]["p95_ms"] == 5
+    assert "private-tenant" not in json.dumps(report)
+    assert "private-request" not in json.dumps(report)
+
+
+def test_malformed_json_timing_record_cannot_count_as_valid_sample():
+    with pytest.raises(ValueError, match="malformed ECO-002 JSON"):
+        module.summarize([
+            '{"message": "eco002_route_stage stage=classification outcome=ok duration_ms=5.000"',
+        ], provenance="verified_nonproduction", min_samples=1)

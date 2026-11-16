@@ -15,7 +15,8 @@ from pathlib import Path
 
 PATTERN = re.compile(
     r"eco002_route_stage stage=(?P<stage>[a-z_]+) "
-    r"outcome=(?P<outcome>ok|error) duration_ms=(?P<ms>[0-9.]+)"
+    r"outcome=(?P<outcome>ok|error) duration_ms=(?P<ms>[0-9]+(?:\.[0-9]+)?)"
+    r"(?=\s|$)"
 )
 STAGES = frozenset({
     "overview_policy", "dialogue_settings", "understanding", "classification",
@@ -41,9 +42,26 @@ def summarize(lines: list[str], *, provenance: str, min_samples: int = 30) -> di
         raise ValueError("min_samples must be a positive integer")
     timings: dict[tuple[str, str], list[float]] = defaultdict(list)
     for line in lines:
+        # The backend can emit JSONFormatter records. Parse their message
+        # before validating the numeric token, rather than accepting a prefix
+        # before a JSON quote or leaking any surrounding identity fields.
+        if line.lstrip().startswith("{"):
+            try:
+                record = json.loads(line)
+            except ValueError as exc:
+                if "eco002_route_stage " in line:
+                    raise ValueError("malformed ECO-002 JSON log record") from exc
+                continue
+            if not isinstance(record, dict) or not isinstance(record.get("message"), str):
+                continue
+            line = record["message"]
+        # Unrelated logs are harmless; a timing record that cannot be parsed
+        # must fail the report instead of silently shrinking its sample set.
+        if "eco002_route_stage " not in line:
+            continue
         match = PATTERN.search(line)
         if not match:
-            continue
+            raise ValueError("malformed ECO-002 router stage timing")
         stage = match["stage"]
         if stage not in STAGES:
             raise ValueError("unknown router stage")
