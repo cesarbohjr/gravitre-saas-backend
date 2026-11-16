@@ -234,7 +234,8 @@ def test_verified_output_persistence_failure_is_not_reported_as_success(monkeypa
     )
     with pytest.raises(RuntimeError, match="simulated metadata store outage"):
         _persist_run(None, event, "completed", "2026-11-09T00:00:00+00:00")
-    assert calls == [("run-test", "completed")]
+    # Evidence must persist before a terminal transition emits the outbox event.
+    assert calls == []
 
 
 def test_finalizer_does_not_claim_run_persisted_after_storage_failure(monkeypatch):

@@ -55,8 +55,8 @@ def test_finalize_unproven_write_with_unknown_effect_is_inconclusive() -> None:
     with (
         patch("app.workflows.repository.update_run") as update_run,
         patch("app.workflows.repository.merge_run_parameters") as merge_params,
-        patch("app.workflows.repository.emit_execute_completed") as emit_completed,
-        patch("app.services.notification_emitter.emit_notification") as emit_notification,
+        patch("app.workflows.repository.emit_execute_completed", return_value=True) as emit_completed,
+        patch("app.services.notification_emitter.emit_notification", return_value="notification-test") as emit_notification,
     ):
         result = finalize_execution_outcome(
             client,
@@ -88,7 +88,11 @@ def test_finalize_unproven_write_with_unknown_effect_is_inconclusive() -> None:
     assert emit_notification.call_args.kwargs["event_type"] != "run_completed"
     # outcome_effect persisted onto run parameters
     merge_params.assert_called()
-    merged = merge_params.call_args[0][2]
+    # Delivery receipts are subsequent merges; proof must survive the complete
+    # sequence rather than being present only in whichever merge ran last.
+    merged = {}
+    for call in merge_params.call_args_list:
+        merged.update(call.args[2])
     assert merged.get("outcome_effect") == "unknown"
 
 
@@ -97,8 +101,8 @@ def test_finalize_keeps_completed_when_create_proven_by_read_back() -> None:
     with (
         patch("app.workflows.repository.update_run") as update_run,
         patch("app.workflows.repository.merge_run_parameters"),
-        patch("app.workflows.repository.emit_execute_completed"),
-        patch("app.services.notification_emitter.emit_notification"),
+        patch("app.workflows.repository.emit_execute_completed", return_value=True),
+        patch("app.services.notification_emitter.emit_notification", return_value="notification-test"),
     ):
         result = finalize_execution_outcome(
             client,
@@ -136,8 +140,8 @@ def test_finalize_apollo_already_existed_stays_partial_success() -> None:
     with (
         patch("app.workflows.repository.update_run") as update_run,
         patch("app.workflows.repository.merge_run_parameters"),
-        patch("app.workflows.repository.emit_execute_completed"),
-        patch("app.services.notification_emitter.emit_notification"),
+        patch("app.workflows.repository.emit_execute_completed", return_value=True),
+        patch("app.services.notification_emitter.emit_notification", return_value="notification-test"),
     ):
         result = finalize_execution_outcome(
             client,

@@ -18,6 +18,113 @@ from tests.master_qa.canonical_pg_repository import (
 
 pytestmark = requires_pg
 
+
+def _fanout_run(pg):
+    """A canonical run plus independently queried, synthetic consumer effects."""
+    from app.workflows import repository
+    workflow_id = "22222222-2222-4222-8222-222222222222"
+    pg.psql(f"INSERT INTO public.workflows (id,org_id,name) VALUES ('{workflow_id}','{ORG}','Receipt recovery')")
+    run = repository.create_execute_run(
+        PgRepositoryClient(pg), ORG, workflow_id, "synthetic-actor", {"steps": []}, {},
+        "receipt-recovery", "running", "approved", 0, [], environment_name="synthetic")
+    pg.psql("CREATE TABLE public.qa_fanout_effects (channel text PRIMARY KEY)")
+    pg.psql("""
+CREATE FUNCTION public.qa_require_output_before_terminal() RETURNS trigger
+LANGUAGE plpgsql AS $$ BEGIN
+ IF NEW.status = 'completed' AND NEW.parameters->'verified_output' IS NULL THEN
+  RAISE EXCEPTION 'terminal transition preceded verified output persistence';
+ END IF;
+ RETURN NEW;
+END $$;
+CREATE TRIGGER qa_output_before_terminal BEFORE UPDATE OF status ON public.workflow_runs
+FOR EACH ROW EXECUTE FUNCTION public.qa_require_output_before_terminal();
+""")
+    return run["id"], workflow_id
+
+
+def _sql_delivery_channel(pg, name):
+    def deliver(*_args):
+        # No conflict suppression: a duplicate successful callback is a defect.
+        pg.psql(f"INSERT INTO public.qa_fanout_effects VALUES ('{name}')")
+        return name
+    return deliver
+
+
+@pytest.mark.parametrize("missing_channel", ["audit", "notification", "learning"])
+def test_terminal_fanout_retry_reads_independent_postgres_receipts(monkeypatch, missing_channel):
+    """Actual repository, mirrors and receipts; external channels use SQL stand-ins."""
+    from app.services import execution_outcome as outcome
+    with canonical_pg_cluster() as pg:
+        run_id, workflow_id = _fanout_run(pg)
+        failed = {missing_channel}
+        for function, channel in (("_write_audit", "audit"), ("_emit_notification", "notification"),
+                                  ("_record_learning", "learning")):
+            callback = _sql_delivery_channel(pg, channel)
+            def invoke(*args, channel=channel, callback=callback):
+                if channel in failed:
+                    raise RuntimeError("synthetic delivery outage")
+                return callback(*args)
+            monkeypatch.setattr(outcome, function, invoke)
+        kwargs = dict(org_id=ORG, status="completed", source="api", actor_id="synthetic-actor",
+                      run_id=run_id, workflow_id=workflow_id,
+                      verified_output=outcome.VerifiedOutputRef(summary="Synthetic internal completion"))
+        outcome.finalize_execution_outcome(PgRepositoryClient(pg), **kwargs)
+        assert pg.value(f"SELECT parameters->>'outcome_finalized' FROM public.workflow_runs WHERE id='{run_id}'") == "false"
+        assert pg.value("SELECT count(*) FROM public.qa_fanout_effects") == "2"
+        failed.clear()
+        result = outcome.finalize_execution_outcome(PgRepositoryClient(pg), **kwargs)
+        assert result.fanout["fanout_checkpoint_persisted"] is True
+        assert all(result.fanout[key] for key in outcome._DURABLE_FANOUT_CHANNELS)
+        assert pg.value("SELECT count(*) FROM public.qa_fanout_effects") == "3"
+        assert pg.value(f"SELECT parameters->'outcome_fanout'->>'complete' FROM public.workflow_runs WHERE id='{run_id}'") == "true"
+        assert pg.value(f"SELECT status FROM public.runs WHERE id='{run_id}'") == "completed"
+        assert pg.value("SELECT count(*) FROM public.domain_event_outbox") == "1"
+        assert outcome.finalize_execution_outcome(PgRepositoryClient(pg), **kwargs).fanout["idempotent_skip"] is True
+        assert pg.value("SELECT count(*) FROM public.qa_fanout_effects") == "3"
+
+
+def test_process_death_after_audit_receipt_resumes_remaining_channels(monkeypatch):
+    """Kill the real finalizer process; PostgreSQL and acknowledged effects survive."""
+    import os
+    import subprocess
+    import sys
+    from app.services import execution_outcome as outcome
+    with canonical_pg_cluster() as pg:
+        run_id, workflow_id = _fanout_run(pg)
+        script = """
+import os
+from pathlib import Path
+from unittest.mock import patch
+from tests.db.pg_harness import Pg
+from tests.master_qa.canonical_pg_repository import PgRepositoryClient
+from tests.master_qa.test_canonical_repository_persistence_pg import _sql_delivery_channel, ORG
+from app.services import execution_outcome as outcome
+pg = Pg(Path(os.environ['QA_PG_ROOT']), [])
+def die(*args):
+    os._exit(91)
+with patch.object(outcome, '_write_audit', _sql_delivery_channel(pg, 'audit')), patch.object(outcome, '_emit_notification', die):
+    outcome.finalize_execution_outcome(
+        PgRepositoryClient(pg), org_id=ORG, status='completed', source='api',
+        actor_id='synthetic-actor', run_id=os.environ['QA_RUN'], workflow_id=os.environ['QA_WORKFLOW'],
+        verified_output=outcome.VerifiedOutputRef(summary='Synthetic internal completion'))
+"""
+        child = subprocess.run([sys.executable, "-c", script], capture_output=True, text=True, timeout=30,
+                               env={**os.environ, "QA_PG_ROOT": str(pg.root), "QA_RUN": run_id, "QA_WORKFLOW": workflow_id})
+        assert child.returncode == 91, child.stderr
+        assert pg.value(f"SELECT parameters->'outcome_fanout'->>'audit_written' FROM public.workflow_runs WHERE id='{run_id}'") == "true"
+        assert pg.value(f"SELECT parameters->>'outcome_finalized' FROM public.workflow_runs WHERE id='{run_id}'") == "false"
+        for function, channel in (("_write_audit", "audit"), ("_emit_notification", "notification"),
+                                  ("_record_learning", "learning")):
+            monkeypatch.setattr(outcome, function, _sql_delivery_channel(pg, channel))
+        result = outcome.finalize_execution_outcome(
+            PgRepositoryClient(pg), org_id=ORG, status="completed", source="api", actor_id="synthetic-actor",
+            run_id=run_id, workflow_id=workflow_id,
+            verified_output=outcome.VerifiedOutputRef(summary="Synthetic internal completion"))
+        assert all(result.fanout[key] for key in outcome._DURABLE_FANOUT_CHANNELS)
+        assert pg.value("SELECT count(*) FROM public.qa_fanout_effects") == "3"
+        assert pg.value("SELECT count(*) FROM public.domain_event_outbox") == "1"
+        assert pg.value(f"SELECT parameters->>'outcome_finalized' FROM public.workflow_runs WHERE id='{run_id}'") == "true"
+
 def test_real_repository_approval_step_and_reconnect_consumer():
     from app.workflows import repository
     from app.services import domain_events

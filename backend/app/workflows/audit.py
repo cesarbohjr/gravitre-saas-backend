@@ -113,8 +113,8 @@ def write_audit_event(
     resource_type: str,
     resource_id: UUID | str,
     metadata: dict[str, Any] | None = None,
-) -> None:
-    """Insert audit rows. Never raises — audit must not break product flows."""
+) -> bool:
+    """Insert audit rows; acknowledge canonical audit_logs storage without raising."""
     from app.services.speculative_execution import defer_if_speculative
 
     if defer_if_speculative(
@@ -129,7 +129,7 @@ def write_audit_event(
         metadata,
     ):
         # Speculative (unconfirmed) voice run: the row lands only if adopted.
-        return
+        return False
     resource_id_str = str(resource_id)
     pii_mode = _get_org_pii_mode(client, org_id)
     meta = redact_metadata(metadata or {}, mode=pii_mode)
@@ -210,7 +210,11 @@ def write_audit_event(
         )
 
     if events_ok or logs_ok:
-        _schedule_siem_dispatch(client, org_id, action, resource_type, resource_id_str, meta)
+        try:
+            _schedule_siem_dispatch(client, org_id, action, resource_type, resource_id_str, meta)
+        except Exception as exc:  # noqa: BLE001 — optional export cannot undo durable audit storage
+            logger.warning("audit_siem_schedule_failed action=%s error=%s", action, type(exc).__name__)
+    return logs_ok
 
 
 _OFF_LOOP_WRITES: set["asyncio.Future[Any]"] = set()

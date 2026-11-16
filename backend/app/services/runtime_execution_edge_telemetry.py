@@ -26,6 +26,15 @@ _ALLOWED_SOURCES = frozenset(("execution_plan", "workflow_result", "connector_re
                               "other_event", "tool_call"))
 
 
+def _log_observation(message: str, *args: object) -> bool:
+    """Telemetry must never turn a committed consumer effect into a retry."""
+    try:
+        logger.info(message, *args)
+        return True
+    except Exception:
+        return False
+
+
 @dataclass(frozen=True)
 class ExecutionCorrelation:
     """Typed execution identity; propagate only when IDs belong to the same plan.
@@ -68,9 +77,8 @@ def emit_handoff(*, owner: str, stage: str, correlation_id: str | None = None,
     if source not in _ALLOWED_SOURCES:
         return False
     digest = hmac.new(secret.encode("utf-8"), correlation_id.encode("utf-8"), hashlib.sha256).hexdigest()[:24]
-    logger.info("runtime_edge_v1 owner=%s stage=%s source=%s correlation=%s",
-                owner, stage, source, digest)
-    return True
+    return _log_observation("runtime_edge_v1 owner=%s stage=%s source=%s correlation=%s",
+                            owner, stage, source, digest)
 
 _RUN_UUID = re.compile(r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$")
 
@@ -98,9 +106,8 @@ def emit_outbox_run_link(*, event_id: str | None, aggregate_type: str,
     key = secret.encode("utf-8")
     event_digest = hmac.new(key, event.encode("utf-8"), hashlib.sha256).hexdigest()[:24]
     run_digest = hmac.new(key, run.encode("utf-8"), hashlib.sha256).hexdigest()[:24]
-    logger.info("runtime_edge_link_v1 kind=workflow_run_outbox event=%s run=%s",
-                event_digest, run_digest)
-    return True
+    return _log_observation("runtime_edge_link_v1 kind=workflow_run_outbox event=%s run=%s",
+                            event_digest, run_digest)
 
 
 def emit_plan_run_link(*, plan_id: str | None, run_id: str | None,
@@ -122,6 +129,5 @@ def emit_plan_run_link(*, plan_id: str | None, run_id: str | None,
     key = secret.encode("utf-8")
     plan_digest = hmac.new(key, plan.encode("utf-8"), hashlib.sha256).hexdigest()[:24]
     run_digest = hmac.new(key, run.encode("utf-8"), hashlib.sha256).hexdigest()[:24]
-    logger.info("runtime_edge_link_v1 kind=orchestration_plan_run plan=%s run=%s",
-                plan_digest, run_digest)
-    return True
+    return _log_observation("runtime_edge_link_v1 kind=orchestration_plan_run plan=%s run=%s",
+                            plan_digest, run_digest)

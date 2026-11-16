@@ -46,6 +46,21 @@ def test_running_read_step_in_flight_fails_and_marks_step():
     assert d.to_status == "failed" and d.interrupted_steps == ["s1"]
 
 
+def test_missing_action_snapshot_requires_reconciliation():
+    steps = [{"id": "s1", "step_type": "invoke_tool", "status": "running", "started_at": OLD}]
+    d = srr.decide(_run(), steps, now=NOW, threshold=T, verifying_threshold=VT)
+    assert d.to_status == "flagged_for_review"
+    assert d.write_in_flight is True
+
+
+def test_retired_or_unknown_action_requires_reconciliation():
+    steps = [{"id": "s1", "step_type": "invoke_tool", "status": "running", "started_at": OLD,
+              "input_snapshot": {"action": "retired_vendor.unknown_operation"}}]
+    d = srr.decide(_run(), steps, now=NOW, threshold=T, verifying_threshold=VT)
+    assert d.to_status == "flagged_for_review"
+    assert d.write_in_flight is True
+
+
 def test_recent_activity_is_left_alone():
     steps = [{"id": "s1", "step_type": "noop", "status": "running", "started_at": RECENT}]
     assert srr.decide(_run(), steps, now=NOW, threshold=T, verifying_threshold=VT) is None

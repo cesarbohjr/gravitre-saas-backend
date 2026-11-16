@@ -746,7 +746,25 @@
         "certifies_whole_finding": false
       },
       "audit_evidence_class": "SOURCE_CANDIDATE_REQUIRES_RUNTIME_PROOF",
-      "audit_observation": "Original audit and source candidate require caller/runtime evidence; no final root-cause claim."
+      "audit_observation": "Original audit and source candidate require caller/runtime evidence; no final root-cause claim.",
+      "engineering_batch_evidence": {
+        "batch": "persisted-outcome-outbox-recovery",
+        "scope": "Versioned core-channel receipts replace premature completion markers; persist output/rollup proof before terminal outbox emission; retry only unacknowledged channels; preserve conflicting persisted terminal truth.",
+        "source": [
+          "backend/app/services/execution_outcome.py",
+          "backend/app/services/runtime_execution_edge_telemetry.py"
+        ],
+        "tests": [
+          "backend/tests/services/test_execution_outcome_restart_receipts.py",
+          "backend/tests/master_qa/test_canonical_repository_persistence_pg.py",
+          "backend/tests/db/test_domain_event_outbox_pg.py"
+        ],
+        "local_validation": "206 focused checks passed locally (114 core, 77 lifecycle/ownership, 15 workflow recovery/audit); 20 selected regressions fail on pre-repair source",
+        "postgres_validation": "PENDING_EXACT_HEAD_CI: local runtime cannot bind a Unix socket; five new PostgreSQL/process-death cases are in already-selected acceptance test files",
+        "remaining": "Concurrent finalizer CAS, consumer idempotency across effect-to-receipt crash window, optional/legacy fanout reconciliation, all surface/provider readback, deployment/rollback and owner acceptance remain open.",
+        "release_certified": false,
+        "acknowledgement_contract": "Canonical audit_logs storage returns a boolean acknowledgement; notification receipts require an actual inbox row ID; learning receipts require returned insert rows. Secondary audit_events/SIEM delivery is not inferred."
+      }
     },
     {
       "finding_id": "ECO-011",
@@ -969,7 +987,25 @@
         "certifies_whole_finding": false
       },
       "audit_evidence_class": "SOURCE_CANDIDATE_REQUIRES_RUNTIME_PROOF",
-      "audit_observation": "Original audit and source candidate require caller/runtime evidence; no final root-cause claim."
+      "audit_observation": "Original audit and source candidate require caller/runtime evidence; no final root-cause claim.",
+      "engineering_batch_evidence": {
+        "batch": "persisted-outcome-outbox-recovery",
+        "scope": "Versioned core-channel receipts replace premature completion markers; persist output/rollup proof before terminal outbox emission; retry only unacknowledged channels; preserve conflicting persisted terminal truth.",
+        "source": [
+          "backend/app/services/execution_outcome.py",
+          "backend/app/services/runtime_execution_edge_telemetry.py"
+        ],
+        "tests": [
+          "backend/tests/services/test_execution_outcome_restart_receipts.py",
+          "backend/tests/master_qa/test_canonical_repository_persistence_pg.py",
+          "backend/tests/db/test_domain_event_outbox_pg.py"
+        ],
+        "local_validation": "206 focused checks passed locally (114 core, 77 lifecycle/ownership, 15 workflow recovery/audit); 20 selected regressions fail on pre-repair source",
+        "postgres_validation": "PENDING_EXACT_HEAD_CI: local runtime cannot bind a Unix socket; five new PostgreSQL/process-death cases are in already-selected acceptance test files",
+        "remaining": "Concurrent finalizer CAS, consumer idempotency across effect-to-receipt crash window, optional/legacy fanout reconciliation, all surface/provider readback, deployment/rollback and owner acceptance remain open.",
+        "release_certified": false,
+        "acknowledgement_contract": "Canonical audit_logs storage returns a boolean acknowledgement; notification receipts require an actual inbox row ID; learning receipts require returned insert rows. Secondary audit_events/SIEM delivery is not inferred."
+      }
     },
     {
       "finding_id": "ECO-015",
@@ -1188,7 +1224,25 @@
         "certifies_whole_finding": false
       },
       "audit_evidence_class": "SOURCE_CANDIDATE_REQUIRES_RUNTIME_PROOF",
-      "audit_observation": "Original audit and source candidate require caller/runtime evidence; no final root-cause claim."
+      "audit_observation": "Original audit and source candidate require caller/runtime evidence; no final root-cause claim.",
+      "engineering_batch_evidence": {
+        "batch": "persisted-outcome-outbox-recovery",
+        "scope": "Versioned core-channel receipts replace premature completion markers; persist output/rollup proof before terminal outbox emission; retry only unacknowledged channels; preserve conflicting persisted terminal truth.",
+        "source": [
+          "backend/app/services/execution_outcome.py",
+          "backend/app/services/runtime_execution_edge_telemetry.py"
+        ],
+        "tests": [
+          "backend/tests/services/test_execution_outcome_restart_receipts.py",
+          "backend/tests/master_qa/test_canonical_repository_persistence_pg.py",
+          "backend/tests/db/test_domain_event_outbox_pg.py"
+        ],
+        "local_validation": "206 focused checks passed locally (114 core, 77 lifecycle/ownership, 15 workflow recovery/audit); 20 selected regressions fail on pre-repair source",
+        "postgres_validation": "PENDING_EXACT_HEAD_CI: local runtime cannot bind a Unix socket; five new PostgreSQL/process-death cases are in already-selected acceptance test files",
+        "remaining": "Concurrent finalizer CAS, consumer idempotency across effect-to-receipt crash window, optional/legacy fanout reconciliation, all surface/provider readback, deployment/rollback and owner acceptance remain open.",
+        "release_certified": false,
+        "acknowledgement_contract": "Canonical audit_logs storage returns a boolean acknowledgement; notification receipts require an actual inbox row ID; learning receipts require returned insert rows. Secondary audit_events/SIEM delivery is not inferred."
+      }
     },
     {
       "finding_id": "P27-04",
@@ -1296,7 +1350,24 @@
         "certifies_whole_finding": false
       },
       "audit_evidence_class": "SOURCE_CANDIDATE_REQUIRES_RUNTIME_PROOF",
-      "audit_observation": "Original audit and source candidate require caller/runtime evidence; no final root-cause claim."
+      "audit_observation": "Original audit and source candidate require caller/runtime evidence; no final root-cause claim.",
+      "engineering_batch_evidence": {
+        "batch": "persisted-outcome-outbox-recovery",
+        "scope": "Unknown/missing invoke-tool snapshots require reconciliation; core fanout restart consumes durable receipts instead of replaying successful channels.",
+        "source": [
+          "backend/app/services/stale_run_recovery.py",
+          "backend/app/services/execution_outcome.py"
+        ],
+        "tests": [
+          "backend/tests/services/test_stale_run_recovery.py",
+          "backend/tests/master_qa/test_canonical_repository_persistence_pg.py"
+        ],
+        "local_validation": "206 focused checks passed locally (114 core, 77 lifecycle/ownership, 15 workflow recovery/audit); 20 selected regressions fail on pre-repair source",
+        "postgres_validation": "PENDING_EXACT_HEAD_CI",
+        "remaining": "Actual provider uncertainty, deployed worker lease/revocation/cancellation and rollback acceptance remain separately required.",
+        "release_certified": false,
+        "acknowledgement_contract": "Canonical audit_logs storage returns a boolean acknowledgement; notification receipts require an actual inbox row ID; learning receipts require returned insert rows. Secondary audit_events/SIEM delivery is not inferred."
+      }
     },
     {
       "finding_id": "P27-06",
@@ -1457,7 +1528,24 @@
         "certifies_whole_finding": false
       },
       "audit_evidence_class": "SOURCE_CONFIRMED_PLUS_CI_PARTIAL",
-      "audit_observation": "in-container worker subprocess supervisor and isolated OS kill regression; deployed verification pending"
+      "audit_observation": "in-container worker subprocess supervisor and isolated OS kill regression; deployed verification pending",
+      "engineering_batch_evidence": {
+        "batch": "persisted-outcome-outbox-recovery",
+        "scope": "Unknown/missing invoke-tool snapshots require reconciliation; core fanout restart consumes durable receipts instead of replaying successful channels.",
+        "source": [
+          "backend/app/services/stale_run_recovery.py",
+          "backend/app/services/execution_outcome.py"
+        ],
+        "tests": [
+          "backend/tests/services/test_stale_run_recovery.py",
+          "backend/tests/master_qa/test_canonical_repository_persistence_pg.py"
+        ],
+        "local_validation": "206 focused checks passed locally (114 core, 77 lifecycle/ownership, 15 workflow recovery/audit); 20 selected regressions fail on pre-repair source",
+        "postgres_validation": "PENDING_EXACT_HEAD_CI",
+        "remaining": "Actual provider uncertainty, deployed worker lease/revocation/cancellation and rollback acceptance remain separately required.",
+        "release_certified": false,
+        "acknowledgement_contract": "Canonical audit_logs storage returns a boolean acknowledgement; notification receipts require an actual inbox row ID; learning receipts require returned insert rows. Secondary audit_events/SIEM delivery is not inferred."
+      }
     },
     {
       "finding_id": "DEC-001",
@@ -1780,7 +1868,25 @@
         "certifies_whole_finding": false
       },
       "audit_evidence_class": "SOURCE_CANDIDATE_REQUIRES_RUNTIME_PROOF",
-      "audit_observation": "Original audit and source candidate require caller/runtime evidence; no final root-cause claim."
+      "audit_observation": "Original audit and source candidate require caller/runtime evidence; no final root-cause claim.",
+      "engineering_batch_evidence": {
+        "batch": "persisted-outcome-outbox-recovery",
+        "scope": "Versioned core-channel receipts replace premature completion markers; persist output/rollup proof before terminal outbox emission; retry only unacknowledged channels; preserve conflicting persisted terminal truth.",
+        "source": [
+          "backend/app/services/execution_outcome.py",
+          "backend/app/services/runtime_execution_edge_telemetry.py"
+        ],
+        "tests": [
+          "backend/tests/services/test_execution_outcome_restart_receipts.py",
+          "backend/tests/master_qa/test_canonical_repository_persistence_pg.py",
+          "backend/tests/db/test_domain_event_outbox_pg.py"
+        ],
+        "local_validation": "206 focused checks passed locally (114 core, 77 lifecycle/ownership, 15 workflow recovery/audit); 20 selected regressions fail on pre-repair source",
+        "postgres_validation": "PENDING_EXACT_HEAD_CI: local runtime cannot bind a Unix socket; five new PostgreSQL/process-death cases are in already-selected acceptance test files",
+        "remaining": "Concurrent finalizer CAS, consumer idempotency across effect-to-receipt crash window, optional/legacy fanout reconciliation, all surface/provider readback, deployment/rollback and owner acceptance remain open.",
+        "release_certified": false,
+        "acknowledgement_contract": "Canonical audit_logs storage returns a boolean acknowledgement; notification receipts require an actual inbox row ID; learning receipts require returned insert rows. Secondary audit_events/SIEM delivery is not inferred."
+      }
     },
     {
       "finding_id": "DEC-007",
@@ -1801,7 +1907,7 @@
       "dependencies": [],
       "regression_candidate": null,
       "regression_state": "NOT_YET_IMPLEMENTED",
-      "implementation_state": "EVIDENCE_OR_REPAIR_PENDING",
+      "implementation_state": "PARTIAL_ENGINEERING_TESTED_NOT_CLOSED",
       "implemented_commit": null,
       "synthetic_status": "NOT_CERTIFIED",
       "live_status": "NOT_RUN",
@@ -1828,7 +1934,25 @@
       ],
       "partial_test_evidence": null,
       "audit_evidence_class": "SOURCE_CANDIDATE_REQUIRES_RUNTIME_PROOF",
-      "audit_observation": "Original audit and source candidate require caller/runtime evidence; no final root-cause claim."
+      "audit_observation": "Original audit and source candidate require caller/runtime evidence; no final root-cause claim.",
+      "engineering_batch_evidence": {
+        "batch": "persisted-outcome-outbox-recovery",
+        "scope": "Versioned core-channel receipts replace premature completion markers; persist output/rollup proof before terminal outbox emission; retry only unacknowledged channels; preserve conflicting persisted terminal truth.",
+        "source": [
+          "backend/app/services/execution_outcome.py",
+          "backend/app/services/runtime_execution_edge_telemetry.py"
+        ],
+        "tests": [
+          "backend/tests/services/test_execution_outcome_restart_receipts.py",
+          "backend/tests/master_qa/test_canonical_repository_persistence_pg.py",
+          "backend/tests/db/test_domain_event_outbox_pg.py"
+        ],
+        "local_validation": "206 focused checks passed locally (114 core, 77 lifecycle/ownership, 15 workflow recovery/audit); 20 selected regressions fail on pre-repair source",
+        "postgres_validation": "PENDING_EXACT_HEAD_CI: local runtime cannot bind a Unix socket; five new PostgreSQL/process-death cases are in already-selected acceptance test files",
+        "remaining": "Concurrent finalizer CAS, consumer idempotency across effect-to-receipt crash window, optional/legacy fanout reconciliation, all surface/provider readback, deployment/rollback and owner acceptance remain open.",
+        "release_certified": false,
+        "acknowledgement_contract": "Canonical audit_logs storage returns a boolean acknowledgement; notification receipts require an actual inbox row ID; learning receipts require returned insert rows. Secondary audit_events/SIEM delivery is not inferred."
+      }
     },
     {
       "finding_id": "DEC-008",
@@ -2410,7 +2534,7 @@
       "dependencies": [],
       "regression_candidate": null,
       "regression_state": "NOT_YET_IMPLEMENTED",
-      "implementation_state": "EVIDENCE_OR_REPAIR_PENDING",
+      "implementation_state": "PARTIAL_ENGINEERING_TESTED_NOT_CLOSED",
       "implemented_commit": null,
       "synthetic_status": "NOT_CERTIFIED",
       "live_status": "NOT_RUN",
@@ -2437,7 +2561,25 @@
       ],
       "partial_test_evidence": null,
       "audit_evidence_class": "SOURCE_CANDIDATE_REQUIRES_RUNTIME_PROOF",
-      "audit_observation": "Original audit and source candidate require caller/runtime evidence; no final root-cause claim."
+      "audit_observation": "Original audit and source candidate require caller/runtime evidence; no final root-cause claim.",
+      "engineering_batch_evidence": {
+        "batch": "persisted-outcome-outbox-recovery",
+        "scope": "Versioned core-channel receipts replace premature completion markers; persist output/rollup proof before terminal outbox emission; retry only unacknowledged channels; preserve conflicting persisted terminal truth.",
+        "source": [
+          "backend/app/services/execution_outcome.py",
+          "backend/app/services/runtime_execution_edge_telemetry.py"
+        ],
+        "tests": [
+          "backend/tests/services/test_execution_outcome_restart_receipts.py",
+          "backend/tests/master_qa/test_canonical_repository_persistence_pg.py",
+          "backend/tests/db/test_domain_event_outbox_pg.py"
+        ],
+        "local_validation": "206 focused checks passed locally (114 core, 77 lifecycle/ownership, 15 workflow recovery/audit); 20 selected regressions fail on pre-repair source",
+        "postgres_validation": "PENDING_EXACT_HEAD_CI: local runtime cannot bind a Unix socket; five new PostgreSQL/process-death cases are in already-selected acceptance test files",
+        "remaining": "Concurrent finalizer CAS, consumer idempotency across effect-to-receipt crash window, optional/legacy fanout reconciliation, all surface/provider readback, deployment/rollback and owner acceptance remain open.",
+        "release_certified": false,
+        "acknowledgement_contract": "Canonical audit_logs storage returns a boolean acknowledgement; notification receipts require an actual inbox row ID; learning receipts require returned insert rows. Secondary audit_events/SIEM delivery is not inferred."
+      }
     },
     {
       "finding_id": "DEC-020",

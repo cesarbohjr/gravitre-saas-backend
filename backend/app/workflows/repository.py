@@ -1201,8 +1201,8 @@ def emit_execute_completed(
     actor_id: str,
     run_id: str,
     status: str,
-) -> None:
-    write_audit_event(
+) -> bool:
+    return write_audit_event(
         client,
         org_id=org_id,
         actor_id=actor_id,
@@ -1219,8 +1219,8 @@ def emit_execute_failed(
     actor_id: str,
     run_id: str,
     error_message: str | None = None,
-) -> None:
-    write_audit_event(
+) -> bool:
+    return write_audit_event(
         client,
         org_id=org_id,
         actor_id=actor_id,
@@ -1236,8 +1236,8 @@ def emit_execute_cancelled(
     org_id: str,
     actor_id: str,
     run_id: str,
-) -> None:
-    write_audit_event(
+) -> bool:
+    return write_audit_event(
         client,
         org_id=org_id,
         actor_id=actor_id,
