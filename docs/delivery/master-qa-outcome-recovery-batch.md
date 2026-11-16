@@ -240,3 +240,34 @@ function is SECURITY INVOKER with PUBLIC/anon/authenticated execution revoked;
 service_role alone receives execution. No hosted migration, backfill, deletion,
 deployment or storage retirement was performed. Rollback must retain the refresh
 function while any terminal function/worker calls it. All 43 findings stay open.
+
+
+## Projection negative-fixture correction and DEC-017 caller repair
+
+The projection checkpoint `f941dd725dec15793283cd550dec40734693caf2` passed
+321 runtime guards and 43 routing/context checks. Its [PostgreSQL job 133457389819](https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/43912323133/job/133457389819)
+reported **107 passes and two failures**, both new step-conflict fixtures that
+updated nonexistent target rows. `create_step` creates canonical source data;
+these fixtures must refresh before corrupting the projection. They now explicitly
+refresh and assert a target row exists before injecting either wrong tenant or
+wrong parent. The metadata test likewise seeds its target before injecting legacy
+metadata. The original rejection/rollback assertions remain unchanged. No passing
+database gate is claimed until the corrected exact-head acceptance runs.
+
+A separate DEC-017 caller defect remained after the voice-origin repair: the
+general backend proxy chose localhost in production without FASTAPI_BASE_URL,
+workflow schema sync silently skipped, and authenticated run/step controls returned
+configuration 503s. These callers now reuse the existing canonical backend resolver
+in production. Development fallback and opt-in behavior remain explicit. No runtime
+configuration, DNS, deployment or provider mutation was performed.
+
+**12 request-level tests pass locally**, using actual NextRequest/NextResponse and
+a controlled fetch upstream. **Four fail against previous source**, reproducing
+all four affected production behaviors. They exercise default/alias/private/local
+origins, body and tenant/auth header forwarding, missing-auth rejection before
+dispatch, and development no-dispatch branches. The new test is under the standard
+`__tests__` glob; the older lib voice audit file is outside that default glob and
+is not counted as executed evidence. DEC-017's regression candidate now points to
+the collected test. Targeted strict TypeScript checking passed; full exact-head web CI remains separate.
+Deployed origin and authenticated tenant acceptance, remaining resolver validation,
+stream/device parity, rollout/rollback and owner sign-off remain open.

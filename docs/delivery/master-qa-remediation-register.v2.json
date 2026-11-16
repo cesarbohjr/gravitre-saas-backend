@@ -823,7 +823,7 @@
           "backend/tests/master_qa/test_canonical_repository_persistence_pg.py"
         ],
         "local_validation": "216 focused local cases pass: 145 outcome/delivery/lifecycle/ownership and 71 workflow/approval/recovery/audit/projection boundary cases.",
-        "postgres_validation": "PENDING_EXACT_HEAD_CI: 25 added cases in the existing QA12 file. Harness run_steps.logs now matches production text[] instead of jsonb; test also covers production workflow_runs without started_at.",
+        "postgres_validation": "NOT_CERTIFIED at f941dd725dec15793283cd550dec40734693caf2: QA12 run 43912323133 job 133457389819 had 107 PG passes and two negative-test setup failures (target steps not projected before corruption). Setup now explicitly refreshes and asserts target existence; original conflict/rollback expectations remain. Await repaired exact-head CI.",
         "activation": "Apply after the two earlier additive outcome/parameter function migrations and before the backend revision. No hosted migration, backfill, deletion or deployment performed. Keep refresh and replacement terminal function together during rollback; leave functions for in-flight workers.",
         "remaining": "Nonterminal source writes and their refresh remain separate transactions with explicit refresh failure logging; historical projections need controlled reconciliation. No full reader inventory, live surface/provider parity, storage retirement, deployed rollback or owner acceptance is certified.",
         "release_certified": false
@@ -1127,7 +1127,7 @@
           "backend/tests/master_qa/test_canonical_repository_persistence_pg.py"
         ],
         "local_validation": "216 focused local cases pass: 145 outcome/delivery/lifecycle/ownership and 71 workflow/approval/recovery/audit/projection boundary cases.",
-        "postgres_validation": "PENDING_EXACT_HEAD_CI: 25 added cases in the existing QA12 file. Harness run_steps.logs now matches production text[] instead of jsonb; test also covers production workflow_runs without started_at.",
+        "postgres_validation": "NOT_CERTIFIED at f941dd725dec15793283cd550dec40734693caf2: QA12 run 43912323133 job 133457389819 had 107 PG passes and two negative-test setup failures (target steps not projected before corruption). Setup now explicitly refreshes and asserts target existence; original conflict/rollback expectations remain. Await repaired exact-head CI.",
         "activation": "Apply after the two earlier additive outcome/parameter function migrations and before the backend revision. No hosted migration, backfill, deletion or deployment performed. Keep refresh and replacement terminal function together during rollback; leave functions for in-flight workers.",
         "remaining": "Nonterminal source writes and their refresh remain separate transactions with explicit refresh failure logging; historical projections need controlled reconciliation. No full reader inventory, live surface/provider parity, storage retirement, deployed rollback or owner acceptance is certified.",
         "release_certified": false
@@ -2163,7 +2163,7 @@
           "backend/tests/master_qa/test_canonical_repository_persistence_pg.py"
         ],
         "local_validation": "216 focused local cases pass: 145 outcome/delivery/lifecycle/ownership and 71 workflow/approval/recovery/audit/projection boundary cases.",
-        "postgres_validation": "PENDING_EXACT_HEAD_CI: 25 added cases in the existing QA12 file. Harness run_steps.logs now matches production text[] instead of jsonb; test also covers production workflow_runs without started_at.",
+        "postgres_validation": "NOT_CERTIFIED at f941dd725dec15793283cd550dec40734693caf2: QA12 run 43912323133 job 133457389819 had 107 PG passes and two negative-test setup failures (target steps not projected before corruption). Setup now explicitly refreshes and asserts target existence; original conflict/rollback expectations remain. Await repaired exact-head CI.",
         "activation": "Apply after the two earlier additive outcome/parameter function migrations and before the backend revision. No hosted migration, backfill, deletion or deployment performed. Keep refresh and replacement terminal function together during rollback; leave functions for in-flight workers.",
         "remaining": "Nonterminal source writes and their refresh remain separate transactions with explicit refresh failure logging; historical projections need controlled reconciliation. No full reader inventory, live surface/provider parity, storage retirement, deployed rollback or owner acceptance is certified.",
         "release_certified": false
@@ -2292,7 +2292,7 @@
           "backend/tests/master_qa/test_canonical_repository_persistence_pg.py"
         ],
         "local_validation": "216 focused local cases pass: 145 outcome/delivery/lifecycle/ownership and 71 workflow/approval/recovery/audit/projection boundary cases.",
-        "postgres_validation": "PENDING_EXACT_HEAD_CI: 25 added cases in the existing QA12 file. Harness run_steps.logs now matches production text[] instead of jsonb; test also covers production workflow_runs without started_at.",
+        "postgres_validation": "NOT_CERTIFIED at f941dd725dec15793283cd550dec40734693caf2: QA12 run 43912323133 job 133457389819 had 107 PG passes and two negative-test setup failures (target steps not projected before corruption). Setup now explicitly refreshes and asserts target existence; original conflict/rollback expectations remain. Await repaired exact-head CI.",
         "activation": "Apply after the two earlier additive outcome/parameter function migrations and before the backend revision. No hosted migration, backfill, deletion or deployment performed. Keep refresh and replacement terminal function together during rollback; leave functions for in-flight workers.",
         "remaining": "Nonterminal source writes and their refresh remain separate transactions with explicit refresh failure logging; historical projections need controlled reconciliation. No full reader inventory, live surface/provider parity, storage retirement, deployed rollback or owner acceptance is certified.",
         "release_certified": false
@@ -2545,7 +2545,19 @@
         "certifies_whole_finding": false
       },
       "audit_evidence_class": "SOURCE_CANDIDATE_REQUIRES_RUNTIME_PROOF",
-      "audit_observation": "Original audit and source candidate require caller/runtime evidence; no final root-cause claim."
+      "audit_observation": "Original audit and source candidate require caller/runtime evidence; no final root-cause claim.",
+      "production_proxy_batch_evidence": {
+        "scope": "General JSON proxy, authenticated run/step controls and workflow schema sync reuse the existing canonical production backend resolver when FASTAPI_BASE_URL is absent. Development localhost/opt-in/503 behaviors remain explicit. Bearer/org/environment/no-store forwarding and missing-auth denial are exercised at actual NextRequest/fetch boundaries.",
+        "source": [
+          "apps/web/lib/backend-proxy.ts",
+          "apps/web/lib/run-action-proxy.ts"
+        ],
+        "tests": "apps/web/__tests__/api/backend-routing.audit.test.ts",
+        "local_validation": "12 request-level tests pass; four fail against previous source, reproducing localhost dispatch, skipped schema sync and two configuration 503s. Targeted strict TypeScript check passed; full web CI remains separate.",
+        "collection": "New tests match the standard __tests__ glob. The older lib/voice-api-proxy.audit.test.ts is outside that default glob and is not counted as executed evidence here.",
+        "remaining": "Deployed origin/environment readback, authenticated real-tenant acceptance, configured-host validation beyond existing resolver behavior, SSE/NDJSON/device parity, rollback and owner gates remain open. No runtime variables, DNS, deployment or provider data changed.",
+        "release_certified": false
+      }
     },
     {
       "finding_id": "DEC-013",
@@ -2749,7 +2761,19 @@
         "certifies_whole_finding": false
       },
       "audit_evidence_class": "SOURCE_CANDIDATE_REQUIRES_RUNTIME_PROOF",
-      "audit_observation": "Original audit and source candidate require caller/runtime evidence; no final root-cause claim."
+      "audit_observation": "Original audit and source candidate require caller/runtime evidence; no final root-cause claim.",
+      "production_proxy_batch_evidence": {
+        "scope": "General JSON proxy, authenticated run/step controls and workflow schema sync reuse the existing canonical production backend resolver when FASTAPI_BASE_URL is absent. Development localhost/opt-in/503 behaviors remain explicit. Bearer/org/environment/no-store forwarding and missing-auth denial are exercised at actual NextRequest/fetch boundaries.",
+        "source": [
+          "apps/web/lib/backend-proxy.ts",
+          "apps/web/lib/run-action-proxy.ts"
+        ],
+        "tests": "apps/web/__tests__/api/backend-routing.audit.test.ts",
+        "local_validation": "12 request-level tests pass; four fail against previous source, reproducing localhost dispatch, skipped schema sync and two configuration 503s. Targeted strict TypeScript check passed; full web CI remains separate.",
+        "collection": "New tests match the standard __tests__ glob. The older lib/voice-api-proxy.audit.test.ts is outside that default glob and is not counted as executed evidence here.",
+        "remaining": "Deployed origin/environment readback, authenticated real-tenant acceptance, configured-host validation beyond existing resolver behavior, SSE/NDJSON/device parity, rollback and owner gates remain open. No runtime variables, DNS, deployment or provider data changed.",
+        "release_certified": false
+      }
     },
     {
       "finding_id": "DEC-017",
@@ -2768,7 +2792,7 @@
       "root_cause": "UNVERIFIED",
       "remediation": "Prove configured FASTAPI_BASE_URL/hostname cannot silently choose localhost or wrong host; test deployed aliases",
       "dependencies": [],
-      "regression_candidate": "apps/web/lib/voice-api-proxy.audit.test.ts",
+      "regression_candidate": "apps/web/__tests__/api/backend-routing.audit.test.ts",
       "regression_state": "ADDED_EXACT_HEAD_CI_PENDING",
       "implementation_state": "SOURCE_REPAIRED_UNMERGED_NOT_DEPLOYED",
       "implemented_commit": "a0bcd2f781212370b42542e4e3de1deaf8a68fca",
@@ -2796,8 +2820,8 @@
         "exact-SHA CI and release/rollback evidence"
       ],
       "partial_test_evidence": {
-        "test_path": "apps/web/lib/voice-api-proxy.audit.test.ts",
-        "scope": "production origin fallback and development behavior",
+        "test_path": "apps/web/__tests__/api/backend-routing.audit.test.ts",
+        "scope": "Collected NextRequest/fetch proxy, run/step action and workflow-sync origin/auth/tenant boundary; synthetic upstream only",
         "ci_run_url": null,
         "executed_head_sha": null,
         "certifies_whole_finding": false
@@ -2809,6 +2833,18 @@
         "source_url": "https://github.com/cesarbohjr/gravitre-saas-backend/blob/feat/master-qa-tranche27-orchestration/docs/delivery/pr611-r1-production-topology-and-routing-evidence.md",
         "observed": "Production Vercel missing FASTAPI_BASE_URL previously pointed voice requests at localhost. Now uses canonical Railway resolver when production; no deployed runtime trace.",
         "scope": "SOURCE_FIX_ONLY"
+      },
+      "production_proxy_batch_evidence": {
+        "scope": "General JSON proxy, authenticated run/step controls and workflow schema sync reuse the existing canonical production backend resolver when FASTAPI_BASE_URL is absent. Development localhost/opt-in/503 behaviors remain explicit. Bearer/org/environment/no-store forwarding and missing-auth denial are exercised at actual NextRequest/fetch boundaries.",
+        "source": [
+          "apps/web/lib/backend-proxy.ts",
+          "apps/web/lib/run-action-proxy.ts"
+        ],
+        "tests": "apps/web/__tests__/api/backend-routing.audit.test.ts",
+        "local_validation": "12 request-level tests pass; four fail against previous source, reproducing localhost dispatch, skipped schema sync and two configuration 503s. Targeted strict TypeScript check passed; full web CI remains separate.",
+        "collection": "New tests match the standard __tests__ glob. The older lib/voice-api-proxy.audit.test.ts is outside that default glob and is not counted as executed evidence here.",
+        "remaining": "Deployed origin/environment readback, authenticated real-tenant acceptance, configured-host validation beyond existing resolver behavior, SSE/NDJSON/device parity, rollback and owner gates remain open. No runtime variables, DNS, deployment or provider data changed.",
+        "release_certified": false
       }
     },
     {
@@ -2982,7 +3018,7 @@
           "backend/tests/master_qa/test_canonical_repository_persistence_pg.py"
         ],
         "local_validation": "216 focused local cases pass: 145 outcome/delivery/lifecycle/ownership and 71 workflow/approval/recovery/audit/projection boundary cases.",
-        "postgres_validation": "PENDING_EXACT_HEAD_CI: 25 added cases in the existing QA12 file. Harness run_steps.logs now matches production text[] instead of jsonb; test also covers production workflow_runs without started_at.",
+        "postgres_validation": "NOT_CERTIFIED at f941dd725dec15793283cd550dec40734693caf2: QA12 run 43912323133 job 133457389819 had 107 PG passes and two negative-test setup failures (target steps not projected before corruption). Setup now explicitly refreshes and asserts target existence; original conflict/rollback expectations remain. Await repaired exact-head CI.",
         "activation": "Apply after the two earlier additive outcome/parameter function migrations and before the backend revision. No hosted migration, backfill, deletion or deployment performed. Keep refresh and replacement terminal function together during rollback; leave functions for in-flight workers.",
         "remaining": "Nonterminal source writes and their refresh remain separate transactions with explicit refresh failure logging; historical projections need controlled reconciliation. No full reader inventory, live surface/provider parity, storage retirement, deployed rollback or owner acceptance is certified.",
         "release_certified": false

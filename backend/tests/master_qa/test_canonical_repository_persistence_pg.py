@@ -747,6 +747,8 @@ def test_atomic_projection_uses_real_text_array_logs_and_clears_removed_snapshot
         run_id, _ = _fanout_run(pg)
         client = PgRepositoryClient(pg)
         step = repository.create_step(client, run_id, ORG, "step-1", 0, "First step", "invoke_tool")
+        assert mirror_legacy_run_to_contract(client, run_id)
+        assert pg.value(f"SELECT count(*) FROM public.run_steps WHERE id='{step['id']}'") == "1"
         pg.psql(f"UPDATE public.runs SET metadata='[]'::jsonb WHERE id='{run_id}'")
         pg.psql(f"UPDATE public.run_steps SET metadata='\"legacy\"'::jsonb WHERE id='{step['id']}'")
         pg.psql(f"UPDATE public.workflow_steps SET status='completed',logs='line one',input_snapshot='{{\"input\":1}}',output_snapshot='{{\"receipt\":true}}',started_at='2026-11-16T00:00:00Z',completed_at='2026-11-16T00:00:00.0019Z' WHERE id='{step['id']}'")
@@ -789,6 +791,10 @@ def test_projection_identity_conflict_rolls_back_entire_refresh(conflict):
     with canonical_pg_cluster() as pg:
         run_id, _ = _fanout_run(pg)
         step = repository.create_step(PgRepositoryClient(pg), run_id, ORG, "step-1", 0, "First", "noop")
+        # create_step writes the canonical source; seed its projection before
+        # corrupting it. Updating a nonexistent target would not test a conflict.
+        assert PgRepositoryClient(pg).rpc("refresh_workflow_run_projection", {"p_run_id": run_id}).execute().data is True
+        assert pg.value(f"SELECT count(*) FROM public.run_steps WHERE id='{step['id']}'") == "1"
         foreign = "99999999-9999-4999-8999-999999999999"
         if conflict == "run_tenant":
             pg.psql(f"UPDATE public.runs SET org_id='{foreign}' WHERE id='{run_id}'")
