@@ -54,9 +54,19 @@ class _Table:
 class _Client:
     def __init__(self) -> None:
         self.store: dict[str, list] = {}
+        self.parameters: dict[str, dict] = {}
 
     def table(self, name: str) -> _Table:
         return _Table(name, self.store)
+
+    def rpc(self, name: str, args: dict) -> MagicMock:
+        # Unit-only sequential transport; real SQL locking is tested separately.
+        assert name == "merge_workflow_run_parameters"
+        def execute():
+            document = self.parameters.setdefault(args["p_run_id"], {})
+            document.update(args["p_patch"])
+            return MagicMock(data=dict(document))
+        return MagicMock(execute=execute)
 
 
 def test_is_terminal_run_status() -> None:

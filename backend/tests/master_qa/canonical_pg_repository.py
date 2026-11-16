@@ -225,6 +225,9 @@ class PgRepositoryClient:
     def rpc(self, name, params):
         # Only recovery SQL functions used by offline acceptance are exposed.
         commands = {
+            "merge_workflow_run_parameters": (
+                "SELECT public.merge_workflow_run_parameters(%s,%s)",
+                ("p_run_id", "p_patch"), False),
             "claim_stale_graph_recovery": (
                 "SELECT coalesce(json_agg(q),'[]'::json) "
                 "FROM public.claim_stale_graph_recovery(%s,%s,%s) q",
@@ -252,7 +255,7 @@ class PgRepositoryClient:
                     user="postgres", row_factory=dict_row,
                 ) as conn:
                     with conn.cursor() as cur:
-                        cur.execute(query, tuple(params[k] for k in keys))
+                        cur.execute(query, tuple(_bind(params[k]) for k in keys))
                         record = cur.fetchone()
                 value = next(iter(record.values()))
                 return Response(value if is_collection else value)
@@ -273,6 +276,7 @@ def canonical_pg_cluster():
             MIGRATION.read_text(),
             CLAIM_TYPES_MIGRATION.read_text(),
             (MIGRATIONS / "20261107235500_p27_graph_recovery_leases.sql").read_text(),
+            (MIGRATIONS / "20261116160849_atomic_workflow_run_parameters.sql").read_text(),
         ) as server:
             yield server
     except subprocess.CalledProcessError as exc:

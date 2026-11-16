@@ -67,3 +67,40 @@ ECO-010/ECO-014, P27-03 and DEC-006/007/019 receive bounded persistence/delivery
 repairs; P27-05/P27-08 receive bounded recovery repairs. Exact-head CI, real
 provider/consumer readback, cross-surface concurrency and cancellation, deployed
 rollback and owner approval remain open. No finding is closed by this record.
+
+
+## Atomic parameter follow-up (2026-11-16)
+
+The previous `c10601b360c1b0df36a1931d432d2215a1cbe0cd` checkpoint passed all ten
+CI lanes. QA12 run [43830418575](https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/43830418575)
+passed 59 real PostgreSQL cases, including the five new recovery cases, alongside
+321 runtime guards and 43 routing/context contracts. This is bounded evidence;
+no full finding is certified by those results.
+
+The shared repository parameter merge now calls `merge_workflow_run_parameters`.
+The function locks the run before reading and merging top-level keys, preserving
+disjoint concurrent patches. It retains historical object/string normalization
+and shallow replacement semantics. Missing runs, invalid patches, missing RPCs
+and malformed acknowledgements fail closed. The existing contract mirror is
+still invoked after a successful merge; parameter data remains canonical in
+`workflow_runs`. This does not certify mirror concurrency for lifecycle updates.
+
+This follow-up adds **11 PostgreSQL cases** to the existing selected acceptance
+file: a deterministic 16-writer lock contention case, six legacy normalization
+cases, three invalid-patch cases, and a missing-run/role-boundary/shallow-merge
+case. The narrow psycopg transport invokes the actual SQL function. **67 focused
+local checks pass**; seven new fail-closed cases fail on the pre-repair method.
+Actual PostgreSQL validation awaits this revision's existing QA12 lane; local
+socket restrictions are not treated as a passing or skipped database gate.
+
+The function-only migration is additive, SECURITY INVOKER, and callable only by
+`service_role` (PUBLIC/anon/authenticated execution revoked). Apply it **before**
+activating the new backend. No hosted migration has been applied. For rollback,
+restore the prior backend first and leave the additive function while newer
+workers drain. Hosted migration/advisor checks, deployed rollback and owner
+acceptance remain pending.
+
+Remaining work under the same register/owners: atomically arbitrate terminal
+status with proof, merge fanout acknowledgements monotonically, and make core
+consumer effects idempotent across concurrent finalizers and the effect-to-receipt
+crash gap. This patch does not claim any of those gates or close a finding.

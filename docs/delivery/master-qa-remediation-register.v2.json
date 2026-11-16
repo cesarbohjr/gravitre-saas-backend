@@ -760,10 +760,21 @@
           "backend/tests/db/test_domain_event_outbox_pg.py"
         ],
         "local_validation": "206 focused checks passed locally (114 core, 77 lifecycle/ownership, 15 workflow recovery/audit); 20 selected regressions fail on pre-repair source",
-        "postgres_validation": "PENDING_EXACT_HEAD_CI: local runtime cannot bind a Unix socket; five new PostgreSQL/process-death cases are in already-selected acceptance test files",
+        "postgres_validation": "PASS at c10601b360c1b0df36a1931d432d2215a1cbe0cd: QA12 run 43830418575, job 133174252379; 59 PostgreSQL cases, 321 runtime guards and 43 routing/context cases passed. All ten automatic CI lanes passed. Bounded evidence only; full finding remains NOT_CERTIFIED.",
         "remaining": "Concurrent finalizer CAS, consumer idempotency across effect-to-receipt crash window, optional/legacy fanout reconciliation, all surface/provider readback, deployment/rollback and owner acceptance remain open.",
         "release_certified": false,
         "acknowledgement_contract": "Canonical audit_logs storage returns a boolean acknowledgement; notification receipts require an actual inbox row ID; learning receipts require returned insert rows. Secondary audit_events/SIEM delivery is not inferred."
+      },
+      "atomic_parameter_batch_evidence": {
+        "scope": "Shared repository top-level parameter patches use a service-role-only SECURITY INVOKER SQL function and row lock; no unsafe read/replace fallback.",
+        "source": "backend/app/workflows/repository.py",
+        "migration": "supabase/migrations/20261116160849_atomic_workflow_run_parameters.sql",
+        "regression": "backend/tests/master_qa/test_canonical_repository_persistence_pg.py",
+        "local_validation": "67 focused checks passed; seven new fail-closed regression cases fail on the pre-repair method.",
+        "postgres_validation": "PENDING_EXACT_HEAD_CI: 11 added PG cases in the existing acceptance file, including 16 simultaneous independent connections held at a deterministic database lock.",
+        "rollout": "Apply additive function migration before backend activation. No hosted migration or deployment performed. Roll back backend first; leave additive function present for in-flight new callers.",
+        "remaining": "Same-key nested object replacement remains shallow last-writer-wins. Monotonic fanout receipts, atomic terminal/proof arbitration, concurrent channel idempotency and effect-to-receipt crash recovery are not certified by this repair. Existing live, rollback and owner gates remain open.",
+        "release_certified": false
       }
     },
     {
@@ -1001,10 +1012,21 @@
           "backend/tests/db/test_domain_event_outbox_pg.py"
         ],
         "local_validation": "206 focused checks passed locally (114 core, 77 lifecycle/ownership, 15 workflow recovery/audit); 20 selected regressions fail on pre-repair source",
-        "postgres_validation": "PENDING_EXACT_HEAD_CI: local runtime cannot bind a Unix socket; five new PostgreSQL/process-death cases are in already-selected acceptance test files",
+        "postgres_validation": "PASS at c10601b360c1b0df36a1931d432d2215a1cbe0cd: QA12 run 43830418575, job 133174252379; 59 PostgreSQL cases, 321 runtime guards and 43 routing/context cases passed. All ten automatic CI lanes passed. Bounded evidence only; full finding remains NOT_CERTIFIED.",
         "remaining": "Concurrent finalizer CAS, consumer idempotency across effect-to-receipt crash window, optional/legacy fanout reconciliation, all surface/provider readback, deployment/rollback and owner acceptance remain open.",
         "release_certified": false,
         "acknowledgement_contract": "Canonical audit_logs storage returns a boolean acknowledgement; notification receipts require an actual inbox row ID; learning receipts require returned insert rows. Secondary audit_events/SIEM delivery is not inferred."
+      },
+      "atomic_parameter_batch_evidence": {
+        "scope": "Shared repository top-level parameter patches use a service-role-only SECURITY INVOKER SQL function and row lock; no unsafe read/replace fallback.",
+        "source": "backend/app/workflows/repository.py",
+        "migration": "supabase/migrations/20261116160849_atomic_workflow_run_parameters.sql",
+        "regression": "backend/tests/master_qa/test_canonical_repository_persistence_pg.py",
+        "local_validation": "67 focused checks passed; seven new fail-closed regression cases fail on the pre-repair method.",
+        "postgres_validation": "PENDING_EXACT_HEAD_CI: 11 added PG cases in the existing acceptance file, including 16 simultaneous independent connections held at a deterministic database lock.",
+        "rollout": "Apply additive function migration before backend activation. No hosted migration or deployment performed. Roll back backend first; leave additive function present for in-flight new callers.",
+        "remaining": "Same-key nested object replacement remains shallow last-writer-wins. Monotonic fanout receipts, atomic terminal/proof arbitration, concurrent channel idempotency and effect-to-receipt crash recovery are not certified by this repair. Existing live, rollback and owner gates remain open.",
+        "release_certified": false
       }
     },
     {
@@ -1238,10 +1260,21 @@
           "backend/tests/db/test_domain_event_outbox_pg.py"
         ],
         "local_validation": "206 focused checks passed locally (114 core, 77 lifecycle/ownership, 15 workflow recovery/audit); 20 selected regressions fail on pre-repair source",
-        "postgres_validation": "PENDING_EXACT_HEAD_CI: local runtime cannot bind a Unix socket; five new PostgreSQL/process-death cases are in already-selected acceptance test files",
+        "postgres_validation": "PASS at c10601b360c1b0df36a1931d432d2215a1cbe0cd: QA12 run 43830418575, job 133174252379; 59 PostgreSQL cases, 321 runtime guards and 43 routing/context cases passed. All ten automatic CI lanes passed. Bounded evidence only; full finding remains NOT_CERTIFIED.",
         "remaining": "Concurrent finalizer CAS, consumer idempotency across effect-to-receipt crash window, optional/legacy fanout reconciliation, all surface/provider readback, deployment/rollback and owner acceptance remain open.",
         "release_certified": false,
         "acknowledgement_contract": "Canonical audit_logs storage returns a boolean acknowledgement; notification receipts require an actual inbox row ID; learning receipts require returned insert rows. Secondary audit_events/SIEM delivery is not inferred."
+      },
+      "atomic_parameter_batch_evidence": {
+        "scope": "Shared repository top-level parameter patches use a service-role-only SECURITY INVOKER SQL function and row lock; no unsafe read/replace fallback.",
+        "source": "backend/app/workflows/repository.py",
+        "migration": "supabase/migrations/20261116160849_atomic_workflow_run_parameters.sql",
+        "regression": "backend/tests/master_qa/test_canonical_repository_persistence_pg.py",
+        "local_validation": "67 focused checks passed; seven new fail-closed regression cases fail on the pre-repair method.",
+        "postgres_validation": "PENDING_EXACT_HEAD_CI: 11 added PG cases in the existing acceptance file, including 16 simultaneous independent connections held at a deterministic database lock.",
+        "rollout": "Apply additive function migration before backend activation. No hosted migration or deployment performed. Roll back backend first; leave additive function present for in-flight new callers.",
+        "remaining": "Same-key nested object replacement remains shallow last-writer-wins. Monotonic fanout receipts, atomic terminal/proof arbitration, concurrent channel idempotency and effect-to-receipt crash recovery are not certified by this repair. Existing live, rollback and owner gates remain open.",
+        "release_certified": false
       }
     },
     {
@@ -1363,7 +1396,7 @@
           "backend/tests/master_qa/test_canonical_repository_persistence_pg.py"
         ],
         "local_validation": "206 focused checks passed locally (114 core, 77 lifecycle/ownership, 15 workflow recovery/audit); 20 selected regressions fail on pre-repair source",
-        "postgres_validation": "PENDING_EXACT_HEAD_CI",
+        "postgres_validation": "PASS at c10601b360c1b0df36a1931d432d2215a1cbe0cd: QA12 run 43830418575, job 133174252379; 59 PostgreSQL cases, 321 runtime guards and 43 routing/context cases passed. All ten automatic CI lanes passed. Bounded evidence only; full finding remains NOT_CERTIFIED.",
         "remaining": "Actual provider uncertainty, deployed worker lease/revocation/cancellation and rollback acceptance remain separately required.",
         "release_certified": false,
         "acknowledgement_contract": "Canonical audit_logs storage returns a boolean acknowledgement; notification receipts require an actual inbox row ID; learning receipts require returned insert rows. Secondary audit_events/SIEM delivery is not inferred."
@@ -1541,10 +1574,21 @@
           "backend/tests/master_qa/test_canonical_repository_persistence_pg.py"
         ],
         "local_validation": "206 focused checks passed locally (114 core, 77 lifecycle/ownership, 15 workflow recovery/audit); 20 selected regressions fail on pre-repair source",
-        "postgres_validation": "PENDING_EXACT_HEAD_CI",
+        "postgres_validation": "PASS at c10601b360c1b0df36a1931d432d2215a1cbe0cd: QA12 run 43830418575, job 133174252379; 59 PostgreSQL cases, 321 runtime guards and 43 routing/context cases passed. All ten automatic CI lanes passed. Bounded evidence only; full finding remains NOT_CERTIFIED.",
         "remaining": "Actual provider uncertainty, deployed worker lease/revocation/cancellation and rollback acceptance remain separately required.",
         "release_certified": false,
         "acknowledgement_contract": "Canonical audit_logs storage returns a boolean acknowledgement; notification receipts require an actual inbox row ID; learning receipts require returned insert rows. Secondary audit_events/SIEM delivery is not inferred."
+      },
+      "atomic_parameter_batch_evidence": {
+        "scope": "Shared repository top-level parameter patches use a service-role-only SECURITY INVOKER SQL function and row lock; no unsafe read/replace fallback.",
+        "source": "backend/app/workflows/repository.py",
+        "migration": "supabase/migrations/20261116160849_atomic_workflow_run_parameters.sql",
+        "regression": "backend/tests/master_qa/test_canonical_repository_persistence_pg.py",
+        "local_validation": "67 focused checks passed; seven new fail-closed regression cases fail on the pre-repair method.",
+        "postgres_validation": "PENDING_EXACT_HEAD_CI: 11 added PG cases in the existing acceptance file, including 16 simultaneous independent connections held at a deterministic database lock.",
+        "rollout": "Apply additive function migration before backend activation. No hosted migration or deployment performed. Roll back backend first; leave additive function present for in-flight new callers.",
+        "remaining": "Same-key nested object replacement remains shallow last-writer-wins. Monotonic fanout receipts, atomic terminal/proof arbitration, concurrent channel idempotency and effect-to-receipt crash recovery are not certified by this repair. Existing live, rollback and owner gates remain open.",
+        "release_certified": false
       }
     },
     {
@@ -1882,10 +1926,21 @@
           "backend/tests/db/test_domain_event_outbox_pg.py"
         ],
         "local_validation": "206 focused checks passed locally (114 core, 77 lifecycle/ownership, 15 workflow recovery/audit); 20 selected regressions fail on pre-repair source",
-        "postgres_validation": "PENDING_EXACT_HEAD_CI: local runtime cannot bind a Unix socket; five new PostgreSQL/process-death cases are in already-selected acceptance test files",
+        "postgres_validation": "PASS at c10601b360c1b0df36a1931d432d2215a1cbe0cd: QA12 run 43830418575, job 133174252379; 59 PostgreSQL cases, 321 runtime guards and 43 routing/context cases passed. All ten automatic CI lanes passed. Bounded evidence only; full finding remains NOT_CERTIFIED.",
         "remaining": "Concurrent finalizer CAS, consumer idempotency across effect-to-receipt crash window, optional/legacy fanout reconciliation, all surface/provider readback, deployment/rollback and owner acceptance remain open.",
         "release_certified": false,
         "acknowledgement_contract": "Canonical audit_logs storage returns a boolean acknowledgement; notification receipts require an actual inbox row ID; learning receipts require returned insert rows. Secondary audit_events/SIEM delivery is not inferred."
+      },
+      "atomic_parameter_batch_evidence": {
+        "scope": "Shared repository top-level parameter patches use a service-role-only SECURITY INVOKER SQL function and row lock; no unsafe read/replace fallback.",
+        "source": "backend/app/workflows/repository.py",
+        "migration": "supabase/migrations/20261116160849_atomic_workflow_run_parameters.sql",
+        "regression": "backend/tests/master_qa/test_canonical_repository_persistence_pg.py",
+        "local_validation": "67 focused checks passed; seven new fail-closed regression cases fail on the pre-repair method.",
+        "postgres_validation": "PENDING_EXACT_HEAD_CI: 11 added PG cases in the existing acceptance file, including 16 simultaneous independent connections held at a deterministic database lock.",
+        "rollout": "Apply additive function migration before backend activation. No hosted migration or deployment performed. Roll back backend first; leave additive function present for in-flight new callers.",
+        "remaining": "Same-key nested object replacement remains shallow last-writer-wins. Monotonic fanout receipts, atomic terminal/proof arbitration, concurrent channel idempotency and effect-to-receipt crash recovery are not certified by this repair. Existing live, rollback and owner gates remain open.",
+        "release_certified": false
       }
     },
     {
@@ -1948,10 +2003,21 @@
           "backend/tests/db/test_domain_event_outbox_pg.py"
         ],
         "local_validation": "206 focused checks passed locally (114 core, 77 lifecycle/ownership, 15 workflow recovery/audit); 20 selected regressions fail on pre-repair source",
-        "postgres_validation": "PENDING_EXACT_HEAD_CI: local runtime cannot bind a Unix socket; five new PostgreSQL/process-death cases are in already-selected acceptance test files",
+        "postgres_validation": "PASS at c10601b360c1b0df36a1931d432d2215a1cbe0cd: QA12 run 43830418575, job 133174252379; 59 PostgreSQL cases, 321 runtime guards and 43 routing/context cases passed. All ten automatic CI lanes passed. Bounded evidence only; full finding remains NOT_CERTIFIED.",
         "remaining": "Concurrent finalizer CAS, consumer idempotency across effect-to-receipt crash window, optional/legacy fanout reconciliation, all surface/provider readback, deployment/rollback and owner acceptance remain open.",
         "release_certified": false,
         "acknowledgement_contract": "Canonical audit_logs storage returns a boolean acknowledgement; notification receipts require an actual inbox row ID; learning receipts require returned insert rows. Secondary audit_events/SIEM delivery is not inferred."
+      },
+      "atomic_parameter_batch_evidence": {
+        "scope": "Shared repository top-level parameter patches use a service-role-only SECURITY INVOKER SQL function and row lock; no unsafe read/replace fallback.",
+        "source": "backend/app/workflows/repository.py",
+        "migration": "supabase/migrations/20261116160849_atomic_workflow_run_parameters.sql",
+        "regression": "backend/tests/master_qa/test_canonical_repository_persistence_pg.py",
+        "local_validation": "67 focused checks passed; seven new fail-closed regression cases fail on the pre-repair method.",
+        "postgres_validation": "PENDING_EXACT_HEAD_CI: 11 added PG cases in the existing acceptance file, including 16 simultaneous independent connections held at a deterministic database lock.",
+        "rollout": "Apply additive function migration before backend activation. No hosted migration or deployment performed. Roll back backend first; leave additive function present for in-flight new callers.",
+        "remaining": "Same-key nested object replacement remains shallow last-writer-wins. Monotonic fanout receipts, atomic terminal/proof arbitration, concurrent channel idempotency and effect-to-receipt crash recovery are not certified by this repair. Existing live, rollback and owner gates remain open.",
+        "release_certified": false
       }
     },
     {
@@ -2575,10 +2641,21 @@
           "backend/tests/db/test_domain_event_outbox_pg.py"
         ],
         "local_validation": "206 focused checks passed locally (114 core, 77 lifecycle/ownership, 15 workflow recovery/audit); 20 selected regressions fail on pre-repair source",
-        "postgres_validation": "PENDING_EXACT_HEAD_CI: local runtime cannot bind a Unix socket; five new PostgreSQL/process-death cases are in already-selected acceptance test files",
+        "postgres_validation": "PASS at c10601b360c1b0df36a1931d432d2215a1cbe0cd: QA12 run 43830418575, job 133174252379; 59 PostgreSQL cases, 321 runtime guards and 43 routing/context cases passed. All ten automatic CI lanes passed. Bounded evidence only; full finding remains NOT_CERTIFIED.",
         "remaining": "Concurrent finalizer CAS, consumer idempotency across effect-to-receipt crash window, optional/legacy fanout reconciliation, all surface/provider readback, deployment/rollback and owner acceptance remain open.",
         "release_certified": false,
         "acknowledgement_contract": "Canonical audit_logs storage returns a boolean acknowledgement; notification receipts require an actual inbox row ID; learning receipts require returned insert rows. Secondary audit_events/SIEM delivery is not inferred."
+      },
+      "atomic_parameter_batch_evidence": {
+        "scope": "Shared repository top-level parameter patches use a service-role-only SECURITY INVOKER SQL function and row lock; no unsafe read/replace fallback.",
+        "source": "backend/app/workflows/repository.py",
+        "migration": "supabase/migrations/20261116160849_atomic_workflow_run_parameters.sql",
+        "regression": "backend/tests/master_qa/test_canonical_repository_persistence_pg.py",
+        "local_validation": "67 focused checks passed; seven new fail-closed regression cases fail on the pre-repair method.",
+        "postgres_validation": "PENDING_EXACT_HEAD_CI: 11 added PG cases in the existing acceptance file, including 16 simultaneous independent connections held at a deterministic database lock.",
+        "rollout": "Apply additive function migration before backend activation. No hosted migration or deployment performed. Roll back backend first; leave additive function present for in-flight new callers.",
+        "remaining": "Same-key nested object replacement remains shallow last-writer-wins. Monotonic fanout receipts, atomic terminal/proof arbitration, concurrent channel idempotency and effect-to-receipt crash recovery are not certified by this repair. Existing live, rollback and owner gates remain open.",
+        "release_certified": false
       }
     },
     {

@@ -319,12 +319,24 @@ def patch_workflow_run(client: Client, run_id: str, payload: dict[str, Any]) -> 
 
 
 def merge_run_parameters(client: Client, run_id: str, patch: dict[str, Any]) -> dict[str, Any]:
-    """Merge keys into workflow_runs.parameters (read-modify-write)."""
-    row = client.table("workflow_runs").select("parameters").eq("id", run_id).limit(1).execute()
-    current = safe_normalize_stored_dict((row.data or [{}])[0], key='parameters')
-    current.update(patch)
-    patch_workflow_run(client, run_id, {"parameters": current})
-    return current
+    """Atomically merge top-level keys without overwriting concurrent patches.
+
+    Requires the atomic_workflow_run_parameters migration. A missing RPC or
+    malformed acknowledgement fails closed; never fall back to read/replace.
+    Nested objects retain the existing shallow, last-writer-wins semantics.
+    """
+    if not isinstance(patch, dict):
+        raise TypeError("run parameter patch must be an object")
+    result = client.rpc("merge_workflow_run_parameters", {
+        "p_run_id": run_id, "p_patch": patch,
+    }).execute()
+    if not isinstance(result.data, dict) or any(
+        key not in result.data or result.data[key] != value
+        for key, value in patch.items()
+    ):
+        raise RuntimeError("atomic run parameter merge was not acknowledged")
+    mirror_legacy_run_to_contract(client, run_id)
+    return result.data
 
 
 def try_mark_run_running(client: Client, run_id: str, org_id: str) -> bool:

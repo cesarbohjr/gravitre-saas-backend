@@ -342,3 +342,85 @@ os._exit(73)
         assert replay.claimed == 0
         assert pg.value("SELECT count(*) FROM public.qa_p27_crash_effects") == "1"
         assert pg.value("SELECT status FROM public.domain_event_outbox") == "delivered"
+
+
+def test_concurrent_parameter_patches_survive_independent_connections():
+    """Production repository, simultaneous writers, independent SQL readback."""
+    from concurrent.futures import ThreadPoolExecutor
+    from threading import Barrier
+    import time
+    import psycopg
+    from app.workflows import repository
+    with canonical_pg_cluster() as pg:
+        run_id, _ = _fanout_run(pg)
+        barrier = Barrier(16)
+        def write(index):
+            barrier.wait(timeout=20)
+            return repository.merge_run_parameters(
+                PgRepositoryClient(pg), run_id, {f"checkpoint_{index}": {"ack": True}})
+        with psycopg.connect(host=str(pg.sock), port=pg.port, dbname="postgres", user="postgres") as blocker:
+            blocker.execute("SELECT id FROM public.workflow_runs WHERE id=%s FOR UPDATE", (run_id,))
+            with ThreadPoolExecutor(max_workers=16) as pool:
+                futures = [pool.submit(write, index) for index in range(16)]
+                try:
+                    # Hold all writers at the same row. The old read/replace code
+                    # reads the same initial document before blocking on UPDATE;
+                    # the RPC blocks before reading and preserves every patch.
+                    deadline = time.monotonic() + 20
+                    while int(pg.value("SELECT count(*) FROM pg_stat_activity WHERE wait_event_type='Lock'")) < 16:
+                        assert time.monotonic() < deadline, "writers did not reach database lock"
+                        time.sleep(0.01)
+                finally:
+                    blocker.commit()
+                results = [future.result(timeout=20) for future in futures]
+        stored = json.loads(pg.value(f"SELECT parameters FROM public.workflow_runs WHERE id='{run_id}'"))
+        for index, result in enumerate(results):
+            assert result[f"checkpoint_{index}"] == {"ack": True}
+            assert stored[f"checkpoint_{index}"] == {"ack": True}
+        assert pg.value("SELECT count(*) FROM public.domain_event_outbox") == "0"
+        assert pg.value(f"SELECT status FROM public.workflow_runs WHERE id='{run_id}'") == "running"
+        assert pg.value(f"SELECT status FROM public.runs WHERE id='{run_id}'") == "running"
+
+
+@pytest.mark.parametrize("legacy", [None, [], 7, "broken-json", '{"old":true}', {"old": True}])
+def test_atomic_parameter_merge_preserves_legacy_normalization(legacy):
+    import psycopg
+    from psycopg.types.json import Jsonb
+    from app.workflows import repository
+    with canonical_pg_cluster() as pg:
+        run_id, _ = _fanout_run(pg)
+        with psycopg.connect(host=str(pg.sock), port=pg.port, dbname="postgres", user="postgres") as conn:
+            conn.execute("UPDATE public.workflow_runs SET parameters=%s WHERE id=%s", (Jsonb(legacy), run_id))
+        result = repository.merge_run_parameters(PgRepositoryClient(pg), run_id, {"new": 1})
+        expected = {"old": True, "new": 1} if legacy in ('{"old":true}', {"old": True}) else {"new": 1}
+        assert result == expected
+        assert json.loads(pg.value(f"SELECT parameters FROM public.workflow_runs WHERE id='{run_id}'")) == expected
+
+
+@pytest.mark.parametrize("bad_patch", [None, [], '"string"'])
+def test_atomic_parameter_rpc_rejects_nonobjects_without_mutation(bad_patch):
+    import psycopg
+    from psycopg.types.json import Jsonb
+    with canonical_pg_cluster() as pg:
+        run_id, _ = _fanout_run(pg)
+        before = pg.value(f"SELECT parameters FROM public.workflow_runs WHERE id='{run_id}'")
+        with pytest.raises(psycopg.errors.InvalidParameterValue):
+            with psycopg.connect(host=str(pg.sock), port=pg.port, dbname="postgres", user="postgres") as conn:
+                conn.execute("SELECT public.merge_workflow_run_parameters(%s,%s)", (run_id, Jsonb(bad_patch)))
+        assert pg.value(f"SELECT parameters FROM public.workflow_runs WHERE id='{run_id}'") == before
+
+
+def test_atomic_parameter_rpc_missing_run_role_boundary_and_shallow_merge():
+    import psycopg
+    from app.workflows import repository
+    with canonical_pg_cluster() as pg:
+        run_id, _ = _fanout_run(pg)
+        with pytest.raises(psycopg.errors.NoDataFound):
+            repository.merge_run_parameters(PgRepositoryClient(pg), "99999999-9999-4999-8999-999999999999", {"x": 1})
+        for role in ("anon", "authenticated"):
+            assert pg.value(f"SELECT has_function_privilege('{role}', 'public.merge_workflow_run_parameters(uuid,jsonb)', 'EXECUTE')") == "f"
+        assert pg.value("SELECT has_function_privilege('service_role', 'public.merge_workflow_run_parameters(uuid,jsonb)', 'EXECUTE')") == "t"
+        assert pg.value("SELECT prosecdef FROM pg_proc WHERE oid='public.merge_workflow_run_parameters(uuid,jsonb)'::regprocedure") == "f"
+        client = PgRepositoryClient(pg)
+        repository.merge_run_parameters(client, run_id, {"nested": {"old": True}, "unrelated": 1})
+        assert repository.merge_run_parameters(client, run_id, {"nested": {"new": True}}) == {"nested": {"new": True}, "unrelated": 1}
