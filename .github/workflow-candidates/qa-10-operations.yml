@@ -53,6 +53,21 @@ name: QA 10-operations
       workflow_schedules__reason:
         description: 'workflow-schedules: Reason for manual trigger'
         required: false
+  push:
+    branches:
+    - main
+  pull_request:
+    types:
+    - opened
+    - reopened
+    - synchronize
+  schedule:
+  - cron: '*/5 * * * *'
+  - cron: 0 * * * *
+  - cron: 0 3 * * *
+  - cron: 0 4 * * *
+  - cron: 15 * * * *
+  - cron: 15 2 * * *
 concurrency:
   group: ${{ format('candidate-{0}', (inputs.source == 'chat-history-hygiene-live' && ('chat-history-hygiene-live')) || (inputs.source
     == 'connector-health' && ('connector-health')) || (inputs.source == 'knowledge-sync' && ('knowledge-sync')) || (inputs.source
@@ -72,10 +87,21 @@ jobs:
   dispatch_contract:
     name: Validate selected source inputs
     runs-on: ubuntu-latest
-    permissions: {}
-    timeout-minutes: 2
+    permissions:
+      contents: read
+      actions: read
+    timeout-minutes: 4
+    outputs:
+      selected: ${{ steps.contract.outputs.selected }}
+      derived: ${{ steps.contract.outputs.derived }}
+      context_conclusions: ${{ steps.contract.outputs.context_conclusions }}
     steps:
-    - name: Validate source contract
+    - uses: actions/checkout@v4
+      with:
+        persist-credentials: false
+        fetch-depth: 0
+    - id: contract
+      name: Validate source contract
       shell: python
       env:
         SOURCE_SCHEMAS: '{"chat-history-hygiene-live": {}, "connector-health": {}, "knowledge-sync": {"reason": {"description":
@@ -93,15 +119,20 @@ jobs:
           "unified-turn-ops-gates", "usage-sync", "workflow-schedules"]'
         DISPATCH_VALUES: ${{ toJSON(inputs) }}
         EVENT_NAME: ${{ github.event_name }}
+        CANONICAL_LANE: 10-operations
+        GITHUB_TOKEN: ${{ github.token }}
       run: "import json, os\nschemas = json.loads(os.environ['SOURCE_SCHEMAS'])\nvalues = json.loads(os.environ['DISPATCH_VALUES'])\n\
-        source = values.get('source')\nif source not in schemas:\n    raise SystemExit('Unknown source workflow')\nif os.environ['EVENT_NAME']\
-        \ == 'workflow_dispatch' and source not in json.loads(os.environ['MANUAL_SOURCES']):\n    raise SystemExit('Source\
-        \ has no manual trigger')\nif os.environ['EVENT_NAME'] != 'workflow_dispatch' and source != 'isolated-acceptance':\n\
-        \    raise SystemExit('Unsupported reusable source')\nfor key, config in schemas[source].items():\n    value = values.get(source.replace('-',\
-        \ '_') + '__' + key)\n    if os.environ['EVENT_NAME'] != 'workflow_dispatch' and key == 'suite':\n        value =\
-        \ values.get('suite')\n    if config.get('required') and (value is None or value == ''):\n        raise SystemExit('Required\
-        \ selected-source input missing: ' + key)\nprint('Selected source input contract validated; this is not execution\
-        \ acceptance')\n"
+        event_name = os.environ['EVENT_NAME']\ncalled = values.get('_reusable', False)\nif not called and event_name not in\
+        \ ('workflow_dispatch', 'workflow_call'):\n    import subprocess\n    subprocess.run(['python', 'scripts/route-workflow-event.py',\
+        \ '--lane', os.environ['CANONICAL_LANE']], check=True)\n    raise SystemExit(0)\nsource = values.get('source')\nif\
+        \ source not in schemas:\n    raise SystemExit('Unknown source workflow')\nif not called and event_name == 'workflow_dispatch'\
+        \ and source not in json.loads(os.environ['MANUAL_SOURCES']):\n    raise SystemExit('Source has no manual trigger')\n\
+        if called and source != 'isolated-acceptance':\n    raise SystemExit('Unsupported reusable source')\nfor key, config\
+        \ in schemas[source].items():\n    value = values.get(source.replace('-', '_') + '__' + key)\n    if called and key\
+        \ == 'suite':\n        value = values.get('suite')\n    if config.get('required') and (value is None or value == ''):\n\
+        \        raise SystemExit('Required selected-source input missing: ' + key)\nprint('Selected source input contract\
+        \ validated; this is not execution acceptance')\nwith open(os.environ['GITHUB_OUTPUT'], 'a') as output:\n    output.write('selected='\
+        \ + json.dumps([source]) + '\\n')\n    output.write('derived=[]\\ncontext_conclusions={}\\n')\n"
   chat_history_hygiene_live__verify:
     name: Live history hygiene + list latency
     runs-on: ubuntu-latest
@@ -131,7 +162,12 @@ jobs:
         if-no-files-found: ignore
     needs:
     - dispatch_contract
-    if: ${{ needs.dispatch_contract.result == 'success' && inputs.source == 'chat-history-hygiene-live' && (success()) }}
+    if: ${{ needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected), 'chat-history-hygiene-live')
+      && (success()) }}
+    concurrency:
+      group: ${{ format('candidate-{0}-{1}-{2}', 'chat-history-hygiene-live', 'chat_history_hygiene_live__verify', toJSON(matrix))
+        }}
+      cancel-in-progress: ${{ false }}
   connector_health__connector-health:
     name: Run connector health monitor
     runs-on: ubuntu-latest
@@ -149,7 +185,12 @@ jobs:
         \necho \"HTTP Status: $HTTP_STATUS\"\nif [ \"$HTTP_STATUS\" != \"200\" ]; then\n  exit 1\nfi\n"
     needs:
     - dispatch_contract
-    if: ${{ needs.dispatch_contract.result == 'success' && inputs.source == 'connector-health' && (success()) }}
+    if: ${{ needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected), 'connector-health')
+      && (success()) }}
+    concurrency:
+      group: ${{ format('candidate-{0}-{1}-{2}', 'connector-health', 'connector_health__connector-health', toJSON(matrix))
+        }}
+      cancel-in-progress: ${{ false }}
   knowledge_sync__sync-due:
     name: Run due knowledge syncs
     runs-on: ubuntu-latest
@@ -169,7 +210,11 @@ jobs:
         \n"
     needs:
     - dispatch_contract
-    if: ${{ needs.dispatch_contract.result == 'success' && inputs.source == 'knowledge-sync' && (success()) }}
+    if: ${{ needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected), 'knowledge-sync')
+      && (success()) }}
+    concurrency:
+      group: ${{ format('candidate-{0}-{1}-{2}', 'knowledge-sync', 'knowledge_sync__sync-due', toJSON(matrix)) }}
+      cancel-in-progress: ${{ false }}
   metrics_rollup__rollup-daily:
     name: Run daily metrics rollups
     runs-on: ubuntu-latest
@@ -191,7 +236,11 @@ jobs:
         \ 1\nfi\n"
     needs:
     - dispatch_contract
-    if: ${{ needs.dispatch_contract.result == 'success' && inputs.source == 'metrics-rollup' && (success()) }}
+    if: ${{ needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected), 'metrics-rollup')
+      && (success()) }}
+    concurrency:
+      group: ${{ format('candidate-{0}-{1}-{2}', 'metrics-rollup', 'metrics_rollup__rollup-daily', toJSON(matrix)) }}
+      cancel-in-progress: ${{ false }}
   msp_enrichment_workflow_live__msp-enrichment-live:
     name: MSP enrichment workflow live smoke
     runs-on: ubuntu-latest
@@ -234,8 +283,12 @@ jobs:
         if-no-files-found: ignore
     needs:
     - dispatch_contract
-    if: ${{ needs.dispatch_contract.result == 'success' && inputs.source == 'msp-enrichment-workflow-live' && (success())
-      }}
+    if: ${{ needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected), 'msp-enrichment-workflow-live')
+      && (success()) }}
+    concurrency:
+      group: ${{ format('candidate-{0}-{1}-{2}', 'msp-enrichment-workflow-live', 'msp_enrichment_workflow_live__msp-enrichment-live',
+        toJSON(matrix)) }}
+      cancel-in-progress: ${{ false }}
   native_workers_offline__pinned-sdk-imports:
     runs-on: ubuntu-latest
     timeout-minutes: 25
@@ -286,9 +339,14 @@ jobs:
     name: pinned-sdk-imports
     needs:
     - dispatch_contract
-    if: ${{ needs.dispatch_contract.result == 'success' && inputs.source == 'native-workers-offline' && (success()) }}
+    if: ${{ needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected), 'native-workers-offline')
+      && (success()) }}
     permissions:
       contents: read
+    concurrency:
+      group: ${{ format('candidate-{0}-{1}-{2}', format('native-workers-{0}', github.ref), 'native_workers_offline__pinned-sdk-imports',
+        toJSON(matrix)) }}
+      cancel-in-progress: ${{ true }}
   native_workers_offline__playwright-comparison-image:
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -308,9 +366,14 @@ jobs:
     name: playwright-comparison-image
     needs:
     - dispatch_contract
-    if: ${{ needs.dispatch_contract.result == 'success' && inputs.source == 'native-workers-offline' && (success()) }}
+    if: ${{ needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected), 'native-workers-offline')
+      && (success()) }}
     permissions:
       contents: read
+    concurrency:
+      group: ${{ format('candidate-{0}-{1}-{2}', format('native-workers-{0}', github.ref), 'native_workers_offline__playwright-comparison-image',
+        toJSON(matrix)) }}
+      cancel-in-progress: ${{ true }}
   native_workers_offline__gateway-image:
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -322,9 +385,14 @@ jobs:
     name: gateway-image
     needs:
     - dispatch_contract
-    if: ${{ needs.dispatch_contract.result == 'success' && inputs.source == 'native-workers-offline' && (success()) }}
+    if: ${{ needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected), 'native-workers-offline')
+      && (success()) }}
     permissions:
       contents: read
+    concurrency:
+      group: ${{ format('candidate-{0}-{1}-{2}', format('native-workers-{0}', github.ref), 'native_workers_offline__gateway-image',
+        toJSON(matrix)) }}
+      cancel-in-progress: ${{ true }}
   native_workers_offline__runtime-certification:
     needs:
     - dispatch_contract
@@ -414,13 +482,18 @@ jobs:
           '
         if-no-files-found: error
     name: runtime-certification
-    if: ${{ needs.dispatch_contract.result == 'success' && inputs.source == 'native-workers-offline' && (success()) }}
+    if: ${{ needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected), 'native-workers-offline')
+      && (success()) }}
     permissions:
       contents: read
+    concurrency:
+      group: ${{ format('candidate-{0}-{1}-{2}', format('native-workers-{0}', github.ref), 'native_workers_offline__runtime-certification',
+        toJSON(matrix)) }}
+      cancel-in-progress: ${{ true }}
   native_workers_offline__tenant-worker-certification:
     name: Persisted tenant authorization and full worker lifecycle
-    if: ${{ needs.dispatch_contract.result == 'success' && inputs.source == 'native-workers-offline' && (github.event_name
-      != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) }}
+    if: ${{ needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected), 'native-workers-offline')
+      && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) }}
     needs:
     - dispatch_contract
     - native_workers_offline__pinned-sdk-imports
@@ -527,6 +600,10 @@ jobs:
         if-no-files-found: error
     permissions:
       contents: read
+    concurrency:
+      group: ${{ format('candidate-{0}-{1}-{2}', format('native-workers-{0}', github.ref), 'native_workers_offline__tenant-worker-certification',
+        toJSON(matrix)) }}
+      cancel-in-progress: ${{ true }}
   platform_cs_backfill__backfill-snapshots:
     name: Backfill missing integration health snapshots
     runs-on: ubuntu-latest
@@ -546,7 +623,12 @@ jobs:
         \ 1\nfi\necho \"Platform CS snapshot backfill completed successfully\"\n"
     needs:
     - dispatch_contract
-    if: ${{ needs.dispatch_contract.result == 'success' && inputs.source == 'platform-cs-backfill' && (success()) }}
+    if: ${{ needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected), 'platform-cs-backfill')
+      && (success()) }}
+    concurrency:
+      group: ${{ format('candidate-{0}-{1}-{2}', 'platform-cs-backfill', 'platform_cs_backfill__backfill-snapshots', toJSON(matrix))
+        }}
+      cancel-in-progress: ${{ false }}
   probe_gmail_live_bugs_audit__probe:
     name: Pull prod audit traces for Gmail bugs
     runs-on: ubuntu-latest
@@ -584,7 +666,12 @@ jobs:
         if-no-files-found: ignore
     needs:
     - dispatch_contract
-    if: ${{ needs.dispatch_contract.result == 'success' && inputs.source == 'probe-gmail-live-bugs-audit' && (success()) }}
+    if: ${{ needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected), 'probe-gmail-live-bugs-audit')
+      && (success()) }}
+    concurrency:
+      group: ${{ format('candidate-{0}-{1}-{2}', 'probe-gmail-live-bugs-audit', 'probe_gmail_live_bugs_audit__probe', toJSON(matrix))
+        }}
+      cancel-in-progress: ${{ false }}
   smoke_conversation_pollution_cleanup__cleanup:
     name: Soft-delete probe/smoke conversation rows
     runs-on: ubuntu-latest
@@ -614,8 +701,12 @@ jobs:
         if-no-files-found: ignore
     needs:
     - dispatch_contract
-    if: ${{ needs.dispatch_contract.result == 'success' && inputs.source == 'smoke-conversation-pollution-cleanup' && (success())
-      }}
+    if: ${{ needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected), 'smoke-conversation-pollution-cleanup')
+      && (success()) }}
+    concurrency:
+      group: ${{ format('candidate-{0}-{1}-{2}', 'smoke-conversation-pollution-cleanup', 'smoke_conversation_pollution_cleanup__cleanup',
+        toJSON(matrix)) }}
+      cancel-in-progress: ${{ false }}
   unified_turn_ops_gates__ops-gates:
     name: Fallthrough alert and R2 gate tracker
     runs-on: ubuntu-latest
@@ -655,7 +746,12 @@ jobs:
         if-no-files-found: ignore
     needs:
     - dispatch_contract
-    if: ${{ needs.dispatch_contract.result == 'success' && inputs.source == 'unified-turn-ops-gates' && (success()) }}
+    if: ${{ needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected), 'unified-turn-ops-gates')
+      && (success()) }}
+    concurrency:
+      group: ${{ format('candidate-{0}-{1}-{2}', 'unified-turn-ops-gates', 'unified_turn_ops_gates__ops-gates', toJSON(matrix))
+        }}
+      cancel-in-progress: ${{ false }}
   usage_sync__sync-usage:
     name: Sync AI usage to Stripe
     runs-on: ubuntu-latest
@@ -674,7 +770,11 @@ jobs:
         \n  exit 1\nfi\necho \"Sync completed successfully\"\n"
     needs:
     - dispatch_contract
-    if: ${{ needs.dispatch_contract.result == 'success' && inputs.source == 'usage-sync' && (success()) }}
+    if: ${{ needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected), 'usage-sync')
+      && (success()) }}
+    concurrency:
+      group: ${{ format('candidate-{0}-{1}-{2}', 'usage-sync', 'usage_sync__sync-usage', toJSON(matrix)) }}
+      cancel-in-progress: ${{ false }}
   workflow_schedules__dispatch-due:
     name: Dispatch due workflow schedules
     runs-on: ubuntu-latest
@@ -694,4 +794,79 @@ jobs:
         fi\necho \"Workflow schedule dispatch completed successfully\"\n"
     needs:
     - dispatch_contract
-    if: ${{ needs.dispatch_contract.result == 'success' && inputs.source == 'workflow-schedules' && (success()) }}
+    if: ${{ needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected), 'workflow-schedules')
+      && (success()) }}
+    concurrency:
+      group: ${{ format('candidate-{0}-{1}-{2}', 'workflow-schedules', 'workflow_schedules__dispatch-due', toJSON(matrix))
+        }}
+      cancel-in-progress: ${{ false }}
+  source_outcomes:
+    name: Record independent source workflow outcomes
+    if: ${{ always() && needs.dispatch_contract.result == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    permissions: {}
+    needs:
+    - dispatch_contract
+    - chat_history_hygiene_live__verify
+    - connector_health__connector-health
+    - knowledge_sync__sync-due
+    - metrics_rollup__rollup-daily
+    - msp_enrichment_workflow_live__msp-enrichment-live
+    - native_workers_offline__pinned-sdk-imports
+    - native_workers_offline__playwright-comparison-image
+    - native_workers_offline__gateway-image
+    - native_workers_offline__runtime-certification
+    - native_workers_offline__tenant-worker-certification
+    - platform_cs_backfill__backfill-snapshots
+    - probe_gmail_live_bugs_audit__probe
+    - smoke_conversation_pollution_cleanup__cleanup
+    - unified_turn_ops_gates__ops-gates
+    - usage_sync__sync-usage
+    - workflow_schedules__dispatch-due
+    steps:
+    - name: Bind source outcomes to this run
+      shell: python
+      run: "import json, os\nsources = json.loads(os.environ['SOURCE_JOBS'])\nneeds = json.loads(os.environ['JOB_RESULTS'])\n\
+        selected = json.loads(os.environ['SELECTED'])\noutcomes = {}\nfor name, source in sources.items():\n    if name not\
+        \ in selected:\n        continue\n    results = [needs[key]['result'] for key in source['jobs']]\n    outcome = ('failure'\
+        \ if 'failure' in results else 'cancelled' if 'cancelled' in results\n               else 'success' if 'success' in\
+        \ results else 'skipped')\n    outcomes[source['display_name']] = outcome\nevidence = {'run_id': int(os.environ['GITHUB_RUN_ID']),\
+        \ 'head_sha': os.environ['GITHUB_SHA'],\n            'source_outcomes': outcomes}\nwith open('canonical-workflow-outcomes.json',\
+        \ 'w') as output:\n    json.dump(evidence, output)\n"
+      env:
+        SOURCE_JOBS: '{"chat-history-hygiene-live": {"display_name": "Chat history hygiene live", "jobs": ["chat_history_hygiene_live__verify"]},
+          "connector-health": {"display_name": "Connector Health", "jobs": ["connector_health__connector-health"]}, "knowledge-sync":
+          {"display_name": "Knowledge Sync", "jobs": ["knowledge_sync__sync-due"]}, "metrics-rollup": {"display_name": "Metrics
+          Rollup", "jobs": ["metrics_rollup__rollup-daily"]}, "msp-enrichment-workflow-live": {"display_name": "MSP Enrichment
+          Workflow Live", "jobs": ["msp_enrichment_workflow_live__msp-enrichment-live"]}, "native-workers-offline": {"display_name":
+          "Native worker image contracts", "jobs": ["native_workers_offline__pinned-sdk-imports", "native_workers_offline__playwright-comparison-image",
+          "native_workers_offline__gateway-image", "native_workers_offline__runtime-certification", "native_workers_offline__tenant-worker-certification"]},
+          "platform-cs-backfill": {"display_name": "Platform CS Snapshot Backfill", "jobs": ["platform_cs_backfill__backfill-snapshots"]},
+          "probe-gmail-live-bugs-audit": {"display_name": "Probe Gmail Live Bugs Audit", "jobs": ["probe_gmail_live_bugs_audit__probe"]},
+          "smoke-conversation-pollution-cleanup": {"display_name": "Smoke conversation pollution cleanup", "jobs": ["smoke_conversation_pollution_cleanup__cleanup"]},
+          "unified-turn-ops-gates": {"display_name": "Unified turn ops gates", "jobs": ["unified_turn_ops_gates__ops-gates"]},
+          "usage-sync": {"display_name": "Usage Sync", "jobs": ["usage_sync__sync-usage"]}, "workflow-schedules": {"display_name":
+          "Workflow Schedules", "jobs": ["workflow_schedules__dispatch-due"]}}'
+        JOB_RESULTS: '{"chat_history_hygiene_live__verify": {"result": "${{ needs.chat_history_hygiene_live__verify.result
+          }}"}, "connector_health__connector-health": {"result": "${{ needs.connector_health__connector-health.result }}"},
+          "knowledge_sync__sync-due": {"result": "${{ needs.knowledge_sync__sync-due.result }}"}, "metrics_rollup__rollup-daily":
+          {"result": "${{ needs.metrics_rollup__rollup-daily.result }}"}, "msp_enrichment_workflow_live__msp-enrichment-live":
+          {"result": "${{ needs.msp_enrichment_workflow_live__msp-enrichment-live.result }}"}, "native_workers_offline__pinned-sdk-imports":
+          {"result": "${{ needs.native_workers_offline__pinned-sdk-imports.result }}"}, "native_workers_offline__playwright-comparison-image":
+          {"result": "${{ needs.native_workers_offline__playwright-comparison-image.result }}"}, "native_workers_offline__gateway-image":
+          {"result": "${{ needs.native_workers_offline__gateway-image.result }}"}, "native_workers_offline__runtime-certification":
+          {"result": "${{ needs.native_workers_offline__runtime-certification.result }}"}, "native_workers_offline__tenant-worker-certification":
+          {"result": "${{ needs.native_workers_offline__tenant-worker-certification.result }}"}, "platform_cs_backfill__backfill-snapshots":
+          {"result": "${{ needs.platform_cs_backfill__backfill-snapshots.result }}"}, "probe_gmail_live_bugs_audit__probe":
+          {"result": "${{ needs.probe_gmail_live_bugs_audit__probe.result }}"}, "smoke_conversation_pollution_cleanup__cleanup":
+          {"result": "${{ needs.smoke_conversation_pollution_cleanup__cleanup.result }}"}, "unified_turn_ops_gates__ops-gates":
+          {"result": "${{ needs.unified_turn_ops_gates__ops-gates.result }}"}, "usage_sync__sync-usage": {"result": "${{ needs.usage_sync__sync-usage.result
+          }}"}, "workflow_schedules__dispatch-due": {"result": "${{ needs.workflow_schedules__dispatch-due.result }}"}}'
+        SELECTED: ${{ needs.dispatch_contract.outputs.selected }}
+    - uses: actions/upload-artifact@v4
+      with:
+        name: canonical-workflow-outcomes-10-operations
+        path: canonical-workflow-outcomes.json
+        if-no-files-found: error
+        retention-days: 14

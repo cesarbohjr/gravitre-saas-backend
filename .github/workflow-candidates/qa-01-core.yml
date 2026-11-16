@@ -10,6 +10,16 @@ name: QA 01-core
         options:
         - ci
         default: ci
+  push:
+    branches:
+    - main
+  pull_request:
+    branches:
+    - main
+    types:
+    - opened
+    - reopened
+    - synchronize
 concurrency:
   group: ${{ format('candidate-{0}', (inputs.source == 'ci' && (format('ci-{0}', github.event_name == 'pull_request' && format('pr-{0}',
     github.event.pull_request.number) || github.ref))) || github.run_id) }}
@@ -18,25 +28,41 @@ jobs:
   dispatch_contract:
     name: Validate selected source inputs
     runs-on: ubuntu-latest
-    permissions: {}
-    timeout-minutes: 2
+    permissions:
+      contents: read
+      actions: read
+    timeout-minutes: 4
+    outputs:
+      selected: ${{ steps.contract.outputs.selected }}
+      derived: ${{ steps.contract.outputs.derived }}
+      context_conclusions: ${{ steps.contract.outputs.context_conclusions }}
     steps:
-    - name: Validate source contract
+    - uses: actions/checkout@v4
+      with:
+        persist-credentials: false
+        fetch-depth: 0
+    - id: contract
+      name: Validate source contract
       shell: python
       env:
         SOURCE_SCHEMAS: '{"ci": {}, "repair-root-npm-lock": {}}'
         MANUAL_SOURCES: '["ci"]'
         DISPATCH_VALUES: ${{ toJSON(inputs) }}
         EVENT_NAME: ${{ github.event_name }}
+        CANONICAL_LANE: 01-core
+        GITHUB_TOKEN: ${{ github.token }}
       run: "import json, os\nschemas = json.loads(os.environ['SOURCE_SCHEMAS'])\nvalues = json.loads(os.environ['DISPATCH_VALUES'])\n\
-        source = values.get('source')\nif source not in schemas:\n    raise SystemExit('Unknown source workflow')\nif os.environ['EVENT_NAME']\
-        \ == 'workflow_dispatch' and source not in json.loads(os.environ['MANUAL_SOURCES']):\n    raise SystemExit('Source\
-        \ has no manual trigger')\nif os.environ['EVENT_NAME'] != 'workflow_dispatch' and source != 'isolated-acceptance':\n\
-        \    raise SystemExit('Unsupported reusable source')\nfor key, config in schemas[source].items():\n    value = values.get(source.replace('-',\
-        \ '_') + '__' + key)\n    if os.environ['EVENT_NAME'] != 'workflow_dispatch' and key == 'suite':\n        value =\
-        \ values.get('suite')\n    if config.get('required') and (value is None or value == ''):\n        raise SystemExit('Required\
-        \ selected-source input missing: ' + key)\nprint('Selected source input contract validated; this is not execution\
-        \ acceptance')\n"
+        event_name = os.environ['EVENT_NAME']\ncalled = values.get('_reusable', False)\nif not called and event_name not in\
+        \ ('workflow_dispatch', 'workflow_call'):\n    import subprocess\n    subprocess.run(['python', 'scripts/route-workflow-event.py',\
+        \ '--lane', os.environ['CANONICAL_LANE']], check=True)\n    raise SystemExit(0)\nsource = values.get('source')\nif\
+        \ source not in schemas:\n    raise SystemExit('Unknown source workflow')\nif not called and event_name == 'workflow_dispatch'\
+        \ and source not in json.loads(os.environ['MANUAL_SOURCES']):\n    raise SystemExit('Source has no manual trigger')\n\
+        if called and source != 'isolated-acceptance':\n    raise SystemExit('Unsupported reusable source')\nfor key, config\
+        \ in schemas[source].items():\n    value = values.get(source.replace('-', '_') + '__' + key)\n    if called and key\
+        \ == 'suite':\n        value = values.get('suite')\n    if config.get('required') and (value is None or value == ''):\n\
+        \        raise SystemExit('Required selected-source input missing: ' + key)\nprint('Selected source input contract\
+        \ validated; this is not execution acceptance')\nwith open(os.environ['GITHUB_OUTPUT'], 'a') as output:\n    output.write('selected='\
+        \ + json.dumps([source]) + '\\n')\n    output.write('derived=[]\\ncontext_conclusions={}\\n')\n"
   ci__web:
     name: Web (lint + typecheck + build)
     runs-on: ubuntu-latest
@@ -87,7 +113,12 @@ jobs:
         FASTAPI_BASE_URL: http://127.0.0.1:8000
     needs:
     - dispatch_contract
-    if: ${{ needs.dispatch_contract.result == 'success' && inputs.source == 'ci' && (success()) }}
+    if: ${{ needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected), 'ci')
+      && (success()) }}
+    concurrency:
+      group: ${{ format('candidate-{0}-{1}-{2}', format('ci-{0}', github.event_name == 'pull_request' && format('pr-{0}',
+        github.event.pull_request.number) || github.ref), 'ci__web', toJSON(matrix)) }}
+      cancel-in-progress: ${{ github.event_name == 'pull_request' }}
   ci__integration-smoke-test:
     name: Integration Smoke Test
     runs-on: ubuntu-latest
@@ -144,7 +175,12 @@ jobs:
         '
     needs:
     - dispatch_contract
-    if: ${{ needs.dispatch_contract.result == 'success' && inputs.source == 'ci' && (success()) }}
+    if: ${{ needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected), 'ci')
+      && (success()) }}
+    concurrency:
+      group: ${{ format('candidate-{0}-{1}-{2}', format('ci-{0}', github.event_name == 'pull_request' && format('pr-{0}',
+        github.event.pull_request.number) || github.ref), 'ci__integration-smoke-test', toJSON(matrix)) }}
+      cancel-in-progress: ${{ github.event_name == 'pull_request' }}
   ci__shared-runtime-gate:
     name: Shared runtime text/voice gate
     runs-on: ubuntu-latest
@@ -190,7 +226,12 @@ jobs:
         OPENAI_API_KEY: sk-test-openai
     needs:
     - dispatch_contract
-    if: ${{ needs.dispatch_contract.result == 'success' && inputs.source == 'ci' && (success()) }}
+    if: ${{ needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected), 'ci')
+      && (success()) }}
+    concurrency:
+      group: ${{ format('candidate-{0}-{1}-{2}', format('ci-{0}', github.event_name == 'pull_request' && format('pr-{0}',
+        github.event.pull_request.number) || github.ref), 'ci__shared-runtime-gate', toJSON(matrix)) }}
+      cancel-in-progress: ${{ github.event_name == 'pull_request' }}
   ci__backend:
     name: Backend (pytest)
     runs-on: ubuntu-latest
@@ -520,7 +561,12 @@ jobs:
         OPENAI_API_KEY: sk-test-openai
     needs:
     - dispatch_contract
-    if: ${{ needs.dispatch_contract.result == 'success' && inputs.source == 'ci' && (success()) }}
+    if: ${{ needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected), 'ci')
+      && (success()) }}
+    concurrency:
+      group: ${{ format('candidate-{0}-{1}-{2}', format('ci-{0}', github.event_name == 'pull_request' && format('pr-{0}',
+        github.event.pull_request.number) || github.ref), 'ci__backend', toJSON(matrix)) }}
+      cancel-in-progress: ${{ github.event_name == 'pull_request' }}
   ci__security-scan:
     name: Dependency audit
     runs-on: ubuntu-latest
@@ -560,13 +606,18 @@ jobs:
       run: pnpm audit --audit-level=high
     needs:
     - dispatch_contract
-    if: ${{ needs.dispatch_contract.result == 'success' && inputs.source == 'ci' && (success()) }}
+    if: ${{ needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected), 'ci')
+      && (success()) }}
+    concurrency:
+      group: ${{ format('candidate-{0}-{1}-{2}', format('ci-{0}', github.event_name == 'pull_request' && format('pr-{0}',
+        github.event.pull_request.number) || github.ref), 'ci__security-scan', toJSON(matrix)) }}
+      cancel-in-progress: ${{ github.event_name == 'pull_request' }}
   ci__billing-e2e:
     name: Billing E2E (Playwright)
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    if: ${{ needs.dispatch_contract.result == 'success' && inputs.source == 'ci' && (github.event_name == 'workflow_dispatch')
-      }}
+    if: ${{ needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected), 'ci')
+      && (github.event_name == 'workflow_dispatch') }}
     needs:
     - dispatch_contract
     - ci__web
@@ -621,11 +672,15 @@ jobs:
         FASTAPI_BASE_URL: http://127.0.0.1:8000
         PLAYWRIGHT_BASE_URL: http://localhost:3000
         NEXT_PUBLIC_PLAYWRIGHT_E2E: '1'
+    concurrency:
+      group: ${{ format('candidate-{0}-{1}-{2}', format('ci-{0}', github.event_name == 'pull_request' && format('pr-{0}',
+        github.event.pull_request.number) || github.ref), 'ci__billing-e2e', toJSON(matrix)) }}
+      cancel-in-progress: ${{ github.event_name == 'pull_request' }}
   ci__mcp-crash-acceptance:
     name: MCP approval crash/restart acceptance (isolated)
-    if: ${{ needs.dispatch_contract.result == 'success' && inputs.source == 'ci' && (github.event_name == 'pull_request' &&
-      github.event.pull_request.number == 611 && github.event.pull_request.head.repo.full_name == github.repository && github.head_ref
-      == 'feat/master-qa-tranche27-orchestration') }}
+    if: ${{ needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected), 'ci')
+      && (github.event_name == 'pull_request' && github.event.pull_request.number == 611 && github.event.pull_request.head.repo.full_name
+      == github.repository && github.head_ref == 'feat/master-qa-tranche27-orchestration') }}
     runs-on: ubuntu-latest
     timeout-minutes: 25
     environment: acceptance
@@ -695,9 +750,13 @@ jobs:
         '
     needs:
     - dispatch_contract
+    concurrency:
+      group: ${{ format('candidate-{0}-{1}-{2}', format('ci-{0}', github.event_name == 'pull_request' && format('pr-{0}',
+        github.event.pull_request.number) || github.ref), 'ci__mcp-crash-acceptance', toJSON(matrix)) }}
+      cancel-in-progress: ${{ github.event_name == 'pull_request' }}
   repair_root_npm_lock__repair-root-npm-lock:
-    if: ${{ needs.dispatch_contract.result == 'success' && inputs.source == 'repair-root-npm-lock' && (github.event.pull_request.head.repo.full_name
-      == github.repository && github.event.pull_request.number == 557) }}
+    if: ${{ needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected), 'repair-root-npm-lock')
+      && (github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.number == 557) }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -726,3 +785,46 @@ jobs:
     - dispatch_contract
     permissions:
       contents: write
+  source_outcomes:
+    name: Record independent source workflow outcomes
+    if: ${{ always() && needs.dispatch_contract.result == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    permissions: {}
+    needs:
+    - dispatch_contract
+    - ci__web
+    - ci__integration-smoke-test
+    - ci__shared-runtime-gate
+    - ci__backend
+    - ci__security-scan
+    - ci__billing-e2e
+    - ci__mcp-crash-acceptance
+    - repair_root_npm_lock__repair-root-npm-lock
+    steps:
+    - name: Bind source outcomes to this run
+      shell: python
+      run: "import json, os\nsources = json.loads(os.environ['SOURCE_JOBS'])\nneeds = json.loads(os.environ['JOB_RESULTS'])\n\
+        selected = json.loads(os.environ['SELECTED'])\noutcomes = {}\nfor name, source in sources.items():\n    if name not\
+        \ in selected:\n        continue\n    results = [needs[key]['result'] for key in source['jobs']]\n    outcome = ('failure'\
+        \ if 'failure' in results else 'cancelled' if 'cancelled' in results\n               else 'success' if 'success' in\
+        \ results else 'skipped')\n    outcomes[source['display_name']] = outcome\nevidence = {'run_id': int(os.environ['GITHUB_RUN_ID']),\
+        \ 'head_sha': os.environ['GITHUB_SHA'],\n            'source_outcomes': outcomes}\nwith open('canonical-workflow-outcomes.json',\
+        \ 'w') as output:\n    json.dump(evidence, output)\n"
+      env:
+        SOURCE_JOBS: '{"ci": {"display_name": "CI", "jobs": ["ci__web", "ci__integration-smoke-test", "ci__shared-runtime-gate",
+          "ci__backend", "ci__security-scan", "ci__billing-e2e", "ci__mcp-crash-acceptance"]}, "repair-root-npm-lock": {"display_name":
+          "Repair root npm lockfile (guarded)", "jobs": ["repair_root_npm_lock__repair-root-npm-lock"]}}'
+        JOB_RESULTS: '{"ci__web": {"result": "${{ needs.ci__web.result }}"}, "ci__integration-smoke-test": {"result": "${{
+          needs.ci__integration-smoke-test.result }}"}, "ci__shared-runtime-gate": {"result": "${{ needs.ci__shared-runtime-gate.result
+          }}"}, "ci__backend": {"result": "${{ needs.ci__backend.result }}"}, "ci__security-scan": {"result": "${{ needs.ci__security-scan.result
+          }}"}, "ci__billing-e2e": {"result": "${{ needs.ci__billing-e2e.result }}"}, "ci__mcp-crash-acceptance": {"result":
+          "${{ needs.ci__mcp-crash-acceptance.result }}"}, "repair_root_npm_lock__repair-root-npm-lock": {"result": "${{ needs.repair_root_npm_lock__repair-root-npm-lock.result
+          }}"}}'
+        SELECTED: ${{ needs.dispatch_contract.outputs.selected }}
+    - uses: actions/upload-artifact@v4
+      with:
+        name: canonical-workflow-outcomes-01-core
+        path: canonical-workflow-outcomes.json
+        if-no-files-found: error
+        retention-days: 14

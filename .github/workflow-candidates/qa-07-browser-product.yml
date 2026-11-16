@@ -19,6 +19,19 @@ name: QA 07-browser-product
         - release1-authenticated-smoke
         - release1-deployed-browser-credentials
         default: authenticated-click-audit
+  push:
+    branches:
+    - main
+  pull_request:
+    branches:
+    - feature/unified-agent-capability-manifest-recovery
+    - main
+    types:
+    - opened
+    - reopened
+    - synchronize
+  schedule:
+  - cron: 0 7 * * *
 concurrency:
   group: ${{ format('candidate-{0}', (inputs.source == 'authenticated-click-audit' && ('authenticated-click-audit-isolated-smoke-account'))
     || (inputs.source == 'browser-fallback-recovery-certification' && (format('browser-fallback-cert-{0}', github.ref))) ||
@@ -34,10 +47,21 @@ jobs:
   dispatch_contract:
     name: Validate selected source inputs
     runs-on: ubuntu-latest
-    permissions: {}
-    timeout-minutes: 2
+    permissions:
+      contents: read
+      actions: read
+    timeout-minutes: 4
+    outputs:
+      selected: ${{ steps.contract.outputs.selected }}
+      derived: ${{ steps.contract.outputs.derived }}
+      context_conclusions: ${{ steps.contract.outputs.context_conclusions }}
     steps:
-    - name: Validate source contract
+    - uses: actions/checkout@v4
+      with:
+        persist-credentials: false
+        fetch-depth: 0
+    - id: contract
+      name: Validate source contract
       shell: python
       env:
         SOURCE_SCHEMAS: '{"authenticated-click-audit": {}, "browser-fallback-recovery-certification": {}, "conversational-product-acceptance":
@@ -48,15 +72,20 @@ jobs:
           "release1-authenticated-smoke", "release1-deployed-browser-credentials"]'
         DISPATCH_VALUES: ${{ toJSON(inputs) }}
         EVENT_NAME: ${{ github.event_name }}
+        CANONICAL_LANE: 07-browser-product
+        GITHUB_TOKEN: ${{ github.token }}
       run: "import json, os\nschemas = json.loads(os.environ['SOURCE_SCHEMAS'])\nvalues = json.loads(os.environ['DISPATCH_VALUES'])\n\
-        source = values.get('source')\nif source not in schemas:\n    raise SystemExit('Unknown source workflow')\nif os.environ['EVENT_NAME']\
-        \ == 'workflow_dispatch' and source not in json.loads(os.environ['MANUAL_SOURCES']):\n    raise SystemExit('Source\
-        \ has no manual trigger')\nif os.environ['EVENT_NAME'] != 'workflow_dispatch' and source != 'isolated-acceptance':\n\
-        \    raise SystemExit('Unsupported reusable source')\nfor key, config in schemas[source].items():\n    value = values.get(source.replace('-',\
-        \ '_') + '__' + key)\n    if os.environ['EVENT_NAME'] != 'workflow_dispatch' and key == 'suite':\n        value =\
-        \ values.get('suite')\n    if config.get('required') and (value is None or value == ''):\n        raise SystemExit('Required\
-        \ selected-source input missing: ' + key)\nprint('Selected source input contract validated; this is not execution\
-        \ acceptance')\n"
+        event_name = os.environ['EVENT_NAME']\ncalled = values.get('_reusable', False)\nif not called and event_name not in\
+        \ ('workflow_dispatch', 'workflow_call'):\n    import subprocess\n    subprocess.run(['python', 'scripts/route-workflow-event.py',\
+        \ '--lane', os.environ['CANONICAL_LANE']], check=True)\n    raise SystemExit(0)\nsource = values.get('source')\nif\
+        \ source not in schemas:\n    raise SystemExit('Unknown source workflow')\nif not called and event_name == 'workflow_dispatch'\
+        \ and source not in json.loads(os.environ['MANUAL_SOURCES']):\n    raise SystemExit('Source has no manual trigger')\n\
+        if called and source != 'isolated-acceptance':\n    raise SystemExit('Unsupported reusable source')\nfor key, config\
+        \ in schemas[source].items():\n    value = values.get(source.replace('-', '_') + '__' + key)\n    if called and key\
+        \ == 'suite':\n        value = values.get('suite')\n    if config.get('required') and (value is None or value == ''):\n\
+        \        raise SystemExit('Required selected-source input missing: ' + key)\nprint('Selected source input contract\
+        \ validated; this is not execution acceptance')\nwith open(os.environ['GITHUB_OUTPUT'], 'a') as output:\n    output.write('selected='\
+        \ + json.dumps([source]) + '\\n')\n    output.write('derived=[]\\ncontext_conclusions={}\\n')\n"
   authenticated_click_audit__deep-surface-click-audit:
     name: Prompt3 authenticated surfaces
     runs-on: ubuntu-latest
@@ -115,7 +144,12 @@ jobs:
         if-no-files-found: ignore
     needs:
     - dispatch_contract
-    if: ${{ needs.dispatch_contract.result == 'success' && inputs.source == 'authenticated-click-audit' && (success()) }}
+    if: ${{ needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected), 'authenticated-click-audit')
+      && (success()) }}
+    concurrency:
+      group: ${{ format('candidate-{0}-{1}-{2}', 'authenticated-click-audit-isolated-smoke-account', 'authenticated_click_audit__deep-surface-click-audit',
+        toJSON(matrix)) }}
+      cancel-in-progress: ${{ false }}
   browser_fallback_recovery_certification__independent-recovery-acceptance:
     name: Real broker SIGKILL and independent receiver write audit
     runs-on: ubuntu-latest
@@ -180,10 +214,14 @@ jobs:
         retention-days: 30
     needs:
     - dispatch_contract
-    if: ${{ needs.dispatch_contract.result == 'success' && inputs.source == 'browser-fallback-recovery-certification' && (success())
-      }}
+    if: ${{ needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected), 'browser-fallback-recovery-certification')
+      && (success()) }}
     permissions:
       contents: read
+    concurrency:
+      group: ${{ format('candidate-{0}-{1}-{2}', format('browser-fallback-cert-{0}', github.ref), 'browser_fallback_recovery_certification__independent-recovery-acceptance',
+        toJSON(matrix)) }}
+      cancel-in-progress: ${{ true }}
   conversational_product_acceptance__acceptance:
     name: Text + voice product acceptance
     runs-on: ubuntu-latest
@@ -224,8 +262,12 @@ jobs:
         OPENAI_API_KEY: sk-test-openai
     needs:
     - dispatch_contract
-    if: ${{ needs.dispatch_contract.result == 'success' && inputs.source == 'conversational-product-acceptance' && (success())
-      }}
+    if: ${{ needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected), 'conversational-product-acceptance')
+      && (success()) }}
+    concurrency:
+      group: ${{ format('candidate-{0}-{1}-{2}', format('conversational-product-acceptance-{0}', github.ref), 'conversational_product_acceptance__acceptance',
+        toJSON(matrix)) }}
+      cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
   desktop_tauri__plan:
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -254,9 +296,14 @@ jobs:
     name: plan
     needs:
     - dispatch_contract
-    if: ${{ needs.dispatch_contract.result == 'success' && inputs.source == 'desktop-tauri' && (success()) }}
+    if: ${{ needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected), 'desktop-tauri')
+      && (success()) }}
     permissions:
       contents: write
+    concurrency:
+      group: ${{ format('candidate-{0}-{1}-{2}', format('desktop-tauri-{0}', github.ref), 'desktop_tauri__plan', toJSON(matrix))
+        }}
+      cancel-in-progress: ${{ false }}
   desktop_tauri__build:
     needs:
     - dispatch_contract
@@ -312,16 +359,21 @@ jobs:
           || '' }}
         args: ${{ matrix.args }}
     name: build
-    if: ${{ needs.dispatch_contract.result == 'success' && inputs.source == 'desktop-tauri' && (success()) }}
+    if: ${{ needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected), 'desktop-tauri')
+      && (success()) }}
     permissions:
       contents: write
+    concurrency:
+      group: ${{ format('candidate-{0}-{1}-{2}', format('desktop-tauri-{0}', github.ref), 'desktop_tauri__build', toJSON(matrix))
+        }}
+      cancel-in-progress: ${{ false }}
   desktop_tauri__publish:
     needs:
     - dispatch_contract
     - desktop_tauri__plan
     - desktop_tauri__build
-    if: ${{ needs.dispatch_contract.result == 'success' && inputs.source == 'desktop-tauri' && (needs.desktop_tauri__plan.outputs.publish
-      == 'true') }}
+    if: ${{ needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected), 'desktop-tauri')
+      && (needs.desktop_tauri__plan.outputs.publish == 'true') }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -334,6 +386,10 @@ jobs:
     name: publish
     permissions:
       contents: write
+    concurrency:
+      group: ${{ format('candidate-{0}-{1}-{2}', format('desktop-tauri-{0}', github.ref), 'desktop_tauri__publish', toJSON(matrix))
+        }}
+      cancel-in-progress: ${{ false }}
   extension_release__release:
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -364,9 +420,13 @@ jobs:
     name: release
     needs:
     - dispatch_contract
-    if: ${{ needs.dispatch_contract.result == 'success' && inputs.source == 'extension-release' && (success()) }}
+    if: ${{ needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected), 'extension-release')
+      && (success()) }}
     permissions:
       contents: write
+    concurrency:
+      group: ${{ format('candidate-{0}-{1}-{2}', 'extension-release', 'extension_release__release', toJSON(matrix)) }}
+      cancel-in-progress: ${{ false }}
   navigation_e2e__navigation-click-through:
     name: Playwright navigation crawl
     runs-on: ubuntu-latest
@@ -433,7 +493,12 @@ jobs:
         if-no-files-found: ignore
     needs:
     - dispatch_contract
-    if: ${{ needs.dispatch_contract.result == 'success' && inputs.source == 'navigation-e2e' && (success()) }}
+    if: ${{ needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected), 'navigation-e2e')
+      && (success()) }}
+    concurrency:
+      group: ${{ format('candidate-{0}-{1}-{2}', format('navigation-e2e-{0}', github.ref), 'navigation_e2e__navigation-click-through',
+        toJSON(matrix)) }}
+      cancel-in-progress: ${{ true }}
   pr605_route_inventory__registered-routes:
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -512,7 +577,8 @@ jobs:
     name: registered-routes
     needs:
     - dispatch_contract
-    if: ${{ needs.dispatch_contract.result == 'success' && inputs.source == 'pr605-route-inventory' && (success()) }}
+    if: ${{ needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected), 'pr605-route-inventory')
+      && (success()) }}
     permissions:
       contents: read
   release1_authenticated_network_audit__network-credential-audit:
@@ -547,8 +613,8 @@ jobs:
     name: network-credential-audit
     needs:
     - dispatch_contract
-    if: ${{ needs.dispatch_contract.result == 'success' && inputs.source == 'release1-authenticated-network-audit' && (success())
-      }}
+    if: ${{ needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected), 'release1-authenticated-network-audit')
+      && (success()) }}
     permissions:
       contents: read
   release1_authenticated_smoke__authenticated:
@@ -627,8 +693,8 @@ jobs:
     name: authenticated
     needs:
     - dispatch_contract
-    if: ${{ needs.dispatch_contract.result == 'success' && inputs.source == 'release1-authenticated-smoke' && (success())
-      }}
+    if: ${{ needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected), 'release1-authenticated-smoke')
+      && (success()) }}
     permissions:
       contents: read
   release1_deployed_browser_credentials__browser-runtime:
@@ -654,7 +720,68 @@ jobs:
     name: browser-runtime
     needs:
     - dispatch_contract
-    if: ${{ needs.dispatch_contract.result == 'success' && inputs.source == 'release1-deployed-browser-credentials' && (success())
-      }}
+    if: ${{ needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected), 'release1-deployed-browser-credentials')
+      && (success()) }}
     permissions:
       contents: read
+  source_outcomes:
+    name: Record independent source workflow outcomes
+    if: ${{ always() && needs.dispatch_contract.result == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    permissions: {}
+    needs:
+    - dispatch_contract
+    - authenticated_click_audit__deep-surface-click-audit
+    - browser_fallback_recovery_certification__independent-recovery-acceptance
+    - conversational_product_acceptance__acceptance
+    - desktop_tauri__plan
+    - desktop_tauri__build
+    - desktop_tauri__publish
+    - extension_release__release
+    - navigation_e2e__navigation-click-through
+    - pr605_route_inventory__registered-routes
+    - release1_authenticated_network_audit__network-credential-audit
+    - release1_authenticated_smoke__authenticated
+    - release1_deployed_browser_credentials__browser-runtime
+    steps:
+    - name: Bind source outcomes to this run
+      shell: python
+      run: "import json, os\nsources = json.loads(os.environ['SOURCE_JOBS'])\nneeds = json.loads(os.environ['JOB_RESULTS'])\n\
+        selected = json.loads(os.environ['SELECTED'])\noutcomes = {}\nfor name, source in sources.items():\n    if name not\
+        \ in selected:\n        continue\n    results = [needs[key]['result'] for key in source['jobs']]\n    outcome = ('failure'\
+        \ if 'failure' in results else 'cancelled' if 'cancelled' in results\n               else 'success' if 'success' in\
+        \ results else 'skipped')\n    outcomes[source['display_name']] = outcome\nevidence = {'run_id': int(os.environ['GITHUB_RUN_ID']),\
+        \ 'head_sha': os.environ['GITHUB_SHA'],\n            'source_outcomes': outcomes}\nwith open('canonical-workflow-outcomes.json',\
+        \ 'w') as output:\n    json.dump(evidence, output)\n"
+      env:
+        SOURCE_JOBS: '{"authenticated-click-audit": {"display_name": "Authenticated Click Audit", "jobs": ["authenticated_click_audit__deep-surface-click-audit"]},
+          "browser-fallback-recovery-certification": {"display_name": "Browser fallback recovery certification", "jobs": ["browser_fallback_recovery_certification__independent-recovery-acceptance"]},
+          "conversational-product-acceptance": {"display_name": "Conversational product acceptance", "jobs": ["conversational_product_acceptance__acceptance"]},
+          "desktop-tauri": {"display_name": "Desktop Tauri", "jobs": ["desktop_tauri__plan", "desktop_tauri__build", "desktop_tauri__publish"]},
+          "extension-release": {"display_name": "Extension release", "jobs": ["extension_release__release"]}, "navigation-e2e":
+          {"display_name": "Navigation E2E", "jobs": ["navigation_e2e__navigation-click-through"]}, "pr605-route-inventory":
+          {"display_name": "Master QA | QA00 Routing Inventory Certification", "jobs": ["pr605_route_inventory__registered-routes"]},
+          "release1-authenticated-network-audit": {"display_name": "Release 1 authenticated production network credential
+          audit", "jobs": ["release1_authenticated_network_audit__network-credential-audit"]}, "release1-authenticated-smoke":
+          {"display_name": "Release 1 authenticated production smoke", "jobs": ["release1_authenticated_smoke__authenticated"]},
+          "release1-deployed-browser-credentials": {"display_name": "Release 1 deployed browser credential verification",
+          "jobs": ["release1_deployed_browser_credentials__browser-runtime"]}}'
+        JOB_RESULTS: '{"authenticated_click_audit__deep-surface-click-audit": {"result": "${{ needs.authenticated_click_audit__deep-surface-click-audit.result
+          }}"}, "browser_fallback_recovery_certification__independent-recovery-acceptance": {"result": "${{ needs.browser_fallback_recovery_certification__independent-recovery-acceptance.result
+          }}"}, "conversational_product_acceptance__acceptance": {"result": "${{ needs.conversational_product_acceptance__acceptance.result
+          }}"}, "desktop_tauri__plan": {"result": "${{ needs.desktop_tauri__plan.result }}"}, "desktop_tauri__build": {"result":
+          "${{ needs.desktop_tauri__build.result }}"}, "desktop_tauri__publish": {"result": "${{ needs.desktop_tauri__publish.result
+          }}"}, "extension_release__release": {"result": "${{ needs.extension_release__release.result }}"}, "navigation_e2e__navigation-click-through":
+          {"result": "${{ needs.navigation_e2e__navigation-click-through.result }}"}, "pr605_route_inventory__registered-routes":
+          {"result": "${{ needs.pr605_route_inventory__registered-routes.result }}"}, "release1_authenticated_network_audit__network-credential-audit":
+          {"result": "${{ needs.release1_authenticated_network_audit__network-credential-audit.result }}"}, "release1_authenticated_smoke__authenticated":
+          {"result": "${{ needs.release1_authenticated_smoke__authenticated.result }}"}, "release1_deployed_browser_credentials__browser-runtime":
+          {"result": "${{ needs.release1_deployed_browser_credentials__browser-runtime.result }}"}}'
+        SELECTED: ${{ needs.dispatch_contract.outputs.selected }}
+    - uses: actions/upload-artifact@v4
+      with:
+        name: canonical-workflow-outcomes-07-browser-product
+        path: canonical-workflow-outcomes.json
+        if-no-files-found: error
+        retention-days: 14

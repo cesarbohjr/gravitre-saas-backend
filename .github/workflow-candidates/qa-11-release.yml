@@ -44,6 +44,21 @@ name: QA 11-release
         description: 'unified-turn-phase4-cutover: Railway environment name'
         required: false
         default: production
+  push:
+    branches:
+    - main
+  workflow_run:
+    branches:
+    - main
+    types:
+    - completed
+    workflows:
+    - CI
+    - Production release verification
+    - QA 01-core
+    - Railway backend production
+  schedule:
+  - cron: 0 5 * * *
 concurrency:
   group: ${{ format('candidate-{0}', (inputs.source == 'production-hardening-smoke' && ('production-hardening-smoke')) ||
     (inputs.source == 'production-release-verification' && ('production-release-verification')) || (inputs.source == 'railway-backend-production'
@@ -56,10 +71,21 @@ jobs:
   dispatch_contract:
     name: Validate selected source inputs
     runs-on: ubuntu-latest
-    permissions: {}
-    timeout-minutes: 2
+    permissions:
+      contents: read
+      actions: read
+    timeout-minutes: 4
+    outputs:
+      selected: ${{ steps.contract.outputs.selected }}
+      derived: ${{ steps.contract.outputs.derived }}
+      context_conclusions: ${{ steps.contract.outputs.context_conclusions }}
     steps:
-    - name: Validate source contract
+    - uses: actions/checkout@v4
+      with:
+        persist-credentials: false
+        fetch-depth: 0
+    - id: contract
+      name: Validate source contract
       shell: python
       env:
         SOURCE_SCHEMAS: '{"production-hardening-smoke": {"reason": {"description": "Reason for manual trigger", "required":
@@ -74,15 +100,20 @@ jobs:
           "release1-production-smoke", "unified-turn-phase4-cutover"]'
         DISPATCH_VALUES: ${{ toJSON(inputs) }}
         EVENT_NAME: ${{ github.event_name }}
+        CANONICAL_LANE: 11-release
+        GITHUB_TOKEN: ${{ github.token }}
       run: "import json, os\nschemas = json.loads(os.environ['SOURCE_SCHEMAS'])\nvalues = json.loads(os.environ['DISPATCH_VALUES'])\n\
-        source = values.get('source')\nif source not in schemas:\n    raise SystemExit('Unknown source workflow')\nif os.environ['EVENT_NAME']\
-        \ == 'workflow_dispatch' and source not in json.loads(os.environ['MANUAL_SOURCES']):\n    raise SystemExit('Source\
-        \ has no manual trigger')\nif os.environ['EVENT_NAME'] != 'workflow_dispatch' and source != 'isolated-acceptance':\n\
-        \    raise SystemExit('Unsupported reusable source')\nfor key, config in schemas[source].items():\n    value = values.get(source.replace('-',\
-        \ '_') + '__' + key)\n    if os.environ['EVENT_NAME'] != 'workflow_dispatch' and key == 'suite':\n        value =\
-        \ values.get('suite')\n    if config.get('required') and (value is None or value == ''):\n        raise SystemExit('Required\
-        \ selected-source input missing: ' + key)\nprint('Selected source input contract validated; this is not execution\
-        \ acceptance')\n"
+        event_name = os.environ['EVENT_NAME']\ncalled = values.get('_reusable', False)\nif not called and event_name not in\
+        \ ('workflow_dispatch', 'workflow_call'):\n    import subprocess\n    subprocess.run(['python', 'scripts/route-workflow-event.py',\
+        \ '--lane', os.environ['CANONICAL_LANE']], check=True)\n    raise SystemExit(0)\nsource = values.get('source')\nif\
+        \ source not in schemas:\n    raise SystemExit('Unknown source workflow')\nif not called and event_name == 'workflow_dispatch'\
+        \ and source not in json.loads(os.environ['MANUAL_SOURCES']):\n    raise SystemExit('Source has no manual trigger')\n\
+        if called and source != 'isolated-acceptance':\n    raise SystemExit('Unsupported reusable source')\nfor key, config\
+        \ in schemas[source].items():\n    value = values.get(source.replace('-', '_') + '__' + key)\n    if called and key\
+        \ == 'suite':\n        value = values.get('suite')\n    if config.get('required') and (value is None or value == ''):\n\
+        \        raise SystemExit('Required selected-source input missing: ' + key)\nprint('Selected source input contract\
+        \ validated; this is not execution acceptance')\nwith open(os.environ['GITHUB_OUTPUT'], 'a') as output:\n    output.write('selected='\
+        \ + json.dumps([source]) + '\\n')\n    output.write('derived=[]\\ncontext_conclusions={}\\n')\n"
   production_hardening_smoke__hardening-smoke:
     name: Lane D production API verification
     runs-on: ubuntu-latest
@@ -195,10 +226,16 @@ jobs:
         \n    failed=1\n  fi\ndone\nexit $failed\n"
     needs:
     - dispatch_contract
-    if: ${{ needs.dispatch_contract.result == 'success' && inputs.source == 'production-hardening-smoke' && (success()) }}
+    if: ${{ needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected), 'production-hardening-smoke')
+      && (success()) }}
+    concurrency:
+      group: ${{ format('candidate-{0}-{1}-{2}', 'production-hardening-smoke', 'production_hardening_smoke__hardening-smoke',
+        toJSON(matrix)) }}
+      cancel-in-progress: ${{ false }}
   production_release_verification__verify:
-    if: ${{ needs.dispatch_contract.result == 'success' && inputs.source == 'production-release-verification' && (github.event_name
-      == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success') }}
+    if: ${{ needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected), 'production-release-verification')
+      && (github.event_name == 'workflow_dispatch' || (fromJSON(needs.dispatch_contract.outputs.context_conclusions)['production-release-verification']
+      || github.event.workflow_run.conclusion) == 'success') }}
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:
@@ -237,6 +274,10 @@ jobs:
     - dispatch_contract
     permissions:
       contents: read
+    concurrency:
+      group: ${{ format('candidate-{0}-{1}-{2}', 'production-release-verification', 'production_release_verification__verify',
+        toJSON(matrix)) }}
+      cancel-in-progress: ${{ false }}
   railway_backend_production__detect-backend-changes:
     name: Detect backend changes
     runs-on: ubuntu-latest
@@ -259,14 +300,19 @@ jobs:
         \ \"::notice::No backend/ changes in this push \u2014 skipping Railway deploy gate.\"\nfi\n"
     needs:
     - dispatch_contract
-    if: ${{ needs.dispatch_contract.result == 'success' && inputs.source == 'railway-backend-production' && (success()) }}
+    if: ${{ needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected), 'railway-backend-production')
+      && (success()) }}
+    concurrency:
+      group: ${{ format('candidate-{0}-{1}-{2}', 'railway-backend-production', 'railway_backend_production__detect-backend-changes',
+        toJSON(matrix)) }}
+      cancel-in-progress: ${{ false }}
   railway_backend_production__deploy:
     name: Verify Railway prod /health
     needs:
     - dispatch_contract
     - railway_backend_production__detect-backend-changes
-    if: ${{ needs.dispatch_contract.result == 'success' && inputs.source == 'railway-backend-production' && (needs.railway_backend_production__detect-backend-changes.outputs.changed
-      == 'true') }}
+    if: ${{ needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected), 'railway-backend-production')
+      && (needs.railway_backend_production__detect-backend-changes.outputs.changed == 'true') }}
     runs-on: ubuntu-latest
     timeout-minutes: 35
     steps:
@@ -379,6 +425,10 @@ jobs:
         name: msp-enrichment-workflow-live
         path: docs/delivery/msp-enrichment-workflow-live.json
         if-no-files-found: ignore
+    concurrency:
+      group: ${{ format('candidate-{0}-{1}-{2}', 'railway-backend-production', 'railway_backend_production__deploy', toJSON(matrix))
+        }}
+      cancel-in-progress: ${{ false }}
   railway_safety_vars__safety-vars:
     name: Railway safety variables (${{ inputs.railway_safety_vars__mode }})
     runs-on: ubuntu-latest
@@ -425,25 +475,42 @@ jobs:
         \ absent after apply:\"; cat \"$RUNNER_TEMP/pins-after.txt\"; exit 1\nfi\n"
     needs:
     - dispatch_contract
-    if: ${{ needs.dispatch_contract.result == 'success' && inputs.source == 'railway-safety-vars' && (success()) }}
+    if: ${{ needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected), 'railway-safety-vars')
+      && (success()) }}
     permissions:
       contents: read
+    concurrency:
+      group: ${{ format('candidate-{0}-{1}-{2}', 'railway-safety-vars', 'railway_safety_vars__safety-vars', toJSON(matrix))
+        }}
+      cancel-in-progress: ${{ false }}
   release1_production_smoke__smoke:
-    if: ${{ needs.dispatch_contract.result == 'success' && inputs.source == 'release1-production-smoke' && (github.event_name
-      != 'workflow_run' || github.event.workflow_run.conclusion == 'success') }}
+    if: ${{ always() && (needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected),
+      'release1-production-smoke') && ((contains(fromJSON(needs.dispatch_contract.outputs.derived), 'release1-production-smoke')
+      && 'workflow_run' || github.event_name) != 'workflow_run' || (contains(fromJSON(needs.dispatch_contract.outputs.derived),
+      'release1-production-smoke') && 'success' || fromJSON(needs.dispatch_contract.outputs.context_conclusions)['release1-production-smoke']
+      || github.event.workflow_run.conclusion) == 'success')) && (!contains(fromJSON(needs.dispatch_contract.outputs.derived),
+      'release1-production-smoke') || (needs.production_release_verification__verify.result != 'failure' && needs.production_release_verification__verify.result
+      != 'cancelled' && (needs.production_release_verification__verify.result == 'success')) || (needs.railway_backend_production__detect-backend-changes.result
+      != 'failure' && needs.railway_backend_production__detect-backend-changes.result != 'cancelled' && needs.railway_backend_production__deploy.result
+      != 'failure' && needs.railway_backend_production__deploy.result != 'cancelled' && (needs.railway_backend_production__detect-backend-changes.result
+      == 'success' || needs.railway_backend_production__deploy.result == 'success'))) }}
     runs-on: ubuntu-latest
     timeout-minutes: 8
     steps:
     - uses: actions/checkout@v4
       with:
-        ref: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || 'main' }}
+        ref: ${{ (contains(fromJSON(needs.dispatch_contract.outputs.derived), 'release1-production-smoke') && 'workflow_run'
+          || github.event_name) == 'workflow_run' && (contains(fromJSON(needs.dispatch_contract.outputs.derived), 'release1-production-smoke')
+          && (github.event.workflow_run.head_sha || github.sha) || github.event.workflow_run.head_sha) || 'main' }}
         persist-credentials: false
         fetch-depth: 0
     - name: Clear stale evidence
       run: rm -f docs/delivery/release1-production-smoke.json
     - name: Probe production anonymously
       env:
-        EXPECT_SHA: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
+        EXPECT_SHA: ${{ (contains(fromJSON(needs.dispatch_contract.outputs.derived), 'release1-production-smoke') && 'workflow_run'
+          || github.event_name) == 'workflow_run' && (contains(fromJSON(needs.dispatch_contract.outputs.derived), 'release1-production-smoke')
+          && (github.event.workflow_run.head_sha || github.sha) || github.event.workflow_run.head_sha) || github.sha }}
       run: "set -euo pipefail\nif [ -n \"$EXPECT_SHA\" ]; then\n  DEPLOY_SHA=\"$(python3 - <<'PY'\nimport json, urllib.request\n\
         with urllib.request.urlopen(\"https://api.gravitre.app/health\", timeout=20) as response:\n    sha = str(json.loads(response.read()).get(\"\
         git_sha\") or \"\")\n    if len(sha) != 40 or any(c not in \"0123456789abcdef\" for c in sha.lower()):\n        raise\
@@ -465,6 +532,9 @@ jobs:
     name: smoke
     needs:
     - dispatch_contract
+    - production_release_verification__verify
+    - railway_backend_production__detect-backend-changes
+    - railway_backend_production__deploy
     permissions:
       contents: read
   unified_turn_phase4_cutover__cutover:
@@ -533,4 +603,56 @@ jobs:
         if-no-files-found: ignore
     needs:
     - dispatch_contract
-    if: ${{ needs.dispatch_contract.result == 'success' && inputs.source == 'unified-turn-phase4-cutover' && (success()) }}
+    if: ${{ needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected), 'unified-turn-phase4-cutover')
+      && (success()) }}
+    concurrency:
+      group: ${{ format('candidate-{0}-{1}-{2}', 'unified-turn-phase4-cutover', 'unified_turn_phase4_cutover__cutover', toJSON(matrix))
+        }}
+      cancel-in-progress: ${{ true }}
+  source_outcomes:
+    name: Record independent source workflow outcomes
+    if: ${{ always() && needs.dispatch_contract.result == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    permissions: {}
+    needs:
+    - dispatch_contract
+    - production_hardening_smoke__hardening-smoke
+    - production_release_verification__verify
+    - railway_backend_production__detect-backend-changes
+    - railway_backend_production__deploy
+    - railway_safety_vars__safety-vars
+    - release1_production_smoke__smoke
+    - unified_turn_phase4_cutover__cutover
+    steps:
+    - name: Bind source outcomes to this run
+      shell: python
+      run: "import json, os\nsources = json.loads(os.environ['SOURCE_JOBS'])\nneeds = json.loads(os.environ['JOB_RESULTS'])\n\
+        selected = json.loads(os.environ['SELECTED'])\noutcomes = {}\nfor name, source in sources.items():\n    if name not\
+        \ in selected:\n        continue\n    results = [needs[key]['result'] for key in source['jobs']]\n    outcome = ('failure'\
+        \ if 'failure' in results else 'cancelled' if 'cancelled' in results\n               else 'success' if 'success' in\
+        \ results else 'skipped')\n    outcomes[source['display_name']] = outcome\nevidence = {'run_id': int(os.environ['GITHUB_RUN_ID']),\
+        \ 'head_sha': os.environ['GITHUB_SHA'],\n            'source_outcomes': outcomes}\nwith open('canonical-workflow-outcomes.json',\
+        \ 'w') as output:\n    json.dump(evidence, output)\n"
+      env:
+        SOURCE_JOBS: '{"production-hardening-smoke": {"display_name": "Production Hardening Smoke", "jobs": ["production_hardening_smoke__hardening-smoke"]},
+          "production-release-verification": {"display_name": "Production release verification", "jobs": ["production_release_verification__verify"]},
+          "railway-backend-production": {"display_name": "Railway backend production", "jobs": ["railway_backend_production__detect-backend-changes",
+          "railway_backend_production__deploy"]}, "railway-safety-vars": {"display_name": "Railway safety variables", "jobs":
+          ["railway_safety_vars__safety-vars"]}, "release1-production-smoke": {"display_name": "Release 1 production smoke",
+          "jobs": ["release1_production_smoke__smoke"]}, "unified-turn-phase4-cutover": {"display_name": "Unified Turn Phase
+          4 Cutover", "jobs": ["unified_turn_phase4_cutover__cutover"]}}'
+        JOB_RESULTS: '{"production_hardening_smoke__hardening-smoke": {"result": "${{ needs.production_hardening_smoke__hardening-smoke.result
+          }}"}, "production_release_verification__verify": {"result": "${{ needs.production_release_verification__verify.result
+          }}"}, "railway_backend_production__detect-backend-changes": {"result": "${{ needs.railway_backend_production__detect-backend-changes.result
+          }}"}, "railway_backend_production__deploy": {"result": "${{ needs.railway_backend_production__deploy.result }}"},
+          "railway_safety_vars__safety-vars": {"result": "${{ needs.railway_safety_vars__safety-vars.result }}"}, "release1_production_smoke__smoke":
+          {"result": "${{ needs.release1_production_smoke__smoke.result }}"}, "unified_turn_phase4_cutover__cutover": {"result":
+          "${{ needs.unified_turn_phase4_cutover__cutover.result }}"}}'
+        SELECTED: ${{ needs.dispatch_contract.outputs.selected }}
+    - uses: actions/upload-artifact@v4
+      with:
+        name: canonical-workflow-outcomes-11-release
+        path: canonical-workflow-outcomes.json
+        if-no-files-found: error
+        retention-days: 14

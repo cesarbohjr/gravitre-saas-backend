@@ -13,8 +13,12 @@ on:
       - 'docs/delivery/master-qa-workflow-consolidation.md'
       - '.github/workflow-candidates/**'
       - 'scripts/build-canonical-workflows.py'
+      - 'scripts/route-workflow-event.py'
       - 'scripts/audit-workflow-migration.py'
       - 'scripts/tests/test_canonical_workflows.py'
+      - 'scripts/tests/test_workflow_event_router.py'
+      - 'docs/delivery/master-qa-required-checks-readback.json'
+      - 'docs/delivery/master-qa-workflow-source-contracts.json'
       - 'docs/delivery/master-qa-workflow-replacement-parity.json'
       - 'backend/app/workflows/sales_growth_recipe.py'
       - 'backend/app/services/goal_service.py'
@@ -63,7 +67,7 @@ jobs:
       - name: Verify 12 staged workflow replacements without executing source jobs
         run: |
           python ../scripts/build-canonical-workflows.py --root .. --check
-          python -m unittest discover -s ../scripts/tests -p test_canonical_workflows.py
+          python -m unittest discover -s ../scripts/tests -p 'test_*workflow*.py'
       - uses: actions/setup-go@v5
         with:
           go-version: '1.25.0'

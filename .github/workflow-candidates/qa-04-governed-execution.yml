@@ -23,6 +23,16 @@ name: QA 04-governed-execution
       connector_verified_writes_live__reason:
         description: 'connector-verified-writes-live: Reason for manual trigger'
         required: false
+  push:
+    branches:
+    - main
+  pull_request:
+    types:
+    - opened
+    - reopened
+    - synchronize
+  schedule:
+  - cron: 30 6 * * *
 concurrency:
   group: ${{ format('candidate-{0}', (inputs.source == 'connector-governance' && (format('connector-governance-{0}', github.ref)))
     || (inputs.source == 'connector-verified-writes-live' && ('connector-verified-writes-live')) || github.run_id) }}
@@ -32,10 +42,21 @@ jobs:
   dispatch_contract:
     name: Validate selected source inputs
     runs-on: ubuntu-latest
-    permissions: {}
-    timeout-minutes: 2
+    permissions:
+      contents: read
+      actions: read
+    timeout-minutes: 4
+    outputs:
+      selected: ${{ steps.contract.outputs.selected }}
+      derived: ${{ steps.contract.outputs.derived }}
+      context_conclusions: ${{ steps.contract.outputs.context_conclusions }}
     steps:
-    - name: Validate source contract
+    - uses: actions/checkout@v4
+      with:
+        persist-credentials: false
+        fetch-depth: 0
+    - id: contract
+      name: Validate source contract
       shell: python
       env:
         SOURCE_SCHEMAS: '{"autonomous-write-certification": {}, "connector-governance": {}, "connector-verified-writes-live":
@@ -47,15 +68,20 @@ jobs:
           "pr605-run-status-contract", "pr605-runtime-edge-contract", "release1-execution-revocation-audit", "release1-live-approval-denial"]'
         DISPATCH_VALUES: ${{ toJSON(inputs) }}
         EVENT_NAME: ${{ github.event_name }}
+        CANONICAL_LANE: 04-governed-execution
+        GITHUB_TOKEN: ${{ github.token }}
       run: "import json, os\nschemas = json.loads(os.environ['SOURCE_SCHEMAS'])\nvalues = json.loads(os.environ['DISPATCH_VALUES'])\n\
-        source = values.get('source')\nif source not in schemas:\n    raise SystemExit('Unknown source workflow')\nif os.environ['EVENT_NAME']\
-        \ == 'workflow_dispatch' and source not in json.loads(os.environ['MANUAL_SOURCES']):\n    raise SystemExit('Source\
-        \ has no manual trigger')\nif os.environ['EVENT_NAME'] != 'workflow_dispatch' and source != 'isolated-acceptance':\n\
-        \    raise SystemExit('Unsupported reusable source')\nfor key, config in schemas[source].items():\n    value = values.get(source.replace('-',\
-        \ '_') + '__' + key)\n    if os.environ['EVENT_NAME'] != 'workflow_dispatch' and key == 'suite':\n        value =\
-        \ values.get('suite')\n    if config.get('required') and (value is None or value == ''):\n        raise SystemExit('Required\
-        \ selected-source input missing: ' + key)\nprint('Selected source input contract validated; this is not execution\
-        \ acceptance')\n"
+        event_name = os.environ['EVENT_NAME']\ncalled = values.get('_reusable', False)\nif not called and event_name not in\
+        \ ('workflow_dispatch', 'workflow_call'):\n    import subprocess\n    subprocess.run(['python', 'scripts/route-workflow-event.py',\
+        \ '--lane', os.environ['CANONICAL_LANE']], check=True)\n    raise SystemExit(0)\nsource = values.get('source')\nif\
+        \ source not in schemas:\n    raise SystemExit('Unknown source workflow')\nif not called and event_name == 'workflow_dispatch'\
+        \ and source not in json.loads(os.environ['MANUAL_SOURCES']):\n    raise SystemExit('Source has no manual trigger')\n\
+        if called and source != 'isolated-acceptance':\n    raise SystemExit('Unsupported reusable source')\nfor key, config\
+        \ in schemas[source].items():\n    value = values.get(source.replace('-', '_') + '__' + key)\n    if called and key\
+        \ == 'suite':\n        value = values.get('suite')\n    if config.get('required') and (value is None or value == ''):\n\
+        \        raise SystemExit('Required selected-source input missing: ' + key)\nprint('Selected source input contract\
+        \ validated; this is not execution acceptance')\nwith open(os.environ['GITHUB_OUTPUT'], 'a') as output:\n    output.write('selected='\
+        \ + json.dumps([source]) + '\\n')\n    output.write('derived=[]\\ncontext_conclusions={}\\n')\n"
   autonomous_write_certification__independent-ledger-and-receiver:
     name: PostgreSQL ledger and independent receiver
     runs-on: ubuntu-latest
@@ -156,8 +182,8 @@ jobs:
         retention-days: 30
     needs:
     - dispatch_contract
-    if: ${{ needs.dispatch_contract.result == 'success' && inputs.source == 'autonomous-write-certification' && (success())
-      }}
+    if: ${{ needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected), 'autonomous-write-certification')
+      && (success()) }}
     permissions:
       contents: read
   connector_governance__connector-governance:
@@ -233,7 +259,12 @@ jobs:
         '
     needs:
     - dispatch_contract
-    if: ${{ needs.dispatch_contract.result == 'success' && inputs.source == 'connector-governance' && (success()) }}
+    if: ${{ needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected), 'connector-governance')
+      && (success()) }}
+    concurrency:
+      group: ${{ format('candidate-{0}-{1}-{2}', format('connector-governance-{0}', github.ref), 'connector_governance__connector-governance',
+        toJSON(matrix)) }}
+      cancel-in-progress: ${{ true }}
   connector_verified_writes_live__verified-writes-live:
     name: Seed verified-write live matrix
     runs-on: ubuntu-latest
@@ -328,8 +359,12 @@ jobs:
         if-no-files-found: ignore
     needs:
     - dispatch_contract
-    if: ${{ needs.dispatch_contract.result == 'success' && inputs.source == 'connector-verified-writes-live' && (success())
-      }}
+    if: ${{ needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected), 'connector-verified-writes-live')
+      && (success()) }}
+    concurrency:
+      group: ${{ format('candidate-{0}-{1}-{2}', 'connector-verified-writes-live', 'connector_verified_writes_live__verified-writes-live',
+        toJSON(matrix)) }}
+      cancel-in-progress: ${{ false }}
   outcome_ownership_contract__outcome-ownership:
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -377,7 +412,8 @@ jobs:
     name: outcome-ownership
     needs:
     - dispatch_contract
-    if: ${{ needs.dispatch_contract.result == 'success' && inputs.source == 'outcome-ownership-contract' && (success()) }}
+    if: ${{ needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected), 'outcome-ownership-contract')
+      && (success()) }}
   pr605_cross_surface_ownership__bounded-source-inventory:
     runs-on: ubuntu-latest
     timeout-minutes: 8
@@ -447,8 +483,8 @@ jobs:
     name: bounded-source-inventory
     needs:
     - dispatch_contract
-    if: ${{ needs.dispatch_contract.result == 'success' && inputs.source == 'pr605-cross-surface-ownership' && (success())
-      }}
+    if: ${{ needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected), 'pr605-cross-surface-ownership')
+      && (success()) }}
     permissions:
       contents: read
   pr605_run_status_contract__certify-v2-run-status:
@@ -499,7 +535,8 @@ jobs:
     name: certify-v2-run-status
     needs:
     - dispatch_contract
-    if: ${{ needs.dispatch_contract.result == 'success' && inputs.source == 'pr605-run-status-contract' && (success()) }}
+    if: ${{ needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected), 'pr605-run-status-contract')
+      && (success()) }}
     permissions:
       contents: read
   pr605_runtime_edge_contract__privacy-contract:
@@ -534,7 +571,8 @@ jobs:
     name: privacy-contract
     needs:
     - dispatch_contract
-    if: ${{ needs.dispatch_contract.result == 'success' && inputs.source == 'pr605-runtime-edge-contract' && (success()) }}
+    if: ${{ needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected), 'pr605-runtime-edge-contract')
+      && (success()) }}
     permissions:
       contents: read
   release1_execution_revocation_audit__browser-credential-source:
@@ -556,8 +594,8 @@ jobs:
     name: browser-credential-source
     needs:
     - dispatch_contract
-    if: ${{ needs.dispatch_contract.result == 'success' && inputs.source == 'release1-execution-revocation-audit' && (success())
-      }}
+    if: ${{ needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected), 'release1-execution-revocation-audit')
+      && (success()) }}
     permissions:
       contents: read
   release1_execution_revocation_audit__execution-and-revocation:
@@ -592,8 +630,8 @@ jobs:
     name: execution-and-revocation
     needs:
     - dispatch_contract
-    if: ${{ needs.dispatch_contract.result == 'success' && inputs.source == 'release1-execution-revocation-audit' && (success())
-      }}
+    if: ${{ needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected), 'release1-execution-revocation-audit')
+      && (success()) }}
     permissions:
       contents: read
   release1_live_approval_denial__forged-approval:
@@ -627,7 +665,65 @@ jobs:
     name: forged-approval
     needs:
     - dispatch_contract
-    if: ${{ needs.dispatch_contract.result == 'success' && inputs.source == 'release1-live-approval-denial' && (success())
-      }}
+    if: ${{ needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected), 'release1-live-approval-denial')
+      && (success()) }}
     permissions:
       contents: read
+  source_outcomes:
+    name: Record independent source workflow outcomes
+    if: ${{ always() && needs.dispatch_contract.result == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    permissions: {}
+    needs:
+    - dispatch_contract
+    - autonomous_write_certification__independent-ledger-and-receiver
+    - connector_governance__connector-governance
+    - connector_verified_writes_live__verified-writes-live
+    - outcome_ownership_contract__outcome-ownership
+    - pr605_cross_surface_ownership__bounded-source-inventory
+    - pr605_run_status_contract__certify-v2-run-status
+    - pr605_runtime_edge_contract__privacy-contract
+    - release1_execution_revocation_audit__browser-credential-source
+    - release1_execution_revocation_audit__execution-and-revocation
+    - release1_live_approval_denial__forged-approval
+    steps:
+    - name: Bind source outcomes to this run
+      shell: python
+      run: "import json, os\nsources = json.loads(os.environ['SOURCE_JOBS'])\nneeds = json.loads(os.environ['JOB_RESULTS'])\n\
+        selected = json.loads(os.environ['SELECTED'])\noutcomes = {}\nfor name, source in sources.items():\n    if name not\
+        \ in selected:\n        continue\n    results = [needs[key]['result'] for key in source['jobs']]\n    outcome = ('failure'\
+        \ if 'failure' in results else 'cancelled' if 'cancelled' in results\n               else 'success' if 'success' in\
+        \ results else 'skipped')\n    outcomes[source['display_name']] = outcome\nevidence = {'run_id': int(os.environ['GITHUB_RUN_ID']),\
+        \ 'head_sha': os.environ['GITHUB_SHA'],\n            'source_outcomes': outcomes}\nwith open('canonical-workflow-outcomes.json',\
+        \ 'w') as output:\n    json.dump(evidence, output)\n"
+      env:
+        SOURCE_JOBS: '{"autonomous-write-certification": {"display_name": "Autonomous write independent-process certification",
+          "jobs": ["autonomous_write_certification__independent-ledger-and-receiver"]}, "connector-governance": {"display_name":
+          "Master QA | QA20 Connector Governance", "jobs": ["connector_governance__connector-governance"]}, "connector-verified-writes-live":
+          {"display_name": "Connector Verified Writes Live", "jobs": ["connector_verified_writes_live__verified-writes-live"]},
+          "outcome-ownership-contract": {"display_name": "Master QA | QA10-QA20 Durable Outcome Ownership", "jobs": ["outcome_ownership_contract__outcome-ownership"]},
+          "pr605-cross-surface-ownership": {"display_name": "PR605 cross-surface ownership evidence", "jobs": ["pr605_cross_surface_ownership__bounded-source-inventory"]},
+          "pr605-run-status-contract": {"display_name": "PR605 run status contract certification", "jobs": ["pr605_run_status_contract__certify-v2-run-status"]},
+          "pr605-runtime-edge-contract": {"display_name": "PR605 privacy-safe runtime edge contract", "jobs": ["pr605_runtime_edge_contract__privacy-contract"]},
+          "release1-execution-revocation-audit": {"display_name": "Release 1 execution revocation credential contracts", "jobs":
+          ["release1_execution_revocation_audit__browser-credential-source", "release1_execution_revocation_audit__execution-and-revocation"]},
+          "release1-live-approval-denial": {"display_name": "Release 1 forged approval live write-denial", "jobs": ["release1_live_approval_denial__forged-approval"]}}'
+        JOB_RESULTS: '{"autonomous_write_certification__independent-ledger-and-receiver": {"result": "${{ needs.autonomous_write_certification__independent-ledger-and-receiver.result
+          }}"}, "connector_governance__connector-governance": {"result": "${{ needs.connector_governance__connector-governance.result
+          }}"}, "connector_verified_writes_live__verified-writes-live": {"result": "${{ needs.connector_verified_writes_live__verified-writes-live.result
+          }}"}, "outcome_ownership_contract__outcome-ownership": {"result": "${{ needs.outcome_ownership_contract__outcome-ownership.result
+          }}"}, "pr605_cross_surface_ownership__bounded-source-inventory": {"result": "${{ needs.pr605_cross_surface_ownership__bounded-source-inventory.result
+          }}"}, "pr605_run_status_contract__certify-v2-run-status": {"result": "${{ needs.pr605_run_status_contract__certify-v2-run-status.result
+          }}"}, "pr605_runtime_edge_contract__privacy-contract": {"result": "${{ needs.pr605_runtime_edge_contract__privacy-contract.result
+          }}"}, "release1_execution_revocation_audit__browser-credential-source": {"result": "${{ needs.release1_execution_revocation_audit__browser-credential-source.result
+          }}"}, "release1_execution_revocation_audit__execution-and-revocation": {"result": "${{ needs.release1_execution_revocation_audit__execution-and-revocation.result
+          }}"}, "release1_live_approval_denial__forged-approval": {"result": "${{ needs.release1_live_approval_denial__forged-approval.result
+          }}"}}'
+        SELECTED: ${{ needs.dispatch_contract.outputs.selected }}
+    - uses: actions/upload-artifact@v4
+      with:
+        name: canonical-workflow-outcomes-04-governed-execution
+        path: canonical-workflow-outcomes.json
+        if-no-files-found: error
+        retention-days: 14

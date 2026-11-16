@@ -29,6 +29,17 @@ name: QA 06-voice
         required: false
         type: boolean
         default: false
+  push:
+    branches:
+    - main
+  pull_request:
+    types:
+    - opened
+    - reopened
+    - synchronize
+  schedule:
+  - cron: 0 7 * * *
+  - cron: 15 6 * * *
 concurrency:
   group: ${{ format('candidate-{0}', (inputs.source == 'voice-duplex-guard' && ('voice-duplex-guard')) || (inputs.source ==
     'voice-slo-gates' && ('voice-slo-gates')) || github.run_id) }}
@@ -38,10 +49,21 @@ jobs:
   dispatch_contract:
     name: Validate selected source inputs
     runs-on: ubuntu-latest
-    permissions: {}
-    timeout-minutes: 2
+    permissions:
+      contents: read
+      actions: read
+    timeout-minutes: 4
+    outputs:
+      selected: ${{ steps.contract.outputs.selected }}
+      derived: ${{ steps.contract.outputs.derived }}
+      context_conclusions: ${{ steps.contract.outputs.context_conclusions }}
     steps:
-    - name: Validate source contract
+    - uses: actions/checkout@v4
+      with:
+        persist-credentials: false
+        fetch-depth: 0
+    - id: contract
+      name: Validate source contract
       shell: python
       env:
         SOURCE_SCHEMAS: '{"master-qa-qa30-acoustic-qualification": {}, "master-qa-qa30-offline-cancellation": {}, "master-qa-qa30-voice-confirmed-turns":
@@ -55,15 +77,20 @@ jobs:
           "release1-chat-voice-revocation-e2e"]'
         DISPATCH_VALUES: ${{ toJSON(inputs) }}
         EVENT_NAME: ${{ github.event_name }}
+        CANONICAL_LANE: 06-voice
+        GITHUB_TOKEN: ${{ github.token }}
       run: "import json, os\nschemas = json.loads(os.environ['SOURCE_SCHEMAS'])\nvalues = json.loads(os.environ['DISPATCH_VALUES'])\n\
-        source = values.get('source')\nif source not in schemas:\n    raise SystemExit('Unknown source workflow')\nif os.environ['EVENT_NAME']\
-        \ == 'workflow_dispatch' and source not in json.loads(os.environ['MANUAL_SOURCES']):\n    raise SystemExit('Source\
-        \ has no manual trigger')\nif os.environ['EVENT_NAME'] != 'workflow_dispatch' and source != 'isolated-acceptance':\n\
-        \    raise SystemExit('Unsupported reusable source')\nfor key, config in schemas[source].items():\n    value = values.get(source.replace('-',\
-        \ '_') + '__' + key)\n    if os.environ['EVENT_NAME'] != 'workflow_dispatch' and key == 'suite':\n        value =\
-        \ values.get('suite')\n    if config.get('required') and (value is None or value == ''):\n        raise SystemExit('Required\
-        \ selected-source input missing: ' + key)\nprint('Selected source input contract validated; this is not execution\
-        \ acceptance')\n"
+        event_name = os.environ['EVENT_NAME']\ncalled = values.get('_reusable', False)\nif not called and event_name not in\
+        \ ('workflow_dispatch', 'workflow_call'):\n    import subprocess\n    subprocess.run(['python', 'scripts/route-workflow-event.py',\
+        \ '--lane', os.environ['CANONICAL_LANE']], check=True)\n    raise SystemExit(0)\nsource = values.get('source')\nif\
+        \ source not in schemas:\n    raise SystemExit('Unknown source workflow')\nif not called and event_name == 'workflow_dispatch'\
+        \ and source not in json.loads(os.environ['MANUAL_SOURCES']):\n    raise SystemExit('Source has no manual trigger')\n\
+        if called and source != 'isolated-acceptance':\n    raise SystemExit('Unsupported reusable source')\nfor key, config\
+        \ in schemas[source].items():\n    value = values.get(source.replace('-', '_') + '__' + key)\n    if called and key\
+        \ == 'suite':\n        value = values.get('suite')\n    if config.get('required') and (value is None or value == ''):\n\
+        \        raise SystemExit('Required selected-source input missing: ' + key)\nprint('Selected source input contract\
+        \ validated; this is not execution acceptance')\nwith open(os.environ['GITHUB_OUTPUT'], 'a') as output:\n    output.write('selected='\
+        \ + json.dumps([source]) + '\\n')\n    output.write('derived=[]\\ncontext_conclusions={}\\n')\n"
   master_qa_qa30_acoustic_qualification__kws-qualification:
     runs-on: ubuntu-latest
     timeout-minutes: 12
@@ -99,8 +126,8 @@ jobs:
     name: kws-qualification
     needs:
     - dispatch_contract
-    if: ${{ needs.dispatch_contract.result == 'success' && inputs.source == 'master-qa-qa30-acoustic-qualification' && (success())
-      }}
+    if: ${{ needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected), 'master-qa-qa30-acoustic-qualification')
+      && (success()) }}
     permissions:
       contents: read
       actions: read
@@ -121,8 +148,8 @@ jobs:
     name: inspect-without-paid-providers
     needs:
     - dispatch_contract
-    if: ${{ needs.dispatch_contract.result == 'success' && inputs.source == 'master-qa-qa30-offline-cancellation' && (success())
-      }}
+    if: ${{ needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected), 'master-qa-qa30-offline-cancellation')
+      && (success()) }}
     permissions:
       contents: read
   master_qa_qa30_voice_confirmed_turns__replay:
@@ -192,8 +219,8 @@ jobs:
     name: replay
     needs:
     - dispatch_contract
-    if: ${{ needs.dispatch_contract.result == 'success' && inputs.source == 'master-qa-qa30-voice-confirmed-turns' && (success())
-      }}
+    if: ${{ needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected), 'master-qa-qa30-voice-confirmed-turns')
+      && (success()) }}
   run_acceptance_voice__voice:
     name: Bounded live provider and cancelled-write acceptance
     uses: ./.github/workflows/qa-12-independent-acceptance.yml
@@ -202,9 +229,11 @@ jobs:
     secrets: inherit
     needs:
     - dispatch_contract
-    if: ${{ needs.dispatch_contract.result == 'success' && inputs.source == 'run-acceptance-voice' && (success()) }}
+    if: ${{ needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected), 'run-acceptance-voice')
+      && (success()) }}
     permissions:
       contents: read
+      actions: read
   voice_duplex_guard__voice-duplex:
     name: Voice duplex capture guard
     runs-on: ubuntu-latest
@@ -277,10 +306,15 @@ jobs:
           '
     needs:
     - dispatch_contract
-    if: ${{ needs.dispatch_contract.result == 'success' && inputs.source == 'voice-duplex-guard' && (success()) }}
+    if: ${{ needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected), 'voice-duplex-guard')
+      && (success()) }}
+    concurrency:
+      group: ${{ format('candidate-{0}-{1}-{2}', 'voice-duplex-guard', 'voice_duplex_guard__voice-duplex', toJSON(matrix))
+        }}
+      cancel-in-progress: ${{ false }}
   voice_gates_2_3__standing-batteries:
-    if: ${{ needs.dispatch_contract.result == 'success' && inputs.source == 'voice-gates-2-3' && (github.event_name == 'workflow_dispatch'
-      && inputs.voice_gates_2_3__run_paid_voice_acceptance == true) }}
+    if: ${{ needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected), 'voice-gates-2-3')
+      && (github.event_name == 'workflow_dispatch' && inputs.voice_gates_2_3__run_paid_voice_acceptance == true) }}
     needs:
     - dispatch_contract
     - voice_gates_2_3__paired-runtime-readiness
@@ -339,8 +373,8 @@ jobs:
       contents: read
       actions: read
   voice_gates_2_3__paired-runtime-readiness:
-    if: ${{ needs.dispatch_contract.result == 'success' && inputs.source == 'voice-gates-2-3' && (github.event_name == 'workflow_dispatch'
-      && inputs.voice_gates_2_3__run_paid_voice_acceptance == true) }}
+    if: ${{ needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected), 'voice-gates-2-3')
+      && (github.event_name == 'workflow_dispatch' && inputs.voice_gates_2_3__run_paid_voice_acceptance == true) }}
     needs:
     - dispatch_contract
     - voice_gates_2_3__live-provider
@@ -535,8 +569,8 @@ jobs:
       contents: read
       actions: read
   voice_gates_2_3__live-provider:
-    if: ${{ needs.dispatch_contract.result == 'success' && inputs.source == 'voice-gates-2-3' && (github.event_name == 'workflow_dispatch'
-      && inputs.voice_gates_2_3__run_paid_voice_acceptance == true) }}
+    if: ${{ needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected), 'voice-gates-2-3')
+      && (github.event_name == 'workflow_dispatch' && inputs.voice_gates_2_3__run_paid_voice_acceptance == true) }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     environment: acceptance
@@ -635,7 +669,8 @@ jobs:
     name: governed-actions
     needs:
     - dispatch_contract
-    if: ${{ needs.dispatch_contract.result == 'success' && inputs.source == 'voice-gates-2-3' && (success()) }}
+    if: ${{ needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected), 'voice-gates-2-3')
+      && (success()) }}
     permissions:
       contents: read
       actions: read
@@ -662,7 +697,8 @@ jobs:
     name: sdk-contracts
     needs:
     - dispatch_contract
-    if: ${{ needs.dispatch_contract.result == 'success' && inputs.source == 'voice-livekit-candidate' && (success()) }}
+    if: ${{ needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected), 'voice-livekit-candidate')
+      && (success()) }}
     permissions:
       contents: read
   voice_livekit_candidate__connected-rtc:
@@ -699,7 +735,8 @@ jobs:
     name: connected-rtc
     needs:
     - dispatch_contract
-    if: ${{ needs.dispatch_contract.result == 'success' && inputs.source == 'voice-livekit-candidate' && (success()) }}
+    if: ${{ needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected), 'voice-livekit-candidate')
+      && (success()) }}
     permissions:
       contents: read
   voice_slo_gates__voice-slo:
@@ -743,9 +780,13 @@ jobs:
         if-no-files-found: ignore
     needs:
     - dispatch_contract
-    if: ${{ needs.dispatch_contract.result == 'success' && inputs.source == 'voice-slo-gates' && (success()) }}
+    if: ${{ needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected), 'voice-slo-gates')
+      && (success()) }}
     env:
       VOICE_SLO_SMOKE_ORG_ID: f07e57c0-1501-4000-8000-c04e57a00001
+    concurrency:
+      group: ${{ format('candidate-{0}-{1}-{2}', 'voice-slo-gates', 'voice_slo_gates__voice-slo', toJSON(matrix)) }}
+      cancel-in-progress: ${{ false }}
   voice_stt_control_latency__control-latency:
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -789,7 +830,8 @@ jobs:
     name: control-latency
     needs:
     - dispatch_contract
-    if: ${{ needs.dispatch_contract.result == 'success' && inputs.source == 'voice-stt-control-latency' && (success()) }}
+    if: ${{ needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected), 'voice-stt-control-latency')
+      && (success()) }}
     permissions:
       contents: read
       actions: read
@@ -824,7 +866,74 @@ jobs:
     name: revocation-e2e
     needs:
     - dispatch_contract
-    if: ${{ needs.dispatch_contract.result == 'success' && inputs.source == 'release1-chat-voice-revocation-e2e' && (success())
-      }}
+    if: ${{ needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected), 'release1-chat-voice-revocation-e2e')
+      && (success()) }}
     permissions:
       contents: read
+  source_outcomes:
+    name: Record independent source workflow outcomes
+    if: ${{ always() && needs.dispatch_contract.result == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    permissions: {}
+    needs:
+    - dispatch_contract
+    - master_qa_qa30_acoustic_qualification__kws-qualification
+    - master_qa_qa30_offline_cancellation__inspect-without-paid-providers
+    - master_qa_qa30_voice_confirmed_turns__replay
+    - run_acceptance_voice__voice
+    - voice_duplex_guard__voice-duplex
+    - voice_gates_2_3__standing-batteries
+    - voice_gates_2_3__paired-runtime-readiness
+    - voice_gates_2_3__live-provider
+    - voice_gates_2_3__governed-actions
+    - voice_livekit_candidate__sdk-contracts
+    - voice_livekit_candidate__connected-rtc
+    - voice_slo_gates__voice-slo
+    - voice_stt_control_latency__control-latency
+    - release1_chat_voice_revocation_e2e__revocation-e2e
+    steps:
+    - name: Bind source outcomes to this run
+      shell: python
+      run: "import json, os\nsources = json.loads(os.environ['SOURCE_JOBS'])\nneeds = json.loads(os.environ['JOB_RESULTS'])\n\
+        selected = json.loads(os.environ['SELECTED'])\noutcomes = {}\nfor name, source in sources.items():\n    if name not\
+        \ in selected:\n        continue\n    results = [needs[key]['result'] for key in source['jobs']]\n    outcome = ('failure'\
+        \ if 'failure' in results else 'cancelled' if 'cancelled' in results\n               else 'success' if 'success' in\
+        \ results else 'skipped')\n    outcomes[source['display_name']] = outcome\nevidence = {'run_id': int(os.environ['GITHUB_RUN_ID']),\
+        \ 'head_sha': os.environ['GITHUB_SHA'],\n            'source_outcomes': outcomes}\nwith open('canonical-workflow-outcomes.json',\
+        \ 'w') as output:\n    json.dump(evidence, output)\n"
+      env:
+        SOURCE_JOBS: '{"master-qa-qa30-acoustic-qualification": {"display_name": "Master QA | QA30 Acoustic Qualification
+          (Manual, No Provider Credits)", "jobs": ["master_qa_qa30_acoustic_qualification__kws-qualification"]}, "master-qa-qa30-offline-cancellation":
+          {"display_name": "Master QA | QA30 Offline Cancellation Safety", "jobs": ["master_qa_qa30_offline_cancellation__inspect-without-paid-providers"]},
+          "master-qa-qa30-voice-confirmed-turns": {"display_name": "Master QA | QA30 Voice Confirmed-Turn Replay", "jobs":
+          ["master_qa_qa30_voice_confirmed_turns__replay"]}, "run-acceptance-voice": {"display_name": "Run live ElevenLabs
+          and Deepgram acceptance", "jobs": ["run_acceptance_voice__voice"]}, "voice-duplex-guard": {"display_name": "Voice
+          duplex browser guard", "jobs": ["voice_duplex_guard__voice-duplex"]}, "voice-gates-2-3": {"display_name": "Master
+          QA | QA30 Voice Safety and Acceptance", "jobs": ["voice_gates_2_3__standing-batteries", "voice_gates_2_3__paired-runtime-readiness",
+          "voice_gates_2_3__live-provider", "voice_gates_2_3__governed-actions"]}, "voice-livekit-candidate": {"display_name":
+          "Isolated LiveKit candidate contracts", "jobs": ["voice_livekit_candidate__sdk-contracts", "voice_livekit_candidate__connected-rtc"]},
+          "voice-slo-gates": {"display_name": "Voice SLO two-metric gates", "jobs": ["voice_slo_gates__voice-slo"]}, "voice-stt-control-latency":
+          {"display_name": "Voice provider control latency diagnosis", "jobs": ["voice_stt_control_latency__control-latency"]},
+          "release1-chat-voice-revocation-e2e": {"display_name": "Release 1 chat and voice revocation end to end", "jobs":
+          ["release1_chat_voice_revocation_e2e__revocation-e2e"]}}'
+        JOB_RESULTS: '{"master_qa_qa30_acoustic_qualification__kws-qualification": {"result": "${{ needs.master_qa_qa30_acoustic_qualification__kws-qualification.result
+          }}"}, "master_qa_qa30_offline_cancellation__inspect-without-paid-providers": {"result": "${{ needs.master_qa_qa30_offline_cancellation__inspect-without-paid-providers.result
+          }}"}, "master_qa_qa30_voice_confirmed_turns__replay": {"result": "${{ needs.master_qa_qa30_voice_confirmed_turns__replay.result
+          }}"}, "run_acceptance_voice__voice": {"result": "${{ needs.run_acceptance_voice__voice.result }}"}, "voice_duplex_guard__voice-duplex":
+          {"result": "${{ needs.voice_duplex_guard__voice-duplex.result }}"}, "voice_gates_2_3__standing-batteries": {"result":
+          "${{ needs.voice_gates_2_3__standing-batteries.result }}"}, "voice_gates_2_3__paired-runtime-readiness": {"result":
+          "${{ needs.voice_gates_2_3__paired-runtime-readiness.result }}"}, "voice_gates_2_3__live-provider": {"result": "${{
+          needs.voice_gates_2_3__live-provider.result }}"}, "voice_gates_2_3__governed-actions": {"result": "${{ needs.voice_gates_2_3__governed-actions.result
+          }}"}, "voice_livekit_candidate__sdk-contracts": {"result": "${{ needs.voice_livekit_candidate__sdk-contracts.result
+          }}"}, "voice_livekit_candidate__connected-rtc": {"result": "${{ needs.voice_livekit_candidate__connected-rtc.result
+          }}"}, "voice_slo_gates__voice-slo": {"result": "${{ needs.voice_slo_gates__voice-slo.result }}"}, "voice_stt_control_latency__control-latency":
+          {"result": "${{ needs.voice_stt_control_latency__control-latency.result }}"}, "release1_chat_voice_revocation_e2e__revocation-e2e":
+          {"result": "${{ needs.release1_chat_voice_revocation_e2e__revocation-e2e.result }}"}}'
+        SELECTED: ${{ needs.dispatch_contract.outputs.selected }}
+    - uses: actions/upload-artifact@v4
+      with:
+        name: canonical-workflow-outcomes-06-voice
+        path: canonical-workflow-outcomes.json
+        if-no-files-found: error
+        retention-days: 14

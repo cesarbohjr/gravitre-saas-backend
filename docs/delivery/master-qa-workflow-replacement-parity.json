@@ -4,7 +4,8 @@
   "source_job_count": 120,
   "static_contract_parity": "PASS",
   "runtime_parity": "NOT_RUN",
-  "automatic_trigger_parity": "NOT_IMPLEMENTED",
+  "automatic_trigger_parity": "STATIC_REPLAY_PASS_RUNTIME_PENDING",
+  "automatic_source_event_contract_count": 96,
   "required_checks": "VERIFIED_ADMIN_UI",
   "retirement_authorized": false,
   "required_contexts": [
@@ -16,8 +17,9 @@
   ],
   "required_checks_evidence_url": "https://github.com/cesarbohjr/gravitre-saas-backend/settings/branch_protection_rules/85943377",
   "limitations": [
-    "Candidates preserve manual entrypoints only; source automatic triggers remain active.",
+    "Candidates implement automatic routing but remain uninstalled; source automatic triggers remain active.",
     "Candidate concurrency groups intentionally cannot cancel original runs.",
+    "Automatic events use per-job/matrix resource locks; whole-source cancellation is replaced by stage cancellation and needs runtime qualification.",
     "Repository-wide callers, protected environment workflow restrictions and exact-head runs require verification.",
     "GitHub workflow identity changes and source-path references require explicit cutover review.",
     "Local reusable acceptance calls target the eventual canonical installed path."
@@ -25,6 +27,7 @@
   "sources": [
     {
       "source": ".github/workflows/ci.yml",
+      "display_name": "CI",
       "lane": "01-core",
       "jobs": {
         "web": "ci__web",
@@ -52,6 +55,7 @@
     },
     {
       "source": ".github/workflows/repair-root-npm-lock.yml",
+      "display_name": "Repair root npm lockfile (guarded)",
       "lane": "01-core",
       "jobs": {
         "repair-root-npm-lock": "repair_root_npm_lock__repair-root-npm-lock"
@@ -72,6 +76,7 @@
     },
     {
       "source": ".github/workflows/auth-config-sync.yml",
+      "display_name": "Auth Config Sync",
       "lane": "02-identity-privacy",
       "jobs": {
         "sync": "auth_config_sync__sync"
@@ -96,6 +101,7 @@
     },
     {
       "source": ".github/workflows/credential-db-bypass-daily.yml",
+      "display_name": "Credential DB Bypass Guard (Daily)",
       "lane": "02-identity-privacy",
       "jobs": {
         "db-bypass-guard": "credential_db_bypass_daily__db-bypass-guard"
@@ -112,6 +118,7 @@
     },
     {
       "source": ".github/workflows/deletion-lifecycle-readiness.yml",
+      "display_name": "Deletion lifecycle readiness evidence",
       "lane": "02-identity-privacy",
       "jobs": {
         "readiness": "deletion_lifecycle_readiness__readiness"
@@ -139,6 +146,7 @@
     },
     {
       "source": ".github/workflows/msp-isolated-database-security.yml",
+      "display_name": "MSP isolated database security",
       "lane": "02-identity-privacy",
       "jobs": {
         "msp-database-security": "msp_isolated_database_security__msp-database-security"
@@ -156,6 +164,7 @@
     },
     {
       "source": ".github/workflows/snowflake-isolated-security.yml",
+      "display_name": "Snowflake isolated compatibility and security",
       "lane": "02-identity-privacy",
       "jobs": {
         "snowflake-isolated": "snowflake_isolated_security__snowflake-isolated"
@@ -176,6 +185,7 @@
     },
     {
       "source": ".github/workflows/release1-role-execution-matrix.yml",
+      "display_name": "Release 1 role and execution security matrix",
       "lane": "02-identity-privacy",
       "jobs": {
         "role-and-execution": "release1_role_execution_matrix__role-and-execution"
@@ -198,6 +208,7 @@
     },
     {
       "source": ".github/workflows/acceptance-db-preflight.yml",
+      "display_name": "Prepare acceptance database initialization",
       "lane": "03-data-recovery",
       "jobs": {
         "schema-preflight": "acceptance_db_preflight__schema-preflight"
@@ -229,6 +240,7 @@
     },
     {
       "source": ".github/workflows/migration-history-recovery.yml",
+      "display_name": "Migration history recovery",
       "lane": "03-data-recovery",
       "jobs": {
         "recorded-history-replay": "migration_history_recovery__recorded-history-replay"
@@ -249,6 +261,7 @@
     },
     {
       "source": ".github/workflows/supabase-migration-safety.yml",
+      "display_name": "Supabase migration safety",
       "lane": "03-data-recovery",
       "jobs": {
         "validate-migrations": "supabase_migration_safety__validate-migrations",
@@ -282,6 +295,7 @@
     },
     {
       "source": ".github/workflows/pr605-gate26-postgres-outbox.yml",
+      "display_name": "PR605 Gate26 isolated PostgreSQL outbox acceptance",
       "lane": "03-data-recovery",
       "jobs": {
         "isolated-outbox": "pr605_gate26_postgres_outbox__isolated-outbox"
@@ -306,6 +320,7 @@
     },
     {
       "source": ".github/workflows/autonomous-write-certification.yml",
+      "display_name": "Autonomous write independent-process certification",
       "lane": "04-governed-execution",
       "jobs": {
         "independent-ledger-and-receiver": "autonomous_write_certification__independent-ledger-and-receiver"
@@ -338,6 +353,7 @@
     },
     {
       "source": ".github/workflows/connector-governance.yml",
+      "display_name": "Master QA | QA20 Connector Governance",
       "lane": "04-governed-execution",
       "jobs": {
         "connector-governance": "connector_governance__connector-governance"
@@ -394,6 +410,7 @@
     },
     {
       "source": ".github/workflows/connector-verified-writes-live.yml",
+      "display_name": "Connector Verified Writes Live",
       "lane": "04-governed-execution",
       "jobs": {
         "verified-writes-live": "connector_verified_writes_live__verified-writes-live"
@@ -422,6 +439,7 @@
     },
     {
       "source": ".github/workflows/outcome-ownership-contract.yml",
+      "display_name": "Master QA | QA10-QA20 Durable Outcome Ownership",
       "lane": "04-governed-execution",
       "jobs": {
         "outcome-ownership": "outcome_ownership_contract__outcome-ownership"
@@ -485,6 +503,7 @@
     },
     {
       "source": ".github/workflows/pr605-cross-surface-ownership.yml",
+      "display_name": "PR605 cross-surface ownership evidence",
       "lane": "04-governed-execution",
       "jobs": {
         "bounded-source-inventory": "pr605_cross_surface_ownership__bounded-source-inventory"
@@ -508,6 +527,7 @@
     },
     {
       "source": ".github/workflows/pr605-run-status-contract.yml",
+      "display_name": "PR605 run status contract certification",
       "lane": "04-governed-execution",
       "jobs": {
         "certify-v2-run-status": "pr605_run_status_contract__certify-v2-run-status"
@@ -533,6 +553,7 @@
     },
     {
       "source": ".github/workflows/pr605-runtime-edge-contract.yml",
+      "display_name": "PR605 privacy-safe runtime edge contract",
       "lane": "04-governed-execution",
       "jobs": {
         "privacy-contract": "pr605_runtime_edge_contract__privacy-contract"
@@ -561,6 +582,7 @@
     },
     {
       "source": ".github/workflows/release1-execution-revocation-audit.yml",
+      "display_name": "Release 1 execution revocation credential contracts",
       "lane": "04-governed-execution",
       "jobs": {
         "browser-credential-source": "release1_execution_revocation_audit__browser-credential-source",
@@ -582,6 +604,7 @@
     },
     {
       "source": ".github/workflows/release1-live-approval-denial.yml",
+      "display_name": "Release 1 forged approval live write-denial",
       "lane": "04-governed-execution",
       "jobs": {
         "forged-approval": "release1_live_approval_denial__forged-approval"
@@ -602,6 +625,7 @@
     },
     {
       "source": ".github/workflows/agent-roi-live.yml",
+      "display_name": "Agent ROI live",
       "lane": "05-intelligence",
       "jobs": {
         "verify": "agent_roi_live__verify"
@@ -636,6 +660,7 @@
     },
     {
       "source": ".github/workflows/catalog-enrichment-nl-variance.yml",
+      "display_name": "Catalog enrichment NL-variance",
       "lane": "05-intelligence",
       "jobs": {
         "enrichment-probe": "catalog_enrichment_nl_variance__enrichment-probe"
@@ -664,6 +689,7 @@
     },
     {
       "source": ".github/workflows/conversation-engineering.yml",
+      "display_name": "Conversational guidance engineering",
       "lane": "05-intelligence",
       "jobs": {
         "deepeval-tool-experiment": "conversation_engineering__deepeval-tool-experiment",
@@ -681,6 +707,7 @@
     },
     {
       "source": ".github/workflows/conversation-parity-contract.yml",
+      "display_name": "Conversation parity contract",
       "lane": "05-intelligence",
       "jobs": {
         "parity-contract": "conversation_parity_contract__parity-contract"
@@ -708,6 +735,7 @@
     },
     {
       "source": ".github/workflows/department-eval-suites.yml",
+      "display_name": "Department Eval Suites",
       "lane": "05-intelligence",
       "jobs": {
         "department-eval": "department_eval_suites__department-eval"
@@ -764,6 +792,7 @@
     },
     {
       "source": ".github/workflows/federated-runtime.yml",
+      "display_name": "Federated runtime contracts",
       "lane": "05-intelligence",
       "jobs": {
         "runtime": "federated_runtime__runtime"
@@ -785,6 +814,7 @@
     },
     {
       "source": ".github/workflows/golden-benchmark-live.yml",
+      "display_name": "Golden benchmark live",
       "lane": "05-intelligence",
       "jobs": {
         "live": "golden_benchmark_live__live"
@@ -801,6 +831,7 @@
     },
     {
       "source": ".github/workflows/intelligence-lifecycle-e2e.yml",
+      "display_name": "Intelligence lifecycle E2E acceptance",
       "lane": "05-intelligence",
       "jobs": {
         "intelligence-lifecycle": "intelligence_lifecycle_e2e__intelligence-lifecycle"
@@ -812,6 +843,7 @@
     },
     {
       "source": ".github/workflows/intelligence-offline-acceptance.yml",
+      "display_name": "Intelligence offline engineering acceptance",
       "lane": "05-intelligence",
       "jobs": {
         "offline-backend": "intelligence_offline_acceptance__offline-backend",
@@ -847,6 +879,7 @@
     },
     {
       "source": ".github/workflows/live-generated-response-quality.yml",
+      "display_name": "Live generated-response quality (manual post-deploy)",
       "lane": "05-intelligence",
       "jobs": {
         "generated-response-quality": "live_generated_response_quality__generated-response-quality"
@@ -866,6 +899,7 @@
     },
     {
       "source": ".github/workflows/milestone2-latency-ab.yml",
+      "display_name": "Milestone 2 Latency A/B",
       "lane": "05-intelligence",
       "jobs": {
         "latency-ab": "milestone2_latency_ab__latency-ab"
@@ -885,6 +919,7 @@
     },
     {
       "source": ".github/workflows/milestone2-performance-audit.yml",
+      "display_name": "Milestone 2 Performance Audit",
       "lane": "05-intelligence",
       "jobs": {
         "performance-audit": "milestone2_performance_audit__performance-audit"
@@ -912,6 +947,7 @@
     },
     {
       "source": ".github/workflows/native-langfuse-certification.yml",
+      "display_name": "Native Langfuse delivery certification",
       "lane": "05-intelligence",
       "jobs": {
         "real-delivery": "native_langfuse_certification__real-delivery"
@@ -932,6 +968,7 @@
     },
     {
       "source": ".github/workflows/phase3-intelligence-coverage.yml",
+      "display_name": "Phase 3 Intelligence Coverage",
       "lane": "05-intelligence",
       "jobs": {
         "coverage-inventory": "phase3_intelligence_coverage__coverage-inventory"
@@ -961,6 +998,7 @@
     },
     {
       "source": ".github/workflows/phase3-offline-12-scenarios.yml",
+      "display_name": "Phase 3 offline 12-scenario evaluation",
       "lane": "05-intelligence",
       "jobs": {
         "evaluate": "phase3_offline_12_scenarios__evaluate"
@@ -984,6 +1022,7 @@
     },
     {
       "source": ".github/workflows/phase3-phase5-evidence.yml",
+      "display_name": "Phase 3 and Phase 5 evidence gates",
       "lane": "05-intelligence",
       "jobs": {
         "evidence": "phase3_phase5_evidence__evidence"
@@ -1002,6 +1041,7 @@
     },
     {
       "source": ".github/workflows/research-cascade-prod-smoke.yml",
+      "display_name": "Research Cascade Prod Smoke",
       "lane": "05-intelligence",
       "jobs": {
         "prod-smoke": "research_cascade_prod_smoke__prod-smoke"
@@ -1037,6 +1077,7 @@
     },
     {
       "source": ".github/workflows/unified-turn-phase2-live.yml",
+      "display_name": "Unified Turn Phase 2 Live",
       "lane": "05-intelligence",
       "jobs": {
         "deploy-and-battery": "unified_turn_phase2_live__deploy-and-battery"
@@ -1071,6 +1112,7 @@
     },
     {
       "source": ".github/workflows/unified-turn-standing-batteries.yml",
+      "display_name": "Unified turn standing batteries",
       "lane": "05-intelligence",
       "jobs": {
         "standing-batteries": "unified_turn_standing_batteries__standing-batteries"
@@ -1087,6 +1129,7 @@
     },
     {
       "source": ".github/workflows/master-qa-qa30-acoustic-qualification.yml",
+      "display_name": "Master QA | QA30 Acoustic Qualification (Manual, No Provider Credits)",
       "lane": "06-voice",
       "jobs": {
         "kws-qualification": "master_qa_qa30_acoustic_qualification__kws-qualification"
@@ -1098,6 +1141,7 @@
     },
     {
       "source": ".github/workflows/master-qa-qa30-offline-cancellation.yml",
+      "display_name": "Master QA | QA30 Offline Cancellation Safety",
       "lane": "06-voice",
       "jobs": {
         "inspect-without-paid-providers": "master_qa_qa30_offline_cancellation__inspect-without-paid-providers"
@@ -1117,6 +1161,7 @@
     },
     {
       "source": ".github/workflows/master-qa-qa30-voice-confirmed-turns.yml",
+      "display_name": "Master QA | QA30 Voice Confirmed-Turn Replay",
       "lane": "06-voice",
       "jobs": {
         "replay": "master_qa_qa30_voice_confirmed_turns__replay"
@@ -1137,6 +1182,7 @@
     },
     {
       "source": ".github/workflows/run-acceptance-voice.yml",
+      "display_name": "Run live ElevenLabs and Deepgram acceptance",
       "lane": "06-voice",
       "jobs": {
         "voice": "run_acceptance_voice__voice"
@@ -1148,6 +1194,7 @@
     },
     {
       "source": ".github/workflows/voice-duplex-guard.yml",
+      "display_name": "Voice duplex browser guard",
       "lane": "06-voice",
       "jobs": {
         "voice-duplex": "voice_duplex_guard__voice-duplex"
@@ -1181,6 +1228,7 @@
     },
     {
       "source": ".github/workflows/voice-gates-2-3.yml",
+      "display_name": "Master QA | QA30 Voice Safety and Acceptance",
       "lane": "06-voice",
       "jobs": {
         "standing-batteries": "voice_gates_2_3__standing-batteries",
@@ -1251,6 +1299,7 @@
     },
     {
       "source": ".github/workflows/voice-livekit-candidate.yml",
+      "display_name": "Isolated LiveKit candidate contracts",
       "lane": "06-voice",
       "jobs": {
         "sdk-contracts": "voice_livekit_candidate__sdk-contracts",
@@ -1274,6 +1323,7 @@
     },
     {
       "source": ".github/workflows/voice-slo-gates.yml",
+      "display_name": "Voice SLO two-metric gates",
       "lane": "06-voice",
       "jobs": {
         "voice-slo": "voice_slo_gates__voice-slo"
@@ -1290,6 +1340,7 @@
     },
     {
       "source": ".github/workflows/voice-stt-control-latency.yml",
+      "display_name": "Voice provider control latency diagnosis",
       "lane": "06-voice",
       "jobs": {
         "control-latency": "voice_stt_control_latency__control-latency"
@@ -1317,6 +1368,7 @@
     },
     {
       "source": ".github/workflows/release1-chat-voice-revocation-e2e.yml",
+      "display_name": "Release 1 chat and voice revocation end to end",
       "lane": "06-voice",
       "jobs": {
         "revocation-e2e": "release1_chat_voice_revocation_e2e__revocation-e2e"
@@ -1337,6 +1389,7 @@
     },
     {
       "source": ".github/workflows/authenticated-click-audit.yml",
+      "display_name": "Authenticated Click Audit",
       "lane": "07-browser-product",
       "jobs": {
         "deep-surface-click-audit": "authenticated_click_audit__deep-surface-click-audit"
@@ -1367,6 +1420,7 @@
     },
     {
       "source": ".github/workflows/browser-fallback-recovery-certification.yml",
+      "display_name": "Browser fallback recovery certification",
       "lane": "07-browser-product",
       "jobs": {
         "independent-recovery-acceptance": "browser_fallback_recovery_certification__independent-recovery-acceptance"
@@ -1392,6 +1446,7 @@
     },
     {
       "source": ".github/workflows/conversational-product-acceptance.yml",
+      "display_name": "Conversational product acceptance",
       "lane": "07-browser-product",
       "jobs": {
         "acceptance": "conversational_product_acceptance__acceptance"
@@ -1413,6 +1468,7 @@
     },
     {
       "source": ".github/workflows/desktop-tauri.yml",
+      "display_name": "Desktop Tauri",
       "lane": "07-browser-product",
       "jobs": {
         "plan": "desktop_tauri__plan",
@@ -1435,6 +1491,7 @@
     },
     {
       "source": ".github/workflows/extension-release.yml",
+      "display_name": "Extension release",
       "lane": "07-browser-product",
       "jobs": {
         "release": "extension_release__release"
@@ -1456,6 +1513,7 @@
     },
     {
       "source": ".github/workflows/navigation-e2e.yml",
+      "display_name": "Navigation E2E",
       "lane": "07-browser-product",
       "jobs": {
         "navigation-click-through": "navigation_e2e__navigation-click-through"
@@ -1467,6 +1525,7 @@
     },
     {
       "source": ".github/workflows/pr605-route-inventory.yml",
+      "display_name": "Master QA | QA00 Routing Inventory Certification",
       "lane": "07-browser-product",
       "jobs": {
         "registered-routes": "pr605_route_inventory__registered-routes"
@@ -1490,6 +1549,7 @@
     },
     {
       "source": ".github/workflows/release1-authenticated-network-audit.yml",
+      "display_name": "Release 1 authenticated production network credential audit",
       "lane": "07-browser-product",
       "jobs": {
         "network-credential-audit": "release1_authenticated_network_audit__network-credential-audit"
@@ -1510,6 +1570,7 @@
     },
     {
       "source": ".github/workflows/release1-authenticated-smoke.yml",
+      "display_name": "Release 1 authenticated production smoke",
       "lane": "07-browser-product",
       "jobs": {
         "authenticated": "release1_authenticated_smoke__authenticated"
@@ -1534,6 +1595,7 @@
     },
     {
       "source": ".github/workflows/release1-deployed-browser-credentials.yml",
+      "display_name": "Release 1 deployed browser credential verification",
       "lane": "07-browser-product",
       "jobs": {
         "browser-runtime": "release1_deployed_browser_credentials__browser-runtime"
@@ -1554,6 +1616,7 @@
     },
     {
       "source": ".github/workflows/live-signup-billing-http.yml",
+      "display_name": "Live Signup and Billing HTTP Acceptance",
       "lane": "08-billing-marketplace",
       "jobs": {
         "production-billing-boundaries": "live_signup_billing_http__production-billing-boundaries"
@@ -1574,6 +1637,7 @@
     },
     {
       "source": ".github/workflows/marketplace-production-smoke.yml",
+      "display_name": "Marketplace Production Smoke",
       "lane": "08-billing-marketplace",
       "jobs": {
         "marketplace-smoke": "marketplace_production_smoke__marketplace-smoke"
@@ -1597,6 +1661,7 @@
     },
     {
       "source": ".github/workflows/run-acceptance-billing.yml",
+      "display_name": "Run isolated billing Playwright acceptance",
       "lane": "08-billing-marketplace",
       "jobs": {
         "billing": "run_acceptance_billing__billing"
@@ -1608,6 +1673,7 @@
     },
     {
       "source": ".github/workflows/indexnow-on-publish.yml",
+      "display_name": "IndexNow on publication",
       "lane": "09-marketing",
       "jobs": {
         "ping-indexnow": "indexnow_on_publish__ping-indexnow"
@@ -1627,6 +1693,7 @@
     },
     {
       "source": ".github/workflows/marketing-lighthouse.yml",
+      "display_name": "Marketing Lighthouse CI",
       "lane": "09-marketing",
       "jobs": {
         "lighthouse": "marketing_lighthouse__lighthouse"
@@ -1653,6 +1720,7 @@
     },
     {
       "source": ".github/workflows/seo-publishing.yml",
+      "display_name": "SEO publishing guard",
       "lane": "09-marketing",
       "jobs": {
         "seo-publishing": "seo_publishing__seo-publishing"
@@ -1674,6 +1742,7 @@
     },
     {
       "source": ".github/workflows/social-intelligence-regression.yml",
+      "display_name": "Social intelligence evaluation contracts",
       "lane": "09-marketing",
       "jobs": {
         "evaluator-contracts": "social_intelligence_regression__evaluator-contracts"
@@ -1694,6 +1763,7 @@
     },
     {
       "source": ".github/workflows/chat-history-hygiene-live.yml",
+      "display_name": "Chat history hygiene live",
       "lane": "10-operations",
       "jobs": {
         "verify": "chat_history_hygiene_live__verify"
@@ -1716,6 +1786,7 @@
     },
     {
       "source": ".github/workflows/connector-health.yml",
+      "display_name": "Connector Health",
       "lane": "10-operations",
       "jobs": {
         "connector-health": "connector_health__connector-health"
@@ -1732,6 +1803,7 @@
     },
     {
       "source": ".github/workflows/knowledge-sync.yml",
+      "display_name": "Knowledge Sync",
       "lane": "10-operations",
       "jobs": {
         "sync-due": "knowledge_sync__sync-due"
@@ -1755,6 +1827,7 @@
     },
     {
       "source": ".github/workflows/metrics-rollup.yml",
+      "display_name": "Metrics Rollup",
       "lane": "10-operations",
       "jobs": {
         "rollup-daily": "metrics_rollup__rollup-daily"
@@ -1783,6 +1856,7 @@
     },
     {
       "source": ".github/workflows/msp-enrichment-workflow-live.yml",
+      "display_name": "MSP Enrichment Workflow Live",
       "lane": "10-operations",
       "jobs": {
         "msp-enrichment-live": "msp_enrichment_workflow_live__msp-enrichment-live"
@@ -1813,6 +1887,7 @@
     },
     {
       "source": ".github/workflows/native-workers-offline.yml",
+      "display_name": "Native worker image contracts",
       "lane": "10-operations",
       "jobs": {
         "pinned-sdk-imports": "native_workers_offline__pinned-sdk-imports",
@@ -1836,6 +1911,7 @@
     },
     {
       "source": ".github/workflows/platform-cs-backfill.yml",
+      "display_name": "Platform CS Snapshot Backfill",
       "lane": "10-operations",
       "jobs": {
         "backfill-snapshots": "platform_cs_backfill__backfill-snapshots"
@@ -1859,6 +1935,7 @@
     },
     {
       "source": ".github/workflows/probe-gmail-live-bugs-audit.yml",
+      "display_name": "Probe Gmail Live Bugs Audit",
       "lane": "10-operations",
       "jobs": {
         "probe": "probe_gmail_live_bugs_audit__probe"
@@ -1887,6 +1964,7 @@
     },
     {
       "source": ".github/workflows/smoke-conversation-pollution-cleanup.yml",
+      "display_name": "Smoke conversation pollution cleanup",
       "lane": "10-operations",
       "jobs": {
         "cleanup": "smoke_conversation_pollution_cleanup__cleanup"
@@ -1915,6 +1993,7 @@
     },
     {
       "source": ".github/workflows/unified-turn-ops-gates.yml",
+      "display_name": "Unified turn ops gates",
       "lane": "10-operations",
       "jobs": {
         "ops-gates": "unified_turn_ops_gates__ops-gates"
@@ -1931,6 +2010,7 @@
     },
     {
       "source": ".github/workflows/usage-sync.yml",
+      "display_name": "Usage Sync",
       "lane": "10-operations",
       "jobs": {
         "sync-usage": "usage_sync__sync-usage"
@@ -1954,6 +2034,7 @@
     },
     {
       "source": ".github/workflows/workflow-schedules.yml",
+      "display_name": "Workflow Schedules",
       "lane": "10-operations",
       "jobs": {
         "dispatch-due": "workflow_schedules__dispatch-due"
@@ -1977,6 +2058,7 @@
     },
     {
       "source": ".github/workflows/production-hardening-smoke.yml",
+      "display_name": "Production Hardening Smoke",
       "lane": "11-release",
       "jobs": {
         "hardening-smoke": "production_hardening_smoke__hardening-smoke"
@@ -2000,6 +2082,7 @@
     },
     {
       "source": ".github/workflows/production-release-verification.yml",
+      "display_name": "Production release verification",
       "lane": "11-release",
       "jobs": {
         "verify": "production_release_verification__verify"
@@ -2022,6 +2105,7 @@
     },
     {
       "source": ".github/workflows/railway-backend-production.yml",
+      "display_name": "Railway backend production",
       "lane": "11-release",
       "jobs": {
         "detect-backend-changes": "railway_backend_production__detect-backend-changes",
@@ -2053,6 +2137,7 @@
     },
     {
       "source": ".github/workflows/railway-safety-vars.yml",
+      "display_name": "Railway safety variables",
       "lane": "11-release",
       "jobs": {
         "safety-vars": "railway_safety_vars__safety-vars"
@@ -2081,6 +2166,7 @@
     },
     {
       "source": ".github/workflows/release1-production-smoke.yml",
+      "display_name": "Release 1 production smoke",
       "lane": "11-release",
       "jobs": {
         "smoke": "release1_production_smoke__smoke"
@@ -2113,6 +2199,7 @@
     },
     {
       "source": ".github/workflows/unified-turn-phase4-cutover.yml",
+      "display_name": "Unified Turn Phase 4 Cutover",
       "lane": "11-release",
       "jobs": {
         "cutover": "unified_turn_phase4_cutover__cutover"
@@ -2137,6 +2224,7 @@
     },
     {
       "source": ".github/workflows/eco-001-deployed-ingress.yml",
+      "display_name": "Master QA | QA20 Governed Ingress Read-Only Preflight",
       "lane": "12-independent-acceptance",
       "jobs": {
         "deployed-ingress-preflight": "eco_001_deployed_ingress__deployed-ingress-preflight"
@@ -2161,6 +2249,7 @@
     },
     {
       "source": ".github/workflows/isolated-acceptance.yml",
+      "display_name": "Isolated billing and live voice acceptance",
       "lane": "12-independent-acceptance",
       "jobs": {
         "billing-e2e": "isolated_acceptance__billing-e2e",
@@ -2202,6 +2291,7 @@
     },
     {
       "source": ".github/workflows/master-qa-p0-synthetic.yml",
+      "display_name": "Master QA | QA00\u2013QA90 Core Evidence & Runtime",
       "lane": "12-independent-acceptance",
       "jobs": {
         "synthetic-fixtures": "master_qa_p0_synthetic__synthetic-fixtures",
@@ -2223,8 +2313,12 @@
             "docs/delivery/master-qa-workflow-consolidation.md",
             ".github/workflow-candidates/**",
             "scripts/build-canonical-workflows.py",
+            "scripts/route-workflow-event.py",
             "scripts/audit-workflow-migration.py",
             "scripts/tests/test_canonical_workflows.py",
+            "scripts/tests/test_workflow_event_router.py",
+            "docs/delivery/master-qa-required-checks-readback.json",
+            "docs/delivery/master-qa-workflow-source-contracts.json",
             "docs/delivery/master-qa-workflow-replacement-parity.json",
             "backend/app/workflows/sales_growth_recipe.py",
             "backend/app/services/goal_service.py",
@@ -2255,6 +2349,7 @@
     },
     {
       "source": ".github/workflows/master-qa-p27-sandbox-readback.yml",
+      "display_name": "Master QA | QA50 Authorized HubSpot Provider Readback",
       "lane": "12-independent-acceptance",
       "jobs": {
         "label-preflight": "master_qa_p27_sandbox_readback__label-preflight",
@@ -2283,6 +2378,7 @@
     },
     {
       "source": ".github/workflows/milestone1-live-reverify.yml",
+      "display_name": "Milestone 1 Live Reverify",
       "lane": "12-independent-acceptance",
       "jobs": {
         "live-reverify": "milestone1_live_reverify__live-reverify"
@@ -2326,6 +2422,7 @@
     },
     {
       "source": ".github/workflows/plays-datasets-live-proof.yml",
+      "display_name": "Plays + datasets authenticated live proof",
       "lane": "12-independent-acceptance",
       "jobs": {
         "live-read-proof": "plays_datasets_live_proof__live-read-proof"
@@ -2350,6 +2447,7 @@
     },
     {
       "source": ".github/workflows/plays-production-acceptance.yml",
+      "display_name": "Plays production acceptance",
       "lane": "12-independent-acceptance",
       "jobs": {
         "deterministic-contract": "plays_production_acceptance__deterministic-contract",
@@ -2370,6 +2468,7 @@
     },
     {
       "source": ".github/workflows/release1-live-memory-liveness.yml",
+      "display_name": "Release 1 live memory source revocation",
       "lane": "12-independent-acceptance",
       "jobs": {
         "memory-liveness": "release1_live_memory_liveness__memory-liveness"
@@ -2390,6 +2489,7 @@
     },
     {
       "source": ".github/workflows/release1-live-public-mcp.yml",
+      "display_name": "Release 1 public MCP and SSRF live verification",
       "lane": "12-independent-acceptance",
       "jobs": {
         "public-mcp": "release1_live_public_mcp__public-mcp"

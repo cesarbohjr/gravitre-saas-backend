@@ -63,6 +63,27 @@ name: QA 05-intelligence
         description: 'unified-turn-phase2-live: Railway environment name'
         required: false
         default: production
+  push:
+    branches:
+    - fix/intelligence-offline-e2e-acceptance
+    - main
+  pull_request:
+    types:
+    - opened
+    - reopened
+    - synchronize
+  workflow_run:
+    branches:
+    - main
+    types:
+    - completed
+    workflows:
+    - Production release verification
+    - QA 11-release
+  schedule:
+  - cron: 0 6 * * 0
+  - cron: 30 7 * * 1
+  - cron: 40 6 * * 1
 concurrency:
   group: ${{ format('candidate-{0}', (inputs.source == 'agent-roi-live' && ('agent-roi-live')) || (inputs.source == 'catalog-enrichment-nl-variance'
     && ('catalog-enrichment-nl-variance')) || (inputs.source == 'department-eval-suites' && (format('department-eval-{0}',
@@ -82,10 +103,21 @@ jobs:
   dispatch_contract:
     name: Validate selected source inputs
     runs-on: ubuntu-latest
-    permissions: {}
-    timeout-minutes: 2
+    permissions:
+      contents: read
+      actions: read
+    timeout-minutes: 4
+    outputs:
+      selected: ${{ steps.contract.outputs.selected }}
+      derived: ${{ steps.contract.outputs.derived }}
+      context_conclusions: ${{ steps.contract.outputs.context_conclusions }}
     steps:
-    - name: Validate source contract
+    - uses: actions/checkout@v4
+      with:
+        persist-credentials: false
+        fetch-depth: 0
+    - id: contract
+      name: Validate source contract
       shell: python
       env:
         SOURCE_SCHEMAS: '{"agent-roi-live": {}, "catalog-enrichment-nl-variance": {}, "conversation-engineering": {}, "conversation-parity-contract":
@@ -109,18 +141,24 @@ jobs:
           "unified-turn-phase2-live", "unified-turn-standing-batteries"]'
         DISPATCH_VALUES: ${{ toJSON(inputs) }}
         EVENT_NAME: ${{ github.event_name }}
+        CANONICAL_LANE: 05-intelligence
+        GITHUB_TOKEN: ${{ github.token }}
       run: "import json, os\nschemas = json.loads(os.environ['SOURCE_SCHEMAS'])\nvalues = json.loads(os.environ['DISPATCH_VALUES'])\n\
-        source = values.get('source')\nif source not in schemas:\n    raise SystemExit('Unknown source workflow')\nif os.environ['EVENT_NAME']\
-        \ == 'workflow_dispatch' and source not in json.loads(os.environ['MANUAL_SOURCES']):\n    raise SystemExit('Source\
-        \ has no manual trigger')\nif os.environ['EVENT_NAME'] != 'workflow_dispatch' and source != 'isolated-acceptance':\n\
-        \    raise SystemExit('Unsupported reusable source')\nfor key, config in schemas[source].items():\n    value = values.get(source.replace('-',\
-        \ '_') + '__' + key)\n    if os.environ['EVENT_NAME'] != 'workflow_dispatch' and key == 'suite':\n        value =\
-        \ values.get('suite')\n    if config.get('required') and (value is None or value == ''):\n        raise SystemExit('Required\
-        \ selected-source input missing: ' + key)\nprint('Selected source input contract validated; this is not execution\
-        \ acceptance')\n"
+        event_name = os.environ['EVENT_NAME']\ncalled = values.get('_reusable', False)\nif not called and event_name not in\
+        \ ('workflow_dispatch', 'workflow_call'):\n    import subprocess\n    subprocess.run(['python', 'scripts/route-workflow-event.py',\
+        \ '--lane', os.environ['CANONICAL_LANE']], check=True)\n    raise SystemExit(0)\nsource = values.get('source')\nif\
+        \ source not in schemas:\n    raise SystemExit('Unknown source workflow')\nif not called and event_name == 'workflow_dispatch'\
+        \ and source not in json.loads(os.environ['MANUAL_SOURCES']):\n    raise SystemExit('Source has no manual trigger')\n\
+        if called and source != 'isolated-acceptance':\n    raise SystemExit('Unsupported reusable source')\nfor key, config\
+        \ in schemas[source].items():\n    value = values.get(source.replace('-', '_') + '__' + key)\n    if called and key\
+        \ == 'suite':\n        value = values.get('suite')\n    if config.get('required') and (value is None or value == ''):\n\
+        \        raise SystemExit('Required selected-source input missing: ' + key)\nprint('Selected source input contract\
+        \ validated; this is not execution acceptance')\nwith open(os.environ['GITHUB_OUTPUT'], 'a') as output:\n    output.write('selected='\
+        \ + json.dumps([source]) + '\\n')\n    output.write('derived=[]\\ncontext_conclusions={}\\n')\n"
   agent_roi_live__verify:
-    if: ${{ needs.dispatch_contract.result == 'success' && inputs.source == 'agent-roi-live' && (github.event_name != 'workflow_run'
-      || github.event.workflow_run.conclusion == 'success') }}
+    if: ${{ needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected), 'agent-roi-live')
+      && (github.event_name != 'workflow_run' || (fromJSON(needs.dispatch_contract.outputs.context_conclusions)['agent-roi-live']
+      || github.event.workflow_run.conclusion) == 'success') }}
     name: Live agent ROI honesty
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -150,6 +188,9 @@ jobs:
         if-no-files-found: ignore
     needs:
     - dispatch_contract
+    concurrency:
+      group: ${{ format('candidate-{0}-{1}-{2}', 'agent-roi-live', 'agent_roi_live__verify', toJSON(matrix)) }}
+      cancel-in-progress: ${{ false }}
   catalog_enrichment_nl_variance__enrichment-probe:
     name: Catalog enrichment NL-variance probe
     runs-on: ubuntu-latest
@@ -197,8 +238,12 @@ jobs:
         if-no-files-found: ignore
     needs:
     - dispatch_contract
-    if: ${{ needs.dispatch_contract.result == 'success' && inputs.source == 'catalog-enrichment-nl-variance' && (success())
-      }}
+    if: ${{ needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected), 'catalog-enrichment-nl-variance')
+      && (success()) }}
+    concurrency:
+      group: ${{ format('candidate-{0}-{1}-{2}', 'catalog-enrichment-nl-variance', 'catalog_enrichment_nl_variance__enrichment-probe',
+        toJSON(matrix)) }}
+      cancel-in-progress: ${{ false }}
   conversation_engineering__deepeval-tool-experiment:
     runs-on: ubuntu-latest
     timeout-minutes: 12
@@ -237,7 +282,8 @@ jobs:
     name: deepeval-tool-experiment
     needs:
     - dispatch_contract
-    if: ${{ needs.dispatch_contract.result == 'success' && inputs.source == 'conversation-engineering' && (success()) }}
+    if: ${{ needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected), 'conversation-engineering')
+      && (success()) }}
     permissions:
       contents: read
   conversation_engineering__dspy:
@@ -278,7 +324,8 @@ jobs:
     name: dspy
     needs:
     - dispatch_contract
-    if: ${{ needs.dispatch_contract.result == 'success' && inputs.source == 'conversation-engineering' && (success()) }}
+    if: ${{ needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected), 'conversation-engineering')
+      && (success()) }}
     permissions:
       contents: read
   conversation_parity_contract__parity-contract:
@@ -319,8 +366,8 @@ jobs:
     name: parity-contract
     needs:
     - dispatch_contract
-    if: ${{ needs.dispatch_contract.result == 'success' && inputs.source == 'conversation-parity-contract' && (success())
-      }}
+    if: ${{ needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected), 'conversation-parity-contract')
+      && (success()) }}
   department_eval_suites__department-eval:
     name: Department eval suites
     runs-on: ubuntu-latest
@@ -358,7 +405,12 @@ jobs:
         OPENAI_API_KEY: sk-test-openai
     needs:
     - dispatch_contract
-    if: ${{ needs.dispatch_contract.result == 'success' && inputs.source == 'department-eval-suites' && (success()) }}
+    if: ${{ needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected), 'department-eval-suites')
+      && (success()) }}
+    concurrency:
+      group: ${{ format('candidate-{0}-{1}-{2}', format('department-eval-{0}', github.ref), 'department_eval_suites__department-eval',
+        toJSON(matrix)) }}
+      cancel-in-progress: ${{ true }}
   federated_runtime__runtime:
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -396,7 +448,8 @@ jobs:
     name: runtime
     needs:
     - dispatch_contract
-    if: ${{ needs.dispatch_contract.result == 'success' && inputs.source == 'federated-runtime' && (success()) }}
+    if: ${{ needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected), 'federated-runtime')
+      && (success()) }}
   golden_benchmark_live__live:
     name: Golden traffic live smoke
     runs-on: ubuntu-latest
@@ -433,7 +486,11 @@ jobs:
         if-no-files-found: ignore
     needs:
     - dispatch_contract
-    if: ${{ needs.dispatch_contract.result == 'success' && inputs.source == 'golden-benchmark-live' && (success()) }}
+    if: ${{ needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected), 'golden-benchmark-live')
+      && (success()) }}
+    concurrency:
+      group: ${{ format('candidate-{0}-{1}-{2}', 'golden-benchmark-live', 'golden_benchmark_live__live', toJSON(matrix)) }}
+      cancel-in-progress: ${{ false }}
   intelligence_lifecycle_e2e__intelligence-lifecycle:
     runs-on: ubuntu-latest
     timeout-minutes: 25
@@ -472,9 +529,14 @@ jobs:
     name: intelligence-lifecycle
     needs:
     - dispatch_contract
-    if: ${{ needs.dispatch_contract.result == 'success' && inputs.source == 'intelligence-lifecycle-e2e' && (success()) }}
+    if: ${{ needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected), 'intelligence-lifecycle-e2e')
+      && (success()) }}
     permissions:
       contents: read
+    concurrency:
+      group: ${{ format('candidate-{0}-{1}-{2}', 'intelligence-lifecycle-e2e', 'intelligence_lifecycle_e2e__intelligence-lifecycle',
+        toJSON(matrix)) }}
+      cancel-in-progress: ${{ false }}
   intelligence_offline_acceptance__offline-backend:
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -509,8 +571,8 @@ jobs:
     name: offline-backend
     needs:
     - dispatch_contract
-    if: ${{ needs.dispatch_contract.result == 'success' && inputs.source == 'intelligence-offline-acceptance' && (success())
-      }}
+    if: ${{ needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected), 'intelligence-offline-acceptance')
+      && (success()) }}
   intelligence_offline_acceptance__offline-web:
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -535,11 +597,11 @@ jobs:
     name: offline-web
     needs:
     - dispatch_contract
-    if: ${{ needs.dispatch_contract.result == 'success' && inputs.source == 'intelligence-offline-acceptance' && (success())
-      }}
+    if: ${{ needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected), 'intelligence-offline-acceptance')
+      && (success()) }}
   live_generated_response_quality__generated-response-quality:
-    if: ${{ needs.dispatch_contract.result == 'success' && inputs.source == 'live-generated-response-quality' && (github.ref
-      == 'refs/heads/main') }}
+    if: ${{ needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected), 'live-generated-response-quality')
+      && (github.ref == 'refs/heads/main') }}
     runs-on: ubuntu-latest
     timeout-minutes: 90
     environment: production-evaluation
@@ -655,7 +717,12 @@ jobs:
         if-no-files-found: ignore
     needs:
     - dispatch_contract
-    if: ${{ needs.dispatch_contract.result == 'success' && inputs.source == 'milestone2-latency-ab' && (success()) }}
+    if: ${{ needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected), 'milestone2-latency-ab')
+      && (success()) }}
+    concurrency:
+      group: ${{ format('candidate-{0}-{1}-{2}', 'milestone2-latency-ab', 'milestone2_latency_ab__latency-ab', toJSON(matrix))
+        }}
+      cancel-in-progress: ${{ false }}
   milestone2_performance_audit__performance-audit:
     name: Milestone 2 prod performance audit
     runs-on: ubuntu-latest
@@ -692,8 +759,12 @@ jobs:
         if-no-files-found: ignore
     needs:
     - dispatch_contract
-    if: ${{ needs.dispatch_contract.result == 'success' && inputs.source == 'milestone2-performance-audit' && (success())
-      }}
+    if: ${{ needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected), 'milestone2-performance-audit')
+      && (success()) }}
+    concurrency:
+      group: ${{ format('candidate-{0}-{1}-{2}', 'milestone2-performance-audit', 'milestone2_performance_audit__performance-audit',
+        toJSON(matrix)) }}
+      cancel-in-progress: ${{ false }}
   native_langfuse_certification__real-delivery:
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -752,10 +823,14 @@ jobs:
     name: real-delivery
     needs:
     - dispatch_contract
-    if: ${{ needs.dispatch_contract.result == 'success' && inputs.source == 'native-langfuse-certification' && (success())
-      }}
+    if: ${{ needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected), 'native-langfuse-certification')
+      && (success()) }}
     permissions:
       contents: read
+    concurrency:
+      group: ${{ format('candidate-{0}-{1}-{2}', format('native-langfuse-{0}', github.ref), 'native_langfuse_certification__real-delivery',
+        toJSON(matrix)) }}
+      cancel-in-progress: ${{ false }}
   phase3_intelligence_coverage__coverage-inventory:
     runs-on: ubuntu-latest
     timeout-minutes: 35
@@ -836,8 +911,8 @@ jobs:
     name: coverage-inventory
     needs:
     - dispatch_contract
-    if: ${{ needs.dispatch_contract.result == 'success' && inputs.source == 'phase3-intelligence-coverage' && (success())
-      }}
+    if: ${{ needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected), 'phase3-intelligence-coverage')
+      && (success()) }}
   phase3_offline_12_scenarios__evaluate:
     runs-on: ubuntu-latest
     timeout-minutes: 35
@@ -895,7 +970,8 @@ jobs:
     name: evaluate
     needs:
     - dispatch_contract
-    if: ${{ needs.dispatch_contract.result == 'success' && inputs.source == 'phase3-offline-12-scenarios' && (success()) }}
+    if: ${{ needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected), 'phase3-offline-12-scenarios')
+      && (success()) }}
   phase3_phase5_evidence__evidence:
     runs-on: ubuntu-latest
     timeout-minutes: 40
@@ -948,7 +1024,8 @@ jobs:
     name: evidence
     needs:
     - dispatch_contract
-    if: ${{ needs.dispatch_contract.result == 'success' && inputs.source == 'phase3-phase5-evidence' && (success()) }}
+    if: ${{ needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected), 'phase3-phase5-evidence')
+      && (success()) }}
   research_cascade_prod_smoke__prod-smoke:
     name: Research cascade prod SSE smoke
     runs-on: ubuntu-latest
@@ -986,7 +1063,12 @@ jobs:
         if-no-files-found: ignore
     needs:
     - dispatch_contract
-    if: ${{ needs.dispatch_contract.result == 'success' && inputs.source == 'research-cascade-prod-smoke' && (success()) }}
+    if: ${{ needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected), 'research-cascade-prod-smoke')
+      && (success()) }}
+    concurrency:
+      group: ${{ format('candidate-{0}-{1}-{2}', 'research-cascade-prod-smoke', 'research_cascade_prod_smoke__prod-smoke',
+        toJSON(matrix)) }}
+      cancel-in-progress: ${{ false }}
   unified_turn_phase2_live__deploy-and-battery:
     name: Deploy prod, enable shadow, run live batteries
     runs-on: ubuntu-latest
@@ -1077,7 +1159,12 @@ jobs:
           '
     needs:
     - dispatch_contract
-    if: ${{ needs.dispatch_contract.result == 'success' && inputs.source == 'unified-turn-phase2-live' && (success()) }}
+    if: ${{ needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected), 'unified-turn-phase2-live')
+      && (success()) }}
+    concurrency:
+      group: ${{ format('candidate-{0}-{1}-{2}', 'unified-turn-phase2-live', 'unified_turn_phase2_live__deploy-and-battery',
+        toJSON(matrix)) }}
+      cancel-in-progress: ${{ false }}
   unified_turn_standing_batteries__standing-batteries:
     name: Weekly unified-turn batteries
     runs-on: ubuntu-latest
@@ -1139,5 +1226,97 @@ jobs:
         if-no-files-found: ignore
     needs:
     - dispatch_contract
-    if: ${{ needs.dispatch_contract.result == 'success' && inputs.source == 'unified-turn-standing-batteries' && (success())
-      }}
+    if: ${{ needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected), 'unified-turn-standing-batteries')
+      && (success()) }}
+    concurrency:
+      group: ${{ format('candidate-{0}-{1}-{2}', 'unified-turn-standing-batteries', 'unified_turn_standing_batteries__standing-batteries',
+        toJSON(matrix)) }}
+      cancel-in-progress: ${{ false }}
+  source_outcomes:
+    name: Record independent source workflow outcomes
+    if: ${{ always() && needs.dispatch_contract.result == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    permissions: {}
+    needs:
+    - dispatch_contract
+    - agent_roi_live__verify
+    - catalog_enrichment_nl_variance__enrichment-probe
+    - conversation_engineering__deepeval-tool-experiment
+    - conversation_engineering__dspy
+    - conversation_parity_contract__parity-contract
+    - department_eval_suites__department-eval
+    - federated_runtime__runtime
+    - golden_benchmark_live__live
+    - intelligence_lifecycle_e2e__intelligence-lifecycle
+    - intelligence_offline_acceptance__offline-backend
+    - intelligence_offline_acceptance__offline-web
+    - live_generated_response_quality__generated-response-quality
+    - milestone2_latency_ab__latency-ab
+    - milestone2_performance_audit__performance-audit
+    - native_langfuse_certification__real-delivery
+    - phase3_intelligence_coverage__coverage-inventory
+    - phase3_offline_12_scenarios__evaluate
+    - phase3_phase5_evidence__evidence
+    - research_cascade_prod_smoke__prod-smoke
+    - unified_turn_phase2_live__deploy-and-battery
+    - unified_turn_standing_batteries__standing-batteries
+    steps:
+    - name: Bind source outcomes to this run
+      shell: python
+      run: "import json, os\nsources = json.loads(os.environ['SOURCE_JOBS'])\nneeds = json.loads(os.environ['JOB_RESULTS'])\n\
+        selected = json.loads(os.environ['SELECTED'])\noutcomes = {}\nfor name, source in sources.items():\n    if name not\
+        \ in selected:\n        continue\n    results = [needs[key]['result'] for key in source['jobs']]\n    outcome = ('failure'\
+        \ if 'failure' in results else 'cancelled' if 'cancelled' in results\n               else 'success' if 'success' in\
+        \ results else 'skipped')\n    outcomes[source['display_name']] = outcome\nevidence = {'run_id': int(os.environ['GITHUB_RUN_ID']),\
+        \ 'head_sha': os.environ['GITHUB_SHA'],\n            'source_outcomes': outcomes}\nwith open('canonical-workflow-outcomes.json',\
+        \ 'w') as output:\n    json.dump(evidence, output)\n"
+      env:
+        SOURCE_JOBS: '{"agent-roi-live": {"display_name": "Agent ROI live", "jobs": ["agent_roi_live__verify"]}, "catalog-enrichment-nl-variance":
+          {"display_name": "Catalog enrichment NL-variance", "jobs": ["catalog_enrichment_nl_variance__enrichment-probe"]},
+          "conversation-engineering": {"display_name": "Conversational guidance engineering", "jobs": ["conversation_engineering__deepeval-tool-experiment",
+          "conversation_engineering__dspy"]}, "conversation-parity-contract": {"display_name": "Conversation parity contract",
+          "jobs": ["conversation_parity_contract__parity-contract"]}, "department-eval-suites": {"display_name": "Department
+          Eval Suites", "jobs": ["department_eval_suites__department-eval"]}, "federated-runtime": {"display_name": "Federated
+          runtime contracts", "jobs": ["federated_runtime__runtime"]}, "golden-benchmark-live": {"display_name": "Golden benchmark
+          live", "jobs": ["golden_benchmark_live__live"]}, "intelligence-lifecycle-e2e": {"display_name": "Intelligence lifecycle
+          E2E acceptance", "jobs": ["intelligence_lifecycle_e2e__intelligence-lifecycle"]}, "intelligence-offline-acceptance":
+          {"display_name": "Intelligence offline engineering acceptance", "jobs": ["intelligence_offline_acceptance__offline-backend",
+          "intelligence_offline_acceptance__offline-web"]}, "live-generated-response-quality": {"display_name": "Live generated-response
+          quality (manual post-deploy)", "jobs": ["live_generated_response_quality__generated-response-quality"]}, "milestone2-latency-ab":
+          {"display_name": "Milestone 2 Latency A/B", "jobs": ["milestone2_latency_ab__latency-ab"]}, "milestone2-performance-audit":
+          {"display_name": "Milestone 2 Performance Audit", "jobs": ["milestone2_performance_audit__performance-audit"]},
+          "native-langfuse-certification": {"display_name": "Native Langfuse delivery certification", "jobs": ["native_langfuse_certification__real-delivery"]},
+          "phase3-intelligence-coverage": {"display_name": "Phase 3 Intelligence Coverage", "jobs": ["phase3_intelligence_coverage__coverage-inventory"]},
+          "phase3-offline-12-scenarios": {"display_name": "Phase 3 offline 12-scenario evaluation", "jobs": ["phase3_offline_12_scenarios__evaluate"]},
+          "phase3-phase5-evidence": {"display_name": "Phase 3 and Phase 5 evidence gates", "jobs": ["phase3_phase5_evidence__evidence"]},
+          "research-cascade-prod-smoke": {"display_name": "Research Cascade Prod Smoke", "jobs": ["research_cascade_prod_smoke__prod-smoke"]},
+          "unified-turn-phase2-live": {"display_name": "Unified Turn Phase 2 Live", "jobs": ["unified_turn_phase2_live__deploy-and-battery"]},
+          "unified-turn-standing-batteries": {"display_name": "Unified turn standing batteries", "jobs": ["unified_turn_standing_batteries__standing-batteries"]}}'
+        JOB_RESULTS: '{"agent_roi_live__verify": {"result": "${{ needs.agent_roi_live__verify.result }}"}, "catalog_enrichment_nl_variance__enrichment-probe":
+          {"result": "${{ needs.catalog_enrichment_nl_variance__enrichment-probe.result }}"}, "conversation_engineering__deepeval-tool-experiment":
+          {"result": "${{ needs.conversation_engineering__deepeval-tool-experiment.result }}"}, "conversation_engineering__dspy":
+          {"result": "${{ needs.conversation_engineering__dspy.result }}"}, "conversation_parity_contract__parity-contract":
+          {"result": "${{ needs.conversation_parity_contract__parity-contract.result }}"}, "department_eval_suites__department-eval":
+          {"result": "${{ needs.department_eval_suites__department-eval.result }}"}, "federated_runtime__runtime": {"result":
+          "${{ needs.federated_runtime__runtime.result }}"}, "golden_benchmark_live__live": {"result": "${{ needs.golden_benchmark_live__live.result
+          }}"}, "intelligence_lifecycle_e2e__intelligence-lifecycle": {"result": "${{ needs.intelligence_lifecycle_e2e__intelligence-lifecycle.result
+          }}"}, "intelligence_offline_acceptance__offline-backend": {"result": "${{ needs.intelligence_offline_acceptance__offline-backend.result
+          }}"}, "intelligence_offline_acceptance__offline-web": {"result": "${{ needs.intelligence_offline_acceptance__offline-web.result
+          }}"}, "live_generated_response_quality__generated-response-quality": {"result": "${{ needs.live_generated_response_quality__generated-response-quality.result
+          }}"}, "milestone2_latency_ab__latency-ab": {"result": "${{ needs.milestone2_latency_ab__latency-ab.result }}"},
+          "milestone2_performance_audit__performance-audit": {"result": "${{ needs.milestone2_performance_audit__performance-audit.result
+          }}"}, "native_langfuse_certification__real-delivery": {"result": "${{ needs.native_langfuse_certification__real-delivery.result
+          }}"}, "phase3_intelligence_coverage__coverage-inventory": {"result": "${{ needs.phase3_intelligence_coverage__coverage-inventory.result
+          }}"}, "phase3_offline_12_scenarios__evaluate": {"result": "${{ needs.phase3_offline_12_scenarios__evaluate.result
+          }}"}, "phase3_phase5_evidence__evidence": {"result": "${{ needs.phase3_phase5_evidence__evidence.result }}"}, "research_cascade_prod_smoke__prod-smoke":
+          {"result": "${{ needs.research_cascade_prod_smoke__prod-smoke.result }}"}, "unified_turn_phase2_live__deploy-and-battery":
+          {"result": "${{ needs.unified_turn_phase2_live__deploy-and-battery.result }}"}, "unified_turn_standing_batteries__standing-batteries":
+          {"result": "${{ needs.unified_turn_standing_batteries__standing-batteries.result }}"}}'
+        SELECTED: ${{ needs.dispatch_contract.outputs.selected }}
+    - uses: actions/upload-artifact@v4
+      with:
+        name: canonical-workflow-outcomes-05-intelligence
+        path: canonical-workflow-outcomes.json
+        if-no-files-found: error
+        retention-days: 14

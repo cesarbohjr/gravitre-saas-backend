@@ -18,6 +18,13 @@ name: QA 03-data-recovery
         required: false
         default: '39929148399'
         type: string
+  pull_request:
+    branches:
+    - main
+    types:
+    - opened
+    - reopened
+    - synchronize
 concurrency:
   group: ${{ format('candidate-{0}', (inputs.source == 'migration-history-recovery' && (format('migration-history-recovery-{0}',
     github.ref))) || (inputs.source == 'supabase-migration-safety' && (format('supabase-migration-safety-{0}', github.event.pull_request.number
@@ -28,10 +35,21 @@ jobs:
   dispatch_contract:
     name: Validate selected source inputs
     runs-on: ubuntu-latest
-    permissions: {}
-    timeout-minutes: 2
+    permissions:
+      contents: read
+      actions: read
+    timeout-minutes: 4
+    outputs:
+      selected: ${{ steps.contract.outputs.selected }}
+      derived: ${{ steps.contract.outputs.derived }}
+      context_conclusions: ${{ steps.contract.outputs.context_conclusions }}
     steps:
-    - name: Validate source contract
+    - uses: actions/checkout@v4
+      with:
+        persist-credentials: false
+        fetch-depth: 0
+    - id: contract
+      name: Validate source contract
       shell: python
       env:
         SOURCE_SCHEMAS: '{"acceptance-db-preflight": {"verified_migration_run_id": {"description": "Successful Migration history
@@ -40,18 +58,23 @@ jobs:
         MANUAL_SOURCES: '["acceptance-db-preflight", "migration-history-recovery", "supabase-migration-safety", "pr605-gate26-postgres-outbox"]'
         DISPATCH_VALUES: ${{ toJSON(inputs) }}
         EVENT_NAME: ${{ github.event_name }}
+        CANONICAL_LANE: 03-data-recovery
+        GITHUB_TOKEN: ${{ github.token }}
       run: "import json, os\nschemas = json.loads(os.environ['SOURCE_SCHEMAS'])\nvalues = json.loads(os.environ['DISPATCH_VALUES'])\n\
-        source = values.get('source')\nif source not in schemas:\n    raise SystemExit('Unknown source workflow')\nif os.environ['EVENT_NAME']\
-        \ == 'workflow_dispatch' and source not in json.loads(os.environ['MANUAL_SOURCES']):\n    raise SystemExit('Source\
-        \ has no manual trigger')\nif os.environ['EVENT_NAME'] != 'workflow_dispatch' and source != 'isolated-acceptance':\n\
-        \    raise SystemExit('Unsupported reusable source')\nfor key, config in schemas[source].items():\n    value = values.get(source.replace('-',\
-        \ '_') + '__' + key)\n    if os.environ['EVENT_NAME'] != 'workflow_dispatch' and key == 'suite':\n        value =\
-        \ values.get('suite')\n    if config.get('required') and (value is None or value == ''):\n        raise SystemExit('Required\
-        \ selected-source input missing: ' + key)\nprint('Selected source input contract validated; this is not execution\
-        \ acceptance')\n"
+        event_name = os.environ['EVENT_NAME']\ncalled = values.get('_reusable', False)\nif not called and event_name not in\
+        \ ('workflow_dispatch', 'workflow_call'):\n    import subprocess\n    subprocess.run(['python', 'scripts/route-workflow-event.py',\
+        \ '--lane', os.environ['CANONICAL_LANE']], check=True)\n    raise SystemExit(0)\nsource = values.get('source')\nif\
+        \ source not in schemas:\n    raise SystemExit('Unknown source workflow')\nif not called and event_name == 'workflow_dispatch'\
+        \ and source not in json.loads(os.environ['MANUAL_SOURCES']):\n    raise SystemExit('Source has no manual trigger')\n\
+        if called and source != 'isolated-acceptance':\n    raise SystemExit('Unsupported reusable source')\nfor key, config\
+        \ in schemas[source].items():\n    value = values.get(source.replace('-', '_') + '__' + key)\n    if called and key\
+        \ == 'suite':\n        value = values.get('suite')\n    if config.get('required') and (value is None or value == ''):\n\
+        \        raise SystemExit('Required selected-source input missing: ' + key)\nprint('Selected source input contract\
+        \ validated; this is not execution acceptance')\nwith open(os.environ['GITHUB_OUTPUT'], 'a') as output:\n    output.write('selected='\
+        \ + json.dumps([source]) + '\\n')\n    output.write('derived=[]\\ncontext_conclusions={}\\n')\n"
   acceptance_db_preflight__schema-preflight:
-    if: ${{ needs.dispatch_contract.result == 'success' && inputs.source == 'acceptance-db-preflight' && (github.event_name
-      != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) }}
+    if: ${{ needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected), 'acceptance-db-preflight')
+      && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) }}
     name: Verify baseline and dedicated acceptance database (read only)
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -88,8 +111,8 @@ jobs:
       contents: read
       actions: read
   migration_history_recovery__recorded-history-replay:
-    if: ${{ needs.dispatch_contract.result == 'success' && inputs.source == 'migration-history-recovery' && (github.event_name
-      != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) }}
+    if: ${{ needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected), 'migration-history-recovery')
+      && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -251,6 +274,10 @@ jobs:
     - dispatch_contract
     permissions:
       contents: read
+    concurrency:
+      group: ${{ format('candidate-{0}-{1}-{2}', format('migration-history-recovery-{0}', github.ref), 'migration_history_recovery__recorded-history-replay',
+        toJSON(matrix)) }}
+      cancel-in-progress: ${{ true }}
   supabase_migration_safety__validate-migrations:
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -306,9 +333,14 @@ jobs:
     name: validate-migrations
     needs:
     - dispatch_contract
-    if: ${{ needs.dispatch_contract.result == 'success' && inputs.source == 'supabase-migration-safety' && (success()) }}
+    if: ${{ needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected), 'supabase-migration-safety')
+      && (success()) }}
     permissions:
       contents: read
+    concurrency:
+      group: ${{ format('candidate-{0}-{1}-{2}', format('supabase-migration-safety-{0}', github.event.pull_request.number
+        || github.run_id), 'supabase_migration_safety__validate-migrations', toJSON(matrix)) }}
+      cancel-in-progress: ${{ true }}
   supabase_migration_safety__staging-validate:
     name: Local migration and billing acceptance
     needs:
@@ -316,8 +348,8 @@ jobs:
     - supabase_migration_safety__validate-migrations
     runs-on: ubuntu-latest
     timeout-minutes: 55
-    if: ${{ needs.dispatch_contract.result == 'success' && inputs.source == 'supabase-migration-safety' && (github.event_name
-      == 'pull_request') }}
+    if: ${{ needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected), 'supabase-migration-safety')
+      && (github.event_name == 'pull_request') }}
     steps:
     - uses: actions/checkout@v4
       with:
@@ -327,7 +359,7 @@ jobs:
       id: gate
       shell: bash
       run: "set -euo pipefail\ngit fetch origin \"${{ github.base_ref }}\" --depth=1\nbilling=false\nif ! git diff --quiet\
-        \ \"origin/${{ github.base_ref }}...HEAD\" -- '.github/workflows/supabase-migration-safety.yml' 'backend/app/billing/**'\
+        \ \"origin/${{ github.base_ref }}...HEAD\" -- '.github/workflows/qa-03-data-recovery.yml' 'backend/app/billing/**'\
         \ 'backend/app/routers/billing.py' 'backend/app/routers/webhooks/stripe.py' 'apps/web/app/(app)/admin/commercial/**'\
         \ 'apps/web/app/(app)/settings/billing/**' 'e2e/*billing*.spec.ts' 'e2e/helpers/auth.ts' 'e2e/global-setup.ts' 'e2e/load-env.ts'\
         \ 'scripts/*billing*.py' 'playwright.billing.acceptance.config.ts'; then\n  billing=true\nfi\necho \"billing=$billing\"\
@@ -536,6 +568,10 @@ jobs:
         \ reconciliation (no db push \u2014 human-approved deploy only).\"\n"
     permissions:
       contents: read
+    concurrency:
+      group: ${{ format('candidate-{0}-{1}-{2}', format('supabase-migration-safety-{0}', github.event.pull_request.number
+        || github.run_id), 'supabase_migration_safety__staging-validate', toJSON(matrix)) }}
+      cancel-in-progress: ${{ true }}
   pr605_gate26_postgres_outbox__isolated-outbox:
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -574,7 +610,49 @@ jobs:
     name: isolated-outbox
     needs:
     - dispatch_contract
-    if: ${{ needs.dispatch_contract.result == 'success' && inputs.source == 'pr605-gate26-postgres-outbox' && (success())
-      }}
+    if: ${{ needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected), 'pr605-gate26-postgres-outbox')
+      && (success()) }}
     permissions:
       contents: read
+  source_outcomes:
+    name: Record independent source workflow outcomes
+    if: ${{ always() && needs.dispatch_contract.result == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    permissions: {}
+    needs:
+    - dispatch_contract
+    - acceptance_db_preflight__schema-preflight
+    - migration_history_recovery__recorded-history-replay
+    - supabase_migration_safety__validate-migrations
+    - supabase_migration_safety__staging-validate
+    - pr605_gate26_postgres_outbox__isolated-outbox
+    steps:
+    - name: Bind source outcomes to this run
+      shell: python
+      run: "import json, os\nsources = json.loads(os.environ['SOURCE_JOBS'])\nneeds = json.loads(os.environ['JOB_RESULTS'])\n\
+        selected = json.loads(os.environ['SELECTED'])\noutcomes = {}\nfor name, source in sources.items():\n    if name not\
+        \ in selected:\n        continue\n    results = [needs[key]['result'] for key in source['jobs']]\n    outcome = ('failure'\
+        \ if 'failure' in results else 'cancelled' if 'cancelled' in results\n               else 'success' if 'success' in\
+        \ results else 'skipped')\n    outcomes[source['display_name']] = outcome\nevidence = {'run_id': int(os.environ['GITHUB_RUN_ID']),\
+        \ 'head_sha': os.environ['GITHUB_SHA'],\n            'source_outcomes': outcomes}\nwith open('canonical-workflow-outcomes.json',\
+        \ 'w') as output:\n    json.dump(evidence, output)\n"
+      env:
+        SOURCE_JOBS: '{"acceptance-db-preflight": {"display_name": "Prepare acceptance database initialization", "jobs": ["acceptance_db_preflight__schema-preflight"]},
+          "migration-history-recovery": {"display_name": "Migration history recovery", "jobs": ["migration_history_recovery__recorded-history-replay"]},
+          "supabase-migration-safety": {"display_name": "Supabase migration safety", "jobs": ["supabase_migration_safety__validate-migrations",
+          "supabase_migration_safety__staging-validate"]}, "pr605-gate26-postgres-outbox": {"display_name": "PR605 Gate26
+          isolated PostgreSQL outbox acceptance", "jobs": ["pr605_gate26_postgres_outbox__isolated-outbox"]}}'
+        JOB_RESULTS: '{"acceptance_db_preflight__schema-preflight": {"result": "${{ needs.acceptance_db_preflight__schema-preflight.result
+          }}"}, "migration_history_recovery__recorded-history-replay": {"result": "${{ needs.migration_history_recovery__recorded-history-replay.result
+          }}"}, "supabase_migration_safety__validate-migrations": {"result": "${{ needs.supabase_migration_safety__validate-migrations.result
+          }}"}, "supabase_migration_safety__staging-validate": {"result": "${{ needs.supabase_migration_safety__staging-validate.result
+          }}"}, "pr605_gate26_postgres_outbox__isolated-outbox": {"result": "${{ needs.pr605_gate26_postgres_outbox__isolated-outbox.result
+          }}"}}'
+        SELECTED: ${{ needs.dispatch_contract.outputs.selected }}
+    - uses: actions/upload-artifact@v4
+      with:
+        name: canonical-workflow-outcomes-03-data-recovery
+        path: canonical-workflow-outcomes.json
+        if-no-files-found: error
+        retention-days: 14

@@ -23,6 +23,18 @@ name: QA 02-identity-privacy
         options:
         - 'false'
         - 'true'
+  push:
+    branches:
+    - feature/msp-live-acceptance-and-frontend-map
+    - feature/msp-tenant-isolation-policy-20261017
+    - main
+  pull_request:
+    types:
+    - opened
+    - reopened
+    - synchronize
+  schedule:
+  - cron: 17 6 * * *
 concurrency:
   group: ${{ format('candidate-{0}', (inputs.source == 'auth-config-sync' && ('auth-config-sync')) || (inputs.source == 'credential-db-bypass-daily'
     && ('credential-db-bypass-daily')) || github.run_id) }}
@@ -32,10 +44,21 @@ jobs:
   dispatch_contract:
     name: Validate selected source inputs
     runs-on: ubuntu-latest
-    permissions: {}
-    timeout-minutes: 2
+    permissions:
+      contents: read
+      actions: read
+    timeout-minutes: 4
+    outputs:
+      selected: ${{ steps.contract.outputs.selected }}
+      derived: ${{ steps.contract.outputs.derived }}
+      context_conclusions: ${{ steps.contract.outputs.context_conclusions }}
     steps:
-    - name: Validate source contract
+    - uses: actions/checkout@v4
+      with:
+        persist-credentials: false
+        fetch-depth: 0
+    - id: contract
+      name: Validate source contract
       shell: python
       env:
         SOURCE_SCHEMAS: '{"auth-config-sync": {"skip_vercel_deploy": {"description": "Skip Vercel production deploy", "required":
@@ -45,15 +68,20 @@ jobs:
           "snowflake-isolated-security", "release1-role-execution-matrix"]'
         DISPATCH_VALUES: ${{ toJSON(inputs) }}
         EVENT_NAME: ${{ github.event_name }}
+        CANONICAL_LANE: 02-identity-privacy
+        GITHUB_TOKEN: ${{ github.token }}
       run: "import json, os\nschemas = json.loads(os.environ['SOURCE_SCHEMAS'])\nvalues = json.loads(os.environ['DISPATCH_VALUES'])\n\
-        source = values.get('source')\nif source not in schemas:\n    raise SystemExit('Unknown source workflow')\nif os.environ['EVENT_NAME']\
-        \ == 'workflow_dispatch' and source not in json.loads(os.environ['MANUAL_SOURCES']):\n    raise SystemExit('Source\
-        \ has no manual trigger')\nif os.environ['EVENT_NAME'] != 'workflow_dispatch' and source != 'isolated-acceptance':\n\
-        \    raise SystemExit('Unsupported reusable source')\nfor key, config in schemas[source].items():\n    value = values.get(source.replace('-',\
-        \ '_') + '__' + key)\n    if os.environ['EVENT_NAME'] != 'workflow_dispatch' and key == 'suite':\n        value =\
-        \ values.get('suite')\n    if config.get('required') and (value is None or value == ''):\n        raise SystemExit('Required\
-        \ selected-source input missing: ' + key)\nprint('Selected source input contract validated; this is not execution\
-        \ acceptance')\n"
+        event_name = os.environ['EVENT_NAME']\ncalled = values.get('_reusable', False)\nif not called and event_name not in\
+        \ ('workflow_dispatch', 'workflow_call'):\n    import subprocess\n    subprocess.run(['python', 'scripts/route-workflow-event.py',\
+        \ '--lane', os.environ['CANONICAL_LANE']], check=True)\n    raise SystemExit(0)\nsource = values.get('source')\nif\
+        \ source not in schemas:\n    raise SystemExit('Unknown source workflow')\nif not called and event_name == 'workflow_dispatch'\
+        \ and source not in json.loads(os.environ['MANUAL_SOURCES']):\n    raise SystemExit('Source has no manual trigger')\n\
+        if called and source != 'isolated-acceptance':\n    raise SystemExit('Unsupported reusable source')\nfor key, config\
+        \ in schemas[source].items():\n    value = values.get(source.replace('-', '_') + '__' + key)\n    if called and key\
+        \ == 'suite':\n        value = values.get('suite')\n    if config.get('required') and (value is None or value == ''):\n\
+        \        raise SystemExit('Required selected-source input missing: ' + key)\nprint('Selected source input contract\
+        \ validated; this is not execution acceptance')\nwith open(os.environ['GITHUB_OUTPUT'], 'a') as output:\n    output.write('selected='\
+        \ + json.dumps([source]) + '\\n')\n    output.write('derived=[]\\ncontext_conclusions={}\\n')\n"
   auth_config_sync__sync:
     name: Sync Supabase + Vercel auth config
     runs-on: ubuntu-latest
@@ -84,7 +112,11 @@ jobs:
         '
     needs:
     - dispatch_contract
-    if: ${{ needs.dispatch_contract.result == 'success' && inputs.source == 'auth-config-sync' && (success()) }}
+    if: ${{ needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected), 'auth-config-sync')
+      && (success()) }}
+    concurrency:
+      group: ${{ format('candidate-{0}-{1}-{2}', 'auth-config-sync', 'auth_config_sync__sync', toJSON(matrix)) }}
+      cancel-in-progress: ${{ false }}
   credential_db_bypass_daily__db-bypass-guard:
     name: Prod DB bypass refuse
     runs-on: ubuntu-latest
@@ -137,7 +169,12 @@ jobs:
         if-no-files-found: ignore
     needs:
     - dispatch_contract
-    if: ${{ needs.dispatch_contract.result == 'success' && inputs.source == 'credential-db-bypass-daily' && (success()) }}
+    if: ${{ needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected), 'credential-db-bypass-daily')
+      && (success()) }}
+    concurrency:
+      group: ${{ format('candidate-{0}-{1}-{2}', 'credential-db-bypass-daily', 'credential_db_bypass_daily__db-bypass-guard',
+        toJSON(matrix)) }}
+      cancel-in-progress: ${{ false }}
   deletion_lifecycle_readiness__readiness:
     runs-on: ubuntu-latest
     timeout-minutes: 6
@@ -180,8 +217,8 @@ jobs:
     name: readiness
     needs:
     - dispatch_contract
-    if: ${{ needs.dispatch_contract.result == 'success' && inputs.source == 'deletion-lifecycle-readiness' && (success())
-      }}
+    if: ${{ needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected), 'deletion-lifecycle-readiness')
+      && (success()) }}
     permissions:
       contents: read
   msp_isolated_database_security__msp-database-security:
@@ -245,8 +282,8 @@ jobs:
     name: msp-database-security
     needs:
     - dispatch_contract
-    if: ${{ needs.dispatch_contract.result == 'success' && inputs.source == 'msp-isolated-database-security' && (success())
-      }}
+    if: ${{ needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected), 'msp-isolated-database-security')
+      && (success()) }}
   snowflake_isolated_security__snowflake-isolated:
     name: Snowflake isolated install and audit
     runs-on: ubuntu-latest
@@ -274,7 +311,8 @@ jobs:
         '
     needs:
     - dispatch_contract
-    if: ${{ needs.dispatch_contract.result == 'success' && inputs.source == 'snowflake-isolated-security' && (success()) }}
+    if: ${{ needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected), 'snowflake-isolated-security')
+      && (success()) }}
   release1_role_execution_matrix__role-and-execution:
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -318,7 +356,51 @@ jobs:
     name: role-and-execution
     needs:
     - dispatch_contract
-    if: ${{ needs.dispatch_contract.result == 'success' && inputs.source == 'release1-role-execution-matrix' && (success())
-      }}
+    if: ${{ needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected), 'release1-role-execution-matrix')
+      && (success()) }}
     permissions:
       contents: read
+  source_outcomes:
+    name: Record independent source workflow outcomes
+    if: ${{ always() && needs.dispatch_contract.result == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    permissions: {}
+    needs:
+    - dispatch_contract
+    - auth_config_sync__sync
+    - credential_db_bypass_daily__db-bypass-guard
+    - deletion_lifecycle_readiness__readiness
+    - msp_isolated_database_security__msp-database-security
+    - snowflake_isolated_security__snowflake-isolated
+    - release1_role_execution_matrix__role-and-execution
+    steps:
+    - name: Bind source outcomes to this run
+      shell: python
+      run: "import json, os\nsources = json.loads(os.environ['SOURCE_JOBS'])\nneeds = json.loads(os.environ['JOB_RESULTS'])\n\
+        selected = json.loads(os.environ['SELECTED'])\noutcomes = {}\nfor name, source in sources.items():\n    if name not\
+        \ in selected:\n        continue\n    results = [needs[key]['result'] for key in source['jobs']]\n    outcome = ('failure'\
+        \ if 'failure' in results else 'cancelled' if 'cancelled' in results\n               else 'success' if 'success' in\
+        \ results else 'skipped')\n    outcomes[source['display_name']] = outcome\nevidence = {'run_id': int(os.environ['GITHUB_RUN_ID']),\
+        \ 'head_sha': os.environ['GITHUB_SHA'],\n            'source_outcomes': outcomes}\nwith open('canonical-workflow-outcomes.json',\
+        \ 'w') as output:\n    json.dump(evidence, output)\n"
+      env:
+        SOURCE_JOBS: '{"auth-config-sync": {"display_name": "Auth Config Sync", "jobs": ["auth_config_sync__sync"]}, "credential-db-bypass-daily":
+          {"display_name": "Credential DB Bypass Guard (Daily)", "jobs": ["credential_db_bypass_daily__db-bypass-guard"]},
+          "deletion-lifecycle-readiness": {"display_name": "Deletion lifecycle readiness evidence", "jobs": ["deletion_lifecycle_readiness__readiness"]},
+          "msp-isolated-database-security": {"display_name": "MSP isolated database security", "jobs": ["msp_isolated_database_security__msp-database-security"]},
+          "snowflake-isolated-security": {"display_name": "Snowflake isolated compatibility and security", "jobs": ["snowflake_isolated_security__snowflake-isolated"]},
+          "release1-role-execution-matrix": {"display_name": "Release 1 role and execution security matrix", "jobs": ["release1_role_execution_matrix__role-and-execution"]}}'
+        JOB_RESULTS: '{"auth_config_sync__sync": {"result": "${{ needs.auth_config_sync__sync.result }}"}, "credential_db_bypass_daily__db-bypass-guard":
+          {"result": "${{ needs.credential_db_bypass_daily__db-bypass-guard.result }}"}, "deletion_lifecycle_readiness__readiness":
+          {"result": "${{ needs.deletion_lifecycle_readiness__readiness.result }}"}, "msp_isolated_database_security__msp-database-security":
+          {"result": "${{ needs.msp_isolated_database_security__msp-database-security.result }}"}, "snowflake_isolated_security__snowflake-isolated":
+          {"result": "${{ needs.snowflake_isolated_security__snowflake-isolated.result }}"}, "release1_role_execution_matrix__role-and-execution":
+          {"result": "${{ needs.release1_role_execution_matrix__role-and-execution.result }}"}}'
+        SELECTED: ${{ needs.dispatch_contract.outputs.selected }}
+    - uses: actions/upload-artifact@v4
+      with:
+        name: canonical-workflow-outcomes-02-identity-privacy
+        path: canonical-workflow-outcomes.json
+        if-no-files-found: error
+        retention-days: 14
