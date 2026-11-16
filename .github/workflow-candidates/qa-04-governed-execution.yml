@@ -39,13 +39,34 @@ concurrency:
   cancel-in-progress: ${{ (inputs.source == 'connector-governance' && (true)) || (inputs.source == 'connector-verified-writes-live'
     && (false)) || false }}
 jobs:
+  upstream_contract:
+    name: Read trusted upstream outcome metadata
+    if: ${{ github.event_name == 'workflow_run' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    permissions:
+      contents: read
+      actions: read
+    outputs:
+      evidence: ${{ steps.upstream.outputs.evidence }}
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        ref: ${{ github.sha }}
+        persist-credentials: false
+    - id: upstream
+      run: python scripts/route-workflow-event.py --lane 04-governed-execution --fetch-upstream
+      env:
+        GITHUB_TOKEN: ${{ github.token }}
   dispatch_contract:
     name: Validate selected source inputs
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      actions: read
     timeout-minutes: 4
+    needs:
+    - upstream_contract
+    if: ${{ always() && (needs.upstream_contract.result == 'success' || needs.upstream_contract.result == 'skipped') }}
     outputs:
       selected: ${{ steps.contract.outputs.selected }}
       derived: ${{ steps.contract.outputs.derived }}
@@ -69,7 +90,7 @@ jobs:
         DISPATCH_VALUES: ${{ toJSON(inputs) }}
         EVENT_NAME: ${{ github.event_name }}
         CANONICAL_LANE: 04-governed-execution
-        GITHUB_TOKEN: ${{ github.token }}
+        UPSTREAM_EVIDENCE: ${{ needs.upstream_contract.outputs.evidence }}
       run: "import json, os\nschemas = json.loads(os.environ['SOURCE_SCHEMAS'])\nvalues = json.loads(os.environ['DISPATCH_VALUES'])\n\
         event_name = os.environ['EVENT_NAME']\ncalled = values.get('_reusable', False)\nif not called and event_name not in\
         \ ('workflow_dispatch', 'workflow_call'):\n    import subprocess\n    subprocess.run(['python', 'scripts/route-workflow-event.py',\
@@ -182,8 +203,8 @@ jobs:
         retention-days: 30
     needs:
     - dispatch_contract
-    if: ${{ needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected), 'autonomous-write-certification')
-      && (success()) }}
+    if: ${{ always() && needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected),
+      'autonomous-write-certification') && ((!cancelled() && (true))) }}
     permissions:
       contents: read
   connector_governance__connector-governance:
@@ -259,8 +280,8 @@ jobs:
         '
     needs:
     - dispatch_contract
-    if: ${{ needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected), 'connector-governance')
-      && (success()) }}
+    if: ${{ always() && needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected),
+      'connector-governance') && ((!cancelled() && (true))) }}
     concurrency:
       group: ${{ format('candidate-{0}-{1}-{2}', format('connector-governance-{0}', github.ref), 'connector_governance__connector-governance',
         toJSON(matrix)) }}
@@ -359,8 +380,8 @@ jobs:
         if-no-files-found: ignore
     needs:
     - dispatch_contract
-    if: ${{ needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected), 'connector-verified-writes-live')
-      && (success()) }}
+    if: ${{ always() && needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected),
+      'connector-verified-writes-live') && ((!cancelled() && (true))) }}
     concurrency:
       group: ${{ format('candidate-{0}-{1}-{2}', 'connector-verified-writes-live', 'connector_verified_writes_live__verified-writes-live',
         toJSON(matrix)) }}
@@ -412,8 +433,8 @@ jobs:
     name: outcome-ownership
     needs:
     - dispatch_contract
-    if: ${{ needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected), 'outcome-ownership-contract')
-      && (success()) }}
+    if: ${{ always() && needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected),
+      'outcome-ownership-contract') && ((!cancelled() && (true))) }}
   pr605_cross_surface_ownership__bounded-source-inventory:
     runs-on: ubuntu-latest
     timeout-minutes: 8
@@ -483,8 +504,8 @@ jobs:
     name: bounded-source-inventory
     needs:
     - dispatch_contract
-    if: ${{ needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected), 'pr605-cross-surface-ownership')
-      && (success()) }}
+    if: ${{ always() && needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected),
+      'pr605-cross-surface-ownership') && ((!cancelled() && (true))) }}
     permissions:
       contents: read
   pr605_run_status_contract__certify-v2-run-status:
@@ -535,8 +556,8 @@ jobs:
     name: certify-v2-run-status
     needs:
     - dispatch_contract
-    if: ${{ needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected), 'pr605-run-status-contract')
-      && (success()) }}
+    if: ${{ always() && needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected),
+      'pr605-run-status-contract') && ((!cancelled() && (true))) }}
     permissions:
       contents: read
   pr605_runtime_edge_contract__privacy-contract:
@@ -571,8 +592,8 @@ jobs:
     name: privacy-contract
     needs:
     - dispatch_contract
-    if: ${{ needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected), 'pr605-runtime-edge-contract')
-      && (success()) }}
+    if: ${{ always() && needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected),
+      'pr605-runtime-edge-contract') && ((!cancelled() && (true))) }}
     permissions:
       contents: read
   release1_execution_revocation_audit__browser-credential-source:
@@ -594,8 +615,8 @@ jobs:
     name: browser-credential-source
     needs:
     - dispatch_contract
-    if: ${{ needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected), 'release1-execution-revocation-audit')
-      && (success()) }}
+    if: ${{ always() && needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected),
+      'release1-execution-revocation-audit') && ((!cancelled() && (true))) }}
     permissions:
       contents: read
   release1_execution_revocation_audit__execution-and-revocation:
@@ -630,8 +651,8 @@ jobs:
     name: execution-and-revocation
     needs:
     - dispatch_contract
-    if: ${{ needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected), 'release1-execution-revocation-audit')
-      && (success()) }}
+    if: ${{ always() && needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected),
+      'release1-execution-revocation-audit') && ((!cancelled() && (true))) }}
     permissions:
       contents: read
   release1_live_approval_denial__forged-approval:
@@ -665,8 +686,8 @@ jobs:
     name: forged-approval
     needs:
     - dispatch_contract
-    if: ${{ needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected), 'release1-live-approval-denial')
-      && (success()) }}
+    if: ${{ always() && needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected),
+      'release1-live-approval-denial') && ((!cancelled() && (true))) }}
     permissions:
       contents: read
   source_outcomes:
@@ -676,6 +697,7 @@ jobs:
     timeout-minutes: 3
     permissions: {}
     needs:
+    - upstream_contract
     - dispatch_contract
     - autonomous_write_certification__independent-ledger-and-receiver
     - connector_governance__connector-governance

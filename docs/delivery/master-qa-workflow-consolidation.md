@@ -1,3 +1,34 @@
+## Development branch cutover: 94 source YAML files → 12 canonical workflows
+
+The existing PR #611 branch now replaces the 94 source workflow files with the twelve generated canonical files in `.github/workflows/` (**net reduction: 82 files**). This is a reversible development/QA cutover, not a main-branch merge or production retirement. Main's installed automation and production services are unchanged. Original definitions are retained in `master-qa-workflow-source-contracts.json`, the complete source→job map is in the parity report, and Git history preserves rollback. No source is labeled DELETE_SAFE for a production release by the static tooling.
+
+All five required GitHub Actions check names are retained in `qa-01-core.yml`, with main's protection settings unchanged. Core CI reuses its original run concurrency group so obsolete PR-SHA suites are cancelled rather than competing with the new head. Source status functions are scoped to their original dependency graph; an intentionally skipped upstream-metadata reader cannot skip the five required jobs or make a sibling failure impersonate another source result. Metadata Actions-read permission is confined to trusted workflow_run code; PR event routing has contents-read only.
+
+**Verification before committing the cutover:** twenty-three focused unit checks pass; all 96 automatic source-event contracts have positive replay plus negative branch/path/fork/SHA cases. A temporary installed-12 layout passed four source metadata contracts and thirteen manual-acceptance assertion cases, including the actual no-network billing credential guard. Local pytest is unavailable; full pytest execution is an explicit GitHub CI gate. The previous automatic-replacement head passed its synthetic contract and actionlint job; this cutover requires its own exact-head CI and unskipped required-check readback before engineering certification.
+
+Repository caller review found and migrated the deployment-path detector, brand guard's equivalent Core CI path, source-structure tests, and the ECO-001/ECO-002 manual ingress pointers. Existing voice inference-relay authorization is still restricted to its historical PR #587 workflow_ref; it was **not** broadened. Voice-owner/provider qualification remains a separate blocked release requirement. External/dynamic dispatch consumers, old main-run drainage, per-stage resource serialization and live/paid/protected acceptance remain main-release review items. No paid/live workflow or production deployment is dispatched by this cutover.
+
+### Canonical file list
+
+| Lane | Workflow file |
+|---|---|
+| Core CI/build | `qa-01-core.yml` |
+| Auth, tenant, privacy | `qa-02-identity-privacy.yml` |
+| Data, migrations, recovery | `qa-03-data-recovery.yml` |
+| Governed execution/connectors | `qa-04-governed-execution.yml` |
+| Intelligence/agents | `qa-05-intelligence.yml` |
+| Voice/devices | `qa-06-voice.yml` |
+| Browser/product | `qa-07-browser-product.yml` |
+| Billing/marketplace | `qa-08-billing-marketplace.yml` |
+| Marketing/acquisition | `qa-09-marketing.yml` |
+| Operations/observability | `qa-10-operations.yml` |
+| Release/production delivery | `qa-11-release.yml` |
+| Independent master acceptance | `qa-12-independent-acceptance.yml` |
+
+Manual runs select the former workflow using the `source` dropdown. Its inputs are namespaced by that source; type/default/approval semantics and protected environments remain enforced. Billing/voice reusable calls retain their exact suite. The main release authorization remains false, the 43-finding register's statuses/owners/order are unchanged, and bulk remediation resumes only after this branch's consolidation verification passes.
+
+---
+
 ## Automatic replacement routing implemented — qualification pending
 
 The twelve staged lane definitions now include source-preserving push, PR, schedule, manual and reusable entrypoints. `route-workflow-event.py` evaluates the retained source branches, paths, event types and cron expressions; unknown comparison history or unsupported filters fail closed. All **96 automatic source-event contracts** have positive offline replay coverage, with negative branch/path, repository/fork, missing-evidence and run-binding cases. The focused suite currently has **21 passing checks**.

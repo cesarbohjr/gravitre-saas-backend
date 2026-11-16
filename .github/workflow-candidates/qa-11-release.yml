@@ -68,13 +68,34 @@ concurrency:
     && (false)) || (inputs.source == 'railway-backend-production' && (false)) || (inputs.source == 'railway-safety-vars' &&
     (false)) || (inputs.source == 'unified-turn-phase4-cutover' && (true)) || false }}
 jobs:
+  upstream_contract:
+    name: Read trusted upstream outcome metadata
+    if: ${{ github.event_name == 'workflow_run' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    permissions:
+      contents: read
+      actions: read
+    outputs:
+      evidence: ${{ steps.upstream.outputs.evidence }}
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        ref: ${{ github.sha }}
+        persist-credentials: false
+    - id: upstream
+      run: python scripts/route-workflow-event.py --lane 11-release --fetch-upstream
+      env:
+        GITHUB_TOKEN: ${{ github.token }}
   dispatch_contract:
     name: Validate selected source inputs
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      actions: read
     timeout-minutes: 4
+    needs:
+    - upstream_contract
+    if: ${{ always() && (needs.upstream_contract.result == 'success' || needs.upstream_contract.result == 'skipped') }}
     outputs:
       selected: ${{ steps.contract.outputs.selected }}
       derived: ${{ steps.contract.outputs.derived }}
@@ -101,7 +122,7 @@ jobs:
         DISPATCH_VALUES: ${{ toJSON(inputs) }}
         EVENT_NAME: ${{ github.event_name }}
         CANONICAL_LANE: 11-release
-        GITHUB_TOKEN: ${{ github.token }}
+        UPSTREAM_EVIDENCE: ${{ needs.upstream_contract.outputs.evidence }}
       run: "import json, os\nschemas = json.loads(os.environ['SOURCE_SCHEMAS'])\nvalues = json.loads(os.environ['DISPATCH_VALUES'])\n\
         event_name = os.environ['EVENT_NAME']\ncalled = values.get('_reusable', False)\nif not called and event_name not in\
         \ ('workflow_dispatch', 'workflow_call'):\n    import subprocess\n    subprocess.run(['python', 'scripts/route-workflow-event.py',\
@@ -226,16 +247,16 @@ jobs:
         \n    failed=1\n  fi\ndone\nexit $failed\n"
     needs:
     - dispatch_contract
-    if: ${{ needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected), 'production-hardening-smoke')
-      && (success()) }}
+    if: ${{ always() && needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected),
+      'production-hardening-smoke') && ((!cancelled() && (true))) }}
     concurrency:
       group: ${{ format('candidate-{0}-{1}-{2}', 'production-hardening-smoke', 'production_hardening_smoke__hardening-smoke',
         toJSON(matrix)) }}
       cancel-in-progress: ${{ false }}
   production_release_verification__verify:
-    if: ${{ needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected), 'production-release-verification')
-      && (github.event_name == 'workflow_dispatch' || (fromJSON(needs.dispatch_contract.outputs.context_conclusions)['production-release-verification']
-      || github.event.workflow_run.conclusion) == 'success') }}
+    if: ${{ always() && needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected),
+      'production-release-verification') && (!cancelled() && (true) && (github.event_name == 'workflow_dispatch' || (fromJSON(needs.dispatch_contract.outputs.context_conclusions)['production-release-verification']
+      || github.event.workflow_run.conclusion) == 'success')) }}
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:
@@ -300,8 +321,8 @@ jobs:
         \ \"::notice::No backend/ changes in this push \u2014 skipping Railway deploy gate.\"\nfi\n"
     needs:
     - dispatch_contract
-    if: ${{ needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected), 'railway-backend-production')
-      && (success()) }}
+    if: ${{ always() && needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected),
+      'railway-backend-production') && ((!cancelled() && (true))) }}
     concurrency:
       group: ${{ format('candidate-{0}-{1}-{2}', 'railway-backend-production', 'railway_backend_production__detect-backend-changes',
         toJSON(matrix)) }}
@@ -311,8 +332,9 @@ jobs:
     needs:
     - dispatch_contract
     - railway_backend_production__detect-backend-changes
-    if: ${{ needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected), 'railway-backend-production')
-      && (needs.railway_backend_production__detect-backend-changes.outputs.changed == 'true') }}
+    if: ${{ always() && needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected),
+      'railway-backend-production') && (!cancelled() && (needs.railway_backend_production__detect-backend-changes.result ==
+      'success') && (needs.railway_backend_production__detect-backend-changes.outputs.changed == 'true')) }}
     runs-on: ubuntu-latest
     timeout-minutes: 35
     steps:
@@ -475,8 +497,8 @@ jobs:
         \ absent after apply:\"; cat \"$RUNNER_TEMP/pins-after.txt\"; exit 1\nfi\n"
     needs:
     - dispatch_contract
-    if: ${{ needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected), 'railway-safety-vars')
-      && (success()) }}
+    if: ${{ always() && needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected),
+      'railway-safety-vars') && ((!cancelled() && (true))) }}
     permissions:
       contents: read
     concurrency:
@@ -484,11 +506,11 @@ jobs:
         }}
       cancel-in-progress: ${{ false }}
   release1_production_smoke__smoke:
-    if: ${{ always() && (needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected),
-      'release1-production-smoke') && ((contains(fromJSON(needs.dispatch_contract.outputs.derived), 'release1-production-smoke')
-      && 'workflow_run' || github.event_name) != 'workflow_run' || (contains(fromJSON(needs.dispatch_contract.outputs.derived),
+    if: ${{ always() && (always() && needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected),
+      'release1-production-smoke') && (!cancelled() && (true) && ((contains(fromJSON(needs.dispatch_contract.outputs.derived),
+      'release1-production-smoke') && 'workflow_run' || github.event_name) != 'workflow_run' || (contains(fromJSON(needs.dispatch_contract.outputs.derived),
       'release1-production-smoke') && 'success' || fromJSON(needs.dispatch_contract.outputs.context_conclusions)['release1-production-smoke']
-      || github.event.workflow_run.conclusion) == 'success')) && (!contains(fromJSON(needs.dispatch_contract.outputs.derived),
+      || github.event.workflow_run.conclusion) == 'success'))) && (!contains(fromJSON(needs.dispatch_contract.outputs.derived),
       'release1-production-smoke') || (needs.production_release_verification__verify.result != 'failure' && needs.production_release_verification__verify.result
       != 'cancelled' && (needs.production_release_verification__verify.result == 'success')) || (needs.railway_backend_production__detect-backend-changes.result
       != 'failure' && needs.railway_backend_production__detect-backend-changes.result != 'cancelled' && needs.railway_backend_production__deploy.result
@@ -603,8 +625,8 @@ jobs:
         if-no-files-found: ignore
     needs:
     - dispatch_contract
-    if: ${{ needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected), 'unified-turn-phase4-cutover')
-      && (success()) }}
+    if: ${{ always() && needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected),
+      'unified-turn-phase4-cutover') && ((!cancelled() && (true))) }}
     concurrency:
       group: ${{ format('candidate-{0}-{1}-{2}', 'unified-turn-phase4-cutover', 'unified_turn_phase4_cutover__cutover', toJSON(matrix))
         }}
@@ -616,6 +638,7 @@ jobs:
     timeout-minutes: 3
     permissions: {}
     needs:
+    - upstream_contract
     - dispatch_contract
     - production_hardening_smoke__hardening-smoke
     - production_release_verification__verify

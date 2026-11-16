@@ -8023,6 +8023,7 @@
           ".github/workflow-candidates/**",
           "scripts/build-canonical-workflows.py",
           "scripts/route-workflow-event.py",
+          "scripts/workflow_source_contract.py",
           "scripts/audit-workflow-migration.py",
           "scripts/tests/test_canonical_workflows.py",
           "scripts/tests/test_workflow_event_router.py",
@@ -8090,7 +8091,7 @@
           },
           {
             "name": "Verify 12 staged workflow replacements without executing source jobs",
-            "run": "python ../scripts/build-canonical-workflows.py --root .. --check\npython -m unittest discover -s ../scripts/tests -p 'test_*workflow*.py'\n"
+            "run": "python ../scripts/build-canonical-workflows.py --root .. --check\npython -m unittest discover -s ../scripts/tests -p 'test_*workflow*.py'\npython -m pytest -q --confcutdir=tests/master_qa tests/master_qa/test_master_qa_workflow_consolidation.py tests/master_qa/test_p27_hubspot_tool_dispatch.py ../tests/test_manual_acceptance_workflows.py\n"
           },
           {
             "uses": "actions/setup-go@v5",

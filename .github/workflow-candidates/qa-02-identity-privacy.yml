@@ -41,13 +41,34 @@ concurrency:
   cancel-in-progress: ${{ (inputs.source == 'auth-config-sync' && (false)) || (inputs.source == 'credential-db-bypass-daily'
     && (false)) || false }}
 jobs:
+  upstream_contract:
+    name: Read trusted upstream outcome metadata
+    if: ${{ github.event_name == 'workflow_run' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    permissions:
+      contents: read
+      actions: read
+    outputs:
+      evidence: ${{ steps.upstream.outputs.evidence }}
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        ref: ${{ github.sha }}
+        persist-credentials: false
+    - id: upstream
+      run: python scripts/route-workflow-event.py --lane 02-identity-privacy --fetch-upstream
+      env:
+        GITHUB_TOKEN: ${{ github.token }}
   dispatch_contract:
     name: Validate selected source inputs
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      actions: read
     timeout-minutes: 4
+    needs:
+    - upstream_contract
+    if: ${{ always() && (needs.upstream_contract.result == 'success' || needs.upstream_contract.result == 'skipped') }}
     outputs:
       selected: ${{ steps.contract.outputs.selected }}
       derived: ${{ steps.contract.outputs.derived }}
@@ -69,7 +90,7 @@ jobs:
         DISPATCH_VALUES: ${{ toJSON(inputs) }}
         EVENT_NAME: ${{ github.event_name }}
         CANONICAL_LANE: 02-identity-privacy
-        GITHUB_TOKEN: ${{ github.token }}
+        UPSTREAM_EVIDENCE: ${{ needs.upstream_contract.outputs.evidence }}
       run: "import json, os\nschemas = json.loads(os.environ['SOURCE_SCHEMAS'])\nvalues = json.loads(os.environ['DISPATCH_VALUES'])\n\
         event_name = os.environ['EVENT_NAME']\ncalled = values.get('_reusable', False)\nif not called and event_name not in\
         \ ('workflow_dispatch', 'workflow_call'):\n    import subprocess\n    subprocess.run(['python', 'scripts/route-workflow-event.py',\
@@ -112,8 +133,8 @@ jobs:
         '
     needs:
     - dispatch_contract
-    if: ${{ needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected), 'auth-config-sync')
-      && (success()) }}
+    if: ${{ always() && needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected),
+      'auth-config-sync') && ((!cancelled() && (true))) }}
     concurrency:
       group: ${{ format('candidate-{0}-{1}-{2}', 'auth-config-sync', 'auth_config_sync__sync', toJSON(matrix)) }}
       cancel-in-progress: ${{ false }}
@@ -169,8 +190,8 @@ jobs:
         if-no-files-found: ignore
     needs:
     - dispatch_contract
-    if: ${{ needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected), 'credential-db-bypass-daily')
-      && (success()) }}
+    if: ${{ always() && needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected),
+      'credential-db-bypass-daily') && ((!cancelled() && (true))) }}
     concurrency:
       group: ${{ format('candidate-{0}-{1}-{2}', 'credential-db-bypass-daily', 'credential_db_bypass_daily__db-bypass-guard',
         toJSON(matrix)) }}
@@ -217,8 +238,8 @@ jobs:
     name: readiness
     needs:
     - dispatch_contract
-    if: ${{ needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected), 'deletion-lifecycle-readiness')
-      && (success()) }}
+    if: ${{ always() && needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected),
+      'deletion-lifecycle-readiness') && ((!cancelled() && (true))) }}
     permissions:
       contents: read
   msp_isolated_database_security__msp-database-security:
@@ -282,8 +303,8 @@ jobs:
     name: msp-database-security
     needs:
     - dispatch_contract
-    if: ${{ needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected), 'msp-isolated-database-security')
-      && (success()) }}
+    if: ${{ always() && needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected),
+      'msp-isolated-database-security') && ((!cancelled() && (true))) }}
   snowflake_isolated_security__snowflake-isolated:
     name: Snowflake isolated install and audit
     runs-on: ubuntu-latest
@@ -311,8 +332,8 @@ jobs:
         '
     needs:
     - dispatch_contract
-    if: ${{ needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected), 'snowflake-isolated-security')
-      && (success()) }}
+    if: ${{ always() && needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected),
+      'snowflake-isolated-security') && ((!cancelled() && (true))) }}
   release1_role_execution_matrix__role-and-execution:
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -356,8 +377,8 @@ jobs:
     name: role-and-execution
     needs:
     - dispatch_contract
-    if: ${{ needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected), 'release1-role-execution-matrix')
-      && (success()) }}
+    if: ${{ always() && needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected),
+      'release1-role-execution-matrix') && ((!cancelled() && (true))) }}
     permissions:
       contents: read
   source_outcomes:
@@ -367,6 +388,7 @@ jobs:
     timeout-minutes: 3
     permissions: {}
     needs:
+    - upstream_contract
     - dispatch_contract
     - auth_config_sync__sync
     - credential_db_bypass_daily__db-bypass-guard

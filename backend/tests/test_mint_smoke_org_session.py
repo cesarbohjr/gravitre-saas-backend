@@ -5,6 +5,7 @@ from __future__ import annotations
 import importlib.util
 from pathlib import Path
 from types import SimpleNamespace
+from runpy import run_path
 
 import jwt
 import pytest
@@ -124,16 +125,16 @@ def test_github_export_masks_before_writing_and_never_prints_the_token_elsewhere
 
 
 def test_workflows_mint_instead_of_reading_a_stored_bearer():
+    helper = run_path(str(REPO / 'scripts/workflow_source_contract.py'))
     for name in ("plays-production-acceptance.yml", "plays-datasets-live-proof.yml"):
-        text = (REPO / ".github" / "workflows" / name).read_text()
+        definition = helper['definition'](REPO, name)
+        text = repr(definition)
+        code = '\n'.join(step.get('run', '') for job in definition['jobs'].values() for step in job.get('steps', []))
         assert "secrets.PLATFORM_LIVE_BEARER_TOKEN" not in text
         assert "secrets.PLATFORM_LIVE_ORG_ID" not in text
-        assert "scripts/mint_smoke_org_session.py --github-env" in text
-        assert 'echo "PLATFORM_LIVE_BEARER_TOKEN=" >> "$GITHUB_ENV"' in text
+        assert "scripts/mint_smoke_org_session.py --github-env" in code
+        assert 'echo "PLATFORM_LIVE_BEARER_TOKEN=" >> "$GITHUB_ENV"' in code
         assert "f07e57c0" not in text
-    assert (
-        "pip install -r backend/requirements-dev.txt"
-        in (
-            REPO / ".github" / "workflows" / "plays-production-acceptance.yml"
-        ).read_text()
-    )
+    definition = helper['definition'](REPO, 'plays-production-acceptance.yml')
+    code = '\n'.join(step.get('run', '') for job in definition['jobs'].values() for step in job.get('steps', []))
+    assert "pip install -r backend/requirements-dev.txt" in code

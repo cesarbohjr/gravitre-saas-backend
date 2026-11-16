@@ -163,9 +163,19 @@ with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
     output.write('selected=' + json.dumps([source]) + '\\n')
     output.write('derived=[]\\ncontext_conclusions={}\\n')
 '''
-        jobs = {'dispatch_contract': {
+        jobs = {'upstream_contract': {
+            'name': 'Read trusted upstream outcome metadata', 'if': "${{ github.event_name == 'workflow_run' }}",
+            'runs-on': 'ubuntu-latest', 'timeout-minutes': 3,
+            'permissions': {'contents': 'read', 'actions': 'read'},
+            'outputs': {'evidence': '${{ steps.upstream.outputs.evidence }}'},
+            'steps': [{'uses': 'actions/checkout@v4', 'with': {'ref': '${{ github.sha }}', 'persist-credentials': False}},
+                      {'id': 'upstream', 'run': 'python scripts/route-workflow-event.py --lane ' + lane + ' --fetch-upstream',
+                       'env': {'GITHUB_TOKEN': '${{ github.token }}'}}],
+        }, 'dispatch_contract': {
             'name': 'Validate selected source inputs', 'runs-on': 'ubuntu-latest',
-            'permissions': {'contents': 'read', 'actions': 'read'}, 'timeout-minutes': 4,
+            'permissions': {'contents': 'read'}, 'timeout-minutes': 4,
+            'needs': ['upstream_contract'],
+            'if': "${{ always() && (needs.upstream_contract.result == 'success' || needs.upstream_contract.result == 'skipped') }}",
             'outputs': {key: '${{ steps.contract.outputs.' + key + ' }}'
                         for key in ('selected', 'derived', 'context_conclusions')},
             'steps': [{'uses': 'actions/checkout@v4', 'with': {'persist-credentials': False, 'fetch-depth': 0}},
@@ -173,7 +183,7 @@ with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
                        'env': {'SOURCE_SCHEMAS': json.dumps(schema),
                                'MANUAL_SOURCES': json.dumps(manual),
                                'DISPATCH_VALUES': '${{ toJSON(inputs) }}', 'EVENT_NAME': '${{ github.event_name }}',
-                               'CANONICAL_LANE': lane, 'GITHUB_TOKEN': '${{ github.token }}'},
+                               'CANONICAL_LANE': lane, 'UPSTREAM_EVIDENCE': '${{ needs.upstream_contract.outputs.evidence }}'},
                        'run': validation}],
         }}
         groups, cancels = [], []
@@ -181,6 +191,16 @@ with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
             prefix = name.replace('-', '_')
             job_ids = {jid: prefix + '__' + jid for jid in source['jobs']}
             input_keys = schema[name]
+
+            def ancestors(jid, visited=None):
+                visited = set() if visited is None else visited
+                needs = source['jobs'][jid].get('needs', [])
+                needs = [needs] if isinstance(needs, str) else needs
+                for dependency in needs:
+                    if dependency not in visited:
+                        visited.add(dependency)
+                        ancestors(dependency, visited)
+                return sorted(visited)
 
             def rewrite(text):
                 # Match context expressions only; shell/local-language variables
@@ -229,8 +249,19 @@ with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
                 condition = original.get('if', 'success()')
                 # Bare job conditions also contain Actions context references.
                 condition = expression(rewrite('${{ ' + expression(condition) + ' }}'))
+                dependency_ids = [job_ids[key] for key in ancestors(jid)]
+                source_success = ' && '.join(f"needs.{key}.result == 'success'" for key in dependency_ids) or 'true'
+                source_failure = ' || '.join(f"needs.{key}.result == 'failure'" for key in dependency_ids) or 'false'
+                has_status = bool(re.search(r'\b(success|failure|cancelled|always)\s*\(', condition))
+                condition = re.sub(r'\bsuccess\s*\(\s*\)', '(!cancelled() && (' + source_success + '))', condition)
+                condition = re.sub(r'\bfailure\s*\(\s*\)', '(' + source_failure + ')', condition)
+                if not has_status:
+                    condition = '!cancelled() && (' + source_success + ') && (' + condition + ')'
                 selection = 'contains(fromJSON(needs.dispatch_contract.outputs.selected), ' + literal(name) + ')'
-                job['if'] = "${{ needs.dispatch_contract.result == 'success' && " + selection + ' && (' + condition + ') }}'
+                # Metadata-reader skips are not source failures. Scope status
+                # checks to the original source graph and explicitly avoid the
+                # default transitive skip behavior of added routing ancestors.
+                job['if'] = "${{ always() && needs.dispatch_contract.result == 'success' && " + selection + ' && (' + condition + ') }}'
                 if name == 'release1-production-smoke':
                     producers = ['production-release-verification', 'railway-backend-production']
                     successful = []
@@ -325,6 +356,10 @@ with open('canonical-workflow-outcomes.json', 'w') as output:
                   'concurrency': {'group': "${{ format('candidate-{0}', " + group_expr + ') }}',
                                   'cancel-in-progress': '${{ ' + ' || '.join(cancels + ['false']) + ' }}'},
                   'jobs': jobs}
+        if lane == '01-core':
+            # Keep the protected CI run lifecycle, including cancellation of a
+            # superseded PR SHA, when its filename/display name changes.
+            result['concurrency'] = copy.deepcopy(sources['ci']['concurrency'])
         lanes[f'qa-{lane}.yml'] = result
     return lanes, records
 
@@ -365,7 +400,7 @@ def generate(root, check=False):
             path.write_text('# STAGED: not installed in .github/workflows; automatic trigger cutover pending.\n' + yaml.safe_dump(definition, sort_keys=False, width=120))
     report = {'source_count': len(records), 'candidate_count': len(lanes),
               'source_job_count': sum(len(r['jobs']) for r in records),
-              'static_contract_parity': 'PASS', 'runtime_parity': 'NOT_RUN',
+              'static_contract_parity': 'PASS', 'runtime_parity': 'REQUIRES_INDEPENDENT_RUN_EVIDENCE',
               'automatic_trigger_parity': 'STATIC_REPLAY_PASS_RUNTIME_PENDING',
               'automatic_source_event_contract_count': sum(
                   event not in {'workflow_dispatch', 'workflow_call'}
@@ -374,7 +409,7 @@ def generate(root, check=False):
               'required_contexts': sorted(required),
               'required_checks_evidence_url': protection['evidence_url'],
               'limitations': ['Candidates implement automatic routing but remain uninstalled; source automatic triggers remain active.',
-                              'Candidate concurrency groups intentionally cannot cancel original runs.',
+                              'Core CI retains its original run concurrency group; other candidate locks remain isolated from originals.',
                               'Automatic events use per-job/matrix resource locks; whole-source cancellation is replaced by stage cancellation and needs runtime qualification.',
                               'Repository-wide callers, protected environment workflow restrictions and exact-head runs require verification.',
                               'GitHub workflow identity changes and source-path references require explicit cutover review.',
@@ -395,4 +430,4 @@ if __name__ == '__main__':
     parser.add_argument('--check', action='store_true')
     args = parser.parse_args()
     report = generate(args.root.resolve(), check=args.check)
-    print(f"Static contracts: {report['source_count']} sources / {report['source_job_count']} jobs / {report['candidate_count']} staged lanes; runtime NOT RUN; automatic routing implemented pending qualification.")
+    print(f"Static contracts: {report['source_count']} sources / {report['source_job_count']} jobs / {report['candidate_count']} canonical lanes; runtime certification requires independent run evidence.")

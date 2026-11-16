@@ -44,13 +44,34 @@ concurrency:
     == 'desktop-tauri' && (false)) || (inputs.source == 'extension-release' && (false)) || (inputs.source == 'navigation-e2e'
     && (true)) || false }}
 jobs:
+  upstream_contract:
+    name: Read trusted upstream outcome metadata
+    if: ${{ github.event_name == 'workflow_run' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    permissions:
+      contents: read
+      actions: read
+    outputs:
+      evidence: ${{ steps.upstream.outputs.evidence }}
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        ref: ${{ github.sha }}
+        persist-credentials: false
+    - id: upstream
+      run: python scripts/route-workflow-event.py --lane 07-browser-product --fetch-upstream
+      env:
+        GITHUB_TOKEN: ${{ github.token }}
   dispatch_contract:
     name: Validate selected source inputs
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      actions: read
     timeout-minutes: 4
+    needs:
+    - upstream_contract
+    if: ${{ always() && (needs.upstream_contract.result == 'success' || needs.upstream_contract.result == 'skipped') }}
     outputs:
       selected: ${{ steps.contract.outputs.selected }}
       derived: ${{ steps.contract.outputs.derived }}
@@ -73,7 +94,7 @@ jobs:
         DISPATCH_VALUES: ${{ toJSON(inputs) }}
         EVENT_NAME: ${{ github.event_name }}
         CANONICAL_LANE: 07-browser-product
-        GITHUB_TOKEN: ${{ github.token }}
+        UPSTREAM_EVIDENCE: ${{ needs.upstream_contract.outputs.evidence }}
       run: "import json, os\nschemas = json.loads(os.environ['SOURCE_SCHEMAS'])\nvalues = json.loads(os.environ['DISPATCH_VALUES'])\n\
         event_name = os.environ['EVENT_NAME']\ncalled = values.get('_reusable', False)\nif not called and event_name not in\
         \ ('workflow_dispatch', 'workflow_call'):\n    import subprocess\n    subprocess.run(['python', 'scripts/route-workflow-event.py',\
@@ -144,8 +165,8 @@ jobs:
         if-no-files-found: ignore
     needs:
     - dispatch_contract
-    if: ${{ needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected), 'authenticated-click-audit')
-      && (success()) }}
+    if: ${{ always() && needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected),
+      'authenticated-click-audit') && ((!cancelled() && (true))) }}
     concurrency:
       group: ${{ format('candidate-{0}-{1}-{2}', 'authenticated-click-audit-isolated-smoke-account', 'authenticated_click_audit__deep-surface-click-audit',
         toJSON(matrix)) }}
@@ -214,8 +235,8 @@ jobs:
         retention-days: 30
     needs:
     - dispatch_contract
-    if: ${{ needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected), 'browser-fallback-recovery-certification')
-      && (success()) }}
+    if: ${{ always() && needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected),
+      'browser-fallback-recovery-certification') && ((!cancelled() && (true))) }}
     permissions:
       contents: read
     concurrency:
@@ -262,8 +283,8 @@ jobs:
         OPENAI_API_KEY: sk-test-openai
     needs:
     - dispatch_contract
-    if: ${{ needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected), 'conversational-product-acceptance')
-      && (success()) }}
+    if: ${{ always() && needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected),
+      'conversational-product-acceptance') && ((!cancelled() && (true))) }}
     concurrency:
       group: ${{ format('candidate-{0}-{1}-{2}', format('conversational-product-acceptance-{0}', github.ref), 'conversational_product_acceptance__acceptance',
         toJSON(matrix)) }}
@@ -296,8 +317,8 @@ jobs:
     name: plan
     needs:
     - dispatch_contract
-    if: ${{ needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected), 'desktop-tauri')
-      && (success()) }}
+    if: ${{ always() && needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected),
+      'desktop-tauri') && ((!cancelled() && (true))) }}
     permissions:
       contents: write
     concurrency:
@@ -359,8 +380,8 @@ jobs:
           || '' }}
         args: ${{ matrix.args }}
     name: build
-    if: ${{ needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected), 'desktop-tauri')
-      && (success()) }}
+    if: ${{ always() && needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected),
+      'desktop-tauri') && ((!cancelled() && (needs.desktop_tauri__plan.result == 'success'))) }}
     permissions:
       contents: write
     concurrency:
@@ -372,8 +393,9 @@ jobs:
     - dispatch_contract
     - desktop_tauri__plan
     - desktop_tauri__build
-    if: ${{ needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected), 'desktop-tauri')
-      && (needs.desktop_tauri__plan.outputs.publish == 'true') }}
+    if: ${{ always() && needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected),
+      'desktop-tauri') && (!cancelled() && (needs.desktop_tauri__build.result == 'success' && needs.desktop_tauri__plan.result
+      == 'success') && (needs.desktop_tauri__plan.outputs.publish == 'true')) }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -420,8 +442,8 @@ jobs:
     name: release
     needs:
     - dispatch_contract
-    if: ${{ needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected), 'extension-release')
-      && (success()) }}
+    if: ${{ always() && needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected),
+      'extension-release') && ((!cancelled() && (true))) }}
     permissions:
       contents: write
     concurrency:
@@ -493,8 +515,8 @@ jobs:
         if-no-files-found: ignore
     needs:
     - dispatch_contract
-    if: ${{ needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected), 'navigation-e2e')
-      && (success()) }}
+    if: ${{ always() && needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected),
+      'navigation-e2e') && ((!cancelled() && (true))) }}
     concurrency:
       group: ${{ format('candidate-{0}-{1}-{2}', format('navigation-e2e-{0}', github.ref), 'navigation_e2e__navigation-click-through',
         toJSON(matrix)) }}
@@ -577,8 +599,8 @@ jobs:
     name: registered-routes
     needs:
     - dispatch_contract
-    if: ${{ needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected), 'pr605-route-inventory')
-      && (success()) }}
+    if: ${{ always() && needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected),
+      'pr605-route-inventory') && ((!cancelled() && (true))) }}
     permissions:
       contents: read
   release1_authenticated_network_audit__network-credential-audit:
@@ -613,8 +635,8 @@ jobs:
     name: network-credential-audit
     needs:
     - dispatch_contract
-    if: ${{ needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected), 'release1-authenticated-network-audit')
-      && (success()) }}
+    if: ${{ always() && needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected),
+      'release1-authenticated-network-audit') && ((!cancelled() && (true))) }}
     permissions:
       contents: read
   release1_authenticated_smoke__authenticated:
@@ -693,8 +715,8 @@ jobs:
     name: authenticated
     needs:
     - dispatch_contract
-    if: ${{ needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected), 'release1-authenticated-smoke')
-      && (success()) }}
+    if: ${{ always() && needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected),
+      'release1-authenticated-smoke') && ((!cancelled() && (true))) }}
     permissions:
       contents: read
   release1_deployed_browser_credentials__browser-runtime:
@@ -720,8 +742,8 @@ jobs:
     name: browser-runtime
     needs:
     - dispatch_contract
-    if: ${{ needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected), 'release1-deployed-browser-credentials')
-      && (success()) }}
+    if: ${{ always() && needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected),
+      'release1-deployed-browser-credentials') && ((!cancelled() && (true))) }}
     permissions:
       contents: read
   source_outcomes:
@@ -731,6 +753,7 @@ jobs:
     timeout-minutes: 3
     permissions: {}
     needs:
+    - upstream_contract
     - dispatch_contract
     - authenticated_click_audit__deep-surface-click-audit
     - browser_fallback_recovery_certification__independent-recovery-acceptance

@@ -6,13 +6,15 @@ GitHub Actions permissions require separate owner-authorized verification.
 from __future__ import annotations
 
 from pathlib import Path
+from runpy import run_path
 
 ROOT = Path(__file__).resolve().parents[3]
 WORKFLOWS = ROOT / ".github" / "workflows"
+source_contract = run_path(str(ROOT / 'scripts/workflow_source_contract.py'))
 
 
 def workflow(name: str) -> str:
-    return (WORKFLOWS / name).read_text()
+    return source_contract['text'](ROOT, name)
 
 
 def test_one_canonical_master_gate_with_full_qa_lane_contract():
@@ -49,7 +51,7 @@ def test_required_specialist_coverage_and_manual_live_approval_are_retained():
         "phase3-offline-12-scenarios.yml",
         "production-release-verification.yml",
     ):
-        assert (WORKFLOWS / name).is_file(), name
+        assert source_contract['definition'](ROOT, name)['jobs'], name
     authorized = workflow("master-qa-p27-sandbox-readback.yml")
     assert "workflow_dispatch:" in authorized
     assert "APPROVE_LIVE_TEST_CONTACT" in authorized

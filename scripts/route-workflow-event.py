@@ -218,13 +218,22 @@ def upstream_evidence(event, token):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--lane', required=True)
+    parser.add_argument('--fetch-upstream', action='store_true')
     args = parser.parse_args()
     root = Path(__file__).resolve().parents[1]
     records = json.loads((root / 'docs/delivery/master-qa-workflow-replacement-parity.json').read_text())['sources']
     event_name = os.environ['GITHUB_EVENT_NAME']
     event = json.loads(Path(os.environ['GITHUB_EVENT_PATH']).read_text())
+    if args.fetch_upstream:
+        if (event_name != 'workflow_run' or event.get('repository', {}).get('full_name') != REPOSITORY
+                or event.get('workflow_run', {}).get('head_repository', {}).get('full_name') != REPOSITORY):
+            raise ValueError('Upstream metadata reader requires a same-repository workflow_run')
+        result = upstream_evidence(event, os.environ.get('GITHUB_TOKEN', ''))
+        with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
+            output.write('evidence=' + json.dumps(result, separators=(',', ':')) + '\n')
+        return
     paths = changed_paths(event_name, event, root) if event_name in {'pull_request', 'push'} else None
-    upstream = upstream_evidence(event, os.environ.get('GITHUB_TOKEN', '')) if event_name == 'workflow_run' else None
+    upstream = json.loads(os.environ.get('UPSTREAM_EVIDENCE') or 'null')
     result = select(records, args.lane, event_name, event, paths, upstream)
     with open(os.environ['GITHUB_OUTPUT'], 'a') as output:
         for key, value in result.items():

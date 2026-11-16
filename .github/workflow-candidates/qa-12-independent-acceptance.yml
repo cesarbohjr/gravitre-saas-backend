@@ -101,13 +101,34 @@ concurrency:
     && (true)) || (inputs.source == 'master-qa-p27-sandbox-readback' && (false)) || (inputs.source == 'milestone1-live-reverify'
     && (false)) || false }}
 jobs:
+  upstream_contract:
+    name: Read trusted upstream outcome metadata
+    if: ${{ github.event_name == 'workflow_run' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    permissions:
+      contents: read
+      actions: read
+    outputs:
+      evidence: ${{ steps.upstream.outputs.evidence }}
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        ref: ${{ github.sha }}
+        persist-credentials: false
+    - id: upstream
+      run: python scripts/route-workflow-event.py --lane 12-independent-acceptance --fetch-upstream
+      env:
+        GITHUB_TOKEN: ${{ github.token }}
   dispatch_contract:
     name: Validate selected source inputs
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      actions: read
     timeout-minutes: 4
+    needs:
+    - upstream_contract
+    if: ${{ always() && (needs.upstream_contract.result == 'success' || needs.upstream_contract.result == 'skipped') }}
     outputs:
       selected: ${{ steps.contract.outputs.selected }}
       derived: ${{ steps.contract.outputs.derived }}
@@ -141,7 +162,7 @@ jobs:
         DISPATCH_VALUES: ${{ toJSON(inputs) }}
         EVENT_NAME: ${{ github.event_name }}
         CANONICAL_LANE: 12-independent-acceptance
-        GITHUB_TOKEN: ${{ github.token }}
+        UPSTREAM_EVIDENCE: ${{ needs.upstream_contract.outputs.evidence }}
       run: "import json, os\nschemas = json.loads(os.environ['SOURCE_SCHEMAS'])\nvalues = json.loads(os.environ['DISPATCH_VALUES'])\n\
         event_name = os.environ['EVENT_NAME']\ncalled = values.get('_reusable', False)\nif not called and event_name not in\
         \ ('workflow_dispatch', 'workflow_call'):\n    import subprocess\n    subprocess.run(['python', 'scripts/route-workflow-event.py',\
@@ -178,16 +199,17 @@ jobs:
     name: deployed-ingress-preflight
     needs:
     - dispatch_contract
-    if: ${{ needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected), 'eco-001-deployed-ingress')
-      && (success()) }}
+    if: ${{ always() && needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected),
+      'eco-001-deployed-ingress') && ((!cancelled() && (true))) }}
     permissions:
       contents: read
   isolated_acceptance__billing-e2e:
     name: Billing Playwright (isolated test)
-    if: ${{ needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected), 'isolated-acceptance')
-      && ((github.event_name == 'workflow_dispatch' || github.event_name == 'workflow_call' || vars.ACCEPTANCE_AUTOMATION_ENABLED
-      == 'true') && ((inputs.isolated_acceptance__suite || inputs.suite) == '' || (inputs.isolated_acceptance__suite || inputs.suite)
-      == 'all' || (inputs.isolated_acceptance__suite || inputs.suite) == 'billing')) }}
+    if: ${{ always() && needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected),
+      'isolated-acceptance') && (!cancelled() && (true) && ((github.event_name == 'workflow_dispatch' || github.event_name
+      == 'workflow_call' || vars.ACCEPTANCE_AUTOMATION_ENABLED == 'true') && ((inputs.isolated_acceptance__suite || inputs.suite)
+      == '' || (inputs.isolated_acceptance__suite || inputs.suite) == 'all' || (inputs.isolated_acceptance__suite || inputs.suite)
+      == 'billing'))) }}
     runs-on: ubuntu-latest
     timeout-minutes: 25
     environment: acceptance
@@ -302,10 +324,11 @@ jobs:
       cancel-in-progress: ${{ true }}
   isolated_acceptance__live-provider-voice:
     name: ElevenLabs + Deepgram synthetic live acceptance
-    if: ${{ needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected), 'isolated-acceptance')
-      && ((github.event_name == 'workflow_dispatch' || github.event_name == 'workflow_call' || vars.ACCEPTANCE_AUTOMATION_ENABLED
-      == 'true') && ((inputs.isolated_acceptance__suite || inputs.suite) == '' || (inputs.isolated_acceptance__suite || inputs.suite)
-      == 'all' || (inputs.isolated_acceptance__suite || inputs.suite) == 'voice')) }}
+    if: ${{ always() && needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected),
+      'isolated-acceptance') && (!cancelled() && (true) && ((github.event_name == 'workflow_dispatch' || github.event_name
+      == 'workflow_call' || vars.ACCEPTANCE_AUTOMATION_ENABLED == 'true') && ((inputs.isolated_acceptance__suite || inputs.suite)
+      == '' || (inputs.isolated_acceptance__suite || inputs.suite) == 'all' || (inputs.isolated_acceptance__suite || inputs.suite)
+      == 'voice'))) }}
     runs-on: ubuntu-latest
     timeout-minutes: 12
     environment: acceptance
@@ -376,8 +399,8 @@ jobs:
         can certify them.'
     needs:
     - dispatch_contract
-    if: ${{ needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected), 'isolated-acceptance')
-      && (success()) }}
+    if: ${{ always() && needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected),
+      'isolated-acceptance') && ((!cancelled() && (true))) }}
     permissions:
       contents: read
     concurrency:
@@ -404,6 +427,9 @@ jobs:
       run: 'python ../scripts/build-canonical-workflows.py --root .. --check
 
         python -m unittest discover -s ../scripts/tests -p ''test_*workflow*.py''
+
+        python -m pytest -q --confcutdir=tests/master_qa tests/master_qa/test_master_qa_workflow_consolidation.py tests/master_qa/test_p27_hubspot_tool_dispatch.py
+        ../tests/test_manual_acceptance_workflows.py
 
         '
     - uses: actions/setup-go@v5
@@ -487,8 +513,8 @@ jobs:
         if-no-files-found: error
     needs:
     - dispatch_contract
-    if: ${{ needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected), 'master-qa-p0-synthetic')
-      && (success()) }}
+    if: ${{ always() && needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected),
+      'master-qa-p0-synthetic') && ((!cancelled() && (true))) }}
     permissions:
       contents: read
     concurrency:
@@ -560,8 +586,8 @@ jobs:
         \ tests/master_qa/test_auto_orphan_reconciliation_pg.py tests/master_qa/test_worker_process_crash_restart_pg.py\n"
     needs:
     - dispatch_contract
-    if: ${{ needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected), 'master-qa-p0-synthetic')
-      && (success()) }}
+    if: ${{ always() && needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected),
+      'master-qa-p0-synthetic') && ((!cancelled() && (true))) }}
     permissions:
       contents: read
     concurrency:
@@ -570,10 +596,11 @@ jobs:
       cancel-in-progress: ${{ true }}
   master_qa_p27_sandbox_readback__label-preflight:
     name: Read-only tool label dispatch validation
-    if: "${{ needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected), 'master-qa-p27-sandbox-readback')\
-      \ && (github.event_name == 'pull_request'\n    && github.event.action == 'labeled'\n    && github.event.label.name ==\
-      \ 'p27-hubspot-preflight'\n    && github.actor == 'cesarbohjr'\n    && github.event.pull_request.number == 611\n   \
-      \ && github.event.pull_request.head.repo.full_name == github.repository) }}"
+    if: "${{ always() && needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected),\
+      \ 'master-qa-p27-sandbox-readback') && (!cancelled() && (true) && (github.event_name == 'pull_request'\n    && github.event.action\
+      \ == 'labeled'\n    && github.event.label.name == 'p27-hubspot-preflight'\n    && github.actor == 'cesarbohjr'\n   \
+      \ && github.event.pull_request.number == 611\n    && github.event.pull_request.head.repo.full_name == github.repository))\
+      \ }}"
     runs-on: ubuntu-latest
     timeout-minutes: 3
     steps:
@@ -605,12 +632,13 @@ jobs:
       cancel-in-progress: ${{ false }}
   master_qa_p27_sandbox_readback__provider-readback:
     name: One scoped QA contact, GET/replay/verified cleanup
-    if: "${{ needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected), 'master-qa-p27-sandbox-readback')\
-      \ && ((github.event_name == 'workflow_dispatch'\n     && github.event.inputs.master_qa_p27_sandbox_readback__approval\
-      \ == 'APPROVE_LIVE_TEST_CONTACT'\n     && github.ref == 'refs/heads/main'\n     && github.actor == 'cesarbohjr')\n \
-      \   || (github.event_name == 'pull_request'\n        && github.event.action == 'labeled'\n        && github.event.label.name\
-      \ == 'p27-hubspot-live-approved'\n        && github.actor == 'cesarbohjr'\n        && github.event.pull_request.number\
-      \ == 611\n        && github.event.pull_request.head.repo.full_name == github.repository)) }}"
+    if: "${{ always() && needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected),\
+      \ 'master-qa-p27-sandbox-readback') && (!cancelled() && (true) && ((github.event_name == 'workflow_dispatch'\n     &&\
+      \ github.event.inputs.master_qa_p27_sandbox_readback__approval == 'APPROVE_LIVE_TEST_CONTACT'\n     && github.ref ==\
+      \ 'refs/heads/main'\n     && github.actor == 'cesarbohjr')\n    || (github.event_name == 'pull_request'\n        &&\
+      \ github.event.action == 'labeled'\n        && github.event.label.name == 'p27-hubspot-live-approved'\n        && github.actor\
+      \ == 'cesarbohjr'\n        && github.event.pull_request.number == 611\n        && github.event.pull_request.head.repo.full_name\
+      \ == github.repository))) }}"
     environment: p27-provider-sandbox
     runs-on: ubuntu-latest
     timeout-minutes: 8
@@ -750,8 +778,8 @@ jobs:
         if-no-files-found: ignore
     needs:
     - dispatch_contract
-    if: ${{ needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected), 'milestone1-live-reverify')
-      && (success()) }}
+    if: ${{ always() && needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected),
+      'milestone1-live-reverify') && ((!cancelled() && (true))) }}
     concurrency:
       group: ${{ format('candidate-{0}-{1}-{2}', 'milestone1-live-reverify', 'milestone1_live_reverify__live-reverify', toJSON(matrix))
         }}
@@ -796,8 +824,8 @@ jobs:
         if-no-files-found: warn
     needs:
     - dispatch_contract
-    if: ${{ needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected), 'plays-datasets-live-proof')
-      && (success()) }}
+    if: ${{ always() && needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected),
+      'plays-datasets-live-proof') && ((!cancelled() && (true))) }}
     permissions:
       contents: read
   plays_production_acceptance__deterministic-contract:
@@ -825,8 +853,8 @@ jobs:
         if-no-files-found: warn
     needs:
     - dispatch_contract
-    if: ${{ needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected), 'plays-production-acceptance')
-      && (success()) }}
+    if: ${{ always() && needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected),
+      'plays-production-acceptance') && ((!cancelled() && (true))) }}
     permissions:
       contents: read
   plays_production_acceptance__authenticated-production-read:
@@ -868,8 +896,8 @@ jobs:
         if-no-files-found: error
     needs:
     - dispatch_contract
-    if: ${{ needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected), 'plays-production-acceptance')
-      && (success()) }}
+    if: ${{ always() && needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected),
+      'plays-production-acceptance') && ((!cancelled() && (true))) }}
     permissions:
       contents: read
   release1_live_memory_liveness__memory-liveness:
@@ -903,14 +931,14 @@ jobs:
     name: memory-liveness
     needs:
     - dispatch_contract
-    if: ${{ needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected), 'release1-live-memory-liveness')
-      && (success()) }}
+    if: ${{ always() && needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected),
+      'release1-live-memory-liveness') && ((!cancelled() && (true))) }}
     permissions:
       contents: read
   release1_live_public_mcp__public-mcp:
-    if: ${{ needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected), 'release1-live-public-mcp')
-      && (github.event_name != 'workflow_run' || (fromJSON(needs.dispatch_contract.outputs.context_conclusions)['release1-live-public-mcp']
-      || github.event.workflow_run.conclusion) == 'success') }}
+    if: ${{ always() && needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected),
+      'release1-live-public-mcp') && (!cancelled() && (true) && (github.event_name != 'workflow_run' || (fromJSON(needs.dispatch_contract.outputs.context_conclusions)['release1-live-public-mcp']
+      || github.event.workflow_run.conclusion) == 'success')) }}
     runs-on: ubuntu-latest
     timeout-minutes: 18
     environment: production
@@ -965,6 +993,7 @@ jobs:
     timeout-minutes: 3
     permissions: {}
     needs:
+    - upstream_contract
     - dispatch_contract
     - eco_001_deployed_ingress__deployed-ingress-preflight
     - isolated_acceptance__billing-e2e

@@ -39,6 +39,10 @@ def inventory(root, source_sha):
             owners[path] = lane
     paths = sorted((root / '.github/workflows').glob('*.y*ml'))
     actual = {str(p.relative_to(root)) for p in paths}
+    historical_count = len(owners)
+    canonical = {f'.github/workflows/qa-{lane}.yml': lane for lane in LANES}
+    if actual == set(canonical):
+        owners = canonical
     if actual != set(owners):
         raise ValueError(f'ownership mismatch: unassigned={sorted(actual-set(owners))}, missing={sorted(set(owners)-actual)}')
     # Whole-repository literal references supplement workflow_run and uses edges.
@@ -58,6 +62,8 @@ def inventory(root, source_sha):
             if path in body or Path(path).name in body:
                 references[path].append(rel)
     entries = []
+    evidence_path = root / 'docs/delivery/master-qa-required-checks-readback.json'
+    evidence = json.loads(evidence_path.read_text()) if evidence_path.exists() else None
     for path in paths:
         rel = str(path.relative_to(root))
         raw = path.read_bytes()
@@ -69,12 +75,14 @@ def inventory(root, source_sha):
             'source': rel,
             'source_sha256': hashlib.sha256(raw).hexdigest(),
             'target_lane': owners[rel],
-            'status': 'MIGRATION_BLOCKED',
+            'status': 'CANONICAL_QA_PENDING' if actual == set(canonical) else 'MIGRATION_BLOCKED',
             'source_contract': definition,
             'secret_references': sorted(set(re.findall(r'secrets\.([A-Za-z_][A-Za-z0-9_]*)', raw.decode()))),
             'repository_literal_references': references[rel],
             'external_callers': 'UNKNOWN',
-            'required_check_contexts': 'UNKNOWN',
+            'required_check_contexts': ([item['context'] for item in evidence['required_status_checks']]
+                                       if evidence and rel in {'.github/workflows/ci.yml', '.github/workflows/qa-01-core.yml'}
+                                       else [] if evidence else 'UNKNOWN'),
             'replacement_run_url': None,
             'parity_verified': False,
             'delete_safe': False,
@@ -83,8 +91,10 @@ def inventory(root, source_sha):
         'schema_version': 1,
         'source_commit': source_sha,
         'source_count': len(entries),
+        'historical_source_count': historical_count,
         'target_lane_count': len(LANES),
-        'required_checks_evidence': 'main branch-protection GET denied with HTTP 403; empty rulesets list does not establish absence of required checks',
+        'required_checks_evidence': (evidence['evidence_url'] if evidence else
+                                     'main branch-protection GET denied with HTTP 403; required checks unknown'),
         'reference_scan_scope': 'Available checkout files only; dynamic and external callers remain UNKNOWN',
         'retirement_authorized': False,
         'workflows': entries,

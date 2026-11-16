@@ -222,9 +222,11 @@ def test_summary_only_passes_verified_cleanup(tmp_path):
 
 
 def test_workflow_exposes_preflight_without_provider_secrets():
-    workflow = (ROOT / ".github/workflows/master-qa-p27-sandbox-readback.yml").read_text()
+    helper = run_path(str(ROOT / 'scripts/workflow_source_contract.py'))
+    definition = helper['definition'](ROOT, 'master-qa-p27-sandbox-readback.yml')
+    workflow = helper['text'](ROOT, 'master-qa-p27-sandbox-readback.yml')
     assert "pull_request:" in workflow
-    assert "types: [labeled]" in workflow
+    assert definition['on']['pull_request']['types'] == ['labeled']
     assert "p27-hubspot-preflight" in workflow
     assert "p27-hubspot-live-approved" in workflow
     assert "github.actor == 'cesarbohjr'" in workflow
@@ -235,5 +237,6 @@ def test_workflow_exposes_preflight_without_provider_secrets():
     assert "P27_HUBSPOT_LIVE_TEST_TOKEN: ${{ secrets.P27_HUBSPOT_LIVE_TEST_TOKEN }}" in workflow
     assert "OWNER_APPROVAL_LABEL:" in workflow
     assert "OWNER_DISPATCH_APPROVAL:" in workflow
-    preflight = workflow.split("  label-preflight:", 1)[1].split("  provider-readback:", 1)[0]
+    import yaml
+    preflight = yaml.safe_dump(definition['jobs']['label-preflight'])
     assert "secrets." not in preflight

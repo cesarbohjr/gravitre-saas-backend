@@ -84,13 +84,34 @@ concurrency:
     == 'smoke-conversation-pollution-cleanup' && (false)) || (inputs.source == 'unified-turn-ops-gates' && (false)) || (inputs.source
     == 'usage-sync' && (false)) || (inputs.source == 'workflow-schedules' && (false)) || false }}
 jobs:
+  upstream_contract:
+    name: Read trusted upstream outcome metadata
+    if: ${{ github.event_name == 'workflow_run' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    permissions:
+      contents: read
+      actions: read
+    outputs:
+      evidence: ${{ steps.upstream.outputs.evidence }}
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        ref: ${{ github.sha }}
+        persist-credentials: false
+    - id: upstream
+      run: python scripts/route-workflow-event.py --lane 10-operations --fetch-upstream
+      env:
+        GITHUB_TOKEN: ${{ github.token }}
   dispatch_contract:
     name: Validate selected source inputs
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      actions: read
     timeout-minutes: 4
+    needs:
+    - upstream_contract
+    if: ${{ always() && (needs.upstream_contract.result == 'success' || needs.upstream_contract.result == 'skipped') }}
     outputs:
       selected: ${{ steps.contract.outputs.selected }}
       derived: ${{ steps.contract.outputs.derived }}
@@ -120,7 +141,7 @@ jobs:
         DISPATCH_VALUES: ${{ toJSON(inputs) }}
         EVENT_NAME: ${{ github.event_name }}
         CANONICAL_LANE: 10-operations
-        GITHUB_TOKEN: ${{ github.token }}
+        UPSTREAM_EVIDENCE: ${{ needs.upstream_contract.outputs.evidence }}
       run: "import json, os\nschemas = json.loads(os.environ['SOURCE_SCHEMAS'])\nvalues = json.loads(os.environ['DISPATCH_VALUES'])\n\
         event_name = os.environ['EVENT_NAME']\ncalled = values.get('_reusable', False)\nif not called and event_name not in\
         \ ('workflow_dispatch', 'workflow_call'):\n    import subprocess\n    subprocess.run(['python', 'scripts/route-workflow-event.py',\
@@ -162,8 +183,8 @@ jobs:
         if-no-files-found: ignore
     needs:
     - dispatch_contract
-    if: ${{ needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected), 'chat-history-hygiene-live')
-      && (success()) }}
+    if: ${{ always() && needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected),
+      'chat-history-hygiene-live') && ((!cancelled() && (true))) }}
     concurrency:
       group: ${{ format('candidate-{0}-{1}-{2}', 'chat-history-hygiene-live', 'chat_history_hygiene_live__verify', toJSON(matrix))
         }}
@@ -185,8 +206,8 @@ jobs:
         \necho \"HTTP Status: $HTTP_STATUS\"\nif [ \"$HTTP_STATUS\" != \"200\" ]; then\n  exit 1\nfi\n"
     needs:
     - dispatch_contract
-    if: ${{ needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected), 'connector-health')
-      && (success()) }}
+    if: ${{ always() && needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected),
+      'connector-health') && ((!cancelled() && (true))) }}
     concurrency:
       group: ${{ format('candidate-{0}-{1}-{2}', 'connector-health', 'connector_health__connector-health', toJSON(matrix))
         }}
@@ -210,8 +231,8 @@ jobs:
         \n"
     needs:
     - dispatch_contract
-    if: ${{ needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected), 'knowledge-sync')
-      && (success()) }}
+    if: ${{ always() && needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected),
+      'knowledge-sync') && ((!cancelled() && (true))) }}
     concurrency:
       group: ${{ format('candidate-{0}-{1}-{2}', 'knowledge-sync', 'knowledge_sync__sync-due', toJSON(matrix)) }}
       cancel-in-progress: ${{ false }}
@@ -236,8 +257,8 @@ jobs:
         \ 1\nfi\n"
     needs:
     - dispatch_contract
-    if: ${{ needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected), 'metrics-rollup')
-      && (success()) }}
+    if: ${{ always() && needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected),
+      'metrics-rollup') && ((!cancelled() && (true))) }}
     concurrency:
       group: ${{ format('candidate-{0}-{1}-{2}', 'metrics-rollup', 'metrics_rollup__rollup-daily', toJSON(matrix)) }}
       cancel-in-progress: ${{ false }}
@@ -283,8 +304,8 @@ jobs:
         if-no-files-found: ignore
     needs:
     - dispatch_contract
-    if: ${{ needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected), 'msp-enrichment-workflow-live')
-      && (success()) }}
+    if: ${{ always() && needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected),
+      'msp-enrichment-workflow-live') && ((!cancelled() && (true))) }}
     concurrency:
       group: ${{ format('candidate-{0}-{1}-{2}', 'msp-enrichment-workflow-live', 'msp_enrichment_workflow_live__msp-enrichment-live',
         toJSON(matrix)) }}
@@ -339,8 +360,8 @@ jobs:
     name: pinned-sdk-imports
     needs:
     - dispatch_contract
-    if: ${{ needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected), 'native-workers-offline')
-      && (success()) }}
+    if: ${{ always() && needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected),
+      'native-workers-offline') && ((!cancelled() && (true))) }}
     permissions:
       contents: read
     concurrency:
@@ -366,8 +387,8 @@ jobs:
     name: playwright-comparison-image
     needs:
     - dispatch_contract
-    if: ${{ needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected), 'native-workers-offline')
-      && (success()) }}
+    if: ${{ always() && needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected),
+      'native-workers-offline') && ((!cancelled() && (true))) }}
     permissions:
       contents: read
     concurrency:
@@ -385,8 +406,8 @@ jobs:
     name: gateway-image
     needs:
     - dispatch_contract
-    if: ${{ needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected), 'native-workers-offline')
-      && (success()) }}
+    if: ${{ always() && needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected),
+      'native-workers-offline') && ((!cancelled() && (true))) }}
     permissions:
       contents: read
     concurrency:
@@ -482,8 +503,9 @@ jobs:
           '
         if-no-files-found: error
     name: runtime-certification
-    if: ${{ needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected), 'native-workers-offline')
-      && (success()) }}
+    if: ${{ always() && needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected),
+      'native-workers-offline') && ((!cancelled() && (needs.native_workers_offline__pinned-sdk-imports.result == 'success')))
+      }}
     permissions:
       contents: read
     concurrency:
@@ -492,8 +514,9 @@ jobs:
       cancel-in-progress: ${{ true }}
   native_workers_offline__tenant-worker-certification:
     name: Persisted tenant authorization and full worker lifecycle
-    if: ${{ needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected), 'native-workers-offline')
-      && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) }}
+    if: ${{ always() && needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected),
+      'native-workers-offline') && (!cancelled() && (needs.native_workers_offline__pinned-sdk-imports.result == 'success')
+      && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)) }}
     needs:
     - dispatch_contract
     - native_workers_offline__pinned-sdk-imports
@@ -623,8 +646,8 @@ jobs:
         \ 1\nfi\necho \"Platform CS snapshot backfill completed successfully\"\n"
     needs:
     - dispatch_contract
-    if: ${{ needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected), 'platform-cs-backfill')
-      && (success()) }}
+    if: ${{ always() && needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected),
+      'platform-cs-backfill') && ((!cancelled() && (true))) }}
     concurrency:
       group: ${{ format('candidate-{0}-{1}-{2}', 'platform-cs-backfill', 'platform_cs_backfill__backfill-snapshots', toJSON(matrix))
         }}
@@ -666,8 +689,8 @@ jobs:
         if-no-files-found: ignore
     needs:
     - dispatch_contract
-    if: ${{ needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected), 'probe-gmail-live-bugs-audit')
-      && (success()) }}
+    if: ${{ always() && needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected),
+      'probe-gmail-live-bugs-audit') && ((!cancelled() && (true))) }}
     concurrency:
       group: ${{ format('candidate-{0}-{1}-{2}', 'probe-gmail-live-bugs-audit', 'probe_gmail_live_bugs_audit__probe', toJSON(matrix))
         }}
@@ -701,8 +724,8 @@ jobs:
         if-no-files-found: ignore
     needs:
     - dispatch_contract
-    if: ${{ needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected), 'smoke-conversation-pollution-cleanup')
-      && (success()) }}
+    if: ${{ always() && needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected),
+      'smoke-conversation-pollution-cleanup') && ((!cancelled() && (true))) }}
     concurrency:
       group: ${{ format('candidate-{0}-{1}-{2}', 'smoke-conversation-pollution-cleanup', 'smoke_conversation_pollution_cleanup__cleanup',
         toJSON(matrix)) }}
@@ -746,8 +769,8 @@ jobs:
         if-no-files-found: ignore
     needs:
     - dispatch_contract
-    if: ${{ needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected), 'unified-turn-ops-gates')
-      && (success()) }}
+    if: ${{ always() && needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected),
+      'unified-turn-ops-gates') && ((!cancelled() && (true))) }}
     concurrency:
       group: ${{ format('candidate-{0}-{1}-{2}', 'unified-turn-ops-gates', 'unified_turn_ops_gates__ops-gates', toJSON(matrix))
         }}
@@ -770,8 +793,8 @@ jobs:
         \n  exit 1\nfi\necho \"Sync completed successfully\"\n"
     needs:
     - dispatch_contract
-    if: ${{ needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected), 'usage-sync')
-      && (success()) }}
+    if: ${{ always() && needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected),
+      'usage-sync') && ((!cancelled() && (true))) }}
     concurrency:
       group: ${{ format('candidate-{0}-{1}-{2}', 'usage-sync', 'usage_sync__sync-usage', toJSON(matrix)) }}
       cancel-in-progress: ${{ false }}
@@ -794,8 +817,8 @@ jobs:
         fi\necho \"Workflow schedule dispatch completed successfully\"\n"
     needs:
     - dispatch_contract
-    if: ${{ needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected), 'workflow-schedules')
-      && (success()) }}
+    if: ${{ always() && needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected),
+      'workflow-schedules') && ((!cancelled() && (true))) }}
     concurrency:
       group: ${{ format('candidate-{0}-{1}-{2}', 'workflow-schedules', 'workflow_schedules__dispatch-due', toJSON(matrix))
         }}
@@ -807,6 +830,7 @@ jobs:
     timeout-minutes: 3
     permissions: {}
     needs:
+    - upstream_contract
     - dispatch_contract
     - chat_history_hygiene_live__verify
     - connector_health__connector-health

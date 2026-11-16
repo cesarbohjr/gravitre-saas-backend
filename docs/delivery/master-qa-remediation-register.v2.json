@@ -115,7 +115,8 @@
             "verified_read_only": true
           },
           "deployed_readonly_preflight": "backend/scripts/eco001_deployed_ingress_preflight.py",
-          "manual_workflow": ".github/workflows/eco-001-deployed-ingress.yml",
+          "manual_workflow": ".github/workflows/qa-12-independent-acceptance.yml",
+          "manual_source_selector": "eco-001-deployed-ingress",
           "write_or_provider_execution_performed": false
         }
       },
@@ -219,7 +220,8 @@
             "lost_provider_ack"
           ],
           "runtime_preflight": "backend/scripts/eco001_deployed_ingress_preflight.py",
-          "manual_workflow": ".github/workflows/eco-001-deployed-ingress.yml",
+          "manual_workflow": ".github/workflows/qa-12-independent-acceptance.yml",
+          "manual_source_selector": "eco-001-deployed-ingress",
           "unresolved": [
             "live production ingress caller and feature flags",
             "real third-party consumer/provider readback",

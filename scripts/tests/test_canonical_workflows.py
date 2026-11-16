@@ -121,7 +121,10 @@ class CanonicalContracts(unittest.TestCase):
         for filename, lane in self.lanes.items():
             self.assertTrue(set(lane['on']) <= {'workflow_dispatch', 'workflow_call', 'push', 'pull_request', 'schedule', 'workflow_run'})
             self.assertNotIn(lane['name'], lane['on'].get('workflow_run', {}).get('workflows', []))
-            self.assertIn("format('candidate-{0}'", lane['concurrency']['group'])
+            if filename == 'qa-01-core.yml':
+                self.assertEqual(lane['concurrency'], self.contracts['ci']['concurrency'])
+            else:
+                self.assertIn("format('candidate-{0}'", lane['concurrency']['group'])
             self.assertFalse('permissions' in lane)  # permissions remain source/job-specific
 
     def test_source_outcomes_expose_results_without_passing_job_output_payloads(self):
@@ -130,6 +133,30 @@ class CanonicalContracts(unittest.TestCase):
             self.assertNotIn('toJSON(needs)', env['JOB_RESULTS'])
             results = json.loads(env['JOB_RESULTS'])
             self.assertTrue(all(set(value) == {'result'} for value in results.values()))
+
+    def test_pr_routing_has_no_actions_metadata_token(self):
+        for lane in self.lanes.values():
+            route = lane['jobs']['dispatch_contract']
+            self.assertEqual(route['permissions'], {'contents': 'read'})
+            step = next(s for s in route['steps'] if s.get('id') == 'contract')
+            self.assertNotIn('GITHUB_TOKEN', step['env'])
+            upstream = lane['jobs']['upstream_contract']
+            self.assertEqual(upstream['if'], "${{ github.event_name == 'workflow_run' }}")
+            self.assertEqual(upstream['steps'][0]['with']['ref'], '${{ github.sha }}')
+
+    def test_skipped_metadata_reader_cannot_skip_required_source_jobs(self):
+        core = self.lanes['qa-01-core.yml']['jobs']
+        required = {'Backend (pytest)', 'Dependency audit', 'Integration Smoke Test',
+                    'Shared runtime text/voice gate', 'Web (lint + typecheck + build)'}
+        jobs = [job for job in core.values() if job.get('name') in required]
+        self.assertEqual(len(jobs), 5)
+        for job in jobs:
+            self.assertIn('always()', job['if'])
+            self.assertIn('!cancelled()', job['if'])
+            self.assertNotRegex(job['if'], r'\bsuccess\s*\(')
+        billing = core['ci__billing-e2e']
+        self.assertIn("needs.ci__backend.result == 'success'", billing['if'])
+        self.assertIn("needs.ci__web.result == 'success'", billing['if'])
 
     def test_cancellation_conditions_retain_boolean_type(self):
         for lane in self.lanes.values():
