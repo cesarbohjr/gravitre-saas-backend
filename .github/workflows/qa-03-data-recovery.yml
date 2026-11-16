@@ -14,9 +14,9 @@ name: QA 03-data-recovery
         - pr605-gate26-postgres-outbox
         default: acceptance-db-preflight
       acceptance_db_preflight__verified_migration_run_id:
-        description: 'acceptance-db-preflight: Successful Migration history recovery run with data-free baseline artifact'
+        description: 'acceptance-db-preflight: Explicit successful Migration history recovery run with a retained data-free
+          baseline artifact'
         required: false
-        default: '39929148399'
         type: string
   pull_request:
     branches:
@@ -73,9 +73,9 @@ jobs:
       name: Validate source contract
       shell: python
       env:
-        SOURCE_SCHEMAS: '{"acceptance-db-preflight": {"verified_migration_run_id": {"description": "Successful Migration history
-          recovery run with data-free baseline artifact", "required": true, "default": "39929148399", "type": "string"}},
-          "migration-history-recovery": {}, "supabase-migration-safety": {}, "pr605-gate26-postgres-outbox": {}}'
+        SOURCE_SCHEMAS: '{"acceptance-db-preflight": {"verified_migration_run_id": {"description": "Explicit successful Migration
+          history recovery run with a retained data-free baseline artifact", "required": true, "type": "string"}}, "migration-history-recovery":
+          {}, "supabase-migration-safety": {}, "pr605-gate26-postgres-outbox": {}}'
         MANUAL_SOURCES: '["acceptance-db-preflight", "migration-history-recovery", "supabase-migration-safety", "pr605-gate26-postgres-outbox"]'
         DISPATCH_VALUES: ${{ toJSON(inputs) }}
         EVENT_NAME: ${{ github.event_name }}
@@ -95,8 +95,9 @@ jobs:
         \ + json.dumps([source]) + '\\n')\n    output.write('derived=[]\\ncontext_conclusions={}\\n')\n"
   acceptance_db_preflight__schema-preflight:
     if: ${{ always() && needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected),
-      'acceptance-db-preflight') && (!cancelled() && (true) && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name
-      == github.repository)) }}
+      'acceptance-db-preflight') && (!cancelled() && (needs.acceptance_db_preflight__static-contracts.result == 'success')
+      && (github.event_name == 'workflow_dispatch' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name
+      == github.repository))) }}
     name: Verify baseline and dedicated acceptance database (read only)
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -105,7 +106,7 @@ jobs:
     - name: Fetch the verified baseline artifact
       env:
         GH_TOKEN: ${{ github.token }}
-        SOURCE_RUN_ID: ${{ inputs.acceptance_db_preflight__verified_migration_run_id || '39929148399' }}
+        SOURCE_RUN_ID: ${{ inputs.acceptance_db_preflight__verified_migration_run_id }}
       run: "case \"$SOURCE_RUN_ID\" in\n  ''|*[!0-9]*) echo 'Invalid run ID'; exit 2 ;;\nesac\nmkdir -p acceptance-baseline\n\
         gh run download \"$SOURCE_RUN_ID\" --repo \"$GITHUB_REPOSITORY\" --name migration-history-replay --dir acceptance-baseline\n"
     - name: Verify baseline checksum and ensure source does not contain user data
@@ -129,9 +130,31 @@ jobs:
         if-no-files-found: ignore
     needs:
     - dispatch_contract
+    - acceptance_db_preflight__static-contracts
     permissions:
       contents: read
       actions: read
+  acceptance_db_preflight__static-contracts:
+    name: Acceptance initialization offline contracts
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        persist-credentials: false
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+    - name: Install isolated test runner
+      run: python -m pip install --disable-pip-version-check pytest
+    - name: Verify baseline and read-only initialization guards without remote calls
+      run: python -m pytest -q --noconftest tests/test_acceptance_initialization_preflight.py
+    needs:
+    - dispatch_contract
+    if: ${{ always() && needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected),
+      'acceptance-db-preflight') && ((!cancelled() && (true))) }}
   migration_history_recovery__recorded-history-replay:
     if: ${{ always() && needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected),
       'migration-history-recovery') && (!cancelled() && (true) && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name
@@ -648,6 +671,7 @@ jobs:
     - upstream_contract
     - dispatch_contract
     - acceptance_db_preflight__schema-preflight
+    - acceptance_db_preflight__static-contracts
     - migration_history_recovery__recorded-history-replay
     - supabase_migration_safety__validate-migrations
     - supabase_migration_safety__staging-validate
@@ -663,12 +687,13 @@ jobs:
         \ 'head_sha': os.environ['GITHUB_SHA'],\n            'source_outcomes': outcomes}\nwith open('canonical-workflow-outcomes.json',\
         \ 'w') as output:\n    json.dump(evidence, output)\n"
       env:
-        SOURCE_JOBS: '{"acceptance-db-preflight": {"display_name": "Prepare acceptance database initialization", "jobs": ["acceptance_db_preflight__schema-preflight"]},
-          "migration-history-recovery": {"display_name": "Migration history recovery", "jobs": ["migration_history_recovery__recorded-history-replay"]},
-          "supabase-migration-safety": {"display_name": "Supabase migration safety", "jobs": ["supabase_migration_safety__validate-migrations",
-          "supabase_migration_safety__staging-validate"]}, "pr605-gate26-postgres-outbox": {"display_name": "PR605 Gate26
-          isolated PostgreSQL outbox acceptance", "jobs": ["pr605_gate26_postgres_outbox__isolated-outbox"]}}'
+        SOURCE_JOBS: '{"acceptance-db-preflight": {"display_name": "Prepare acceptance database initialization", "jobs": ["acceptance_db_preflight__schema-preflight",
+          "acceptance_db_preflight__static-contracts"]}, "migration-history-recovery": {"display_name": "Migration history
+          recovery", "jobs": ["migration_history_recovery__recorded-history-replay"]}, "supabase-migration-safety": {"display_name":
+          "Supabase migration safety", "jobs": ["supabase_migration_safety__validate-migrations", "supabase_migration_safety__staging-validate"]},
+          "pr605-gate26-postgres-outbox": {"display_name": "PR605 Gate26 isolated PostgreSQL outbox acceptance", "jobs": ["pr605_gate26_postgres_outbox__isolated-outbox"]}}'
         JOB_RESULTS: '{"acceptance_db_preflight__schema-preflight": {"result": "${{ needs.acceptance_db_preflight__schema-preflight.result
+          }}"}, "acceptance_db_preflight__static-contracts": {"result": "${{ needs.acceptance_db_preflight__static-contracts.result
           }}"}, "migration_history_recovery__recorded-history-replay": {"result": "${{ needs.migration_history_recovery__recorded-history-replay.result
           }}"}, "supabase_migration_safety__validate-migrations": {"result": "${{ needs.supabase_migration_safety__validate-migrations.result
           }}"}, "supabase_migration_safety__staging-validate": {"result": "${{ needs.supabase_migration_safety__staging-validate.result

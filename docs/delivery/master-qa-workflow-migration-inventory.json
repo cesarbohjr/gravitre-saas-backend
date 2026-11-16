@@ -4,7 +4,7 @@
   "historical_source_count": 94,
   "target_lane_count": 12,
   "required_checks_evidence": "https://github.com/cesarbohjr/gravitre-saas-backend/settings/branch_protection_rules/85943377",
-  "reference_scan_scope": "Available working snapshot plus indexed repository caller review and 241 metadata-test source reads; external/dynamic consumers remain a main-release review item.",
+  "reference_scan_scope": "Available checkout files only; dynamic and external callers remain UNKNOWN",
   "retirement_authorized": false,
   "workflows": [
     {
@@ -951,6 +951,8 @@
         "SUPABASE_URL"
       ],
       "repository_literal_references": [
+        "AGENTS.md",
+        "docs/delivery/master-qa-workflow-consolidation.md",
         "scripts/audit-workflow-migration.py",
         "scripts/build-canonical-workflows.py",
         "scripts/tests/test_canonical_workflows.py"
@@ -1445,7 +1447,9 @@
         "VERCEL_ORG_ID",
         "VERCEL_TOKEN"
       ],
-      "repository_literal_references": [],
+      "repository_literal_references": [
+        "docs/delivery/master-qa-workflow-consolidation.md"
+      ],
       "external_callers": "UNKNOWN",
       "required_check_contexts": [],
       "replacement_run_url": null,
@@ -1454,7 +1458,7 @@
     },
     {
       "source": ".github/workflows/qa-03-data-recovery.yml",
-      "source_sha256": "5d8a6d4e25c5ef7ef56bd44620069f49fbb09e4ef778cbc7a5ab5afc95f03e9f",
+      "source_sha256": "3ca2a278cc750ba684802ba27715ff5b3ce243dbdda16a5074e05287d7732dab",
       "target_lane": "03-data-recovery",
       "status": "CANONICAL_QA_PENDING",
       "source_contract": {
@@ -1475,9 +1479,8 @@
                 "default": "acceptance-db-preflight"
               },
               "acceptance_db_preflight__verified_migration_run_id": {
-                "description": "acceptance-db-preflight: Successful Migration history recovery run with data-free baseline artifact",
+                "description": "acceptance-db-preflight: Explicit successful Migration history recovery run with a retained data-free baseline artifact",
                 "required": "false",
-                "default": "39929148399",
                 "type": "string"
               }
             }
@@ -1556,7 +1559,7 @@
                 "name": "Validate source contract",
                 "shell": "python",
                 "env": {
-                  "SOURCE_SCHEMAS": "{\"acceptance-db-preflight\": {\"verified_migration_run_id\": {\"description\": \"Successful Migration history recovery run with data-free baseline artifact\", \"required\": true, \"default\": \"39929148399\", \"type\": \"string\"}}, \"migration-history-recovery\": {}, \"supabase-migration-safety\": {}, \"pr605-gate26-postgres-outbox\": {}}",
+                  "SOURCE_SCHEMAS": "{\"acceptance-db-preflight\": {\"verified_migration_run_id\": {\"description\": \"Explicit successful Migration history recovery run with a retained data-free baseline artifact\", \"required\": true, \"type\": \"string\"}}, \"migration-history-recovery\": {}, \"supabase-migration-safety\": {}, \"pr605-gate26-postgres-outbox\": {}}",
                   "MANUAL_SOURCES": "[\"acceptance-db-preflight\", \"migration-history-recovery\", \"supabase-migration-safety\", \"pr605-gate26-postgres-outbox\"]",
                   "DISPATCH_VALUES": "${{ toJSON(inputs) }}",
                   "EVENT_NAME": "${{ github.event_name }}",
@@ -1568,7 +1571,7 @@
             ]
           },
           "acceptance_db_preflight__schema-preflight": {
-            "if": "${{ always() && needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected), 'acceptance-db-preflight') && (!cancelled() && (true) && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)) }}",
+            "if": "${{ always() && needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected), 'acceptance-db-preflight') && (!cancelled() && (needs.acceptance_db_preflight__static-contracts.result == 'success') && (github.event_name == 'workflow_dispatch' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository))) }}",
             "name": "Verify baseline and dedicated acceptance database (read only)",
             "runs-on": "ubuntu-latest",
             "timeout-minutes": "10",
@@ -1580,7 +1583,7 @@
                 "name": "Fetch the verified baseline artifact",
                 "env": {
                   "GH_TOKEN": "${{ github.token }}",
-                  "SOURCE_RUN_ID": "${{ inputs.acceptance_db_preflight__verified_migration_run_id || '39929148399' }}"
+                  "SOURCE_RUN_ID": "${{ inputs.acceptance_db_preflight__verified_migration_run_id }}"
                 },
                 "run": "case \"$SOURCE_RUN_ID\" in\n  ''|*[!0-9]*) echo 'Invalid run ID'; exit 2 ;;\nesac\nmkdir -p acceptance-baseline\ngh run download \"$SOURCE_RUN_ID\" --repo \"$GITHUB_REPOSITORY\" --name migration-history-replay --dir acceptance-baseline\n"
               },
@@ -1609,12 +1612,47 @@
               }
             ],
             "needs": [
-              "dispatch_contract"
+              "dispatch_contract",
+              "acceptance_db_preflight__static-contracts"
             ],
             "permissions": {
               "contents": "read",
               "actions": "read"
             }
+          },
+          "acceptance_db_preflight__static-contracts": {
+            "name": "Acceptance initialization offline contracts",
+            "runs-on": "ubuntu-latest",
+            "timeout-minutes": "5",
+            "permissions": {
+              "contents": "read"
+            },
+            "steps": [
+              {
+                "uses": "actions/checkout@v4",
+                "with": {
+                  "persist-credentials": "false"
+                }
+              },
+              {
+                "uses": "actions/setup-python@v5",
+                "with": {
+                  "python-version": "3.12"
+                }
+              },
+              {
+                "name": "Install isolated test runner",
+                "run": "python -m pip install --disable-pip-version-check pytest"
+              },
+              {
+                "name": "Verify baseline and read-only initialization guards without remote calls",
+                "run": "python -m pytest -q --noconftest tests/test_acceptance_initialization_preflight.py"
+              }
+            ],
+            "needs": [
+              "dispatch_contract"
+            ],
+            "if": "${{ always() && needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected), 'acceptance-db-preflight') && ((!cancelled() && (true))) }}"
           },
           "migration_history_recovery__recorded-history-replay": {
             "if": "${{ always() && needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected), 'migration-history-recovery') && (!cancelled() && (true) && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)) }}",
@@ -1975,6 +2013,7 @@
               "upstream_contract",
               "dispatch_contract",
               "acceptance_db_preflight__schema-preflight",
+              "acceptance_db_preflight__static-contracts",
               "migration_history_recovery__recorded-history-replay",
               "supabase_migration_safety__validate-migrations",
               "supabase_migration_safety__staging-validate",
@@ -1986,8 +2025,8 @@
                 "shell": "python",
                 "run": "import json, os\nsources = json.loads(os.environ['SOURCE_JOBS'])\nneeds = json.loads(os.environ['JOB_RESULTS'])\nselected = json.loads(os.environ['SELECTED'])\noutcomes = {}\nfor name, source in sources.items():\n    if name not in selected:\n        continue\n    results = [needs[key]['result'] for key in source['jobs']]\n    outcome = ('failure' if 'failure' in results else 'cancelled' if 'cancelled' in results\n               else 'success' if 'success' in results else 'skipped')\n    outcomes[source['display_name']] = outcome\nevidence = {'run_id': int(os.environ['GITHUB_RUN_ID']), 'head_sha': os.environ['GITHUB_SHA'],\n            'source_outcomes': outcomes}\nwith open('canonical-workflow-outcomes.json', 'w') as output:\n    json.dump(evidence, output)\n",
                 "env": {
-                  "SOURCE_JOBS": "{\"acceptance-db-preflight\": {\"display_name\": \"Prepare acceptance database initialization\", \"jobs\": [\"acceptance_db_preflight__schema-preflight\"]}, \"migration-history-recovery\": {\"display_name\": \"Migration history recovery\", \"jobs\": [\"migration_history_recovery__recorded-history-replay\"]}, \"supabase-migration-safety\": {\"display_name\": \"Supabase migration safety\", \"jobs\": [\"supabase_migration_safety__validate-migrations\", \"supabase_migration_safety__staging-validate\"]}, \"pr605-gate26-postgres-outbox\": {\"display_name\": \"PR605 Gate26 isolated PostgreSQL outbox acceptance\", \"jobs\": [\"pr605_gate26_postgres_outbox__isolated-outbox\"]}}",
-                  "JOB_RESULTS": "{\"acceptance_db_preflight__schema-preflight\": {\"result\": \"${{ needs.acceptance_db_preflight__schema-preflight.result }}\"}, \"migration_history_recovery__recorded-history-replay\": {\"result\": \"${{ needs.migration_history_recovery__recorded-history-replay.result }}\"}, \"supabase_migration_safety__validate-migrations\": {\"result\": \"${{ needs.supabase_migration_safety__validate-migrations.result }}\"}, \"supabase_migration_safety__staging-validate\": {\"result\": \"${{ needs.supabase_migration_safety__staging-validate.result }}\"}, \"pr605_gate26_postgres_outbox__isolated-outbox\": {\"result\": \"${{ needs.pr605_gate26_postgres_outbox__isolated-outbox.result }}\"}}",
+                  "SOURCE_JOBS": "{\"acceptance-db-preflight\": {\"display_name\": \"Prepare acceptance database initialization\", \"jobs\": [\"acceptance_db_preflight__schema-preflight\", \"acceptance_db_preflight__static-contracts\"]}, \"migration-history-recovery\": {\"display_name\": \"Migration history recovery\", \"jobs\": [\"migration_history_recovery__recorded-history-replay\"]}, \"supabase-migration-safety\": {\"display_name\": \"Supabase migration safety\", \"jobs\": [\"supabase_migration_safety__validate-migrations\", \"supabase_migration_safety__staging-validate\"]}, \"pr605-gate26-postgres-outbox\": {\"display_name\": \"PR605 Gate26 isolated PostgreSQL outbox acceptance\", \"jobs\": [\"pr605_gate26_postgres_outbox__isolated-outbox\"]}}",
+                  "JOB_RESULTS": "{\"acceptance_db_preflight__schema-preflight\": {\"result\": \"${{ needs.acceptance_db_preflight__schema-preflight.result }}\"}, \"acceptance_db_preflight__static-contracts\": {\"result\": \"${{ needs.acceptance_db_preflight__static-contracts.result }}\"}, \"migration_history_recovery__recorded-history-replay\": {\"result\": \"${{ needs.migration_history_recovery__recorded-history-replay.result }}\"}, \"supabase_migration_safety__validate-migrations\": {\"result\": \"${{ needs.supabase_migration_safety__validate-migrations.result }}\"}, \"supabase_migration_safety__staging-validate\": {\"result\": \"${{ needs.supabase_migration_safety__staging-validate.result }}\"}, \"pr605_gate26_postgres_outbox__isolated-outbox\": {\"result\": \"${{ needs.pr605_gate26_postgres_outbox__isolated-outbox.result }}\"}}",
                   "SELECTED": "${{ needs.dispatch_contract.outputs.selected }}"
                 }
               },
@@ -2014,7 +2053,8 @@
       ],
       "repository_literal_references": [
         ".github/workflow-candidates/qa-03-data-recovery.yml",
-        ".github/workflows/qa-03-data-recovery.yml"
+        ".github/workflows/qa-03-data-recovery.yml",
+        "docs/delivery/master-qa-workflow-consolidation.md"
       ],
       "external_callers": "UNKNOWN",
       "required_check_contexts": [],
@@ -2762,6 +2802,7 @@
         "outputs"
       ],
       "repository_literal_references": [
+        "docs/delivery/master-qa-workflow-consolidation.md",
         "scripts/tests/test_canonical_workflows.py"
       ],
       "external_callers": "UNKNOWN",
@@ -4248,7 +4289,9 @@
         "SUPABASE_URL",
         "outputs"
       ],
-      "repository_literal_references": [],
+      "repository_literal_references": [
+        "docs/delivery/master-qa-workflow-consolidation.md"
+      ],
       "external_callers": "UNKNOWN",
       "required_check_contexts": [],
       "replacement_run_url": null,
@@ -4257,7 +4300,7 @@
     },
     {
       "source": ".github/workflows/qa-06-voice.yml",
-      "source_sha256": "add93fe07267ff14630c69d687e770a66a9f286edd86f7b46099a38c3a220ac2",
+      "source_sha256": "837669e7e707277c9219cebd50fa3bc4925d1c7db47f5d3b600e51793163e8b4",
       "target_lane": "06-voice",
       "status": "CANONICAL_QA_PENDING",
       "source_contract": {
@@ -4564,7 +4607,8 @@
             "if": "${{ always() && needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected), 'run-acceptance-voice') && ((!cancelled() && (true))) }}",
             "permissions": {
               "contents": "read",
-              "actions": "read"
+              "actions": "read",
+              "pull-requests": "read"
             }
           },
           "voice_duplex_guard__voice-duplex": {
@@ -5379,7 +5423,9 @@
         "SUPABASE_SERVICE_ROLE_KEY",
         "SUPABASE_URL"
       ],
-      "repository_literal_references": [],
+      "repository_literal_references": [
+        "docs/delivery/master-qa-workflow-consolidation.md"
+      ],
       "external_callers": "UNKNOWN",
       "required_check_contexts": [],
       "replacement_run_url": null,
@@ -6332,7 +6378,9 @@
         "SUPABASE_SERVICE_ROLE_KEY",
         "SUPABASE_URL"
       ],
-      "repository_literal_references": [],
+      "repository_literal_references": [
+        "docs/delivery/master-qa-workflow-consolidation.md"
+      ],
       "external_callers": "UNKNOWN",
       "required_check_contexts": [],
       "replacement_run_url": null,
@@ -6341,7 +6389,7 @@
     },
     {
       "source": ".github/workflows/qa-08-billing-marketplace.yml",
-      "source_sha256": "0d185ada36c04c0cb51d8c5fe8c446514f91038081254712bfe264e099a50e56",
+      "source_sha256": "ca4fc78cfbd3a11aaf46c793f452aa77396d1006472469cc086ceba934a92ca1",
       "target_lane": "08-billing-marketplace",
       "status": "CANONICAL_QA_PENDING",
       "source_contract": {
@@ -6564,7 +6612,8 @@
             "if": "${{ always() && needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected), 'run-acceptance-billing') && ((!cancelled() && (true))) }}",
             "permissions": {
               "contents": "read",
-              "actions": "read"
+              "actions": "read",
+              "pull-requests": "read"
             }
           },
           "source_outcomes": {
@@ -6609,7 +6658,9 @@
         "SUPABASE_SERVICE_ROLE_KEY",
         "SUPABASE_URL"
       ],
-      "repository_literal_references": [],
+      "repository_literal_references": [
+        "docs/delivery/master-qa-workflow-consolidation.md"
+      ],
       "external_callers": "UNKNOWN",
       "required_check_contexts": [],
       "replacement_run_url": null,
@@ -6923,7 +6974,9 @@
         "GITHUB_TOKEN",
         "INDEXNOW_KEY"
       ],
-      "repository_literal_references": [],
+      "repository_literal_references": [
+        "docs/delivery/master-qa-workflow-consolidation.md"
+      ],
       "external_callers": "UNKNOWN",
       "required_check_contexts": [],
       "replacement_run_url": null,
@@ -7910,7 +7963,9 @@
         "SUPABASE_SERVICE_ROLE_KEY",
         "SUPABASE_URL"
       ],
-      "repository_literal_references": [],
+      "repository_literal_references": [
+        "docs/delivery/master-qa-workflow-consolidation.md"
+      ],
       "external_callers": "UNKNOWN",
       "required_check_contexts": [],
       "replacement_run_url": null,
@@ -8617,6 +8672,8 @@
         "SUPABASE_URL"
       ],
       "repository_literal_references": [
+        "AGENTS.md",
+        "docs/delivery/master-qa-workflow-consolidation.md",
         "scripts/railway_commit_touches_backend.py",
         "scripts/tests/test_canonical_workflows.py"
       ],
@@ -9821,6 +9878,9 @@
         ".github/workflow-candidates/qa-08-billing-marketplace.yml",
         ".github/workflows/qa-06-voice.yml",
         ".github/workflows/qa-08-billing-marketplace.yml",
+        "AGENTS.md",
+        "docs/delivery/master-qa-remediation-register.v2.json",
+        "docs/delivery/master-qa-workflow-consolidation.md",
         "scripts/build-canonical-workflows.py",
         "scripts/tests/test_canonical_workflows.py",
         "tests/test_manual_acceptance_workflows.py"
@@ -9832,8 +9892,8 @@
       "delete_safe": false
     }
   ],
-  "base_commit": "aa1b28bdd303596ada888abac460ea3c15a18147",
+  "base_commit": "b90757e1cfbfb9e4b56f1fef3258e192ff4a47c0",
   "source_commit": null,
-  "snapshot_scope": "Development-branch 12-file cutover; per-file SHA-256 binds this snapshot. Runtime artifacts record the exact GitHub head SHA.",
+  "snapshot_scope": "Generated canonical repair from the named base commit; per-file hashes bind source content.",
   "main_release_authorized": false
 }

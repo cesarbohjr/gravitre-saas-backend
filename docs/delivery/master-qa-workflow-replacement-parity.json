@@ -1,7 +1,7 @@
 {
   "source_count": 94,
   "candidate_count": 12,
-  "source_job_count": 120,
+  "source_job_count": 121,
   "static_contract_parity": "PASS",
   "runtime_parity": "REQUIRES_INDEPENDENT_RUN_EVIDENCE",
   "automatic_trigger_parity": "STATIC_REPLAY_PASS_RUNTIME_PENDING",
@@ -211,7 +211,8 @@
       "display_name": "Prepare acceptance database initialization",
       "lane": "03-data-recovery",
       "jobs": {
-        "schema-preflight": "acceptance_db_preflight__schema-preflight"
+        "schema-preflight": "acceptance_db_preflight__schema-preflight",
+        "static-contracts": "acceptance_db_preflight__static-contracts"
       },
       "automatic_trigger_contract": {
         "pull_request": {
@@ -228,9 +229,8 @@
         "workflow_dispatch": {
           "inputs": {
             "verified_migration_run_id": {
-              "description": "Successful Migration history recovery run with data-free baseline artifact",
+              "description": "Explicit successful Migration history recovery run with a retained data-free baseline artifact",
               "required": true,
-              "default": "39929148399",
               "type": "string"
             }
           }

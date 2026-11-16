@@ -423,32 +423,6 @@ jobs:
         python-version: '3.12'
     - name: Install minimal offline test runner
       run: python -m pip install --disable-pip-version-check pytest PyYAML==6.0.3
-    - name: Generate canonical repair for reviewed source commit
-      shell: python
-      working-directory: .
-      run: |
-        import base64, json, os, pathlib, subprocess, sys
-        subprocess.run([sys.executable, 'scripts/build-canonical-workflows.py'], check=True)
-        for source in pathlib.Path('.github/workflow-candidates').glob('*.yml'):
-            body = source.read_text().split('\n', 1)[1]
-            (pathlib.Path('.github/workflows') / source.name).write_text('# Canonical development-branch lane; production release requires separate certification.\n' + body)
-        subprocess.run([sys.executable, 'scripts/build-canonical-workflows.py', '--check'], check=True)
-        inventory = pathlib.Path('docs/delivery/master-qa-workflow-migration-inventory.json')
-        subprocess.run([sys.executable, 'scripts/audit-workflow-migration.py', '--source-sha', os.environ['GITHUB_SHA'], '--output', str(inventory)], check=True)
-        report = json.loads(inventory.read_text())
-        report['base_commit'] = report.pop('source_commit')
-        report['source_commit'] = None
-        report['snapshot_scope'] = 'Generated canonical repair from the named base commit; per-file hashes bind source content.'
-        report['main_release_authorized'] = False
-        inventory.write_text(json.dumps(report, indent=2) + '\n')
-        paths = sorted(pathlib.Path('.github/workflows').glob('*.yml')) + sorted(pathlib.Path('.github/workflow-candidates').glob('*.yml'))
-        paths += [pathlib.Path('docs/delivery/master-qa-workflow-replacement-parity.json'), inventory]
-        for path in paths:
-            content = path.read_bytes()
-            parts = (len(content) + 8191) // 8192
-            for part in range(parts):
-                data = base64.b64encode(content[part*8192:(part+1)*8192]).decode()
-                print('CANONICAL_REPAIR_CHUNK ' + json.dumps({'path': str(path), 'part': part, 'total': parts, 'data': data}), flush=True)
     - name: Verify 12 staged workflow replacements without executing source jobs
       run: 'python ../scripts/build-canonical-workflows.py --root .. --check
 

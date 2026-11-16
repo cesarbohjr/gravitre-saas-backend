@@ -255,6 +255,7 @@ jobs:
     permissions:
       contents: read
       actions: read
+      pull-requests: read
   voice_duplex_guard__voice-duplex:
     name: Voice duplex capture guard
     runs-on: ubuntu-latest

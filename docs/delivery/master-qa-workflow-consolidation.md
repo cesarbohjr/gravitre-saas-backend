@@ -1,3 +1,13 @@
+## Runtime repair checkpoint after the development cutover
+
+The first installed-12 run exposed two concrete issues. The Voice wrapper's reusable call did not provide the read-only `pull-requests` permission ceiling required by the called lane's existing protected PR preflight; wrapper ceilings now include contents/actions/pull-requests **read only**, while execution jobs retain their narrower source permissions. This changes no provider grant and adds no write permission.
+
+The old database-initialization job referenced expired artifact run `39929148399` and treated a one-time empty-target readiness check as a normal PR check. PRs now execute the real baseline/read-only guard tests without remote calls. Actual initialization readiness remains a manual, read-only check, requires an explicit retained migration-run artifact, and retains checksum/data-free SQL, dedicated-project, empty-target and no-write enforcement. No assertion or remote target restriction was relaxed. The original 120 source jobs are retained and one offline initialization guard job is added: **121 mapped jobs**, 94 historical source definitions, 12 canonical files.
+
+The existing Master QA runner regenerated the repaired YAML, passed **24 focused unit checks**, the protected manual/billing/HubSpot source-guard pytest checks, and actionlint v1.7.12. Generated files were retrieved from that run's source-only output and are committed without the temporary generation step. This is generated-candidate proof; the resulting commit must still receive its own required-check and Voice startup readback. Main remains unchanged and production release authorization remains false.
+
+---
+
 ## Development branch cutover: 94 source YAML files → 12 canonical workflows
 
 The existing PR #611 branch now replaces the 94 source workflow files with the twelve generated canonical files in `.github/workflows/` (**net reduction: 82 files**). This is a reversible development/QA cutover, not a main-branch merge or production retirement. Main's installed automation and production services are unchanged. Original definitions are retained in `master-qa-workflow-source-contracts.json`, the complete source→job map is in the parity report, and Git history preserves rollback. No source is labeled DELETE_SAFE for a production release by the static tooling.
