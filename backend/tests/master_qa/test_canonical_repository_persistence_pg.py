@@ -694,3 +694,138 @@ def test_concurrent_actual_finalizers_create_one_core_record_per_channel(monkeyp
             assert pg.value(f"SELECT count(*) FROM public.{table}") == "1"
         assert pg.value(f"SELECT parameters->>'outcome_finalized' FROM public.workflow_runs WHERE id='{run_id}'") == "true"
         assert pg.value("SELECT count(*) FROM public.domain_event_outbox") == "1"
+
+
+@pytest.mark.parametrize("source", ["pending", "queued", "running", "verifying", "completed", "success", "failed", "error", "verification_inconclusive", "cancelled", "canceled", "pending_approval", "awaiting_approval", "needs_approval", "partial_success", "flagged_for_review", "paused"])
+def test_atomic_projection_status_contract_parity(source):
+    from app.workflows.run_status_contract import contract_run_status_v2
+    from app.workflows.schema_sync import mirror_legacy_run_to_contract
+    with canonical_pg_cluster() as pg:
+        run_id, _ = _fanout_run(pg)
+        # This test exercises legacy alias translation, not source execution
+        # admission. Only this disposable fixture's narrower status check is
+        # removed; production constraints and the other acceptance cases stay.
+        pg.psql("ALTER TABLE public.workflow_runs DROP CONSTRAINT workflow_runs_status_check")
+        # Supply proof to the fixture's existing terminal-output guard.
+        pg.psql(f"UPDATE public.workflow_runs SET parameters='{{\"verified_output\":{{}}}}',status='{source}' WHERE id='{run_id}'")
+        assert mirror_legacy_run_to_contract(PgRepositoryClient(pg), run_id)
+        assert pg.value(f"SELECT status FROM public.runs WHERE id='{run_id}'") == contract_run_status_v2(source)
+        assert pg.value(f"SELECT metadata->>'execution_lifecycle' FROM public.runs WHERE id='{run_id}'") == source
+
+
+def test_projection_refresh_serializes_late_caller_after_new_terminal_commit():
+    import psycopg
+    from concurrent.futures import ThreadPoolExecutor
+    import time
+    from app.workflows.schema_sync import mirror_legacy_run_to_contract
+    with canonical_pg_cluster() as pg:
+        run_id, _ = _fanout_run(pg)
+        # Hold an uncommitted new source state. The late refresh has no stale
+        # snapshot payload; it must block on this lock, then read the new truth.
+        with psycopg.connect(host=str(pg.sock), port=pg.port, dbname="postgres", user="postgres") as owner:
+            owner.execute("UPDATE public.workflow_runs SET status='cancelled',error_message='cancel won' WHERE id=%s", (run_id,))
+            with ThreadPoolExecutor(max_workers=1) as pool:
+                pending = pool.submit(mirror_legacy_run_to_contract, PgRepositoryClient(pg), run_id)
+                try:
+                    deadline = time.monotonic()+15
+                    while int(pg.value("SELECT count(*) FROM pg_stat_activity WHERE wait_event_type='Lock'")) < 1:
+                        assert time.monotonic() < deadline
+                        time.sleep(0.01)
+                    assert not pending.done()
+                finally:
+                    owner.commit()
+                assert pending.result(timeout=15)
+        assert pg.value(f"SELECT status FROM public.runs WHERE id='{run_id}'") == "cancelled"
+        assert pg.value(f"SELECT error_message FROM public.runs WHERE id='{run_id}'") == "cancel won"
+        assert pg.value("SELECT count(*) FROM public.domain_event_outbox") == "1"
+
+
+def test_atomic_projection_uses_real_text_array_logs_and_clears_removed_snapshots():
+    from app.workflows import repository
+    from app.workflows.schema_sync import mirror_legacy_run_to_contract
+    with canonical_pg_cluster() as pg:
+        run_id, _ = _fanout_run(pg)
+        client = PgRepositoryClient(pg)
+        step = repository.create_step(client, run_id, ORG, "step-1", 0, "First step", "invoke_tool")
+        pg.psql(f"UPDATE public.runs SET metadata='[]'::jsonb WHERE id='{run_id}'")
+        pg.psql(f"UPDATE public.run_steps SET metadata='\"legacy\"'::jsonb WHERE id='{step['id']}'")
+        pg.psql(f"UPDATE public.workflow_steps SET status='completed',logs='line one',input_snapshot='{{\"input\":1}}',output_snapshot='{{\"receipt\":true}}',started_at='2026-11-16T00:00:00Z',completed_at='2026-11-16T00:00:00.0019Z' WHERE id='{step['id']}'")
+        assert mirror_legacy_run_to_contract(client, run_id)
+        assert pg.value(f"SELECT jsonb_typeof(metadata) FROM public.runs WHERE id='{run_id}'") == "object"
+        assert pg.value(f"SELECT jsonb_typeof(metadata) FROM public.run_steps WHERE id='{step['id']}'") == "object"
+        assert pg.value(f"SELECT pg_typeof(logs) FROM public.run_steps WHERE id='{step['id']}'") == "text[]"
+        assert pg.value(f"SELECT logs[1] FROM public.run_steps WHERE id='{step['id']}'") == "line one"
+        assert pg.value(f"SELECT duration_ms FROM public.run_steps WHERE id='{step['id']}'") == "1"
+        pg.psql(f"UPDATE public.run_steps SET metadata=metadata||'{{\"consumer_note\":\"keep\"}}' WHERE id='{step['id']}'")
+        pg.psql(f"UPDATE public.workflow_steps SET logs='',input_snapshot=NULL,output_snapshot=NULL WHERE id='{step['id']}'")
+        assert mirror_legacy_run_to_contract(client, run_id)
+        assert pg.value(f"SELECT cardinality(logs) FROM public.run_steps WHERE id='{step['id']}'") == "0"
+        assert pg.value(f"SELECT metadata ? 'output_snapshot' OR metadata ? 'input_snapshot' FROM public.run_steps WHERE id='{step['id']}'") == "f"
+        assert pg.value(f"SELECT metadata->>'consumer_note' FROM public.run_steps WHERE id='{step['id']}'") == "keep"
+
+
+def test_terminal_projection_failure_rolls_back_source_proof_and_outbox():
+    import psycopg
+    with canonical_pg_cluster() as pg:
+        run_id, _ = _fanout_run(pg)
+        pg.psql("""
+CREATE FUNCTION public.qa_reject_projection() RETURNS trigger LANGUAGE plpgsql AS $$
+BEGIN RAISE EXCEPTION 'projection unavailable'; END $$;
+CREATE TRIGGER qa_reject_projection BEFORE UPDATE ON public.runs
+FOR EACH ROW EXECUTE FUNCTION public.qa_reject_projection();
+""")
+        with pytest.raises(psycopg.errors.RaiseException, match="projection unavailable"):
+            _atomic_outcome(PgRepositoryClient(pg), run_id)
+        assert pg.value(f"SELECT status FROM public.workflow_runs WHERE id='{run_id}'") == "running"
+        assert pg.value(f"SELECT parameters FROM public.workflow_runs WHERE id='{run_id}'") == "{}"
+        assert pg.value(f"SELECT status FROM public.runs WHERE id='{run_id}'") == "running"
+        assert pg.value("SELECT count(*) FROM public.domain_event_outbox") == "0"
+
+
+@pytest.mark.parametrize("conflict", ["run_tenant", "step_tenant", "step_parent"])
+def test_projection_identity_conflict_rolls_back_entire_refresh(conflict):
+    import psycopg
+    from app.workflows import repository
+    with canonical_pg_cluster() as pg:
+        run_id, _ = _fanout_run(pg)
+        step = repository.create_step(PgRepositoryClient(pg), run_id, ORG, "step-1", 0, "First", "noop")
+        foreign = "99999999-9999-4999-8999-999999999999"
+        if conflict == "run_tenant":
+            pg.psql(f"UPDATE public.runs SET org_id='{foreign}' WHERE id='{run_id}'")
+        elif conflict == "step_tenant":
+            pg.psql(f"UPDATE public.run_steps SET org_id='{foreign}' WHERE id='{step['id']}'")
+        else:
+            pg.psql(f"UPDATE public.run_steps SET run_id='{foreign}' WHERE id='{step['id']}'")
+        before = pg.value(f"SELECT row_to_json(r) FROM public.runs r WHERE id='{run_id}'")
+        with pytest.raises(psycopg.errors.CheckViolation):
+            PgRepositoryClient(pg).rpc("refresh_workflow_run_projection", {"p_run_id": run_id}).execute()
+        assert pg.value(f"SELECT row_to_json(r) FROM public.runs r WHERE id='{run_id}'") == before
+
+
+def test_projection_missing_run_unknown_status_and_privileges_fail_closed():
+    import psycopg
+    with canonical_pg_cluster() as pg:
+        run_id, _ = _fanout_run(pg)
+        client = PgRepositoryClient(pg)
+        with pytest.raises(psycopg.errors.NoDataFound):
+            client.rpc("refresh_workflow_run_projection", {"p_run_id": "99999999-9999-4999-8999-999999999999"}).execute()
+        # Reach the projection's own unknown-status guard independently of the
+        # fixture's source-status constraint; no production constraint changes.
+        pg.psql("ALTER TABLE public.workflow_runs DROP CONSTRAINT workflow_runs_status_check")
+        pg.psql(f"UPDATE public.workflow_runs SET status='unknown_state' WHERE id='{run_id}'")
+        with pytest.raises(psycopg.errors.InvalidParameterValue):
+            client.rpc("refresh_workflow_run_projection", {"p_run_id": run_id}).execute()
+        assert pg.value(f"SELECT status FROM public.runs WHERE id='{run_id}'") == "running"
+        for role in ('anon','authenticated'):
+            assert pg.value(f"SELECT has_function_privilege('{role}','public.refresh_workflow_run_projection(uuid)','EXECUTE')") == 'f'
+        assert pg.value("SELECT has_function_privilege('service_role','public.refresh_workflow_run_projection(uuid)','EXECUTE')") == 't'
+        assert pg.value("SELECT prosecdef FROM pg_proc WHERE oid='public.refresh_workflow_run_projection(uuid)'::regprocedure") == 'f'
+
+
+def test_projection_supports_production_source_without_started_at_column():
+    from app.workflows.schema_sync import mirror_legacy_run_to_contract
+    with canonical_pg_cluster() as pg:
+        run_id, _ = _fanout_run(pg)
+        pg.psql("ALTER TABLE public.workflow_runs DROP COLUMN started_at")
+        assert mirror_legacy_run_to_contract(PgRepositoryClient(pg), run_id)
+        assert pg.value(f"SELECT started_at=wr.created_at FROM public.runs r JOIN public.workflow_runs wr USING(id) WHERE r.id='{run_id}'") == 't'

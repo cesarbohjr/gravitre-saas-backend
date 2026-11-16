@@ -87,7 +87,7 @@ CREATE TABLE public.play_runs (
 CREATE TABLE public.run_steps (
  id uuid PRIMARY KEY, org_id uuid NOT NULL, run_id uuid NOT NULL,
  name text, status text, order_index integer, started_at timestamptz,
- completed_at timestamptz, duration_ms integer, logs jsonb,
+ completed_at timestamptz, duration_ms integer, logs text[],
  metadata jsonb, updated_at timestamptz
 );
 """
@@ -226,6 +226,8 @@ class PgRepositoryClient:
     def rpc(self, name, params):
         # Only recovery SQL functions used by offline acceptance are exposed.
         commands = {
+            "refresh_workflow_run_projection": (
+                "SELECT public.refresh_workflow_run_projection(%s)", ("p_run_id",), False),
             "persist_workflow_run_outcome": (
                 "SELECT public.persist_workflow_run_outcome(%s,%s,%s,%s,%s,%s,%s,%s,%s)",
                 ("p_run_id", "p_org_id", "p_status", "p_patch", "p_completed_at",
@@ -286,6 +288,7 @@ def canonical_pg_cluster():
             (MIGRATIONS / "20261107235500_p27_graph_recovery_leases.sql").read_text(),
             (MIGRATIONS / "20261116160849_atomic_workflow_run_parameters.sql").read_text(),
             (MIGRATIONS / "20261116161807_atomic_outcome_and_monotonic_receipts.sql").read_text(),
+            (MIGRATIONS / "20261116164627_atomic_run_projection_refresh.sql").read_text(),
         ) as server:
             yield server
     except subprocess.CalledProcessError as exc:

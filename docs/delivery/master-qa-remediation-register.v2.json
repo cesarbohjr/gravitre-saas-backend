@@ -807,8 +807,25 @@
           "backend/tests/master_qa/test_canonical_repository_persistence_pg.py"
         ],
         "local_validation": "209 focused checks pass: 145 outcome/delivery/lifecycle/ownership and 64 workflow/approval/recovery/audit cases.",
-        "postgres_validation": "PENDING_EXACT_HEAD_CI: four new cases use actual core writers with real SQL uniqueness, three process deaths after channel commit before receipt, and four concurrent actual finalizers.",
+        "postgres_validation": "PASS at cbc086906f1617b04ca48fc97dbeeb729bbbfa83: QA12 run 43909317615 job 133446690582; 321 runtime guards, 43 routing/context and 84 real PostgreSQL cases, including all four real-writer crash/concurrency cases. Full CI and full-finding gates remain separate.",
         "remaining": "Historical unkeyed effects require reconciliation; no legacy exactly-once claim. Optional email/Slack/SIEM/activity/bus delivery remains best effort and is not replayed on duplicate core acknowledgement. Provider effects, full surface parity, generic lifecycle/mirror races, deployed migration/rollback and owner gates remain open.",
+        "release_certified": false
+      },
+      "atomic_projection_batch_evidence": {
+        "scope": "Run and step projection refresh reads canonical sources under a source-row lock and commits both projections atomically; no caller-supplied stale snapshot or upsert fallback. Canonical terminal transaction invokes refresh before committing proof/status/outbox. Tenant/parent conflicts reject all writes; consumer metadata survives while removed source snapshots are cleared.",
+        "source": [
+          "backend/app/workflows/schema_sync.py",
+          "backend/app/workflows/repository.py"
+        ],
+        "migration": "supabase/migrations/20261116164627_atomic_run_projection_refresh.sql",
+        "tests": [
+          "backend/tests/workflows/test_schema_sync.py",
+          "backend/tests/master_qa/test_canonical_repository_persistence_pg.py"
+        ],
+        "local_validation": "216 focused local cases pass: 145 outcome/delivery/lifecycle/ownership and 71 workflow/approval/recovery/audit/projection boundary cases.",
+        "postgres_validation": "PENDING_EXACT_HEAD_CI: 25 added cases in the existing QA12 file. Harness run_steps.logs now matches production text[] instead of jsonb; test also covers production workflow_runs without started_at.",
+        "activation": "Apply after the two earlier additive outcome/parameter function migrations and before the backend revision. No hosted migration, backfill, deletion or deployment performed. Keep refresh and replacement terminal function together during rollback; leave functions for in-flight workers.",
+        "remaining": "Nonterminal source writes and their refresh remain separate transactions with explicit refresh failure logging; historical projections need controlled reconciliation. No full reader inventory, live surface/provider parity, storage retirement, deployed rollback or owner acceptance is certified.",
         "release_certified": false
       }
     },
@@ -1094,8 +1111,25 @@
           "backend/tests/master_qa/test_canonical_repository_persistence_pg.py"
         ],
         "local_validation": "209 focused checks pass: 145 outcome/delivery/lifecycle/ownership and 64 workflow/approval/recovery/audit cases.",
-        "postgres_validation": "PENDING_EXACT_HEAD_CI: four new cases use actual core writers with real SQL uniqueness, three process deaths after channel commit before receipt, and four concurrent actual finalizers.",
+        "postgres_validation": "PASS at cbc086906f1617b04ca48fc97dbeeb729bbbfa83: QA12 run 43909317615 job 133446690582; 321 runtime guards, 43 routing/context and 84 real PostgreSQL cases, including all four real-writer crash/concurrency cases. Full CI and full-finding gates remain separate.",
         "remaining": "Historical unkeyed effects require reconciliation; no legacy exactly-once claim. Optional email/Slack/SIEM/activity/bus delivery remains best effort and is not replayed on duplicate core acknowledgement. Provider effects, full surface parity, generic lifecycle/mirror races, deployed migration/rollback and owner gates remain open.",
+        "release_certified": false
+      },
+      "atomic_projection_batch_evidence": {
+        "scope": "Run and step projection refresh reads canonical sources under a source-row lock and commits both projections atomically; no caller-supplied stale snapshot or upsert fallback. Canonical terminal transaction invokes refresh before committing proof/status/outbox. Tenant/parent conflicts reject all writes; consumer metadata survives while removed source snapshots are cleared.",
+        "source": [
+          "backend/app/workflows/schema_sync.py",
+          "backend/app/workflows/repository.py"
+        ],
+        "migration": "supabase/migrations/20261116164627_atomic_run_projection_refresh.sql",
+        "tests": [
+          "backend/tests/workflows/test_schema_sync.py",
+          "backend/tests/master_qa/test_canonical_repository_persistence_pg.py"
+        ],
+        "local_validation": "216 focused local cases pass: 145 outcome/delivery/lifecycle/ownership and 71 workflow/approval/recovery/audit/projection boundary cases.",
+        "postgres_validation": "PENDING_EXACT_HEAD_CI: 25 added cases in the existing QA12 file. Harness run_steps.logs now matches production text[] instead of jsonb; test also covers production workflow_runs without started_at.",
+        "activation": "Apply after the two earlier additive outcome/parameter function migrations and before the backend revision. No hosted migration, backfill, deletion or deployment performed. Keep refresh and replacement terminal function together during rollback; leave functions for in-flight workers.",
+        "remaining": "Nonterminal source writes and their refresh remain separate transactions with explicit refresh failure logging; historical projections need controlled reconciliation. No full reader inventory, live surface/provider parity, storage retirement, deployed rollback or owner acceptance is certified.",
         "release_certified": false
       }
     },
@@ -1377,7 +1411,7 @@
           "backend/tests/master_qa/test_canonical_repository_persistence_pg.py"
         ],
         "local_validation": "209 focused checks pass: 145 outcome/delivery/lifecycle/ownership and 64 workflow/approval/recovery/audit cases.",
-        "postgres_validation": "PENDING_EXACT_HEAD_CI: four new cases use actual core writers with real SQL uniqueness, three process deaths after channel commit before receipt, and four concurrent actual finalizers.",
+        "postgres_validation": "PASS at cbc086906f1617b04ca48fc97dbeeb729bbbfa83: QA12 run 43909317615 job 133446690582; 321 runtime guards, 43 routing/context and 84 real PostgreSQL cases, including all four real-writer crash/concurrency cases. Full CI and full-finding gates remain separate.",
         "remaining": "Historical unkeyed effects require reconciliation; no legacy exactly-once claim. Optional email/Slack/SIEM/activity/bus delivery remains best effort and is not replayed on duplicate core acknowledgement. Provider effects, full surface parity, generic lifecycle/mirror races, deployed migration/rollback and owner gates remain open.",
         "release_certified": false
       }
@@ -1726,7 +1760,7 @@
           "backend/tests/master_qa/test_canonical_repository_persistence_pg.py"
         ],
         "local_validation": "209 focused checks pass: 145 outcome/delivery/lifecycle/ownership and 64 workflow/approval/recovery/audit cases.",
-        "postgres_validation": "PENDING_EXACT_HEAD_CI: four new cases use actual core writers with real SQL uniqueness, three process deaths after channel commit before receipt, and four concurrent actual finalizers.",
+        "postgres_validation": "PASS at cbc086906f1617b04ca48fc97dbeeb729bbbfa83: QA12 run 43909317615 job 133446690582; 321 runtime guards, 43 routing/context and 84 real PostgreSQL cases, including all four real-writer crash/concurrency cases. Full CI and full-finding gates remain separate.",
         "remaining": "Historical unkeyed effects require reconciliation; no legacy exactly-once claim. Optional email/Slack/SIEM/activity/bus delivery remains best effort and is not replayed on duplicate core acknowledgement. Provider effects, full surface parity, generic lifecycle/mirror races, deployed migration/rollback and owner gates remain open.",
         "release_certified": false
       }
@@ -2113,8 +2147,25 @@
           "backend/tests/master_qa/test_canonical_repository_persistence_pg.py"
         ],
         "local_validation": "209 focused checks pass: 145 outcome/delivery/lifecycle/ownership and 64 workflow/approval/recovery/audit cases.",
-        "postgres_validation": "PENDING_EXACT_HEAD_CI: four new cases use actual core writers with real SQL uniqueness, three process deaths after channel commit before receipt, and four concurrent actual finalizers.",
+        "postgres_validation": "PASS at cbc086906f1617b04ca48fc97dbeeb729bbbfa83: QA12 run 43909317615 job 133446690582; 321 runtime guards, 43 routing/context and 84 real PostgreSQL cases, including all four real-writer crash/concurrency cases. Full CI and full-finding gates remain separate.",
         "remaining": "Historical unkeyed effects require reconciliation; no legacy exactly-once claim. Optional email/Slack/SIEM/activity/bus delivery remains best effort and is not replayed on duplicate core acknowledgement. Provider effects, full surface parity, generic lifecycle/mirror races, deployed migration/rollback and owner gates remain open.",
+        "release_certified": false
+      },
+      "atomic_projection_batch_evidence": {
+        "scope": "Run and step projection refresh reads canonical sources under a source-row lock and commits both projections atomically; no caller-supplied stale snapshot or upsert fallback. Canonical terminal transaction invokes refresh before committing proof/status/outbox. Tenant/parent conflicts reject all writes; consumer metadata survives while removed source snapshots are cleared.",
+        "source": [
+          "backend/app/workflows/schema_sync.py",
+          "backend/app/workflows/repository.py"
+        ],
+        "migration": "supabase/migrations/20261116164627_atomic_run_projection_refresh.sql",
+        "tests": [
+          "backend/tests/workflows/test_schema_sync.py",
+          "backend/tests/master_qa/test_canonical_repository_persistence_pg.py"
+        ],
+        "local_validation": "216 focused local cases pass: 145 outcome/delivery/lifecycle/ownership and 71 workflow/approval/recovery/audit/projection boundary cases.",
+        "postgres_validation": "PENDING_EXACT_HEAD_CI: 25 added cases in the existing QA12 file. Harness run_steps.logs now matches production text[] instead of jsonb; test also covers production workflow_runs without started_at.",
+        "activation": "Apply after the two earlier additive outcome/parameter function migrations and before the backend revision. No hosted migration, backfill, deletion or deployment performed. Keep refresh and replacement terminal function together during rollback; leave functions for in-flight workers.",
+        "remaining": "Nonterminal source writes and their refresh remain separate transactions with explicit refresh failure logging; historical projections need controlled reconciliation. No full reader inventory, live surface/provider parity, storage retirement, deployed rollback or owner acceptance is certified.",
         "release_certified": false
       }
     },
@@ -2225,8 +2276,25 @@
           "backend/tests/master_qa/test_canonical_repository_persistence_pg.py"
         ],
         "local_validation": "209 focused checks pass: 145 outcome/delivery/lifecycle/ownership and 64 workflow/approval/recovery/audit cases.",
-        "postgres_validation": "PENDING_EXACT_HEAD_CI: four new cases use actual core writers with real SQL uniqueness, three process deaths after channel commit before receipt, and four concurrent actual finalizers.",
+        "postgres_validation": "PASS at cbc086906f1617b04ca48fc97dbeeb729bbbfa83: QA12 run 43909317615 job 133446690582; 321 runtime guards, 43 routing/context and 84 real PostgreSQL cases, including all four real-writer crash/concurrency cases. Full CI and full-finding gates remain separate.",
         "remaining": "Historical unkeyed effects require reconciliation; no legacy exactly-once claim. Optional email/Slack/SIEM/activity/bus delivery remains best effort and is not replayed on duplicate core acknowledgement. Provider effects, full surface parity, generic lifecycle/mirror races, deployed migration/rollback and owner gates remain open.",
+        "release_certified": false
+      },
+      "atomic_projection_batch_evidence": {
+        "scope": "Run and step projection refresh reads canonical sources under a source-row lock and commits both projections atomically; no caller-supplied stale snapshot or upsert fallback. Canonical terminal transaction invokes refresh before committing proof/status/outbox. Tenant/parent conflicts reject all writes; consumer metadata survives while removed source snapshots are cleared.",
+        "source": [
+          "backend/app/workflows/schema_sync.py",
+          "backend/app/workflows/repository.py"
+        ],
+        "migration": "supabase/migrations/20261116164627_atomic_run_projection_refresh.sql",
+        "tests": [
+          "backend/tests/workflows/test_schema_sync.py",
+          "backend/tests/master_qa/test_canonical_repository_persistence_pg.py"
+        ],
+        "local_validation": "216 focused local cases pass: 145 outcome/delivery/lifecycle/ownership and 71 workflow/approval/recovery/audit/projection boundary cases.",
+        "postgres_validation": "PENDING_EXACT_HEAD_CI: 25 added cases in the existing QA12 file. Harness run_steps.logs now matches production text[] instead of jsonb; test also covers production workflow_runs without started_at.",
+        "activation": "Apply after the two earlier additive outcome/parameter function migrations and before the backend revision. No hosted migration, backfill, deletion or deployment performed. Keep refresh and replacement terminal function together during rollback; leave functions for in-flight workers.",
+        "remaining": "Nonterminal source writes and their refresh remain separate transactions with explicit refresh failure logging; historical projections need controlled reconciliation. No full reader inventory, live surface/provider parity, storage retirement, deployed rollback or owner acceptance is certified.",
         "release_certified": false
       }
     },
@@ -2898,8 +2966,25 @@
           "backend/tests/master_qa/test_canonical_repository_persistence_pg.py"
         ],
         "local_validation": "209 focused checks pass: 145 outcome/delivery/lifecycle/ownership and 64 workflow/approval/recovery/audit cases.",
-        "postgres_validation": "PENDING_EXACT_HEAD_CI: four new cases use actual core writers with real SQL uniqueness, three process deaths after channel commit before receipt, and four concurrent actual finalizers.",
+        "postgres_validation": "PASS at cbc086906f1617b04ca48fc97dbeeb729bbbfa83: QA12 run 43909317615 job 133446690582; 321 runtime guards, 43 routing/context and 84 real PostgreSQL cases, including all four real-writer crash/concurrency cases. Full CI and full-finding gates remain separate.",
         "remaining": "Historical unkeyed effects require reconciliation; no legacy exactly-once claim. Optional email/Slack/SIEM/activity/bus delivery remains best effort and is not replayed on duplicate core acknowledgement. Provider effects, full surface parity, generic lifecycle/mirror races, deployed migration/rollback and owner gates remain open.",
+        "release_certified": false
+      },
+      "atomic_projection_batch_evidence": {
+        "scope": "Run and step projection refresh reads canonical sources under a source-row lock and commits both projections atomically; no caller-supplied stale snapshot or upsert fallback. Canonical terminal transaction invokes refresh before committing proof/status/outbox. Tenant/parent conflicts reject all writes; consumer metadata survives while removed source snapshots are cleared.",
+        "source": [
+          "backend/app/workflows/schema_sync.py",
+          "backend/app/workflows/repository.py"
+        ],
+        "migration": "supabase/migrations/20261116164627_atomic_run_projection_refresh.sql",
+        "tests": [
+          "backend/tests/workflows/test_schema_sync.py",
+          "backend/tests/master_qa/test_canonical_repository_persistence_pg.py"
+        ],
+        "local_validation": "216 focused local cases pass: 145 outcome/delivery/lifecycle/ownership and 71 workflow/approval/recovery/audit/projection boundary cases.",
+        "postgres_validation": "PENDING_EXACT_HEAD_CI: 25 added cases in the existing QA12 file. Harness run_steps.logs now matches production text[] instead of jsonb; test also covers production workflow_runs without started_at.",
+        "activation": "Apply after the two earlier additive outcome/parameter function migrations and before the backend revision. No hosted migration, backfill, deletion or deployment performed. Keep refresh and replacement terminal function together during rollback; leave functions for in-flight workers.",
+        "remaining": "Nonterminal source writes and their refresh remain separate transactions with explicit refresh failure logging; historical projections need controlled reconciliation. No full reader inventory, live surface/provider parity, storage retirement, deployed rollback or owner acceptance is certified.",
         "release_certified": false
       }
     },

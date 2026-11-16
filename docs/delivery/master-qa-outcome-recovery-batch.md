@@ -193,3 +193,50 @@ effort: a crash after inbox insertion can leave an optional channel unattempted,
 and duplicate core delivery does not replay it. Core idempotency does not prove
 provider effect idempotency, generic lifecycle/mirror fencing, deployed migration
 or rollback, full Chat/Agent parity or owner acceptance. All 43 findings stay open.
+
+
+## Atomic projection follow-up (2026-11-16)
+
+The prior core-delivery checkpoint `cbc086906f1617b04ca48fc97dbeeb729bbbfa83`
+passed [QA12 job 133446690582](https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/43909317615/job/133446690582):
+**321 runtime guards, 43 routing/context and 84 real PostgreSQL cases**, including
+all four actual-writer commit-before-receipt/concurrency cases. Full CI and
+per-finding live/owner gates remain separate.
+
+ECO-014 / DEC-007 / DEC-019 now receive a bounded projection repair. The old
+application helper read a run and its steps, then upserted snapshots in separate
+requests, allowing stale writes and partial mirrors. `refresh_workflow_run_projection`
+now takes a canonical source-row lock before reading and writing both intentional
+projections in one transaction. The application passes only run identity, never
+an old status or snapshot. Unsupported source status, mismatched projection
+organization or step parent rejects the entire refresh. The helper returns an
+explicit boolean acknowledgement and never falls back to client upserts.
+
+The canonical terminal SQL mutation invokes this refresh inside its transaction,
+including same-status retries, so projection failure rolls back proof, terminal
+status and outbox emission. The redundant post-commit application refresh on this
+path is removed. Other nonterminal repository callers retain their existing
+separate source mutation / refresh boundary and logged failures; this is not a
+full generic-writer atomicity or live-consumer certificate.
+
+The projection preserves unrelated consumer metadata, clears removed source
+input/output snapshots, uses production `text[]` step logs and truncates duration
+milliseconds like the prior Python helper. The disposable fixture previously
+used `jsonb` for contract logs; it now matches the production schema. Production
+workflow_runs historically lacks started_at, so refresh reads that field only
+when present and otherwise uses created_at for the displayed start.
+
+**216 focused local checks pass** (145 outcome/delivery/lifecycle/ownership and
+71 workflow/approval/recovery/audit/projection boundary). **25 new PostgreSQL cases**
+extend the existing acceptance file: 17 run-status translations, a deterministic
+late-writer source lock, log/snapshot/metadata semantics, projection-induced
+terminal rollback, three tenant/parent conflicts, missing-run/status/privilege
+fences, and the source schema without started_at. Actual database validation for
+this revision remains pending; local unit transports do not prove SQL execution.
+
+Apply the additive projection function and replacement terminal function after
+the prior parameter/outcome migrations and before backend activation. The new
+function is SECURITY INVOKER with PUBLIC/anon/authenticated execution revoked;
+service_role alone receives execution. No hosted migration, backfill, deletion,
+deployment or storage retirement was performed. Rollback must retain the refresh
+function while any terminal function/worker calls it. All 43 findings stay open.

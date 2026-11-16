@@ -357,7 +357,7 @@ def persist_run_outcome(
     if data["accepted"]:
         if data["status"] != status or not isinstance(data.get("parameters"), dict):
             raise RuntimeError("atomic outcome proof was not acknowledged")
-        mirror_legacy_run_to_contract(client, run_id)
+        # The SQL mutation refreshes run/step projections in the same transaction.
     return data
 
 
