@@ -27,9 +27,9 @@ concurrency:
     && ('extension-release')) || (inputs.source == 'navigation-e2e' && (format('navigation-e2e-{0}', github.ref))) || github.run_id)
     }}
   cancel-in-progress: ${{ (inputs.source == 'authenticated-click-audit' && (false)) || (inputs.source == 'browser-fallback-recovery-certification'
-    && (true)) || (inputs.source == 'conversational-product-acceptance' && (format('{0}', github.ref != 'refs/heads/main')))
-    || (inputs.source == 'desktop-tauri' && (false)) || (inputs.source == 'extension-release' && (false)) || (inputs.source
-    == 'navigation-e2e' && (true)) || false }}
+    && (true)) || (inputs.source == 'conversational-product-acceptance' && (github.ref != 'refs/heads/main')) || (inputs.source
+    == 'desktop-tauri' && (false)) || (inputs.source == 'extension-release' && (false)) || (inputs.source == 'navigation-e2e'
+    && (true)) || false }}
 jobs:
   dispatch_contract:
     name: Validate selected source inputs

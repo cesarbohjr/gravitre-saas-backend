@@ -1,3 +1,9 @@
+## Required-check verification resolved; candidate syntax repairs
+
+Authenticated GitHub admin UI readback of main rule `85943377` confirms five required GitHub Actions contexts: **Backend (pytest)**, **Dependency audit**, **Integration Smoke Test**, **Shared runtime text/voice gate**, and **Web (lint + typecheck + build)**. All are owned by existing `ci.yml`. Up-to-date-branch checks, conversation resolution and administrator enforcement remain enabled. No settings were changed. Evidence is in `master-qa-required-checks-readback.json`; the compiler checks that the retained Core CI still supplies all five names. The integration API remains 403, but required-check verification is no longer blocked.
+
+The first candidate validation run passed the eight source-contract tests but actionlint caught two compiler defects: boolean cancellation expressions had been stringified and bare step-level input conditions had not been namespaced. Both transformations are repaired, with regression tests added. There are now eleven focused checks. Runtime candidate execution and automatic-trigger cutover remain outstanding; do not call consolidation complete or restart the 43-finding program yet.
+
 ## Replacement implementation checkpoint — staged manual candidates
 
 Twelve candidate YAML files are implemented under `.github/workflow-candidates/`, covering all 94 source workflows and 120 source jobs. `scripts/build-canonical-workflows.py --check` compares them with current source contracts; `scripts/tests/test_canonical_workflows.py` has eight focused checks for job/step retention, permissions/environments, dependencies, typed inputs/defaults, manual approval input validation, reusable-call resolution and tamper rejection. The existing Master QA synthetic job now checks candidates and lints an isolated twelve-file layout using actionlint v1.7.12, without running candidate jobs or changing its existing check name.

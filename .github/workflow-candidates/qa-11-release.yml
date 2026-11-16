@@ -411,13 +411,13 @@ jobs:
 
         '
     - name: Add absent safety pins without redeploying
-      if: inputs.mode == 'apply'
+      if: inputs.railway_safety_vars__mode == 'apply'
       run: "set -euo pipefail\nif [ ! -s \"$RUNNER_TEMP/pins.txt\" ]; then\n  echo \"Every safety pin is already present.\"\
         \n  exit 0\nfi\nargs=()\nwhile IFS= read -r pin; do\n  case \"$pin\" in\n    *=true) [ \"${pin%%=*}\" = \"SOURCE_PURGE_DRY_RUN\"\
         \ ] || { echo \"refusing to set $pin\"; exit 1; } ;;\n  esac\n  args+=(--set \"$pin\")\ndone < \"$RUNNER_TEMP/pins.txt\"\
         \nrailway variables --service \"$SVC\" --environment \"$ENV_NAME\" --skip-deploys \"${args[@]}\"\n"
     - name: Verify
-      if: inputs.mode == 'apply'
+      if: inputs.railway_safety_vars__mode == 'apply'
       run: "set -euo pipefail\nrailway variables --service \"$SVC\" --environment \"$ENV_NAME\" --json > \"$RUNNER_TEMP/vars-after.json\"\
         \npython3 scripts/railway_safety_vars.py \"$RUNNER_TEMP/vars-after.json\" --plan-out \"$RUNNER_TEMP/pins-after.txt\"\
         \ | tee \"$RUNNER_TEMP/after.txt\"\n{ echo '### Railway safety variables (after)'; echo '```'; cat \"$RUNNER_TEMP/after.txt\"\
@@ -505,7 +505,7 @@ jobs:
         \ /tmp/vars.json\nset +e\nrailway redeploy --service \"$SVC\" --environment \"$ENV_NAME\" --yes\necho \"railway_redeploy_exit=$?\"\
         \nset -e\n"
     - name: Wait for LIVE (health flags and/or tip) then probe
-      if: inputs.enable_live == 'true'
+      if: inputs.unified_turn_phase4_cutover__enable_live == 'true'
       env:
         LIVE_API_BASE: https://api.gravitre.app
         SUPABASE_URL: ${{ secrets.SUPABASE_URL }}

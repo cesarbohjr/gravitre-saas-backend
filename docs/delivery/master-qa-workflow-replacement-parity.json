@@ -5,12 +5,21 @@
   "static_contract_parity": "PASS",
   "runtime_parity": "NOT_RUN",
   "automatic_trigger_parity": "NOT_IMPLEMENTED",
-  "required_checks": "BLOCKED_ADMIN_READ",
+  "required_checks": "VERIFIED_ADMIN_UI",
   "retirement_authorized": false,
+  "required_contexts": [
+    "Backend (pytest)",
+    "Dependency audit",
+    "Integration Smoke Test",
+    "Shared runtime text/voice gate",
+    "Web (lint + typecheck + build)"
+  ],
+  "required_checks_evidence_url": "https://github.com/cesarbohjr/gravitre-saas-backend/settings/branch_protection_rules/85943377",
   "limitations": [
     "Candidates preserve manual entrypoints only; source automatic triggers remain active.",
     "Candidate concurrency groups intentionally cannot cancel original runs.",
     "Repository-wide callers, protected environment workflow restrictions and exact-head runs require verification.",
+    "GitHub workflow identity changes and source-path references require explicit cutover review.",
     "Local reusable acceptance calls target the eventual canonical installed path."
   ],
   "sources": [

@@ -13,7 +13,7 @@ name: QA 01-core
 concurrency:
   group: ${{ format('candidate-{0}', (inputs.source == 'ci' && (format('ci-{0}', github.event_name == 'pull_request' && format('pr-{0}',
     github.event.pull_request.number) || github.ref))) || github.run_id) }}
-  cancel-in-progress: ${{ (inputs.source == 'ci' && (format('{0}', github.event_name == 'pull_request'))) || false }}
+  cancel-in-progress: ${{ (inputs.source == 'ci' && (github.event_name == 'pull_request')) || false }}
 jobs:
   dispatch_contract:
     name: Validate selected source inputs

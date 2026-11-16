@@ -158,6 +158,10 @@ print('Selected source input contract validated; this is not execution acceptanc
 
             for jid, original in source['jobs'].items():
                 job = walk(copy.deepcopy(original), rewrite)
+                for step in job.get('steps', []):
+                    # Step-level conditions accept bare expressions, too.
+                    if isinstance(step.get('if'), str) and '${{' not in step['if']:
+                        step['if'] = expression(rewrite('${{ ' + step['if'] + ' }}'))
                 # Preserve the former displayed check name even for unnamed jobs.
                 job.setdefault('name', jid)
                 needs = original.get('needs', [])
@@ -185,7 +189,11 @@ print('Selected source input contract validated; this is not execution acceptanc
             if concurrency:
                 concurrency = {'group': concurrency} if isinstance(concurrency, str) else concurrency
                 group = template_expression(walk(concurrency['group'], rewrite))
-                cancel = template_expression(concurrency.get('cancel-in-progress', False))
+                cancel_value = concurrency.get('cancel-in-progress', False)
+                # A complete expression retains its boolean type. format()
+                # would turn false into the non-empty (truthy) string 'false'.
+                cancel = (str(cancel_value).lower() if isinstance(cancel_value, bool)
+                          else expression(walk(cancel_value, rewrite)))
                 groups.append(f'(inputs.source == {literal(name)} && ({group}))')
                 # false values must not fall through to another selected source;
                 # clauses for other sources are false, leaving the final false.
@@ -206,6 +214,14 @@ print('Selected source input contract validated; this is not execution acceptanc
 
 def generate(root, check=False):
     lanes, records = build(root)
+    protection = json.loads((root / 'docs/delivery/master-qa-required-checks-readback.json').read_text())
+    required = {item['context'] for item in protection['required_status_checks']}
+    core = load(root / '.github/workflows/ci.yml')
+    current_checks = {job.get('name', jid) for jid, job in core['jobs'].items()}
+    if (protection.get('branch_pattern') != 'main' or not protection.get('require_status_checks')
+            or not required or not required <= current_checks
+            or any(item['source_workflow'] != '.github/workflows/ci.yml' for item in protection['required_status_checks'])):
+        raise ValueError('required-check readback is inconsistent with retained Core CI')
     directory = root / '.github/workflow-candidates'
     if check and {p.name for p in directory.glob('*.yml')} != set(lanes):
         raise ValueError('candidate lane count or filenames differ')
@@ -221,10 +237,13 @@ def generate(root, check=False):
               'source_job_count': sum(len(r['jobs']) for r in records),
               'static_contract_parity': 'PASS', 'runtime_parity': 'NOT_RUN',
               'automatic_trigger_parity': 'NOT_IMPLEMENTED',
-              'required_checks': 'BLOCKED_ADMIN_READ', 'retirement_authorized': False,
+              'required_checks': 'VERIFIED_ADMIN_UI', 'retirement_authorized': False,
+              'required_contexts': sorted(required),
+              'required_checks_evidence_url': protection['evidence_url'],
               'limitations': ['Candidates preserve manual entrypoints only; source automatic triggers remain active.',
                               'Candidate concurrency groups intentionally cannot cancel original runs.',
                               'Repository-wide callers, protected environment workflow restrictions and exact-head runs require verification.',
+                              'GitHub workflow identity changes and source-path references require explicit cutover review.',
                               'Local reusable acceptance calls target the eventual canonical installed path.'],
               'sources': records}
     report_path = root / 'docs/delivery/master-qa-workflow-replacement-parity.json'

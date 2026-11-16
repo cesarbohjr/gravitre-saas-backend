@@ -103,6 +103,21 @@ class CanonicalContracts(unittest.TestCase):
             self.assertIn("format('candidate-{0}'", lane['concurrency']['group'])
             self.assertFalse('permissions' in lane)  # permissions remain source/job-specific
 
+    def test_cancellation_conditions_retain_boolean_type(self):
+        for lane in self.lanes.values():
+            self.assertNotIn('format(', lane['concurrency']['cancel-in-progress'])
+        core = self.lanes['qa-01-core.yml']['concurrency']['cancel-in-progress']
+        self.assertIn("github.event_name == 'pull_request'", core)
+
+    def test_bare_step_approval_conditions_use_namespaced_inputs(self):
+        jobs = self.lanes['qa-11-release.yml']['jobs']
+        conditions = [step.get('if', '') for step in jobs['railway_safety_vars__safety-vars']['steps']]
+        self.assertIn("inputs.railway_safety_vars__mode == 'apply'", conditions)
+        self.assertNotIn("inputs.mode == 'apply'", conditions)
+        cutover = jobs['unified_turn_phase4_cutover__cutover']
+        self.assertIn("inputs.unified_turn_phase4_cutover__enable_live == 'true'",
+                      [step.get('if', '') for step in cutover['steps']])
+
     def test_reusable_acceptance_calls_resolve_inside_twelve_file_layout(self):
         for lane in self.lanes.values():
             for job in lane['jobs'].values():
@@ -120,6 +135,14 @@ class CanonicalContracts(unittest.TestCase):
             path.write_text(path.read_text().replace("needs.dispatch_contract.result == 'success'", 'always()', 1))
             with self.assertRaisesRegex(ValueError, 'candidate differs'):
                 canonical.generate(root, check=True)
+
+    def test_required_check_evidence_matches_retained_core_names(self):
+        report = canonical.generate(ROOT, check=True)
+        self.assertEqual(set(report['required_contexts']), {
+            'Backend (pytest)', 'Dependency audit', 'Integration Smoke Test',
+            'Shared runtime text/voice gate', 'Web (lint + typecheck + build)',
+        })
+        self.assertFalse(report['retirement_authorized'])
 
     def test_yaml_loader_preserves_on_and_boolean_input_types(self):
         import yaml
