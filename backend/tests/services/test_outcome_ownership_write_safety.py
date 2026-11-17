@@ -68,18 +68,16 @@ def test_write_timeout_is_not_retried_and_reports_uncertain(tool_ctx: ToolContex
     assert result.error_code == "outcome_uncertain"
 
 
-def test_write_connect_error_is_safe_to_retry(tool_ctx: ToolContext) -> None:
+def test_write_connect_error_is_not_retried_under_durable_claim(tool_ctx: ToolContext) -> None:
     calls = {"n": 0}
 
     def flaky(*_a, **_k):
         calls["n"] += 1
-        if calls["n"] == 1:
-            raise httpx.ConnectError("connection refused")
-        return NormalizedResult(success=True, action="slack.post_message", data={"ok": True, "ts": "1"})
+        raise httpx.ConnectError("connection refused")
 
     result = _invoke_with(tool_ctx, "slack.post_message", flaky)
-    assert result.success is True
-    assert calls["n"] == 2
+    assert calls["n"] == 1, "one fenced claim must never resend a provider write"
+    assert result.success is False
 
 
 def test_read_timeout_still_retries(tool_ctx: ToolContext) -> None:
@@ -238,19 +236,18 @@ def test_write_unknown_transient_error_is_not_retried(tool_ctx: ToolContext) -> 
     assert calls["n"] == 1
 
 
-def test_write_rate_limit_is_still_retried(tool_ctx: ToolContext) -> None:
+def test_write_rate_limit_is_not_retried_under_durable_claim(tool_ctx: ToolContext) -> None:
     from app.services.tool_types import ToolRateLimitedError
 
     calls = {"n": 0}
 
-    def limited_then_ok(*_a, **_k):
+    def limited(*_a, **_k):
         calls["n"] += 1
-        if calls["n"] == 1:
-            raise ToolRateLimitedError("429")
-        return NormalizedResult(success=True, action="slack.post_message", data={"ok": True, "ts": "1"})
+        raise ToolRateLimitedError("429")
 
-    result = _invoke_with(tool_ctx, "slack.post_message", limited_then_ok)
-    assert result.success is True and calls["n"] == 2
+    result = _invoke_with(tool_ctx, "slack.post_message", limited)
+    assert calls["n"] == 1
+    assert result.success is False
 
 
 def test_read_5xx_still_retries(tool_ctx: ToolContext) -> None:
