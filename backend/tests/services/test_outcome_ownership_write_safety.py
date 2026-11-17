@@ -40,10 +40,18 @@ def _invoke_with(tool_ctx: ToolContext, action: str, impl):
     with patch("app.services.write_preflight.enforce_invoke_write_preflight", side_effect=lambda _c, _a, p: p), patch(
         "app.services.read_preflight.enforce_invoke_preflight", side_effect=lambda _c, _a, p: p
     ):
-        with patch("app.services.tool_service._TOOL_REGISTRY", {action: impl}):
-            with patch("app.services.tool_service.write_audit_event"):
-                with patch("app.services.tool_service.time.sleep"):
-                    return invoke_tool(tool_ctx, action, {})
+        # Exercise the provider/outcome branch with an explicitly fenced test
+        # reservation; never disable the production durable-write guard.
+        from app.services.write_invoke_idempotency import WriteClaimResult, WriteFinalizeResult
+        with patch("app.services.write_invoke_idempotency.claim_write_invoke",
+                   return_value=WriteClaimResult(outcome="claimed", claim_token="test-fence", claim_generation=1)), patch(
+            "app.services.write_invoke_idempotency.finalize_write_invoke",
+            return_value=WriteFinalizeResult(outcome="finalized")
+        ):
+            with patch("app.services.tool_service._TOOL_REGISTRY", {action: impl}):
+                with patch("app.services.tool_service.write_audit_event"):
+                    with patch("app.services.tool_service.time.sleep"):
+                        return invoke_tool(tool_ctx, action, {})
 
 
 def test_write_timeout_is_not_retried_and_reports_uncertain(tool_ctx: ToolContext) -> None:
