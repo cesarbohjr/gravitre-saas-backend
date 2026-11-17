@@ -5357,11 +5357,11 @@ def invoke_tool(ctx: ToolContext, action: str, params: dict[str, Any] | None = N
     write_idempotency_key: str | None = None
     write_logical_action_id: str | None = None
     write_claim_token: str | None = None
-    idempotency_enabled = _is_write_invoke(action) and (
-        bool(getattr(ctx, "autonomous_write_guarded", False))
-        or bool(getattr(ctx, "write_idempotency_required", False))
-        or bool(getattr(ctx.settings, "write_invoke_idempotency_enabled", False))
-    )
+    # Every catalog-classified provider WRITE must reserve a durable claim.
+    # The old feature-flag gate let Chat, Voice, ReAct, and non-autonomous
+    # workflow callers bypass the ledger and reach the same provider executor.
+    # Fail closed if the service-role ledger is unavailable.
+    idempotency_enabled = _is_write_invoke(action)
     if idempotency_enabled:
         from app.services.write_invoke_idempotency import (
             WriteIdempotencyUnavailable,
@@ -5465,7 +5465,9 @@ def invoke_tool(ctx: ToolContext, action: str, params: dict[str, Any] | None = N
     # A single autonomous claim may invoke the provider at most once. Even a
     # seemingly pre-send transport failure is not sufficient evidence to issue
     # another request under the same durable authorization without reconciliation.
-    attempts = _invoke_attempt_budget(ctx, action)
+    # A claimed WRITE may have reached the provider before a timeout or crash.
+    # Never retry it under the same reservation without provider reconciliation.
+    attempts = 1 if idempotency_enabled else _invoke_attempt_budget(ctx, action)
     for attempt in range(attempts):
         started = time.perf_counter()
         try:
