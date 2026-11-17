@@ -5371,7 +5371,12 @@ def invoke_tool(ctx: ToolContext, action: str, params: dict[str, Any] | None = N
         )
 
         write_idempotency_key, write_logical_action_id = build_write_idempotency_key(ctx, action, params)
-        if getattr(ctx, "autonomous_write_guarded", False):
+        if getattr(ctx, "autonomous_write_guarded", False) or (
+            declared_authority is not None and declared_authority.kind == "run"
+        ):
+            # Run-scoped approvals must be checked atomically with reservation,
+            # including non-autonomous callers. A separate approval read plus
+            # generic claim leaves a revocation race before provider dispatch.
             from app.services.write_invoke_idempotency import claim_approved_autonomous_write
             claim = claim_approved_autonomous_write(
                 ctx.client,
