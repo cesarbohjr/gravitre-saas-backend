@@ -464,3 +464,61 @@ P27-02/03/04/06/08 owners. Live provider accounts, complete write/revocation
 journeys, historical reconciliation, physical voice/device and deployed rollback
 remain outstanding. No merge, hosted migration, provider mutation, deployment,
 retirement or release authorization was performed; all 43 findings stay uncertified.
+
+
+## Native pre-approval capture stabilization — bounded candidate repair
+
+Source `be809855bd9503dbcd2b3c9c0b7a7765f6205a7c` passed nine CI lanes.
+[Core backend](https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/44014575248/job/133809369493)
+passed the **complete 94-case consolidated ingress gate** and **17,224 backend
+cases, 44 skips and 14 passing subtests**, plus integration smoke and full web
+validation. The [actual QA12 gate](https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/44014575350/job/133809371732)
+passed **135 PostgreSQL cases, 321 runtime guards and 43 routing/context checks**.
+This verifies the preceding terminal-authority and Chat assertion repairs at that
+source, not the current candidate or full finding closure.
+
+[Operations](https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/44014575463/job/133810399838)
+passed its real isolated SDK execution and **30 real gVisor SIGKILL/coordinator
+recovery trials** within the existing fixture budgets (first-review p95 3231.46ms,
+completion p95 5217.01ms). This is a bounded passing checkpoint, not a diagnosed
+root cause for the earlier intermittent failure, production SLO, deployed rollback
+or complete P27-08 acceptance. The job subsequently failed the paired browser
+microbenchmark: Browser Use trial 0, `stable_snapshot`, `PermissionError`, no
+change-detail flags. The production comparison gate remains blocked.
+
+Investigation reproduced a concrete stabilization gap: fresh evidence compares
+DOM/URL/title/targets before and after its viewport screenshot; a mid-capture
+transition throws immediately, so the initial stabilization loop never uses its
+remaining attempts even when the page subsequently settles. A regression using
+the real capture function failed against the preceding source on that boundary.
+The candidate distinguishes that comparable-context transition from unavailable
+or invalid evidence. Only initial **before-review** stabilization may retry it,
+within the existing **six-capture budget**. A rejected capture resets the preceding
+sample; acceptance still requires **two consecutive identical complete fresh
+captures**. Missing DOM/target/screenshot, invalid bounds and cancellation do not
+enter this retry path. The direct `after_approval` capture is unchanged in retry
+behavior: any transition rejects without another capture or implicit reapproval.
+Pixel hashing, DOM/target equality, actual viewport PNG requirements, approvals,
+denial/stale no-write checks, trial counts, sandbox controls and time limits remain.
+
+The final stability denial and in-capture transition now carry fixed boolean
+flags through the existing `evidence_changes` field. Benchmark and engine logging
+filter these to allowlisted names and actual booleans; arbitrary attributes,
+page content, credentials and exception text are excluded. This will distinguish
+`capture_transition` from `stability_budget_exhausted` in the existing failure
+artifact/log projection, with no workflow configuration change.
+
+**94 targeted native evidence, gateway, adapter-selection, journal, broker and
+recovery tests pass with the normal backend fixtures.** Eight added cases cover
+settling after an actual mid-capture change, resetting consecutive samples,
+repeated transitions exhausting the same six attempts, unavailable evidence,
+cancellation, unchanged one-shot post-approval rejection and bounded diagnostics.
+The isolated 61-case evidence/gateway subset also passes; those counts overlap.
+The newly repaired capture class is proven locally. Its causal relationship to
+the observed SDK microbenchmark failure and complete isolated-runtime acceptance
+still require current-head CI; neither is assumed from matching failure stages.
+
+The original 43-finding register, owners and dependency order remain authoritative.
+Full live provider/tenant/revocation, historical reconciliation, physical voice and
+deployed rollback gates remain open. No SDK pin, image resource limit, workflow,
+production setting, provider record, database schema, merge or deployment changed.

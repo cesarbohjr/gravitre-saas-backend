@@ -282,7 +282,7 @@
       "signed_chat_persistence_gate": {
         "evidence_record": "docs/delivery/master-qa-outcome-recovery-batch.md",
         "test_path": "backend/tests/db/test_eco001_joined_chat_http_receiver_pg.py",
-        "state": "LOCAL_PASS_PENDING_EXACT_HEAD_CI",
+        "state": "BOUNDED_EXACT_HEAD_CI_PASSED_NOT_FULL_FINDING",
         "local_joined_cases_passed": 5,
         "local_focused_chat_cases_passed": 54,
         "scope": "Signed Chat HTTP, real claim/replay/outcome builders, SQL persistence, independent synthetic record GET, verifier, core writers, actual outbox relay and durable synthetic consumer",
@@ -298,10 +298,15 @@
           "owner acceptance"
         ],
         "prior_ci_head": "93dbfe759fef6febc3ddd616f7bd6da520199c41",
-        "prior_ci_failure": "Two incidental total-query-count assertions; now enforce exact ownership per request before provider dispatch"
+        "prior_ci_failure": "Two incidental total-query-count assertions; now enforce exact ownership per request before provider dispatch",
+        "executed_sha": "be809855bd9503dbcd2b3c9c0b7a7765f6205a7c",
+        "ci_run_url": "https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/44014575248",
+        "complete_hosted_ingress_cases_passed": 94,
+        "postgres_cases_passed": 135,
+        "full_backend_cases_passed": 17224
       },
       "workflow_terminal_authority_gate": {
-        "state": "LOCAL_PASS_PENDING_EXACT_HEAD_CI",
+        "state": "BOUNDED_EXACT_HEAD_CI_PASSED_NOT_FULL_FINDING",
         "evidence_record": "docs/delivery/master-qa-outcome-recovery-batch.md",
         "joined_test": "backend/tests/master_qa/test_joined_agent_play_approval_step_pg.py",
         "guard_test": "backend/tests/services/test_outcome_ownership_workflow_terminal_authority.py",
@@ -314,7 +319,12 @@
           "Late source step completion left stale running projection after cancellation"
         ],
         "finding_certified": false,
-        "remaining": "Exact-head full CI, isolated native recovery diagnosis, complete live/provider/tenant acceptance, historical reconciliation, device voice, deployed rollback and owner acceptance"
+        "remaining": "Exact-head full CI, isolated native recovery diagnosis, complete live/provider/tenant acceptance, historical reconciliation, device voice, deployed rollback and owner acceptance",
+        "executed_sha": "be809855bd9503dbcd2b3c9c0b7a7765f6205a7c",
+        "ci_run_url": "https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/44014575248",
+        "complete_hosted_ingress_cases_passed": 94,
+        "postgres_cases_passed": 135,
+        "full_backend_cases_passed": 17224
       }
     },
     {
@@ -904,7 +914,7 @@
       "signed_chat_persistence_gate": {
         "evidence_record": "docs/delivery/master-qa-outcome-recovery-batch.md",
         "test_path": "backend/tests/db/test_eco001_joined_chat_http_receiver_pg.py",
-        "state": "LOCAL_PASS_PENDING_EXACT_HEAD_CI",
+        "state": "BOUNDED_EXACT_HEAD_CI_PASSED_NOT_FULL_FINDING",
         "local_joined_cases_passed": 5,
         "local_focused_chat_cases_passed": 54,
         "scope": "Signed Chat HTTP, real claim/replay/outcome builders, SQL persistence, independent synthetic record GET, verifier, core writers, actual outbox relay and durable synthetic consumer",
@@ -920,7 +930,12 @@
           "owner acceptance"
         ],
         "prior_ci_head": "93dbfe759fef6febc3ddd616f7bd6da520199c41",
-        "prior_ci_failure": "Two incidental total-query-count assertions; now enforce exact ownership per request before provider dispatch"
+        "prior_ci_failure": "Two incidental total-query-count assertions; now enforce exact ownership per request before provider dispatch",
+        "executed_sha": "be809855bd9503dbcd2b3c9c0b7a7765f6205a7c",
+        "ci_run_url": "https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/44014575248",
+        "complete_hosted_ingress_cases_passed": 94,
+        "postgres_cases_passed": 135,
+        "full_backend_cases_passed": 17224
       }
     },
     {
@@ -1112,7 +1127,7 @@
       "signed_chat_persistence_gate": {
         "evidence_record": "docs/delivery/master-qa-outcome-recovery-batch.md",
         "test_path": "backend/tests/db/test_eco001_joined_chat_http_receiver_pg.py",
-        "state": "LOCAL_PASS_PENDING_EXACT_HEAD_CI",
+        "state": "BOUNDED_EXACT_HEAD_CI_PASSED_NOT_FULL_FINDING",
         "local_joined_cases_passed": 5,
         "local_focused_chat_cases_passed": 54,
         "scope": "Signed Chat HTTP, real claim/replay/outcome builders, SQL persistence, independent synthetic record GET, verifier, core writers, actual outbox relay and durable synthetic consumer",
@@ -1128,10 +1143,15 @@
           "owner acceptance"
         ],
         "prior_ci_head": "93dbfe759fef6febc3ddd616f7bd6da520199c41",
-        "prior_ci_failure": "Two incidental total-query-count assertions; now enforce exact ownership per request before provider dispatch"
+        "prior_ci_failure": "Two incidental total-query-count assertions; now enforce exact ownership per request before provider dispatch",
+        "executed_sha": "be809855bd9503dbcd2b3c9c0b7a7765f6205a7c",
+        "ci_run_url": "https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/44014575248",
+        "complete_hosted_ingress_cases_passed": 94,
+        "postgres_cases_passed": 135,
+        "full_backend_cases_passed": 17224
       },
       "workflow_terminal_authority_gate": {
-        "state": "LOCAL_PASS_PENDING_EXACT_HEAD_CI",
+        "state": "BOUNDED_EXACT_HEAD_CI_PASSED_NOT_FULL_FINDING",
         "evidence_record": "docs/delivery/master-qa-outcome-recovery-batch.md",
         "joined_test": "backend/tests/master_qa/test_joined_agent_play_approval_step_pg.py",
         "guard_test": "backend/tests/services/test_outcome_ownership_workflow_terminal_authority.py",
@@ -1144,7 +1164,12 @@
           "Late source step completion left stale running projection after cancellation"
         ],
         "finding_certified": false,
-        "remaining": "Exact-head full CI, isolated native recovery diagnosis, complete live/provider/tenant acceptance, historical reconciliation, device voice, deployed rollback and owner acceptance"
+        "remaining": "Exact-head full CI, isolated native recovery diagnosis, complete live/provider/tenant acceptance, historical reconciliation, device voice, deployed rollback and owner acceptance",
+        "executed_sha": "be809855bd9503dbcd2b3c9c0b7a7765f6205a7c",
+        "ci_run_url": "https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/44014575248",
+        "complete_hosted_ingress_cases_passed": 94,
+        "postgres_cases_passed": 135,
+        "full_backend_cases_passed": 17224
       }
     },
     {
@@ -1302,7 +1327,7 @@
       "signed_chat_persistence_gate": {
         "evidence_record": "docs/delivery/master-qa-outcome-recovery-batch.md",
         "test_path": "backend/tests/db/test_eco001_joined_chat_http_receiver_pg.py",
-        "state": "LOCAL_PASS_PENDING_EXACT_HEAD_CI",
+        "state": "BOUNDED_EXACT_HEAD_CI_PASSED_NOT_FULL_FINDING",
         "local_joined_cases_passed": 5,
         "local_focused_chat_cases_passed": 54,
         "scope": "Signed Chat HTTP, real claim/replay/outcome builders, SQL persistence, independent synthetic record GET, verifier, core writers, actual outbox relay and durable synthetic consumer",
@@ -1318,10 +1343,15 @@
           "owner acceptance"
         ],
         "prior_ci_head": "93dbfe759fef6febc3ddd616f7bd6da520199c41",
-        "prior_ci_failure": "Two incidental total-query-count assertions; now enforce exact ownership per request before provider dispatch"
+        "prior_ci_failure": "Two incidental total-query-count assertions; now enforce exact ownership per request before provider dispatch",
+        "executed_sha": "be809855bd9503dbcd2b3c9c0b7a7765f6205a7c",
+        "ci_run_url": "https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/44014575248",
+        "complete_hosted_ingress_cases_passed": 94,
+        "postgres_cases_passed": 135,
+        "full_backend_cases_passed": 17224
       },
       "workflow_terminal_authority_gate": {
-        "state": "LOCAL_PASS_PENDING_EXACT_HEAD_CI",
+        "state": "BOUNDED_EXACT_HEAD_CI_PASSED_NOT_FULL_FINDING",
         "evidence_record": "docs/delivery/master-qa-outcome-recovery-batch.md",
         "joined_test": "backend/tests/master_qa/test_joined_agent_play_approval_step_pg.py",
         "guard_test": "backend/tests/services/test_outcome_ownership_workflow_terminal_authority.py",
@@ -1334,7 +1364,12 @@
           "Late source step completion left stale running projection after cancellation"
         ],
         "finding_certified": false,
-        "remaining": "Exact-head full CI, isolated native recovery diagnosis, complete live/provider/tenant acceptance, historical reconciliation, device voice, deployed rollback and owner acceptance"
+        "remaining": "Exact-head full CI, isolated native recovery diagnosis, complete live/provider/tenant acceptance, historical reconciliation, device voice, deployed rollback and owner acceptance",
+        "executed_sha": "be809855bd9503dbcd2b3c9c0b7a7765f6205a7c",
+        "ci_run_url": "https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/44014575248",
+        "complete_hosted_ingress_cases_passed": 94,
+        "postgres_cases_passed": 135,
+        "full_backend_cases_passed": 17224
       }
     },
     {
@@ -1522,7 +1557,7 @@
       "signed_chat_persistence_gate": {
         "evidence_record": "docs/delivery/master-qa-outcome-recovery-batch.md",
         "test_path": "backend/tests/db/test_eco001_joined_chat_http_receiver_pg.py",
-        "state": "LOCAL_PASS_PENDING_EXACT_HEAD_CI",
+        "state": "BOUNDED_EXACT_HEAD_CI_PASSED_NOT_FULL_FINDING",
         "local_joined_cases_passed": 5,
         "local_focused_chat_cases_passed": 54,
         "scope": "Signed Chat HTTP, real claim/replay/outcome builders, SQL persistence, independent synthetic record GET, verifier, core writers, actual outbox relay and durable synthetic consumer",
@@ -1538,10 +1573,15 @@
           "owner acceptance"
         ],
         "prior_ci_head": "93dbfe759fef6febc3ddd616f7bd6da520199c41",
-        "prior_ci_failure": "Two incidental total-query-count assertions; now enforce exact ownership per request before provider dispatch"
+        "prior_ci_failure": "Two incidental total-query-count assertions; now enforce exact ownership per request before provider dispatch",
+        "executed_sha": "be809855bd9503dbcd2b3c9c0b7a7765f6205a7c",
+        "ci_run_url": "https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/44014575248",
+        "complete_hosted_ingress_cases_passed": 94,
+        "postgres_cases_passed": 135,
+        "full_backend_cases_passed": 17224
       },
       "workflow_terminal_authority_gate": {
-        "state": "LOCAL_PASS_PENDING_EXACT_HEAD_CI",
+        "state": "BOUNDED_EXACT_HEAD_CI_PASSED_NOT_FULL_FINDING",
         "evidence_record": "docs/delivery/master-qa-outcome-recovery-batch.md",
         "joined_test": "backend/tests/master_qa/test_joined_agent_play_approval_step_pg.py",
         "guard_test": "backend/tests/services/test_outcome_ownership_workflow_terminal_authority.py",
@@ -1554,7 +1594,12 @@
           "Late source step completion left stale running projection after cancellation"
         ],
         "finding_certified": false,
-        "remaining": "Exact-head full CI, isolated native recovery diagnosis, complete live/provider/tenant acceptance, historical reconciliation, device voice, deployed rollback and owner acceptance"
+        "remaining": "Exact-head full CI, isolated native recovery diagnosis, complete live/provider/tenant acceptance, historical reconciliation, device voice, deployed rollback and owner acceptance",
+        "executed_sha": "be809855bd9503dbcd2b3c9c0b7a7765f6205a7c",
+        "ci_run_url": "https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/44014575248",
+        "complete_hosted_ingress_cases_passed": 94,
+        "postgres_cases_passed": 135,
+        "full_backend_cases_passed": 17224
       }
     },
     {
@@ -1677,7 +1722,7 @@
       "signed_chat_persistence_gate": {
         "evidence_record": "docs/delivery/master-qa-outcome-recovery-batch.md",
         "test_path": "backend/tests/db/test_eco001_joined_chat_http_receiver_pg.py",
-        "state": "LOCAL_PASS_PENDING_EXACT_HEAD_CI",
+        "state": "BOUNDED_EXACT_HEAD_CI_PASSED_NOT_FULL_FINDING",
         "local_joined_cases_passed": 5,
         "local_focused_chat_cases_passed": 54,
         "scope": "Signed Chat HTTP, real claim/replay/outcome builders, SQL persistence, independent synthetic record GET, verifier, core writers, actual outbox relay and durable synthetic consumer",
@@ -1693,10 +1738,15 @@
           "owner acceptance"
         ],
         "prior_ci_head": "93dbfe759fef6febc3ddd616f7bd6da520199c41",
-        "prior_ci_failure": "Two incidental total-query-count assertions; now enforce exact ownership per request before provider dispatch"
+        "prior_ci_failure": "Two incidental total-query-count assertions; now enforce exact ownership per request before provider dispatch",
+        "executed_sha": "be809855bd9503dbcd2b3c9c0b7a7765f6205a7c",
+        "ci_run_url": "https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/44014575248",
+        "complete_hosted_ingress_cases_passed": 94,
+        "postgres_cases_passed": 135,
+        "full_backend_cases_passed": 17224
       },
       "workflow_terminal_authority_gate": {
-        "state": "LOCAL_PASS_PENDING_EXACT_HEAD_CI",
+        "state": "BOUNDED_EXACT_HEAD_CI_PASSED_NOT_FULL_FINDING",
         "evidence_record": "docs/delivery/master-qa-outcome-recovery-batch.md",
         "joined_test": "backend/tests/master_qa/test_joined_agent_play_approval_step_pg.py",
         "guard_test": "backend/tests/services/test_outcome_ownership_workflow_terminal_authority.py",
@@ -1709,7 +1759,12 @@
           "Late source step completion left stale running projection after cancellation"
         ],
         "finding_certified": false,
-        "remaining": "Exact-head full CI, isolated native recovery diagnosis, complete live/provider/tenant acceptance, historical reconciliation, device voice, deployed rollback and owner acceptance"
+        "remaining": "Exact-head full CI, isolated native recovery diagnosis, complete live/provider/tenant acceptance, historical reconciliation, device voice, deployed rollback and owner acceptance",
+        "executed_sha": "be809855bd9503dbcd2b3c9c0b7a7765f6205a7c",
+        "ci_run_url": "https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/44014575248",
+        "complete_hosted_ingress_cases_passed": 94,
+        "postgres_cases_passed": 135,
+        "full_backend_cases_passed": 17224
       }
     },
     {
@@ -1786,7 +1841,7 @@
       "signed_chat_persistence_gate": {
         "evidence_record": "docs/delivery/master-qa-outcome-recovery-batch.md",
         "test_path": "backend/tests/db/test_eco001_joined_chat_http_receiver_pg.py",
-        "state": "LOCAL_PASS_PENDING_EXACT_HEAD_CI",
+        "state": "BOUNDED_EXACT_HEAD_CI_PASSED_NOT_FULL_FINDING",
         "local_joined_cases_passed": 5,
         "local_focused_chat_cases_passed": 54,
         "scope": "Signed Chat HTTP, real claim/replay/outcome builders, SQL persistence, independent synthetic record GET, verifier, core writers, actual outbox relay and durable synthetic consumer",
@@ -1802,10 +1857,15 @@
           "owner acceptance"
         ],
         "prior_ci_head": "93dbfe759fef6febc3ddd616f7bd6da520199c41",
-        "prior_ci_failure": "Two incidental total-query-count assertions; now enforce exact ownership per request before provider dispatch"
+        "prior_ci_failure": "Two incidental total-query-count assertions; now enforce exact ownership per request before provider dispatch",
+        "executed_sha": "be809855bd9503dbcd2b3c9c0b7a7765f6205a7c",
+        "ci_run_url": "https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/44014575248",
+        "complete_hosted_ingress_cases_passed": 94,
+        "postgres_cases_passed": 135,
+        "full_backend_cases_passed": 17224
       },
       "workflow_terminal_authority_gate": {
-        "state": "LOCAL_PASS_PENDING_EXACT_HEAD_CI",
+        "state": "BOUNDED_EXACT_HEAD_CI_PASSED_NOT_FULL_FINDING",
         "evidence_record": "docs/delivery/master-qa-outcome-recovery-batch.md",
         "joined_test": "backend/tests/master_qa/test_joined_agent_play_approval_step_pg.py",
         "guard_test": "backend/tests/services/test_outcome_ownership_workflow_terminal_authority.py",
@@ -1818,7 +1878,12 @@
           "Late source step completion left stale running projection after cancellation"
         ],
         "finding_certified": false,
-        "remaining": "Exact-head full CI, isolated native recovery diagnosis, complete live/provider/tenant acceptance, historical reconciliation, device voice, deployed rollback and owner acceptance"
+        "remaining": "Exact-head full CI, isolated native recovery diagnosis, complete live/provider/tenant acceptance, historical reconciliation, device voice, deployed rollback and owner acceptance",
+        "executed_sha": "be809855bd9503dbcd2b3c9c0b7a7765f6205a7c",
+        "ci_run_url": "https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/44014575248",
+        "complete_hosted_ingress_cases_passed": 94,
+        "postgres_cases_passed": 135,
+        "full_backend_cases_passed": 17224
       }
     },
     {
@@ -1946,7 +2011,7 @@
       "audit_evidence_class": "SOURCE_CANDIDATE_REQUIRES_RUNTIME_PROOF",
       "audit_observation": "Original audit and source candidate require caller/runtime evidence; no final root-cause claim.",
       "workflow_terminal_authority_gate": {
-        "state": "LOCAL_PASS_PENDING_EXACT_HEAD_CI",
+        "state": "BOUNDED_EXACT_HEAD_CI_PASSED_NOT_FULL_FINDING",
         "evidence_record": "docs/delivery/master-qa-outcome-recovery-batch.md",
         "joined_test": "backend/tests/master_qa/test_joined_agent_play_approval_step_pg.py",
         "guard_test": "backend/tests/services/test_outcome_ownership_workflow_terminal_authority.py",
@@ -1959,7 +2024,12 @@
           "Late source step completion left stale running projection after cancellation"
         ],
         "finding_certified": false,
-        "remaining": "Exact-head full CI, isolated native recovery diagnosis, complete live/provider/tenant acceptance, historical reconciliation, device voice, deployed rollback and owner acceptance"
+        "remaining": "Exact-head full CI, isolated native recovery diagnosis, complete live/provider/tenant acceptance, historical reconciliation, device voice, deployed rollback and owner acceptance",
+        "executed_sha": "be809855bd9503dbcd2b3c9c0b7a7765f6205a7c",
+        "ci_run_url": "https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/44014575248",
+        "complete_hosted_ingress_cases_passed": 94,
+        "postgres_cases_passed": 135,
+        "full_backend_cases_passed": 17224
       }
     },
     {
@@ -2157,6 +2227,28 @@
         "observed_approved_fallback_actions": 0,
         "repair_scope": "Add bounded stage/error-class evidence; leave uncertain/fenced behavior and all acceptance assertions unchanged",
         "local_recovery_receiver_cases_passed": 16,
+        "finding_certified": false,
+        "latest_verified_checkpoint": {
+          "source_sha": "be809855bd9503dbcd2b3c9c0b7a7765f6205a7c",
+          "ci_run_url": "https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/44014575463",
+          "isolated_sdk_runtime_and_30_sigkill_recovery_trials": "PASS",
+          "first_review_p95_ms": 3231.46,
+          "completion_p95_ms": 5217.01,
+          "subsequent_microbenchmark": "FAIL: browser_use trial 0 stable_snapshot PermissionError",
+          "prior_intermediate_failure_cause": "NOT_PROVEN"
+        }
+      },
+      "native_capture_stabilization_gate": {
+        "state": "LOCAL_REPRODUCED_REPAIR_PENDING_ISOLATED_EXACT_HEAD_CI",
+        "evidence_record": "docs/delivery/master-qa-outcome-recovery-batch.md",
+        "source": "backend/app/services/native_runtime/engine.py",
+        "test_path": "backend/tests/native_runtime/test_browser_evidence.py",
+        "local_native_contract_and_recovery_cases_passed": 94,
+        "capture_attempt_budget": 6,
+        "consecutive_identical_complete_captures_required": 2,
+        "after_approval_retry_allowed": false,
+        "confirmed_local_defect": "An in-capture context transition aborted initial stabilization before the existing attempt budget could be used",
+        "isolated_sdk_failure_causality": "PENDING_VERIFICATION",
         "finding_certified": false
       }
     },
@@ -2449,7 +2541,7 @@
       "signed_chat_persistence_gate": {
         "evidence_record": "docs/delivery/master-qa-outcome-recovery-batch.md",
         "test_path": "backend/tests/db/test_eco001_joined_chat_http_receiver_pg.py",
-        "state": "LOCAL_PASS_PENDING_EXACT_HEAD_CI",
+        "state": "BOUNDED_EXACT_HEAD_CI_PASSED_NOT_FULL_FINDING",
         "local_joined_cases_passed": 5,
         "local_focused_chat_cases_passed": 54,
         "scope": "Signed Chat HTTP, real claim/replay/outcome builders, SQL persistence, independent synthetic record GET, verifier, core writers, actual outbox relay and durable synthetic consumer",
@@ -2465,10 +2557,15 @@
           "owner acceptance"
         ],
         "prior_ci_head": "93dbfe759fef6febc3ddd616f7bd6da520199c41",
-        "prior_ci_failure": "Two incidental total-query-count assertions; now enforce exact ownership per request before provider dispatch"
+        "prior_ci_failure": "Two incidental total-query-count assertions; now enforce exact ownership per request before provider dispatch",
+        "executed_sha": "be809855bd9503dbcd2b3c9c0b7a7765f6205a7c",
+        "ci_run_url": "https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/44014575248",
+        "complete_hosted_ingress_cases_passed": 94,
+        "postgres_cases_passed": 135,
+        "full_backend_cases_passed": 17224
       },
       "workflow_terminal_authority_gate": {
-        "state": "LOCAL_PASS_PENDING_EXACT_HEAD_CI",
+        "state": "BOUNDED_EXACT_HEAD_CI_PASSED_NOT_FULL_FINDING",
         "evidence_record": "docs/delivery/master-qa-outcome-recovery-batch.md",
         "joined_test": "backend/tests/master_qa/test_joined_agent_play_approval_step_pg.py",
         "guard_test": "backend/tests/services/test_outcome_ownership_workflow_terminal_authority.py",
@@ -2481,7 +2578,12 @@
           "Late source step completion left stale running projection after cancellation"
         ],
         "finding_certified": false,
-        "remaining": "Exact-head full CI, isolated native recovery diagnosis, complete live/provider/tenant acceptance, historical reconciliation, device voice, deployed rollback and owner acceptance"
+        "remaining": "Exact-head full CI, isolated native recovery diagnosis, complete live/provider/tenant acceptance, historical reconciliation, device voice, deployed rollback and owner acceptance",
+        "executed_sha": "be809855bd9503dbcd2b3c9c0b7a7765f6205a7c",
+        "ci_run_url": "https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/44014575248",
+        "complete_hosted_ingress_cases_passed": 94,
+        "postgres_cases_passed": 135,
+        "full_backend_cases_passed": 17224
       }
     },
     {
@@ -2639,7 +2741,7 @@
       "signed_chat_persistence_gate": {
         "evidence_record": "docs/delivery/master-qa-outcome-recovery-batch.md",
         "test_path": "backend/tests/db/test_eco001_joined_chat_http_receiver_pg.py",
-        "state": "LOCAL_PASS_PENDING_EXACT_HEAD_CI",
+        "state": "BOUNDED_EXACT_HEAD_CI_PASSED_NOT_FULL_FINDING",
         "local_joined_cases_passed": 5,
         "local_focused_chat_cases_passed": 54,
         "scope": "Signed Chat HTTP, real claim/replay/outcome builders, SQL persistence, independent synthetic record GET, verifier, core writers, actual outbox relay and durable synthetic consumer",
@@ -2655,10 +2757,15 @@
           "owner acceptance"
         ],
         "prior_ci_head": "93dbfe759fef6febc3ddd616f7bd6da520199c41",
-        "prior_ci_failure": "Two incidental total-query-count assertions; now enforce exact ownership per request before provider dispatch"
+        "prior_ci_failure": "Two incidental total-query-count assertions; now enforce exact ownership per request before provider dispatch",
+        "executed_sha": "be809855bd9503dbcd2b3c9c0b7a7765f6205a7c",
+        "ci_run_url": "https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/44014575248",
+        "complete_hosted_ingress_cases_passed": 94,
+        "postgres_cases_passed": 135,
+        "full_backend_cases_passed": 17224
       },
       "workflow_terminal_authority_gate": {
-        "state": "LOCAL_PASS_PENDING_EXACT_HEAD_CI",
+        "state": "BOUNDED_EXACT_HEAD_CI_PASSED_NOT_FULL_FINDING",
         "evidence_record": "docs/delivery/master-qa-outcome-recovery-batch.md",
         "joined_test": "backend/tests/master_qa/test_joined_agent_play_approval_step_pg.py",
         "guard_test": "backend/tests/services/test_outcome_ownership_workflow_terminal_authority.py",
@@ -2671,7 +2778,12 @@
           "Late source step completion left stale running projection after cancellation"
         ],
         "finding_certified": false,
-        "remaining": "Exact-head full CI, isolated native recovery diagnosis, complete live/provider/tenant acceptance, historical reconciliation, device voice, deployed rollback and owner acceptance"
+        "remaining": "Exact-head full CI, isolated native recovery diagnosis, complete live/provider/tenant acceptance, historical reconciliation, device voice, deployed rollback and owner acceptance",
+        "executed_sha": "be809855bd9503dbcd2b3c9c0b7a7765f6205a7c",
+        "ci_run_url": "https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/44014575248",
+        "complete_hosted_ingress_cases_passed": 94,
+        "postgres_cases_passed": 135,
+        "full_backend_cases_passed": 17224
       }
     },
     {
@@ -2823,7 +2935,7 @@
       "signed_chat_persistence_gate": {
         "evidence_record": "docs/delivery/master-qa-outcome-recovery-batch.md",
         "test_path": "backend/tests/db/test_eco001_joined_chat_http_receiver_pg.py",
-        "state": "LOCAL_PASS_PENDING_EXACT_HEAD_CI",
+        "state": "BOUNDED_EXACT_HEAD_CI_PASSED_NOT_FULL_FINDING",
         "local_joined_cases_passed": 5,
         "local_focused_chat_cases_passed": 54,
         "scope": "Signed Chat HTTP, real claim/replay/outcome builders, SQL persistence, independent synthetic record GET, verifier, core writers, actual outbox relay and durable synthetic consumer",
@@ -2839,10 +2951,15 @@
           "owner acceptance"
         ],
         "prior_ci_head": "93dbfe759fef6febc3ddd616f7bd6da520199c41",
-        "prior_ci_failure": "Two incidental total-query-count assertions; now enforce exact ownership per request before provider dispatch"
+        "prior_ci_failure": "Two incidental total-query-count assertions; now enforce exact ownership per request before provider dispatch",
+        "executed_sha": "be809855bd9503dbcd2b3c9c0b7a7765f6205a7c",
+        "ci_run_url": "https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/44014575248",
+        "complete_hosted_ingress_cases_passed": 94,
+        "postgres_cases_passed": 135,
+        "full_backend_cases_passed": 17224
       },
       "workflow_terminal_authority_gate": {
-        "state": "LOCAL_PASS_PENDING_EXACT_HEAD_CI",
+        "state": "BOUNDED_EXACT_HEAD_CI_PASSED_NOT_FULL_FINDING",
         "evidence_record": "docs/delivery/master-qa-outcome-recovery-batch.md",
         "joined_test": "backend/tests/master_qa/test_joined_agent_play_approval_step_pg.py",
         "guard_test": "backend/tests/services/test_outcome_ownership_workflow_terminal_authority.py",
@@ -2855,7 +2972,12 @@
           "Late source step completion left stale running projection after cancellation"
         ],
         "finding_certified": false,
-        "remaining": "Exact-head full CI, isolated native recovery diagnosis, complete live/provider/tenant acceptance, historical reconciliation, device voice, deployed rollback and owner acceptance"
+        "remaining": "Exact-head full CI, isolated native recovery diagnosis, complete live/provider/tenant acceptance, historical reconciliation, device voice, deployed rollback and owner acceptance",
+        "executed_sha": "be809855bd9503dbcd2b3c9c0b7a7765f6205a7c",
+        "ci_run_url": "https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/44014575248",
+        "complete_hosted_ingress_cases_passed": 94,
+        "postgres_cases_passed": 135,
+        "full_backend_cases_passed": 17224
       }
     },
     {
@@ -3604,7 +3726,7 @@
       "signed_chat_persistence_gate": {
         "evidence_record": "docs/delivery/master-qa-outcome-recovery-batch.md",
         "test_path": "backend/tests/db/test_eco001_joined_chat_http_receiver_pg.py",
-        "state": "LOCAL_PASS_PENDING_EXACT_HEAD_CI",
+        "state": "BOUNDED_EXACT_HEAD_CI_PASSED_NOT_FULL_FINDING",
         "local_joined_cases_passed": 5,
         "local_focused_chat_cases_passed": 54,
         "scope": "Signed Chat HTTP, real claim/replay/outcome builders, SQL persistence, independent synthetic record GET, verifier, core writers, actual outbox relay and durable synthetic consumer",
@@ -3620,10 +3742,15 @@
           "owner acceptance"
         ],
         "prior_ci_head": "93dbfe759fef6febc3ddd616f7bd6da520199c41",
-        "prior_ci_failure": "Two incidental total-query-count assertions; now enforce exact ownership per request before provider dispatch"
+        "prior_ci_failure": "Two incidental total-query-count assertions; now enforce exact ownership per request before provider dispatch",
+        "executed_sha": "be809855bd9503dbcd2b3c9c0b7a7765f6205a7c",
+        "ci_run_url": "https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/44014575248",
+        "complete_hosted_ingress_cases_passed": 94,
+        "postgres_cases_passed": 135,
+        "full_backend_cases_passed": 17224
       },
       "workflow_terminal_authority_gate": {
-        "state": "LOCAL_PASS_PENDING_EXACT_HEAD_CI",
+        "state": "BOUNDED_EXACT_HEAD_CI_PASSED_NOT_FULL_FINDING",
         "evidence_record": "docs/delivery/master-qa-outcome-recovery-batch.md",
         "joined_test": "backend/tests/master_qa/test_joined_agent_play_approval_step_pg.py",
         "guard_test": "backend/tests/services/test_outcome_ownership_workflow_terminal_authority.py",
@@ -3636,7 +3763,12 @@
           "Late source step completion left stale running projection after cancellation"
         ],
         "finding_certified": false,
-        "remaining": "Exact-head full CI, isolated native recovery diagnosis, complete live/provider/tenant acceptance, historical reconciliation, device voice, deployed rollback and owner acceptance"
+        "remaining": "Exact-head full CI, isolated native recovery diagnosis, complete live/provider/tenant acceptance, historical reconciliation, device voice, deployed rollback and owner acceptance",
+        "executed_sha": "be809855bd9503dbcd2b3c9c0b7a7765f6205a7c",
+        "ci_run_url": "https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/44014575248",
+        "complete_hosted_ingress_cases_passed": 94,
+        "postgres_cases_passed": 135,
+        "full_backend_cases_passed": 17224
       }
     },
     {
