@@ -1,6 +1,7 @@
 """Opt-in, privacy-safe ECO-002 router timing. Never changes dispatch or decisions."""
 from __future__ import annotations
 
+import asyncio
 import os
 from time import perf_counter
 from typing import Any, Awaitable, TypeVar
@@ -42,6 +43,9 @@ async def measure(stage: str, task: Awaitable[T]) -> T:
         value = await task
         outcome = "ok"
         return value
+    except asyncio.CancelledError:
+        outcome = "cancelled"
+        raise
     finally:
         # Monitoring is advisory. A broken metrics collector or log sink must
         # never replace a governed routing result, error, or cancellation.
