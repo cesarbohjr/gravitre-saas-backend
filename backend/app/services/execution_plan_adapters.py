@@ -172,7 +172,22 @@ def project_pending_task_from_plan(
     primary = plan.steps[0] if plan.steps else None
     pending.setdefault("type", "execution_plan_projection")
     pending["execution_plan_id"] = plan.plan_id
-    pending["status"] = pending.get("status") or "awaiting_confirm"
+    # A legacy surface must not advertise an actionable confirmation after the
+    # canonical plan has already reached a terminal outcome.
+    terminal_projection = {
+        "completed": "completed",
+        "partial": "completed",
+        "failed": "failed",
+        "blocked": "cancelled",
+        "cancelled": "cancelled",
+        "verification_inconclusive": "failed",
+    }
+    if plan.terminal_status in terminal_projection:
+        pending["status"] = terminal_projection[plan.terminal_status]
+    elif plan.terminal_status == "waiting_for_approval":
+        pending["status"] = "awaiting_confirm"
+    else:
+        pending["status"] = pending.get("status") or "awaiting_confirm"
     if primary is not None:
         pending.setdefault("action", primary.action_key or primary.title)
         pending.setdefault("connector_id", primary.connector_id)
