@@ -8,7 +8,7 @@ from app.services.unified_turn_fallthrough import (
 )
 
 
-@pytest.mark.parametrize("reason", ["outcome_", "unhandled_kind_", "", None])
+@pytest.mark.parametrize("reason", ["outcome_", "unhandled_kind_", "outcome_   ", "unhandled_kind_  ", "", None])
 def test_empty_dynamic_reason_is_rejected(reason):
     assert not is_known_fallthrough_reason(reason)
     with pytest.raises(ValueError, match="unknown fallthrough_reason"):
