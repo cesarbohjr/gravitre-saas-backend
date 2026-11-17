@@ -340,14 +340,11 @@ def enrich_task_state_patch(
             )
         pending_action = state.get("pending_action")
         if isinstance(pending_action, dict) and pending_action.get("plan_id") != canonical.plan_id:
-            patch.setdefault(
-                "pending_action",
-                {
-                    **pending_action,
-                    "plan_id": canonical.plan_id,
-                    "revision": canonical.revision,
-                },
-            )
+            # A pending approval is bound to its original plan. Relabeling it
+            # with a new plan_id would transfer authorization across plans
+            # (including from a stale voice/chat turn). Invalidate the stale
+            # projection instead; the new plan must create its own approval.
+            patch["pending_action"] = None
         return _finish(patch)
 
     offered = patch.get("offered_action")
