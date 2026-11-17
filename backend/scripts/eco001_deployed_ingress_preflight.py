@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlsplit
 from urllib.request import HTTPRedirectHandler, Request, build_opener
@@ -33,6 +34,10 @@ def run(base: str, expected_sha: str, headers: dict[str, str]) -> dict:
     parsed = urlsplit(base)
     if parsed.scheme != "https" or not parsed.hostname or parsed.username or parsed.password:
         raise ValueError("A valid HTTPS nonproduction backend URL is mandatory")
+    if parsed.path not in {"", "/"} or parsed.query or parsed.fragment or parsed.port == 0:
+        raise ValueError("Backend URL must be an HTTPS origin without path, query, or fragment")
+    if not re.fullmatch(r"[0-9a-fA-F]{40}", expected_sha):
+        raise ValueError("Expected deployment SHA must be a full 40-character Git commit")
     base = base.rstrip("/")
     code, raw = get(base + "/health", headers)
     if code != 200:
@@ -44,12 +49,12 @@ def run(base: str, expected_sha: str, headers: dict[str, str]) -> dict:
     if not isinstance(payload, dict) or "checks" not in payload or "unified_turn_live_enabled" not in payload:
         raise ValueError("Backend-specific /health fields absent (possibly frontend preview)")
     env = str(payload.get("environment") or "").lower()
-    if env in {"", "production", "prod", "live"}:
+    if env not in {"development", "dev", "test", "testing", "qa", "staging", "preview"}:
         raise ValueError("Refusing a production or unidentified runtime")
     runtime_sha = str(payload.get("git_sha") or "")
     if runtime_sha != expected_sha:
         raise ValueError(f"Runtime git SHA mismatch or absent ({runtime_sha[:12]})")
-    if payload.get("checks", {}).get("database") != "healthy":
+    if not isinstance(payload.get("checks"), dict) or payload["checks"].get("database") != "healthy":
         raise ValueError("Nonproduction backend has no verified database connectivity")
     # GET of a nonexistent conversation: authentication must be required
     # before tenant-owned state can be retrieved. This never dispatches work.
