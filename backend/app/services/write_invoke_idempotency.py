@@ -68,7 +68,12 @@ def build_write_idempotency_key(
             pending_action_id=pending_id or turn or None,
             args=params,
         )
-        parts = ["chat", logical_id, turn, connector, nonce]
+        # A pending approval identifies the same logical WRITE across chat,
+        # voice and replayed turns. Including the latest turn ID would mint a
+        # fresh claim after a crash or repeated confirmation, permitting a
+        # second provider side effect. Use turn only when no stable pending
+        # action identity is available.
+        parts = ["chat", logical_id, "" if pending_id else turn, connector, nonce]
         key = hashlib.sha256(":".join(p for p in parts if p).encode()).hexdigest()
         return f"chat:{key}", logical_id
     lineage = {
