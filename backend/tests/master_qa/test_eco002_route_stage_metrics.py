@@ -115,3 +115,34 @@ async def test_log_sink_failure_preserves_routing_result(monkeypatch):
         return 42
 
     assert await metrics.measure("classification", action()) == 42
+
+
+@pytest.mark.asyncio
+async def test_cancelled_stage_is_recorded_separately_and_propagated(monkeypatch):
+    monkeypatch.setenv("ECO002_ROUTING_LATENCY_TRACE", "true")
+    observer = Mock()
+    labels = Mock(return_value=observer)
+    monkeypatch.setattr(metrics.ROUTE_STAGE_SECONDS, "labels", labels)
+
+    async def action():
+        raise asyncio.CancelledError()
+
+    with pytest.raises(asyncio.CancelledError):
+        await metrics.measure("response_dispatch", action())
+    labels.assert_called_once_with(stage="response_dispatch", outcome="cancelled")
+    observer.observe.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_collector_failure_does_not_mask_cancellation(monkeypatch):
+    monkeypatch.setenv("ECO002_ROUTING_LATENCY_TRACE", "true")
+    monkeypatch.setattr(
+        metrics.ROUTE_STAGE_SECONDS, "labels",
+        lambda **kwargs: (_ for _ in ()).throw(RuntimeError("collector down")),
+    )
+
+    async def action():
+        raise asyncio.CancelledError()
+
+    with pytest.raises(asyncio.CancelledError):
+        await metrics.measure("response_dispatch", action())
