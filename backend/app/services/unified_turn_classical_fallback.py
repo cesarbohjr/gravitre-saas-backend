@@ -99,6 +99,11 @@ def should_defer_unified_turn_live_to_classical(
     # contradictory routing vote. Only callers lacking a structured decision
     # may use the legacy compatibility heuristic.
     if needs_tool_sse is not None:
+        # A non-boolean value (for example the string "false") must not
+        # silently become a truthy routing vote and override LIVE authority.
+        # Fail closed instead of selecting a second execution pipeline.
+        if type(needs_tool_sse) is not bool:
+            raise TypeError("needs_tool_sse must be a boolean or None")
         return needs_tool_sse
 
     # Compatibility for callers that have not migrated to structured routing.
