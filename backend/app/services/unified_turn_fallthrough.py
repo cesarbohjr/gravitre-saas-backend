@@ -37,7 +37,7 @@ def is_known_fallthrough_reason(reason: str | None) -> bool:
         return False
     if text in LIVE_FALLTHROUGH_REASONS:
         return True
-    return any(text.startswith(prefix) for prefix in LIVE_FALLTHROUGH_PREFIXES)
+    return any(text.startswith(prefix) and len(text) > len(prefix) for prefix in LIVE_FALLTHROUGH_PREFIXES)
 
 
 def assert_known_fallthrough_reason(reason: str | None) -> str:
