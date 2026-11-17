@@ -13,7 +13,7 @@ from app.services.write_invoke_idempotency import (
 )
 
 
-def test_build_key_differs_by_turn_id():
+def test_approved_write_key_stable_across_replayed_turns():
     base = dict(
         settings=SimpleNamespace(),
         client=MagicMock(),
@@ -26,6 +26,17 @@ def test_build_key_differs_by_turn_id():
     params = {"pending_action_id": "pa-1", "email": "a@example.com"}
     ka, _ = build_write_idempotency_key(ctx_a, "gmail.messages.send", params)
     kb, _ = build_write_idempotency_key(ctx_b, "gmail.messages.send", params)
+    assert ka == kb  # Same approved action must not send twice on a later turn.
+
+
+def test_unapproved_turn_scoped_write_key_differs_by_turn_id():
+    base = dict(settings=SimpleNamespace(), client=MagicMock(), org_id="org-1",
+                actor_id="u1", conversation_id="conv-1")
+    first = ToolContext(**base, turn_id="turn-1")
+    second = ToolContext(**base, turn_id="turn-2")
+    params = {"email": "a@example.com"}
+    ka, _ = build_write_idempotency_key(first, "gmail.messages.send", params)
+    kb, _ = build_write_idempotency_key(second, "gmail.messages.send", params)
     assert ka != kb
 
 
