@@ -1370,6 +1370,28 @@
         "complete_hosted_ingress_cases_passed": 94,
         "postgres_cases_passed": 135,
         "full_backend_cases_passed": 17224
+      },
+      "historical_projection_reconciliation_gate": {
+        "state": "LOCAL_POSTGRES_PASS_PENDING_EXACT_HEAD_CI_AND_HOSTED_ACCEPTANCE",
+        "source_base_sha": "24012181c1ca3b1f3326c56c5c1d148fdc6c9c28",
+        "migration": "supabase/migrations/20261117060000_guarded_historical_projection_reconciliation.sql",
+        "operator_contract": "docs/delivery/pr605-historical-projection-reconciliation-operator.md",
+        "test_path": "backend/tests/master_qa/test_canonical_repository_persistence_pg.py",
+        "local_postgres_cases_passed": 49,
+        "default_mode": "preview",
+        "scope": "Explicit per-org/run existing terminal execute projections; matching step identities; no projection-only domain repair",
+        "source_or_terminal_event_mutation": false,
+        "hosted_migration_applied": false,
+        "hosted_rows_repaired": 0,
+        "finding_certified": false,
+        "remaining": [
+          "Exact-head hosted SQL/application CI",
+          "Attested project and deployed schema",
+          "Consumer/UI/metrics compatibility",
+          "Owner-approved row allowlist and operation",
+          "Hosted apply/readback/undo evidence",
+          "Full original finding closure criteria"
+        ]
       }
     },
     {
@@ -2236,10 +2258,16 @@
           "completion_p95_ms": 5217.01,
           "subsequent_microbenchmark": "FAIL: browser_use trial 0 stable_snapshot PermissionError",
           "prior_intermediate_failure_cause": "NOT_PROVEN"
+        },
+        "verified_capture_repair_checkpoint": {
+          "source_sha": "24012181c1ca3b1f3326c56c5c1d148fdc6c9c28",
+          "ci_run_url": "https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/44034030371",
+          "isolated_runtime_and_adapter_comparison": "PASS",
+          "whole_finding_certified": false
         }
       },
       "native_capture_stabilization_gate": {
-        "state": "LOCAL_REPRODUCED_REPAIR_PENDING_ISOLATED_EXACT_HEAD_CI",
+        "state": "BOUNDED_EXACT_HEAD_CI_PASSED_NOT_FULL_FINDING",
         "evidence_record": "docs/delivery/master-qa-outcome-recovery-batch.md",
         "source": "backend/app/services/native_runtime/engine.py",
         "test_path": "backend/tests/native_runtime/test_browser_evidence.py",
@@ -2248,8 +2276,10 @@
         "consecutive_identical_complete_captures_required": 2,
         "after_approval_retry_allowed": false,
         "confirmed_local_defect": "An in-capture context transition aborted initial stabilization before the existing attempt budget could be used",
-        "isolated_sdk_failure_causality": "PENDING_VERIFICATION",
-        "finding_certified": false
+        "isolated_sdk_failure_causality": "Reproduced capture class repaired; isolated comparison passes at repaired head; earlier intermittent cause not fully proven",
+        "finding_certified": false,
+        "executed_sha": "24012181c1ca3b1f3326c56c5c1d148fdc6c9c28",
+        "ci_run_url": "https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/44034030371"
       }
     },
     {
@@ -2978,6 +3008,28 @@
         "complete_hosted_ingress_cases_passed": 94,
         "postgres_cases_passed": 135,
         "full_backend_cases_passed": 17224
+      },
+      "historical_projection_reconciliation_gate": {
+        "state": "LOCAL_POSTGRES_PASS_PENDING_EXACT_HEAD_CI_AND_HOSTED_ACCEPTANCE",
+        "source_base_sha": "24012181c1ca3b1f3326c56c5c1d148fdc6c9c28",
+        "migration": "supabase/migrations/20261117060000_guarded_historical_projection_reconciliation.sql",
+        "operator_contract": "docs/delivery/pr605-historical-projection-reconciliation-operator.md",
+        "test_path": "backend/tests/master_qa/test_canonical_repository_persistence_pg.py",
+        "local_postgres_cases_passed": 49,
+        "default_mode": "preview",
+        "scope": "Explicit per-org/run existing terminal execute projections; matching step identities; no projection-only domain repair",
+        "source_or_terminal_event_mutation": false,
+        "hosted_migration_applied": false,
+        "hosted_rows_repaired": 0,
+        "finding_certified": false,
+        "remaining": [
+          "Exact-head hosted SQL/application CI",
+          "Attested project and deployed schema",
+          "Consumer/UI/metrics compatibility",
+          "Owner-approved row allowlist and operation",
+          "Hosted apply/readback/undo evidence",
+          "Full original finding closure criteria"
+        ]
       }
     },
     {
@@ -3769,6 +3821,28 @@
         "complete_hosted_ingress_cases_passed": 94,
         "postgres_cases_passed": 135,
         "full_backend_cases_passed": 17224
+      },
+      "historical_projection_reconciliation_gate": {
+        "state": "LOCAL_POSTGRES_PASS_PENDING_EXACT_HEAD_CI_AND_HOSTED_ACCEPTANCE",
+        "source_base_sha": "24012181c1ca3b1f3326c56c5c1d148fdc6c9c28",
+        "migration": "supabase/migrations/20261117060000_guarded_historical_projection_reconciliation.sql",
+        "operator_contract": "docs/delivery/pr605-historical-projection-reconciliation-operator.md",
+        "test_path": "backend/tests/master_qa/test_canonical_repository_persistence_pg.py",
+        "local_postgres_cases_passed": 49,
+        "default_mode": "preview",
+        "scope": "Explicit per-org/run existing terminal execute projections; matching step identities; no projection-only domain repair",
+        "source_or_terminal_event_mutation": false,
+        "hosted_migration_applied": false,
+        "hosted_rows_repaired": 0,
+        "finding_certified": false,
+        "remaining": [
+          "Exact-head hosted SQL/application CI",
+          "Attested project and deployed schema",
+          "Consumer/UI/metrics compatibility",
+          "Owner-approved row allowlist and operation",
+          "Hosted apply/readback/undo evidence",
+          "Full original finding closure criteria"
+        ]
       }
     },
     {

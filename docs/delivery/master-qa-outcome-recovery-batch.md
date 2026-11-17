@@ -522,3 +522,60 @@ The original 43-finding register, owners and dependency order remain authoritati
 Full live provider/tenant/revocation, historical reconciliation, physical voice and
 deployed rollback gates remain open. No SDK pin, image resource limit, workflow,
 production setting, provider record, database schema, merge or deployment changed.
+
+
+## Guarded historical projection repair and exact undo
+
+Source `24012181c1ca3b1f3326c56c5c1d148fdc6c9c28` completed **all ten CI lanes
+successfully**. [Core backend](https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/44034030452/job/133872545405)
+passed **17,232 cases, 44 skips and 14 passing subtests**, plus integration smoke
+and full web validation. [Operations](https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/44034030371/job/133874481128)
+passed the real isolated SDK/runtime recovery certification and paired browser
+adapter comparison. The earlier pre-review stabilization repair therefore has
+bounded exact-head gate evidence. Earlier intermittent failures remain part of
+the reliability history; this does not establish production/tenant certification
+or deployed rollback. The new reconciliation candidate requires fresh CI.
+
+ECO-014 / DEC-007 / DEC-019 now have a staged per-run operator mechanism:
+`20261117060000_guarded_historical_projection_reconciliation.sql`. Default mode
+is read-only preview; apply/undo require explicit tenant/run, batch, approval
+reference and reviewed SHA-256 source/projection fingerprints. A reference string
+is audit metadata, not proof of human authorization. No routine caller or bulk
+backfill is enabled. Only existing linked projections for known terminal execute
+runs with matching step identities are admitted. Missing/foreign/other-domain
+rows are not created, deleted or guessed into the workflow family.
+
+The mutation locks canonical parent/steps, workflow display-name dependencies,
+then projection parent/steps, rechecks reviewed state and calls the existing
+locked-source refresh. Validated immediate parent FKs fence new child inserts.
+Canonical rows are not modified. Projection updates and the service-only,
+RLS-protected before/after journal commit together. Exact same-batch replay is
+readback-only. Undo compares current source and projection to the stored after
+checkpoint before restoring projection fields and marking the journal undone.
+Later source/step/name/consumer changes block both stale apply and stale undo;
+a closed/undone batch cannot silently reapply. Timestamp fingerprints normalize
+to UTC. No extra terminal outbox event, notification or learning delivery is
+requested; existing source event identities remain intact in SQL acceptance.
+
+**49 new real PostgreSQL cases pass locally** in the existing QA12-selected
+canonical persistence file. They cover read-only preview, apply/replay/exact undo,
+eight stale source/target variants, scope/family/identity/FK guards, required
+review parameters, concurrent identical calls, journal and undo failure rollback,
+role/RLS execution and denial metadata, timezone independence, unrelated-domain
+preservation, actual lock waiting/rechecks, FK-fenced source/target inserts,
+workflow-name dependencies and ten terminal/legacy-lifecycle translations.
+Existing source status and historical timestamp fields are retained; exact raw
+status readback uses JSON so the test transport cannot strip legacy whitespace.
+The local workspace blocks Unix sockets, so these disposable SQL cases use a
+temporary loopback-TCP harness; repository/CI harness and production constraints
+are unchanged. Targeted collection excluded the five older app-dependent preview
+cases and unrelated tests; full exact-head hosted acceptance remains required.
+
+The [operator contract](pr605-historical-projection-reconciliation-operator.md)
+provides reviewed preview/apply/undo inputs, lock limits, evidence requirements and
+sensitive checkpoint handling. It does not authorize hosted migration or repair.
+The last recorded 15 linked metadata gaps and 27 projection-only QA rows have not
+been repaired in this step. Database/project attestation, consumer/UI/metrics
+parity, the approved allowlist, hosted execution and independent verification
+remain outstanding. No hosted SQL mutation, provider write, merge, deployment,
+retirement or release authorization was performed. All 43 findings stay uncertified.

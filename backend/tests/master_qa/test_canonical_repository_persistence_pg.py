@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 from datetime import datetime, timezone
+from contextlib import contextmanager
 
 import pytest
 from tests.db.pg_harness import requires_pg
@@ -974,3 +975,366 @@ def test_chat_fallback_exception_cannot_bypass_canonical_cancellation(monkeypatc
         assert pg.value(f"SELECT status FROM public.workflow_runs WHERE id='{run_id}'") == "cancelled"
         assert pg.value(f"SELECT status FROM public.runs WHERE id='{run_id}'") == "cancelled"
         assert pg.value("SELECT count(*) FROM public.domain_event_outbox") == "1"
+
+
+# Historical reconciliation is deliberately an operator-only, per-run API.
+# These cases use disposable PostgreSQL; they never apply a hosted backfill.
+_HISTORY_RUN = '66666666-6666-4666-8666-666666666666'
+_HISTORY_STEP = '77777777-7777-4777-8777-777777777777'
+_HISTORY_BATCH = '88888888-8888-4888-8888-888888888888'
+
+
+@contextmanager
+def _historical_projection_pg():
+    from tests.db.pg_harness import MIGRATIONS
+    with canonical_pg_cluster() as pg:
+        # Match the production run_steps parent FK for insert fencing. Do not
+        # change the intentionally corruptible older identity-conflict fixtures.
+        pg.psql('ALTER TABLE public.run_steps ADD CONSTRAINT qa_history_parent_fk FOREIGN KEY(run_id) REFERENCES public.runs(id)')
+        pg.psql((MIGRATIONS / '20261117060000_guarded_historical_projection_reconciliation.sql').read_text())
+        pg.psql(f"""
+INSERT INTO public.workflow_runs(id,org_id,status,run_type,parameters,environment)
+ VALUES('{_HISTORY_RUN}','{ORG}','failed','execute','{{"canary":"source"}}','synthetic');
+INSERT INTO public.workflow_steps(id,org_id,run_id,step_id,step_index,step_name,step_type,status,logs,output_snapshot)
+ VALUES('{_HISTORY_STEP}','{ORG}','{_HISTORY_RUN}','historical-step',0,'Historical','noop','failed','source log','{{"proof":"synthetic"}}');
+SELECT public.refresh_workflow_run_projection('{_HISTORY_RUN}');
+UPDATE public.runs SET status='running',metadata=(metadata-'status_contract_version'-'execution_lifecycle')||'{{"consumer_note":"keep"}}'::jsonb WHERE id='{_HISTORY_RUN}';
+UPDATE public.run_steps SET status='running',metadata=metadata||'{{"consumer_note":"keep step"}}'::jsonb WHERE id='{_HISTORY_STEP}';
+""")
+        # The terminal source INSERT emitted one historical outbox row.
+        # Reconciliation must preserve it rather than emit another event.
+        assert pg.value('SELECT count(*) FROM public.domain_event_outbox') == '1'
+        yield pg
+
+
+def _historical_connection(pg):
+    import psycopg
+    return psycopg.connect(host=str(pg.sock), port=pg.port, dbname='postgres', user='postgres', autocommit=True)
+
+
+def _historical_call(pg, mode='preview', plan=None, **overrides):
+    values = dict(org_id=ORG,run_id=_HISTORY_RUN,batch_id=_HISTORY_BATCH,
+        source_digest=(plan or {}).get('source_digest'),
+        projection_digest=(plan or {}).get('projection_digest'),
+        approval_ref='synthetic-review-1',mode=mode)
+    values.update(overrides)
+    with _historical_connection(pg) as connection:
+        return connection.execute('SELECT public.reconcile_historical_run_projection(%s,%s,%s,%s,%s,%s,%s)',
+            tuple(values[key] for key in ('org_id','run_id','batch_id','source_digest','projection_digest','approval_ref','mode'))).fetchone()[0]
+
+
+def _historical_snapshot(pg):
+    return pg.value(f"SELECT public.historical_projection_snapshot('{ORG}','{_HISTORY_RUN}')::text")
+
+
+def test_historical_preview_is_readonly_and_does_not_export_snapshots():
+    with _historical_projection_pg() as pg:
+        before = _historical_snapshot(pg)
+        with _historical_connection(pg) as connection:
+            connection.execute('BEGIN READ ONLY')
+            plan = connection.execute('SELECT public.reconcile_historical_run_projection(%s,%s)',(ORG,_HISTORY_RUN)).fetchone()[0]
+            connection.execute('COMMIT')
+        assert plan['mode'] == 'preview' and plan['step_count'] == 1
+        assert plan['source_status'] == 'failed' and plan['projection_status'] == 'running'
+        assert len(plan['source_digest']) == len(plan['projection_digest']) == 64
+        assert 'source' not in plan and 'projection' not in plan
+        assert _historical_snapshot(pg) == before
+        assert pg.value('SELECT count(*) FROM public.historical_projection_reconciliations') == '0'
+        assert pg.value('SELECT count(*) FROM public.domain_event_outbox') == '1'
+
+
+def test_historical_apply_replay_exact_undo_and_closed_batch():
+    import psycopg
+    with _historical_projection_pg() as pg:
+        before = _historical_snapshot(pg)
+        outbox_before = pg.value('SELECT jsonb_agg(to_jsonb(e) ORDER BY id) FROM public.domain_event_outbox e')
+        plan = _historical_call(pg)
+        applied = _historical_call(pg,'apply',plan)
+        assert applied['state'] == 'applied' and applied['replayed'] is False
+        after = _historical_snapshot(pg)
+        assert _historical_call(pg,'apply',plan)['replayed'] is True
+        assert _historical_snapshot(pg) == after
+        assert pg.value(f"SELECT status FROM public.runs WHERE id='{_HISTORY_RUN}'") == 'failed'
+        assert pg.value(f"SELECT metadata->>'status_contract_version' FROM public.runs WHERE id='{_HISTORY_RUN}'") == '2'
+        assert pg.value(f"SELECT metadata->>'execution_lifecycle' FROM public.runs WHERE id='{_HISTORY_RUN}'") == 'failed'
+        assert pg.value(f"SELECT metadata->>'consumer_note' FROM public.runs WHERE id='{_HISTORY_RUN}'") == 'keep'
+        assert pg.value(f"SELECT logs[1] FROM public.run_steps WHERE id='{_HISTORY_STEP}'") == 'source log'
+        assert pg.value(f"SELECT metadata->>'consumer_note' FROM public.run_steps WHERE id='{_HISTORY_STEP}'") == 'keep step'
+        undone = _historical_call(pg,'undo',applied,approval_ref='synthetic-undo-review')
+        assert undone['state'] == 'undone' and undone['replayed'] is False
+        assert _historical_snapshot(pg) == before
+        assert _historical_call(pg,'undo',applied,approval_ref='synthetic-undo-review')['replayed'] is True
+        with pytest.raises(psycopg.errors.SerializationFailure):
+            _historical_call(pg,'apply',plan)
+        assert pg.value('SELECT count(*) FROM public.historical_projection_reconciliations') == '1'
+        assert pg.value('SELECT jsonb_agg(to_jsonb(e) ORDER BY id) FROM public.domain_event_outbox e') == outbox_before
+
+
+def _change_historical_row(pg, location):
+    statements = {
+        'source': f"UPDATE public.workflow_runs SET parameters=parameters||'{{\"concurrent\":true}}'::jsonb WHERE id='{_HISTORY_RUN}'",
+        'source_step': f"UPDATE public.workflow_steps SET logs='later source log' WHERE id='{_HISTORY_STEP}'",
+        'projection': f"UPDATE public.runs SET metadata=metadata||'{{\"concurrent\":true}}'::jsonb WHERE id='{_HISTORY_RUN}'",
+        'projection_step': f"UPDATE public.run_steps SET metadata=metadata||'{{\"concurrent\":true}}'::jsonb WHERE id='{_HISTORY_STEP}'",
+    }
+    pg.psql(statements[location])
+
+
+@pytest.mark.parametrize('location',['source','source_step','projection','projection_step'])
+@pytest.mark.parametrize('mode',['apply','undo'])
+def test_historical_stale_review_or_undo_never_overwrites_later_data(location,mode):
+    import psycopg
+    with _historical_projection_pg() as pg:
+        plan = _historical_call(pg)
+        if mode == 'undo':
+            plan = _historical_call(pg,'apply',plan)
+        _change_historical_row(pg,location)
+        current = _historical_snapshot(pg)
+        with pytest.raises(psycopg.errors.SerializationFailure):
+            _historical_call(pg,mode,plan)
+        assert _historical_snapshot(pg) == current
+        assert pg.value('SELECT count(*) FROM public.historical_projection_reconciliations') == ('1' if mode == 'undo' else '0')
+        assert pg.value('SELECT count(*) FROM public.domain_event_outbox') == '1'
+
+
+@pytest.mark.parametrize('variant,sqlstate',[
+    ('foreign_org','P0002'),('projection_only','P0002'),('missing_projection','P0002'),
+    ('unknown_source','22023'),('different_domain','22023'),('target_tenant','23514'),
+    ('step_tenant','23514'),('mismatched_steps','23514'),('missing_fk','23514'),
+])
+def test_historical_scope_family_identity_and_fk_guards(variant,sqlstate):
+    import psycopg
+    with _historical_projection_pg() as pg:
+        arguments = {}
+        if variant == 'foreign_org':
+            arguments['org_id'] = '99999999-9999-4999-8999-999999999999'
+        elif variant == 'projection_only':
+            other = '99999999-9999-4999-8999-999999999999'
+            pg.psql(f"INSERT INTO public.runs(id,org_id,status) VALUES('{other}','{ORG}','completed')")
+            arguments['run_id'] = other
+        elif variant == 'missing_projection':
+            pg.psql(f"DELETE FROM public.run_steps WHERE run_id='{_HISTORY_RUN}'; DELETE FROM public.runs WHERE id='{_HISTORY_RUN}'")
+        elif variant == 'unknown_source':
+            pg.psql(f"ALTER TABLE public.workflow_runs DROP CONSTRAINT workflow_runs_status_check; UPDATE public.workflow_runs SET status='unrecognized' WHERE id='{_HISTORY_RUN}'")
+        elif variant == 'different_domain':
+            pg.psql(f"UPDATE public.workflow_runs SET run_type='dry_run' WHERE id='{_HISTORY_RUN}'")
+        elif variant == 'target_tenant':
+            pg.psql(f"UPDATE public.runs SET org_id='99999999-9999-4999-8999-999999999999' WHERE id='{_HISTORY_RUN}'")
+        elif variant == 'step_tenant':
+            pg.psql(f"UPDATE public.run_steps SET org_id='99999999-9999-4999-8999-999999999999' WHERE id='{_HISTORY_STEP}'")
+        elif variant == 'mismatched_steps':
+            pg.psql(f"DELETE FROM public.run_steps WHERE id='{_HISTORY_STEP}'")
+        elif variant == 'missing_fk':
+            pg.psql('ALTER TABLE public.run_steps DROP CONSTRAINT qa_history_parent_fk')
+        with pytest.raises(psycopg.Error) as denied:
+            _historical_call(pg,**arguments)
+        assert denied.value.sqlstate == sqlstate
+        assert pg.value('SELECT count(*) FROM public.historical_projection_reconciliations') == '0'
+
+
+@pytest.mark.parametrize('missing',['source_digest','projection_digest','batch_id','approval_ref','blank_approval','unknown_mode'])
+def test_historical_mutation_requires_reviewed_scope_and_explicit_approval_reference(missing):
+    import psycopg
+    with _historical_projection_pg() as pg:
+        plan = _historical_call(pg)
+        args = {missing: None} if missing not in {'blank_approval','unknown_mode'} else (
+            {'approval_ref':'   '} if missing == 'blank_approval' else {'mode':'automatic'})
+        mode = args.pop('mode','apply')
+        before = _historical_snapshot(pg)
+        with pytest.raises(psycopg.errors.InvalidParameterValue):
+            _historical_call(pg,mode,plan,**args)
+        assert _historical_snapshot(pg) == before
+        assert pg.value('SELECT count(*) FROM public.historical_projection_reconciliations') == '0'
+
+
+def test_historical_concurrent_same_batch_has_one_journal_and_no_terminal_reemission():
+    from concurrent.futures import ThreadPoolExecutor
+    with _historical_projection_pg() as pg:
+        plan = _historical_call(pg)
+        with ThreadPoolExecutor(max_workers=4) as pool:
+            outcomes = list(pool.map(lambda _: _historical_call(pg,'apply',plan),range(4)))
+        assert sum(not item['replayed'] for item in outcomes) == 1
+        assert len({item['journal_id'] for item in outcomes}) == 1
+        assert pg.value('SELECT count(*) FROM public.historical_projection_reconciliations') == '1'
+        assert pg.value('SELECT count(*) FROM public.domain_event_outbox') == '1'
+
+
+def test_historical_failed_journal_insert_rolls_projection_back():
+    import psycopg
+    with _historical_projection_pg() as pg:
+        plan = _historical_call(pg)
+        before = _historical_snapshot(pg)
+        pg.psql("CREATE FUNCTION public.qa_reject_history_journal() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'journal unavailable'; END $$; CREATE TRIGGER qa_reject_history BEFORE INSERT ON public.historical_projection_reconciliations FOR EACH ROW EXECUTE FUNCTION public.qa_reject_history_journal()")
+        with pytest.raises(psycopg.errors.RaiseException,match='journal unavailable'):
+            _historical_call(pg,'apply',plan)
+        assert _historical_snapshot(pg) == before
+        assert pg.value('SELECT count(*) FROM public.historical_projection_reconciliations') == '0'
+        assert pg.value('SELECT count(*) FROM public.domain_event_outbox') == '1'
+
+
+def test_historical_api_and_sensitive_journal_are_service_only_and_migration_idempotent():
+    from tests.db.pg_harness import MIGRATIONS
+    with _historical_projection_pg() as pg:
+        pg.psql((MIGRATIONS / '20261117060000_guarded_historical_projection_reconciliation.sql').read_text())
+        signature = 'public.reconcile_historical_run_projection(uuid,uuid,uuid,text,text,text,text)'
+        for role in ('anon','authenticated'):
+            assert pg.value(f"SELECT has_function_privilege('{role}','{signature}','EXECUTE')") == 'f'
+            assert pg.value(f"SELECT has_table_privilege('{role}','public.historical_projection_reconciliations','SELECT')") == 'f'
+        assert pg.value(f"SELECT has_function_privilege('service_role','{signature}','EXECUTE')") == 't'
+        assert pg.value(f"SELECT prosecdef FROM pg_proc WHERE oid='{signature}'::regprocedure") == 'f'
+        assert pg.value("SELECT relrowsecurity FROM pg_class WHERE oid='public.historical_projection_reconciliations'::regclass") == 't'
+
+
+def test_historical_review_fingerprints_are_timezone_independent():
+    with _historical_projection_pg() as pg:
+        plan = _historical_call(pg)
+        with _historical_connection(pg) as connection:
+            connection.execute("SET timezone='Pacific/Auckland'")
+            other = connection.execute('SELECT public.reconcile_historical_run_projection(%s,%s)',(ORG,_HISTORY_RUN)).fetchone()[0]
+        assert (plan['source_digest'],plan['projection_digest']) == (other['source_digest'],other['projection_digest'])
+
+
+def test_historical_undo_failure_rolls_back_entire_restore_and_journal_state():
+    import psycopg
+    with _historical_projection_pg() as pg:
+        applied = _historical_call(pg,'apply',_historical_call(pg))
+        before = _historical_snapshot(pg)
+        pg.psql("CREATE FUNCTION public.qa_reject_history_undo() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN RAISE EXCEPTION 'undo unavailable'; END $$; CREATE TRIGGER qa_reject_history_undo BEFORE UPDATE ON public.run_steps FOR EACH ROW EXECUTE FUNCTION public.qa_reject_history_undo()")
+        with pytest.raises(psycopg.errors.RaiseException,match='undo unavailable'):
+            _historical_call(pg,'undo',applied)
+        assert _historical_snapshot(pg) == before
+        assert pg.value('SELECT state FROM public.historical_projection_reconciliations') == 'applied'
+        assert pg.value('SELECT count(*) FROM public.domain_event_outbox') == '1'
+
+
+def test_historical_repair_and_undo_preserve_other_projection_domains():
+    with _historical_projection_pg() as pg:
+        other = '99999999-9999-4999-8999-999999999999'
+        pg.psql(f"INSERT INTO public.runs(id,org_id,status,metadata) VALUES('{other}','{ORG}','completed','{{\"domain\":\"independent\"}}')")
+        before = pg.value(f"SELECT row_to_json(r) FROM public.runs r WHERE id='{other}'")
+        applied = _historical_call(pg,'apply',_historical_call(pg))
+        assert pg.value(f"SELECT row_to_json(r) FROM public.runs r WHERE id='{other}'") == before
+        _historical_call(pg,'undo',applied)
+        assert pg.value(f"SELECT row_to_json(r) FROM public.runs r WHERE id='{other}'") == before
+
+
+def _wait_for_historical_sql_lock(pg):
+    import time
+    deadline = time.monotonic()+10
+    while int(pg.value("SELECT count(*) FROM pg_stat_activity WHERE wait_event_type='Lock'")) < 1:
+        assert time.monotonic() < deadline, 'Expected PostgreSQL row/FK lock was not observed'
+        time.sleep(0.01)
+
+
+@pytest.mark.parametrize('location',['source','source_step','projection_step'])
+def test_historical_waiting_apply_rechecks_review_after_a_concurrent_writer_commits(location):
+    from concurrent.futures import ThreadPoolExecutor
+    import psycopg
+    with _historical_projection_pg() as pg:
+        plan = _historical_call(pg)
+        with _historical_connection(pg) as owner:
+            owner.execute('BEGIN')
+            if location == 'source':
+                owner.execute("UPDATE public.workflow_runs SET parameters=parameters||'{\"late\":true}'::jsonb WHERE id=%s",(_HISTORY_RUN,))
+            elif location == 'source_step':
+                owner.execute("UPDATE public.workflow_steps SET logs='concurrent source step' WHERE id=%s",(_HISTORY_STEP,))
+            else:
+                owner.execute("UPDATE public.run_steps SET metadata=metadata||'{\"late\":true}'::jsonb WHERE id=%s",(_HISTORY_STEP,))
+            with ThreadPoolExecutor(max_workers=1) as pool:
+                pending = pool.submit(_historical_call,pg,'apply',plan)
+                try:
+                    _wait_for_historical_sql_lock(pg)
+                    assert not pending.done()
+                finally:
+                    owner.execute('COMMIT')
+                with pytest.raises(psycopg.errors.SerializationFailure):
+                    pending.result(timeout=10)
+        assert pg.value('SELECT count(*) FROM public.historical_projection_reconciliations') == '0'
+        assert pg.value('SELECT count(*) FROM public.domain_event_outbox') == '1'
+
+
+@pytest.mark.parametrize('child_table',['workflow_steps','run_steps'])
+def test_historical_parent_locks_fence_new_child_inserts_until_repair_commits(child_table):
+    from concurrent.futures import ThreadPoolExecutor
+    with _historical_projection_pg() as pg:
+        plan = _historical_call(pg)
+        with _historical_connection(pg) as owner:
+            owner.execute('BEGIN')
+            owner.execute('SELECT public.reconcile_historical_run_projection(%s,%s,%s,%s,%s,%s,%s)',
+                (ORG,_HISTORY_RUN,_HISTORY_BATCH,plan['source_digest'],plan['projection_digest'],'synthetic-review-1','apply'))
+            def insert_child():
+                with _historical_connection(pg) as writer:
+                    if child_table == 'workflow_steps':
+                        writer.execute("INSERT INTO public.workflow_steps(org_id,run_id,step_id,step_index,status) VALUES(%s,%s,'late-step',1,'pending')",(ORG,_HISTORY_RUN))
+                    else:
+                        writer.execute("INSERT INTO public.run_steps(id,org_id,run_id,name,status) VALUES('99999999-9999-4999-8999-999999999999',%s,%s,'late-step','pending')",(ORG,_HISTORY_RUN))
+            with ThreadPoolExecutor(max_workers=1) as pool:
+                pending = pool.submit(insert_child)
+                try:
+                    _wait_for_historical_sql_lock(pg)
+                    assert not pending.done()
+                finally:
+                    owner.execute('COMMIT')
+                pending.result(timeout=10)
+        assert pg.value('SELECT count(*) FROM public.historical_projection_reconciliations') == '1'
+        assert pg.value('SELECT count(*) FROM public.domain_event_outbox') == '1'
+
+
+def test_historical_operator_service_role_can_apply_and_undo_with_rls_enabled():
+    with _historical_projection_pg() as pg:
+        # The minimal canonical fixture predates production's service-role
+        # grants. Supply that transport context without SECURITY DEFINER.
+        pg.psql('GRANT SELECT,UPDATE ON public.workflow_runs,public.workflow_steps TO service_role; GRANT SELECT,INSERT,UPDATE ON public.runs,public.run_steps TO service_role; GRANT SELECT,UPDATE ON public.workflows,public.workflow_defs TO service_role')
+        plan = _historical_call(pg)
+        with _historical_connection(pg) as operator:
+            operator.execute('SET ROLE service_role')
+            applied = operator.execute('SELECT public.reconcile_historical_run_projection(%s,%s,%s,%s,%s,%s,%s)',
+                (ORG,_HISTORY_RUN,_HISTORY_BATCH,plan['source_digest'],plan['projection_digest'],'synthetic-reviewed-apply','apply')).fetchone()[0]
+            undone = operator.execute('SELECT public.reconcile_historical_run_projection(%s,%s,%s,%s,%s,%s,%s)',
+                (ORG,_HISTORY_RUN,_HISTORY_BATCH,applied['source_digest'],applied['projection_digest'],'synthetic-reviewed-undo','undo')).fetchone()[0]
+        assert applied['state'] == 'applied' and undone['state'] == 'undone'
+        assert pg.value('SELECT count(*) FROM public.domain_event_outbox') == '1'
+
+
+@pytest.mark.parametrize('mode',['apply','undo'])
+def test_historical_review_includes_projector_workflow_name_dependency(mode):
+    import psycopg
+    with _historical_projection_pg() as pg:
+        workflow_id = '22222222-2222-4222-8222-222222222222'
+        pg.psql(f"INSERT INTO public.workflows(id,org_id,name) VALUES('{workflow_id}','{ORG}','Reviewed name'); UPDATE public.workflow_runs SET workflow_id='{workflow_id}' WHERE id='{_HISTORY_RUN}'")
+        plan = _historical_call(pg)
+        if mode == 'undo':
+            plan = _historical_call(pg,'apply',plan)
+        pg.psql(f"UPDATE public.workflows SET name='Concurrent renamed workflow' WHERE id='{workflow_id}'")
+        before = _historical_snapshot(pg)
+        with pytest.raises(psycopg.errors.SerializationFailure):
+            _historical_call(pg,mode,plan)
+        assert _historical_snapshot(pg) == before
+        assert pg.value('SELECT count(*) FROM public.domain_event_outbox') == '1'
+
+
+@pytest.mark.parametrize('source,projected',[
+    ('completed','completed'),('success','completed'),('failed','failed'),
+    ('error','failed'),('cancelled','cancelled'),('canceled','cancelled'),
+    ('partial_success','partial_success'),('verification_inconclusive','failed'),
+    ('flagged_for_review','flagged_for_review'),(' Completed ','completed'),
+])
+def test_historical_repair_preserves_lossless_source_lifecycle(source,projected):
+    with _historical_projection_pg() as pg:
+        # Exercise the legacy aliases/whitespace accepted by the real refresh
+        # without changing any production constraint.
+        pg.psql('ALTER TABLE public.workflow_runs DROP CONSTRAINT workflow_runs_status_check')
+        with _historical_connection(pg) as connection:
+            connection.execute('UPDATE public.workflow_runs SET status=%s WHERE id=%s',(source,_HISTORY_RUN))
+        outbox = pg.value('SELECT jsonb_agg(to_jsonb(e) ORDER BY id) FROM public.domain_event_outbox e')
+        plan = _historical_call(pg)
+        assert plan['proposed_status'] == projected and plan['proposed_status_contract_version'] == 2
+        applied = _historical_call(pg,'apply',plan)
+        assert pg.value(f"SELECT status FROM public.runs WHERE id='{_HISTORY_RUN}'") == projected
+        assert pg.value(f"SELECT metadata->>'execution_lifecycle' FROM public.runs WHERE id='{_HISTORY_RUN}'") == source.strip().lower()
+        # Pg.value strips output whitespace; JSON preserves the exact legacy
+        # status bytes so this assertion does not normalize the source itself.
+        assert json.loads(pg.value(f"SELECT to_jsonb(status) FROM public.workflow_runs WHERE id='{_HISTORY_RUN}'")) == source
+        _historical_call(pg,'undo',applied)
+        assert pg.value(f"SELECT status FROM public.runs WHERE id='{_HISTORY_RUN}'") == 'running'
+        assert pg.value('SELECT jsonb_agg(to_jsonb(e) ORDER BY id) FROM public.domain_event_outbox e') == outbox
