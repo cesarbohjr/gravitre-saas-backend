@@ -5483,9 +5483,14 @@ def invoke_tool(ctx: ToolContext, action: str, params: dict[str, Any] | None = N
                     assert_current_workflow_claim_live()
                 except Exception as exc:
                     raise ToolValidationError("Workflow execution ownership was lost; write refused", code="workflow_claim_lost") from exc
-            if _is_write_invoke(action) and getattr(ctx, "autonomous_write_guarded", False):
-                # Close the time-of-check/time-of-use window: re-read the
-                # tenant-scoped approval immediately before the provider call.
+            if _is_write_invoke(action) and (
+                getattr(ctx, "autonomous_write_guarded", False)
+                or (declared_authority is not None and declared_authority.kind == "run")
+            ):
+                # Every run-authorized write, not just autonomous ones, must
+                # revalidate tenant-scoped approval at the final provider
+                # boundary. The atomic reservation above separately fences
+                # concurrent claims and revocation at reservation time.
                 from app.services.canvas_write_gate import require_approved_authority_run
                 require_approved_authority_run(
                     client=ctx.client, org_id=ctx.org_id, run_id=ctx.run_id,
