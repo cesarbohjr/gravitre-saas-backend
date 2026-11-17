@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from unittest.mock import MagicMock
+from tests.services.outcome_rpc_fake import unit_finalization_result
 
 import pytest
 
@@ -79,7 +80,7 @@ def _patch_runtime(monkeypatch, handler_factory):
     # Terminal fanout moved to execution_outcome → repository (not imported on runtime).
     monkeypatch.setattr(
         "app.services.execution_outcome.finalize_execution_outcome",
-        lambda *a, **k: None,
+        unit_finalization_result,
     )
     monkeypatch.setattr(f"{_RUNTIME}.merge_run_parameters", lambda *a, **k: {})
 

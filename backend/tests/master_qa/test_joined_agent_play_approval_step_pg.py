@@ -5,7 +5,8 @@ execute_workflow_steps registered invoke_tool handler, sealed read gate, SQL
 workflow status trigger, outbox relay and idempotent durable consumer.
 
 Adapted: local tenant connector query, deterministic version/policy/billing,
-terminal notification finalizer and outbound vendor transport.
+outbound vendor transport and optional delivery channels. Canonical terminal
+proof/receipt persistence and core audit/inbox/learning writers execute unchanged.
 Canonical repository methods and legacy/contract run, step and approval
 tables are real, backed by disposable PostgreSQL via a SQL transport adapter.
 This is NOT an unmodified production API/worker, process crash or external
@@ -34,7 +35,8 @@ def pg():
 pytestmark = requires_pg
 
 @pytest.mark.asyncio
-async def test_agent_play_approval_real_step_to_durable_consumer(pg, monkeypatch, tmp_path):
+@pytest.mark.parametrize("decision", ["approve", "reject", "forbidden_approver", "foreign_tenant", "cancel_during_finalize", "terminal_persistence_failure"])
+async def test_agent_play_approval_real_step_to_durable_consumer(pg, monkeypatch, tmp_path, request, decision):
     from app.services import agent_selector, domain_events, work_loop_links
     from app.routers import plays, workflows
     from app.workflows import execute, handlers, repository
@@ -76,6 +78,11 @@ async def test_agent_play_approval_real_step_to_durable_consumer(pg, monkeypatch
         policy_max_steps=10, policy_max_runtime_seconds=60,
     )
     client = PgRepositoryClient(pg)
+    from tests.master_qa.test_canonical_repository_persistence_pg import (
+        _core_effect_tables, _disable_optional_delivery,
+    )
+    _core_effect_tables(pg)
+    _disable_optional_delivery(monkeypatch)
     def connector_table(name):
         assert name == "connectors"
         class Query:
@@ -171,7 +178,7 @@ async def test_agent_play_approval_real_step_to_durable_consumer(pg, monkeypatch
     monkeypatch.setattr(workflows, "execute_workflow", initial_execute)
     response = await plays.run_play("customer-rescue",
         plays.RunPlayRequest(installationId="fixture-install"),
-        ({"user_id": "synthetic-owner"}, ORG, "admin"), "synthetic", settings)
+        ({"user_id": "33333333-3333-4333-8333-333333333333"}, ORG, "admin"), "synthetic", settings)
     assert response["workflowRuns"][0]["runId"] == run_id
     assert response["status"] == "awaiting_approval"
     assert pg.value(f"SELECT status FROM public.workflow_runs WHERE id='{run_id}'") == "pending_approval"
@@ -218,6 +225,7 @@ async def test_agent_play_approval_real_step_to_durable_consumer(pg, monkeypatch
         tmp_path / "joined-agent-provider.sqlite3", b"<h1>isolated</h1>",
         capability="joined-agent-cap",
     )
+    request.addfinalizer(receiver.close)
     def observed_vendor():
         request = urllib.request.Request(
             receiver.origin + "/write",
@@ -226,6 +234,13 @@ async def test_agent_play_approval_real_step_to_durable_consumer(pg, monkeypatch
         )
         with urllib.request.urlopen(request, timeout=5) as response:
             assert response.status == 204
+        if decision == "cancel_during_finalize":
+            # Provider observation exists, but cancellation commits before the
+            # step executor's late completion callback. Do not undo the read.
+            from app.services.execution_outcome import finalize_execution_outcome
+            finalize_execution_outcome(client, org_id=ORG, run_id=run_id,
+                status="cancelled", source="api",
+                actor_id="44444444-4444-4444-8444-444444444444")
         return NormalizedResult(
             success=True, action="hubspot.contacts.search",
             data={"results": [{"id": "synthetic-contact-1"}]},
@@ -240,7 +255,7 @@ async def test_agent_play_approval_real_step_to_durable_consumer(pg, monkeypatch
         # The connector vendor transport uses a local fake rather than the
         # restricted SQL repository client (whose scope is workflow state).
         ctx = ToolContext(settings=settings, client=MagicMock(), org_id=ORG,
-                          actor_id="synthetic-approver", environment_name="synthetic")
+                          actor_id="44444444-4444-4444-8444-444444444444", environment_name="synthetic")
         with (patch("app.services.read_preflight.resolve_resource", return_value=resource),
               patch("app.services.tool_service.enforce_rate_limit"),
               patch("app.services.tool_service.write_audit_event"),
@@ -251,24 +266,66 @@ async def test_agent_play_approval_real_step_to_durable_consumer(pg, monkeypatch
                     return_value=lambda *_: vendor())):
             return invoke_compiled_read(ctx, action, params)
     monkeypatch.setattr(handlers, "_invoke_canvas_registered_tool", invoke)
-    def terminal_finalizer(_client, **kw):
-        assert kw["org_id"] == ORG and kw["run_id"] == run_id
-        assert kw["status"] == "completed", (
-            kw, repository.get_run_with_steps(_client, ORG, run_id, "synthetic")["steps"])
-        # Pending canonical outcome notification fanout is adapted, but the
-        # repository update and runs/run_steps mirrors are production code.
-        repository.update_run(_client, run_id, "completed", approval_status="approved")
-    monkeypatch.setattr("app.services.execution_outcome.finalize_execution_outcome",
-                        terminal_finalizer)
-
     # No synthetic stand-in for the executor: route calls real implementation.
     monkeypatch.setattr(workflows, "execute_workflow_steps", execute.execute_workflow_steps)
     monkeypatch.setattr(workflows, "_step_to_out", lambda x: x)
     assert pg.value("SELECT count(*) FROM public.domain_event_outbox") == "0"
+    if decision in {"reject", "forbidden_approver", "foreign_tenant"}:
+        actor = {"user_id": "44444444-4444-4444-8444-444444444444"}
+        if decision == "reject":
+            monkeypatch.setattr(workflows, "emit_execute_rejected", lambda *a, **kw: None)
+            rejected = await workflows.reject_run(UUID(run_id), workflows.ApproveRejectRequest(),
+                actor, ORG, "synthetic", settings)
+            assert rejected["status"] == "cancelled" and rejected["approval_status"] == "rejected"
+            assert repository.get_approval_counts(client, run_id) == (0, True)
+            assert pg.value(f"SELECT status FROM public.workflow_runs WHERE id='{run_id}'") == "cancelled"
+            assert pg.value(f"SELECT status FROM public.runs WHERE id='{run_id}'") == "cancelled"
+            assert pg.value("SELECT count(*) FROM public.domain_event_outbox") == "1"
+            assert pg.value(f"SELECT parameters->>'outcome_finalized' FROM public.workflow_runs WHERE id='{run_id}'") == "true"
+        else:
+            if decision == "forbidden_approver":
+                monkeypatch.setattr(workflows, "has_capability", lambda *_: False)
+            tenant = "99999999-9999-4999-8999-999999999999" if decision == "foreign_tenant" else ORG
+            with pytest.raises(HTTPException) as denied:
+                await workflows.approve_run(UUID(run_id), workflows.ApproveRejectRequest(),
+                    actor, tenant, "synthetic", settings)
+            assert denied.value.status_code == (404 if decision == "foreign_tenant" else 403)
+            assert repository.get_approval_counts(client, run_id) == (0, False)
+            assert pg.value(f"SELECT status FROM public.workflow_runs WHERE id='{run_id}'") == "pending_approval"
+            assert pg.value("SELECT count(*) FROM public.domain_event_outbox") == "0"
+        assert vendor.call_count == 0 and receiver.writes == 0
+        assert pg.value(f"SELECT status FROM public.workflow_steps WHERE run_id='{run_id}'") == "pending"
+        for table in ("audit_logs", "audit_events", "notifications", "intelligence_outcome_events"):
+            assert pg.value(f"SELECT count(*) FROM public.{table}") == ("1" if decision == "reject" else "0")
+        with pytest.raises(HTTPException):
+            await workflows.approve_run(UUID(run_id), workflows.ApproveRejectRequest(),
+                actor, tenant if decision == "foreign_tenant" else ORG, "synthetic", settings)
+        assert receiver.writes == 0
+        return
+    if decision == "terminal_persistence_failure":
+        from app.services import execution_outcome
+        def unavailable(*_args, **_kwargs):
+            raise RuntimeError("synthetic terminal store outage")
+        monkeypatch.setattr(execution_outcome, "_persist_run", unavailable)
+        with pytest.raises(RuntimeError, match="terminal persistence failed"):
+            await workflows.approve_run(UUID(run_id), workflows.ApproveRejectRequest(),
+                {"user_id": "44444444-4444-4444-8444-444444444444"}, ORG, "synthetic", settings)
+        assert pg.value(f"SELECT status FROM public.workflow_runs WHERE id='{run_id}'") == "running"
+        assert pg.value(f"SELECT status FROM public.runs WHERE id='{run_id}'") == "running"
+        assert pg.value("SELECT count(*) FROM public.domain_event_outbox") == "0"
+        assert vendor.call_count == 1 and receiver.writes == 1
+        for table in ("audit_logs", "audit_events", "notifications", "intelligence_outcome_events"):
+            assert pg.value(f"SELECT count(*) FROM public.{table}") == "0"
+        with pytest.raises(HTTPException):
+            await workflows.approve_run(UUID(run_id), workflows.ApproveRejectRequest(),
+                {"user_id": "44444444-4444-4444-8444-444444444444"}, ORG, "synthetic", settings)
+        assert receiver.writes == 1
+        return
+    terminal = "cancelled" if decision == "cancel_during_finalize" else "completed"
     approved = await workflows.approve_run(
         UUID(run_id), workflows.ApproveRejectRequest(comment="approved in QA"),
-        {"user_id": "synthetic-approver"}, ORG, "synthetic", settings)
-    assert approved["status"] == "completed"
+        {"user_id": "44444444-4444-4444-8444-444444444444"}, ORG, "synthetic", settings)
+    assert approved["status"] == terminal
     assert approved["approval_status"] == "approved"
     assert repository.get_approval_counts(PgRepositoryClient(pg), run_id) == (1, False)
     steps = repository.get_run_with_steps(PgRepositoryClient(pg), ORG, run_id, "synthetic")["steps"]
@@ -278,11 +335,14 @@ async def test_agent_play_approval_real_step_to_durable_consumer(pg, monkeypatch
     assert observed["status"] == "DIAGNOSTIC_READS_OBSERVED"
     assert observed["verified_actions"][0]["action"] == "hubspot.contacts.search"
     assert observed["business_outcome"] == "NOT_MEASURED"
-    assert pg.value(f"SELECT status FROM public.runs WHERE id='{run_id}'") == "completed"
+    assert pg.value(f"SELECT status FROM public.runs WHERE id='{run_id}'") == terminal
     assert pg.value(f"SELECT status FROM public.run_steps WHERE run_id='{run_id}'") == "completed"
     assert vendor.call_count == 1
     assert receiver.writes == 1
-    assert pg.value(f"SELECT status FROM public.workflow_runs WHERE id='{run_id}'") == "completed"
+    assert pg.value(f"SELECT status FROM public.workflow_runs WHERE id='{run_id}'") == terminal
+    assert pg.value(f"SELECT parameters->>'outcome_finalized' FROM public.workflow_runs WHERE id='{run_id}'") == "true"
+    for table in ("audit_logs", "audit_events", "notifications", "intelligence_outcome_events"):
+        assert pg.value(f"SELECT count(*) FROM public.{table}") == "1"
     # ECO-001 independent readback: the returned HTTP-equivalent result and
     # in-memory step objects cannot substitute for durable terminal evidence.
     # Reopen the canonical repository reader after approval/execution.
@@ -305,7 +365,7 @@ async def test_agent_play_approval_real_step_to_durable_consumer(pg, monkeypatch
     with pytest.raises(HTTPException) as replay:
         await workflows.approve_run(
             UUID(run_id), workflows.ApproveRejectRequest(),
-            {"user_id": "synthetic-approver"}, ORG, "synthetic", settings)
+            {"user_id": "44444444-4444-4444-8444-444444444444"}, ORG, "synthetic", settings)
     assert replay.value.status_code == 400
     assert vendor.call_count == 1
 
@@ -338,7 +398,6 @@ async def test_agent_play_approval_real_step_to_durable_consumer(pg, monkeypatch
     assert replayed.delivered == 1
     assert vendor.call_count == 1  # never replay the external provider operation
     assert receiver.writes == 1  # independently persisted provider observation
-    receiver.close()
     assert pg.value("SELECT count(*) FROM public.qa_p27_joined_effects") == "1"
     assert pg.value(
         f"SELECT count(*) FROM public.domain_event_outbox "

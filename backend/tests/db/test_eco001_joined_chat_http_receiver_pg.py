@@ -47,6 +47,7 @@ ACTOR = "44444444-4444-4444-8444-444444444444"
 class ScopedQuery:
     def __init__(self):
         self.filters = []
+        self.owner_authorized = False
 
     def select(self, *_):
         return self
@@ -59,11 +60,12 @@ class ScopedQuery:
         return self
 
     def execute(self):
-        return SimpleNamespace(data=[{"id": CONVERSATION}] if all(
-            item in self.filters for item in (
-                ("id", CONVERSATION), ("org_id", ORG_A), ("user_id", ACTOR)
-            )
-        ) else [])
+        required = {"id": CONVERSATION, "org_id": ORG_A, "user_id": ACTOR}
+        self.owner_authorized = (
+            all(item in self.filters for item in required.items())
+            and all(required.get(key, value) == value for key, value in self.filters)
+        )
+        return SimpleNamespace(data=[{"id": CONVERSATION}] if self.owner_authorized else [])
 
 
 class OrgSettingsQuery:
@@ -88,6 +90,10 @@ class OrgSettingsQuery:
 class ScopedDb:
     def __init__(self):
         self.lookups = []
+
+    @property
+    def owner_checks(self):
+        return sum(query.owner_authorized for query in self.lookups)
 
     def table(self, table):
         if table == "organizations":
@@ -244,6 +250,7 @@ def test_signed_approved_chat_http_matches_independent_receiver_and_durable_ledg
                 return WriteFinalizeResult(outcome=row["outcome"])
 
             def provider(_ctx, _params):
+                assert db.owner_checks >= db.required_owner_checks
                 request = urllib.request.Request(
                     receiver.origin + "/write",
                     data=json.dumps({"cap": "eco001-joined-chat-cap"}).encode(),
@@ -342,8 +349,14 @@ def test_signed_approved_chat_http_matches_independent_receiver_and_durable_ledg
                             patch_stack.enter_context(context)
                     http = TestClient(app)
                     def confirm():
-                        return http.post(f"/api/assistant/conversation/{CONVERSATION}/execute",
+                        # Every request must revalidate ownership before provider
+                        # dispatch. Core channels may perform additional lookups;
+                        # their count is not an authorization contract.
+                        db.required_owner_checks = db.owner_checks + 1
+                        response = http.post(f"/api/assistant/conversation/{CONVERSATION}/execute",
                             json={"confirm": True}, headers={"Authorization": f"Bearer {token}"})
+                        assert db.owner_checks >= db.required_owner_checks
+                        return response
                     responses = [confirm()]
                     if journey in {"revoked_before_dispatch", "foreign_actor"}:
                         responses.append(confirm())
@@ -415,7 +428,6 @@ def test_signed_approved_chat_http_matches_independent_receiver_and_durable_ledg
                 ]
                 assert all(r.json()["success"] for r in responses)
                 assert all(r.json()["history_persisted"] for r in responses)
-                assert len(db.lookups) == 2
                 assert keys and len(keys) == (1 if durable else 2)
                 if not durable:
                     assert keys[0] == keys[1]

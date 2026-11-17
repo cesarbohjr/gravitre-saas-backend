@@ -393,3 +393,74 @@ write and precedes verification; it does not undo the provider write or prove
 all live in-flight revocation races. Agent/Play paths still require their own
 full ingress continuity. Historical reconciliation, physical voice/device and
 deployed migration/rollback gates remain open. All 43 findings remain uncertified.
+
+
+## Agent/Play terminal authority and cancellation projection integrity
+
+At `93dbfe759fef6febc3ddd616f7bd6da520199c41`, eight CI lanes passed.
+[Core CI](https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/44010172157/job/133795086840)
+stopped in the consolidated ingress gate with **87 passes and two failures**.
+Both failures counted all conversation queries as exactly two; real outcome
+channels perform additional conversation lookups in the full CI cohort. The
+replacement assertion requires a successful exact conversation/org/actor ownership
+check for **each HTTP request and before provider dispatch**. Queries returning
+no owned row cannot satisfy that check. Contradictory ownership filters are also
+rejected by the transport. All provider-count, durable state, projection, proof,
+replay and outbox assertions remain. This changes the test from an incidental
+query count to the actual authorization contract; it does not waive an ownership
+check or make a source assertion substitute for execution.
+
+The P27-02 AgentSelector -> Play -> approval -> actual step -> outbox journey no
+longer replaces terminal finalization with a raw UPDATE. It now runs the canonical
+terminal/proof/receipt transaction and actual core audit/inbox/learning writers.
+Six cases cover approval, rejection, forbidden approver, foreign tenant,
+cancellation committing between provider observation and finalization, and
+terminal persistence failure. Approvals and the underlying run/step/contract rows
+use the real repository. Policy/version/billing and vendor transport remain
+adapted; the provider is an independent fixture process, not live HubSpot.
+
+The cancellation case reproduced two application defects: the linear executor
+returned `completed` although canonical SQL had committed `cancelled`, and a late
+completed step left its display projection `running`. Both workflow runtimes now
+consume one shared acknowledgement guard. It rejects absent/wrong-run/malformed
+terminal acknowledgements and failed persistence, preserves canonical status and
+refreshes a terminal conflict's projections through the existing locked-source
+SQL function. No raw status fallback, second terminal event or duplicate fanout
+is introduced. A failed terminal write raises rather than returning apparent
+completion; its independently applied observation stays visible for recovery.
+Generic nonterminal-writer atomicity and all other late-writer races are not
+certified by this repair.
+
+**Local validation:** 93 cases in the joined ingress/approval/Agent/Play cohort,
+53 finalizer/caller contract cases, 269 workflow/ownership sweep cases, 16 native
+recovery/receiver cases and 17 register/release/consolidation guards pass. Suite
+counts overlap and are not presented as a unique combined test total.
+The joined cohort includes all six Agent/Play cases and the corrected five Chat
+cases. One pre-existing autonomous restart case was not included in that local
+cohort: it explicitly restarts PostgreSQL over Unix sockets, blocked in this
+workspace. The initial attempt reached 80 passes before that environment failure.
+The repository/CI harness is unchanged; full hosted certification including that
+case remains mandatory. Local supported PostgreSQL cases use the temporary TCP
+runner described above. Two minimal caller fixtures now return an explicit typed
+finalizer acknowledgement instead of None; their scope remains isolated, not
+canonical persistence evidence. The graph unit fixture uses the same explicit
+contract. Current-candidate CI remains pending, and no finding is closed.
+
+[Operations CI](https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/44010172158/job/133797121318)
+also failed the real gVisor browser SIGKILL recovery contract on trial 1:
+`fallback_reconciliation_required`, uncertain journal, durable checkpoint and
+**zero fallback approved actions**. The broad recovery exception hid its cause.
+This candidate adds an opt-in failure sink containing only a fixed stage and
+allowlisted error class, plus those fields in the isolated certification failure
+record. No exception text, task, URL, identity, model route or credential is
+exported. A failing diagnostic sink must leave the fenced/uncertain decision
+unchanged; both sink modes pass the revocation test. Recovery policy, the SIGKILL
+assertion, authorization gates, resource limits and latency budgets are unchanged.
+The underlying isolated recovery failure is **not yet diagnosed or repaired**;
+it must pass with fresh exact-head evidence. No blind rerun is counted as a fix.
+
+These are bounded gates under the original ECO-013/014, DEC-005/006/007/019 and
+P27-02/03/04/06/08 owners. Live provider accounts, complete write/revocation
+journeys, historical reconciliation, physical voice/device and deployed rollback
+remain outstanding. No merge, hosted migration, provider mutation, deployment,
+retirement or release authorization was performed; all 43 findings stay uncertified.

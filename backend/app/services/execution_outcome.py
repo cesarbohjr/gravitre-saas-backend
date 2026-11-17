@@ -163,6 +163,31 @@ class FinalizeExecutionOutcomeResult:
     fanout: dict[str, bool]
 
 
+def require_workflow_terminal_outcome(
+    client: Any, result: FinalizeExecutionOutcomeResult, *, run_id: str,
+) -> str:
+    """Expose only the canonical terminal decision to workflow callers.
+
+    Step rollups express intent. The finalizer arbitrates concurrent terminals
+    and may decline persistence. A late step can also follow a winning terminal
+    transaction, so refresh its projection from locked current source truth.
+    """
+    status = getattr(result, "status", None)
+    receipt = getattr(result, "fanout", None)
+    if (not isinstance(status, str) or not is_terminal_run_status(status)
+            or getattr(result, "run_id", None) != run_id or not isinstance(receipt, dict)):
+        raise RuntimeError("Canonical workflow terminal status was not acknowledged")
+    if (receipt.get("persistence_failed") is True
+            or (receipt.get("run_persisted") is not True
+                and receipt.get("terminal_conflict") is not True)):
+        raise RuntimeError("Canonical workflow terminal persistence failed")
+    if receipt.get("terminal_conflict") is True:
+        from app.workflows.schema_sync import mirror_legacy_run_to_contract
+        if not mirror_legacy_run_to_contract(client, run_id):
+            raise RuntimeError("Canonical workflow terminal projection refresh failed")
+    return status
+
+
 def _now_iso() -> str:
     return datetime.now(timezone.utc).isoformat()
 

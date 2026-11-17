@@ -3,6 +3,7 @@ from __future__ import annotations
 from unittest.mock import MagicMock, patch
 
 from app.workflows.execute import execute_workflow_steps
+from tests.services.outcome_rpc_fake import unit_finalization_result
 
 
 def test_execute_skips_steps_on_branch_mismatch():
@@ -42,7 +43,7 @@ def test_execute_skips_steps_on_branch_mismatch():
     ), patch("app.workflows.execute.write_audit_event"), patch(
         "app.workflows.execute.emit_execute_step_completed"
     ), patch(
-        "app.services.execution_outcome.finalize_execution_outcome"
+        "app.services.execution_outcome.finalize_execution_outcome", side_effect=unit_finalization_result
     ), patch("app.workflows.execute.update_run"), patch(
         "app.workflows.execute.update_step", side_effect=_capture_update
     ), patch(

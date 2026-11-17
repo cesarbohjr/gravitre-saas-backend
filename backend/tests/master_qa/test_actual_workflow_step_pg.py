@@ -95,6 +95,8 @@ def test_real_invoke_tool_handler_runs_and_commits_authoritative_sql_outcome(pg,
         # Schema-adapter for the fixture; actual outcome policy/fanout remains
         # a separate test because this cluster lacks canonical run contracts.
         pg.psql(f"UPDATE public.workflow_runs SET status='{kw['status']}' WHERE id='{run_id}'")
+        from tests.services.outcome_rpc_fake import unit_finalization_result
+        return unit_finalization_result(_client, **kw)
 
     monkeypatch.setattr(execute, "enforce_interrupt", lambda *a, **kw: None)
     monkeypatch.setattr(execute, "create_step", create_step)

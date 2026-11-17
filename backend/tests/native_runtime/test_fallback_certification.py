@@ -182,7 +182,8 @@ def test_lost_submit_ack_does_not_authorize_second_write(tmp_path):
         receiver.close()
 
 
-def test_runtime_revocation_between_actions_blocks_second_effect(tmp_path):
+@pytest.mark.parametrize("diagnostic_sink_raises", [False, True])
+def test_runtime_revocation_between_actions_blocks_second_effect(tmp_path, diagnostic_sink_raises):
     """Actual runtime guard must deny actions after authority is withdrawn."""
     from app.services.native_runtime.runtime import NativeRuntime
     private=tmp_path/"runtime-journal"
@@ -218,7 +219,13 @@ def test_runtime_revocation_between_actions_blocks_second_effect(tmp_path):
         if not authority["valid"]:raise PermissionError("revoked")
         return "same-route"
     runtime.authorize=authorize
+    failures=[]
+    def diagnostic(value):
+        failures.append(value)
+        if diagnostic_sink_raises:raise RuntimeError("evidence sink unavailable")
+    runtime.fallback_failure_sink=diagnostic
     assert runtime._run_verified_playwright_fallback(original)=="fallback_reconciliation_required"
+    assert failures==[{"stage":"playwright_execute","error_class":"PermissionError"}]
     assert runner.attempted==1
     assert len(journal.actions(scope,job_id))==1
     assert journal.get(scope,job_id)["state"]=="uncertain"

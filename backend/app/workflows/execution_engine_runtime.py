@@ -277,6 +277,7 @@ def _finalize_run(
         VerifiedOutputRef,
         finalize_execution_outcome,
         is_terminal_run_status,
+        require_workflow_terminal_outcome,
     )
 
     if is_terminal_run_status(final_status):
@@ -394,7 +395,9 @@ def _finalize_run(
             metadata=finalize_meta,
         )
         # The finalizer's gates have the last word on what was fanned out.
-        coerced_status = str(getattr(finalized, "status", None) or coerced_status)
+        coerced_status = require_workflow_terminal_outcome(
+            ctx.client, finalized, run_id=ctx.run_id,
+        )
         final_status = coerced_status
         if final_status == RUN_STATUS_COMPLETED:
             try:

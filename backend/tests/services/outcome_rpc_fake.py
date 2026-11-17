@@ -32,3 +32,13 @@ def outcome_rpc(row, name, args):
             outcome_finalized=receipt["complete"], notification_emitted=receipt["notification_emitted"])
         return SimpleNamespace(data={"accepted": True, "status": row["status"], "receipt": receipt})
     return SimpleNamespace(execute=execute)
+
+
+def unit_finalization_result(_client, **kwargs):
+    """Explicit finalizer contract for isolated caller tests, not SQL evidence."""
+    from app.services.execution_outcome import FinalizeExecutionOutcomeResult
+    return FinalizeExecutionOutcomeResult(
+        status=kwargs["status"], run_id=kwargs.get("run_id"),
+        audit_action=None, notification_event=None, learning_event=None,
+        timestamp="2026-11-16T00:00:00Z", fanout={"run_persisted": True},
+    )
