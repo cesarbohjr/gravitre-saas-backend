@@ -260,6 +260,19 @@
         "regression": "backend/tests/master_qa/test_eco002_route_stage_latency_report.py",
         "measured_runtime_baseline": null,
         "optimization_authorized": false
+      },
+      "worker_chat_projection_gate": {
+        "evidence_record": "docs/delivery/master-qa-outcome-recovery-batch.md",
+        "source_base_sha": "4b353fcc0aa352bf4920e1c67a903986fd503cdb",
+        "state": "IMPLEMENTED_PENDING_EXACT_HEAD_CI",
+        "postgres_cases_added": 21,
+        "historical_readonly_inventory": {
+          "linked_metadata_reconciliation_required": 15,
+          "projection_only_domain_review": 27,
+          "backfill_performed": false
+        },
+        "finding_certified": false,
+        "remaining": "Full ingress/provider readback, revocation, authorized historical reconciliation, physical voice/device acceptance, deployed migration and rollback, and owner acceptance remain outstanding."
       }
     },
     {
@@ -827,6 +840,19 @@
         "activation": "Apply after the two earlier additive outcome/parameter function migrations and before the backend revision. No hosted migration, backfill, deletion or deployment performed. Keep refresh and replacement terminal function together during rollback; leave functions for in-flight workers.",
         "remaining": "Nonterminal source writes and their refresh remain separate transactions with explicit refresh failure logging; historical projections need controlled reconciliation. No full reader inventory, live surface/provider parity, storage retirement, deployed rollback or owner acceptance is certified.",
         "release_certified": false
+      },
+      "worker_chat_projection_gate": {
+        "evidence_record": "docs/delivery/master-qa-outcome-recovery-batch.md",
+        "source_base_sha": "4b353fcc0aa352bf4920e1c67a903986fd503cdb",
+        "state": "IMPLEMENTED_PENDING_EXACT_HEAD_CI",
+        "postgres_cases_added": 21,
+        "historical_readonly_inventory": {
+          "linked_metadata_reconciliation_required": 15,
+          "projection_only_domain_review": 27,
+          "backfill_performed": false
+        },
+        "finding_certified": false,
+        "remaining": "Full ingress/provider readback, revocation, authorized historical reconciliation, physical voice/device acceptance, deployed migration and rollback, and owner acceptance remain outstanding."
       }
     },
     {
@@ -996,6 +1022,19 @@
         "targeted_result": "90 authority/lifecycle/convergence cases passed locally; 3 selected regressions fail against pre-repair source",
         "remaining": "Concurrent persisted cancellation/revocation races, equal-revision authority, all surface/device parity and deployed readback remain open.",
         "release_certified": false
+      },
+      "worker_chat_projection_gate": {
+        "evidence_record": "docs/delivery/master-qa-outcome-recovery-batch.md",
+        "source_base_sha": "4b353fcc0aa352bf4920e1c67a903986fd503cdb",
+        "state": "IMPLEMENTED_PENDING_EXACT_HEAD_CI",
+        "postgres_cases_added": 21,
+        "historical_readonly_inventory": {
+          "linked_metadata_reconciliation_required": 15,
+          "projection_only_domain_review": 27,
+          "backfill_performed": false
+        },
+        "finding_certified": false,
+        "remaining": "Full ingress/provider readback, revocation, authorized historical reconciliation, physical voice/device acceptance, deployed migration and rollback, and owner acceptance remain outstanding."
       }
     },
     {
@@ -1131,6 +1170,19 @@
         "activation": "Apply after the two earlier additive outcome/parameter function migrations and before the backend revision. No hosted migration, backfill, deletion or deployment performed. Keep refresh and replacement terminal function together during rollback; leave functions for in-flight workers.",
         "remaining": "Nonterminal source writes and their refresh remain separate transactions with explicit refresh failure logging; historical projections need controlled reconciliation. No full reader inventory, live surface/provider parity, storage retirement, deployed rollback or owner acceptance is certified.",
         "release_certified": false
+      },
+      "worker_chat_projection_gate": {
+        "evidence_record": "docs/delivery/master-qa-outcome-recovery-batch.md",
+        "source_base_sha": "4b353fcc0aa352bf4920e1c67a903986fd503cdb",
+        "state": "IMPLEMENTED_PENDING_EXACT_HEAD_CI",
+        "postgres_cases_added": 21,
+        "historical_readonly_inventory": {
+          "linked_metadata_reconciliation_required": 15,
+          "projection_only_domain_review": 27,
+          "backfill_performed": false
+        },
+        "finding_certified": false,
+        "remaining": "Full ingress/provider readback, revocation, authorized historical reconciliation, physical voice/device acceptance, deployed migration and rollback, and owner acceptance remain outstanding."
       }
     },
     {
@@ -1296,7 +1348,20 @@
         "certifies_whole_finding": false
       },
       "audit_evidence_class": "SOURCE_CANDIDATE_REQUIRES_RUNTIME_PROOF",
-      "audit_observation": "Original audit and source candidate require caller/runtime evidence; no final root-cause claim."
+      "audit_observation": "Original audit and source candidate require caller/runtime evidence; no final root-cause claim.",
+      "worker_chat_projection_gate": {
+        "evidence_record": "docs/delivery/master-qa-outcome-recovery-batch.md",
+        "source_base_sha": "4b353fcc0aa352bf4920e1c67a903986fd503cdb",
+        "state": "IMPLEMENTED_PENDING_EXACT_HEAD_CI",
+        "postgres_cases_added": 21,
+        "historical_readonly_inventory": {
+          "linked_metadata_reconciliation_required": 15,
+          "projection_only_domain_review": 27,
+          "backfill_performed": false
+        },
+        "finding_certified": false,
+        "remaining": "Full ingress/provider readback, revocation, authorized historical reconciliation, physical voice/device acceptance, deployed migration and rollback, and owner acceptance remain outstanding."
+      }
     },
     {
       "finding_id": "P27-03",
@@ -1468,7 +1533,20 @@
         "certifies_whole_finding": false
       },
       "audit_evidence_class": "SOURCE_CANDIDATE_REQUIRES_RUNTIME_PROOF",
-      "audit_observation": "Original audit and source candidate require caller/runtime evidence; no final root-cause claim."
+      "audit_observation": "Original audit and source candidate require caller/runtime evidence; no final root-cause claim.",
+      "worker_chat_projection_gate": {
+        "evidence_record": "docs/delivery/master-qa-outcome-recovery-batch.md",
+        "source_base_sha": "4b353fcc0aa352bf4920e1c67a903986fd503cdb",
+        "state": "IMPLEMENTED_PENDING_EXACT_HEAD_CI",
+        "postgres_cases_added": 21,
+        "historical_readonly_inventory": {
+          "linked_metadata_reconciliation_required": 15,
+          "projection_only_domain_review": 27,
+          "backfill_performed": false
+        },
+        "finding_certified": false,
+        "remaining": "Full ingress/provider readback, revocation, authorized historical reconciliation, physical voice/device acceptance, deployed migration and rollback, and owner acceptance remain outstanding."
+      }
     },
     {
       "finding_id": "P27-05",
@@ -1763,6 +1841,19 @@
         "postgres_validation": "PASS at cbc086906f1617b04ca48fc97dbeeb729bbbfa83: QA12 run 43909317615 job 133446690582; 321 runtime guards, 43 routing/context and 84 real PostgreSQL cases, including all four real-writer crash/concurrency cases. Full CI and full-finding gates remain separate.",
         "remaining": "Historical unkeyed effects require reconciliation; no legacy exactly-once claim. Optional email/Slack/SIEM/activity/bus delivery remains best effort and is not replayed on duplicate core acknowledgement. Provider effects, full surface parity, generic lifecycle/mirror races, deployed migration/rollback and owner gates remain open.",
         "release_certified": false
+      },
+      "worker_chat_projection_gate": {
+        "evidence_record": "docs/delivery/master-qa-outcome-recovery-batch.md",
+        "source_base_sha": "4b353fcc0aa352bf4920e1c67a903986fd503cdb",
+        "state": "IMPLEMENTED_PENDING_EXACT_HEAD_CI",
+        "postgres_cases_added": 21,
+        "historical_readonly_inventory": {
+          "linked_metadata_reconciliation_required": 15,
+          "projection_only_domain_review": 27,
+          "backfill_performed": false
+        },
+        "finding_certified": false,
+        "remaining": "Full ingress/provider readback, revocation, authorized historical reconciliation, physical voice/device acceptance, deployed migration and rollback, and owner acceptance remain outstanding."
       }
     },
     {
@@ -2032,6 +2123,19 @@
         "targeted_result": "90 authority/lifecycle/convergence cases passed locally; 3 selected regressions fail against pre-repair source",
         "remaining": "Concurrent persisted cancellation/revocation races, equal-revision authority, all surface/device parity and deployed readback remain open.",
         "release_certified": false
+      },
+      "worker_chat_projection_gate": {
+        "evidence_record": "docs/delivery/master-qa-outcome-recovery-batch.md",
+        "source_base_sha": "4b353fcc0aa352bf4920e1c67a903986fd503cdb",
+        "state": "IMPLEMENTED_PENDING_EXACT_HEAD_CI",
+        "postgres_cases_added": 21,
+        "historical_readonly_inventory": {
+          "linked_metadata_reconciliation_required": 15,
+          "projection_only_domain_review": 27,
+          "backfill_performed": false
+        },
+        "finding_certified": false,
+        "remaining": "Full ingress/provider readback, revocation, authorized historical reconciliation, physical voice/device acceptance, deployed migration and rollback, and owner acceptance remain outstanding."
       }
     },
     {
@@ -2167,6 +2271,19 @@
         "activation": "Apply after the two earlier additive outcome/parameter function migrations and before the backend revision. No hosted migration, backfill, deletion or deployment performed. Keep refresh and replacement terminal function together during rollback; leave functions for in-flight workers.",
         "remaining": "Nonterminal source writes and their refresh remain separate transactions with explicit refresh failure logging; historical projections need controlled reconciliation. No full reader inventory, live surface/provider parity, storage retirement, deployed rollback or owner acceptance is certified.",
         "release_certified": false
+      },
+      "worker_chat_projection_gate": {
+        "evidence_record": "docs/delivery/master-qa-outcome-recovery-batch.md",
+        "source_base_sha": "4b353fcc0aa352bf4920e1c67a903986fd503cdb",
+        "state": "IMPLEMENTED_PENDING_EXACT_HEAD_CI",
+        "postgres_cases_added": 21,
+        "historical_readonly_inventory": {
+          "linked_metadata_reconciliation_required": 15,
+          "projection_only_domain_review": 27,
+          "backfill_performed": false
+        },
+        "finding_certified": false,
+        "remaining": "Full ingress/provider readback, revocation, authorized historical reconciliation, physical voice/device acceptance, deployed migration and rollback, and owner acceptance remain outstanding."
       }
     },
     {
@@ -2296,6 +2413,19 @@
         "activation": "Apply after the two earlier additive outcome/parameter function migrations and before the backend revision. No hosted migration, backfill, deletion or deployment performed. Keep refresh and replacement terminal function together during rollback; leave functions for in-flight workers.",
         "remaining": "Nonterminal source writes and their refresh remain separate transactions with explicit refresh failure logging; historical projections need controlled reconciliation. No full reader inventory, live surface/provider parity, storage retirement, deployed rollback or owner acceptance is certified.",
         "release_certified": false
+      },
+      "worker_chat_projection_gate": {
+        "evidence_record": "docs/delivery/master-qa-outcome-recovery-batch.md",
+        "source_base_sha": "4b353fcc0aa352bf4920e1c67a903986fd503cdb",
+        "state": "IMPLEMENTED_PENDING_EXACT_HEAD_CI",
+        "postgres_cases_added": 21,
+        "historical_readonly_inventory": {
+          "linked_metadata_reconciliation_required": 15,
+          "projection_only_domain_review": 27,
+          "backfill_performed": false
+        },
+        "finding_certified": false,
+        "remaining": "Full ingress/provider readback, revocation, authorized historical reconciliation, physical voice/device acceptance, deployed migration and rollback, and owner acceptance remain outstanding."
       }
     },
     {
@@ -3022,6 +3152,19 @@
         "activation": "Apply after the two earlier additive outcome/parameter function migrations and before the backend revision. No hosted migration, backfill, deletion or deployment performed. Keep refresh and replacement terminal function together during rollback; leave functions for in-flight workers.",
         "remaining": "Nonterminal source writes and their refresh remain separate transactions with explicit refresh failure logging; historical projections need controlled reconciliation. No full reader inventory, live surface/provider parity, storage retirement, deployed rollback or owner acceptance is certified.",
         "release_certified": false
+      },
+      "worker_chat_projection_gate": {
+        "evidence_record": "docs/delivery/master-qa-outcome-recovery-batch.md",
+        "source_base_sha": "4b353fcc0aa352bf4920e1c67a903986fd503cdb",
+        "state": "IMPLEMENTED_PENDING_EXACT_HEAD_CI",
+        "postgres_cases_added": 21,
+        "historical_readonly_inventory": {
+          "linked_metadata_reconciliation_required": 15,
+          "projection_only_domain_review": 27,
+          "backfill_performed": false
+        },
+        "finding_certified": false,
+        "remaining": "Full ingress/provider readback, revocation, authorized historical reconciliation, physical voice/device acceptance, deployed migration and rollback, and owner acceptance remain outstanding."
       }
     },
     {

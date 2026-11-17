@@ -208,11 +208,14 @@ def test_positive_source_proof_persists_completed_and_emits_once():
     client.table.return_value.select.return_value.eq.return_value.eq.return_value.limit.return_value.execute.return_value.data = [
         run_row
     ]
-    update_run = MagicMock()
-    emit = MagicMock()
+    from app.workflows import repository
+    from tests.services.outcome_rpc_fake import outcome_rpc
+    client.rpc.side_effect = lambda name, args: outcome_rpc(run_row, name, args)
+    update_run = MagicMock(wraps=repository.persist_run_outcome)
+    emit = MagicMock(return_value="notification-test")
     with (
         patch("app.workflows.repository.merge_run_parameters"),
-        patch("app.workflows.repository.update_run", update_run),
+        patch("app.workflows.repository.persist_run_outcome", update_run),
         patch("app.services.notification_emitter.emit_notification", emit),
         patch(
             "app.services.execution_outcome._write_audit",
@@ -247,6 +250,8 @@ def test_positive_source_proof_persists_completed_and_emits_once():
         )
 
     update_run.assert_called_once()
+    assert run_row["status"] == "completed"
+    assert run_row["parameters"]["verification"]["verified"] is True
     assert update_run.call_args.kwargs["status"] == "completed"
     emit.assert_called_once()
     assert emit.call_args.kwargs["event_type"] == "run_completed"

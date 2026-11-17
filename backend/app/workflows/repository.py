@@ -581,17 +581,17 @@ def get_run_with_steps(
     client: Client,
     org_id: str,
     run_id: str,
-    environment_name: str = "default",
+    environment_name: str | None = "default",
 ) -> dict | None:
-    r = (
+    query = (
         client.table("workflow_runs")
         .select("*")
         .eq("id", run_id)
         .eq("org_id", org_id)
-        .eq("environment", environment_name)
-        .limit(1)
-        .execute()
     )
+    if environment_name is not None:
+        query = query.eq("environment", environment_name)
+    r = query.limit(1).execute()
     if not r.data or len(r.data) == 0:
         return None
     run = dict(r.data[0])
@@ -599,11 +599,22 @@ def get_run_with_steps(
         client.table("workflow_steps")
         .select("*")
         .eq("run_id", run_id)
+        .eq("org_id", org_id)
         .order("step_index")
         .execute()
     )
     run["steps"] = list(s.data) if s.data else []
     return run
+
+
+def get_worker_run_with_steps(client: Client, org_id: str, run_id: str) -> dict | None:
+    """Read a queued identity in its tenant, then use its persisted environment.
+
+    Queue messages carry org/run identity, not an environment selector. Applying
+    the interactive reader's default would silently miss production/QA runs.
+    Interactive callers retain their existing explicit/default environment scope.
+    """
+    return get_run_with_steps(client, org_id, run_id, environment_name=None)
 
 
 def list_workflow_nodes(

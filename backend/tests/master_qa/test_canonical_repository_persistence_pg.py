@@ -835,3 +835,142 @@ def test_projection_supports_production_source_without_started_at_column():
         pg.psql("ALTER TABLE public.workflow_runs DROP COLUMN started_at")
         assert mirror_legacy_run_to_contract(PgRepositoryClient(pg), run_id)
         assert pg.value(f"SELECT started_at=wr.created_at FROM public.runs r JOIN public.workflow_runs wr USING(id) WHERE r.id='{run_id}'") == 't'
+
+
+@pytest.mark.parametrize("environment", ["production", "synthetic", "staging"])
+def test_actual_worker_reads_queued_run_in_its_persisted_environment(monkeypatch, environment):
+    """Real SQL identity read; execution is observed, not claimed as provider proof."""
+    from types import SimpleNamespace
+    from app.workers import workflow_worker as worker
+    from app.workers.workflow_queue import WorkflowRunJob
+    with canonical_pg_cluster() as pg:
+        run_id, workflow_id = _fanout_run(pg)
+        pg.psql(f"UPDATE public.workflow_runs SET environment='{environment}' WHERE id='{run_id}'")
+        client = PgRepositoryClient(pg)
+        observed = []
+        monkeypatch.setattr(worker, "get_supabase_client", lambda _: client)
+        def execute(**kwargs):
+            observed.append((kwargs["run_id"], kwargs["org_id"], kwargs["environment_name"]))
+            return ("completed", [], [], False)
+        monkeypatch.setattr(worker, "execute_workflow_steps", execute)
+        job = WorkflowRunJob(run_id=run_id, org_id=ORG, workflow_id=workflow_id)
+        assert worker.process_workflow_run_job(SimpleNamespace(), json.dumps(job.__dict__))
+        assert observed == [(run_id, ORG, environment)]
+        # Controlled executor does not mutate status or claim a provider outcome.
+        assert pg.value(f"SELECT status FROM public.workflow_runs WHERE id='{run_id}'") == "running"
+
+
+@pytest.mark.parametrize("status", ["completed", "partial_success", "failed", "cancelled", "paused", "pending_approval", "flagged_for_review", "verification_inconclusive"])
+def test_actual_worker_terminal_or_held_redelivery_never_dispatches(monkeypatch, status):
+    from types import SimpleNamespace
+    from unittest.mock import Mock
+    from app.workers import workflow_worker as worker
+    from app.workers.workflow_queue import WorkflowRunJob
+    with canonical_pg_cluster() as pg:
+        run_id, workflow_id = _fanout_run(pg)
+        pg.psql(f"UPDATE public.workflow_runs SET parameters='{{\"verified_output\":{{}}}}',status='{status}' WHERE id='{run_id}'")
+        monkeypatch.setattr(worker, "get_supabase_client", lambda _: PgRepositoryClient(pg))
+        execute = Mock()
+        monkeypatch.setattr(worker, "execute_workflow_steps", execute)
+        job = WorkflowRunJob(run_id=run_id, org_id=ORG, workflow_id=workflow_id)
+        assert worker.process_workflow_run_job(SimpleNamespace(), json.dumps(job.__dict__))
+        execute.assert_not_called()
+        assert pg.value(f"SELECT status FROM public.workflow_runs WHERE id='{run_id}'") == status
+
+
+def test_actual_worker_cannot_read_a_foreign_tenant_job(monkeypatch):
+    from types import SimpleNamespace
+    from unittest.mock import Mock
+    from app.workers import workflow_worker as worker
+    from app.workers.workflow_queue import WorkflowRunJob
+    with canonical_pg_cluster() as pg:
+        run_id, workflow_id = _fanout_run(pg)
+        monkeypatch.setattr(worker, "get_supabase_client", lambda _: PgRepositoryClient(pg))
+        execute = Mock()
+        monkeypatch.setattr(worker, "execute_workflow_steps", execute)
+        job = WorkflowRunJob(run_id=run_id, org_id="99999999-9999-4999-8999-999999999999", workflow_id=workflow_id)
+        assert worker.process_workflow_run_job(SimpleNamespace(), json.dumps(job.__dict__))
+        execute.assert_not_called()
+
+
+@pytest.mark.parametrize("success,status", [(True, "completed"), (False, "failed")])
+def test_real_chat_finalization_bridge_persists_core_effects_once(monkeypatch, success, status):
+    from app.services.chat_orchestration_runs import finalize_orchestration_run
+    _disable_optional_delivery(monkeypatch)
+    with canonical_pg_cluster() as pg:
+        run_id, _ = _fanout_run(pg)
+        _core_effect_tables(pg)
+        client = PgRepositoryClient(pg)
+        for _ in range(2):
+            finalize_orchestration_run(client, org_id=ORG, run_id=run_id, success=success,
+                summary="Synthetic bridge outcome", user_id="44444444-4444-4444-8444-444444444444")
+        assert pg.value(f"SELECT status FROM public.workflow_runs WHERE id='{run_id}'") == status
+        assert pg.value(f"SELECT status FROM public.runs WHERE id='{run_id}'") == status
+        assert pg.value(f"SELECT parameters->>'outcome_finalized' FROM public.workflow_runs WHERE id='{run_id}'") == "true"
+        for table in ("audit_logs", "audit_events", "notifications", "intelligence_outcome_events"):
+            assert pg.value(f"SELECT count(*) FROM public.{table}") == "1"
+        assert pg.value("SELECT count(*) FROM public.domain_event_outbox") == "1"
+
+
+def test_real_chat_success_callback_cannot_replace_cancellation(monkeypatch):
+    from app.services.chat_orchestration_runs import finalize_orchestration_run
+    _disable_optional_delivery(monkeypatch)
+    with canonical_pg_cluster() as pg:
+        run_id, _ = _fanout_run(pg)
+        _core_effect_tables(pg)
+        client = PgRepositoryClient(pg)
+        _atomic_outcome(client, run_id, "cancelled")
+        finalize_orchestration_run(client, org_id=ORG, run_id=run_id, success=True,
+            summary="Late callback", user_id="44444444-4444-4444-8444-444444444444")
+        assert pg.value(f"SELECT status FROM public.workflow_runs WHERE id='{run_id}'") == "cancelled"
+        for table in ("audit_logs", "audit_events", "notifications", "intelligence_outcome_events"):
+            assert pg.value(f"SELECT count(*) FROM public.{table}") == "0"
+        assert pg.value("SELECT count(*) FROM public.domain_event_outbox") == "1"
+
+
+@pytest.mark.parametrize("variant,category", [
+    ("current", "matches_v2"),
+    ("missing_metadata", "metadata_reconciliation_required"),
+    ("wrong_status", "needs_authorized_reconciliation"),
+    ("wrong_tenant", "tenant_identity_conflict"),
+    ("unknown_source", "unknown_lifecycle_requires_review"),
+])
+def test_historical_preview_never_certifies_status_only_or_foreign_rows(variant, category):
+    from tests.db.pg_harness import REPO_ROOT
+    from app.workflows.schema_sync import mirror_legacy_run_to_contract
+    with canonical_pg_cluster() as pg:
+        run_id, _ = _fanout_run(pg)
+        assert mirror_legacy_run_to_contract(PgRepositoryClient(pg), run_id)
+        if variant == "missing_metadata":
+            pg.psql(f"UPDATE public.runs SET metadata='{{}}' WHERE id='{run_id}'")
+        elif variant == "wrong_status":
+            pg.psql(f"UPDATE public.runs SET status='failed' WHERE id='{run_id}'")
+        elif variant == "wrong_tenant":
+            pg.psql(f"UPDATE public.runs SET org_id='99999999-9999-4999-8999-999999999999' WHERE id='{run_id}'")
+        elif variant == "unknown_source":
+            pg.psql("ALTER TABLE public.workflow_runs DROP CONSTRAINT workflow_runs_status_check")
+            pg.psql(f"UPDATE public.workflow_runs SET status='unrecognized' WHERE id='{run_id}'")
+        before = pg.value(f"SELECT row_to_json(w) FROM public.workflow_runs w WHERE id='{run_id}'")
+        preview = (REPO_ROOT / "docs/delivery/pr605-v2-historical-reconciliation-preview.sql").read_text()
+        report = pg.psql(preview).stdout
+        assert category in report
+        assert pg.value(f"SELECT row_to_json(w) FROM public.workflow_runs w WHERE id='{run_id}'") == before
+        assert pg.value("SELECT count(*) FROM public.domain_event_outbox") == "0"
+
+
+def test_chat_fallback_exception_cannot_bypass_canonical_cancellation(monkeypatch):
+    from app.services import chat_orchestration_runs as bridge
+    with canonical_pg_cluster() as pg:
+        run_id, _ = _fanout_run(pg)
+        _core_effect_tables(pg)
+        client = PgRepositoryClient(pg)
+        _atomic_outcome(client, run_id, "cancelled")
+        def unavailable(*args, **kwargs):
+            raise RuntimeError("synthetic canonical finalizer outage")
+        monkeypatch.setattr(bridge, "finalize_execution_outcome", unavailable)
+        bridge.finalize_orchestration_run(client, org_id=ORG, run_id=run_id,
+            success=True, summary="Late unverified success",
+            user_id="44444444-4444-4444-8444-444444444444")
+        assert pg.value(f"SELECT status FROM public.workflow_runs WHERE id='{run_id}'") == "cancelled"
+        assert pg.value(f"SELECT status FROM public.runs WHERE id='{run_id}'") == "cancelled"
+        assert pg.value("SELECT count(*) FROM public.domain_event_outbox") == "1"

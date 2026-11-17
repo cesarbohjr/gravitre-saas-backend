@@ -271,3 +271,63 @@ is not counted as executed evidence. DEC-017's regression candidate now points t
 the collected test. Targeted strict TypeScript checking passed; full exact-head web CI remains separate.
 Deployed origin and authenticated tenant acceptance, remaining resolver validation,
 stream/device parity, rollout/rollback and owner sign-off remain open.
+
+## Worker ingress and Chat terminal-authority follow-up (2026-11-16)
+
+At source `4b353fcc0aa352bf4920e1c67a903986fd503cdb`,
+[full backend CI](https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/43976337636/job/133681845172)
+reported **17,168 passes, three failures, 44 skips and 14 passing subtests**.
+The three failures still mocked the superseded raw update_run path. Their
+fixtures now exercise the actual persist_run_outcome repository method through
+the unit RPC transport, preserving terminal/proof and notification assertions.
+These are contract repairs, not a reason to waive full backend CI.
+
+Two worker defects are repaired: queued identities now load within their tenant
+without imposing the interactive reader's default environment; execution then
+uses the environment from the persisted row. Interactive callers retain their
+environment filter. Step reads additionally require the same organization.
+Terminal partial_success redelivery is held instead of dispatching another
+execution. Queue schema and the existing worker injection seam remain stable.
+
+The Chat finalizer no longer writes a raw intended terminal status when the
+canonical finalizer raises. That fallback bypassed cancellation, proof and
+transactional projection guards. Sentry/audit alerting remains, with an explicit
+terminal_stamp_suppressed marker. The wrapper still does not propagate every
+canonical persistence failure to every ingress response; complete ingress
+honesty, in-flight revocation and provider readback remain unproven.
+
+**21 additional real PostgreSQL cases are submitted to the existing QA12 lane**:
+three persisted-environment worker reads; eight terminal/held redeliveries;
+foreign-tenant denial; two actual Chat bridge success/failure duplicate callbacks
+with real core SQL channels; late success after cancellation; five historical
+preview classifications; and canonical-outage fallback preserving cancellation.
+Controlled worker execution is explicitly not a provider acceptance test.
+Current-revision CI is pending. No local executor is available for this batch;
+earlier local checks on the restored unit fixtures do not certify these additions.
+
+The read-only historical preview now distinguishes tenant conflicts, unsupported
+lifecycles and missing version/lifecycle metadata before reporting matches_v2.
+It was executed read-only on the attested acceptance project
+`aadnwmjzrmbvadszroqt`: **15 linked failed/failed rows require metadata
+reconciliation; 27 projection-only rows require domain classification**.
+There are no missing linked step projections or observed step identity conflicts
+in that inventory. Status equality alone is not parity. No backfill, reconciliation
+journal, deletion or migration was installed. Historical changes require approved
+row scope, compare-and-set guards, audit/undo evidence and consumer verification.
+
+Deployment readiness is unchanged: the acceptance API is still on
+`a91e4fd8a548631b7a252fc17f51c7a11d4841e4`, not this candidate. Its staged
+`2702736d0ab798511dde594265010d598e44f17a` pin is stale and must not be accepted.
+The new parameter/outcome/projection functions are not installed there.
+Production's observed successful rollback reference is deployment
+`78fb8af7-2c90-4a4f-9a34-180398ad20fb`, source
+`557be844f191767ea51c9f1d1d4958e5b046ca53`; provider metadata says rollback
+is available, which does not prove an executed rollback or restored behavior.
+The removed QA build remains only a possible rollback candidate pending validation.
+
+Voice PR610 remains draft at `02a4df66a76bb144f9a4c9584a075b07247152dc`.
+The separate authored-dialogue work on PR611 is preserved. Device microphone,
+speaker, interruption and reconnection acceptance still requires physical
+observation. No provider mutation, release, rollback drill or owner sign-off was
+performed. All 43 findings remain uncertified; original owners, dependencies,
+consolidation dispositions and closure criteria are unchanged.

@@ -8,7 +8,10 @@ from typing import Any
 from app.config import Settings, get_settings
 from app.core.logging import get_logger
 from app.workflows.execute import execute_workflow_steps
-from app.workflows.repository import get_run_with_steps, get_supabase_client
+from app.workflows.repository import (
+    get_worker_run_with_steps as get_run_with_steps,
+    get_supabase_client,
+)
 from app.workers.workflow_queue import (
     acknowledge_workflow_run,
     dequeue_workflow_run,
@@ -45,7 +48,7 @@ def process_workflow_run_job(settings: Settings, job_raw: str) -> bool:
     # ONLY the fenced SQL orphan reconciler may settle that uncertain effect.
     state = str(run.get("status") or "").lower()
     if state in {
-        "completed", "failed", "cancelled", "rejected", "paused",
+        "completed", "partial_success", "failed", "cancelled", "rejected", "paused",
         "pending_approval", "awaiting_approval", "flagged_for_review",
         "verification_inconclusive",
     }:
