@@ -66,7 +66,10 @@ def build_write_idempotency_key(
             conversation_id=str(ctx.conversation_id),
             invoke_action=action,
             pending_action_id=pending_id or turn or None,
-            args=params,
+            args=(
+                {k: v for k, v in params.items() if k not in {"turn_id", "_turn_id"}}
+                if pending_id else params
+            ),
         )
         # A pending approval identifies the same logical WRITE across chat,
         # voice and replayed turns. Including the latest turn ID would mint a
