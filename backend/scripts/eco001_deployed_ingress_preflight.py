@@ -10,13 +10,20 @@ import argparse
 import json
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlsplit
-from urllib.request import Request, urlopen
+from urllib.request import HTTPRedirectHandler, Request, build_opener
+
+
+class _RejectRedirects(HTTPRedirectHandler):
+    """Never follow a preflight redirect to an unverified host or environment."""
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        return None
 
 
 def get(url: str, headers: dict[str, str] | None = None) -> tuple[int, bytes]:
     req = Request(url, headers=headers or {}, method="GET")
     try:
-        with urlopen(req, timeout=12) as response:
+        with build_opener(_RejectRedirects()).open(req, timeout=12) as response:
             return response.status, response.read(65536)
     except HTTPError as error:
         return error.code, error.read(65536)
