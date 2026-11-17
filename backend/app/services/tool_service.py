@@ -5420,6 +5420,14 @@ def invoke_tool(ctx: ToolContext, action: str, params: dict[str, Any] | None = N
                 "Write idempotency ledger unavailable; refusing duplicate-risk invoke",
                 code="write_idempotency_unavailable",
             )
+        # The database reservation is the sole permission to cross the provider
+        # boundary. A malformed claimed response without a fencing token must
+        # never reach the provider, even if the RPC reported success.
+        if not claim.claim_token:
+            raise WriteIdempotencyUnavailable(
+                "Write claim lacks a fencing token; refusing provider dispatch",
+                code="write_idempotency_unavailable",
+            )
         write_claim_token = claim.claim_token
         params = inject_provider_idempotency(params, write_idempotency_key)
 
