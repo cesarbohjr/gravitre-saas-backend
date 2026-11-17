@@ -27,6 +27,23 @@ def _fixture(pipe, path, page, capability=None):
     class Handler(BaseHTTPRequestHandler):
         def log_message(self,*_):pass
         def do_GET(self):
+            if self.path.startswith('/records/'):
+                record_id = self.path.removeprefix('/records/')
+                token = self.headers.get('X-QA-Capability', '')
+                cap_hash = hashlib.sha256(token.encode()).hexdigest()
+                if not record_id.isdigit() or (capability is not None and not any(
+                    hmac.compare_digest(cap_hash, value) for value in tuple(allowed_caps)
+                )):
+                    self.send_error(403); return
+                with lock, sqlite3.connect(path) as db:
+                    row = db.execute('SELECT id FROM writes WHERE id=? AND (cap_hash=? OR cap_hash IS NULL)',
+                                     (int(record_id), cap_hash)).fetchone()
+                if row is None:
+                    self.send_error(404); return
+                data = json.dumps({'id': str(row[0])}).encode()
+                self.send_response(200); self.send_header('Content-Type', 'application/json')
+                self.send_header('Content-Length', str(len(data))); self.end_headers()
+                self.wfile.write(data); return
             if self.path=='/redirect':
                 self.send_response(302);self.send_header('Location','/page');self.end_headers();return
             if self.path=='/page':data,kind=page,'text/html'

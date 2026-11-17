@@ -1441,6 +1441,7 @@ class ChatConnectorExecutionService:
                 conversation_id=conversation_id,
                 plan=plan,
                 result=failed,
+                environment_name=environment_name,
             )
             return self._turn_from_execution(failed, task_state, plan)
 
@@ -2110,6 +2111,7 @@ class ChatConnectorExecutionService:
                         conversation_id=conversation_id,
                         plan=plan,
                         result=blocked,
+                        environment_name=environment_name,
                     )
                 return blocked
             from app.services.sync_back_policy_service import (
@@ -2165,6 +2167,7 @@ class ChatConnectorExecutionService:
                             conversation_id=conversation_id,
                             plan=plan,
                             result=deferred,
+                            environment_name=environment_name,
                         )
                     return deferred
             from app.connectors.action_catalog.f1_write_slice import is_f1_write_action
@@ -2210,6 +2213,7 @@ class ChatConnectorExecutionService:
                             conversation_id=conversation_id,
                             plan=plan,
                             result=failed,
+                            environment_name=environment_name,
                         )
                     return failed
                 ctx = replace(ctx, preflight_result=proof)
@@ -2294,6 +2298,7 @@ class ChatConnectorExecutionService:
                     conversation_id=conversation_id,
                     plan=plan,
                     result=failed,
+                    environment_name=environment_name,
                 )
             await self._persist_recent_connector_invocation(
                 conversation_id=conversation_id,
@@ -2350,6 +2355,7 @@ class ChatConnectorExecutionService:
                     conversation_id=conversation_id,
                     plan=plan,
                     result=failed,
+                    environment_name=environment_name,
                 )
             await self._persist_recent_connector_invocation(
                 conversation_id=conversation_id,
@@ -2423,6 +2429,7 @@ class ChatConnectorExecutionService:
                     conversation_id=conversation_id,
                     plan=plan,
                     result=uncertain_result,
+                    environment_name=environment_name,
                 )
             await self._persist_recent_connector_invocation(
                 conversation_id=conversation_id,
@@ -2467,6 +2474,7 @@ class ChatConnectorExecutionService:
                     conversation_id=conversation_id,
                     plan=plan,
                     result=failed,
+                    environment_name=environment_name,
                 )
             await self._persist_recent_connector_invocation(
                 conversation_id=conversation_id,
@@ -2576,6 +2584,7 @@ class ChatConnectorExecutionService:
                         conversation_id=conversation_id,
                         plan=plan,
                         result=failed,
+                        environment_name=environment_name,
                     )
                 await self._persist_recent_connector_invocation(
                     conversation_id=conversation_id,
@@ -2597,6 +2606,7 @@ class ChatConnectorExecutionService:
                 result=result,
                 tool_ctx=ctx,
                 connector_id=connector_id,
+                environment_name=environment_name,
             )
 
         try:
@@ -3170,6 +3180,7 @@ class ChatConnectorExecutionService:
         result: ExecutionResult,
         tool_ctx: ToolContext | None = None,
         connector_id: str | None = None,
+        environment_name: str | None = None,
     ) -> str | None:
         """Route single-connector chat terminals through finalize_execution_outcome().
 
@@ -3192,6 +3203,7 @@ class ChatConnectorExecutionService:
             result=result,
             tool_ctx=tool_ctx,
             connector_id=connector_id,
+            environment_name=environment_name,
         ):
             # Speculative (unconfirmed) voice run: the run row, audit,
             # notification and learning fan-out happen only if it is adopted.
@@ -3372,7 +3384,13 @@ class ChatConnectorExecutionService:
                 },
                 run_hash=f"chat-connector-{uuid4().hex[:16]}",
                 workflow_id=None,
-                environment_name="production",
+                # Keep the persisted run in the execution context; blocked
+                # paths carry the explicit ingress environment instead.
+                environment_name=(
+                    getattr(tool_ctx, "environment_name", None)
+                    or environment_name
+                    or "production"
+                ),
                 # workflow_runs_trigger_type_check allows manual/schedule/rollback/webhook/api/hubspot
                 trigger_type="api",
                 run_type="execute",

@@ -48,7 +48,10 @@ def _ok_result(integration: str) -> ExecutionResult:
     )
 
 
-def _finalize(plan: ConnectorActionPlan, result: ExecutionResult):
+def _finalize(
+    plan: ConnectorActionPlan, result: ExecutionResult, *,
+    environment="production", with_context=True, ingress_environment=None,
+):
     """Run the real chat finalize path and expose lifecycle write spies."""
     service = ChatConnectorExecutionService()
     scheduler = MagicMock()
@@ -57,11 +60,13 @@ def _finalize(plan: ConnectorActionPlan, result: ExecutionResult):
     merge_params = MagicMock()
     tool_ctx = MagicMock()
     tool_ctx.connector_id = "conn-1"
-    tool_ctx.environment_name = "production"
+    tool_ctx.environment_name = environment
+    if not with_context:
+        tool_ctx = None
 
     with patch(
         "app.workflows.repository.create_run", return_value={"id": "run-1"}
-    ), patch("app.workflows.repository.create_step", MagicMock()), patch(
+    ) as create_run, patch("app.workflows.repository.create_step", MagicMock()), patch(
         "app.workflows.repository.update_step", MagicMock()
     ), patch(
         "app.workflows.repository.update_run", update_run
@@ -82,8 +87,10 @@ def _finalize(plan: ConnectorActionPlan, result: ExecutionResult):
             result=result,
             tool_ctx=tool_ctx,
             connector_id="conn-1",
+            environment_name=ingress_environment,
         )
     return {
+        "create_run": create_run,
         "scheduler": scheduler,
         "terminalizer": terminalizer,
         "update_run": update_run,
@@ -318,3 +325,22 @@ def test_accepted_async_actions_do_not_claim_a_followup_read():
 
     assert action_requires_followup_read("slack.post_message") is False
     assert action_requires_followup_read("") is False
+
+
+@pytest.mark.parametrize("success", [True, False])
+@pytest.mark.parametrize("context_environment,with_context,ingress_environment,expected", [
+    ("synthetic", True, "production", "synthetic"),
+    ("staging", True, None, "staging"),
+    (None, False, "synthetic", "synthetic"),
+    (None, False, None, "production"),
+])
+def test_connector_outcome_persists_the_execution_environment(
+    success, context_environment, with_context, ingress_environment, expected
+):
+    from dataclasses import replace
+    plan = _plan("hubspot.contacts.create", "hubspot", {"properties": {"firstname": "QA"}})
+    result = replace(_ok_result("hubspot"), success=success)
+    spies = _finalize(plan, result, environment=context_environment,
+                      with_context=with_context, ingress_environment=ingress_environment)
+    spies["create_run"].assert_called_once()
+    assert spies["create_run"].call_args.kwargs["environment_name"] == expected

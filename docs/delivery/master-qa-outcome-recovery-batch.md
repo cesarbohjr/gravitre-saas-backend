@@ -331,3 +331,65 @@ speaker, interruption and reconnection acceptance still requires physical
 observation. No provider mutation, release, rollback drill or owner sign-off was
 performed. All 43 findings remain uncertified; original owners, dependencies,
 consolidation dispositions and closure criteria are unchanged.
+
+
+## Signed Chat ingress through persisted verification and consumer effect
+
+The preceding source `179614f4d75cb0aff31aac0702724a87348eeb0d` passed all ten
+consolidated CI lanes. [Full backend CI](https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/43988147778/job/133721636628)
+reported **17,193 passes, 44 skips and 14 passing subtests**; integration smoke
+also passed. Its bounded [QA12 gate](https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/43988147702/job/133721624686)
+passed **130 actual PostgreSQL cases, 321 runtime guards and 43 routing/context
+checks**. Those results certify that source's test gates, not this later candidate,
+a full finding, deployment, physical device or third-party provider acceptance.
+
+The signed HTTP Chat acceptance previously replaced claim/replay, canonical run
+finalization and conversation outcome persistence with mocks. Two new durable
+variants retain the actual Chat methods, real repository/RPC/projection functions,
+core audit/inbox/learning writers and the declared asynchronous verifier body.
+Conversation state uses a tenant-scoped SQL transport with row locks and the
+production merge/outcome builders. The test receiver independently commits a
+SQLite record and serves capability-scoped HTTP entity readback from that record.
+Only the scheduler launch is captured; the actual scheduled verifier body runs.
+The existing ledger-only variant remains, without weakening its replay checks.
+
+This stronger ingress reproduced a caller defect: the provider context was
+`synthetic` but the connector finalizer unconditionally persisted `production`.
+The finalizer now takes environment identity from its execution context, with
+explicit ingress identity for blocked paths and the prior production fallback
+for legacy callers. All ten Chat finalization call sites carry ingress identity;
+speculative deferral retains it. Eight focused cases cover positive/failed
+outcomes, context precedence, blocked-path fallback and legacy behavior.
+
+**Local validation: 54 focused Chat/verification cases, 38 orchestration/speculative
+regressions, five joined signed-HTTP PostgreSQL/receiver journeys, two receiver
+boundary cases and 17 register/release/consolidation guards pass.** The joined
+suite first failed on the previous production environment literal, then passed
+after the repair. This environment blocks Unix sockets, so a temporary local
+runner used permitted loopback TCP for disposable PostgreSQL; repository/CI
+harness and SQL were not modified. Exact-head hosted CI remains pending.
+The fixture admits `verifying`, a production nonterminal state omitted from its
+older minimal status constraint; every other previously admitted state remains
+explicit, rather than dropping status validation.
+
+The five joined cases are ledger replay, durable completion, cancellation before
+verification completes, a revoked pending action and a different approving actor.
+Durable completion requires actual HTTP-origin run/step rows, correct environment,
+independent entity proof, matching contract projections, one core effect per store,
+one terminal outbox event, actual relay delivery and one durable synthetic
+consumer effect. Duplicate confirmation must create neither a second provider
+write nor a second run/event. Before verification the run must be `verifying`,
+the display projection `running`, and terminal outbox count zero. Cancellation
+wins over a later verified callback; the already applied receiver effect remains
+visible. Revoked/different-actor confirmations require zero provider writes,
+ledger claims, runs, terminal events and success-channel records.
+
+Boundaries remain explicit: policy/ownership lookup and vendor dispatch/read
+transports are adapted; signed JWT and conversation-owner scoping execute, but
+production membership, HITL database rows, conversation CAS/RLS and real vendor
+OAuth are not certified. The consumer is synthetic, not evidence that every
+production consumer is enabled. Cancellation here follows an applied receiver
+write and precedes verification; it does not undo the provider write or prove
+all live in-flight revocation races. Agent/Play paths still require their own
+full ingress continuity. Historical reconciliation, physical voice/device and
+deployed migration/rollback gates remain open. All 43 findings remain uncertified.

@@ -80,6 +80,22 @@ def test_capability_protected_receiver_rejects_unauthorized_effect(tmp_path):
             data=b'{"cap":"second-case"}',headers={'Content-Type':'application/json'},method='POST'),timeout=2) as response:
             assert response.status==204
         assert fixture.count('fixture-capability')==1 and fixture.count('second-case')==1 and fixture.writes==2
+        # Readback is owned by the receiver's committed SQLite rows and scoped
+        # to the capability that wrote each record; it is not a static payload.
+        def read(record_id, capability):
+            request = urllib.request.Request(fixture.origin + '/records/' + record_id,
+                headers={'X-QA-Capability': capability})
+            try:
+                with urllib.request.urlopen(request, timeout=2) as response:
+                    return json.load(response)
+            except HTTPError as error:
+                return error.code
+        assert read('1', 'incorrect') == 403
+        assert read('1', 'second-case') == 404
+        assert read('999', 'fixture-capability') == 404
+        assert read('1', 'fixture-capability') == {'id': '1'}
+        assert read('2', 'second-case') == {'id': '2'}
+        assert fixture.writes == 2
     finally:fixture.close()
 
 

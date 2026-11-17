@@ -264,7 +264,7 @@
       "worker_chat_projection_gate": {
         "evidence_record": "docs/delivery/master-qa-outcome-recovery-batch.md",
         "source_base_sha": "4b353fcc0aa352bf4920e1c67a903986fd503cdb",
-        "state": "IMPLEMENTED_PENDING_EXACT_HEAD_CI",
+        "state": "BOUNDED_EXACT_HEAD_CI_PASSED_NOT_FULL_FINDING",
         "postgres_cases_added": 21,
         "historical_readonly_inventory": {
           "linked_metadata_reconciliation_required": 15,
@@ -272,7 +272,31 @@
           "backfill_performed": false
         },
         "finding_certified": false,
-        "remaining": "Full ingress/provider readback, revocation, authorized historical reconciliation, physical voice/device acceptance, deployed migration and rollback, and owner acceptance remain outstanding."
+        "remaining": "Full ingress/provider readback, revocation, authorized historical reconciliation, physical voice/device acceptance, deployed migration and rollback, and owner acceptance remain outstanding.",
+        "executed_sha": "179614f4d75cb0aff31aac0702724a87348eeb0d",
+        "ci_run_url": "https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/43988147702",
+        "postgres_cases_passed": 130,
+        "runtime_guards_passed": 321,
+        "routing_context_cases_passed": 43
+      },
+      "signed_chat_persistence_gate": {
+        "evidence_record": "docs/delivery/master-qa-outcome-recovery-batch.md",
+        "test_path": "backend/tests/db/test_eco001_joined_chat_http_receiver_pg.py",
+        "state": "LOCAL_PASS_PENDING_EXACT_HEAD_CI",
+        "local_joined_cases_passed": 5,
+        "local_focused_chat_cases_passed": 54,
+        "scope": "Signed Chat HTTP, real claim/replay/outcome builders, SQL persistence, independent synthetic record GET, verifier, core writers, actual outbox relay and durable synthetic consumer",
+        "finding_certified": false,
+        "not_proven": [
+          "production membership/HITL/CAS/RLS",
+          "live provider OAuth/readback",
+          "all Agent/Play ingress",
+          "all live in-flight revocation races",
+          "historical backfill",
+          "physical voice/device",
+          "deployed migration and rollback",
+          "owner acceptance"
+        ]
       }
     },
     {
@@ -844,7 +868,7 @@
       "worker_chat_projection_gate": {
         "evidence_record": "docs/delivery/master-qa-outcome-recovery-batch.md",
         "source_base_sha": "4b353fcc0aa352bf4920e1c67a903986fd503cdb",
-        "state": "IMPLEMENTED_PENDING_EXACT_HEAD_CI",
+        "state": "BOUNDED_EXACT_HEAD_CI_PASSED_NOT_FULL_FINDING",
         "postgres_cases_added": 21,
         "historical_readonly_inventory": {
           "linked_metadata_reconciliation_required": 15,
@@ -852,7 +876,31 @@
           "backfill_performed": false
         },
         "finding_certified": false,
-        "remaining": "Full ingress/provider readback, revocation, authorized historical reconciliation, physical voice/device acceptance, deployed migration and rollback, and owner acceptance remain outstanding."
+        "remaining": "Full ingress/provider readback, revocation, authorized historical reconciliation, physical voice/device acceptance, deployed migration and rollback, and owner acceptance remain outstanding.",
+        "executed_sha": "179614f4d75cb0aff31aac0702724a87348eeb0d",
+        "ci_run_url": "https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/43988147702",
+        "postgres_cases_passed": 130,
+        "runtime_guards_passed": 321,
+        "routing_context_cases_passed": 43
+      },
+      "signed_chat_persistence_gate": {
+        "evidence_record": "docs/delivery/master-qa-outcome-recovery-batch.md",
+        "test_path": "backend/tests/db/test_eco001_joined_chat_http_receiver_pg.py",
+        "state": "LOCAL_PASS_PENDING_EXACT_HEAD_CI",
+        "local_joined_cases_passed": 5,
+        "local_focused_chat_cases_passed": 54,
+        "scope": "Signed Chat HTTP, real claim/replay/outcome builders, SQL persistence, independent synthetic record GET, verifier, core writers, actual outbox relay and durable synthetic consumer",
+        "finding_certified": false,
+        "not_proven": [
+          "production membership/HITL/CAS/RLS",
+          "live provider OAuth/readback",
+          "all Agent/Play ingress",
+          "all live in-flight revocation races",
+          "historical backfill",
+          "physical voice/device",
+          "deployed migration and rollback",
+          "owner acceptance"
+        ]
       }
     },
     {
@@ -1026,7 +1074,7 @@
       "worker_chat_projection_gate": {
         "evidence_record": "docs/delivery/master-qa-outcome-recovery-batch.md",
         "source_base_sha": "4b353fcc0aa352bf4920e1c67a903986fd503cdb",
-        "state": "IMPLEMENTED_PENDING_EXACT_HEAD_CI",
+        "state": "BOUNDED_EXACT_HEAD_CI_PASSED_NOT_FULL_FINDING",
         "postgres_cases_added": 21,
         "historical_readonly_inventory": {
           "linked_metadata_reconciliation_required": 15,
@@ -1034,7 +1082,31 @@
           "backfill_performed": false
         },
         "finding_certified": false,
-        "remaining": "Full ingress/provider readback, revocation, authorized historical reconciliation, physical voice/device acceptance, deployed migration and rollback, and owner acceptance remain outstanding."
+        "remaining": "Full ingress/provider readback, revocation, authorized historical reconciliation, physical voice/device acceptance, deployed migration and rollback, and owner acceptance remain outstanding.",
+        "executed_sha": "179614f4d75cb0aff31aac0702724a87348eeb0d",
+        "ci_run_url": "https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/43988147702",
+        "postgres_cases_passed": 130,
+        "runtime_guards_passed": 321,
+        "routing_context_cases_passed": 43
+      },
+      "signed_chat_persistence_gate": {
+        "evidence_record": "docs/delivery/master-qa-outcome-recovery-batch.md",
+        "test_path": "backend/tests/db/test_eco001_joined_chat_http_receiver_pg.py",
+        "state": "LOCAL_PASS_PENDING_EXACT_HEAD_CI",
+        "local_joined_cases_passed": 5,
+        "local_focused_chat_cases_passed": 54,
+        "scope": "Signed Chat HTTP, real claim/replay/outcome builders, SQL persistence, independent synthetic record GET, verifier, core writers, actual outbox relay and durable synthetic consumer",
+        "finding_certified": false,
+        "not_proven": [
+          "production membership/HITL/CAS/RLS",
+          "live provider OAuth/readback",
+          "all Agent/Play ingress",
+          "all live in-flight revocation races",
+          "historical backfill",
+          "physical voice/device",
+          "deployed migration and rollback",
+          "owner acceptance"
+        ]
       }
     },
     {
@@ -1174,7 +1246,7 @@
       "worker_chat_projection_gate": {
         "evidence_record": "docs/delivery/master-qa-outcome-recovery-batch.md",
         "source_base_sha": "4b353fcc0aa352bf4920e1c67a903986fd503cdb",
-        "state": "IMPLEMENTED_PENDING_EXACT_HEAD_CI",
+        "state": "BOUNDED_EXACT_HEAD_CI_PASSED_NOT_FULL_FINDING",
         "postgres_cases_added": 21,
         "historical_readonly_inventory": {
           "linked_metadata_reconciliation_required": 15,
@@ -1182,7 +1254,31 @@
           "backfill_performed": false
         },
         "finding_certified": false,
-        "remaining": "Full ingress/provider readback, revocation, authorized historical reconciliation, physical voice/device acceptance, deployed migration and rollback, and owner acceptance remain outstanding."
+        "remaining": "Full ingress/provider readback, revocation, authorized historical reconciliation, physical voice/device acceptance, deployed migration and rollback, and owner acceptance remain outstanding.",
+        "executed_sha": "179614f4d75cb0aff31aac0702724a87348eeb0d",
+        "ci_run_url": "https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/43988147702",
+        "postgres_cases_passed": 130,
+        "runtime_guards_passed": 321,
+        "routing_context_cases_passed": 43
+      },
+      "signed_chat_persistence_gate": {
+        "evidence_record": "docs/delivery/master-qa-outcome-recovery-batch.md",
+        "test_path": "backend/tests/db/test_eco001_joined_chat_http_receiver_pg.py",
+        "state": "LOCAL_PASS_PENDING_EXACT_HEAD_CI",
+        "local_joined_cases_passed": 5,
+        "local_focused_chat_cases_passed": 54,
+        "scope": "Signed Chat HTTP, real claim/replay/outcome builders, SQL persistence, independent synthetic record GET, verifier, core writers, actual outbox relay and durable synthetic consumer",
+        "finding_certified": false,
+        "not_proven": [
+          "production membership/HITL/CAS/RLS",
+          "live provider OAuth/readback",
+          "all Agent/Play ingress",
+          "all live in-flight revocation races",
+          "historical backfill",
+          "physical voice/device",
+          "deployed migration and rollback",
+          "owner acceptance"
+        ]
       }
     },
     {
@@ -1352,7 +1448,7 @@
       "worker_chat_projection_gate": {
         "evidence_record": "docs/delivery/master-qa-outcome-recovery-batch.md",
         "source_base_sha": "4b353fcc0aa352bf4920e1c67a903986fd503cdb",
-        "state": "IMPLEMENTED_PENDING_EXACT_HEAD_CI",
+        "state": "BOUNDED_EXACT_HEAD_CI_PASSED_NOT_FULL_FINDING",
         "postgres_cases_added": 21,
         "historical_readonly_inventory": {
           "linked_metadata_reconciliation_required": 15,
@@ -1360,7 +1456,31 @@
           "backfill_performed": false
         },
         "finding_certified": false,
-        "remaining": "Full ingress/provider readback, revocation, authorized historical reconciliation, physical voice/device acceptance, deployed migration and rollback, and owner acceptance remain outstanding."
+        "remaining": "Full ingress/provider readback, revocation, authorized historical reconciliation, physical voice/device acceptance, deployed migration and rollback, and owner acceptance remain outstanding.",
+        "executed_sha": "179614f4d75cb0aff31aac0702724a87348eeb0d",
+        "ci_run_url": "https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/43988147702",
+        "postgres_cases_passed": 130,
+        "runtime_guards_passed": 321,
+        "routing_context_cases_passed": 43
+      },
+      "signed_chat_persistence_gate": {
+        "evidence_record": "docs/delivery/master-qa-outcome-recovery-batch.md",
+        "test_path": "backend/tests/db/test_eco001_joined_chat_http_receiver_pg.py",
+        "state": "LOCAL_PASS_PENDING_EXACT_HEAD_CI",
+        "local_joined_cases_passed": 5,
+        "local_focused_chat_cases_passed": 54,
+        "scope": "Signed Chat HTTP, real claim/replay/outcome builders, SQL persistence, independent synthetic record GET, verifier, core writers, actual outbox relay and durable synthetic consumer",
+        "finding_certified": false,
+        "not_proven": [
+          "production membership/HITL/CAS/RLS",
+          "live provider OAuth/readback",
+          "all Agent/Play ingress",
+          "all live in-flight revocation races",
+          "historical backfill",
+          "physical voice/device",
+          "deployed migration and rollback",
+          "owner acceptance"
+        ]
       }
     },
     {
@@ -1479,6 +1599,25 @@
         "postgres_validation": "PASS at cbc086906f1617b04ca48fc97dbeeb729bbbfa83: QA12 run 43909317615 job 133446690582; 321 runtime guards, 43 routing/context and 84 real PostgreSQL cases, including all four real-writer crash/concurrency cases. Full CI and full-finding gates remain separate.",
         "remaining": "Historical unkeyed effects require reconciliation; no legacy exactly-once claim. Optional email/Slack/SIEM/activity/bus delivery remains best effort and is not replayed on duplicate core acknowledgement. Provider effects, full surface parity, generic lifecycle/mirror races, deployed migration/rollback and owner gates remain open.",
         "release_certified": false
+      },
+      "signed_chat_persistence_gate": {
+        "evidence_record": "docs/delivery/master-qa-outcome-recovery-batch.md",
+        "test_path": "backend/tests/db/test_eco001_joined_chat_http_receiver_pg.py",
+        "state": "LOCAL_PASS_PENDING_EXACT_HEAD_CI",
+        "local_joined_cases_passed": 5,
+        "local_focused_chat_cases_passed": 54,
+        "scope": "Signed Chat HTTP, real claim/replay/outcome builders, SQL persistence, independent synthetic record GET, verifier, core writers, actual outbox relay and durable synthetic consumer",
+        "finding_certified": false,
+        "not_proven": [
+          "production membership/HITL/CAS/RLS",
+          "live provider OAuth/readback",
+          "all Agent/Play ingress",
+          "all live in-flight revocation races",
+          "historical backfill",
+          "physical voice/device",
+          "deployed migration and rollback",
+          "owner acceptance"
+        ]
       }
     },
     {
@@ -1537,7 +1676,7 @@
       "worker_chat_projection_gate": {
         "evidence_record": "docs/delivery/master-qa-outcome-recovery-batch.md",
         "source_base_sha": "4b353fcc0aa352bf4920e1c67a903986fd503cdb",
-        "state": "IMPLEMENTED_PENDING_EXACT_HEAD_CI",
+        "state": "BOUNDED_EXACT_HEAD_CI_PASSED_NOT_FULL_FINDING",
         "postgres_cases_added": 21,
         "historical_readonly_inventory": {
           "linked_metadata_reconciliation_required": 15,
@@ -1545,7 +1684,31 @@
           "backfill_performed": false
         },
         "finding_certified": false,
-        "remaining": "Full ingress/provider readback, revocation, authorized historical reconciliation, physical voice/device acceptance, deployed migration and rollback, and owner acceptance remain outstanding."
+        "remaining": "Full ingress/provider readback, revocation, authorized historical reconciliation, physical voice/device acceptance, deployed migration and rollback, and owner acceptance remain outstanding.",
+        "executed_sha": "179614f4d75cb0aff31aac0702724a87348eeb0d",
+        "ci_run_url": "https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/43988147702",
+        "postgres_cases_passed": 130,
+        "runtime_guards_passed": 321,
+        "routing_context_cases_passed": 43
+      },
+      "signed_chat_persistence_gate": {
+        "evidence_record": "docs/delivery/master-qa-outcome-recovery-batch.md",
+        "test_path": "backend/tests/db/test_eco001_joined_chat_http_receiver_pg.py",
+        "state": "LOCAL_PASS_PENDING_EXACT_HEAD_CI",
+        "local_joined_cases_passed": 5,
+        "local_focused_chat_cases_passed": 54,
+        "scope": "Signed Chat HTTP, real claim/replay/outcome builders, SQL persistence, independent synthetic record GET, verifier, core writers, actual outbox relay and durable synthetic consumer",
+        "finding_certified": false,
+        "not_proven": [
+          "production membership/HITL/CAS/RLS",
+          "live provider OAuth/readback",
+          "all Agent/Play ingress",
+          "all live in-flight revocation races",
+          "historical backfill",
+          "physical voice/device",
+          "deployed migration and rollback",
+          "owner acceptance"
+        ]
       }
     },
     {
@@ -1845,7 +2008,7 @@
       "worker_chat_projection_gate": {
         "evidence_record": "docs/delivery/master-qa-outcome-recovery-batch.md",
         "source_base_sha": "4b353fcc0aa352bf4920e1c67a903986fd503cdb",
-        "state": "IMPLEMENTED_PENDING_EXACT_HEAD_CI",
+        "state": "BOUNDED_EXACT_HEAD_CI_PASSED_NOT_FULL_FINDING",
         "postgres_cases_added": 21,
         "historical_readonly_inventory": {
           "linked_metadata_reconciliation_required": 15,
@@ -1853,7 +2016,12 @@
           "backfill_performed": false
         },
         "finding_certified": false,
-        "remaining": "Full ingress/provider readback, revocation, authorized historical reconciliation, physical voice/device acceptance, deployed migration and rollback, and owner acceptance remain outstanding."
+        "remaining": "Full ingress/provider readback, revocation, authorized historical reconciliation, physical voice/device acceptance, deployed migration and rollback, and owner acceptance remain outstanding.",
+        "executed_sha": "179614f4d75cb0aff31aac0702724a87348eeb0d",
+        "ci_run_url": "https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/43988147702",
+        "postgres_cases_passed": 130,
+        "runtime_guards_passed": 321,
+        "routing_context_cases_passed": 43
       }
     },
     {
@@ -2127,7 +2295,7 @@
       "worker_chat_projection_gate": {
         "evidence_record": "docs/delivery/master-qa-outcome-recovery-batch.md",
         "source_base_sha": "4b353fcc0aa352bf4920e1c67a903986fd503cdb",
-        "state": "IMPLEMENTED_PENDING_EXACT_HEAD_CI",
+        "state": "BOUNDED_EXACT_HEAD_CI_PASSED_NOT_FULL_FINDING",
         "postgres_cases_added": 21,
         "historical_readonly_inventory": {
           "linked_metadata_reconciliation_required": 15,
@@ -2135,7 +2303,31 @@
           "backfill_performed": false
         },
         "finding_certified": false,
-        "remaining": "Full ingress/provider readback, revocation, authorized historical reconciliation, physical voice/device acceptance, deployed migration and rollback, and owner acceptance remain outstanding."
+        "remaining": "Full ingress/provider readback, revocation, authorized historical reconciliation, physical voice/device acceptance, deployed migration and rollback, and owner acceptance remain outstanding.",
+        "executed_sha": "179614f4d75cb0aff31aac0702724a87348eeb0d",
+        "ci_run_url": "https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/43988147702",
+        "postgres_cases_passed": 130,
+        "runtime_guards_passed": 321,
+        "routing_context_cases_passed": 43
+      },
+      "signed_chat_persistence_gate": {
+        "evidence_record": "docs/delivery/master-qa-outcome-recovery-batch.md",
+        "test_path": "backend/tests/db/test_eco001_joined_chat_http_receiver_pg.py",
+        "state": "LOCAL_PASS_PENDING_EXACT_HEAD_CI",
+        "local_joined_cases_passed": 5,
+        "local_focused_chat_cases_passed": 54,
+        "scope": "Signed Chat HTTP, real claim/replay/outcome builders, SQL persistence, independent synthetic record GET, verifier, core writers, actual outbox relay and durable synthetic consumer",
+        "finding_certified": false,
+        "not_proven": [
+          "production membership/HITL/CAS/RLS",
+          "live provider OAuth/readback",
+          "all Agent/Play ingress",
+          "all live in-flight revocation races",
+          "historical backfill",
+          "physical voice/device",
+          "deployed migration and rollback",
+          "owner acceptance"
+        ]
       }
     },
     {
@@ -2275,7 +2467,7 @@
       "worker_chat_projection_gate": {
         "evidence_record": "docs/delivery/master-qa-outcome-recovery-batch.md",
         "source_base_sha": "4b353fcc0aa352bf4920e1c67a903986fd503cdb",
-        "state": "IMPLEMENTED_PENDING_EXACT_HEAD_CI",
+        "state": "BOUNDED_EXACT_HEAD_CI_PASSED_NOT_FULL_FINDING",
         "postgres_cases_added": 21,
         "historical_readonly_inventory": {
           "linked_metadata_reconciliation_required": 15,
@@ -2283,7 +2475,31 @@
           "backfill_performed": false
         },
         "finding_certified": false,
-        "remaining": "Full ingress/provider readback, revocation, authorized historical reconciliation, physical voice/device acceptance, deployed migration and rollback, and owner acceptance remain outstanding."
+        "remaining": "Full ingress/provider readback, revocation, authorized historical reconciliation, physical voice/device acceptance, deployed migration and rollback, and owner acceptance remain outstanding.",
+        "executed_sha": "179614f4d75cb0aff31aac0702724a87348eeb0d",
+        "ci_run_url": "https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/43988147702",
+        "postgres_cases_passed": 130,
+        "runtime_guards_passed": 321,
+        "routing_context_cases_passed": 43
+      },
+      "signed_chat_persistence_gate": {
+        "evidence_record": "docs/delivery/master-qa-outcome-recovery-batch.md",
+        "test_path": "backend/tests/db/test_eco001_joined_chat_http_receiver_pg.py",
+        "state": "LOCAL_PASS_PENDING_EXACT_HEAD_CI",
+        "local_joined_cases_passed": 5,
+        "local_focused_chat_cases_passed": 54,
+        "scope": "Signed Chat HTTP, real claim/replay/outcome builders, SQL persistence, independent synthetic record GET, verifier, core writers, actual outbox relay and durable synthetic consumer",
+        "finding_certified": false,
+        "not_proven": [
+          "production membership/HITL/CAS/RLS",
+          "live provider OAuth/readback",
+          "all Agent/Play ingress",
+          "all live in-flight revocation races",
+          "historical backfill",
+          "physical voice/device",
+          "deployed migration and rollback",
+          "owner acceptance"
+        ]
       }
     },
     {
@@ -2417,7 +2633,7 @@
       "worker_chat_projection_gate": {
         "evidence_record": "docs/delivery/master-qa-outcome-recovery-batch.md",
         "source_base_sha": "4b353fcc0aa352bf4920e1c67a903986fd503cdb",
-        "state": "IMPLEMENTED_PENDING_EXACT_HEAD_CI",
+        "state": "BOUNDED_EXACT_HEAD_CI_PASSED_NOT_FULL_FINDING",
         "postgres_cases_added": 21,
         "historical_readonly_inventory": {
           "linked_metadata_reconciliation_required": 15,
@@ -2425,7 +2641,31 @@
           "backfill_performed": false
         },
         "finding_certified": false,
-        "remaining": "Full ingress/provider readback, revocation, authorized historical reconciliation, physical voice/device acceptance, deployed migration and rollback, and owner acceptance remain outstanding."
+        "remaining": "Full ingress/provider readback, revocation, authorized historical reconciliation, physical voice/device acceptance, deployed migration and rollback, and owner acceptance remain outstanding.",
+        "executed_sha": "179614f4d75cb0aff31aac0702724a87348eeb0d",
+        "ci_run_url": "https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/43988147702",
+        "postgres_cases_passed": 130,
+        "runtime_guards_passed": 321,
+        "routing_context_cases_passed": 43
+      },
+      "signed_chat_persistence_gate": {
+        "evidence_record": "docs/delivery/master-qa-outcome-recovery-batch.md",
+        "test_path": "backend/tests/db/test_eco001_joined_chat_http_receiver_pg.py",
+        "state": "LOCAL_PASS_PENDING_EXACT_HEAD_CI",
+        "local_joined_cases_passed": 5,
+        "local_focused_chat_cases_passed": 54,
+        "scope": "Signed Chat HTTP, real claim/replay/outcome builders, SQL persistence, independent synthetic record GET, verifier, core writers, actual outbox relay and durable synthetic consumer",
+        "finding_certified": false,
+        "not_proven": [
+          "production membership/HITL/CAS/RLS",
+          "live provider OAuth/readback",
+          "all Agent/Play ingress",
+          "all live in-flight revocation races",
+          "historical backfill",
+          "physical voice/device",
+          "deployed migration and rollback",
+          "owner acceptance"
+        ]
       }
     },
     {
@@ -3156,7 +3396,7 @@
       "worker_chat_projection_gate": {
         "evidence_record": "docs/delivery/master-qa-outcome-recovery-batch.md",
         "source_base_sha": "4b353fcc0aa352bf4920e1c67a903986fd503cdb",
-        "state": "IMPLEMENTED_PENDING_EXACT_HEAD_CI",
+        "state": "BOUNDED_EXACT_HEAD_CI_PASSED_NOT_FULL_FINDING",
         "postgres_cases_added": 21,
         "historical_readonly_inventory": {
           "linked_metadata_reconciliation_required": 15,
@@ -3164,7 +3404,31 @@
           "backfill_performed": false
         },
         "finding_certified": false,
-        "remaining": "Full ingress/provider readback, revocation, authorized historical reconciliation, physical voice/device acceptance, deployed migration and rollback, and owner acceptance remain outstanding."
+        "remaining": "Full ingress/provider readback, revocation, authorized historical reconciliation, physical voice/device acceptance, deployed migration and rollback, and owner acceptance remain outstanding.",
+        "executed_sha": "179614f4d75cb0aff31aac0702724a87348eeb0d",
+        "ci_run_url": "https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/43988147702",
+        "postgres_cases_passed": 130,
+        "runtime_guards_passed": 321,
+        "routing_context_cases_passed": 43
+      },
+      "signed_chat_persistence_gate": {
+        "evidence_record": "docs/delivery/master-qa-outcome-recovery-batch.md",
+        "test_path": "backend/tests/db/test_eco001_joined_chat_http_receiver_pg.py",
+        "state": "LOCAL_PASS_PENDING_EXACT_HEAD_CI",
+        "local_joined_cases_passed": 5,
+        "local_focused_chat_cases_passed": 54,
+        "scope": "Signed Chat HTTP, real claim/replay/outcome builders, SQL persistence, independent synthetic record GET, verifier, core writers, actual outbox relay and durable synthetic consumer",
+        "finding_certified": false,
+        "not_proven": [
+          "production membership/HITL/CAS/RLS",
+          "live provider OAuth/readback",
+          "all Agent/Play ingress",
+          "all live in-flight revocation races",
+          "historical backfill",
+          "physical voice/device",
+          "deployed migration and rollback",
+          "owner acceptance"
+        ]
       }
     },
     {
