@@ -38,7 +38,10 @@ def prefer_persisted_write_plan(
     # cancellation/finalization. Compare revisions before accepting either;
     # approval and terminal labels alone do not make a stale update authoritative.
     same_id = incoming.plan_id == current.plan_id
-    if same_id and int(incoming.revision or 1) < int(current.revision or 1):
+    if same_id and int(incoming.revision or 1) <= int(current.revision or 1):
+        # Terminal WRITE outcomes are immutable at the same revision. A late
+        # approval, retry, or alternate surface cannot reopen a completed,
+        # cancelled, or blocked execution without an explicit new revision.
         return current
     if incoming.terminal_status == "waiting_for_approval":
         return incoming
