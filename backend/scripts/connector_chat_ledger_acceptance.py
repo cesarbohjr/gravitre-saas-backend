@@ -128,6 +128,9 @@ def run():
     service._external_url = MagicMock(return_value=None)
     service._summarize_result = MagicMock(return_value="Synthetic provider write recorded")
     def provider(ctx, params):
+        assert ctx.org_id == org_id and ctx.connector_id == qa_connector_id, (
+            "Provider dispatch connector differs from approved recovery connector"
+        )
         if race_approval_id and ctx.turn_id == race_approval_id:
             race_entered_provider.set()
             if not race_resume_provider.wait(25):
@@ -142,12 +145,10 @@ def run():
         return NormalizedResult(success=True, action=ACTION, data={"id": "qa-local-1"})
 
     from app.services.write_invoke_idempotency import build_write_idempotency_key
-    expected_ctx = ToolContext(
-        settings=settings, client=db, org_id=org_id, actor_id=REVIEWER,
-        conversation_id=conversation_id, turn_id=approval_id,
-        write_idempotency_required=True,
-    )
-    expected_key, expected_logical = build_write_idempotency_key(expected_ctx, ACTION, ARGS)
+    # The write identity includes the actual selected connector. Compute the
+    # expected ledger key after the disposable tenant-scoped account exists.
+    expected_key = None
+    expected_logical = None
     context = {
         "conversation_id": conversation_id,
         "parameters": {"args": ARGS},
@@ -206,6 +207,14 @@ def run():
         assert str(selected.get("org_id")) == org_id
         assert get_connector(db, qa_auto_org_id, qa_connector_id, environment_name="production") is None, (
             "QA connector escaped the isolated organization"
+        )
+        expected_ctx = ToolContext(
+            settings=settings, client=db, org_id=org_id, actor_id=REVIEWER,
+            conversation_id=conversation_id, turn_id=approval_id,
+            connector_id=qa_connector_id, write_idempotency_required=True,
+        )
+        expected_key, expected_logical = build_write_idempotency_key(
+            expected_ctx, ACTION, ARGS
         )
 
         db.table("conversations").insert({
@@ -380,7 +389,7 @@ def run():
             rejected_ctx = ToolContext(
                 settings=settings, client=db, org_id=org_id, actor_id=REVIEWER,
                 conversation_id=conversation_id, turn_id=rejected_id,
-                write_idempotency_required=True,
+                connector_id=qa_connector_id, write_idempotency_required=True,
             )
             rejected_key, rejected_logical_id = build_write_idempotency_key(
                 rejected_ctx, ACTION, ARGS
@@ -418,7 +427,7 @@ def run():
             race_ctx = ToolContext(
                 settings=settings, client=db, org_id=org_id, actor_id=REVIEWER,
                 conversation_id=conversation_id, turn_id=race_approval_id,
-                write_idempotency_required=True,
+                connector_id=qa_connector_id, write_idempotency_required=True,
             )
             race_ledger_key, race_logical_id = build_write_idempotency_key(
                 race_ctx, ACTION, ARGS
@@ -561,7 +570,7 @@ def run():
                     ToolContext(
                         settings=settings, client=db, org_id=org_id, actor_id=REVIEWER,
                         conversation_id=conversation_id, turn_id=blocked_id,
-                        write_idempotency_required=True,
+                        connector_id=qa_connector_id, write_idempotency_required=True,
                     ), ACTION, ARGS
                 )[1] for blocked_id in negative_approval_ids
             ],
@@ -610,7 +619,10 @@ def run():
                 db.table("connectors").delete().eq(
                     "org_id", org_id
                 ).eq("id", qa_connector_id).execute()
-            db.table("write_invoke_idempotency").delete().eq("org_id", org_id).eq("idempotency_key", expected_key).execute()
+            if expected_key:
+                db.table("write_invoke_idempotency").delete().eq(
+                    "org_id", org_id
+                ).eq("idempotency_key", expected_key).execute()
             if race_ledger_key:
                 db.table("write_invoke_idempotency").delete().eq(
                     "org_id", org_id
@@ -650,7 +662,9 @@ def run():
                 ).execute()
             if qa_auth_id:
                 db.auth.admin.delete_user(qa_auth_id)
-            remaining = db.table("write_invoke_idempotency").select("id").eq("org_id", org_id).eq("idempotency_key", expected_key).execute().data or []
+            remaining = (db.table("write_invoke_idempotency").select("id").eq(
+                "org_id", org_id
+            ).eq("idempotency_key", expected_key).execute().data or []) if expected_key else []
             remaining_approval = db.table("approvals").select("id").eq("org_id", org_id).eq("id", approval_id).execute().data or []
             race_remaining = db.table("write_invoke_idempotency").select("id").eq(
                 "org_id", org_id
