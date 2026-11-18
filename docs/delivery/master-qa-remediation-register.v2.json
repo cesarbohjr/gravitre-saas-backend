@@ -376,6 +376,28 @@
           "In-flight revocation races, independently observed live provider readback and deployed rollback",
           "Finding-specific owner acceptance and final twelve QA gates"
         ]
+      },
+      "connector_identity_repair": {
+        "status": "CODE_COMMITTED_EXACT_HEAD_TARGETED_VERIFICATION_PENDING",
+        "owner": "PR611",
+        "canonical_path": "backend/app/services/chat_connector_execution_service.py",
+        "commit": "cb45116a51863a4a8b0e8477e7759c553d8f012f",
+        "tests_commit": "47f0a66b5a35db8f1297415120c97df6a7d7736d",
+        "covered_executor_families": [
+          "hubspot",
+          "gmail",
+          "asana"
+        ],
+        "matching_resolution": "Exact tenant-scoped connector repository lookup before durable claim, consistent with verified native or catalog executor; no inferred account for unverified providers",
+        "negative_tests": [
+          "explicit cross-tenant account denied",
+          "provider mismatch denied",
+          "missing account denied",
+          "unverified vendor not assigned guessed account"
+        ],
+        "live_provider_verification": false,
+        "exact_head_python_test_verified": false,
+        "certified": false
       }
     },
     {
@@ -448,7 +470,23 @@
         "tenant_scope_and_fallback_tests": "backend/tests/master_qa/test_eco003_context_scope_parity.py"
       },
       "audit_evidence_class": "SOURCE_CONFIRMED_POTENTIAL_LATENCY",
-      "audit_observation": "serial retrieval present; performance impact unmeasured"
+      "audit_observation": "serial retrieval present; performance impact unmeasured",
+      "event_loop_repair": {
+        "status": "CODE_COMMITTED_TARGETED_VERIFICATION_PENDING",
+        "owner": "PR611",
+        "path": "backend/app/services/company_intelligence_orchestrator.py",
+        "permission_handling_commit": "0dc629f64acf1d2d214a23e2e4871bf31977002b",
+        "snapshot_async_offload_commit": "cbaf1da59a9eca5343f00ad2c26c16096402eda3",
+        "targeted_test_path": "backend/tests/master_qa/test_eco003_context_scope_parity.py",
+        "tests_commits": [
+          "bc2c74d61ecad2e854f9d38eee1da4c4d4d6882e",
+          "95043cced1d376de06a713d323be988ca4fe42b7"
+        ],
+        "reason": "Synchronous tenant-scoped snapshot query was blocking event loop from async function; offloaded without new cache or modified tenant filters. Explicit permission denial now propagates; ordinary outage fallback preserved.",
+        "live_p50_p95": null,
+        "exact_head_python_test_verified": false,
+        "certified": false
+      }
     },
     {
       "finding_id": "ECO-004",
