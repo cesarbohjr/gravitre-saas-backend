@@ -98,3 +98,120 @@ def test_unknown_recovery_deferred_not_immediately_released(pg):
     next_one = _json(pg, "coalesce((SELECT row_to_json(x) FROM public.claim_due_write_recoveries(1,60) AS x),'{}'::json)")
     assert next_one == {}
     assert pg.value(f"SELECT status FROM public.write_invoke_idempotency WHERE idempotency_key='{key}';") == "uncertain"
+
+
+@pytest.mark.parametrize("provider_applied", [True, False])
+def test_scheduled_recovery_settles_independent_receiver_without_redispatch(
+    pg, tmp_path, provider_applied,
+):
+    """Cross service worker -> tenant ledger -> leased SQL -> independent receipt.
+
+    The provider is a separate local HTTP process. Only its readback adapter is
+    substituted; the actual Python recovery worker, SQL queue and settlement
+    functions execute unchanged. No production provider is contacted.
+    """
+    import urllib.request
+    from types import SimpleNamespace
+    from unittest.mock import patch
+
+    from app.services.tool_types import ToolContext
+    from app.services.outcome_reconciliation import ReconciliationResult
+    from app.services.write_recovery_worker import process_due_write_recoveries
+    from tests.db.test_autonomous_independent_write_pg import IndependentFixture
+    from tests.db.write_recovery_context_fixture import PgRecoveryClient
+
+    key = "scheduled-recovery-" + ("applied" if provider_applied else "absent")
+    args = {"email": "qa@example.invalid"}
+    claim = _json(
+        pg, f"public.claim_write_invoke_idempotency("
+        f"'{ORG}'::uuid,'{key}','hubspot.contacts.create','test-approval',60)",
+    )
+    assert claim["outcome"] == "claimed"
+    bound = _json(
+        pg, f"public.bind_write_recovery_context("
+        f"'{ORG}'::uuid,'{key}','{claim['claim_token']}'::uuid,"
+        f"'hubspot.contacts.create','conn-a',"
+        f"'{{\"email\":\"qa@example.invalid\"}}'::jsonb)",
+    )
+    assert bound["outcome"] == "bound"
+
+    receiver = IndependentFixture(
+        tmp_path / (key + ".sqlite3"), b"<h1>QA</h1>",
+        capability="readback-qa",
+    )
+    try:
+        if provider_applied:
+            request = urllib.request.Request(
+                receiver.origin + "/write",
+                data=json.dumps({"cap": "readback-qa"}).encode(),
+                headers={"Content-Type": "application/json"}, method="POST",
+            )
+            with urllib.request.urlopen(request, timeout=7) as response:
+                assert response.status == 204
+        expected = int(provider_applied)
+        assert receiver.writes == expected
+
+        # Simulates the original process dying with no terminal receipt.
+        # Recovery must observe the already-persisted claim after expiry.
+        pg.psql(
+            "UPDATE public.write_invoke_idempotency "
+            "SET lease_expires_at=now()-interval '1 minute' "
+            f"WHERE org_id='{ORG}' AND idempotency_key='{key}';"
+        )
+        service = PgRecoveryClient(pg)
+        original = ToolContext(
+            settings=SimpleNamespace(), client=service, org_id=ORG,
+            actor_id="system:write-recovery", connector_id="conn-a",
+        )
+
+        def readback(*, ctx, invoke_action, args):
+            assert ctx.org_id == ORG and ctx.connector_id == "conn-a"
+            assert invoke_action == "hubspot.contacts.create"
+            assert args == {"email": "qa@example.invalid"}
+            assert receiver.writes == expected
+            if provider_applied:
+                return ReconciliationResult(
+                    "applied", "requested_values_present",
+                    resource_id="contact-qa",
+                    lookup_action="hubspot.contacts.search",
+                    evidence={"verified": True, "receiver_count": expected},
+                )
+            return ReconciliationResult(
+                "not_applied", "requested_values_absent",
+                lookup_action="hubspot.contacts.search",
+                evidence={"verified": True, "receiver_count": 0},
+            )
+
+        with patch(
+            "app.services.write_recovery_service.reconcile_uncertain_write",
+            side_effect=readback,
+        ) as verify:
+            result = process_due_write_recoveries(
+                service_client=service,
+                context_factory=lambda org, connector: original,
+            )
+            assert result["seen"] == 1
+            assert result["error"] == 0 and result["rejected"] == 0
+            assert result["completed" if provider_applied else "not_applied"] == 1
+            verify.assert_called_once()
+            again = process_due_write_recoveries(
+                service_client=service,
+                context_factory=lambda org, connector: original,
+            )
+            assert again["seen"] == 0
+        assert receiver.writes == expected
+        state = pg.value(
+            "SELECT status FROM public.write_invoke_idempotency "
+            f"WHERE org_id='{ORG}' AND idempotency_key='{key}';"
+        )
+        assert state == ("completed" if provider_applied else "failed")
+        if provider_applied:
+            replay = _json(
+                pg, f"public.claim_write_invoke_idempotency("
+                f"'{ORG}'::uuid,'{key}','hubspot.contacts.create','test-approval',60)",
+            )
+            assert replay["outcome"] == "replay"
+            assert replay["result"]["verification"]["evidence"]["receiver_count"] == 1
+            assert receiver.writes == 1
+    finally:
+        receiver.close()
