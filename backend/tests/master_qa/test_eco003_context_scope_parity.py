@@ -93,3 +93,43 @@ async def test_research_only_for_classification_request_and_same_tenant(monkeypa
     )
     assert result["external_context"] == {"findings": ["non-sensitive"]}
     research.research.assert_awaited_once_with("tenant-A", "search allowed", depth="standard")
+
+
+@pytest.mark.asyncio
+async def test_permission_denial_is_not_downgraded_to_empty_context(monkeypatch):
+    """Fail-closed tenant denial must remain visible to the caller."""
+    retrieval = SimpleNamespace(retrieve=AsyncMock(side_effect=PermissionError("tenant scope denied")))
+    company = SimpleNamespace(get_context_for_prompt=AsyncMock())
+    monkeypatch.setattr(module, "get_unified_retrieval_service", lambda: retrieval)
+    monkeypatch.setattr(module, "get_company_intelligence_orchestrator", lambda: company)
+
+    with pytest.raises(PermissionError, match="tenant scope denied"):
+        await module.ContextAssembler(settings=SimpleNamespace()).assemble(
+            "tenant-A", "user-A", "private resource",
+            {"requires_web_search": False},
+            client=object(), environment_name="isolated",
+        )
+    company.get_context_for_prompt.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_permission_denial_survives_telemetry_sink_failure(monkeypatch):
+    """Telemetry failure never hides a tenant boundary violation."""
+    from unittest.mock import Mock
+    from app.services import context_stage_metrics as metrics
+
+    monkeypatch.setenv("ECO003_CONTEXT_LATENCY_TRACE", "true")
+    monkeypatch.setattr(
+        metrics.CONTEXT_STAGE_SECONDS, "labels",
+        Mock(side_effect=RuntimeError("metrics exporter unavailable")),
+    )
+    retrieval = SimpleNamespace(retrieve=AsyncMock(side_effect=PermissionError("access denied")))
+    monkeypatch.setattr(module, "get_unified_retrieval_service", lambda: retrieval)
+    monkeypatch.setattr(module, "get_company_intelligence_orchestrator",
+                        lambda: SimpleNamespace(get_context_for_prompt=AsyncMock()))
+    with pytest.raises(PermissionError, match="access denied"):
+        await module.ContextAssembler(settings=SimpleNamespace()).assemble(
+            "tenant-B", "user-B", "unauthorized query",
+            {"requires_web_search": False},
+            client=object(), environment_name="isolated",
+        )
