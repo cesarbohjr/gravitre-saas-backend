@@ -49,6 +49,11 @@ export async function proxyVoiceJson(
     body: method === "GET" || method === "HEAD" ? undefined : init?.body ?? (await request.text()),
     cache: "no-store",
   })
+  // Bodyless statuses must never be passed to NextResponse with a body.
+  // Preserve the upstream status while avoiding an invalid response.
+  if (upstream.status === 204 || upstream.status === 205 || upstream.status === 304) {
+    return new NextResponse(null, { status: upstream.status })
+  }
   const text = await upstream.text()
   try {
     const json = JSON.parse(text)
