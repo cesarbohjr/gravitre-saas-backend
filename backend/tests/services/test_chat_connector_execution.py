@@ -880,3 +880,68 @@ async def test_execute_plan_orch_step_skips_module_a_fanout(connector_service):
 
     assert result.success is False
     finalize.assert_not_called()
+
+
+def test_eco002_chat_hubspot_write_uses_same_tenant_connector_as_executor():
+    from types import SimpleNamespace
+    from app.services.chat_connector_execution_service import _bind_approved_hubspot_write_connector
+    from app.services.tool_types import ToolContext
+
+    ctx = ToolContext(
+        settings=SimpleNamespace(), client=MagicMock(), org_id="org-a",
+        actor_id="actor-a", conversation_id="chat-a",
+    )
+    with patch(
+        "app.connectors.repository.get_connector_by_type",
+        return_value={"id": "hubspot-account-a", "org_id": "org-a", "vendor": "hubspot"},
+    ) as lookup:
+        bound = _bind_approved_hubspot_write_connector(
+            ctx, client=ctx.client, org_id="org-a",
+            environment_name="production", args={"email": "qa@example.invalid"},
+        )
+    lookup.assert_called_once_with(
+        ctx.client, "org-a", "hubspot", environment_name="production",
+    )
+    assert bound.connector_id == "hubspot-account-a"
+    assert ctx.connector_id is None  # immutable original context remains intact
+
+
+def test_eco002_chat_explicit_hubspot_connector_cannot_escape_tenant():
+    from types import SimpleNamespace
+    from app.services.chat_connector_execution_service import _bind_approved_hubspot_write_connector
+    from app.services.tool_types import ToolContext, ToolConnectorNotConnectedError
+
+    ctx = ToolContext(settings=SimpleNamespace(), client=MagicMock(),
+                      org_id="org-a", actor_id="actor-a")
+    with patch(
+        "app.connectors.repository.get_connector",
+        return_value={"id": "foreign-account", "org_id": "org-b", "vendor": "hubspot"},
+    ) as lookup:
+        with pytest.raises(ToolConnectorNotConnectedError, match="tenant"):
+            _bind_approved_hubspot_write_connector(
+                ctx, client=ctx.client, org_id="org-a",
+                environment_name="production", args={"connector_id": "foreign-account"},
+            )
+    lookup.assert_called_once_with(
+        ctx.client, "org-a", "foreign-account", environment_name="production",
+    )
+
+
+@pytest.mark.parametrize("connector", [
+    None,
+    {"id": "other-account", "org_id": "org-a", "vendor": "slack"},
+    {"id": "", "org_id": "org-a", "vendor": "hubspot"},
+])
+def test_eco002_chat_missing_or_wrong_provider_identity_fails_closed(connector):
+    from types import SimpleNamespace
+    from app.services.chat_connector_execution_service import _bind_approved_hubspot_write_connector
+    from app.services.tool_types import ToolContext, ToolConnectorNotConnectedError
+
+    ctx = ToolContext(settings=SimpleNamespace(), client=MagicMock(),
+                      org_id="org-a", actor_id="actor-a")
+    with patch("app.connectors.repository.get_connector_by_type", return_value=connector):
+        with pytest.raises(ToolConnectorNotConnectedError):
+            _bind_approved_hubspot_write_connector(
+                ctx, client=ctx.client, org_id="org-a",
+                environment_name="production", args={},
+            )
