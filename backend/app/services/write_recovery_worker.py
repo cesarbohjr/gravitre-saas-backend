@@ -29,7 +29,7 @@ def process_due_write_recoveries(
     stats = {"seen": 0, "completed": 0, "not_applied": 0,
              "unknown": 0, "rejected": 0, "error": 0}
     try:
-        result = service_client.rpc("list_due_write_recoveries", {
+        result = service_client.rpc("claim_due_write_recoveries", {
             "p_limit": max(1, min(int(limit), 100)),
         }).execute()
         rows = result.data
@@ -48,6 +48,7 @@ def process_due_write_recoveries(
             action = str(row["invoke_action"])
             key = str(row["idempotency_key"])
             args = row["original_args"]
+            lease = str(row["recovery_lease_token"])
             if not all((org, connector, action, key)) or not isinstance(args, dict):
                 stats["unknown"] += 1
                 continue
@@ -63,8 +64,13 @@ def process_due_write_recoveries(
             outcome = recover_uncertain_write(
                 ctx=ctx, idempotency_key=key,
                 invoke_action=action, original_args=args,
+                recovery_lease_token=lease,
             )
             stats[outcome.state] += 1
+            if outcome.state not in ("completed", "not_applied"):
+                service_client.rpc("defer_leased_write_recovery", {
+                    "p_org_id": org, "p_key": key, "p_lease_token": lease,
+                }).execute()
         except Exception:
             logger.exception("write_recovery_item_failed")
             stats["error"] += 1
