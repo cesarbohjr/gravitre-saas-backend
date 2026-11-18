@@ -324,6 +324,11 @@ class CompanyIntelligenceOrchestrator:
             if updated:
                 markdown = f"{markdown}\n\n(Company intelligence last updated: {updated})"
             return markdown[:4200]
+        except PermissionError:
+            # Authorization failures are not an optional intelligence outage.
+            # Do not silently convert cross-tenant scope denial into empty
+            # context and permit downstream reasoning to continue.
+            raise
         except Exception as exc:  # noqa: BLE001
             logger.debug("company_intelligence_prompt_load_skipped org_id=%s error=%s", org_id, exc)
             return ""
