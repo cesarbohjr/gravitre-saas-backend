@@ -270,6 +270,31 @@ def finalize_write_invoke(
     return WriteFinalizeResult(outcome="rejected", reason=str(body.get("reason") or outcome))
 
 
+_RECOVERY_SECRET_FIELDS = frozenset({
+    "authorization", "cookie", "set_cookie", "password", "api_key",
+    "apikey", "access_token", "refresh_token", "client_secret",
+    "private_key", "secret", "bearer_token",
+})
+
+
+def _redact_recovery_args(value: Any) -> Any:
+    """Do not persist auth material supplied alongside a provider write.
+
+    Keep business-object fields for readback, but remove provider credentials
+    and transport metadata from the recovery payload.
+    """
+    if isinstance(value, dict):
+        return {
+            str(key): ("[REDACTED]" if str(key).lower().replace("-", "_") in _RECOVERY_SECRET_FIELDS
+                       else _redact_recovery_args(item))
+            for key, item in value.items()
+            if str(key) != "_gravitre_idempotency_key"
+        }
+    if isinstance(value, list):
+        return [_redact_recovery_args(item) for item in value]
+    return value
+
+
 def bind_write_recovery_context(
     client: Any, *, org_id: str, idempotency_key: str,
     claim_token: str, invoke_action: str, connector_id: str,
@@ -283,7 +308,7 @@ def bind_write_recovery_context(
             "p_org_id": org_id, "p_key": idempotency_key,
             "p_claim_token": claim_token, "p_invoke_action": invoke_action,
             "p_connector_id": connector_id,
-            "p_original_args": safe_normalize_stored_dict(original_args),
+            "p_original_args": safe_normalize_stored_dict(_redact_recovery_args(original_args)),
         }).execute()
         return isinstance(res.data, dict) and res.data.get("outcome") == "bound"
     except Exception:
