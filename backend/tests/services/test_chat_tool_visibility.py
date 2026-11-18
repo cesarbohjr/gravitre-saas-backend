@@ -48,3 +48,32 @@ def test_fast_mode_expands_when_connectors_live():
 def test_chat_visible_tool_names_include_gmail_when_connected():
     names = chat_visible_connector_tool_names(connected_integrations=["gmail"])
     assert any(name.startswith("gmail_") for name in names)
+
+
+def test_eco006_chat_visibility_reuses_live_registry_cache_after_action_swap(monkeypatch):
+    """One-for-one registry replacement must immediately update visible tools."""
+    from types import SimpleNamespace
+    from app.services import chat_tool_visibility as visibility
+
+    entry = lambda key: SimpleNamespace(
+        tool_registry_key=key, connector_id="hubspot",
+    )
+    live = {"hubspot_contacts_search": object()}
+    monkeypatch.setattr(visibility, "build_dynamic_chat_tool_specs", lambda: dict(live))
+    monkeypatch.setattr(
+        visibility, "chat_executable_entries",
+        lambda **kwargs: [entry(key) for key in live],
+    )
+    monkeypatch.setattr(
+        "app.services.tool_registry.get_tool_registry",
+        lambda: SimpleNamespace(get_tools_for_agent=lambda *a, **kw: []),
+    )
+
+    assert visibility.chat_visible_connector_tool_names(
+        connected_integrations=["hubspot"],
+    ) == frozenset({"hubspot_contacts_search"})
+    live.clear()
+    live["hubspot_contacts_get"] = object()
+    assert visibility.chat_visible_connector_tool_names(
+        connected_integrations=["hubspot"],
+    ) == frozenset({"hubspot_contacts_get"})
