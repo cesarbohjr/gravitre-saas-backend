@@ -576,6 +576,9 @@ def build_task_retrieval_context(
                 query=task.strip(),
                 top_k=top_k,
             )
+        except PermissionError:
+            # A denied agent/org scope is not an empty-memory result.
+            raise
         except Exception:  # noqa: BLE001
             context["memories"] = []
         context["memory_conflicts"] = detect_agent_memory_conflicts(context["memories"])
@@ -601,6 +604,9 @@ def build_task_retrieval_context(
                 }
                 for row in rows
             ]
+        except PermissionError:
+            # Never mask department/agent assignment access denial.
+            raise
         except Exception:  # noqa: BLE001
             context["rag_chunks"] = []
 
