@@ -27,6 +27,7 @@ def recover_uncertain_write(
     idempotency_key: str,
     invoke_action: str,
     original_args: dict[str, Any],
+    recovery_lease_token: str | None = None,
 ) -> RecoveryResult:
     """Read provider state and durably settle one *already uncertain* claim.
 
@@ -96,10 +97,13 @@ def recover_uncertain_write(
             "verification": observed.as_dict(),
         }
     try:
-        res = ctx.client.rpc("reconcile_write_invoke_idempotency", {
+        if not recovery_lease_token:
+            return RecoveryResult("rejected", "recovery_lease_required")
+        res = ctx.client.rpc("settle_leased_write_recovery", {
             "p_org_id": ctx.org_id,
             "p_key": idempotency_key,
             "p_status": status,
+            "p_lease_token": recovery_lease_token,
             "p_result": payload,
         }).execute()
         body = res.data if isinstance(res.data, dict) else {}
