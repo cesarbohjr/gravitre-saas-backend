@@ -1671,7 +1671,8 @@ class ToolRegistry:
         # hit bypasses invoke_tool's provider credential checks, so fail closed
         # when the caller has no explicit account identity. Revocation epochs
         # continue to invalidate cache entries across replicas.
-        read_account = str(invoke_params.get("connector_id") or ctx.connector_id or "").strip()
+        read_account = str(ctx.connector_id or "").strip()
+        requested_account = str(invoke_params.get("connector_id") or "").strip()
         read_actor = str(ctx.actor_id or "").strip()
         read_cache_scope = (
             {
@@ -1680,7 +1681,9 @@ class ToolRegistry:
                 "agent": str(ctx.agent_id or ""),
                 "connector": read_account,
             }
-            if read_actor and read_account else None
+            if read_actor and read_account
+            and (not requested_account or requested_account == read_account)
+            else None
         )
         if action not in self._registered:
             return {
