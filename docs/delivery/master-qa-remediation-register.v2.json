@@ -345,6 +345,37 @@
           "Original R2–R4 scope and release/rollback requirements"
         ],
         "finding_certified": false
+      },
+      "joined_chat_agent_recovery_batch": {
+        "engineering_state": "IMPLEMENTED_TARGETED_VERIFICATION_PENDING",
+        "candidate_sha": "c97e49f3ecd46471fd3d88c6de86e7e5a3b90536",
+        "production_repair": [
+          "backend/app/services/write_recovery_worker.py: use dataclass-safe service-role recovery context without mutating the frozen ToolContext"
+        ],
+        "test_transport": "backend/tests/db/write_recovery_context_fixture.py",
+        "targeted_tests": [
+          "backend/tests/services/test_write_recovery_worker.py",
+          "backend/tests/services/test_write_invoke_idempotency.py",
+          "backend/tests/services/test_autonomous_invoke_receiver_integration.py",
+          "backend/tests/services/test_outcome_ownership_write_safety.py",
+          "backend/tests/db/test_eco001_chat_invoke_pg_receiver.py",
+          "backend/tests/db/test_eco001_joined_agent_worker_pg_receiver.py",
+          "backend/tests/db/test_eco001_joined_chat_http_receiver_pg.py",
+          "backend/tests/db/test_autonomous_full_dispatcher_pg.py",
+          "backend/tests/db/test_write_recovery_leases_pg.py"
+        ],
+        "coverage_added": "Fenced original-arguments binding in signed Chat/Agent PostgreSQL receiver paths; atomic approved Agent claim, worker process crash/restart adapter, revoked pre-claim negative path, service-role leased readback settlement of independent local provider side effects, and frozen scheduled ToolContext preservation.",
+        "verified": false,
+        "certified": false,
+        "independent_live_provider_readback": false,
+        "exact_head_targeted_pass": false,
+        "remaining": [
+          "Exact-head targeted development tests and confirmed PostgreSQL migration runs",
+          "Full signed ingress across real OAuth-scoped provider accounts",
+          "Actual device/Voice continuity and all Agent/Play/Canvas callers",
+          "In-flight revocation races, independently observed live provider readback and deployed rollback",
+          "Finding-specific owner acceptance and final twelve QA gates"
+        ]
       }
     },
     {
