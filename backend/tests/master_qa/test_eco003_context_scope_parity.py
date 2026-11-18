@@ -179,3 +179,44 @@ async def test_context_assembler_propagates_company_intelligence_scope_denial(mo
         )
     retrieval.retrieve.assert_awaited_once()
     company.get_context_for_prompt.assert_awaited_once_with("tenant-A")
+
+
+@pytest.mark.asyncio
+async def test_company_snapshot_sync_db_read_does_not_block_event_loop(monkeypatch):
+    """ECO-003: slow scoped PostgREST reads must not delay concurrent turns."""
+    import asyncio
+    import threading
+    from app.services.company_intelligence_orchestrator import CompanyIntelligenceOrchestrator
+
+    started = threading.Event()
+    release = threading.Event()
+    caller_thread = threading.get_ident()
+    worker_threads = []
+    db = Mock()
+
+    def slow_read():
+        worker_threads.append(threading.get_ident())
+        started.set()
+        assert release.wait(timeout=3), "test fixture did not release read"
+        return SimpleNamespace(data=[{"org_id": "tenant-A", "context_markdown": "scoped"}])
+
+    db.table.return_value.select.return_value.eq.return_value.limit.return_value.execute.side_effect = slow_read
+    orchestrator = CompanyIntelligenceOrchestrator(settings=SimpleNamespace())
+    monkeypatch.setattr(orchestrator, "_client", lambda: db)
+
+    lookup = asyncio.create_task(orchestrator._load_latest_snapshot("tenant-A"))
+    try:
+        assert await asyncio.wait_for(asyncio.to_thread(started.wait, 2), timeout=3)
+        assert not lookup.done()
+        # The event loop can service another coroutine while the synchronous
+        # database request is still held in its own worker thread.
+        turn_alive = asyncio.create_task(asyncio.sleep(0.01, result="turn-progress"))
+        assert await asyncio.wait_for(turn_alive, timeout=0.2) == "turn-progress"
+    finally:
+        release.set()
+    result = await asyncio.wait_for(lookup, timeout=3)
+    assert result["org_id"] == "tenant-A"
+    assert worker_threads and all(t != caller_thread for t in worker_threads)
+    db.table.assert_called_once_with("org_intelligence_snapshots")
+    db.table.return_value.select.return_value.eq.assert_called_once_with("org_id", "tenant-A")
+    db.table.return_value.select.return_value.eq.return_value.limit.assert_called_once_with(1)
