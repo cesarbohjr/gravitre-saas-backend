@@ -54,3 +54,40 @@ def test_worker_preserves_unknown_without_retrying():
                 org_id=org, connector_id=conn, client=MagicMock()),
         )
     assert stats["unknown"] == 1
+
+
+def test_scheduler_frozen_tool_context_recovers_without_mutating_credentials():
+    """Actual scheduler ToolContext is frozen; the worker must not assign into it."""
+    from app.services.tool_types import ToolContext
+
+    row = {
+        "org_id": "org-a", "connector_id": "conn-a",
+        "invoke_action": "hubspot.contacts.create",
+        "idempotency_key": "claim-a", "recovery_lease_token": "lease-a",
+        "original_args": {"email": "a@example.test"},
+    }
+    service = _service([row])
+    original_client = MagicMock()
+    original = ToolContext(
+        settings=SimpleNamespace(), client=original_client,
+        org_id="org-a", actor_id="system:write-recovery",
+        connector_id="conn-a",
+    )
+    with patch(
+        "app.services.write_recovery_worker.recover_uncertain_write",
+        return_value=RecoveryResult("completed", "verified"),
+    ) as recover:
+        stats = process_due_write_recoveries(
+            service_client=service, context_factory=lambda org, connector: original,
+        )
+    assert stats == {
+        "seen": 1, "completed": 1, "not_applied": 0,
+        "unknown": 0, "rejected": 0, "error": 0,
+    }
+    recovered = recover.call_args.kwargs["ctx"]
+    assert recovered is not original
+    assert recovered.client is service
+    assert original.client is original_client
+    assert recovered.org_id == original.org_id
+    assert recovered.connector_id == original.connector_id
+    assert recover.call_args.kwargs["recovery_lease_token"] == "lease-a"
