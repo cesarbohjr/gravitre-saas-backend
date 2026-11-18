@@ -238,3 +238,41 @@ def test_eco003_agent_memory_access_denial_is_not_silenced(source):
                 agent=agent, task="tenant-scoped memory",
                 parameters=context,
             )
+
+
+def test_eco003_unowned_agent_http_denial_survives_memory_context_fallback():
+    from fastapi import HTTPException
+
+    with patch(
+        "app.services.agent_memory_service.search_agent_memories",
+        side_effect=HTTPException(status_code=404, detail="Agent not found"),
+    ):
+        with pytest.raises(HTTPException) as error:
+            build_task_retrieval_context(
+                MagicMock(), MagicMock(), org_id="tenant-a",
+                agent={"id": "not-owned"},
+                task="private memory",
+                parameters={"include_agent_memory": True},
+            )
+    assert error.value.status_code == 404
+
+
+@pytest.mark.parametrize("denial", [
+    PermissionError("department scope denied"),
+    HTTPException(status_code=403, detail="department forbidden"),
+])
+def test_eco003_department_memory_denial_does_not_try_alternate_table(denial):
+    from app.services.agent_memory_service import search_department_memories
+
+    client = MagicMock()
+    client.rpc.return_value.execute.side_effect = denial
+    with patch(
+        "app.services.agent_memory_service.get_embedding",
+        return_value=[0.1, 0.2],
+    ):
+        with pytest.raises((PermissionError, HTTPException)):
+            search_department_memories(
+                MagicMock(), client, "tenant-a", "department-a",
+                query="private data",
+            )
+    client.table.assert_not_called()
