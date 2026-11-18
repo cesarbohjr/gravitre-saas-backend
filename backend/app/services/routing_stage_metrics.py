@@ -17,7 +17,7 @@ T = TypeVar("T")
 STAGES = frozenset({
     "overview_policy", "dialogue_settings", "understanding", "classification",
     "query_cluster", "clarification", "context_assembly", "risk_evaluation",
-    "model_selection", "enrichments", "response_dispatch", "guidance",
+    "model_selection", "model_provider", "enrichments", "response_dispatch", "guidance",
 })
 ROUTE_STAGE_SECONDS = Histogram(
     "gravitre_intelligence_route_stage_duration_seconds",
