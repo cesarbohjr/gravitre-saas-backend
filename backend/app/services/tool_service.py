@@ -5445,6 +5445,24 @@ def invoke_tool(ctx: ToolContext, action: str, params: dict[str, Any] | None = N
             claim_token=write_claim_token, invoke_action=action,
             connector_id=recovery_connector_id, original_args=params,
         ):
+            # Nothing has crossed the provider boundary. Release only the
+            # same fenced claim as failed so a later authorized request can
+            # retry the pre-dispatch preparation. This is *not* an uncertain
+            # delivery and must never be reconciled as a provider side effect.
+            # If the ledger itself is unavailable, the failed finalization
+            # leaves the reservation blocked (fail closed).
+            from app.services.write_invoke_idempotency import finalize_write_invoke
+
+            cleanup = finalize_write_invoke(
+                ctx.client, org_id=ctx.org_id,
+                idempotency_key=write_idempotency_key,
+                claim_token=write_claim_token, status="failed",
+            )
+            if cleanup.outcome != "finalized":
+                logger.warning(
+                    "write_recovery_bind_cleanup_unconfirmed org_id=%s action=%s outcome=%s",
+                    ctx.org_id, action, cleanup.outcome,
+                )
             raise WriteIdempotencyUnavailable(
                 "Durable recovery context unavailable; refusing provider dispatch",
                 code="write_idempotency_unavailable",
