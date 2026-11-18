@@ -45,13 +45,21 @@ def _invoke_with(tool_ctx: ToolContext, action: str, impl):
         from app.services.write_invoke_idempotency import WriteClaimResult, WriteFinalizeResult
         with patch("app.services.write_invoke_idempotency.claim_write_invoke",
                    return_value=WriteClaimResult(outcome="claimed", claim_token="test-fence", claim_generation=1)), patch(
+            "app.services.write_invoke_idempotency.bind_write_recovery_context",
+            return_value=True
+        ) as bind_context, patch(
             "app.services.write_invoke_idempotency.finalize_write_invoke",
             return_value=WriteFinalizeResult(outcome="finalized")
         ):
             with patch("app.services.tool_service._TOOL_REGISTRY", {action: impl}):
                 with patch("app.services.tool_service.write_audit_event"):
                     with patch("app.services.tool_service.time.sleep"):
-                        return invoke_tool(tool_ctx, action, {})
+                        result = invoke_tool(tool_ctx, action, {})
+                        if is_write_action(action):
+                            bind_context.assert_called_once()
+                        else:
+                            bind_context.assert_not_called()
+                        return result
 
 
 def test_write_timeout_is_not_retried_and_reports_uncertain(tool_ctx: ToolContext) -> None:
