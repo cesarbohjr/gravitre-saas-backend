@@ -159,9 +159,12 @@ def _reconcile_by_id(
             "applied", "requested_values_present", record_id, read_action, checked.as_dict()
         )
     if not checked.verified and checked.detail == "requested_field_differs":
-        # The change is not present; re-applying an idempotent update is safe.
+        # The verifier explicitly warns that vendor formatting can differ.
+        # A field mismatch is not authoritative proof that a previous write
+        # did not apply; never authorize an automatic duplicate update.
         return ReconciliationResult(
-            "not_applied", "requested_values_absent", record_id, read_action, checked.as_dict()
+            "unknown", "record_field_mismatch_not_authoritative",
+            record_id, read_action, checked.as_dict(),
         )
     return ReconciliationResult("unknown", "record_values_not_comparable", record_id, read_action)
 
