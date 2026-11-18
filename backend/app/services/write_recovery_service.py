@@ -58,6 +58,11 @@ def recover_uncertain_write(
             return RecoveryResult("rejected", "ledger_not_uncertain")
         if rows[0].get("invoke_action") != invoke_action:
             return RecoveryResult("rejected", "action_mismatch")
+        # A token's mere presence is not recovery authority. A stale worker
+        # that lost the SQL lease must not even reach the external readback
+        # boundary. Settlement still independently checks this token via CAS.
+        if str(rows[0].get("recovery_lease_token") or "") != str(recovery_lease_token):
+            return RecoveryResult("rejected", "recovery_lease_mismatch")
         # Until the ledger durably records the original request payload and
         # connector identity, recovery must not trust caller-supplied arguments.
         # A guessed natural key could otherwise certify an unrelated record.
