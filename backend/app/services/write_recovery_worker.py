@@ -7,6 +7,8 @@ credentials. Never use a request/user client to enumerate recovery work.
 from __future__ import annotations
 
 import logging
+from copy import copy
+from dataclasses import is_dataclass, replace
 from typing import Any, Callable
 
 from app.services.write_recovery_service import recover_uncertain_write
@@ -58,11 +60,15 @@ def process_due_write_recoveries(
                     getattr(ctx, "client", None) is None):
                 stats["rejected"] += 1
                 continue
-            # The recovery ledger must use the trusted service-role client,
-            # not the connector's user-scoped credential.
-            ctx.client = service_client
+            # ToolContext is an immutable dataclass. Do not mutate it (or
+            # callers' connector contexts) when switching to the service-role
+            # ledger; preserve the original tenant and connector identity.
+            # Other context factories may use simple mutable objects.
+            ledger_ctx = replace(ctx, client=service_client) if is_dataclass(ctx) else copy(ctx)
+            if not is_dataclass(ctx):
+                ledger_ctx.client = service_client
             outcome = recover_uncertain_write(
-                ctx=ctx, idempotency_key=key,
+                ctx=ledger_ctx, idempotency_key=key,
                 invoke_action=action, original_args=args,
                 recovery_lease_token=lease,
             )
