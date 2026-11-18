@@ -24,3 +24,12 @@
 **SOURCE_RECONCILED:** selected blobs and changed lines inspected, canonical owners selected.
 **IMPLEMENTED_NOT_CERTIFIED:** ECO-003 telemetry failure isolation and #580 council independent-review truth are committed with regressions, exact-head CI pending.
 **NOT_RUN:** #615 request-correlated/voice-to-first-audio timing, #616 scenario-correlated report and nonproduction baseline, #580 live differential, all real provider/device/deployed acceptance.
+
+
+## Twelve QA lane dependency discovered during reconciliation
+
+The repository contains canonical `qa-01-core.yml` through `qa-12-independent-acceptance.yml`. **Only ten** currently run on PR synchronization. `qa-08-billing-marketplace.yml` and `qa-11-release.yml` do **not** have a `pull_request` trigger: their existing selectors include production billing smoke, Railway deployment, safety variable mutation, and live cutover.
+
+Therefore, **ten queued or green PR workflows can never be described as twelve premerge QA approvals**. Do not manually invoke a production source to manufacture coverage. Before the owner-required twelve QA gates can pass *prior to* merging/deploying, add or identify independent offline/premerge acceptance contracts for QA08 and QA11 that do not invoke production resources; keep the existing operator-controlled production workflow gates separate. This remains **OPEN / NOT_CERTIFIED** and must be addressed within R6 without loosening existing required checks or enabling production side effects.
+
+At update, PR611 head `ce9e8629214a639959c81e547241b4d8d3b4bd30` is open/unmerged; the ten triggered workflows are queued/pending and no exact-head suite has been certified.
