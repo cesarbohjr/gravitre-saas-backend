@@ -307,6 +307,17 @@ def _bind_approved_write_connector(
         )
     if selected.get("org_id") and str(selected["org_id"]) != str(org_id):
         raise ToolConnectorNotConnectedError("Connector tenant mismatch")
+    # An explicit connector row can exist before OAuth has been completed.
+    # The provider's live auth/scopes are still enforced at execution; this
+    # pre-claim check only rejects statuses that unambiguously forbid dispatch.
+    row_status = str(selected.get("status") or "").strip().lower()
+    if row_status in {
+        "needs_connection", "pending_auth", "pending", "disconnected",
+        "inactive", "disabled", "revoked",
+    }:
+        raise ToolConnectorNotConnectedError(
+            f"Selected {provider} account is not connected"
+        )
     return replace(ctx, connector_id=str(selected["id"]))
 
 class ChatConnectorExecutionService:
