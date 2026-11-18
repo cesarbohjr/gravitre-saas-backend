@@ -2306,6 +2306,16 @@ class ChatConnectorExecutionService:
                         task_label=plan.label,
                         error_code="WRITE_COMMIT_INTERRUPTED",
                     )
+            # Resolve the exact provider account before consuming the
+            # conversation approval. Otherwise a disconnected/cross-tenant
+            # account can leave the pending task stuck as "executing" even
+            # though no governed write could be claimed or dispatched.
+            if plan.kind == "write" and plan.integration in {"hubspot", "gmail", "asana"}:
+                ctx = _bind_approved_write_connector(
+                    ctx, client=client, org_id=org_id,
+                    environment_name=environment_name,
+                    integration=plan.integration, args=dict(plan.args or {}),
+                )
             if plan.kind == "write" and own_terminal_outcome:
                 claim_gate = await self._claim_write_before_invoke(
                     conversation_id,
@@ -2318,12 +2328,6 @@ class ChatConnectorExecutionService:
                 )
                 if claim_gate is not None:
                     return claim_gate
-            if plan.kind == "write" and plan.integration in {"hubspot", "gmail", "asana"}:
-                ctx = _bind_approved_write_connector(
-                    ctx, client=client, org_id=org_id,
-                    environment_name=environment_name,
-                    integration=plan.integration, args=dict(plan.args or {}),
-                )
             # Orchestration steps never own a run, so nothing schedules their
             # source-of-record read later: prove the write before reporting it.
             verify_kw = {"verify_writes": True} if plan.kind == "write" and not own_terminal_outcome else {}
