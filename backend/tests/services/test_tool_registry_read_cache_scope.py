@@ -87,3 +87,33 @@ async def test_unknown_provider_account_never_reuses_cached_result():
         assert calls == [ACTION, ACTION]
     finally:
         clear_read_action_result_cache()
+
+
+@pytest.mark.asyncio
+async def test_untrusted_connector_argument_cannot_select_a_cached_account():
+    registry = ToolRegistry.__new__(ToolRegistry)
+    registry._registered = {ACTION}
+    ctx = ToolContext(
+        settings=SimpleNamespace(), client=MagicMock(), org_id="org-a",
+        actor_id="alice", connector_id="conn-a",
+    )
+    hits = []
+
+    def invoke(_ctx, action, params):
+        hits.append(dict(params))
+        return NormalizedResult(
+            success=True, action=action, data={"request_number": len(hits)},
+        )
+
+    clear_read_action_result_cache()
+    try:
+        with patch("app.services.tool_registry.invoke_tool", side_effect=invoke):
+            for _ in range(2):
+                observed = await registry.execute_invoke_action(
+                    ctx=ctx, invoke_action=ACTION,
+                    args={"connector_id": "conn-b", "query": "Acme"},
+                )
+        assert observed["result"]["request_number"] == 2
+        assert len(hits) == 2
+    finally:
+        clear_read_action_result_cache()
