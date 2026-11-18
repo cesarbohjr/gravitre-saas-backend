@@ -272,3 +272,37 @@ def test_managed_authorization_does_not_invent_action_readiness(_auth,vendor,exp
     assert result['read_available'] == expected_read
     assert result['write_available'] == expected_write
     assert result['execution_available'] == (expected_read or expected_write)
+
+
+def test_eco005_availability_outage_does_not_claim_oauth_token_expired():
+    settings = _settings()
+    with (
+        patch("app.connectors.connector_availability_service.list_connectors",
+              return_value=[_hubspot_row()]),
+        patch("app.connectors.connector_availability_service.evaluate_connector_availability",
+              side_effect=RuntimeError("transient availability dependency outage")),
+    ):
+        result = list_connector_availability(
+            MagicMock(), "tenant-a", settings,
+            environment_name="production", force_live=True,
+        )
+    assert len(result) == 1
+    row = result[0]
+    assert row["execution_available"] is False
+    assert row["auth_status"] == "unknown"
+    assert row["blocking_reason"] == "availability_check_failed"
+    assert "expired" not in row["recovery_action"].lower()
+
+
+def test_eco005_connector_availability_scope_denial_is_not_oauth_reconnect():
+    with (
+        patch("app.connectors.connector_availability_service.list_connectors",
+              return_value=[_hubspot_row()]),
+        patch("app.connectors.connector_availability_service.evaluate_connector_availability",
+              side_effect=PermissionError("tenant connector access denied")),
+    ):
+        with pytest.raises(PermissionError, match="tenant connector access denied"):
+            list_connector_availability(
+                MagicMock(), "tenant-a", _settings(),
+                environment_name="production", force_live=True,
+            )
