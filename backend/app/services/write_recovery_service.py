@@ -39,6 +39,11 @@ def recover_uncertain_write(
         return RecoveryResult("rejected", "missing_recovery_identity")
     if not getattr(ctx, "org_id", None) or getattr(ctx, "client", None) is None:
         return RecoveryResult("rejected", "missing_tenant_or_ledger")
+    # Readback itself is a privileged, tenant-connector-scoped operation.
+    # Require a recovery lease before consulting provider state; a caller
+    # without a fenced lease must not initiate an independent provider read.
+    if not recovery_lease_token:
+        return RecoveryResult("rejected", "recovery_lease_required")
     try:
         response = (
             ctx.client.table("write_invoke_idempotency")
@@ -97,8 +102,6 @@ def recover_uncertain_write(
             "verification": observed.as_dict(),
         }
     try:
-        if not recovery_lease_token:
-            return RecoveryResult("rejected", "recovery_lease_required")
         res = ctx.client.rpc("settle_leased_write_recovery", {
             "p_org_id": ctx.org_id,
             "p_key": idempotency_key,
