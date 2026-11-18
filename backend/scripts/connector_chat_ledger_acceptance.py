@@ -261,7 +261,7 @@ def run():
         expected_ctx = ToolContext(
             settings=settings, client=db, org_id=org_id, actor_id=REVIEWER,
             conversation_id=conversation_id, turn_id=approval_id,
-            write_idempotency_required=True,
+            connector_id=qa_connector_id, write_idempotency_required=True,
         )
         expected_key, expected_logical = build_write_idempotency_key(
             expected_ctx, ACTION, ARGS
