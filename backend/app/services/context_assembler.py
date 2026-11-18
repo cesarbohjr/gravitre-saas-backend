@@ -56,6 +56,11 @@ class ContextAssembler:
                 user_id=user_id,
                 scopes=RetrievalScopes(knowledge=True, org_context=True, agent_memory=True),
             ))
+        except PermissionError:
+            # A denied tenant/user/agent scope is not a retrieval outage.
+            # Returning empty context would conceal the authorization failure
+            # and let downstream reasoning continue as if access succeeded.
+            raise
         except Exception as exc:  # noqa: BLE001
             logger.warning("context_assembler_retrieve_failed error_type=%s", type(exc).__name__)
             bundle = SimpleNamespace(
