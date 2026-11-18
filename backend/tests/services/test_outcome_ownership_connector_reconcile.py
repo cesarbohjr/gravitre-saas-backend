@@ -160,5 +160,36 @@ def test_generic_empty_provider_search_does_not_certify_absence() -> None:
         )
     assert observed.state == "unknown"
     assert observed.detail == "empty_lookup_not_authoritative"
-    lookup.assert_called_once()
-    assert lookup.call_args.args[2]["connector_id"] == "qa-hubspot"
+    assert lookup.call_count == 4
+    assert all(call.args[2]["connector_id"] == "qa-hubspot" for call in lookup.call_args_list)
+
+
+def test_recovery_search_tries_later_lookup_variant_for_positive_evidence() -> None:
+    from types import SimpleNamespace
+    from app.services.outcome_reconciliation import reconcile_uncertain_write
+
+    responses = [
+        SimpleNamespace(success=True, data={"results": []}),
+        SimpleNamespace(success=True, data={
+            "results": [{"id": "contact-1", "email": "ada@example.test"}],
+        }),
+    ]
+    with (
+        patch(
+            "app.services.outcome_reconciliation._registered",
+            side_effect=lambda action: action == "hubspot.contacts.search",
+        ),
+        patch(
+            "app.services.sealed_read_execution.invoke_compiled_read",
+            side_effect=responses,
+        ) as lookup,
+    ):
+        observed = reconcile_uncertain_write(
+            ctx=SimpleNamespace(connector_id="qa-hubspot"),
+            invoke_action="hubspot.contacts.create",
+            args={"email": "ada@example.test"},
+        )
+    assert observed.state == "applied"
+    assert observed.resource_id == "contact-1"
+    assert observed.evidence["verified"] is True
+    assert lookup.call_count == 2
