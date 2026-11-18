@@ -530,13 +530,15 @@ def run():
         ], f"Provider writes: {writes}"
         ledger = (
             db.table("write_invoke_idempotency")
-            .select("idempotency_key,invoke_action,logical_action_id,status,result,claim_token")
+            .select("idempotency_key,invoke_action,logical_action_id,status,result,claim_token,connector_id,original_args")
             .eq("org_id", org_id).eq("idempotency_key", expected_key)
             .limit(2).execute().data or []
         )
         assert len(ledger) == 1, f"Missing or duplicate canonical ledger row: {ledger}"
         assert ledger[0]["status"] == "completed", ledger
         assert ledger[0]["invoke_action"] == ACTION and ledger[0]["logical_action_id"] == expected_logical
+        assert ledger[0]["connector_id"] == qa_connector_id, "Recovery account diverged from approved QA connector"
+        assert ledger[0]["original_args"] == ARGS, "Recovery payload diverged from approved Chat arguments"
         assert (ledger[0].get("result") or {}).get("success") is True, ledger
         race_terminal = db.table("write_invoke_idempotency").select(
             "status,result,logical_action_id"
