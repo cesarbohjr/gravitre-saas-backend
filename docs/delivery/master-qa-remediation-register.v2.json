@@ -854,7 +854,7 @@
       "dependencies": [],
       "regression_candidate": null,
       "regression_state": "NOT_YET_IMPLEMENTED",
-      "implementation_state": "EVIDENCE_OR_REPAIR_PENDING",
+      "implementation_state": "PARTIAL_REPAIR_SOURCE_COMMITTED_UNMERGED_NOT_CERTIFIED",
       "implemented_commit": null,
       "synthetic_status": "NOT_CERTIFIED",
       "live_status": "NOT_RUN",
@@ -909,6 +909,32 @@
           "owner-approved safe legacy retirement",
           "rollback and exact-SHA acceptance"
         ]
+      },
+      "read_result_cache_scope_batch_20261118": {
+        "engineering_state": "SOURCE_REPAIR_COMMITTED_TARGETED_VERIFICATION_PENDING",
+        "owner": "PR611",
+        "source_paths": [
+          "backend/app/services/read_action_result_cache.py",
+          "backend/app/services/tool_registry.py"
+        ],
+        "test_paths": [
+          "backend/tests/services/test_agent_platform_optimizer.py",
+          "backend/tests/services/test_tool_registry_read_cache_scope.py"
+        ],
+        "implementation_commits": [
+          "eff3be432ef16fc04be9039897c409e2479c5c41",
+          "7e045962afe4d9b03d0341cf22c45226d5ef648c",
+          "3d72f64ba2f4f0652a12384fb0733ade6ef728d8"
+        ],
+        "security_scope": "Cache key now binds org+action+params+trusted context actor+agent+connector+environment. The ToolRegistry skips cache if actor/connector context missing or explicit requested connector disagrees with trusted context.",
+        "remaining": [
+          "Exact-head targeted tests",
+          "Live delegated permission/role revocation under existing cache TTL",
+          "Deployed runtime caller graph and independent reader/provider evidence",
+          "Safe legacy path retirement authorization and rollback"
+        ],
+        "verified": false,
+        "certified": false
       }
     },
     {
