@@ -85,7 +85,7 @@ def test_applied_write_is_reported_done_and_never_rerun() -> None:
 
 def test_proven_absent_write_runs_once() -> None:
     state = _State({"type": "connector_action", "status": "outcome_uncertain"})
-    result, _ = _gate(state, ReconciliationResult("not_applied", "no_record_with_email"))
+    result, _ = _gate(state, ReconciliationResult("not_applied", "no_record_with_email", evidence={"authoritative_absence": True}))
     # None = the claim succeeded and the caller proceeds to invoke exactly once.
     assert result is None
     assert state.state["pending_task"]["status"] == "executing"
@@ -122,3 +122,43 @@ def test_uncertain_result_finalizes_inconclusive_not_failed(error_code: str) -> 
             MagicMock(), org_id="org", user_id="user", conversation_id="conv", plan=_PLAN, result=result
         )
     assert finalize.call_args.kwargs["status"] == "verification_inconclusive"
+
+
+def test_unverified_absence_does_not_reopen_an_uncertain_chat_write() -> None:
+    state = _State({"type": "connector_action", "status": "outcome_uncertain"})
+    result, reconcile = _gate(
+        state,
+        ReconciliationResult(
+            "not_applied", "no_record_with_email",
+            evidence={"verified": False, "method": "generic_list"},
+        ),
+    )
+    reconcile.assert_called_once()
+    assert result is not None and result.success is False
+    assert result.error_code == "OUTCOME_UNCERTAIN"
+    assert state.state["pending_task"]["status"] == "outcome_uncertain"
+
+
+def test_generic_empty_provider_search_does_not_certify_absence() -> None:
+    from types import SimpleNamespace
+    from app.services.outcome_reconciliation import reconcile_uncertain_write
+
+    with (
+        patch(
+            "app.services.outcome_reconciliation._registered",
+            side_effect=lambda action: action == "hubspot.contacts.search",
+        ),
+        patch(
+            "app.services.sealed_read_execution.invoke_compiled_read",
+            return_value=SimpleNamespace(success=True, data={"results": []}),
+        ) as lookup,
+    ):
+        observed = reconcile_uncertain_write(
+            ctx=SimpleNamespace(connector_id="qa-hubspot"),
+            invoke_action="hubspot.contacts.create",
+            args={"email": "ada@example.test"},
+        )
+    assert observed.state == "unknown"
+    assert observed.detail == "empty_lookup_not_authoritative"
+    lookup.assert_called_once()
+    assert lookup.call_args.args[2]["connector_id"] == "qa-hubspot"
