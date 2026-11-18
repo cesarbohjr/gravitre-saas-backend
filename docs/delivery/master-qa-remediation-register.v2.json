@@ -638,6 +638,36 @@
           "Representative nonproduction p50/p95 and caller behavior",
           "Deployed/rollback evidence and owner acceptance"
         ]
+      },
+      "scope_consolidation_batch_20261118": {
+        "engineering_state": "SOURCE_REPAIR_COMMITTED_TARGETED_VERIFICATION_PENDING",
+        "owner": "PR611",
+        "scope": "Canonical unified retrieval, per-agent memory and organization snapshot paths; no alternative cache/retriever introduced",
+        "source_paths": [
+          "backend/app/services/unified_retrieval_service.py",
+          "backend/app/services/agent_memory_service.py",
+          "backend/app/services/org_context_service.py"
+        ],
+        "test_paths": [
+          "backend/tests/services/test_unified_retrieval_service.py",
+          "backend/tests/services/test_agent_memory_service.py",
+          "backend/tests/services/test_org_context_service.py"
+        ],
+        "current_changes": [
+          "Preserve access denial across optional retrieval stages",
+          "Prevent agent-memory HTTP404 ownership denial and department RPC permission denial from becoming empty fallbacks",
+          "Partition org context cache by requesting user within same tenant/environment/depth",
+          "Never cache partial org context when parallel source denies access"
+        ],
+        "performance": "No representative measured p50/p95; no additional concurrency or caching introduced",
+        "evidence_status": "NOT_YET_VERIFIED_AT_EXACT_HEAD",
+        "finding_closed": false,
+        "remaining": [
+          "Exact-head targeted development verification",
+          "Real scoped tenant negative integration",
+          "Measured nonproduction p50/p95 and source-to-runtime trace",
+          "Independent consumer observation, release/rollback, owner signoff"
+        ]
       }
     },
     {
@@ -706,7 +736,8 @@
       "audit_observation": "relay repair surface documented; real iOS trace not certified Source trace and existing fixtures inventoried on PR611, pending PR610 certified handoff; no live iOS/duplicate-final runtime proof.",
       "research_derived_acceptance_checks": [
         "On actual PR610 Voice 3.0 head, verify Deepgram probable-EOT speculation and confirmed-turn adoption are wired and enabled; test stale transcript/revision cancellation, duplicate-final rejection, bounded speculative work, and zero speculative connector writes or approval consumption."
-      ]
+      ],
+      "voice_owner_unchanged": "PR610-voice (PR611 integration gate)"
     },
     {
       "finding_id": "ECO-005",
@@ -779,6 +810,17 @@
         "targeted_result": "28 passed locally; 9 selected regression cases fail against pre-repair source",
         "remaining": "Full CI and actual governed provider receipts/scopes, native/managed precedence and deployed cross-surface qualification remain open.",
         "release_certified": false
+      },
+      "connector_readiness_batch_20261118": {
+        "engineering_state": "SOURCE_REPAIR_COMMITTED_TARGETED_VERIFICATION_PENDING",
+        "owner": "PR611",
+        "source": "backend/app/connectors/connector_availability_service.py",
+        "test": "backend/tests/connectors/test_connector_availability_service.py",
+        "repair": "Unexpected availability failure now reports availability_check_failed/unknown rather than fabricated token_expired/auth_expired; tenant PermissionError propagates",
+        "live_provider_consent_proven": false,
+        "scoped_provider_read_write_receipts": false,
+        "exact_head_test_verified": false,
+        "certified": false
       }
     },
     {
