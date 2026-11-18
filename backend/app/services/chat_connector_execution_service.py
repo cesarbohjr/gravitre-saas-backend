@@ -2267,6 +2267,37 @@ class ChatConnectorExecutionService:
                 )
                 if claim_gate is not None:
                     return claim_gate
+            # ECO-002: HubSpot's native executor selects a tenant-owned
+            # connector when an explicit ID is absent. Resolve that same
+            # account before reserving the ledger claim, so its persisted
+            # recovery connector can never differ from the provider account.
+            # Other provider families require their own account-specific
+            # resolution contract; do not guess an OAuth identity here.
+            if plan.kind == "write" and plan.integration == "hubspot":
+                from app.connectors.repository import get_connector, get_connector_by_type
+                from app.services.tool_types import ToolConnectorNotConnectedError
+
+                explicit_id = str((plan.args or {}).get("connector_id") or "").strip()
+                if explicit_id:
+                    selected = get_connector(
+                        client, org_id, explicit_id, environment_name=environment_name,
+                    )
+                else:
+                    selected = get_connector_by_type(
+                        client, org_id, "hubspot", environment_name=environment_name,
+                    )
+                if not selected or not selected.get("id"):
+                    raise ToolConnectorNotConnectedError(
+                        "No tenant-owned HubSpot connection is available for this approved write"
+                    )
+                selected_type = str(
+                    selected.get("vendor") or selected.get("type") or "hubspot"
+                ).strip().lower()
+                if selected_type not in {"hubspot", "custom"}:
+                    raise ToolConnectorNotConnectedError(
+                        "Approved connector does not belong to the HubSpot provider"
+                    )
+                ctx = replace(ctx, connector_id=str(selected["id"]))
             # Orchestration steps never own a run, so nothing schedules their
             # source-of-record read later: prove the write before reporting it.
             verify_kw = {"verify_writes": True} if plan.kind == "write" and not own_terminal_outcome else {}
