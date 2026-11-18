@@ -399,8 +399,13 @@ class ModelRouter:
             with trace_span(
                 "model_router.complete", task_type=task_type.value, org_id=org_id
             ):
-                result = await run_failover(
-                    self._adapters, priority, messages, options, self._breaker
+                # Reuse the single ECO-002 opt-in observer; do not import the
+                # competing stage timer from the older stacked PR.
+                from app.services.routing_stage_metrics import measure as measure_route_stage
+
+                result = await measure_route_stage(
+                    "model_provider",
+                    run_failover(self._adapters, priority, messages, options, self._breaker),
                 )
         except ProviderInvalidResponseError as exc:
             self._log_call_failure(task_type, model, "varied", start, exc)
