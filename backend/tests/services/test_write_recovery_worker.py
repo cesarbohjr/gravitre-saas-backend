@@ -15,7 +15,7 @@ def _service(rows):
 def test_worker_uses_original_tenant_and_connector_context():
     row = {"org_id": "org-a", "connector_id": "conn-a",
            "invoke_action": "hubspot.contacts.create",
-           "idempotency_key": "claim-a", "original_args": {"email": "a@example.test"}}
+           "idempotency_key": "claim-a", "recovery_lease_token": "lease-1", "original_args": {"email": "a@example.test"}}
     client = _service([row])
     ctx = SimpleNamespace(org_id="org-a", connector_id="conn-a", client=MagicMock())
     with patch("app.services.write_recovery_worker.recover_uncertain_write",
