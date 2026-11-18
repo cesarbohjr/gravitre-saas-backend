@@ -209,11 +209,16 @@ def _reconcile_by_lookup(
                     )
             records = _records(payload)
             if records is not None and not records:
+                # A generic catalog search can silently ignore its filter,
+                # paginate, or return a non-exhaustive list. An empty response
+                # therefore does not independently establish *absence*.
+                # Keep the original claim blocked until a provider-specific
+                # scoped readback can prove authoritative negative evidence.
                 return ReconciliationResult(
-                    "not_applied",
-                    f"no_record_with_{key}",
+                    "unknown",
+                    "empty_lookup_not_authoritative",
                     None,
                     lookup,
-                    {"verified": False, "method": "reconcile_lookup", "read_action": lookup, "field": key, "expected": value},
+                    {"verified": False, "method": "reconcile_lookup", "read_action": lookup},
                 )
     return ReconciliationResult("unknown", "lookup_inconclusive", None, lookups[0])
