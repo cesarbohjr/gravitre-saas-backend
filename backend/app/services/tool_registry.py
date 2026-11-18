@@ -1666,6 +1666,22 @@ class ToolRegistry:
         invoke_params = {
             k: v for k, v in dict(args or {}).items() if not str(k).startswith("_")
         }
+        # A connector read can vary by the authenticated user, agent, provider
+        # account and environment even inside the same organization. A cache
+        # hit bypasses invoke_tool's provider credential checks, so fail closed
+        # when the caller has no explicit account identity. Revocation epochs
+        # continue to invalidate cache entries across replicas.
+        read_account = str(invoke_params.get("connector_id") or ctx.connector_id or "").strip()
+        read_actor = str(ctx.actor_id or "").strip()
+        read_cache_scope = (
+            {
+                "environment": str(ctx.environment_name),
+                "actor": read_actor,
+                "agent": str(ctx.agent_id or ""),
+                "connector": read_account,
+            }
+            if read_actor and read_account else None
+        )
         if action not in self._registered:
             return {
                 "success": False,
@@ -1674,8 +1690,8 @@ class ToolRegistry:
                 "error": f"Backend action not implemented: {action}",
             }
 
-        if action not in _NATIVE_ACTIONS and is_read_invoke_action(action):
-            cached = get_cached_read_result(ctx.org_id, action, invoke_params)
+        if read_cache_scope is not None and action not in _NATIVE_ACTIONS and is_read_invoke_action(action):
+            cached = get_cached_read_result(ctx.org_id, action, invoke_params, scope=read_cache_scope)
             if cached is not None:
                 return cached
 
@@ -1743,7 +1759,11 @@ class ToolRegistry:
                 "connector_id": result.connector_id,
             }
             if action not in _NATIVE_ACTIONS and is_read_invoke_action(action):
-                set_cached_read_result(ctx.org_id, action, invoke_params, payload)
+                if read_cache_scope is not None:
+                    set_cached_read_result(
+                        ctx.org_id, action, invoke_params, payload,
+                        scope=read_cache_scope,
+                    )
                 return payload
             return await _settle_write_payload(
                 ctx, tool=telemetry_tool, action=action, params=invoke_params, payload=payload, verify=verify_writes
