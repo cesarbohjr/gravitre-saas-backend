@@ -5,16 +5,16 @@ registry tools are exposed to Gravitre chat for a connected org.
 """
 from __future__ import annotations
 
-from functools import lru_cache
-
 from app.services.chat_tool_bridge import build_dynamic_chat_tool_specs
 from app.services.connector_execution_matrix import chat_executable_entries
 
 _SYNTHETIC_INTEGRATIONS = frozenset({"platform", "mcp", "browser", "webhook", "email"})
 
 
-@lru_cache(maxsize=64)
 def _dynamic_registry_keys() -> frozenset[str]:
+    # build_dynamic_chat_tool_specs already uses the canonical
+    # registry-fingerprint cache. A second zero-argument lru_cache here
+    # permanently froze old tool names after a same-process registry change.
     return frozenset(build_dynamic_chat_tool_specs().keys())
 
 
