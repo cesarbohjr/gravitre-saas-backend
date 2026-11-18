@@ -400,6 +400,9 @@ def _invoke(monkeypatch: pytest.MonkeyPatch, impl) -> Any:
         # to reach the provider boundary under mandatory ledger enforcement.
         with patch("app.services.write_invoke_idempotency.claim_write_invoke",
                    return_value=WriteClaimResult(outcome="claimed", claim_token="voice-test-fence", claim_generation=1)), patch(
+            "app.services.write_invoke_idempotency.bind_write_recovery_context",
+            return_value=True,
+        ), patch(
             "app.services.write_invoke_idempotency.finalize_write_invoke",
             return_value=WriteFinalizeResult(outcome="finalized")
         ):
