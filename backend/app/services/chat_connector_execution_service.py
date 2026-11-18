@@ -3051,7 +3051,10 @@ class ChatConnectorExecutionService:
                 ),
                 pending,
             )
-        if recon.state == "not_applied":
+        if recon.state == "not_applied" and recon.evidence.get("authoritative_absence") is True:
+            # A generic empty search page or mismatched provider formatting
+            # is not proof of absence. Only a scoped, independently verified
+            # negative readback may reopen a potentially executed write.
             reopened = {
                 **pending,
                 "status": "awaiting_confirm",
