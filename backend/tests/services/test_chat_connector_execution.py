@@ -1003,3 +1003,62 @@ def test_eco002_chat_unknown_provider_is_not_assigned_guessed_account():
         )
     assert original is ctx
     lookup.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_eco005_missing_connected_account_does_not_consume_chat_approval(connector_service):
+    """An absent tenant-owned provider account must block before pending claim."""
+    client = MagicMock()
+    plan = ConnectorActionPlan(
+        tool_name="hubspot_contacts_create",
+        invoke_action="hubspot.contacts.create",
+        integration="hubspot", kind="write", label="Create contact",
+        args={"email": "qa@example.invalid"}, requires_approval=True,
+    )
+    connector_service._registry.execute_invoke_action = AsyncMock()
+    with (
+        patch(
+            "app.services.approval_action_binding.assert_plan_matches_binding",
+        ),
+        patch(
+            "app.services.object_resolution.revalidate_bound_targets",
+            return_value=None,
+        ),
+        patch(
+            "app.services.sync_back_policy_service.is_crm_sync_invoke_action",
+            return_value=False,
+        ),
+        patch(
+            "app.connectors.action_catalog.f1_write_slice.is_f1_write_action",
+            return_value=False,
+        ),
+        patch.object(
+            connector_service, "_replay_existing_write_result",
+            AsyncMock(return_value=None),
+        ),
+        patch.object(
+            connector_service, "_claim_write_before_invoke",
+            AsyncMock(),
+        ) as claim,
+        patch.object(
+            connector_service, "_persist_recent_connector_invocation",
+            AsyncMock(),
+        ),
+        patch.object(
+            connector_service, "_finalize_connector_outcome",
+        ),
+        patch(
+            "app.connectors.repository.get_connector_by_type",
+            return_value=None,
+        ),
+    ):
+        result = await connector_service._execute_plan(
+            org_id="tenant-a", user_id="user-a", conversation_id="conversation-a",
+            plan=plan, client=client, classification={},
+            approved_params={"_approval_queue_id": "approval-a"},
+        )
+    assert result.success is False
+    claim.assert_not_awaited()
+    connector_service._registry.execute_invoke_action.assert_not_awaited()
+    connector_service._state.update_task_state.assert_not_awaited()
+    connector_service._state.update_task_state_from.assert_not_awaited()
