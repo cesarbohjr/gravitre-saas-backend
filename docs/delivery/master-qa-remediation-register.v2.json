@@ -398,6 +398,30 @@
         "live_provider_verification": false,
         "exact_head_python_test_verified": false,
         "certified": false
+      },
+      "development_verification_snapshot": {
+        "verified_sha": "6227b046cf40a6dc9d94b0d2550897aeee919f9a",
+        "scope": "development tests only, NOT final twelve-gate certification",
+        "positive": [
+          "QA04 outcome-ownership unit tests: 134 passed",
+          "QA04 PostgreSQL ledger plus independent receiver: 38 passed",
+          "QA03 data recovery development workflow completed successfully"
+        ],
+        "negative": [
+          "QA01 connector_chat isolated approval acceptance failed: fixture has no tenant-owned HubSpot account at newly enforced binding point",
+          "QA05 offline scenario contract failed on same fixture identity",
+          "Voice replay and interruption tests failed: recovery-context binder missing in claim mock"
+        ],
+        "repairs_committed_after_sha": [
+          "test Voice interruption binder: 62ad3a40, 0c8f1d8b",
+          "test approved-action tenant fixture: dbcf798a"
+        ],
+        "still_pending": [
+          "isolated connector_chat acceptance fixture account; real tenant identity contract must remain enforced",
+          "exact newer head targeted success",
+          "live provider receipts and complete cross-surface acceptance"
+        ],
+        "engineering_certified": false
       }
     },
     {
@@ -486,6 +510,18 @@
         "live_p50_p95": null,
         "exact_head_python_test_verified": false,
         "certified": false
+      },
+      "measured_latency_evidence": {
+        "status": "NO_AUTHORIZED_RUNTIME_P50_P95_AVAILABLE",
+        "held_sha": "6227b046cf40a6dc9d94b0d2550897aeee919f9a",
+        "acceptance_railway_deploy_log_check": "No eco003_context_stage log observations returned from acceptance Railway service at time of review",
+        "canonical_metrics": "backend/app/services/context_stage_metrics.py",
+        "reporter": "backend/scripts/eco003_context_latency_report.py",
+        "reporter_commit": "c1ca66b41e3fb782b30b588e0dc74cdb5004b6de",
+        "reporter_tests_commit": "b9b809c4ee8859aa816424654e2e70f63e687c84",
+        "nonprod_min_success_samples_per_stage": 30,
+        "concurrency_or_caching_authorized": false,
+        "exact_head_reporter_test_verified": false
       }
     },
     {
