@@ -60,7 +60,7 @@ async def _staged(conv) -> TurnResult:
 @pytest.mark.parametrize("surface", SURFACES)
 async def test_a_changed_subject_is_what_gets_sent(surface: str) -> None:
     with ScenarioHarness() as h:
-        h.connected.append("gmail")
+        h.connect("gmail")
         conv = h.conversation(surface)
         first = await _staged(conv)
         first_binding = ((first.pending_task or {}).get("params") or {}).get("approval_action_id")
@@ -87,7 +87,7 @@ async def test_a_changed_subject_is_what_gets_sent(surface: str) -> None:
 @pytest.mark.parametrize("surface", SURFACES)
 async def test_changed_message_and_recipient_are_sent(surface: str) -> None:
     with ScenarioHarness() as h:
-        h.connected.append("gmail")
+        h.connect("gmail")
         conv = h.conversation(surface)
         await _staged(conv)
 

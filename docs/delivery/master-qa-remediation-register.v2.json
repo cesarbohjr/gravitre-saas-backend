@@ -7,6 +7,36 @@
   "finding_count": 43,
   "strict_closure_rule": "No PASS without implemented SHA, existing executable regression, passing exact-SHA artifact, confirmed cross-surface effect or documented exception, and production proof when required.",
   "global_release_authorized": false,
+  "core_ci_repair_evidence": {
+    "failing_head": "4c846003503df2c7953aeded285a7b908d0d9735",
+    "failing_run": "https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/44396966106/job/135131733934",
+    "state": "TARGETED_REGRESSION_EVIDENCE_PENDING_EXACT_HEAD_CI_AND_ACCEPTANCE",
+    "local_regressions": {"prior_core_failures_passed": 103, "neighboring_tests_passed": 117},
+    "finding_links": {
+      "ECO-002": "Chat and Voice preserve a completed connector receipt, stage an explicitly requested resend on a fresh plan and require fresh approval.",
+      "ECO-005": "Chat scenarios use tenant-owned connector rows and reach the real readiness, claim and execution path with a synthetic provider.",
+      "ECO-013": "Terminal cleanup rechecks stored state before clearing approval affordances and preserves completed receipts for status inquiries.",
+      "ECO-015": "A dependency outage yields unknown readiness, while the other connector remains available.",
+      "DEC-004": "Connector availability tests distinguish an outage from confirmed credential expiry and exercise account binding before approval consumption.",
+      "DEC-005": "A fresh resend plan has independent approval identity. Its projection is checked separately from the terminal send.",
+      "DEC-006": "Conversation scenarios exercise run parameter acknowledgement, verification and terminal result handling through the in-memory RPC boundary.",
+      "P27-04": "Tests verify that offering or declining a resend dispatches nothing and each approved resend dispatches once.",
+      "P27-05": "Recovery checks retain the lease and reject unavailable persisted context without provider calls or settlement."
+    },
+    "regressions": [
+      "backend/tests/scenarios/test_email_conversation_scenarios.py",
+      "backend/tests/scenarios/test_recipient_change_scenarios.py",
+      "backend/tests/scenarios/test_pending_write_revision_scenarios.py",
+      "backend/tests/e2e/test_chat_e2e_scenarios.py",
+      "backend/tests/connectors/test_connector_availability_service.py",
+      "backend/tests/services/test_state_write_correctness.py",
+      "backend/tests/services/test_write_recovery_service.py",
+      "backend/tests/services/test_write_recovery_worker.py",
+      "backend/tests/services/test_tool_service.py",
+      "backend/tests/services/test_execution_plan_authority.py"
+    ],
+    "limits": "Mocked provider and database boundaries. Each finding still requires its own acceptance criteria. No closure or release authorization."
+  },
   "records": [
     {
       "finding_id": "ECO-001",

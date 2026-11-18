@@ -29,9 +29,12 @@ import uuid
 from collections.abc import Callable
 from contextlib import ExitStack
 from dataclasses import dataclass, field
+from threading import Lock
 from types import SimpleNamespace
 from typing import Any
 from unittest.mock import AsyncMock, patch
+
+from tests.services.outcome_rpc_fake import outcome_rpc
 
 ORG = "00000000-0000-4000-8000-00000000a001"
 USER = "00000000-0000-4000-8000-00000000c001"
@@ -49,6 +52,8 @@ STATEFUL_TABLES = {
     "organization_members",
     # Connected accounts, when a test adds rows (account selection).
     "connectors",
+    "workflow_runs",
+    "workflow_run_steps",
 }
 
 
@@ -259,6 +264,7 @@ class ScenarioDB:
         self.tables: dict[str, list[dict[str, Any]]] = {}
         self.log: list[tuple[str, str]] = []
         self.write_claims: dict[tuple[str, str], dict[str, Any]] = {}
+        self._run_lock = Lock()
 
     def table(self, name: str) -> _Q:
         return _Q(self, name)
@@ -266,7 +272,35 @@ class ScenarioDB:
     def from_(self, name: str) -> _Q:
         return _Q(self, name)
 
-    def rpc(self, name: str, payload: dict[str, Any] | None = None) -> _Noop:
+    def _run_rpc(self, name: str, args: dict[str, Any]) -> Any:
+        with self._run_lock:
+            row = next(
+                (run for run in self.tables.get("workflow_runs", []) if run["id"] == args["p_run_id"]),
+                None,
+            )
+            if name == "refresh_workflow_run_projection":
+                # Projection rows are outside the conversation harness.
+                return row is not None
+            if name == "merge_workflow_run_parameters":
+                if row is None:
+                    return None
+                params = row.setdefault("parameters", {})
+                params.update(copy.deepcopy(args["p_patch"]))
+                return copy.deepcopy(params)
+            if row is None or row["org_id"] != args["p_org_id"]:
+                return {"accepted": False, "status": "not_found"}
+
+            row.setdefault("parameters", {})
+            return outcome_rpc(row, name, args).execute().data
+
+    def rpc(self, name: str, payload: dict[str, Any] | None = None) -> Any:
+        if name in {
+            "merge_workflow_run_parameters",
+            "refresh_workflow_run_projection",
+            "persist_workflow_run_outcome",
+            "checkpoint_workflow_run_outcome",
+        }:
+            return SimpleNamespace(execute=lambda: _Resp(self._run_rpc(name, payload or {})))
         # Simulate the canonical Postgres claim/bind/finalize lifecycle at the
         # ledger RPC seam. A generic noop used to return NULL for every RPC,
         # causing approved Gmail/Asana scenarios to fail before the executor.
@@ -778,10 +812,22 @@ class ScenarioHarness:
         self.db.tables["organization_members"] = [{"org_id": ORG, "user_id": USER, "role": role}]
         self.brain = Brain()
         self.connectors = Connectors()
-        self.connected = list(CONNECTED)
+        self.connected: list[str] = []
+        self.connect(*CONNECTED)
         self._stack = ExitStack()
         self.settings: Any = None
         self.app: Any = None
+
+    def connect(self, *vendors: str) -> None:
+        rows = self.db.tables.setdefault("connectors", [])
+        for vendor in vendors:
+            if vendor not in self.connected:
+                self.connected.append(vendor)
+            if not any(row.get("type") == vendor for row in rows):
+                rows.append({
+                    "id": f"conn-{vendor}", "org_id": ORG, "vendor": vendor, "type": vendor,
+                    "status": "active", "environment": "production", "config": {},
+                })
 
     # -- lifecycle -------------------------------------------------------
     def __enter__(self) -> ScenarioHarness:
@@ -954,17 +1000,10 @@ class ScenarioHarness:
             except AttributeError:
                 pass
 
-        connectors = self.connectors
-        def _scenario_executor(action: str, ctx: Any = None) -> Any:
-            # Connected scenario accounts have durable IDs even when the model
-            # does not explicitly supply connector_id in tool arguments.
-            if ctx is not None and not getattr(ctx, "connector_id", None):
-                vendor = action.split(".", 1)[0].lower()
-                if vendor in set(connected) | {"gmail", "asana"}:
-                    ctx.connector_id = f"conn-{vendor}"
-            return connectors.executor_for(action)
-
-        self._p("app.services.tool_service._resolve_tool_executor", _scenario_executor)
+        self._p(
+            "app.services.tool_service._resolve_tool_executor",
+            lambda action, _ctx=None: self.connectors.executor_for(action),
+        )
         # Background / network edges that are not part of the decision.
         self._p("app.services.mcp_client_service.MCPClientService.get_enabled_tools_for_org", AsyncMock(return_value=[]))
         self._p("app.services.chat_turn_cancel_service.get_redis_client", lambda *_a, **_k: None)

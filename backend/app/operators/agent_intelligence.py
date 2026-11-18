@@ -2940,7 +2940,10 @@ class AgentIntelligence:
         from app.services.proactive_guidance_service import get_proactive_guidance_service
         from app.services.risk_approval_evaluator import get_risk_approval_evaluator
         from app.services.conversational_planning_engine import is_direct_connector_write_intent
-        from app.services.conversation_turn_controller import classify_pending_plan_intent
+        from app.services.conversation_turn_controller import (
+            classify_pending_plan_intent,
+            terminal_task_cleanup,
+        )
 
         # Module B Phase 4 — orphan strategic-plan recovery via shared intent check
         # (continue / modify / cancel), not CONFIRM_PATTERN alone.
@@ -2953,34 +2956,18 @@ class AgentIntelligence:
             )
             early_pending = early_state.get("pending_task")
             early_plan = early_state.get("current_plan")
-            # Module B — terminal orch must not leave sticky current_plan for a later bare "yes".
-            if isinstance(early_pending, dict) and early_pending:
-                terminal = str(early_pending.get("status") or "") in {
-                    "completed",
-                    "failed",
-                    "cancelled",
-                }
-                if terminal:
-                    await get_conversation_state_service(active_settings).update_task_state(
-                        conversation_id,
-                        org_id,
-                        {
-                            "pending_task": None,
-                            "current_plan": None,
-                            "clarified_params": {},
-                            "pending_steps": [],
-                            "completed_steps": [],
-                        },
-                        client=client,
-                    )
-                    logger.info(
-                        "terminal_orchestration_closed conversation_id=%s org_id=%s status=%s",
-                        conversation_id,
-                        org_id,
-                        early_pending.get("status"),
-                    )
-                    early_pending = None
-                    early_plan = None
+            if terminal_task_cleanup(early_state) is not None:
+                await get_conversation_state_service(active_settings).update_task_state_from(
+                    conversation_id, org_id, terminal_task_cleanup, client=client,
+                )
+                logger.info(
+                    "terminal_orchestration_closed conversation_id=%s org_id=%s status=%s",
+                    conversation_id,
+                    org_id,
+                    early_pending.get("status"),
+                )
+                early_pending = None
+                early_plan = None
             from app.services.canonical_cognitive_resolution import (
                 apply_canonical_cognitive_resolution,
                 resolution_already_applied,

@@ -219,7 +219,7 @@ def test_list_executable_canonicalizes_googleads_vendor(mock_list):
 @patch(
     "app.connectors.connector_availability_service.evaluate_connector_availability",
     side_effect=[
-        ValueError("apollo token exchange failed: revoked"),
+        RuntimeError("apollo availability dependency unreachable"),
         {
             "vendor": "hubspot",
             "execution_available": True,
@@ -236,13 +236,13 @@ def test_list_executable_canonicalizes_googleads_vendor(mock_list):
     ],
 )
 def test_list_connector_availability_soft_fails_one_bad_connector(_list, _eval):
-    """One revoked OAuth connector must not abort availability for the org."""
+    """An availability error should isolate the unhealthy connector."""
     rows = list_connector_availability(MagicMock(), "org-1", _settings(), force_live=True)
     assert len(rows) == 2
     apollo = next(r for r in rows if r.get("vendor") == "apollo")
     hubspot = next(r for r in rows if r.get("vendor") == "hubspot")
     assert apollo["execution_available"] is False
-    assert apollo["auth_status"] == "auth_expired"
+    assert apollo["auth_status"] == "unknown"
     assert hubspot["execution_available"] is True
 
 

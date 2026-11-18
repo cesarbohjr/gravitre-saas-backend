@@ -5,6 +5,7 @@ from unittest.mock import MagicMock, patch
 
 from app.services.tool_service import invoke_tool, list_registered_actions
 from app.services.tool_types import ToolContext
+from tests.support.provider_write import with_provider_write_ledger
 
 
 def test_pagerduty_actions_registered():
@@ -38,7 +39,7 @@ def test_pagerduty_acknowledge_requires_incident_id():
         "environment": "production",
         "config": {"pagerduty_requester_email": "ops@example.com"},
     }
-    with patch("app.services.tool_service.get_connector_by_type", return_value=conn):
+    with patch("app.services.tool_service.get_connector", return_value=conn):
         with patch("app.services.tool_service.enforce_rate_limit"):
             with patch(
                 "app.services.tool_service.ensure_pagerduty_session",
@@ -55,7 +56,7 @@ def test_pagerduty_acknowledge_requires_incident_id():
                             }
                         ],
                     ):
-                        result = invoke_tool(tool_ctx, "pagerduty.incidents.acknowledge", {})
+                        result = invoke_tool(with_provider_write_ledger(tool_ctx, conn["id"]), "pagerduty.incidents.acknowledge", {})
     assert result.success is False
     assert result.error_code == "validation_error"
 
@@ -77,7 +78,7 @@ def test_pagerduty_add_note_success():
         "environment": "production",
         "config": {"pagerduty_requester_email": "ops@example.com"},
     }
-    with patch("app.services.tool_service.get_connector_by_type", return_value=conn):
+    with patch("app.services.tool_service.get_connector", return_value=conn):
         with patch("app.services.tool_service.enforce_rate_limit"):
             with patch(
                 "app.services.tool_service.ensure_pagerduty_session",
@@ -99,7 +100,7 @@ def test_pagerduty_add_note_success():
                             ],
                         ):
                             result = invoke_tool(
-                                tool_ctx,
+                                with_provider_write_ledger(tool_ctx, conn["id"]),
                                 "pagerduty.incidents.add_note",
                                 {"incident_id": "P99", "content": "On it"},
                             )
@@ -218,7 +219,7 @@ def test_pagerduty_resolve_requires_incident_id():
         "environment": "production",
         "config": {"pagerduty_requester_email": "ops@example.com"},
     }
-    with patch("app.services.tool_service.get_connector_by_type", return_value=conn):
+    with patch("app.services.tool_service.get_connector", return_value=conn):
         with patch("app.services.tool_service.enforce_rate_limit"):
             with patch(
                 "app.services.tool_service.ensure_pagerduty_session",
@@ -235,6 +236,6 @@ def test_pagerduty_resolve_requires_incident_id():
                             }
                         ],
                     ):
-                        result = invoke_tool(tool_ctx, "pagerduty.incidents.resolve", {})
+                        result = invoke_tool(with_provider_write_ledger(tool_ctx, conn["id"]), "pagerduty.incidents.resolve", {})
     assert result.success is False
     assert result.error_code == "validation_error"

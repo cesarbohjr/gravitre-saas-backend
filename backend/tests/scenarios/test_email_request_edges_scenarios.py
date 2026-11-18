@@ -35,7 +35,7 @@ def _asks(call: BrainCall) -> Reply:
 )
 async def test_a_draft_request_gets_an_honest_answer(surface: str, message: str) -> None:
     with ScenarioHarness() as h:
-        h.connected.append("gmail")
+        h.connect("gmail")
         turn = await h.conversation(surface).say(message, _asks)
         assert "isn't connected" not in turn.text
         assert "can't save drafts in Gmail yet" in turn.text
@@ -47,7 +47,7 @@ async def test_a_draft_request_gets_an_honest_answer(surface: str, message: str)
 @pytest.mark.parametrize("surface", SURFACES)
 async def test_an_email_about_a_draft_is_still_a_send(surface: str) -> None:
     with ScenarioHarness() as h:
-        h.connected.append("gmail")
+        h.connect("gmail")
         turn = await h.conversation(surface).say(
             "Send an email about the draft proposal to pat@acme.example", _asks
         )
@@ -59,7 +59,7 @@ async def test_an_email_about_a_draft_is_still_a_send(surface: str) -> None:
 @pytest.mark.parametrize("surface", SURFACES)
 async def test_thanks_is_not_the_subject_and_the_question_is_asked_once(surface: str) -> None:
     with ScenarioHarness() as h:
-        h.connected.append("gmail")
+        h.connect("gmail")
         conv = h.conversation(surface)
         first = await conv.say("Can you send an email to Stephanie on Gmail?", _asks)
         assert (first.pending_task or {}).get("status") == "awaiting_params"

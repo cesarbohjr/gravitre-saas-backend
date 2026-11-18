@@ -5,6 +5,7 @@ from unittest.mock import MagicMock, patch
 
 from app.services.tool_service import invoke_tool, list_registered_actions
 from app.services.tool_types import ToolContext
+from tests.support.provider_write import with_provider_write_ledger
 
 
 def test_jira_actions_registered():
@@ -32,7 +33,7 @@ def test_jira_issues_create_requires_project_key():
         environment_name="production",
     )
     conn = {"id": "jira-conn", "type": "jira", "status": "active", "environment": "production"}
-    with patch("app.services.tool_service.get_connector_by_type", return_value=conn):
+    with patch("app.services.tool_service.get_connector", return_value=conn):
         with patch("app.services.tool_service.enforce_rate_limit"):
             with patch(
                 "app.services.tool_service.ensure_jira_session",
@@ -49,7 +50,7 @@ def test_jira_issues_create_requires_project_key():
                             }
                         ],
                     ):
-                        result = invoke_tool(tool_ctx, "jira.issues.create", {"summary": "Only summary"})
+                        result = invoke_tool(with_provider_write_ledger(tool_ctx, conn["id"]), "jira.issues.create", {"summary": "Only summary"})
     assert result.success is False
     assert result.error_code == "validation_error"
 
@@ -65,7 +66,7 @@ def test_jira_issues_comment_success():
         environment_name="production",
     )
     conn = {"id": "jira-conn", "type": "jira", "status": "active", "environment": "production"}
-    with patch("app.services.tool_service.get_connector_by_type", return_value=conn):
+    with patch("app.services.tool_service.get_connector", return_value=conn):
         with patch("app.services.tool_service.enforce_rate_limit"):
             with patch(
                 "app.services.tool_service.ensure_jira_session",
@@ -87,7 +88,7 @@ def test_jira_issues_comment_success():
                             ],
                         ):
                             result = invoke_tool(
-                                tool_ctx,
+                                with_provider_write_ledger(tool_ctx, conn["id"]),
                                 "jira.issues.comment",
                                 {"issue_key": "ENG-9", "body": "Update from agent"},
                             )

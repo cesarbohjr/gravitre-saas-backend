@@ -59,7 +59,7 @@ def test_worker_preserves_unknown_without_retrying():
     assert stats["unknown"] == 1
     recover.assert_called_once()
     assert recover.call_args.kwargs["recovery_lease_token"] == "lease-a"
-    assert service.rpc.call_args_list[-1].args == ("defer_leased_write_recovery",)
+    assert service.rpc.call_args_list[-1].args[0] == "defer_leased_write_recovery"
     assert service.rpc.call_args_list[-1].args[1] == {
         "p_org_id": "org-a", "p_key": "claim-a", "p_lease_token": "lease-a",
     }

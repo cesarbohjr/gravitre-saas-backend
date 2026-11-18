@@ -8,6 +8,7 @@ import pytest
 from app.connectors.connector_tool_auth import resolve_github_access_token, resolve_zendesk_auth
 from app.services.tool_service import invoke_tool
 from app.services.tool_types import ToolContext
+from tests.support.provider_write import with_provider_write_ledger
 
 
 @pytest.fixture
@@ -48,7 +49,7 @@ def test_resolve_zendesk_oauth_path():
 
 def test_zendesk_create_with_oauth_token(tool_ctx: ToolContext):
     conn = {"id": "zd-1", "type": "zendesk", "config": {"subdomain": "acme"}, "environment": "production"}
-    with patch("app.services.tool_service.get_connector_by_type", return_value=conn):
+    with patch("app.services.tool_service.get_connector", return_value=conn):
         with patch("app.services.tool_service.enforce_rate_limit"):
             with patch(
                 "app.connectors.connector_tool_auth.ensure_generic_session",
@@ -64,7 +65,7 @@ def test_zendesk_create_with_oauth_token(tool_ctx: ToolContext):
                             return_value=[{"connector_type": "zendesk", "scopes": ["zendesk:*"], "expires_at": None}],
                         ):
                             result = invoke_tool(
-                                tool_ctx,
+                                with_provider_write_ledger(tool_ctx, conn["id"]),
                                 "zendesk.tickets.create",
                                 {"subject": "Help", "comment": "Body"},
                             )

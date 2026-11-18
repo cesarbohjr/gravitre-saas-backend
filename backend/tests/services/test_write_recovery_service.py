@@ -78,7 +78,8 @@ def test_concurrent_recovery_state_change_is_not_reported_as_success():
 def test_recovery_without_durable_original_context_never_reads_provider():
     ctx = _ctx()
     ctx.client.table.return_value.select.return_value.eq.return_value.eq.return_value.limit.return_value.execute.return_value.data = [
-        {"status": "uncertain", "invoke_action": "hubspot.contacts.create"}
+        {"status": "uncertain", "invoke_action": "hubspot.contacts.create",
+         "recovery_lease_token": "lease-1"}
     ]
     with patch("app.services.write_recovery_service.reconcile_uncertain_write") as readback:
         assert _recover(ctx).state == "unknown"

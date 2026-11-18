@@ -257,7 +257,7 @@ async def test_a_cancelled_turn_keeps_the_record_of_a_send_that_went_out() -> No
             CONV, ORG, lambda s: _outcome(s, pending_at_start=None), effect_record=True
         )
     stored = _stored(db)
-    assert stored["pending_task"]["status"] == "executed"
+    assert stored["pending_task"]["status"] == "completed"
     assert existing_successful_write(stored, invoke_action=SEND.invoke_action)
 
 

@@ -76,6 +76,36 @@ class TurnInterpretation:
     metadata: dict[str, Any] = field(default_factory=dict)
 
 
+def terminal_task_cleanup(state: dict[str, Any]) -> dict[str, Any] | None:
+    """Clear terminal approval state while retaining a completed write receipt."""
+    pending = state.get("pending_task")
+    if not isinstance(pending, dict):
+        return None
+    status = str(pending.get("status") or "")
+    if status not in {"completed", "failed", "cancelled"}:
+        return None
+
+    patch: dict[str, Any] = {
+        "current_plan": None,
+        "clarified_params": {},
+        "pending_steps": [],
+        "completed_steps": [],
+    }
+    params = safe_normalize_stored_dict(pending, key="params")
+    result = safe_normalize_stored_dict(pending, key="result")
+    completed_write = (
+        status == "completed"
+        and pending.get("type") == "connector_action"
+        and params.get("kind") == "write"
+        and result.get("success") is True
+    )
+    # Status inquiries and recipient changes consume the receipt, while
+    # pending classifiers reject its terminal status as a new approval.
+    if not completed_write:
+        patch["pending_task"] = None
+    return patch
+
+
 async def prepare_conversation_turn(
     *,
     message: str,
@@ -117,21 +147,11 @@ async def prepare_conversation_turn(
     pending = state.get("pending_task") if isinstance(state.get("pending_task"), dict) else {}
     pending_status = str(pending.get("status") or "")
     current_plan = state.get("current_plan") if isinstance(state.get("current_plan"), dict) else None
-    # Module B — terminal orch + sticky plan must not accept a later bare "yes".
-    if pending_status in {"completed", "failed", "cancelled"}:
+    if terminal_task_cleanup(state) is not None:
         if persist and conversation_id and org_id:
             try:
-                await get_conversation_state_service(settings or get_settings()).update_task_state(
-                    conversation_id,
-                    org_id,
-                    {
-                        "pending_task": None,
-                        "current_plan": None,
-                        "clarified_params": {},
-                        "pending_steps": [],
-                        "completed_steps": [],
-                    },
-                    client=client,
+                await get_conversation_state_service(settings or get_settings()).update_task_state_from(
+                    conversation_id, org_id, terminal_task_cleanup, client=client,
                 )
                 state = await get_conversation_state_service(
                     settings or get_settings()
@@ -139,7 +159,6 @@ async def prepare_conversation_turn(
             except Exception:  # noqa: BLE001
                 logger.debug("terminal_orch_close_skipped", exc_info=True)
         current_plan = None
-        pending = {}
         pending_status = ""
     voice_section = voice_system_prompt_section()
 

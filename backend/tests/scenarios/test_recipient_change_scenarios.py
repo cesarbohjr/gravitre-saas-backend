@@ -76,7 +76,7 @@ def _binding(turn: TurnResult) -> str:
 
 
 def _gmail(h: ScenarioHarness, *people: str) -> None:
-    h.connected.append("gmail")
+    h.connect("gmail")
     h.connectors.mailbox += [mail(i, p, ME) for i, p in enumerate(people, start=1)]
 
 
@@ -115,7 +115,7 @@ async def test_a_new_address_after_the_send_says_it_already_went_and_offers_a_re
     with ScenarioHarness() as h:
         _gmail(h)
         conv = h.conversation(surface)
-        await _sent(conv)
+        sent = await _sent(conv)
 
         offer = await conv.say("Send it to steph@work.example instead.", _model)
         assert not _sends(offer), "a second email went out without a new approval"
@@ -124,6 +124,8 @@ async def test_a_new_address_after_the_send_says_it_already_went_and_offers_a_re
         assert "I can send the same email to the new address." in offer.text
         assert _spoken("steph@work.example", surface) in offer.text  # the user approves the address
         assert _status(offer) == "awaiting_confirm"
+        assert sent.pending_task["execution_plan_id"] != offer.pending_task["execution_plan_id"]
+        assert _binding(offer) and _binding(offer) != _binding(sent)
         args = _args(offer)
         assert args["to"] == "steph@work.example"
         assert args["subject"] == SUBJECT and args["body"].rstrip(".") == BODY
