@@ -222,7 +222,6 @@ def test_signed_approved_chat_http_matches_independent_receiver_and_durable_ledg
         cluster = canonical_pg_cluster() if durable else pg_cluster(BOOTSTRAP_SQL, migration, grants)
         with cluster as pg:
             pg.psql(AUTH_ROLE_SQL)
-            pg.psql(CONTEXT_SQL)
             if durable:
                 pg.psql(f"INSERT INTO public.organizations VALUES ('{ORG_A}')")
                 # Production supports the nonterminal verification state; the
@@ -230,6 +229,11 @@ def test_signed_approved_chat_http_matches_independent_receiver_and_durable_ledg
                 pg.psql("ALTER TABLE public.workflow_runs DROP CONSTRAINT workflow_runs_status_check")
                 pg.psql("ALTER TABLE public.workflow_runs ADD CONSTRAINT workflow_runs_status_check CHECK (status IN ('running','completed','failed','cancelled','pending_approval','awaiting_approval','paused','partial_success','flagged_for_review','verification_inconclusive','verifying'))")
                 pg.psql(migration); pg.psql(grants)
+            # The recovery-context ALTER must run only after the ledger
+            # migration; the canonical durable fixture creates it here,
+            # whereas the minimal fixture created it at pg_cluster startup.
+            pg.psql(CONTEXT_SQL)
+            if durable:
                 from tests.master_qa.test_canonical_repository_persistence_pg import _core_effect_tables
                 _core_effect_tables(pg)
                 db = DurableScopedDb(pg)
