@@ -133,3 +133,49 @@ async def test_permission_denial_survives_telemetry_sink_failure(monkeypatch):
             {"requires_web_search": False},
             client=object(), environment_name="isolated",
         )
+
+
+@pytest.mark.asyncio
+async def test_company_intelligence_permission_denial_survives_optional_fallback(monkeypatch):
+    """An inaccessible snapshot must not become an innocuous empty context."""
+    from app.services.company_intelligence_orchestrator import CompanyIntelligenceOrchestrator
+
+    orchestrator = CompanyIntelligenceOrchestrator(settings=SimpleNamespace())
+    monkeypatch.setattr(
+        orchestrator, "_load_latest_snapshot",
+        AsyncMock(side_effect=PermissionError("tenant-scoped snapshot denied")),
+    )
+    with pytest.raises(PermissionError, match="tenant-scoped snapshot denied"):
+        await orchestrator.get_context_for_prompt("tenant-A")
+
+
+@pytest.mark.asyncio
+async def test_company_intelligence_non_permission_outage_retains_existing_fallback(monkeypatch):
+    from app.services.company_intelligence_orchestrator import CompanyIntelligenceOrchestrator
+
+    orchestrator = CompanyIntelligenceOrchestrator(settings=SimpleNamespace())
+    monkeypatch.setattr(
+        orchestrator, "_load_latest_snapshot",
+        AsyncMock(side_effect=RuntimeError("snapshot store temporarily unavailable")),
+    )
+    assert await orchestrator.get_context_for_prompt("tenant-A") == ""
+
+
+@pytest.mark.asyncio
+async def test_context_assembler_propagates_company_intelligence_scope_denial(monkeypatch):
+    """Retrieval success cannot mask a downstream tenant authorization error."""
+    retrieval = SimpleNamespace(retrieve=AsyncMock(return_value=bundle_for("tenant-A")))
+    company = SimpleNamespace(
+        get_context_for_prompt=AsyncMock(side_effect=PermissionError("company scope denied")),
+    )
+    monkeypatch.setattr(module, "get_unified_retrieval_service", lambda: retrieval)
+    monkeypatch.setattr(module, "get_company_intelligence_orchestrator", lambda: company)
+
+    with pytest.raises(PermissionError, match="company scope denied"):
+        await module.ContextAssembler(settings=SimpleNamespace()).assemble(
+            "tenant-A", "user-A", "private company context",
+            {"requires_web_search": False},
+            client=object(), environment_name="isolated",
+        )
+    retrieval.retrieve.assert_awaited_once()
+    company.get_context_for_prompt.assert_awaited_once_with("tenant-A")
