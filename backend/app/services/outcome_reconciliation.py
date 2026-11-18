@@ -183,6 +183,7 @@ def _reconcile_by_lookup(
     lookups = [a for a in (f"{vendor}.{resource}.{verb}" for verb in _LOOKUP_VERBS) if _registered(a)]
     if not lookups:
         return ReconciliationResult("unknown", "no_lookup_action")
+    empty_observed = False
     for lookup in lookups:
         param_sets: list[dict[str, Any]] = [{key: value}] + [{name: value} for name in _QUERY_PARAM_NAMES]
         for params in param_sets:
@@ -212,16 +213,12 @@ def _reconcile_by_lookup(
                     )
             records = _records(payload)
             if records is not None and not records:
-                # A generic catalog search can silently ignore its filter,
-                # paginate, or return a non-exhaustive list. An empty response
-                # therefore does not independently establish *absence*.
-                # Keep the original claim blocked until a provider-specific
-                # scoped readback can prove authoritative negative evidence.
-                return ReconciliationResult(
-                    "unknown",
-                    "empty_lookup_not_authoritative",
-                    None,
-                    lookup,
-                    {"verified": False, "method": "reconcile_lookup", "read_action": lookup},
-                )
-    return ReconciliationResult("unknown", "lookup_inconclusive", None, lookups[0])
+                # An empty generic response is not authoritative absence.
+                # Keep looking for a positive match with the other supported
+                # lookup parameter variants, but never authorize a resend.
+                empty_observed = True
+    return ReconciliationResult(
+        "unknown",
+        "empty_lookup_not_authoritative" if empty_observed else "lookup_inconclusive",
+        None, lookups[0],
+    )
