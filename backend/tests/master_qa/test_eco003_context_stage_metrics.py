@@ -112,3 +112,34 @@ def test_unified_retrieval_preserves_tenant_and_environment_scopes():
     assert 'filters: dict[str, Any] = {"environment": environment_name}' in source
     calls = (node for node in ast.walk(ast.parse(textwrap.dedent(source))) if isinstance(node, ast.Call))
     assert not any(isinstance(call.func, ast.Attribute) and call.func.attr == "gather" and isinstance(call.func.value, ast.Name) and call.func.value.id == "asyncio" for call in calls)
+
+
+@pytest.mark.asyncio
+async def test_metrics_collector_failure_never_masks_success(monkeypatch):
+    monkeypatch.setenv("ECO003_CONTEXT_LATENCY_TRACE", "1")
+    monkeypatch.setattr(metrics.CONTEXT_STAGE_SECONDS, "labels",
+                        Mock(side_effect=RuntimeError("collector down")))
+
+    async def load():
+        return {"authorized": True}
+
+    assert await metrics.measure("org_context", load()) == {"authorized": True}
+
+
+@pytest.mark.asyncio
+async def test_metrics_collector_failure_never_masks_tenant_denial_or_cancellation(monkeypatch):
+    monkeypatch.setenv("ECO003_CONTEXT_LATENCY_TRACE", "1")
+    monkeypatch.setattr(metrics.CONTEXT_STAGE_SECONDS, "labels",
+                        Mock(side_effect=RuntimeError("collector down")))
+
+    async def denied():
+        raise PermissionError("tenant isolation enforced")
+
+    with pytest.raises(PermissionError, match="tenant isolation enforced"):
+        await metrics.measure("rag_retrieval", denied())
+
+    async def interrupted():
+        raise asyncio.CancelledError()
+
+    with pytest.raises(asyncio.CancelledError):
+        await metrics.measure("agent_memory", interrupted())
