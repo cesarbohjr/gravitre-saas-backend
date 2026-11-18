@@ -9,7 +9,7 @@ from app.core.logging import get_logger
 from app.services.company_intelligence_orchestrator import get_company_intelligence_orchestrator
 from app.services.unified_retrieval_service import RetrievalScopes, get_unified_retrieval_service
 from app.services.research_service import get_research_service
-from app.services.context_stage_metrics import measure as measure_context_stage
+from app.services.context_stage_metrics import measure as measure_context_stage, timed_context_assembly
 from app.workflows.repository import get_supabase_client
 
 logger = get_logger(__name__)
@@ -23,6 +23,7 @@ class ContextAssembler:
     def __init__(self, settings: Settings | None = None) -> None:
         self.settings = settings or get_settings()
 
+    @timed_context_assembly
     async def assemble(
         self,
         org_id: str,
