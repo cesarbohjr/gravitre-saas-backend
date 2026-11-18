@@ -325,6 +325,26 @@
         "complete_hosted_ingress_cases_passed": 94,
         "postgres_cases_passed": 135,
         "full_backend_cases_passed": 17224
+      },
+      "recovery_bind_engineering_batch": {
+        "state": "CODE_COMMITTED_TARGETED_VERIFICATION_PENDING_NOT_FINDING_CLOSED",
+        "source": "backend/app/services/tool_service.py",
+        "source_commit": "da3befc1cfbd42053a24a94221d4b14da131d11b",
+        "tests": [
+          "backend/tests/services/test_write_invoke_idempotency.py",
+          "backend/tests/services/test_outcome_ownership_write_safety.py",
+          "backend/tests/services/test_autonomous_invoke_receiver_integration.py",
+          "backend/tests/db/test_eco001_chat_invoke_pg_receiver.py"
+        ],
+        "test_head_sha": "2b6b40bca9fd5d6000eb70542a8dd58293f14495",
+        "evidence": "Pre-provider failure of durable recovery-context binding attempts fenced claim finalization; failure to finalize remains blocked. Synthetic tests bind a claimed context; joined Chat acceptance uses the SQL recovery bind RPC. No live provider readback or exact-head targeted pass yet.",
+        "pending": [
+          "Exact-head targeted unit and PostgreSQL results",
+          "Full native Chat/Agent/Voice approval and revocation coverage",
+          "Provider readback and crash-restart acceptance",
+          "Original R2–R4 scope and release/rollback requirements"
+        ],
+        "finding_certified": false
       }
     },
     {
