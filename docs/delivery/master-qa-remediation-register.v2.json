@@ -490,6 +490,36 @@
         "deployed_rollback_exercised": false,
         "owner_signed_off": false,
         "final_qa_certified": false
+      },
+      "engineering_checkpoint_20261118": {
+        "state": "IMPLEMENTATION_CONSOLIDATED_OUTSTANDING_RELEASE_EVIDENCE",
+        "canonical_owner": "PR611",
+        "canonical_paths": [
+          "backend/app/services/tool_service.py",
+          "backend/app/services/write_invoke_idempotency.py",
+          "backend/app/services/write_recovery_worker.py",
+          "backend/app/services/write_recovery_service.py",
+          "backend/app/services/outcome_reconciliation.py",
+          "backend/app/services/chat_connector_execution_service.py"
+        ],
+        "tests": [
+          "backend/scripts/connector_chat_ledger_acceptance.py",
+          "backend/tests/db/test_write_recovery_leases_pg.py",
+          "backend/tests/services/test_write_recovery_service.py",
+          "backend/tests/services/test_write_recovery_worker.py",
+          "backend/tests/services/test_outcome_ownership_connector_reconcile.py"
+        ],
+        "evidence_document": "docs/delivery/eco-002-governed-recovery-closure-evidence-2026-11-18.md",
+        "confirmed_prior_development_evidence": "980eace1 isolated connector_chat and 2b73e42 governed PostgreSQL synthetic receiver passed",
+        "unverified_current_changes": "recent negative provider-readback and lease authority changes; exact-head test outcomes not yet confirmed",
+        "closure_blockers": [
+          "live third-party same-tenant connector readback",
+          "full caller continuity and independent durable consumer observations",
+          "controlled deployment and rollback evidence",
+          "exact-head complete test results and owner approval"
+        ],
+        "decision": "DO NOT DECLARE CLOSED; DO NOT REPEAT BROAD TEST LOOP FOR EVERY DOCUMENTATION CHANGE",
+        "finding_certified": false
       }
     },
     {
@@ -590,6 +620,24 @@
         "nonprod_min_success_samples_per_stage": 30,
         "concurrency_or_caching_authorized": false,
         "exact_head_reporter_test_verified": false
+      },
+      "engineering_checkpoint_20261118": {
+        "state": "SOURCE_REPAIR_COMMITTED_TARGETED_VERIFICATION_PENDING",
+        "canonical_owner": "PR611",
+        "source": "backend/app/services/unified_retrieval_service.py",
+        "commit": "310aefb16381d831fdc0600b979dc5feac695ff3",
+        "test": "backend/tests/services/test_unified_retrieval_service.py",
+        "test_commit": "4db1f1ae9a9d752b44fdd69b8ed6e020739f903a",
+        "repair": "Optional RAG, graph, hybrid memory, intelligence pack, and web research failures propagate PermissionError across tenant boundary; ordinary source outages retain existing fallback.",
+        "latency": "No authoritative representative p50/p95 available; no new caching/concurrency until measured.",
+        "verified": false,
+        "certified": false,
+        "remaining": [
+          "Targeted tests and no-regression execution",
+          "Actual tenant-negative integration under real scoped access",
+          "Representative nonproduction p50/p95 and caller behavior",
+          "Deployed/rollback evidence and owner acceptance"
+        ]
       }
     },
     {
