@@ -60,6 +60,7 @@ These are source call sites; they are not proof of active traffic or permission 
 
 - ECO-005: Resolve approved Chat write provider account **before** consuming the pending Chat claim. Reject unambiguously disconnected/disabled/revoked explicit account rows; preserve provider-side OAuth, scopes and write-authority checks. See `backend/tests/services/test_chat_connector_execution.py`.
 - ECO-006: Removed the competing zero-argument `lru_cache` in `chat_tool_visibility.py`. `build_dynamic_chat_tool_specs` already uses `registry_keyed_cache` tied to the actual registry fingerprint. Tool visibility can now observe one-for-one action swaps without process restart. See `backend/tests/services/test_chat_tool_visibility.py`.
+- ECO-006: Named tool calls and exact-action calls now use the same connector read cache scope. The registry requires a context-bound caller and account and caches only when the provider response reports that account. Regression tests exercise both entry points with synthetic provider responses and check that a mismatched account cannot seed the cache. Deployed caller traces and revocation under live provider credentials remain unverified.
 
 ## Still unmet for ECO-005 and ECO-006
 

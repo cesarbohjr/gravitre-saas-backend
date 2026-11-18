@@ -1,4 +1,4 @@
-"""TTL cache for read-only connector invoke results (shared across users in org)."""
+"""TTL cache for caller-scoped connector reads and organization-scoped public web search."""
 from __future__ import annotations
 
 import hashlib
