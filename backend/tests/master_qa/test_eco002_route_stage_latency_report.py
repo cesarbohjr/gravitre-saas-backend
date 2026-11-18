@@ -95,3 +95,13 @@ def test_malformed_json_timing_record_cannot_count_as_valid_sample():
         module.summarize([
             '{"message": "eco002_route_stage stage=classification outcome=ok duration_ms=5.000"',
         ], provenance="verified_nonproduction", min_samples=1)
+
+
+def test_model_provider_stage_is_reported_without_request_payloads():
+    report = module.summarize([
+        "eco002_route_stage stage=model_provider outcome=ok duration_ms=12.000",
+        "eco002_route_stage stage=model_provider outcome=ok duration_ms=16.000",
+    ], provenance="verified_nonproduction", min_samples=2)
+    assert report["stage_summaries"]["model_provider"]["p50_ms"] == 14
+    assert report["stage_summaries"]["model_provider"]["p95_ms"] == 15.8
+    assert report["eligible_for_optimization"] is False
