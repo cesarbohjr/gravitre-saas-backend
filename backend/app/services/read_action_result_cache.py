@@ -38,8 +38,15 @@ def is_read_invoke_action(invoke_action: str) -> bool:
     return any(action.endswith(marker) or marker in action for marker in _READ_ACTION_MARKERS)
 
 
-def _cache_key(org_id: str, invoke_action: str, params: dict[str, Any]) -> str:
-    payload = json.dumps(params or {}, sort_keys=True, default=str)
+def _cache_key(
+    org_id: str, invoke_action: str, params: dict[str, Any],
+    *, scope: dict[str, str] | None = None,
+) -> str:
+    # Bind a result to the actual caller identity and provider account.
+    # The registry supplies this scope; legacy direct callers default to an
+    # isolated empty scope and cannot read scoped runtime cache entries.
+    payload = json.dumps({"params": params or {}, "scope": scope or {}},
+                         sort_keys=True, default=str)
     digest = hashlib.sha256(payload.encode("utf-8")).hexdigest()[:24]
     return f"{org_id}:{invoke_action}:{digest}"
 
@@ -48,8 +55,10 @@ def get_cached_read_result(
     org_id: str,
     invoke_action: str,
     params: dict[str, Any],
+    *,
+    scope: dict[str, str] | None = None,
 ) -> dict[str, Any] | None:
-    key = _cache_key(org_id, invoke_action, params)
+    key = _cache_key(org_id, invoke_action, params, scope=scope)
     row = _CACHE.get(key)
     if not row:
         return None
@@ -75,13 +84,14 @@ def set_cached_read_result(
     params: dict[str, Any],
     result: dict[str, Any],
     *,
+    scope: dict[str, str] | None = None,
     ttl_seconds: int = _DEFAULT_TTL_SECONDS,
 ) -> None:
     if len(_CACHE) >= _MAX_ENTRIES:
         oldest = min(_CACHE.items(), key=lambda item: item[1][0])[0]
         _CACHE.pop(oldest, None)
         _CACHED_AT.pop(oldest, None)
-    key = _cache_key(org_id, invoke_action, params)
+    key = _cache_key(org_id, invoke_action, params, scope=scope)
     now = time.time()
     _CACHE[key] = (now + max(5, ttl_seconds), dict(result))
     _CACHED_AT[key] = now
