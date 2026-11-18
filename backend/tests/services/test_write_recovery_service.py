@@ -9,7 +9,7 @@ from app.services.write_recovery_service import recover_uncertain_write
 def _ctx(status="uncertain", action="hubspot.contacts.create"):
     client = MagicMock()
     client.table.return_value.select.return_value.eq.return_value.eq.return_value.limit.return_value.execute.return_value.data = [
-        {"status": status, "invoke_action": action}
+        {"status": status, "invoke_action": action, "original_args": {"email": "a@example.test"}, "connector_id": "connector-1"}
     ]
     client.rpc.return_value.execute.return_value.data = {"outcome": "reconciled"}
     return SimpleNamespace(client=client, org_id="org-1", connector_id="connector-1")
@@ -68,3 +68,23 @@ def test_concurrent_recovery_state_change_is_not_reported_as_success():
                return_value=ReconciliationResult("applied", "found_by_email",
                                                  evidence={"verified": True})):
         assert _recover(ctx).state == "rejected"
+
+
+def test_recovery_without_durable_original_context_never_reads_provider():
+    ctx = _ctx()
+    ctx.client.table.return_value.select.return_value.eq.return_value.eq.return_value.limit.return_value.execute.return_value.data = [
+        {"status": "uncertain", "invoke_action": "hubspot.contacts.create"}
+    ]
+    with patch("app.services.write_recovery_service.reconcile_uncertain_write") as readback:
+        assert _recover(ctx).state == "unknown"
+        readback.assert_not_called()
+    ctx.client.rpc.assert_not_called()
+
+
+def test_connector_mismatch_never_reads_provider():
+    ctx = _ctx()
+    ctx.connector_id = "other-connector"
+    with patch("app.services.write_recovery_service.reconcile_uncertain_write") as readback:
+        assert _recover(ctx).state == "rejected"
+        readback.assert_not_called()
+    ctx.client.rpc.assert_not_called()
