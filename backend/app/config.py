@@ -672,6 +672,8 @@ class Settings(BaseSettings):
     domain_event_relay_enabled: bool = False
     # Stale run recovery: marks runs left "running"/"verifying" by a dead worker as
     # failed / flagged_for_review / verification_inconclusive. Never re-runs work.
+    write_recovery_scheduler_enabled: bool = False
+    write_recovery_scheduler_interval_seconds: int = 120
     stale_run_recovery_enabled: bool = False
     stale_run_recovery_interval_seconds: int = 600
     stale_run_recovery_threshold_minutes: int = 60
