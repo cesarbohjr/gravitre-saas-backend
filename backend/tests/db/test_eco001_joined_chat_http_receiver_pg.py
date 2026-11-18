@@ -36,7 +36,7 @@ from app.services.tool_registry import get_tool_registry
 from app.services.tool_types import NormalizedResult
 from app.services.write_invoke_idempotency import WriteClaimResult, WriteFinalizeResult
 from tests.db.pg_harness import MIGRATIONS, pg_cluster, requires_pg
-from tests.db.test_write_invoke_idempotency_pg import BOOTSTRAP_SQL, ORG_A, _claim, _finalize
+from tests.db.test_write_invoke_idempotency_pg import BOOTSTRAP_SQL, ORG_A
 from tests.db.test_autonomous_independent_write_pg import IndependentFixture
 from tests.db.write_recovery_context_fixture import AUTH_ROLE_SQL, CONTEXT_SQL, bind_recovery_context
 
@@ -244,7 +244,18 @@ def test_signed_approved_chat_http_matches_independent_receiver_and_durable_ledg
             def claim(_client, *, org_id, idempotency_key, **_kw):
                 assert org_id == ORG_A
                 keys.append(idempotency_key)
-                row = _claim(pg, org_id, idempotency_key)
+                # Use the approved Chat action, not the generic PostgreSQL
+                # fixture's hardcoded hubspot.contacts.update. Recovery must
+                # reject action mismatches before any provider dispatch.
+                with psycopg.connect(host=str(pg.sock), port=pg.port,
+                                     dbname="postgres", user="postgres") as conn:
+                    conn.execute("SET ROLE service_role")
+                    result = conn.execute(
+                        "SELECT public.claim_write_invoke_idempotency("
+                        "%s::uuid,%s,%s,%s,%s)",
+                        (org_id, idempotency_key, ACTION, "joined-chat-approval", 60),
+                    ).fetchone()
+                row = result[0]
                 return WriteClaimResult(
                     outcome=row["outcome"], claim_token=row.get("claim_token"),
                     status=row.get("status"), reason=row.get("reason"),
@@ -254,7 +265,17 @@ def test_signed_approved_chat_http_matches_independent_receiver_and_durable_ledg
 
             def finalize(_client, *, org_id, idempotency_key, claim_token, status, **_kw):
                 assert org_id == ORG_A and status == "completed"
-                row = _finalize(pg, org_id, idempotency_key, claim_token, status)
+                with psycopg.connect(host=str(pg.sock), port=pg.port,
+                                     dbname="postgres", user="postgres") as conn:
+                    conn.execute("SET ROLE service_role")
+                    result = conn.execute(
+                        "SELECT public.finalize_write_invoke_idempotency("
+                        "%s::uuid,%s,%s::uuid,%s,%s)",
+                        (org_id, idempotency_key, claim_token, status,
+                         Jsonb({"success": True, "action": ACTION,
+                                "data": {"id": "1"}})),
+                    ).fetchone()
+                row = result[0]
                 return WriteFinalizeResult(outcome=row["outcome"])
 
             def bind(_client, **kwargs):
