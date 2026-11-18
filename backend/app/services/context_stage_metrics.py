@@ -5,8 +5,9 @@ No caching, concurrency, request payloads or tenant-derived metric labels.
 from __future__ import annotations
 
 import os
+from functools import wraps
 from time import perf_counter
-from typing import Awaitable, TypeVar
+from typing import Any, Awaitable, Callable, TypeVar
 
 from prometheus_client import Histogram
 
@@ -22,6 +23,7 @@ STAGES = frozenset({
     "rag_retrieval",
     "company_intelligence",
     "external_research",
+    "context_assembly_total",
 })
 
 CONTEXT_STAGE_SECONDS = Histogram(
@@ -65,3 +67,16 @@ async def measure(stage: str, awaitable: Awaitable[T]) -> T:
             logger.info("eco003_context_stage stage=%s outcome=%s duration_ms=%.3f", stage, outcome, elapsed * 1000)
         except Exception:  # noqa: BLE001
             pass
+
+
+def timed_context_assembly(fn: Callable[..., Awaitable[T]]) -> Callable[..., Awaitable[T]]:
+    """Measure complete assembly using the canonical, opt-in ECO-003 observer.
+
+    This is per-*assembly* wall time, not a correlated end-to-end user request.
+    The wrapper never alters retrieval ordering, tenant context or errors.
+    """
+    @wraps(fn)
+    async def wrapped(*args: Any, **kwargs: Any) -> T:
+        return await measure("context_assembly_total", fn(*args, **kwargs))
+
+    return wrapped
