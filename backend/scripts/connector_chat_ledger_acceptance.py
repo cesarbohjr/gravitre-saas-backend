@@ -160,6 +160,7 @@ def run():
     negative_approval_ids = []
     qa_auth_id = None
     qa_auto_org_id = None
+    qa_connector_id = None
     try:
         # conversations.user_id references auth.users(id), NOT public.users(id).
         # Admin-create an uninvited, disposable auth identity in the verified
@@ -191,6 +192,19 @@ def run():
         assert auth_fk.user and str(auth_fk.user.id) == requester_id, (
             "Conversation auth FK not seeded"
         )
+        # Use the actual tenant-scoped connector repository. A disposable QA
+        # record supplies identity only; the isolated HTTP receiver substitutes
+        # for the provider and no OAuth credential is created or contacted.
+        from app.connectors.repository import create_connector, get_connector_by_type
+        qa_connector = create_connector(
+            db, org_id, "hubspot", {"qa_isolated_receiver": True},
+            created_by=requester_id, environment_name="production",
+        )
+        qa_connector_id = str(qa_connector["id"])
+        selected = get_connector_by_type(db, org_id, "hubspot", environment_name="production")
+        assert selected is not None and str(selected["id"]) == qa_connector_id
+        assert str(selected.get("org_id")) == org_id
+
         db.table("conversations").insert({
             "id": conversation_id, "org_id": org_id, "user_id": requester_id,
             "title": "PR611 isolated Chat approval acceptance",
@@ -587,6 +601,10 @@ def run():
     finally:
         app.dependency_overrides.clear()
         try:
+            if qa_connector_id:
+                db.table("connectors").delete().eq(
+                    "org_id", org_id
+                ).eq("id", qa_connector_id).execute()
             db.table("write_invoke_idempotency").delete().eq("org_id", org_id).eq("idempotency_key", expected_key).execute()
             if race_ledger_key:
                 db.table("write_invoke_idempotency").delete().eq(
@@ -644,7 +662,10 @@ def run():
             remaining_requester = db.table("users").select("id").eq(
                 "org_id", org_id
             ).eq("id", requester_id).execute().data or []
-            if (remaining or remaining_approval or negative_remaining or
+            remaining_connector = (db.table("connectors").select("id").eq(
+                "org_id", org_id
+            ).eq("id", qa_connector_id).execute().data or []) if qa_connector_id else []
+            if (remaining_connector or remaining or remaining_approval or negative_remaining or
                     race_remaining or race_approval_remaining or remaining_conversation or
                     remaining_requester):
                 raise RuntimeError("Isolated test rows not cleaned up")
