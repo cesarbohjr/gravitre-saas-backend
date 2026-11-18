@@ -270,6 +270,27 @@ def finalize_write_invoke(
     return WriteFinalizeResult(outcome="rejected", reason=str(body.get("reason") or outcome))
 
 
+def bind_write_recovery_context(
+    client: Any, *, org_id: str, idempotency_key: str,
+    claim_token: str, invoke_action: str, connector_id: str,
+    original_args: dict[str, Any],
+) -> bool:
+    """Fenced, service-role-only original-request binding before dispatch."""
+    if not connector_id or not claim_token or not isinstance(original_args, dict):
+        return False
+    try:
+        res = client.rpc("bind_write_recovery_context", {
+            "p_org_id": org_id, "p_key": idempotency_key,
+            "p_claim_token": claim_token, "p_invoke_action": invoke_action,
+            "p_connector_id": connector_id,
+            "p_original_args": safe_normalize_stored_dict(original_args),
+        }).execute()
+        return isinstance(res.data, dict) and res.data.get("outcome") == "bound"
+    except Exception:
+        logger.exception("write_recovery_context_bind_failed org_id=%s", org_id)
+        return False
+
+
 def inject_provider_idempotency(params: dict[str, Any], idempotency_key: str) -> dict[str, Any]:
     # The provider must receive the exact key reserved in the canonical ledger.
     # A caller-supplied value must never override the computed claim identity:
