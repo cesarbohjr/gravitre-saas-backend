@@ -143,3 +143,36 @@ async def test_metrics_collector_failure_never_masks_tenant_denial_or_cancellati
 
     with pytest.raises(asyncio.CancelledError):
         await metrics.measure("agent_memory", interrupted())
+
+
+@pytest.mark.asyncio
+async def test_whole_assembly_uses_existing_observer_and_preserves_tenant_args(monkeypatch):
+    monkeypatch.setenv("ECO003_CONTEXT_LATENCY_TRACE", "1")
+    observer = Mock()
+    labels = Mock(return_value=observer)
+    monkeypatch.setattr(metrics.CONTEXT_STAGE_SECONDS, "labels", labels)
+    seen = []
+
+    @metrics.timed_context_assembly
+    async def assembly(org_id, *, environment_name):
+        seen.append((org_id, environment_name))
+        return {"context": "scoped"}
+
+    assert await assembly("org-a", environment_name="isolated") == {"context": "scoped"}
+    assert seen == [("org-a", "isolated")]
+    labels.assert_called_once_with(stage="context_assembly_total", outcome="ok")
+    observer.observe.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_whole_assembly_failure_remains_failure_when_metrics_are_unavailable(monkeypatch):
+    monkeypatch.setenv("ECO003_CONTEXT_LATENCY_TRACE", "1")
+    monkeypatch.setattr(metrics.CONTEXT_STAGE_SECONDS, "labels",
+                        Mock(side_effect=RuntimeError("metrics sink failure")))
+
+    @metrics.timed_context_assembly
+    async def denied():
+        raise PermissionError("tenant blocked")
+
+    with pytest.raises(PermissionError, match="tenant blocked"):
+        await denied()
