@@ -350,6 +350,10 @@ async def lifespan(app: FastAPI):
         start_domain_event_relay_scheduler,
         stop_domain_event_relay_scheduler,
     )
+    from app.schedulers.write_recovery_scheduler import (
+        start_write_recovery_scheduler,
+        stop_write_recovery_scheduler,
+    )
     from app.schedulers.stale_run_recovery_scheduler import (
         start_stale_run_recovery_scheduler,
         stop_stale_run_recovery_scheduler,
@@ -461,6 +465,7 @@ async def lifespan(app: FastAPI):
     app.state.storage_meter_task = start_storage_meter_scheduler()
     app.state.prediction_labeling_task = start_prediction_labeling_scheduler()
     app.state.stale_run_recovery_task = start_stale_run_recovery_scheduler()
+    app.state.write_recovery_task = start_write_recovery_scheduler()
     # Customer ingestion stays inert until source lifecycle is enforced; log what is held back.
     try:
         from app.config import get_settings as _ingestion_settings
@@ -554,6 +559,7 @@ async def lifespan(app: FastAPI):
         await stop_storage_meter_scheduler(getattr(app.state, "storage_meter_task", None))
         await stop_prediction_labeling_scheduler(getattr(app.state, "prediction_labeling_task", None))
         await stop_stale_run_recovery_scheduler(getattr(app.state, "stale_run_recovery_task", None))
+        await stop_write_recovery_scheduler(getattr(app.state, "write_recovery_task", None))
         await stop_entity_behavior_signals_scheduler(getattr(app.state, "entity_behavior_signals_task", None))
         await stop_rag_ingest_pilot_scheduler(getattr(app.state, "rag_ingest_pilot_task", None))
         await stop_memory_scheduler(getattr(app.state, "memory_promotion_task", None))
