@@ -217,3 +217,24 @@ def test_update_agent_memory_rejects_empty_content(mock_embed):
     with pytest.raises(HTTPException) as exc:
         update_agent_memory(settings, client, org_id, agent_id, memory_id, content="   ")
     assert exc.value.status_code == 400
+
+
+@pytest.mark.parametrize("source", ["agent_memory", "department_rag"])
+def test_eco003_agent_memory_access_denial_is_not_silenced(source):
+    settings = MagicMock()
+    client = MagicMock()
+    agent = {"id": "agent-a"}
+    context = {"include_agent_memory": source == "agent_memory",
+               "include_department_rag": source == "department_rag"}
+    target = (
+        "app.services.agent_memory_service.search_agent_memories"
+        if source == "agent_memory"
+        else "app.services.agent_memory_service.resolve_department_id_for_agent"
+    )
+    with patch(target, side_effect=PermissionError(f"{source} scope denied")):
+        with pytest.raises(PermissionError, match="scope denied"):
+            build_task_retrieval_context(
+                settings, client, org_id="tenant-a",
+                agent=agent, task="tenant-scoped memory",
+                parameters=context,
+            )
