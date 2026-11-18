@@ -55,6 +55,9 @@ def _is_missing_table_error(error: Exception | None) -> bool:
 def _safe_query(loader: Any, default: Any) -> Any:
     try:
         return loader()
+    except PermissionError:
+        # A denied tenant/user scope is never an optional source outage.
+        raise
     except Exception as exc:  # noqa: BLE001
         if _is_missing_table_error(exc):
             logger.debug("org_context_query_skipped error=%s", exc)
@@ -125,8 +128,14 @@ class OrgContextService:
     ) -> tuple[dict[str, Any], str]:
         return self._load(client, org_id, environment_name, depth, user_id)
 
-    def _cache_key(self, org_id: str, environment_name: str, depth: OrgContextDepth) -> str:
-        return f"{org_id}:{environment_name}:{depth}"
+    def _cache_key(
+        self, org_id: str, environment_name: str, depth: OrgContextDepth,
+        user_id: str | None = None,
+    ) -> str:
+        # Context may be resolved through user-scoped database credentials.
+        # Never reuse an authorized user's snapshot for another actor in the
+        # same organization (or for a service-role request).
+        return f"{org_id}:{environment_name}:{depth}:{user_id or '<service>'}"
 
     def _load(
         self,
@@ -137,7 +146,7 @@ class OrgContextService:
         user_id: str | None,
     ) -> tuple[dict[str, Any], str]:
         normalized_depth = _normalize_depth(depth)
-        cache_key = self._cache_key(org_id, environment_name, normalized_depth)
+        cache_key = self._cache_key(org_id, environment_name, normalized_depth, user_id)
         now = time.monotonic()
         cached = self._cache.get(cache_key)
         if cached and cached.expires_at > now:
@@ -304,6 +313,10 @@ class OrgContextService:
                 key = futures[future]
                 try:
                     result = future.result()
+                except PermissionError:
+                    # Fail closed when any independent scoped source denies
+                    # access; do not cache a partial authorization failure.
+                    raise
                 except Exception as exc:  # noqa: BLE001
                     logger.warning("org_context_parallel_fetch_failed key=%s error=%s", key, exc)
                     continue
