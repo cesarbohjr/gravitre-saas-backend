@@ -31,7 +31,8 @@ def test_worker_uses_original_tenant_and_connector_context():
 def test_worker_rejects_cross_tenant_context_before_readback():
     row = {"org_id": "org-a", "connector_id": "conn-a",
            "invoke_action": "hubspot.contacts.create",
-           "idempotency_key": "claim-a", "original_args": {"email": "a@example.test"}}
+           "idempotency_key": "claim-a", "recovery_lease_token": "lease-a",
+           "original_args": {"email": "a@example.test"}}
     with patch("app.services.write_recovery_worker.recover_uncertain_write") as recover:
         stats = process_due_write_recoveries(
             service_client=_service([row]),
@@ -45,15 +46,23 @@ def test_worker_rejects_cross_tenant_context_before_readback():
 def test_worker_preserves_unknown_without_retrying():
     row = {"org_id": "org-a", "connector_id": "conn-a",
            "invoke_action": "hubspot.contacts.create",
-           "idempotency_key": "claim-a", "original_args": {"email": "a@example.test"}}
+           "idempotency_key": "claim-a", "recovery_lease_token": "lease-a",
+           "original_args": {"email": "a@example.test"}}
+    service = _service([row])
     with patch("app.services.write_recovery_worker.recover_uncertain_write",
-               return_value=RecoveryResult("unknown", "no_readback")):
+               return_value=RecoveryResult("unknown", "no_readback")) as recover:
         stats = process_due_write_recoveries(
-            service_client=_service([row]),
+            service_client=service,
             context_factory=lambda org, conn: SimpleNamespace(
                 org_id=org, connector_id=conn, client=MagicMock()),
         )
     assert stats["unknown"] == 1
+    recover.assert_called_once()
+    assert recover.call_args.kwargs["recovery_lease_token"] == "lease-a"
+    assert service.rpc.call_args_list[-1].args == ("defer_leased_write_recovery",)
+    assert service.rpc.call_args_list[-1].args[1] == {
+        "p_org_id": "org-a", "p_key": "claim-a", "p_lease_token": "lease-a",
+    }
 
 
 def test_scheduler_frozen_tool_context_recovers_without_mutating_credentials():
