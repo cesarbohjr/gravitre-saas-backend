@@ -276,11 +276,10 @@ def test_signed_approved_chat_http_matches_independent_receiver_and_durable_ledg
 
             async def registry_invoke(*, ctx, invoke_action, args, tool_name, **_kwargs):
                 assert invoke_action == ACTION and tool_name == plan.tool_name
-                # Fixture has an explicit connected provider account; do not
-                # fabricate a connector in the production tool service.
-                observed = tool_service.invoke_tool(
-                    replace(ctx, connector_id="isolated-qa"), invoke_action, args,
-                )
+                # The production Chat approval handoff must carry the exact
+                # tenant-owned connector chosen before the durable claim.
+                assert ctx.connector_id == "isolated-qa"
+                observed = tool_service.invoke_tool(ctx, invoke_action, args)
                 return {
                     "success": observed.success, "connector_id": "isolated-qa",
                     "result": observed.data or {},
@@ -352,6 +351,8 @@ def test_signed_approved_chat_http_matches_independent_receiver_and_durable_ledg
                     patch("app.services.write_invoke_idempotency.claim_write_invoke", side_effect=claim),
                     patch("app.services.write_invoke_idempotency.finalize_write_invoke", side_effect=finalize),
                     patch("app.services.write_invoke_idempotency.bind_write_recovery_context", side_effect=bind),
+                    patch("app.connectors.repository.get_connector_by_type",
+                          return_value={"id": "isolated-qa", "vendor": "hubspot", "org_id": ORG_A}),
                     ):
                         patch_stack.enter_context(context)
                     if durable:
