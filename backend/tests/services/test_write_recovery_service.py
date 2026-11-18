@@ -58,7 +58,10 @@ def test_wrong_action_or_non_uncertain_claim_never_reads_provider():
 def test_authoritative_absence_is_recorded_as_failed_not_replayed():
     ctx = _ctx()
     with patch("app.services.write_recovery_service.reconcile_uncertain_write",
-               return_value=ReconciliationResult("not_applied", "no_record_with_email")):
+               return_value=ReconciliationResult(
+                   "not_applied", "no_record_with_email",
+                   evidence={"authoritative_absence": True, "verified": True},
+               )):
         assert _recover(ctx).state == "not_applied"
     assert ctx.client.rpc.call_args.args[1]["p_status"] == "failed"
 
@@ -126,4 +129,18 @@ def test_stale_recovery_lease_never_reads_provider_or_settles():
     assert outcome.state == "rejected"
     assert outcome.detail == "recovery_lease_mismatch"
     readback.assert_not_called()
+    ctx.client.rpc.assert_not_called()
+
+
+def test_unverified_negative_provider_readback_keeps_claim_uncertain():
+    ctx = _ctx()
+    with patch("app.services.write_recovery_service.reconcile_uncertain_write",
+               return_value=ReconciliationResult(
+                   "not_applied", "no_record_with_email",
+                   evidence={"verified": False, "method": "generic_list"},
+               )) as readback:
+        result = _recover(ctx)
+    assert result.state == "unknown"
+    assert result.detail == "absence_not_authoritative"
+    readback.assert_called_once()
     ctx.client.rpc.assert_not_called()
