@@ -27,8 +27,11 @@ def test_authorized_chat_invoke_real_ledger_and_receiver(tmp_path):
     receiver = IndependentFixture(tmp_path / "provider.sqlite3", b"<h1>QA</h1>", capability="chat-cap")
     migration = (MIGRATIONS / "20261016032018_write_invoke_idempotency.sql").read_text()
     grants = (MIGRATIONS / "20261016032029_write_invoke_idempotency_grants.sql").read_text()
+    context_migration = (MIGRATIONS / "20261118030000_write_recovery_context.sql").read_text()
+    auth_role = """CREATE FUNCTION auth.role() RETURNS text LANGUAGE sql STABLE AS $
+        SELECT nullif(current_setting('request.jwt.claim.role', true), '') $;"""
     try:
-        with pg_cluster(BOOTSTRAP_SQL, migration, grants) as pg:
+        with pg_cluster(BOOTSTRAP_SQL + auth_role, migration, grants, context_migration) as pg:
             keys = []
             def claim(_client, *, org_id, idempotency_key, **_kw):
                 assert org_id == ORG_A
@@ -44,6 +47,23 @@ def test_authorized_chat_invoke_real_ledger_and_receiver(tmp_path):
                 assert status == "completed"
                 row = _finalize(pg, org_id, idempotency_key, claim_token, status)
                 return WriteFinalizeResult(outcome=row["outcome"])
+            def bind(_client, *, org_id, idempotency_key, claim_token,
+                     invoke_action, connector_id, original_args):
+                # Fenced context is persisted through the actual PostgreSQL
+                # RPC, rather than bypassed in this joined-ingress test.
+                assert org_id == ORG_A
+                assert connector_id == "qa-hubspot"
+                safe = lambda value: "'" + str(value).replace("'", "''") + "'"
+                payload = json.dumps(original_args)
+                sql = (
+                    "SET ROLE service_role; SET request.jwt.claim.role = 'service_role'; "
+                    "SELECT public.bind_write_recovery_context("
+                    f"'{ORG_A}'::uuid,{safe(idempotency_key)},"
+                    f"{safe(claim_token)}::uuid,{safe(invoke_action)},"
+                    f"{safe(connector_id)},{safe(payload)}::jsonb)::text;"
+                )
+                row = json.loads(pg.psql(sql).stdout.strip())
+                return row.get("outcome") == "bound"
             def provider(_ctx, _params):
                 request = urllib.request.Request(
                     receiver.origin + "/write",
@@ -61,6 +81,7 @@ def test_authorized_chat_invoke_real_ledger_and_receiver(tmp_path):
                 client=MagicMock(), org_id=ORG_A, actor_id="actor",
                 conversation_id="conversation", turn_id="approved-turn",
                 write_idempotency_required=True,
+                connector_id="qa-hubspot",
             )
             with ExitStack() as stack:
                 for target in (
@@ -77,6 +98,7 @@ def test_authorized_chat_invoke_real_ledger_and_receiver(tmp_path):
                 stack.enter_context(patch.object(tool_service, "_write_tool_audit"))
                 stack.enter_context(patch("app.services.write_invoke_idempotency.claim_write_invoke", side_effect=claim))
                 stack.enter_context(patch("app.services.write_invoke_idempotency.finalize_write_invoke", side_effect=finalize))
+                stack.enter_context(patch("app.services.write_invoke_idempotency.bind_write_recovery_context", side_effect=bind))
                 with write_authority("human", "approval:approved-turn"):
                     first = tool_service.invoke_tool(ctx, action, {"id": "qa"})
                     second = tool_service.invoke_tool(ctx, action, {"id": "qa"})
@@ -88,5 +110,9 @@ def test_authorized_chat_invoke_real_ledger_and_receiver(tmp_path):
                 f"WHERE org_id = '{ORG_A}' AND idempotency_key = '{keys[0]}';"
             )
             assert ledger == "completed"
+            assert pg.value(
+                "SELECT connector_id FROM public.write_invoke_idempotency "
+                f"WHERE org_id = '{ORG_A}' AND idempotency_key = '{keys[0]}';"
+            ) == "qa-hubspot"
     finally:
         receiver.close()
