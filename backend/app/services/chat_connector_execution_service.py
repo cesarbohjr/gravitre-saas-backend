@@ -258,44 +258,56 @@ READ_ACTION_HINTS = frozenset(
 )
 
 
-def _bind_approved_hubspot_write_connector(
+def _bind_approved_write_connector(
     ctx: ToolContext,
     *,
     client: Any,
     org_id: str,
     environment_name: str,
+    integration: str,
     args: dict[str, Any],
 ) -> ToolContext:
-    """Bind the actual tenant-scoped HubSpot executor account before a write claim.
+    """Bind the provider account selected by a verified native/catalog executor.
 
-    No inferred ID is accepted from a response or global provider registry.
-    Explicit IDs are tenant- and environment-scoped; implicit selection uses
-    the same repository helper as the HubSpot executor. Other OAuth families
-    require their own verified identity path and are not guessed here.
+    Only enable vendors whose actual executor uses this same tenant-scoped
+    connector repository lookup. Other vendors remain subject to the
+    fail-closed recovery-binding gate until their account selection is traced.
+    This does not create a second connector-selection or credential system.
     """
     from app.connectors.repository import get_connector, get_connector_by_type
     from app.services.tool_types import ToolConnectorNotConnectedError
+
+    connector_types = {
+        "hubspot": "hubspot",  # _hubspot_connector_and_token
+        "gmail": "gmail",      # _google_vendor_token
+        "asana": "asana",      # catalog_http.executor profile
+    }
+    provider = str(integration or "").strip().lower()
+    connector_type = connector_types.get(provider)
+    if connector_type is None:
+        return ctx  # Never infer identity for an unverified executor family.
 
     explicit_id = str(args.get("connector_id") or "").strip()
     selected = (
         get_connector(client, org_id, explicit_id, environment_name=environment_name)
         if explicit_id else
-        get_connector_by_type(client, org_id, "hubspot", environment_name=environment_name)
+        get_connector_by_type(client, org_id, connector_type, environment_name=environment_name)
     )
     if not isinstance(selected, dict) or not selected.get("id"):
         raise ToolConnectorNotConnectedError(
-            "No tenant-owned HubSpot connection is available for this approved write"
+            f"No tenant-owned {provider} connection is available for this approved write"
         )
-    selected_type = str(selected.get("vendor") or selected.get("type") or "hubspot").strip().lower()
-    if selected_type not in {"hubspot", "custom"}:
+    selected_vendor = str(selected.get("vendor") or "").strip().lower()
+    selected_type = str(selected.get("type") or "").strip().lower()
+    if (selected_vendor and selected_vendor != provider) or (
+        not selected_vendor and selected_type != connector_type
+    ):
         raise ToolConnectorNotConnectedError(
-            "Approved connector does not belong to the HubSpot provider"
+            f"Approved connector does not belong to the {provider} provider"
         )
-    # A provider's connector identity may never be detached from the tenant.
     if selected.get("org_id") and str(selected["org_id"]) != str(org_id):
         raise ToolConnectorNotConnectedError("Connector tenant mismatch")
     return replace(ctx, connector_id=str(selected["id"]))
-
 
 class ChatConnectorExecutionService:
     """Maps chat requests to cataloged connector tools with governed execution."""
@@ -2306,10 +2318,11 @@ class ChatConnectorExecutionService:
                 )
                 if claim_gate is not None:
                     return claim_gate
-            if plan.kind == "write" and plan.integration == "hubspot":
-                ctx = _bind_approved_hubspot_write_connector(
+            if plan.kind == "write" and plan.integration in {"hubspot", "gmail", "asana"}:
+                ctx = _bind_approved_write_connector(
                     ctx, client=client, org_id=org_id,
-                    environment_name=environment_name, args=dict(plan.args or {}),
+                    environment_name=environment_name,
+                    integration=plan.integration, args=dict(plan.args or {}),
                 )
             # Orchestration steps never own a run, so nothing schedules their
             # source-of-record read later: prove the write before reporting it.
