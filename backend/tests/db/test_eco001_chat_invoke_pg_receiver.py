@@ -18,6 +18,7 @@ from app.services.write_invoke_idempotency import WriteClaimResult, WriteFinaliz
 from tests.db.pg_harness import MIGRATIONS, pg_cluster, requires_pg
 from tests.db.test_write_invoke_idempotency_pg import BOOTSTRAP_SQL, ORG_A, _claim, _finalize
 from tests.db.test_autonomous_independent_write_pg import IndependentFixture
+from tests.db.write_recovery_context_fixture import AUTH_ROLE_SQL, CONTEXT_SQL, bind_recovery_context
 
 pytestmark = requires_pg
 
@@ -27,11 +28,8 @@ def test_authorized_chat_invoke_real_ledger_and_receiver(tmp_path):
     receiver = IndependentFixture(tmp_path / "provider.sqlite3", b"<h1>QA</h1>", capability="chat-cap")
     migration = (MIGRATIONS / "20261016032018_write_invoke_idempotency.sql").read_text()
     grants = (MIGRATIONS / "20261016032029_write_invoke_idempotency_grants.sql").read_text()
-    context_migration = (MIGRATIONS / "20261118030000_write_recovery_context.sql").read_text()
-    auth_role = """CREATE FUNCTION auth.role() RETURNS text LANGUAGE sql STABLE
-        AS 'SELECT nullif(current_setting(''request.jwt.claim.role'', true), '''')';"""
     try:
-        with pg_cluster(BOOTSTRAP_SQL + auth_role, migration, grants, context_migration) as pg:
+        with pg_cluster(BOOTSTRAP_SQL + AUTH_ROLE_SQL, migration, grants, CONTEXT_SQL) as pg:
             keys = []
             def claim(_client, *, org_id, idempotency_key, **_kw):
                 assert org_id == ORG_A
@@ -47,23 +45,9 @@ def test_authorized_chat_invoke_real_ledger_and_receiver(tmp_path):
                 assert status == "completed"
                 row = _finalize(pg, org_id, idempotency_key, claim_token, status)
                 return WriteFinalizeResult(outcome=row["outcome"])
-            def bind(_client, *, org_id, idempotency_key, claim_token,
-                     invoke_action, connector_id, original_args):
-                # Fenced context is persisted through the actual PostgreSQL
-                # RPC, rather than bypassed in this joined-ingress test.
-                assert org_id == ORG_A
-                assert connector_id == "qa-hubspot"
-                safe = lambda value: "'" + str(value).replace("'", "''") + "'"
-                payload = json.dumps(original_args)
-                sql = (
-                    "SET ROLE service_role; SET request.jwt.claim.role = 'service_role'; "
-                    "SELECT public.bind_write_recovery_context("
-                    f"'{ORG_A}'::uuid,{safe(idempotency_key)},"
-                    f"{safe(claim_token)}::uuid,{safe(invoke_action)},"
-                    f"{safe(connector_id)},{safe(payload)}::jsonb)::text;"
-                )
-                row = json.loads(pg.psql(sql).stdout.strip())
-                return row.get("outcome") == "bound"
+            def bind(_client, **kwargs):
+                assert kwargs["connector_id"] == "qa-hubspot"
+                return bind_recovery_context(pg, **kwargs)
             def provider(_ctx, _params):
                 request = urllib.request.Request(
                     receiver.origin + "/write",
