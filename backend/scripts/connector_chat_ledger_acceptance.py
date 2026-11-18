@@ -195,7 +195,7 @@ def run():
         # Use the actual tenant-scoped connector repository. A disposable QA
         # record supplies identity only; the isolated HTTP receiver substitutes
         # for the provider and no OAuth credential is created or contacted.
-        from app.connectors.repository import create_connector, get_connector_by_type
+        from app.connectors.repository import create_connector, get_connector, get_connector_by_type
         qa_connector = create_connector(
             db, org_id, "hubspot", {"qa_isolated_receiver": True},
             created_by=requester_id, environment_name="production",
@@ -204,6 +204,9 @@ def run():
         selected = get_connector_by_type(db, org_id, "hubspot", environment_name="production")
         assert selected is not None and str(selected["id"]) == qa_connector_id
         assert str(selected.get("org_id")) == org_id
+        assert get_connector(db, qa_auto_org_id, qa_connector_id, environment_name="production") is None, (
+            "QA connector escaped the isolated organization"
+        )
 
         db.table("conversations").insert({
             "id": conversation_id, "org_id": org_id, "user_id": requester_id,
