@@ -24,6 +24,7 @@ from app.workflows import handlers
 from tests.db.pg_harness import MIGRATIONS, pg_cluster, requires_pg
 from tests.db.test_write_invoke_idempotency_pg import BOOTSTRAP_SQL, ORG_A, _claim, _finalize
 from tests.db.test_autonomous_independent_write_pg import IndependentFixture
+from tests.db.write_recovery_context_fixture import AUTH_ROLE_SQL, CONTEXT_SQL, bind_recovery_context
 
 pytestmark = requires_pg
 
@@ -74,14 +75,14 @@ def test_authorized_agent_worker_matches_independent_receiver_and_durable_ledger
             parameters=kwargs["parameters"], step_outputs={},
             client=kwargs["client"], is_dry_run=False,
         )
-        result = handlers._invoke_canvas_registered_tool(step, action, {"id": "agent-qa"})
+        result = handlers._invoke_canvas_registered_tool(step, action, {"id": "agent-qa", "connector_id": "qa-hubspot"})
         assert result.success
         return ("completed", [], [], False)
 
     job = WorkflowRunJob(run_id=run_id, org_id=ORG_A, workflow_id="qa-workflow")
     raw_job = json.dumps(job.__dict__)
     try:
-        with pg_cluster(BOOTSTRAP_SQL, migration, grants) as pg:
+        with pg_cluster(BOOTSTRAP_SQL + AUTH_ROLE_SQL, migration, grants, CONTEXT_SQL) as pg:
             def claim(_client, *, org_id, idempotency_key, **_kw):
                 assert org_id == ORG_A
                 keys.append(idempotency_key)
@@ -97,6 +98,10 @@ def test_authorized_agent_worker_matches_independent_receiver_and_durable_ledger
                 assert org_id == ORG_A and status == "completed"
                 row = _finalize(pg, org_id, idempotency_key, claim_token, status)
                 return WriteFinalizeResult(outcome=row["outcome"])
+
+            def bind(_client, **kwargs):
+                assert kwargs["connector_id"] == "qa-hubspot"
+                return bind_recovery_context(pg, **kwargs)
 
             with ExitStack() as stack:
                 stack.enter_context(patch("app.workers.workflow_worker.get_supabase_client", return_value=client))
@@ -128,6 +133,8 @@ def test_authorized_agent_worker_matches_independent_receiver_and_durable_ledger
                                           side_effect=claim))
                 stack.enter_context(patch("app.services.write_invoke_idempotency.finalize_write_invoke",
                                           side_effect=finalize))
+                stack.enter_context(patch("app.services.write_invoke_idempotency.bind_write_recovery_context",
+                                          side_effect=bind))
                 stack.enter_context(patch("app.workers.workflow_queue.assert_current_workflow_claim_live"))
                 assert process_workflow_run_job(settings, raw_job) is True
                 assert receiver.writes == 1
@@ -140,6 +147,10 @@ def test_authorized_agent_worker_matches_independent_receiver_and_durable_ledger
                 "SELECT status FROM public.write_invoke_idempotency "
                 f"WHERE org_id='{ORG_A}' AND idempotency_key='{keys[0]}'"
             ) == "completed"
+            assert pg.value(
+                "SELECT connector_id FROM public.write_invoke_idempotency "
+                f"WHERE org_id='{ORG_A}' AND idempotency_key='{keys[0]}'"
+            ) == "qa-hubspot"
             assert pg.value(
                 "SELECT count(*) FROM public.write_invoke_idempotency "
                 f"WHERE org_id='{ORG_A}' AND idempotency_key='{keys[0]}'"
