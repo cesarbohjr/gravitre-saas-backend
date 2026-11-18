@@ -1062,3 +1062,28 @@ async def test_eco005_missing_connected_account_does_not_consume_chat_approval(c
     connector_service._registry.execute_invoke_action.assert_not_awaited()
     connector_service._state.update_task_state.assert_not_awaited()
     connector_service._state.update_task_state_from.assert_not_awaited()
+
+
+@pytest.mark.parametrize("inactive_status", [
+    "needs_connection", "pending_auth", "disconnected", "disabled", "revoked",
+])
+def test_eco005_explicit_unconnected_account_cannot_be_bound_for_write(inactive_status):
+    from types import SimpleNamespace
+    from app.services.chat_connector_execution_service import _bind_approved_write_connector
+    from app.services.tool_types import ToolContext, ToolConnectorNotConnectedError
+
+    ctx = ToolContext(
+        settings=SimpleNamespace(), client=MagicMock(),
+        org_id="tenant-a", actor_id="user-a",
+    )
+    with patch("app.connectors.repository.get_connector", return_value={
+        "id": "stub-1", "org_id": "tenant-a",
+        "vendor": "hubspot", "status": inactive_status,
+    }):
+        with pytest.raises(ToolConnectorNotConnectedError, match="not connected"):
+            _bind_approved_write_connector(
+                ctx, client=ctx.client, org_id="tenant-a",
+                environment_name="production", integration="hubspot",
+                args={"connector_id": "stub-1"},
+            )
+    assert ctx.connector_id is None
