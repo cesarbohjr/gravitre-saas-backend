@@ -247,6 +247,9 @@ class UnifiedRetrievalService:
                     rag_section = fence_external_content(
                         raw_kb, kind="knowledge", source_id="unified_retrieval"
                     ).fenced_block
+            except PermissionError:
+                # Authorization denial is not an optional-source outage.
+                raise
             except Exception as exc:  # noqa: BLE001
                 logger.debug("unified_retrieval_knowledge_skipped org_id=%s error=%s", org_id, exc)
                 metrics = {"fallback": "knowledge_unavailable", "error": str(exc)}
@@ -330,6 +333,9 @@ class UnifiedRetrievalService:
                             stopped_at="knowledge_graph",
                             query=query,
                         )
+            except PermissionError:
+                # Authorization denial is not an optional-source outage.
+                raise
             except Exception as exc:  # noqa: BLE001
                 logger.debug("unified_retrieval_graph_skipped org_id=%s error=%s", org_id, exc)
 
@@ -357,6 +363,9 @@ class UnifiedRetrievalService:
                     metrics["hybrid_memory_fusion"] = True
                     metrics["hybrid_memory_candidates"] = len(hybrid_rows)
                     hybrid_fused = True
+            except PermissionError:
+                # Authorization denial is not an optional-source outage.
+                raise
             except Exception as exc:  # noqa: BLE001
                 logger.debug("unified_retrieval_hybrid_fusion_skipped org_id=%s error=%s", org_id, exc)
 
@@ -427,6 +436,9 @@ class UnifiedRetrievalService:
                     metrics = dict(metrics or {})
                     metrics["intelligence_pack_sources"] = True
                     metrics["intelligence_pack_result_count"] = len(pack_rows)
+            except PermissionError:
+                # Authorization denial is not an optional-source outage.
+                raise
             except Exception as exc:  # noqa: BLE001
                 logger.warning("unified_retrieval_pack_sources_skipped org_id=%s error=%s", org_id, exc)
                 pack_payload = {"rows": [], "pack_ids": [], "error": str(exc)}
@@ -475,6 +487,9 @@ class UnifiedRetrievalService:
                         metrics = dict(metrics or {})
                         metrics["internet_research"] = True
                         metrics["internet_result_count"] = len(internet_rows)
+                except PermissionError:
+                    # Authorization denial is not an optional-source outage.
+                    raise
                 except Exception as exc:  # noqa: BLE001
                     logger.warning("unified_retrieval_internet_skipped org_id=%s error=%s", org_id, exc)
                     internet_payload = {"results": [], "sources": [], "totalResults": 0, "error": str(exc)}
