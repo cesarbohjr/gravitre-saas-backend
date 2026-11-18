@@ -50,8 +50,8 @@ def process_due_write_recoveries(
             action = str(row["invoke_action"])
             key = str(row["idempotency_key"])
             args = row["original_args"]
-            lease = str(row["recovery_lease_token"])
-            if not all((org, connector, action, key)) or not isinstance(args, dict):
+            lease = str(row.get("recovery_lease_token") or "").strip()
+            if not all((org, connector, action, key, lease)) or not isinstance(args, dict):
                 stats["unknown"] += 1
                 continue
             ctx = context_factory(org, connector)
