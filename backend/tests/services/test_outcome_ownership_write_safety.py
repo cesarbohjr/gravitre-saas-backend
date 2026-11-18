@@ -30,6 +30,7 @@ def tool_ctx() -> ToolContext:
         client=MagicMock(),
         org_id="org-1",
         actor_id="user-1",
+        connector_id="qa-slack-connector",
         run_id="run-1",
         step_id="step-1",
         step_type="slack_post_message",
@@ -57,6 +58,7 @@ def _invoke_with(tool_ctx: ToolContext, action: str, impl):
                         result = invoke_tool(tool_ctx, action, {})
                         if is_write_action(action):
                             bind_context.assert_called_once()
+                            assert bind_context.call_args.kwargs["connector_id"] == "qa-slack-connector"
                         else:
                             bind_context.assert_not_called()
                         return result
