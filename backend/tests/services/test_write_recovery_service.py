@@ -9,7 +9,7 @@ from app.services.write_recovery_service import recover_uncertain_write
 def _ctx(status="uncertain", action="hubspot.contacts.create"):
     client = MagicMock()
     client.table.return_value.select.return_value.eq.return_value.eq.return_value.limit.return_value.execute.return_value.data = [
-        {"status": status, "invoke_action": action, "original_args": {"email": "a@example.test"}, "connector_id": "connector-1"}
+        {"status": status, "invoke_action": action, "original_args": {"email": "a@example.test"}, "connector_id": "connector-1", "recovery_lease_token": "lease-1"}
     ]
     client.rpc.return_value.execute.return_value.data = {"outcome": "reconciled"}
     return SimpleNamespace(client=client, org_id="org-1", connector_id="connector-1")
@@ -108,3 +108,22 @@ def test_unleased_recovery_cannot_read_provider_or_ledger():
     ctx.client.table.assert_not_called()
     ctx.client.rpc.assert_not_called()
     readback.assert_not_called()
+
+
+def test_stale_recovery_lease_never_reads_provider_or_settles():
+    ctx = _ctx()
+    ctx.client.table.return_value.select.return_value.eq.return_value.eq.return_value.limit.return_value.execute.return_value.data = [
+        {
+            "status": "uncertain",
+            "invoke_action": "hubspot.contacts.create",
+            "original_args": {"email": "a@example.test"},
+            "connector_id": "connector-1",
+            "recovery_lease_token": "newer-fenced-lease",
+        },
+    ]
+    with patch("app.services.write_recovery_service.reconcile_uncertain_write") as readback:
+        outcome = _recover(ctx)
+    assert outcome.state == "rejected"
+    assert outcome.detail == "recovery_lease_mismatch"
+    readback.assert_not_called()
+    ctx.client.rpc.assert_not_called()
