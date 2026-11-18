@@ -19,6 +19,7 @@ def _recover(ctx):
     return recover_uncertain_write(
         ctx=ctx, idempotency_key="chat:key",
         invoke_action="hubspot.contacts.create", original_args={"email": "a@example.test"},
+        recovery_lease_token="lease-1",
     )
 
 
@@ -31,7 +32,8 @@ def test_applied_provider_effect_is_persisted_without_write_dispatch():
     assert outcome.state == "completed"
     readback.assert_called_once()
     args = ctx.client.rpc.call_args.args
-    assert args[0] == "reconcile_write_invoke_idempotency"
+    assert args[0] == "settle_leased_write_recovery"
+    assert args[1]["p_lease_token"] == "lease-1"
     assert args[1]["p_status"] == "completed"
     assert args[1]["p_result"]["verification"]["state"] == "applied"
 
