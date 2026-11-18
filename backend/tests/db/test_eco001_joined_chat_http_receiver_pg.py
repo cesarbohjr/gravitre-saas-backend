@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import json
 from contextlib import ExitStack
+from dataclasses import replace
 import time
 import urllib.request
 from types import SimpleNamespace
@@ -37,6 +38,7 @@ from app.services.write_invoke_idempotency import WriteClaimResult, WriteFinaliz
 from tests.db.pg_harness import MIGRATIONS, pg_cluster, requires_pg
 from tests.db.test_write_invoke_idempotency_pg import BOOTSTRAP_SQL, ORG_A, _claim, _finalize
 from tests.db.test_autonomous_independent_write_pg import IndependentFixture
+from tests.db.write_recovery_context_fixture import AUTH_ROLE_SQL, CONTEXT_SQL, bind_recovery_context
 
 pytestmark = requires_pg
 ACTION = "hubspot.contacts.create"
@@ -219,6 +221,8 @@ def test_signed_approved_chat_http_matches_independent_receiver_and_durable_ledg
         durable = journey != "ledger"
         cluster = canonical_pg_cluster() if durable else pg_cluster(BOOTSTRAP_SQL, migration, grants)
         with cluster as pg:
+            pg.psql(AUTH_ROLE_SQL)
+            pg.psql(CONTEXT_SQL)
             if durable:
                 pg.psql(f"INSERT INTO public.organizations VALUES ('{ORG_A}')")
                 # Production supports the nonterminal verification state; the
@@ -249,6 +253,10 @@ def test_signed_approved_chat_http_matches_independent_receiver_and_durable_ledg
                 row = _finalize(pg, org_id, idempotency_key, claim_token, status)
                 return WriteFinalizeResult(outcome=row["outcome"])
 
+            def bind(_client, **kwargs):
+                assert kwargs["connector_id"] == "isolated-qa"
+                return bind_recovery_context(pg, **kwargs)
+
             def provider(_ctx, _params):
                 assert db.owner_checks >= db.required_owner_checks
                 request = urllib.request.Request(
@@ -264,7 +272,11 @@ def test_signed_approved_chat_http_matches_independent_receiver_and_durable_ledg
 
             async def registry_invoke(*, ctx, invoke_action, args, tool_name, **_kwargs):
                 assert invoke_action == ACTION and tool_name == plan.tool_name
-                observed = tool_service.invoke_tool(ctx, invoke_action, args)
+                # Fixture has an explicit connected provider account; do not
+                # fabricate a connector in the production tool service.
+                observed = tool_service.invoke_tool(
+                    replace(ctx, connector_id="isolated-qa"), invoke_action, args,
+                )
                 return {
                     "success": observed.success, "connector_id": "isolated-qa",
                     "result": observed.data or {},
@@ -335,6 +347,7 @@ def test_signed_approved_chat_http_matches_independent_receiver_and_durable_ledg
                     patch("app.capability_ontology.resolver.resolve_capability_invoke_action", return_value=None),
                     patch("app.services.write_invoke_idempotency.claim_write_invoke", side_effect=claim),
                     patch("app.services.write_invoke_idempotency.finalize_write_invoke", side_effect=finalize),
+                    patch("app.services.write_invoke_idempotency.bind_write_recovery_context", side_effect=bind),
                     ):
                         patch_stack.enter_context(context)
                     if durable:
