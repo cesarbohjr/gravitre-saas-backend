@@ -180,7 +180,7 @@ def test_reconcile_finds_created_record_by_natural_key(monkeypatch) -> None:
     assert out.evidence["method"] == "reconcile_lookup"
 
 
-def test_reconcile_empty_filtered_search_proves_absence(monkeypatch) -> None:
+def test_reconcile_empty_filtered_search_is_inconclusive(monkeypatch) -> None:
     monkeypatch.setattr(recon, "_registered", lambda a: a if a.endswith(".search") else None)
     monkeypatch.setattr(
         "app.services.sealed_read_execution.invoke_compiled_read",
@@ -189,7 +189,9 @@ def test_reconcile_empty_filtered_search_proves_absence(monkeypatch) -> None:
     out = recon.reconcile_uncertain_write(
         ctx=_lookup_ctx(), invoke_action="hubspot.contacts.create", args={"email": "new@b.co"}
     )
-    assert out.state == "not_applied"
+    assert out.state == "unknown"
+    assert out.detail == "empty_lookup_not_authoritative"
+    assert out.evidence.get("authoritative_absence") is not True
 
 
 def test_reconcile_unfiltered_page_without_record_is_not_proof(monkeypatch) -> None:

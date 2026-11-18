@@ -11,9 +11,9 @@ stuck. This module reads the provider back and decides:
 * ``unknown``      — the source of record could not settle it → stay blocked and
                      tell the user exactly what is unconfirmed.
 
-``not_applied`` is only concluded from a positive, filtered read that returned no
-records, never from "the first page did not contain it": an unfiltered list that
-happens not to include the record is not proof of absence.
+The generic lookups here can confirm a matching record. An empty search or
+list response cannot establish authoritative absence, and a field mismatch may
+reflect provider formatting. Both observations leave the write uncertain.
 """
 from __future__ import annotations
 

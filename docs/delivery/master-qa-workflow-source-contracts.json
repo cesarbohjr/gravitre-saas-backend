@@ -1716,7 +1716,7 @@
           },
           {
             "name": "Run matched independent receiver and database acceptance",
-            "run": "mkdir -p ../autonomous-write-evidence\npython -m pytest -q --no-header \\\n  tests/db/test_autonomous_independent_write_pg.py \\\n  tests/db/test_autonomous_atomic_approval_pg.py \\\n  tests/db/test_autonomous_full_dispatcher_pg.py \\\n  tests/db/test_write_invoke_idempotency_pg.py \\\n  tests/services/test_autonomous_final_write_authority.py \\\n  tests/services/test_autonomous_write_attempt_budget.py \\\n  tests/services/test_autonomous_workflow_context.py \\\n  tests/services/test_autonomous_worker_dispatch_boundary.py \\\n  tests/services/test_autonomous_invoke_receiver_integration.py \\\n  tests/services/test_react_autonomous_admission_integration.py \\\n  --junitxml=../autonomous-write-evidence/junit.xml\n"
+            "run": "mkdir -p ../autonomous-write-evidence\npython -m pytest -q --no-header \\\n  tests/db/test_autonomous_independent_write_pg.py \\\n  tests/db/test_autonomous_atomic_approval_pg.py \\\n  tests/db/test_autonomous_full_dispatcher_pg.py \\\n  tests/db/test_write_invoke_idempotency_pg.py \\\n  tests/db/test_write_recovery_leases_pg.py \\\n  tests/services/test_autonomous_final_write_authority.py \\\n  tests/services/test_autonomous_write_attempt_budget.py \\\n  tests/services/test_autonomous_workflow_context.py \\\n  tests/services/test_autonomous_worker_dispatch_boundary.py \\\n  tests/services/test_autonomous_invoke_receiver_integration.py \\\n  tests/services/test_react_autonomous_admission_integration.py \\\n  --junitxml=../autonomous-write-evidence/junit.xml\n"
           },
           {
             "name": "Compile strict SHA-bound evidence manifest",
