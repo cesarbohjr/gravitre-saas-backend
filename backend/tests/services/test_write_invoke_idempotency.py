@@ -774,3 +774,66 @@ def test_eco002_explicit_repeat_nonce_still_produces_distinct_claim():
         {**args, "_gravitre_idempotency_key": first, "_write_idempotency_nonce": "repeat-approved"},
     )
     assert first != repeated
+
+
+@pytest.mark.parametrize("cleanup_success", [True, False])
+def test_eco002_recovery_bind_rejection_fails_closed_and_fences_claim(cleanup_success):
+    """An unbound claim never reaches a provider and is released only by its token."""
+    from contextlib import ExitStack
+    from unittest.mock import patch
+    from app.services import tool_service
+    from app.services.write_authority import write_authority
+    from app.services.write_invoke_idempotency import (
+        WriteFinalizeResult, WriteIdempotencyUnavailable,
+    )
+
+    action = "hubspot.contacts.update"
+    provider = MagicMock(return_value=NormalizedResult(
+        success=True, action=action, data={"id": "contact-1"},
+    ))
+    ctx = ToolContext(
+        settings=SimpleNamespace(
+            write_authority_mode="enforce",
+            write_invoke_idempotency_enabled=True,
+            private_connector_runtime_enabled=False,
+        ),
+        client=MagicMock(), org_id="org-qa", actor_id="member-qa",
+        conversation_id="conv-qa", turn_id="approved-turn",
+        connector_id="qa-hubspot", write_idempotency_required=True,
+    )
+    with ExitStack() as stack:
+        stack.enter_context(patch("app.services.capability_availability.is_capability_action", return_value=False))
+        stack.enter_context(patch("app.capability_ontology.resolver.resolve_capability_invoke_action", return_value=None))
+        stack.enter_context(patch("app.services.conversation_write_guard.assert_org_write_allowed"))
+        stack.enter_context(patch("app.services.write_preflight.enforce_invoke_write_preflight", side_effect=lambda c, a, p: p))
+        stack.enter_context(patch.object(tool_service, "_resolve_tool_executor", return_value=provider))
+        stack.enter_context(patch("app.services.hipaa_service.enforce_hipaa_for_tool_invoke"))
+        stack.enter_context(patch("app.services.agent_guardrail_limits.enforce_agent_guardrail_limits"))
+        stack.enter_context(patch.object(tool_service, "assert_agent_tool_permission"))
+        stack.enter_context(patch.object(tool_service, "_write_tool_audit"))
+        stack.enter_context(patch("app.workers.workflow_queue.assert_current_workflow_claim_live"))
+        claim = stack.enter_context(patch(
+            "app.services.write_invoke_idempotency.claim_write_invoke",
+            return_value=WriteClaimResult(outcome="claimed", claim_token="qa-fence"),
+        ))
+        bind = stack.enter_context(patch(
+            "app.services.write_invoke_idempotency.bind_write_recovery_context",
+            return_value=False,
+        ))
+        finalize = stack.enter_context(patch(
+            "app.services.write_invoke_idempotency.finalize_write_invoke",
+            return_value=WriteFinalizeResult(
+                outcome="finalized" if cleanup_success else "error",
+            ),
+        ))
+        with write_authority("human", "approval:approved-turn"):
+            with pytest.raises(WriteIdempotencyUnavailable, match="recovery context"):
+                tool_service.invoke_tool(ctx, action, {"id": "contact-1"})
+    claim.assert_called_once()
+    bind.assert_called_once()
+    assert bind.call_args.kwargs["claim_token"] == "qa-fence"
+    assert bind.call_args.kwargs["connector_id"] == "qa-hubspot"
+    finalize.assert_called_once()
+    assert finalize.call_args.kwargs["claim_token"] == "qa-fence"
+    assert finalize.call_args.kwargs["status"] == "failed"
+    provider.assert_not_called()
