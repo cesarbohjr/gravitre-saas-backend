@@ -179,7 +179,12 @@ def test_scheduled_recovery_settles_independent_receiver_without_redispatch(
             return ReconciliationResult(
                 "not_applied", "requested_values_absent",
                 lookup_action="hubspot.contacts.search",
-                evidence={"verified": True, "receiver_count": 0},
+                evidence={
+                    "verified": True,
+                    "authoritative_absence": True,
+                    "receiver_count": 0,
+                    "readback_scope": "isolated_independent_receiver",
+                },
             )
 
         with patch(
