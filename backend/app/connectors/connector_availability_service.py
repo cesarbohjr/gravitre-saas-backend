@@ -401,6 +401,10 @@ def list_connector_availability(
                     action_key=action_key,
                 )
             )
+        except PermissionError:
+            # A tenant authorization denial is not a token refresh problem
+            # and must not be relabelled as an expired OAuth connection.
+            raise
         except Exception as exc:  # noqa: BLE001 — one bad connector must not kill chat/listing
             vendor = str(row.get("vendor") or row.get("type") or "unknown")
             logger.warning(
@@ -427,9 +431,9 @@ def list_connector_availability(
                     "write_available": False,
                     "last_checked_at": _utc_now(),
                     "source_of_truth": SOURCE_OF_TRUTH,
-                    "blocking_reason": "token_expired",
-                    "recovery_action": f"Reconnect {vendor.title()} on the Connectors page.",
-                    "auth_status": "auth_expired",
+                    "blocking_reason": "availability_check_failed",
+                    "recovery_action": f"Unable to verify {vendor.title()} connection readiness. Retry the status check.",
+                    "auth_status": "unknown",
                     "display_status": "error",
                     "status": "error",
                     "connected": False,
