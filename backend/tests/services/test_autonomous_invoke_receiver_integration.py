@@ -92,10 +92,18 @@ def test_real_invoke_tool_never_reissues_uncertain_autonomous_write(tmp_path, pr
             stack.enter_context(patch("app.services.workflow_approval_scope.block_invoke_by_approval_scope", return_value=None))
             stack.enter_context(patch("app.services.compensation_service.should_track_compensation", return_value=False))
             stack.enter_context(patch("app.services.write_invoke_idempotency.claim_approved_autonomous_write", side_effect=lambda *a,**k:next(claims)))
+            # The simulated claim must model recovery-context persistence before
+            # the provider call; production never bypasses this required RPC.
+            bound = stack.enter_context(patch(
+                "app.services.write_invoke_idempotency.bind_write_recovery_context",
+                return_value=True,
+            ))
             finalize = stack.enter_context(patch("app.services.write_invoke_idempotency.finalize_write_invoke", return_value=WriteFinalizeResult(outcome="finalized")))
             stack.enter_context(patch("app.workers.workflow_queue.assert_current_workflow_claim_live"))
             assert process_workflow_run_job(settings, raw_job) is True
             assert receiver.writes == 1
+            bound.assert_called_once()
+            assert bound.call_args.kwargs["claim_token"] == "first"
             assert finalize.call_args.kwargs["status"] == ("completed" if provider_reports_success else "uncertain")
             # Retry enters the same real worker/handler/invoke path and is
             # refused by the durable claim response before any provider call.
