@@ -100,3 +100,23 @@ def test_scheduler_frozen_tool_context_recovers_without_mutating_credentials():
     assert recovered.org_id == original.org_id
     assert recovered.connector_id == original.connector_id
     assert recover.call_args.kwargs["recovery_lease_token"] == "lease-a"
+
+
+def test_queue_row_without_lease_is_not_given_to_provider_readback():
+    row = {
+        "org_id": "org-a", "connector_id": "conn-a",
+        "invoke_action": "hubspot.contacts.create",
+        "idempotency_key": "claim-a", "recovery_lease_token": None,
+        "original_args": {"email": "a@example.test"},
+    }
+    client = _service([row])
+    with patch("app.services.write_recovery_worker.recover_uncertain_write") as recover:
+        with patch("app.services.write_recovery_worker.logger") as _log:
+            context_factory = MagicMock()
+            stats = process_due_write_recoveries(
+                service_client=client, context_factory=context_factory,
+            )
+    assert stats["seen"] == 1
+    assert stats["unknown"] == 1
+    context_factory.assert_not_called()
+    recover.assert_not_called()
