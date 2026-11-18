@@ -821,6 +821,18 @@
         "scoped_provider_read_write_receipts": false,
         "exact_head_test_verified": false,
         "certified": false
+      },
+      "account_claim_boundary_20261118": {
+        "engineering_status": "SOURCE_REPAIR_COMMITTED_VERIFICATION_PENDING",
+        "owner": "PR611",
+        "source": "backend/app/services/chat_connector_execution_service.py",
+        "tests": "backend/tests/services/test_chat_connector_execution.py",
+        "repair": "Exact tenant-owned HubSpot/Gmail/Asana connector selection is performed before consuming pending Chat approval. Explicit unconnected/disconnected/revoked account rows fail before claim or provider dispatch.",
+        "confirmed_live_third_party_receipts": false,
+        "complete_action_scope_evidence": false,
+        "exact_head_targeted_test_passed": false,
+        "provider_readback_and_rollback_pending": true,
+        "certified": false
       }
     },
     {
@@ -869,7 +881,35 @@
       ],
       "partial_test_evidence": null,
       "audit_evidence_class": "SOURCE_CANDIDATE_REQUIRES_RUNTIME_PROOF",
-      "audit_observation": "Original audit and source candidate require caller/runtime evidence; no final root-cause claim."
+      "audit_observation": "Original audit and source candidate require caller/runtime evidence; no final root-cause claim.",
+      "source_owner_inventory_20261118": {
+        "engineering_status": "SOURCE_OWNER_GRAPH_AND_ONE_REDUNDANT_CACHE_RETIRED_TEST_PENDING",
+        "owner": "PR611",
+        "evidence_document": "docs/delivery/eco-006-caller-owner-inventory-2026-11-18.md",
+        "canonical_executor": "backend/app/services/tool_service.py",
+        "canonical_discovery": "backend/app/services/connector_execution_matrix.py",
+        "removed_redundancy": "Zero-arg chat_tool_visibility._dynamic_registry_keys lru_cache removed; canonical registry-fingerprint cache retained",
+        "test": "backend/tests/services/test_chat_tool_visibility.py",
+        "source_active_candidates": [
+          "ChatConnectorExecutionService",
+          "ToolRegistry",
+          "workflow handlers",
+          "Agent/ReAct",
+          "prospecting Plays",
+          "extension bridge"
+        ],
+        "runtime_classification": "NOT_PROVEN; source-only inventory",
+        "legacy_execution_paths_retired": false,
+        "exact_head_test_passed": false,
+        "certified": false,
+        "remaining": [
+          "deployed runtime caller correlation",
+          "historical state and flags",
+          "independent provider outcomes",
+          "owner-approved safe legacy retirement",
+          "rollback and exact-SHA acceptance"
+        ]
+      }
     },
     {
       "finding_id": "ECO-007",
