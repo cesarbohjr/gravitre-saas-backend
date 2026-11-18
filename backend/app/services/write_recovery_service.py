@@ -99,7 +99,7 @@ def recover_uncertain_write(
         # A negative result is actionable only when the read is authoritative.
         # In particular, list pagination and unsupported action shapes cannot
         # establish absence.
-        if observed.detail not in ("requested_values_absent",) and not observed.detail.startswith("no_record_with_"):
+        if not observed.evidence.get("authoritative_absence"):
             return RecoveryResult("unknown", "absence_not_authoritative")
         payload = {
             "success": False, "action": invoke_action,
