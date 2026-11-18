@@ -452,6 +452,10 @@ def search_department_memories(
     try:
         r = client.rpc("agent_memory_search_by_department", payload).execute()
         rows = list(r.data or [])
+    except (PermissionError, HTTPException):
+        # Only a missing/unsupported RPC may justify fallback; never use
+        # alternate table access after an explicit authorization denial.
+        raise
     except Exception:  # noqa: BLE001
         # Fallback when RPC not yet migrated: filter by department_id directly.
         rows = (
@@ -576,8 +580,9 @@ def build_task_retrieval_context(
                 query=task.strip(),
                 top_k=top_k,
             )
-        except PermissionError:
-            # A denied agent/org scope is not an empty-memory result.
+        except (PermissionError, HTTPException):
+            # An unknown/unowned agent raises HTTP 404; that is not
+            # an empty-memory result and cannot be swallowed.
             raise
         except Exception:  # noqa: BLE001
             context["memories"] = []
@@ -604,8 +609,8 @@ def build_task_retrieval_context(
                 }
                 for row in rows
             ]
-        except PermissionError:
-            # Never mask department/agent assignment access denial.
+        except (PermissionError, HTTPException):
+            # Preserve department/agent assignment denial.
             raise
         except Exception:  # noqa: BLE001
             context["rag_chunks"] = []
