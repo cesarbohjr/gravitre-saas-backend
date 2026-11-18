@@ -422,6 +422,46 @@
           "live provider receipts and complete cross-surface acceptance"
         ],
         "engineering_certified": false
+      },
+      "exact_head_connector_chat_evidence": {
+        "development_head_sha": "980eace16daa3b881d9e7d4d3a7edfb39ea88b90",
+        "github_core_run_id": 44341558359,
+        "job_id": 134935375838,
+        "result": "PASS",
+        "verified_items": [
+          "canonical connector_chat ledger completed",
+          "two expected synthetic provider writes",
+          "approval replay blocked 409",
+          "inflight revocation rejected 409",
+          "rejected approval has no unauthorized ledger claim",
+          "conversation pending state persisted and cleared",
+          "isolated provider worker crash/restart blocked duplicate write"
+        ],
+        "provider_is_synthetic": true,
+        "physical_provider_readback_verified": false,
+        "postgre_receiver_gov_run_id": 44341558249,
+        "governed_development_result": "success",
+        "finding_certified": false,
+        "original_criteria_still_open": [
+          "full actual provider readback",
+          "all caller ingress and revocation continuity",
+          "complete exact-head suite and rollback evidence",
+          "owner approval"
+        ]
+      },
+      "next_recovery_authority_batch": {
+        "state": "CODE_COMMITTED_TARGETED_TESTS_PENDING",
+        "write_recovery_service_commit": "23e1b96439304c1f544be3ae52d3a7754387981b",
+        "service_test_commit": "939de78f2582e87aaea5ab06039469e4ede3be8e",
+        "worker_fixture_commit": "5aec4e85782bf7c17f9b8f9323c215cbf35ecd0d",
+        "paths": [
+          "backend/app/services/write_recovery_service.py",
+          "backend/tests/services/test_write_recovery_service.py",
+          "backend/tests/services/test_write_recovery_worker.py"
+        ],
+        "contract": "Reject an unleased recovery before tenant ledger lookup or provider readback; preserve leased settlement and unknown defer semantics.",
+        "exact_head_pass": false,
+        "certified": false
       }
     },
     {
