@@ -5434,6 +5434,21 @@ def invoke_tool(ctx: ToolContext, action: str, params: dict[str, Any] | None = N
                 code="write_idempotency_unavailable",
             )
         write_claim_token = claim.claim_token
+        # Bind the exact provider request to the fenced ledger claim before
+        # dispatch. Without this, restart recovery cannot safely identify
+        # which connector and arguments produced an uncertain outcome.
+        from app.services.write_invoke_idempotency import bind_write_recovery_context
+        recovery_connector_id = str(params.get("connector_id") or ctx.connector_id or "")
+        if not bind_write_recovery_context(
+            ctx.client, org_id=ctx.org_id,
+            idempotency_key=write_idempotency_key,
+            claim_token=write_claim_token, invoke_action=action,
+            connector_id=recovery_connector_id, original_args=params,
+        ):
+            raise WriteIdempotencyUnavailable(
+                "Durable recovery context unavailable; refusing provider dispatch",
+                code="write_idempotency_unavailable",
+            )
         params = inject_provider_idempotency(params, write_idempotency_key)
 
     # Last stop check before the provider call, and the record a cancelled
