@@ -169,7 +169,10 @@ async def test_execute_plan_uses_bound_invoke_action():
     proof.compiled_parameters = dict(plan.args)
     proof.user_message = MagicMock(return_value="")
 
-    with patch("app.services.write_preflight.compile_write_for_context", return_value=proof):
+    with patch("app.services.write_preflight.compile_write_for_context", return_value=proof), patch(
+        "app.connectors.repository.get_connector_by_type",
+        return_value={"id": "qa-hubspot-account", "org_id": "org-1", "vendor": "hubspot"},
+    ):
         result = await service.execute_plan(
             org_id="org-1",
             user_id="user-1",
@@ -185,6 +188,7 @@ async def test_execute_plan_uses_bound_invoke_action():
     assert call["invoke_action"] == "hubspot.contacts.create"
     assert call["tool_name"] == "hubspot_contacts_create"
     assert call["ctx"].write_idempotency_required is True
+    assert call["ctx"].connector_id == "qa-hubspot-account"
     assert call["ctx"].turn_id == "queue-approval-1"
 
 
