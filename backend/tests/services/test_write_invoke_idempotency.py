@@ -259,10 +259,15 @@ def test_queued_write_provider_success_with_uncommitted_ledger_is_uncertain():
             "app.services.write_invoke_idempotency.finalize_write_invoke",
             return_value=WriteFinalizeResult(outcome="error", reason="finalize_failed"),
         ))
+        bound = stack.enter_context(patch(
+            "app.services.write_invoke_idempotency.bind_write_recovery_context",
+            return_value=True,
+        ))
         with write_authority("human", "approval:approved-queue-id"):
             result = tool_service.invoke_tool(ctx, action, {"id": "isolated-contact"})
     assert provider_calls == [("approved-queue-id", "isolated-contact")]
     claim.assert_called_once()
+    bound.assert_called_once()
     assert claim.call_args.kwargs["org_id"] == "org-qa"
     assert claim.call_args.kwargs["invoke_action"] == action
     finalize.assert_called_once()
@@ -315,9 +320,14 @@ def test_eco001_pre_provider_ownership_rejection_finalizes_claim_and_blocks_disp
             "app.services.write_invoke_idempotency.finalize_write_invoke",
             return_value=WriteFinalizeResult(outcome="finalized"),
         ))
+        bound = stack.enter_context(patch(
+            "app.services.write_invoke_idempotency.bind_write_recovery_context",
+            return_value=True,
+        ))
         with write_authority("human", "approval:approved-queue-id"):
             result = tool_service.invoke_tool(ctx, action, {"id": "isolated-contact"})
     claim.assert_called_once()
+    bound.assert_called_once()
     provider.assert_not_called()
     finalize.assert_called_once()
     assert finalize.call_args.kwargs["status"] == "failed"
@@ -367,10 +377,15 @@ def test_eco001_pre_provider_ownership_rejection_with_unconfirmed_finalization_f
             "app.services.write_invoke_idempotency.finalize_write_invoke",
             return_value=WriteFinalizeResult(outcome="error", reason="ledger_unavailable"),
         ))
+        bound = stack.enter_context(patch(
+            "app.services.write_invoke_idempotency.bind_write_recovery_context",
+            return_value=True,
+        ))
         with write_authority("human", "approval:approved-queue-id"):
             with pytest.raises(WriteIdempotencyUnavailable) as raised:
                 tool_service.invoke_tool(ctx, action, {"id": "isolated-contact"})
     claim.assert_called_once()
+    bound.assert_called_once()
     provider.assert_not_called()
     finalize.assert_called_once()
     assert finalize.call_args.kwargs["status"] == "failed"
@@ -423,10 +438,15 @@ def test_eco001_pre_provider_approval_revocation_finalizes_claim_without_dispatc
             "app.services.write_invoke_idempotency.finalize_write_invoke",
             return_value=WriteFinalizeResult(outcome="finalized"),
         ))
+        bound = stack.enter_context(patch(
+            "app.services.write_invoke_idempotency.bind_write_recovery_context",
+            return_value=True,
+        ))
         with write_authority("run", "run-qa"):
             result = tool_service.invoke_tool(ctx, action, {"id": "isolated-contact"})
     assert approval_check.call_count >= 2
     claim.assert_called_once()
+    bound.assert_called_once()
     provider.assert_not_called()
     finalize.assert_called_once()
     assert finalize.call_args.kwargs["status"] == "failed"
@@ -475,9 +495,14 @@ def test_eco001_provider_returned_failure_is_uncertain_and_claim_fenced():
             "app.services.write_invoke_idempotency.finalize_write_invoke",
             return_value=WriteFinalizeResult(outcome="finalized"),
         ))
+        bound = stack.enter_context(patch(
+            "app.services.write_invoke_idempotency.bind_write_recovery_context",
+            return_value=True,
+        ))
         with write_authority("human", "approval:approved-queue-id"):
             result = tool_service.invoke_tool(ctx, action, {"id": "isolated-contact"})
     claim.assert_called_once()
+    bound.assert_called_once()
     provider.assert_called_once()
     finalize.assert_called_once()
     assert finalize.call_args.kwargs["status"] == "uncertain"
@@ -528,9 +553,14 @@ def test_eco001_cancellation_before_provider_dispatch_fences_claim():
             "app.services.write_invoke_idempotency.finalize_write_invoke",
             return_value=WriteFinalizeResult(outcome="finalized"),
         ))
+        bound = stack.enter_context(patch(
+            "app.services.write_invoke_idempotency.bind_write_recovery_context",
+            return_value=True,
+        ))
         with write_authority("human", "approval:approved-queue-id"):
             result = tool_service.invoke_tool(ctx, action, {"id": "isolated-contact"})
     claim.assert_called_once()
+    bound.assert_called_once()
     provider.assert_not_called()
     finalize.assert_called_once()
     assert finalize.call_args.kwargs["status"] == "failed"
