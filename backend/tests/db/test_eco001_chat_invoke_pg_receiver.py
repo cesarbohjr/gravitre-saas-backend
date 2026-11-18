@@ -28,8 +28,8 @@ def test_authorized_chat_invoke_real_ledger_and_receiver(tmp_path):
     migration = (MIGRATIONS / "20261016032018_write_invoke_idempotency.sql").read_text()
     grants = (MIGRATIONS / "20261016032029_write_invoke_idempotency_grants.sql").read_text()
     context_migration = (MIGRATIONS / "20261118030000_write_recovery_context.sql").read_text()
-    auth_role = """CREATE FUNCTION auth.role() RETURNS text LANGUAGE sql STABLE AS $
-        SELECT nullif(current_setting('request.jwt.claim.role', true), '') $;"""
+    auth_role = """CREATE FUNCTION auth.role() RETURNS text LANGUAGE sql STABLE
+        AS 'SELECT nullif(current_setting(''request.jwt.claim.role'', true), '''')';"""
     try:
         with pg_cluster(BOOTSTRAP_SQL + auth_role, migration, grants, context_migration) as pg:
             keys = []
