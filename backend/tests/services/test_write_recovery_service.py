@@ -90,3 +90,21 @@ def test_connector_mismatch_never_reads_provider():
         assert _recover(ctx).state == "rejected"
         readback.assert_not_called()
     ctx.client.rpc.assert_not_called()
+
+
+def test_unleased_recovery_cannot_read_provider_or_ledger():
+    """No recovery authority is granted by knowing an org/key/connector."""
+    ctx = _ctx()
+    with patch("app.services.write_recovery_service.reconcile_uncertain_write") as readback:
+        outcome = recover_uncertain_write(
+            ctx=ctx,
+            idempotency_key="chat:key",
+            invoke_action="hubspot.contacts.create",
+            original_args={"email": "a@example.test"},
+            recovery_lease_token=None,
+        )
+    assert outcome.state == "rejected"
+    assert outcome.detail == "recovery_lease_required"
+    ctx.client.table.assert_not_called()
+    ctx.client.rpc.assert_not_called()
+    readback.assert_not_called()
