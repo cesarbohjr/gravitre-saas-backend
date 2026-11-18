@@ -258,6 +258,7 @@ class ScenarioDB:
     def __init__(self) -> None:
         self.tables: dict[str, list[dict[str, Any]]] = {}
         self.log: list[tuple[str, str]] = []
+        self.write_claims: dict[tuple[str, str], dict[str, Any]] = {}
 
     def table(self, name: str) -> _Q:
         return _Q(self, name)
@@ -265,8 +266,55 @@ class ScenarioDB:
     def from_(self, name: str) -> _Q:
         return _Q(self, name)
 
-    def rpc(self, *_a: Any, **_k: Any) -> _Noop:
-        return _Noop()
+    def rpc(self, name: str, payload: dict[str, Any] | None = None) -> _Noop:
+        # Simulate the canonical Postgres claim/bind/finalize lifecycle at the
+        # ledger RPC seam. A generic noop used to return NULL for every RPC,
+        # causing approved Gmail/Asana scenarios to fail before the executor.
+        if name not in {
+            "claim_write_invoke_idempotency",
+            "bind_write_recovery_context",
+            "finalize_write_invoke_idempotency",
+            "claim_approved_autonomous_write",
+        }:
+            return _Noop()
+        args = payload or {}
+        key = (str(args.get("p_org_id")), str(args.get("p_key")))
+        row = self.write_claims.get(key)
+        response: dict[str, Any] = {"outcome": "rejected"}
+        if name in {"claim_write_invoke_idempotency", "claim_approved_autonomous_write"}:
+            if row and row["status"] == "completed":
+                response = {"outcome": "replay", "status": "completed", "result": row["result"]}
+            elif row and row["status"] in {"in_progress", "uncertain"}:
+                response = {"outcome": "blocked", "status": row["status"]}
+            else:
+                token = str(uuid.uuid4())
+                self.write_claims[key] = {
+                    "status": "in_progress", "claim_token": token,
+                    "action": args["p_invoke_action"], "bound": None, "result": {},
+                }
+                response = {"outcome": "claimed", "claim_token": token, "claim_generation": 1}
+        elif name == "bind_write_recovery_context":
+            connector = args.get("p_connector_id")
+            original = args.get("p_original_args")
+            if (row and row["status"] == "in_progress"
+                    and row["claim_token"] == str(args.get("p_claim_token"))
+                    and row["action"] == args.get("p_invoke_action")
+                    and isinstance(original, dict) and connector):
+                bound = (str(connector), copy.deepcopy(original))
+                if row["bound"] in (None, bound):
+                    row["bound"] = bound
+                    response = {"outcome": "bound"}
+        elif name == "finalize_write_invoke_idempotency":
+            if (row and row["status"] == "in_progress"
+                    and row["claim_token"] == str(args.get("p_claim_token"))):
+                row["status"] = args["p_status"]
+                row["result"] = copy.deepcopy(args.get("p_result") or {})
+                row["claim_token"] = None
+                response = {"outcome": "finalized"}
+        class _LedgerRPC:
+            def execute(self) -> _Resp:
+                return _Resp(response)
+        return _LedgerRPC()
 
     def __getattr__(self, name: str) -> Any:
         if name.startswith("__"):
@@ -907,10 +955,16 @@ class ScenarioHarness:
                 pass
 
         connectors = self.connectors
-        self._p(
-            "app.services.tool_service._resolve_tool_executor",
-            lambda action, ctx=None: connectors.executor_for(action),
-        )
+        def _scenario_executor(action: str, ctx: Any = None) -> Any:
+            # Connected scenario accounts have durable IDs even when the model
+            # does not explicitly supply connector_id in tool arguments.
+            if ctx is not None and not getattr(ctx, "connector_id", None):
+                vendor = action.split(".", 1)[0].lower()
+                if vendor in set(connected) | {"gmail", "asana"}:
+                    ctx.connector_id = f"conn-{vendor}"
+            return connectors.executor_for(action)
+
+        self._p("app.services.tool_service._resolve_tool_executor", _scenario_executor)
         # Background / network edges that are not part of the decision.
         self._p("app.services.mcp_client_service.MCPClientService.get_enabled_tools_for_org", AsyncMock(return_value=[]))
         self._p("app.services.chat_turn_cancel_service.get_redis_client", lambda *_a, **_k: None)
