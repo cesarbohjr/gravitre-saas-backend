@@ -56,6 +56,12 @@ async def measure(stage: str, awaitable: Awaitable[T]) -> T:
         # CancelledError remains distinct and is always propagated.
         raise
     finally:
-        elapsed = max(0.0, perf_counter() - start)
-        CONTEXT_STAGE_SECONDS.labels(stage=stage, outcome=outcome).observe(elapsed)
-        logger.info("eco003_context_stage stage=%s outcome=%s duration_ms=%.3f", stage, outcome, elapsed * 1000)
+        # Observability is advisory: a failed metrics collector or logger must
+        # never turn an authorized result into an error, nor mask cancellation
+        # or a tenant-scope exception from the retrieval path.
+        try:
+            elapsed = max(0.0, perf_counter() - start)
+            CONTEXT_STAGE_SECONDS.labels(stage=stage, outcome=outcome).observe(elapsed)
+            logger.info("eco003_context_stage stage=%s outcome=%s duration_ms=%.3f", stage, outcome, elapsed * 1000)
+        except Exception:  # noqa: BLE001
+            pass
