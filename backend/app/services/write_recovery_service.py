@@ -41,7 +41,7 @@ def recover_uncertain_write(
     try:
         response = (
             ctx.client.table("write_invoke_idempotency")
-            .select("status,invoke_action")
+            .select("*")
             .eq("org_id", ctx.org_id)
             .eq("idempotency_key", idempotency_key)
             .limit(1)
@@ -52,6 +52,17 @@ def recover_uncertain_write(
             return RecoveryResult("rejected", "ledger_not_uncertain")
         if rows[0].get("invoke_action") != invoke_action:
             return RecoveryResult("rejected", "action_mismatch")
+        # Until the ledger durably records the original request payload and
+        # connector identity, recovery must not trust caller-supplied arguments.
+        # A guessed natural key could otherwise certify an unrelated record.
+        stored_args = rows[0].get("original_args")
+        stored_connector = rows[0].get("connector_id")
+        if not isinstance(stored_args, dict) or not stored_connector:
+            return RecoveryResult("unknown", "persisted_recovery_context_missing")
+        if stored_args != original_args:
+            return RecoveryResult("rejected", "original_arguments_mismatch")
+        if str(stored_connector) != str(getattr(ctx, "connector_id", "") or ""):
+            return RecoveryResult("rejected", "connector_identity_mismatch")
     except Exception:
         return RecoveryResult("error", "ledger_read_unavailable")
 
