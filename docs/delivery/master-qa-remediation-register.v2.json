@@ -462,6 +462,34 @@
         "contract": "Reject an unleased recovery before tenant ledger lookup or provider readback; preserve leased settlement and unknown defer semantics.",
         "exact_head_pass": false,
         "certified": false
+      },
+      "recovery_provider_closure_checkpoint": {
+        "state": "ENGINEERING_REPAIR_COMMITTED_EXACT_HEAD_TARGETED_VERIFICATION_PENDING",
+        "development_baseline_sha": "2b73e42e134a891ebd11ae310804e84fcce134da",
+        "governed_development_run_id": 44350086557,
+        "isolated_acceptance_job_id": 134964122631,
+        "previous_baseline_scope": "Synthetic local provider and disposable PostgreSQL, not real third-party audit/readback",
+        "latest_source_commit_before_report": "c373742e4d93c22d0d4e02a8e45952896964c50e",
+        "source_contracts": [
+          "recovery lease required before database/provider read",
+          "persisted recovery lease token must match caller lease before readback",
+          "worker missing-token rows never reach context factory",
+          "generic empty readback and provider field mismatch are unknown, never proof of absence",
+          "Chat and recovery require explicit authoritative_absence evidence to authorize resend or failed claim settlement"
+        ],
+        "test_paths": [
+          "backend/tests/services/test_write_recovery_service.py",
+          "backend/tests/services/test_write_recovery_worker.py",
+          "backend/tests/services/test_outcome_ownership_connector_reconcile.py",
+          "backend/tests/db/test_write_recovery_leases_pg.py"
+        ],
+        "evidence_doc": "docs/delivery/eco-002-governed-recovery-closure-evidence-2026-11-18.md",
+        "exact_head_new_regressions_passed": false,
+        "live_provider_readback_verified": false,
+        "caller_continuity_fully_verified": false,
+        "deployed_rollback_exercised": false,
+        "owner_signed_off": false,
+        "final_qa_certified": false
       }
     },
     {
