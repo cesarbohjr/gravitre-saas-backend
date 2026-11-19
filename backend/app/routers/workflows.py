@@ -3003,10 +3003,14 @@ async def approve_run(
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
                 detail="Retrieval temporarily unavailable",
             )
+        # Approval can be revoked after claiming the run and before dispatch.
+        latest = await asyncio.to_thread(
+            get_run_with_steps, client, org_id, run_id_str, run_environment,
+        )
         return {
             "run_id": run_id_str,
             "status": final_status,
-            "approval_status": "approved",
+            "approval_status": latest.get("approval_status") if latest else None,
             "required_approvals": required,
             "approvals_received": approved_count,
             "steps": [_step_to_out(s) for s in step_rows],

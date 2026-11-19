@@ -24,6 +24,7 @@ pytestmark = requires_pg
 async def test_actual_approve_route_claims_pending_run_once_then_durable_terminal(pg, monkeypatch):
     from app.routers import workflows
 
+    pg.psql("ALTER TABLE public.workflow_runs ADD COLUMN approval_status text DEFAULT 'pending_approval'")
     run_id = _new_run(pg, "pending_approval")
     approvals = []
     invoked = []
@@ -47,6 +48,7 @@ async def test_actual_approve_route_claims_pending_run_once_then_durable_termina
         state = pg.value(f"SELECT status FROM public.workflow_runs WHERE id='{run_id}'")
         return {
             "id": run_id, "org_id": ORG, "status": state,
+            "approval_status": pg.value(f"SELECT approval_status FROM public.workflow_runs WHERE id='{run_id}'"),
             "run_type": workflows.RUN_TYPE_EXECUTE,
             "required_approvals": 1,
             "definition_snapshot": {"steps": [{"id": "s1", "type": "noop", "name": "Local noop"}]},
@@ -57,8 +59,9 @@ async def test_actual_approve_route_claims_pending_run_once_then_durable_termina
     def claim(_client, rid, org):
         assert rid == run_id and org == ORG
         changed = pg.value(
-            f"UPDATE public.workflow_runs SET status='running' "
-            f"WHERE id='{run_id}' AND status='pending_approval' RETURNING id"
+            f"UPDATE public.workflow_runs SET status='running', approval_status='approved' "
+            f"WHERE id='{run_id}' AND status='pending_approval' "
+            "AND approval_status='pending_approval' RETURNING id"
         )
         return changed == run_id
     monkeypatch.setattr(workflows, "try_mark_run_running", claim)
