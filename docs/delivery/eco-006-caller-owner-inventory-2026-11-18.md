@@ -70,3 +70,21 @@ These are source call sites; they are not proof of active traffic or permission 
 4. Deployment/rollback proof and owner acceptance at release certification. No merging/deployment or irreversible retirement in this source-only batch.
 
 This document is an implementation inventory and not one of the twelve final QA gate certifications.
+
+## Signed QA ingress evidence
+
+The `eco-001-deployed-ingress` source in QA 12 includes an opt-in signed probe
+for `https://eco001-fastapi-qa.up.railway.app`. Configure the `eco001-isolated-qa`
+GitHub environment with owner review and a deployment branch restriction for
+the intended workflow ref. Set `ECO001_QA_CONVERSATION` as an environment
+variable and `ECO001_QA_BEARER` as an environment-scoped secret for the fixture's
+QA actor. Use a token valid through the planned approval and run window. Enable
+the repository variable `ECO001_SIGNED_QA_ENABLED` after configuring the
+protected environment and fixture.
+
+Dispatch QA 12 as the repository owner with source `eco-001-deployed-ingress`,
+the exact QA URL, and the deployed runtime SHA. The signed job checks health
+and revision, then anonymous denial and authorized state access for the same
+fixture. Its artifact contains HTTP statuses and runtime identity. The
+caller-to-outbox trace, external provider readback and rollback are separate
+evidence requirements.

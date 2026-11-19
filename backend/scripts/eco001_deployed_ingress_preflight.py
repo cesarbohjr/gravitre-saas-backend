@@ -8,10 +8,13 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
-from urllib.error import HTTPError, URLError
+from urllib.error import HTTPError
 from urllib.parse import urlsplit
 from urllib.request import HTTPRedirectHandler, Request, build_opener
+
+QA_ORIGIN = "https://eco001-fastapi-qa.up.railway.app"
 
 
 class _RejectRedirects(HTTPRedirectHandler):
@@ -30,7 +33,14 @@ def get(url: str, headers: dict[str, str] | None = None) -> tuple[int, bytes]:
         return error.code, error.read(65536)
 
 
-def run(base: str, expected_sha: str, headers: dict[str, str]) -> dict:
+def run(
+    base: str,
+    expected_sha: str,
+    headers: dict[str, str],
+    *,
+    qa_bearer: str | None = None,
+    qa_conversation: str | None = None,
+) -> dict:
     parsed = urlsplit(base)
     if parsed.scheme != "https" or not parsed.hostname or parsed.username or parsed.password:
         raise ValueError("A valid HTTPS nonproduction backend URL is mandatory")
@@ -39,6 +49,17 @@ def run(base: str, expected_sha: str, headers: dict[str, str]) -> dict:
     if not re.fullmatch(r"[0-9a-fA-F]{40}", expected_sha):
         raise ValueError("Expected deployment SHA must be a full 40-character Git commit")
     base = base.rstrip("/")
+    signed = qa_bearer is not None or qa_conversation is not None
+    if signed:
+        if base != QA_ORIGIN:
+            raise ValueError("Signed preflight requires the isolated Railway QA origin")
+        if not re.fullmatch(r"[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+", qa_bearer or ""):
+            raise ValueError("Signed preflight requires a QA actor access token")
+        if (
+            not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_-]{0,127}", qa_conversation or "")
+            or qa_conversation == "eco001-nonexistent"
+        ):
+            raise ValueError("Signed preflight requires an owned QA conversation fixture")
     code, raw = get(base + "/health", headers)
     if code != 200:
         raise ValueError(f"FastAPI /health returned HTTP {code}")
@@ -66,7 +87,7 @@ def run(base: str, expected_sha: str, headers: dict[str, str]) -> dict:
         if status not in {401, 403}:
             raise ValueError(f"Protected GET unexpectedly returned HTTP {status}")
         checks[route] = status
-    return {
+    report = {
         "scope": "deployed_nonproduction_backend_read_only",
         "classification": "runtime_identity_and_auth_preflight_not_write_acceptance",
         "expected_sha": expected_sha,
@@ -78,6 +99,24 @@ def run(base: str, expected_sha: str, headers: dict[str, str]) -> dict:
         "provider_write_performed": False,
         "owner_approval_inferred": False,
     }
+    if signed:
+        if env != "qa":
+            raise ValueError("Signed preflight requires the running environment to report qa")
+        route = f"/api/assistant/conversation/{qa_conversation}/state"
+        status, _ = get(base + route)
+        if status not in {401, 403}:
+            raise ValueError(f"Anonymous fixture GET unexpectedly returned HTTP {status}")
+        signed_status, raw = get(base + route, {"Authorization": f"Bearer {qa_bearer}"})
+        if signed_status != 200:
+            raise ValueError(f"Signed fixture GET returned HTTP {signed_status}")
+        try:
+            state = json.loads(raw)
+        except (TypeError, ValueError):
+            raise ValueError("Signed fixture GET did not return JSON") from None
+        if not isinstance(state, dict) or not {"task_state", "execution_result"} <= state.keys():
+            raise ValueError("Signed fixture GET did not return conversation state")
+        report["signed_fixture_statuses"] = {"anonymous": status, "authenticated": signed_status}
+    return report
 
 
 def main() -> None:
@@ -85,9 +124,13 @@ def main() -> None:
     ap.add_argument("--url", required=True)
     ap.add_argument("--sha", required=True)
     ap.add_argument("--output", required=True)
+    ap.add_argument("--signed-qa", action="store_true", help="Check an owned fixture using credentials from the environment")
     args = ap.parse_args()
-    # Do not add auth headers: the check is that an anonymous caller is denied.
-    report = run(args.url, args.sha, {})
+    signed_args = {
+        "qa_bearer": os.environ.get("ECO001_QA_BEARER", ""),
+        "qa_conversation": os.environ.get("ECO001_QA_CONVERSATION", ""),
+    } if args.signed_qa else {}
+    report = run(args.url, args.sha, {}, **signed_args)
     with open(args.output, "w", encoding="utf8") as out:
         json.dump(report, out, sort_keys=True, indent=2)
     print(json.dumps(report, sort_keys=True))

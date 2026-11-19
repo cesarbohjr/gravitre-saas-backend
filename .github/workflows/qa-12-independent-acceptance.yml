@@ -203,6 +203,37 @@ jobs:
       'eco-001-deployed-ingress') && ((!cancelled() && (true))) }}
     permissions:
       contents: read
+  eco_001_deployed_ingress__signed-qa-ingress-preflight:
+    name: Signed isolated QA ingress (read-only)
+    if: ${{ always() && needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected),
+      'eco-001-deployed-ingress') && (!cancelled() && (true) && (github.event_name == 'workflow_dispatch' && github.actor
+      == 'cesarbohjr' && vars.ECO001_SIGNED_QA_ENABLED == 'true' && inputs.eco_001_deployed_ingress__backend_url == 'https://eco001-fastapi-qa.up.railway.app'))
+      }}
+    environment: eco001-isolated-qa
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        persist-credentials: false
+    - name: Verify signed isolated QA ingress without dispatching work
+      env:
+        QA_BACKEND_URL: ${{ inputs.eco_001_deployed_ingress__backend_url }}
+        QA_EXPECTED_SHA: ${{ inputs.eco_001_deployed_ingress__runtime_sha }}
+        ECO001_QA_BEARER: ${{ secrets.ECO001_QA_BEARER }}
+        ECO001_QA_CONVERSATION: ${{ vars.ECO001_QA_CONVERSATION }}
+      run: "set -euo pipefail\npython3 backend/scripts/eco001_deployed_ingress_preflight.py --signed-qa \\\n  --url \"$QA_BACKEND_URL\"\
+        \ \\\n  --sha \"$QA_EXPECTED_SHA\" \\\n  --output \"$RUNNER_TEMP/eco001-signed-qa-ingress.json\"\n"
+    - name: Upload sanitized signed QA ingress evidence
+      uses: actions/upload-artifact@v4
+      with:
+        name: eco001-signed-qa-ingress-readonly
+        path: ${{ runner.temp }}/eco001-signed-qa-ingress.json
+        if-no-files-found: error
+    needs:
+    - dispatch_contract
+    permissions:
+      contents: read
   isolated_acceptance__billing-e2e:
     name: Billing Playwright (isolated test)
     if: ${{ always() && needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected),
@@ -996,6 +1027,7 @@ jobs:
     - upstream_contract
     - dispatch_contract
     - eco_001_deployed_ingress__deployed-ingress-preflight
+    - eco_001_deployed_ingress__signed-qa-ingress-preflight
     - isolated_acceptance__billing-e2e
     - isolated_acceptance__live-provider-voice
     - isolated_acceptance__physical-voice-readiness
@@ -1021,19 +1053,20 @@ jobs:
         \ 'w') as output:\n    json.dump(evidence, output)\n"
       env:
         SOURCE_JOBS: '{"eco-001-deployed-ingress": {"display_name": "Master QA | QA20 Governed Ingress Read-Only Preflight",
-          "jobs": ["eco_001_deployed_ingress__deployed-ingress-preflight"]}, "isolated-acceptance": {"display_name": "Isolated
-          billing and live voice acceptance", "jobs": ["isolated_acceptance__billing-e2e", "isolated_acceptance__live-provider-voice",
-          "isolated_acceptance__physical-voice-readiness"]}, "master-qa-p0-synthetic": {"display_name": "Master QA | QA00\u2013QA90
-          Core Evidence & Runtime", "jobs": ["master_qa_p0_synthetic__synthetic-fixtures", "master_qa_p0_synthetic__actual-runtime-and-postgres"]},
-          "master-qa-p27-sandbox-readback": {"display_name": "Master QA | QA50 Authorized HubSpot Provider Readback", "jobs":
-          ["master_qa_p27_sandbox_readback__label-preflight", "master_qa_p27_sandbox_readback__provider-readback"]}, "milestone1-live-reverify":
-          {"display_name": "Milestone 1 Live Reverify", "jobs": ["milestone1_live_reverify__live-reverify"]}, "plays-datasets-live-proof":
-          {"display_name": "Plays + datasets authenticated live proof", "jobs": ["plays_datasets_live_proof__live-read-proof"]},
+          "jobs": ["eco_001_deployed_ingress__deployed-ingress-preflight", "eco_001_deployed_ingress__signed-qa-ingress-preflight"]},
+          "isolated-acceptance": {"display_name": "Isolated billing and live voice acceptance", "jobs": ["isolated_acceptance__billing-e2e",
+          "isolated_acceptance__live-provider-voice", "isolated_acceptance__physical-voice-readiness"]}, "master-qa-p0-synthetic":
+          {"display_name": "Master QA | QA00\u2013QA90 Core Evidence & Runtime", "jobs": ["master_qa_p0_synthetic__synthetic-fixtures",
+          "master_qa_p0_synthetic__actual-runtime-and-postgres"]}, "master-qa-p27-sandbox-readback": {"display_name": "Master
+          QA | QA50 Authorized HubSpot Provider Readback", "jobs": ["master_qa_p27_sandbox_readback__label-preflight", "master_qa_p27_sandbox_readback__provider-readback"]},
+          "milestone1-live-reverify": {"display_name": "Milestone 1 Live Reverify", "jobs": ["milestone1_live_reverify__live-reverify"]},
+          "plays-datasets-live-proof": {"display_name": "Plays + datasets authenticated live proof", "jobs": ["plays_datasets_live_proof__live-read-proof"]},
           "plays-production-acceptance": {"display_name": "Plays production acceptance", "jobs": ["plays_production_acceptance__deterministic-contract",
           "plays_production_acceptance__authenticated-production-read"]}, "release1-live-memory-liveness": {"display_name":
           "Release 1 live memory source revocation", "jobs": ["release1_live_memory_liveness__memory-liveness"]}, "release1-live-public-mcp":
           {"display_name": "Release 1 public MCP and SSRF live verification", "jobs": ["release1_live_public_mcp__public-mcp"]}}'
         JOB_RESULTS: '{"eco_001_deployed_ingress__deployed-ingress-preflight": {"result": "${{ needs.eco_001_deployed_ingress__deployed-ingress-preflight.result
+          }}"}, "eco_001_deployed_ingress__signed-qa-ingress-preflight": {"result": "${{ needs.eco_001_deployed_ingress__signed-qa-ingress-preflight.result
           }}"}, "isolated_acceptance__billing-e2e": {"result": "${{ needs.isolated_acceptance__billing-e2e.result }}"}, "isolated_acceptance__live-provider-voice":
           {"result": "${{ needs.isolated_acceptance__live-provider-voice.result }}"}, "isolated_acceptance__physical-voice-readiness":
           {"result": "${{ needs.isolated_acceptance__physical-voice-readiness.result }}"}, "master_qa_p0_synthetic__synthetic-fixtures":

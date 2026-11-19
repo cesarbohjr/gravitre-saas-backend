@@ -7785,6 +7785,38 @@
             }
           }
         ]
+      },
+      "signed-qa-ingress-preflight": {
+        "name": "Signed isolated QA ingress (read-only)",
+        "if": "${{ github.event_name == 'workflow_dispatch' && github.actor == 'cesarbohjr' && vars.ECO001_SIGNED_QA_ENABLED == 'true' && inputs.backend_url == 'https://eco001-fastapi-qa.up.railway.app' }}",
+        "environment": "eco001-isolated-qa",
+        "runs-on": "ubuntu-latest",
+        "timeout-minutes": 6,
+        "steps": [
+          {
+            "uses": "actions/checkout@v4",
+            "with": {"persist-credentials": false}
+          },
+          {
+            "name": "Verify signed isolated QA ingress without dispatching work",
+            "env": {
+              "QA_BACKEND_URL": "${{ inputs.backend_url }}",
+              "QA_EXPECTED_SHA": "${{ inputs.runtime_sha }}",
+              "ECO001_QA_BEARER": "${{ secrets.ECO001_QA_BEARER }}",
+              "ECO001_QA_CONVERSATION": "${{ vars.ECO001_QA_CONVERSATION }}"
+            },
+            "run": "set -euo pipefail\npython3 backend/scripts/eco001_deployed_ingress_preflight.py --signed-qa \\\n  --url \"$QA_BACKEND_URL\" \\\n  --sha \"$QA_EXPECTED_SHA\" \\\n  --output \"$RUNNER_TEMP/eco001-signed-qa-ingress.json\"\n"
+          },
+          {
+            "name": "Upload sanitized signed QA ingress evidence",
+            "uses": "actions/upload-artifact@v4",
+            "with": {
+              "name": "eco001-signed-qa-ingress-readonly",
+              "path": "${{ runner.temp }}/eco001-signed-qa-ingress.json",
+              "if-no-files-found": "error"
+            }
+          }
+        ]
       }
     }
   },

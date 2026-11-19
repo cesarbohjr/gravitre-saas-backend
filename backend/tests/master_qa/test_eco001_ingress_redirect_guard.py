@@ -1,6 +1,6 @@
 """ECO-001 read-only ingress probe must never follow redirects off the supplied host."""
 
-from urllib.error import HTTPError
+import json
 from urllib.request import Request
 
 import pytest
@@ -58,8 +58,6 @@ def test_preflight_rejects_non_origin_url_before_network(monkeypatch, url):
 
 
 def test_preflight_rejects_unknown_environment(monkeypatch):
-    import json
-
     payload = {
         "checks": {"database": "healthy"},
         "unified_turn_live_enabled": True,
@@ -69,3 +67,48 @@ def test_preflight_rejects_unknown_environment(monkeypatch):
     monkeypatch.setattr(probe, "get", lambda *args, **kwargs: (200, json.dumps(payload).encode()))
     with pytest.raises(ValueError, match="production or unidentified runtime"):
         run("https://qa.example.test", "a" * 40, {})
+
+
+@pytest.mark.parametrize("fixture_status", [200, 302, 404])
+def test_signed_fixture_sends_token_only_after_anonymous_denial(monkeypatch, fixture_status):
+    calls = []
+    token = "test.actor.signature"
+    fixture = "qa-owned-conversation"
+
+    def get(url, headers=None):
+        calls.append((url, headers))
+        if url.endswith("/health"):
+            return 200, json.dumps({
+                "checks": {"database": "healthy"},
+                "unified_turn_live_enabled": True,
+                "environment": "qa",
+                "git_sha": "a" * 40,
+            }).encode()
+        if headers:
+            return fixture_status, b'{"task_state":{"private":"fixture"},"execution_result":null}'
+        return 401, b""
+
+    monkeypatch.setattr(probe, "get", get)
+    if fixture_status == 200:
+        report = run(probe.QA_ORIGIN, "a" * 40, {}, qa_bearer=token, qa_conversation=fixture)
+        assert report["signed_fixture_statuses"] == {"anonymous": 401, "authenticated": 200}
+        assert all(value not in json.dumps(report) for value in (token, fixture, "private"))
+    else:
+        with pytest.raises(ValueError, match=f"Signed fixture GET returned HTTP {fixture_status}"):
+            run(probe.QA_ORIGIN, "a" * 40, {}, qa_bearer=token, qa_conversation=fixture)
+
+    assert calls[-2:] == [
+        (f"{probe.QA_ORIGIN}/api/assistant/conversation/{fixture}/state", None),
+        (f"{probe.QA_ORIGIN}/api/assistant/conversation/{fixture}/state", {"Authorization": f"Bearer {token}"}),
+    ]
+    assert not any(headers for _, headers in calls[:-1])
+
+
+@pytest.mark.parametrize(("base", "fixture"), [
+    ("https://other.example.test", "qa-owned-conversation"),
+    (probe.QA_ORIGIN, "../health"),
+])
+def test_signed_preflight_rejects_wrong_origin_or_route_before_network(monkeypatch, base, fixture):
+    monkeypatch.setattr(probe, "get", lambda *args, **kwargs: pytest.fail("network should not run"))
+    with pytest.raises(ValueError, match="isolated Railway QA origin|owned QA conversation fixture"):
+        run(base, "a" * 40, {}, qa_bearer="test.actor.signature", qa_conversation=fixture)

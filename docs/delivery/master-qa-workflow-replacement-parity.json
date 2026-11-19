@@ -1,7 +1,7 @@
 {
   "source_count": 94,
   "candidate_count": 12,
-  "source_job_count": 121,
+  "source_job_count": 122,
   "static_contract_parity": "PASS",
   "runtime_parity": "REQUIRES_INDEPENDENT_RUN_EVIDENCE",
   "automatic_trigger_parity": "STATIC_REPLAY_PASS_RUNTIME_PENDING",
@@ -2227,7 +2227,8 @@
       "display_name": "Master QA | QA20 Governed Ingress Read-Only Preflight",
       "lane": "12-independent-acceptance",
       "jobs": {
-        "deployed-ingress-preflight": "eco_001_deployed_ingress__deployed-ingress-preflight"
+        "deployed-ingress-preflight": "eco_001_deployed_ingress__deployed-ingress-preflight",
+        "signed-qa-ingress-preflight": "eco_001_deployed_ingress__signed-qa-ingress-preflight"
       },
       "automatic_trigger_contract": {
         "workflow_dispatch": {

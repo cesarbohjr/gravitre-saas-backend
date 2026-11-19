@@ -74,6 +74,26 @@ def test_obsolete_write_capable_branch_reconcile_not_reintroduced():
     assert "test_phase3_provider_commit_gate.py" in workflow("master-qa-qa30-voice-confirmed-turns.yml")
 
 
+def test_signed_qa_ingress_uses_only_the_owner_dispatched_isolated_environment():
+    jobs = source_contract['definition'](ROOT, 'eco-001-deployed-ingress.yml')['jobs']
+    anonymous = jobs['deployed-ingress-preflight']
+    signed = jobs['signed-qa-ingress-preflight']
+    assert 'ECO001_QA_BEARER' not in str(anonymous)
+    assert signed['environment'] == 'eco001-isolated-qa'
+    assert signed['permissions'] == {'contents': 'read'}
+    for condition in (
+        "github.event_name == 'workflow_dispatch'",
+        "github.actor == 'cesarbohjr'",
+        "vars.ECO001_SIGNED_QA_ENABLED == 'true'",
+        "https://eco001-fastapi-qa.up.railway.app",
+    ):
+        assert condition in signed['if']
+    assert signed['steps'][0]['with']['persist-credentials'] is False
+    assert signed['steps'][1]['env']['ECO001_QA_BEARER'] == '${{ secrets.ECO001_QA_BEARER }}'
+    assert '--signed-qa' in signed['steps'][1]['run']
+    assert signed['steps'][2]['with']['path'].endswith('/eco001-signed-qa-ingress.json')
+
+
 def test_full_ci_preserves_comprehensive_backend_and_web_jobs():
     ci = workflow("ci.yml")
     assert "  backend:" in ci
