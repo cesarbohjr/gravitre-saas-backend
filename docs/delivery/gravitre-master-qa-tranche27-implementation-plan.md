@@ -190,3 +190,16 @@ Do not manufacture a full QA system from just this document. Planned tasks must 
 - No destructive workflow consolidation until caller/dependency and required-check audit is certified.
 - Preserve timeouts, zero-retry behavior and assertions unless evidence warrants an independently reviewed improvement.
 - Maintain links from this plan in the new Master QA PR, voice PR #610, historical #605, and issue #607; each link must distinguish existing completed evidence from pending implementation.
+
+
+## 2026-11-19 amendment — final integrated platform acceptance (PR #611)
+
+**Placement:** Final mandatory acceptance gate **inside the existing 12-QA workflow program**, following prerequisite QA checks; this does not introduce QA #13. Run cross-platform integration checks continuously, then conduct an explicit final review. Twelve green workflow results alone do **not** certify platform acceptance.
+
+**Required proof:** Representative real customer journeys across Agent → Play → Canvas, approval grant/revocation/cancellation, connector dispatch, voice and cross-surface context, Computer Use, artifacts, and proactive intelligence wherever included in release scope. Demonstrate fail-closed authorization at dispatch, zero provider effects after cancellation/revocation/replay, idempotency, restart and ambiguous-commit recovery, tenant isolation, latency thresholds, and complete audit trails. Require exact commit SHA, hosted CI run URLs/results, reproducible scenarios, live-provider receipts where authorized and required, environment, timestamps, and named reviewer sign-off. Missing live evidence must be reported as pending, never inferred from synthetic tests.
+
+**Release blocker:** Any critical journey failure, unresolved mandatory safety evidence, or uncertified release-blocking finding makes final status **NOT ACCEPTED**. Close each of the original 43 findings individually only after its own acceptance evidence; ECO-001 consolidation into ECO-002 does not reduce historical denominator.
+
+**Required cross-chat reporting:** Present ECO (15), DEC (20), and overall original findings (43, including 8 P27) with separate addressed, verification-pending, and certified-closed counts and progress bars. Explain that 0 certified is not 0 engineering progress. Last reported *unaudited* baseline: ECO 15/15 engineering-addressed; DEC 9/20 engineering-addressed; overall at least 24/43 engineering-addressed; certified closed 0/43. Reconcile against the authoritative register before treating any count as current. Every handoff records exact PR head SHA, CI status per required workflow, outstanding gates/blockers, evidence links, and **one specific next engineering action**. Resume from the latest verified checkpoint without restarting completed work.
+
+Scope discussion: https://github.com/cesarbohjr/gravitre-saas-backend/pull/611#issuecomment-7019767986
