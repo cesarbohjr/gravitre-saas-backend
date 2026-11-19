@@ -38,7 +38,8 @@ pytestmark = requires_pg
 @pytest.mark.asyncio
 @pytest.mark.parametrize("decision", [
     "approve", "reject", "forbidden_approver", "foreign_tenant",
-    "cancel_before_dispatch", "revoke_before_dispatch", "cancel_during_finalize",
+    "cancel_before_dispatch", "cancel_write_before_dispatch",
+    "revoke_before_dispatch", "cancel_during_finalize",
     "terminal_persistence_failure",
 ])
 async def test_agent_play_approval_real_step_to_durable_consumer(pg, monkeypatch, tmp_path, request, decision):
@@ -76,9 +77,11 @@ async def test_agent_play_approval_real_step_to_durable_consumer(pg, monkeypatch
     assert compiled.observation_status == "NOT_RUN"
     definition = compiled.workflow_definition
     revoked_before_dispatch = decision == "revoke_before_dispatch"
-    if revoked_before_dispatch:
-        # Use a governed write in the saved Canvas version so revocation is
-        # tested against a write that was actually in the approved scope.
+    cancel_write_before_dispatch = decision == "cancel_write_before_dispatch"
+    governed_write = revoked_before_dispatch or cancel_write_before_dispatch
+    if governed_write:
+        # Persist the write in the saved Canvas version so the approval
+        # covers the action that would have reached the provider.
         step = definition["steps"][0]
         definition = {**definition, "steps": [{
             **step, "config": {"action": "hubspot.contacts.create", "email": "fixture@example.invalid"},
@@ -166,7 +169,7 @@ async def test_agent_play_approval_real_step_to_durable_consumer(pg, monkeypatch
     monkeypatch.setattr(workflows, "require_feature", lambda *a: None)
     monkeypatch.setattr(workflows, "_record_workflow_run_usage", lambda *a: None)
     monkeypatch.setattr(workflows, "write_audit_event", lambda *a, **kw: None)
-    if not revoked_before_dispatch:
+    if not governed_write:
         monkeypatch.setattr("app.services.workflow_approval_scope.persist_run_approval_scope",
                             lambda *a, **kw: None)
     monkeypatch.setattr("app.services.approval_record_service.sync_workflow_pending_approval",
@@ -300,13 +303,39 @@ async def test_agent_play_approval_real_step_to_durable_consumer(pg, monkeypatch
     monkeypatch.setattr(workflows, "execute_workflow_steps", execute.execute_workflow_steps)
     monkeypatch.setattr(workflows, "_step_to_out", lambda x: x)
     assert pg.value("SELECT count(*) FROM public.domain_event_outbox") == "0"
-    if decision == "cancel_before_dispatch":
+    cancelled_before_dispatch = decision in {"cancel_before_dispatch", "cancel_write_before_dispatch"}
+
+    def assert_persisted_write_approval(writer):
+        from app.services.canvas_write_gate import block_canvas_write_step, load_run_for_write_gate
+        from app.services.workflow_approval_scope import (
+            block_invoke_by_approval_scope, scope_from_run_parameters,
+        )
+
+        run = load_run_for_write_gate(writer, ORG, run_id)
+        assert run["status"] == "running" and run["approval_status"] == "approved"
+        assert repository.get_approval_counts(writer, run_id) == (1, False)
+        scope = scope_from_run_parameters(run["parameters"])
+        assert scope and scope["allowed_invoke_actions"] == ["hubspot.contacts.create"]
+        step = definition["steps"][0]
+        assert block_canvas_write_step(
+            step_type=step["type"], config=step["config"], run_row=run,
+        ) is None
+        assert block_invoke_by_approval_scope(
+            invoke_action=step["config"]["action"], run_row=run,
+            run_parameters=run["parameters"], definition=run["definition_snapshot"],
+            invoke_params={"email": step["config"]["email"]},
+        ) is None
+
+    if cancelled_before_dispatch:
         from app.services.agent_interrupt_service import request_interrupt
 
         def cancel_then_execute(*args, **kwargs):
             assert pg.value(f"SELECT status FROM public.workflow_runs WHERE id='{run_id}'") == "running"
+            writer = PgRepositoryClient(pg)
+            if cancel_write_before_dispatch:
+                assert_persisted_write_approval(writer)
             interrupt = request_interrupt(
-                PgRepositoryClient(pg), org_id=ORG, target_type="workflow_run", target_id=run_id,
+                writer, org_id=ORG, target_type="workflow_run", target_id=run_id,
                 signal="cancel", actor_id="44444444-4444-4444-8444-444444444444", source="api",
             )
             assert interrupt["status"] == "pending" and interrupt["applied_eagerly"]
@@ -315,18 +344,12 @@ async def test_agent_play_approval_real_step_to_durable_consumer(pg, monkeypatch
         monkeypatch.setattr(workflows, "execute_workflow_steps", cancel_then_execute)
     if revoked_before_dispatch:
         from app.services.canvas_write_gate import (
-            CANVAS_WRITE_AUTHORITY_BLOCKED, block_canvas_write_step, load_run_for_write_gate,
+            CANVAS_WRITE_AUTHORITY_BLOCKED, load_run_for_write_gate,
         )
 
         def revoke_then_execute(*args, **kwargs):
             writer = PgRepositoryClient(pg)
-            run = load_run_for_write_gate(writer, ORG, run_id)
-            assert run["status"] == "running" and run["approval_status"] == "approved"
-            assert repository.get_approval_counts(writer, run_id) == (1, False)
-            step = definition["steps"][0]
-            assert block_canvas_write_step(
-                step_type=step["type"], config=step["config"], run_row=run,
-            ) is None
+            assert_persisted_write_approval(writer)
             # Apply the same durable status transition used by the existing
             # revocation QA cases, between approval and the real dispatcher.
             repository.update_run(writer, run_id, status="running", approval_status="revoked")
@@ -385,7 +408,6 @@ async def test_agent_play_approval_real_step_to_durable_consumer(pg, monkeypatch
                 {"user_id": "44444444-4444-4444-8444-444444444444"}, ORG, "synthetic", settings)
         assert receiver.writes == 1
         return
-    cancelled_before_dispatch = decision == "cancel_before_dispatch"
     if revoked_before_dispatch:
         terminal, step_status, expected_provider_calls = "failed", "failed", 0
     elif cancelled_before_dispatch:
@@ -463,6 +485,8 @@ async def test_agent_play_approval_real_step_to_durable_consumer(pg, monkeypatch
             "event_id bigint PRIMARY KEY, org_id uuid NOT NULL, run_id uuid NOT NULL)")
     def consumer(_client, event):
         assert event["org_id"] == ORG and event["aggregate_id"] == run_id
+        assert event["payload"]["run_id"] == run_id
+        assert event["payload"]["status"] == terminal
         pg.psql("INSERT INTO public.qa_p27_joined_effects (event_id,org_id,run_id) "
                 f"VALUES ({int(event['id'])},'{ORG}','{run_id}') "
                 "ON CONFLICT (event_id) DO NOTHING")
