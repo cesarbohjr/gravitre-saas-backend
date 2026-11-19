@@ -68,6 +68,63 @@ def wait_for(predicate, seconds, category):
     raise TimeoutError(category)
 
 
+def stop_tunnel(process):
+    if process.poll() is not None:
+        return
+    process.terminate()
+    try:
+        process.wait(timeout=10)
+    except subprocess.TimeoutExpired:
+        process.kill()
+        process.wait(timeout=5)
+
+
+def start_fixture_tunnel(root, fixture_origin, page, attempts):
+    for attempt in range(2):
+        log = root / f'tunnel-{attempt}-private.log'
+        with log.open('wb') as stream:
+            process = subprocess.Popen(
+                [os.environ['CLOUDFLARED_BIN'], 'tunnel', '--no-autoupdate', '--protocol', 'http2', '--url', fixture_origin],
+                stdin=subprocess.DEVNULL, stdout=stream, stderr=stream, start_new_session=True,
+                env={key: os.environ[key] for key in ('PATH', 'HOME', 'TMPDIR', 'LANG', 'SSL_CERT_FILE', 'SSL_CERT_DIR') if key in os.environ},
+            )
+        evidence = {'outcome': 'origin_not_announced'}
+        attempts.append(evidence)
+
+        def origin_ready():
+            code = process.poll()
+            if code is not None:
+                evidence.update(outcome='process_exited', returncode=code)
+                raise TimeoutError('https_fixture_process_exited')
+            matches = re.findall(r'https://[a-z0-9-]+\.trycloudflare\.com', log.read_text(errors='replace'))
+            for origin in reversed(dict.fromkeys(matches)):
+                if urlsplit(origin).hostname in {'api.trycloudflare.com', 'www.trycloudflare.com'}:
+                    continue
+                endpoint = origin + '/page'
+                try:
+                    with urlopen(endpoint, timeout=5) as response:
+                        if response.status == 200 and response.geturl() == endpoint and response.read(len(page) + 1) == page:
+                            evidence['outcome'] = 'ready'
+                            return origin
+                        evidence['outcome'] = 'unexpected_fixture_response'
+                except HTTPError as error:
+                    evidence.update(outcome='origin_http_error', http_status=error.code)
+                    error.close()
+                except OSError:
+                    evidence['outcome'] = 'origin_unreachable'
+            return None
+
+        try:
+            return process, wait_for(origin_ready, 45, 'https_fixture_unavailable')
+        except TimeoutError:
+            stop_tunnel(process)
+            if attempt == 1:
+                raise
+        except BaseException:
+            stop_tunnel(process)
+            raise
+
+
 def terminal_wait_budget(case):
     """Allow slower CI browser execution without changing worker lease or write gates.
 
@@ -231,7 +288,7 @@ class Worker:
 
 def run():
     stage='acceptance_preflight';rows=[];case_counts=[];private_captures=[];user=None;orgs=[];admin=None;logged=None;fixture=None;tunnel=None;model=None;worker=None
-    temporary=None;stream=None
+    temporary=None
     target=Path(os.environ.get('NATIVE_TENANT_EVIDENCE','native-tenant-worker-evidence.json'))
     report={'schema_version':1,'git_sha':os.environ.get('CERT_HEAD_SHA',os.environ.get('GITHUB_SHA','local')),'status':'BLOCKED','scenarios':rows,
             'live_customer_data':False,'external_provider_inference':False,'production_adapter_switch':False}
@@ -272,21 +329,11 @@ def run():
         rows.append({'scenario':'authenticated_actor_and_cross_tenant_rls','passed':True})
         temporary=tempfile.TemporaryDirectory(prefix='native-tenant-')
         root=Path(temporary.name);cap=secrets.token_hex(32)
-        fixture=IndependentFixture(root/'effects.sqlite3',PAGE,capability=cap)
-        tunnel_log=root/'tunnel-private.log';stream=open(tunnel_log,'wb')
-        tunnel=subprocess.Popen([os.environ['CLOUDFLARED_BIN'],'tunnel','--no-autoupdate','--protocol','http2','--url',fixture.origin],
-            stdin=subprocess.DEVNULL,stdout=stream,stderr=stream,start_new_session=True,
-            env={key:os.environ[key] for key in ('PATH','HOME','TMPDIR','LANG','SSL_CERT_FILE','SSL_CERT_DIR') if key in os.environ})
-        def origin_ready():
-            stream.flush();text=tunnel_log.read_text(errors='replace')
-            matches=re.findall(r'https://[a-z0-9-]+\.trycloudflare\.com',text)
-            found=next((u for u in matches if urlsplit(u).hostname not in {'api.trycloudflare.com','www.trycloudflare.com'}),None)
-            if not found:return False
-            try:
-                with urlopen(found+'/page',timeout=5) as response:
-                    return found if response.status==200 else False
-            except OSError:return False
-        stage='owned_https_fixture_readiness';origin=wait_for(origin_ready,90,'https_fixture_unavailable')
+        page = PAGE + b'\n<!-- fixture-' + secrets.token_hex(16).encode('ascii') + b' -->'
+        fixture=IndependentFixture(root/'effects.sqlite3',page,capability=cap)
+        stage='owned_https_fixture_readiness'
+        report['https_fixture_attempts'] = []
+        tunnel, origin = start_fixture_tunnel(root, fixture.origin, page, report['https_fixture_attempts'])
         fixture_url=origin+'/page#'+cap;host=urlsplit(origin).hostname
         model_root=root/'model';model_root.mkdir(mode=0o700);model=Model(model_root,fixture_url)
         images=SandboxImages(publish('native-openhands'),publish('native-browser'),publish('native-tenant-gateway'),
@@ -492,12 +539,7 @@ def run():
                 report.setdefault('cleanup_failures',[]).append(label)
         if worker is not None:cleanup('worker',worker.close)
         if model is not None:cleanup('scripted_model',model.close)
-        if tunnel is not None:
-            def stop_tunnel():
-                tunnel.terminate()
-                try:tunnel.wait(timeout=10)
-                except subprocess.TimeoutExpired:tunnel.kill();tunnel.wait(timeout=5)
-            cleanup('https_fixture_tunnel',stop_tunnel)
+        if tunnel is not None:cleanup('https_fixture_tunnel',lambda:stop_tunnel(tunnel))
         if fixture is not None:
             def stop_receiver():
                 fixture.hold=False;fixture.close()
@@ -507,7 +549,6 @@ def run():
                     if report['status']=='PASS' and total!=report['independent_total_writes']:
                         report.update(status='BLOCKED',failure_stage='late_receiver_effect_after_cleanup')
             cleanup('independent_receiver',stop_receiver)
-        if stream is not None:cleanup('tunnel_capture',stream.close)
         if temporary is not None:cleanup('private_files',temporary.cleanup)
         if logged is not None:cleanup('actor_session',logged.auth.sign_out)
         if admin is not None:
