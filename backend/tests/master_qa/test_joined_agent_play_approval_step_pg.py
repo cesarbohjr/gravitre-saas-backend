@@ -1,8 +1,9 @@
 """P27-02/03 joined offline journey through actual routing and step handler.
 
 Real: AgentSelector.select, Play run router preflight/dispatch, approval route,
-execute_workflow_steps registered invoke_tool handler, sealed read gate, SQL
-workflow status trigger, outbox relay and idempotent durable consumer.
+execute_workflow_steps registered invoke_tool handler, Canvas authorization
+and dispatch, sealed read gate, SQL workflow status trigger, outbox relay and
+idempotent durable consumer.
 
 Adapted: local tenant connector query, deterministic version/policy/billing,
 outbound vendor transport and optional delivery channels. Canonical terminal
@@ -15,7 +16,7 @@ provider readback certification.
 from __future__ import annotations
 
 from types import SimpleNamespace
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import Mock
 from uuid import UUID
 
 import pytest
@@ -37,11 +38,11 @@ pytestmark = requires_pg
 @pytest.mark.asyncio
 @pytest.mark.parametrize("decision", ["approve", "reject", "forbidden_approver", "foreign_tenant", "cancel_during_finalize", "terminal_persistence_failure"])
 async def test_agent_play_approval_real_step_to_durable_consumer(pg, monkeypatch, tmp_path, request, decision):
-    from app.services import agent_selector, domain_events, work_loop_links
+    from app.services import agent_selector, domain_events, tool_service, work_loop_links
     from app.routers import plays, workflows
+    from app.workflows.registry import StepContext
     from app.workflows import execute, handlers, repository
-    from app.services.tool_types import ToolContext, NormalizedResult
-    from app.services.sealed_read_execution import invoke_compiled_read
+    from app.services.tool_types import NormalizedResult
     from app.services.connector_resource_resolver import ResourceResolution
 
     workflow_id = "22222222-2222-4222-8222-222222222222"
@@ -211,11 +212,6 @@ async def test_agent_play_approval_real_step_to_durable_consumer(pg, monkeypatch
     monkeypatch.setattr(execute, "resolve_active_branch", lambda *_: None)
     monkeypatch.setattr(execute, "should_skip_for_branch", lambda *a, **kw: False)
     monkeypatch.setattr(execute, "_add_run_execution_time", lambda *a, **kw: None)
-    monkeypatch.setattr("app.services.action_selection_gate.gate_workflow_invoke",
-                        lambda **kw: kw["action"])
-    monkeypatch.setattr(handlers, "_enforce_canvas_write_authority",
-                        lambda ctx: None if ctx.config["action"] == "hubspot.contacts.search"
-                        else (_ for _ in ()).throw(AssertionError("unauthorized write")))
     # An independent receiver persists the vendor observation outside the
     # application PostgreSQL transaction and outside the process's mock state.
     import json
@@ -226,7 +222,15 @@ async def test_agent_play_approval_real_step_to_durable_consumer(pg, monkeypatch
         capability="joined-agent-cap",
     )
     request.addfinalizer(receiver.close)
-    def observed_vendor():
+    def observed_vendor(context, params):
+        assert context.client is client
+        assert context.org_id == ORG and str(context.run_id) == run_id
+        assert context.environment_name == "synthetic"
+        assert context.step_id
+        assert context.preflight_result.ok
+        assert context.preflight_result.action_key == "hubspot.contacts.search"
+        assert context.preflight_result.resource["connection_id"] == "local-conn"
+        assert str(params["portal_id"]) == "99887"
         request = urllib.request.Request(
             receiver.origin + "/write",
             data=json.dumps({"cap": "joined-agent-cap"}).encode(),
@@ -250,22 +254,33 @@ async def test_agent_play_approval_real_step_to_durable_consumer(pg, monkeypatch
         status="resolved", connector_id="hubspot", connection_id="local-conn",
         resource_type="portal", resource_id="99887", display_name="99887",
         confidence=0.98, resolution_reason="linked_config", candidate_count=1)
-    def invoke(_context, action, params, **_kw):
+    def resolve_fixture_executor(action, _context):
         assert action == "hubspot.contacts.search"
-        # The connector vendor transport uses a local fake rather than the
-        # restricted SQL repository client (whose scope is workflow state).
-        ctx = ToolContext(settings=settings, client=MagicMock(), org_id=ORG,
-                          actor_id="44444444-4444-4444-8444-444444444444", environment_name="synthetic")
-        with (patch("app.services.read_preflight.resolve_resource", return_value=resource),
-              patch("app.services.tool_service.enforce_rate_limit"),
-              patch("app.services.tool_service.write_audit_event"),
-              patch("app.services.agent_tool_permissions.list_agent_tool_permissions",
-                    return_value=[{"connector_type": "hubspot",
-                                   "scopes": ["hubspot:read"], "expires_at": None}]),
-              patch("app.services.tool_service._resolve_tool_executor",
-                    return_value=lambda *_: vendor())):
-            return invoke_compiled_read(ctx, action, params)
-    monkeypatch.setattr(handlers, "_invoke_canvas_registered_tool", invoke)
+        return vendor
+
+    # The SQL adapter owns workflow rows, run approval, and terminal evidence.
+    # Other service lookups get synthetic inputs at their own data boundaries.
+    monkeypatch.setattr("app.services.read_preflight.resolve_resource", lambda **_: resource)
+    monkeypatch.setattr("app.services.agent_interrupt_service.peek_pending_interrupt", lambda *_: None)
+    monkeypatch.setattr("app.services.hipaa_service.get_hipaa_status", lambda *_: {"hipaaReady": False})
+    monkeypatch.setattr("app.services.agent_tool_permissions.list_agent_tool_permissions",
+                        lambda *a, **kw: [{"connector_type": "hubspot",
+                                           "scopes": ["hubspot:read"], "expires_at": None}])
+    monkeypatch.setattr(tool_service, "write_audit_event", lambda *a, **kw: None)
+    monkeypatch.setattr(tool_service, "_resolve_tool_executor", resolve_fixture_executor)
+    if decision == "approve":
+        from app.services.canvas_write_gate import CANVAS_WRITE_AUTHORITY_BLOCKED
+
+        # Check the actual handler against the same still-pending SQL run.
+        write_step = StepContext(
+            settings=settings, org_id=ORG, user_id="33333333-3333-4333-8333-333333333333",
+            run_id=run_id, environment_name="synthetic", step_id="unapproved-write",
+            step_type="invoke_tool", step_index=0, config={"action": "hubspot.contacts.create"},
+            parameters={}, step_outputs={}, client=client, is_dry_run=False,
+        )
+        with pytest.raises(PermissionError, match=CANVAS_WRITE_AUTHORITY_BLOCKED):
+            handlers.InvokeToolHandler().execute(write_step)
+        assert vendor.call_count == 0 and receiver.writes == 0
     # No synthetic stand-in for the executor: route calls real implementation.
     monkeypatch.setattr(workflows, "execute_workflow_steps", execute.execute_workflow_steps)
     monkeypatch.setattr(workflows, "_step_to_out", lambda x: x)
