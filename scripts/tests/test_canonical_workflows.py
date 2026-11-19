@@ -28,7 +28,7 @@ class CanonicalContracts(unittest.TestCase):
         actual = {str(p.relative_to(ROOT)) for p in (ROOT / '.github/workflows').glob('*.y*ml')}
         self.assertIn(actual, [{r['source'] for r in self.records},
                                {'.github/workflows/' + filename for filename in self.lanes}])
-        self.assertEqual(sum(len(r['jobs']) for r in self.records), 121)
+        self.assertEqual(sum(len(r['jobs']) for r in self.records), 122)
         for record in self.records:
             source = self.contracts[Path(record['source']).stem]
             target = self.lanes['qa-' + record['lane'] + '.yml']
