@@ -22,7 +22,7 @@ from uuid import UUID
 import pytest
 from fastapi import HTTPException
 
-from tests.db.pg_harness import requires_pg
+from tests.db.pg_harness import MIGRATIONS, requires_pg
 from tests.db.test_domain_event_outbox_pg import ORG, _PsqlRpcClient
 from tests.master_qa.canonical_pg_repository import (
     PgRepositoryClient, canonical_pg_cluster,
@@ -36,7 +36,10 @@ def pg():
 pytestmark = requires_pg
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("decision", ["approve", "reject", "forbidden_approver", "foreign_tenant", "cancel_during_finalize", "terminal_persistence_failure"])
+@pytest.mark.parametrize("decision", [
+    "approve", "reject", "forbidden_approver", "foreign_tenant",
+    "cancel_before_dispatch", "cancel_during_finalize", "terminal_persistence_failure",
+])
 async def test_agent_play_approval_real_step_to_durable_consumer(pg, monkeypatch, tmp_path, request, decision):
     from app.services import agent_selector, domain_events, tool_service, work_loop_links
     from app.routers import plays, workflows
@@ -84,6 +87,10 @@ async def test_agent_play_approval_real_step_to_durable_consumer(pg, monkeypatch
     )
     _core_effect_tables(pg)
     _disable_optional_delivery(monkeypatch)
+    pg.psql("ALTER TABLE public.audit_logs ALTER COLUMN id SET DEFAULT gen_random_uuid();"
+            "ALTER TABLE public.audit_events ALTER COLUMN id SET DEFAULT gen_random_uuid();")
+    pg.psql("CREATE TABLE public.agent_jobs (status text);")
+    pg.psql((MIGRATIONS / "20260606200000_agent_execution_interrupts.sql").read_text())
     def connector_table(name):
         assert name == "connectors"
         class Query:
@@ -205,7 +212,6 @@ async def test_agent_play_approval_real_step_to_durable_consumer(pg, monkeypatch
 
     # Existing step rows were created at approval time; the real handler
     # must perform the pending -> running -> completed step transition.
-    monkeypatch.setattr(execute, "enforce_interrupt", lambda *a, **kw: None)
     # Production repository step reader and writers remain unpatched.
     monkeypatch.setattr(execute, "emit_execute_step_completed", lambda *a, **kw: None)
     monkeypatch.setattr(execute, "write_audit_event", lambda *a, **kw: None)
@@ -261,7 +267,6 @@ async def test_agent_play_approval_real_step_to_durable_consumer(pg, monkeypatch
     # The SQL adapter owns workflow rows, run approval, and terminal evidence.
     # Other service lookups get synthetic inputs at their own data boundaries.
     monkeypatch.setattr("app.services.read_preflight.resolve_resource", lambda **_: resource)
-    monkeypatch.setattr("app.services.agent_interrupt_service.peek_pending_interrupt", lambda *_: None)
     monkeypatch.setattr("app.services.hipaa_service.get_hipaa_status", lambda *_: {"hipaaReady": False})
     monkeypatch.setattr("app.services.agent_tool_permissions.list_agent_tool_permissions",
                         lambda *a, **kw: [{"connector_type": "hubspot",
@@ -285,6 +290,19 @@ async def test_agent_play_approval_real_step_to_durable_consumer(pg, monkeypatch
     monkeypatch.setattr(workflows, "execute_workflow_steps", execute.execute_workflow_steps)
     monkeypatch.setattr(workflows, "_step_to_out", lambda x: x)
     assert pg.value("SELECT count(*) FROM public.domain_event_outbox") == "0"
+    if decision == "cancel_before_dispatch":
+        from app.services.agent_interrupt_service import request_interrupt
+
+        def cancel_then_execute(*args, **kwargs):
+            assert pg.value(f"SELECT status FROM public.workflow_runs WHERE id='{run_id}'") == "running"
+            interrupt = request_interrupt(
+                PgRepositoryClient(pg), org_id=ORG, target_type="workflow_run", target_id=run_id,
+                signal="cancel", actor_id="44444444-4444-4444-8444-444444444444", source="api",
+            )
+            assert interrupt["status"] == "pending" and interrupt["applied_eagerly"]
+            return execute.execute_workflow_steps(*args, **kwargs)
+
+        monkeypatch.setattr(workflows, "execute_workflow_steps", cancel_then_execute)
     if decision in {"reject", "forbidden_approver", "foreign_tenant"}:
         actor = {"user_id": "44444444-4444-4444-8444-444444444444"}
         if decision == "reject":
@@ -336,7 +354,10 @@ async def test_agent_play_approval_real_step_to_durable_consumer(pg, monkeypatch
                 {"user_id": "44444444-4444-4444-8444-444444444444"}, ORG, "synthetic", settings)
         assert receiver.writes == 1
         return
-    terminal = "cancelled" if decision == "cancel_during_finalize" else "completed"
+    cancelled_before_dispatch = decision == "cancel_before_dispatch"
+    terminal = "cancelled" if decision in {"cancel_before_dispatch", "cancel_during_finalize"} else "completed"
+    step_status = "pending" if cancelled_before_dispatch else "completed"
+    expected_provider_calls = 0 if cancelled_before_dispatch else 1
     approved = await workflows.approve_run(
         UUID(run_id), workflows.ApproveRejectRequest(comment="approved in QA"),
         {"user_id": "44444444-4444-4444-8444-444444444444"}, ORG, "synthetic", settings)
@@ -344,34 +365,44 @@ async def test_agent_play_approval_real_step_to_durable_consumer(pg, monkeypatch
     assert approved["approval_status"] == "approved"
     assert repository.get_approval_counts(PgRepositoryClient(pg), run_id) == (1, False)
     steps = repository.get_run_with_steps(PgRepositoryClient(pg), ORG, run_id, "synthetic")["steps"]
-    assert steps[0]["status"] == "completed"
-    assert steps[0]["output_snapshot"]
-    observed = verified_sales_observations(compiled, completed_steps=steps)
-    assert observed["status"] == "DIAGNOSTIC_READS_OBSERVED"
-    assert observed["verified_actions"][0]["action"] == "hubspot.contacts.search"
-    assert observed["business_outcome"] == "NOT_MEASURED"
+    assert steps[0]["status"] == step_status
+    if cancelled_before_dispatch:
+        assert pg.value(
+            "SELECT count(*) FROM public.agent_execution_interrupts "
+            f"WHERE target_id='{run_id}' AND status='acknowledged' AND acknowledged_at IS NOT NULL"
+        ) == "1"
+    else:
+        assert steps[0]["output_snapshot"]
+        observed = verified_sales_observations(compiled, completed_steps=steps)
+        assert observed["status"] == "DIAGNOSTIC_READS_OBSERVED"
+        assert observed["verified_actions"][0]["action"] == "hubspot.contacts.search"
+        assert observed["business_outcome"] == "NOT_MEASURED"
     assert pg.value(f"SELECT status FROM public.runs WHERE id='{run_id}'") == terminal
-    assert pg.value(f"SELECT status FROM public.run_steps WHERE run_id='{run_id}'") == "completed"
-    assert vendor.call_count == 1
-    assert receiver.writes == 1
+    assert pg.value(f"SELECT status FROM public.run_steps WHERE run_id='{run_id}'") == step_status
+    assert vendor.call_count == receiver.writes == expected_provider_calls
     assert pg.value(f"SELECT status FROM public.workflow_runs WHERE id='{run_id}'") == terminal
     assert pg.value(f"SELECT parameters->>'outcome_finalized' FROM public.workflow_runs WHERE id='{run_id}'") == "true"
     for table in ("audit_logs", "audit_events", "notifications", "intelligence_outcome_events"):
-        assert pg.value(f"SELECT count(*) FROM public.{table}") == "1"
+        expected = "3" if cancelled_before_dispatch and table in {"audit_logs", "audit_events"} else "1"
+        assert pg.value(f"SELECT count(*) FROM public.{table}") == expected
+    if cancelled_before_dispatch:
+        assert pg.value(
+            "SELECT action FROM public.audit_events "
+            "WHERE action LIKE 'agent.interrupt.%' ORDER BY action"
+        ).splitlines() == ["agent.interrupt.acknowledged", "agent.interrupt.requested"]
     # ECO-001 independent readback: the returned HTTP-equivalent result and
     # in-memory step objects cannot substitute for durable terminal evidence.
     # Reopen the canonical repository reader after approval/execution.
     persisted = repository.get_run_with_steps(
         PgRepositoryClient(pg), ORG, run_id, "synthetic"
     )
-    assert persisted["steps"][0]["status"] == "completed"
-    assert persisted["steps"][0]["output_snapshot"], (
-        "Agent execution produced no independently readable step output"
-    )
+    assert persisted["status"] == terminal
+    assert persisted["steps"][0]["status"] == step_status
+    assert bool(persisted["steps"][0]["output_snapshot"]) == bool(expected_provider_calls)
     assert pg.value(
         f"SELECT count(*) FROM public.run_steps "
         f"WHERE run_id='{run_id}' AND status='completed'"
-    ) == "1"
+    ) == str(expected_provider_calls)
     assert pg.value(
         f"SELECT count(*) FROM public.domain_event_outbox "
         f"WHERE aggregate_id='{run_id}'"
@@ -382,7 +413,7 @@ async def test_agent_play_approval_real_step_to_durable_consumer(pg, monkeypatch
             UUID(run_id), workflows.ApproveRejectRequest(),
             {"user_id": "44444444-4444-4444-8444-444444444444"}, ORG, "synthetic", settings)
     assert replay.value.status_code == 400
-    assert vendor.call_count == 1
+    assert vendor.call_count == receiver.writes == expected_provider_calls
 
     pg.psql("CREATE TABLE public.qa_p27_joined_effects ("
             "event_id bigint PRIMARY KEY, org_id uuid NOT NULL, run_id uuid NOT NULL)")
@@ -411,8 +442,7 @@ async def test_agent_play_approval_real_step_to_durable_consumer(pg, monkeypatch
     finally:
         domain_events.reset_domain_event_handlers_for_tests()
     assert replayed.delivered == 1
-    assert vendor.call_count == 1  # never replay the external provider operation
-    assert receiver.writes == 1  # independently persisted provider observation
+    assert vendor.call_count == receiver.writes == expected_provider_calls
     assert pg.value("SELECT count(*) FROM public.qa_p27_joined_effects") == "1"
     assert pg.value(
         f"SELECT count(*) FROM public.domain_event_outbox "

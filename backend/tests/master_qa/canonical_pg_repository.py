@@ -117,7 +117,7 @@ class PgTable:
             "workflow_runs", "workflow_steps", "run_approvals", "play_runs",
             "workflows", "workflow_defs", "runs", "run_steps",
             "play_installations", "agent_action_outcomes", "audit_logs", "audit_events",
-            "notifications", "intelligence_outcome_events",
+            "notifications", "intelligence_outcome_events", "agent_execution_interrupts",
         }, name
         self.pg = pg
         self.name = name
