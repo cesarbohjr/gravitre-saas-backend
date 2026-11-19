@@ -35,6 +35,27 @@
       "backend/tests/services/test_tool_service.py",
       "backend/tests/services/test_execution_plan_authority.py"
     ],
+    "terminal_cleanup_followup": {
+      "head_tested_by_ci": "0e973ed2c6f308fc4a54ef7e8b6d9a15b446b3aa",
+      "run": "https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/44417772622/job/135202551950",
+      "backend_result": {
+        "passed": 17387,
+        "failed": 3,
+        "skipped": 44
+      },
+      "root_cause": "The terminal-hold test double lacked update_task_state_from, so its write recorder missed the production locked update.",
+      "regression": "backend/tests/services/test_pending_hold_does_not_survive_cancel.py",
+      "finding_links": [
+        "ECO-002",
+        "ECO-013",
+        "DEC-005",
+        "P27-04",
+        "P27-05"
+      ],
+      "targeted_tests_passed": 73,
+      "state": "LOCAL_PASS_AWAITING_CORE_CI_ON_REPAIRED_HEAD",
+      "scope": "Real conversation state service with in-memory PostgREST. Cleared terminal holds cannot be confirmed, completed receipts remain readable, and stale cleanup cannot erase a newer approval."
+    },
     "limits": "Mocked provider and database boundaries. Each finding still requires its own acceptance criteria. No closure or release authorization."
   },
   "records": [

@@ -13,7 +13,8 @@ The premise was wrong, but the invariants it assumed are real and worth pinning:
   1. `cancel` on an active hold classifies as reject, not modify or ambiguous.
   2. Pending state is conversation-scoped, so a new conversation cannot inherit
      a hold from an earlier one.
-  3. A terminal pending is cleared on the next turn rather than lingering.
+  3. Terminal approval state is cleared. A completed write receipt stays readable
+     without becoming an active approval.
 
 Live counterpart: `scripts/verify-pending-cancel-clears-hold.py`, PASS at tip
 `db928881`.
@@ -24,13 +25,22 @@ from typing import Any
 
 import pytest
 
-from app.services.conversation_state_service import DEFAULT_TASK_STATE
+from app.config import Settings
+from app.services.conversation_state_service import (
+    DEFAULT_TASK_STATE,
+    ConversationStateService,
+)
+from app.services.conversation_turn_controller import (
+    prepare_conversation_turn,
+    terminal_task_cleanup,
+)
 from app.services.pending_reply_classifier import (
     build_pending_snapshot,
     classify_pending_reply_fast,
     has_pending_family,
     is_clear_pending_cancel_intent,
 )
+from tests.services.fake_supabase_db import FakeSupabaseDB
 
 
 def _awaiting_confirm_state() -> dict[str, Any]:
@@ -87,55 +97,62 @@ def test_pending_state_is_conversation_scoped_so_a_new_conversation_starts_clean
     assert has_pending_family(dict(DEFAULT_TASK_STATE)) is False
 
 
-@pytest.mark.parametrize("terminal_status", ["cancelled", "completed", "failed"])
+@pytest.mark.parametrize(
+    ("terminal_status", "keep_receipt"),
+    [("cancelled", False), ("completed", False), ("failed", False), ("completed", True)],
+)
 @pytest.mark.asyncio
-async def test_a_terminal_pending_is_cleared_on_the_next_turn(
-    monkeypatch: pytest.MonkeyPatch, terminal_status: str
+async def test_terminal_approval_cannot_be_confirmed_on_the_next_turn(
+    mock_settings: Settings, terminal_status: str, keep_receipt: bool,
 ) -> None:
-    """A cancelled hold must not accept a later bare "yes".
+    pending = {"status": terminal_status, "params": {"label": "Create list"}}
+    if keep_receipt:
+        pending = {
+            "type": "connector_action",
+            "status": terminal_status,
+            "params": {
+                "kind": "write",
+                "invoke_action": "gmail.messages.send",
+                "args": {"to": "pat@example.test"},
+            },
+            "result": {"success": True},
+        }
+    state = {"pending_task": pending, "current_plan": {"goal": "Create list"}}
+    db = FakeSupabaseDB()
+    db.tables["conversations"] = [{"id": "conv-1", "org_id": "org-1", "task_state": state}]
 
-    This is the durable half of cancel: not just that the reply is classified as
-    reject, but that the record is actually cleared, so a stray confirmation on a
-    later turn cannot resurrect a destructive write.
-    """
-    from app.services import conversation_state_service as css
-    from app.services import conversation_turn_controller as ctc
-
-    writes: list[dict[str, Any]] = []
-    state = {
-        "pending_task": {"status": terminal_status, "params": {"label": "Create list"}},
-        "current_plan": {"goal": "Create list"},
-    }
-
-    class _FakeStateService:
-        async def update_task_state(
-            self, conversation_id: str, org_id: str, updates: dict[str, Any], *, client: Any = None
-        ) -> None:
-            writes.append(updates)
-            state.update(updates)
-
-        async def get_task_state(
-            self, conversation_id: str, org_id: str, *, client: Any = None
-        ) -> dict[str, Any]:
-            return dict(state)
-
-    # The controller imports this inside the function, so it must be patched at
-    # the defining module rather than on the controller.
-    monkeypatch.setattr(
-        css, "get_conversation_state_service", lambda *_a, **_k: _FakeStateService()
-    )
-    assert ctc is not None
-
-    await ctc.prepare_conversation_turn(
+    turn = await prepare_conversation_turn(
         message="yes",
         org_id="org-1",
         conversation_id="conv-1",
         task_state=state,
-        persist=True,
+        client=db,
+        settings=mock_settings,
     )
 
-    cleared = [w for w in writes if "pending_task" in w and w["pending_task"] is None]
-    assert cleared, (
-        f"a {terminal_status} pending was not cleared; a later bare 'yes' could "
-        "resurrect a destructive write"
-    )
+    stored = db.tables["conversations"][0]["task_state"]
+    assert stored["pending_task"] == (pending if keep_receipt else None)
+    assert stored["current_plan"] is None
+    assert not has_pending_family(stored)
+    assert not turn.pending_confirm
+    assert turn.pending_reply_intent is None
+
+
+@pytest.mark.asyncio
+async def test_locked_terminal_cleanup_preserves_a_newer_approval(mock_settings: Settings) -> None:
+    db = FakeSupabaseDB()
+    db.tables["conversations"] = [{
+        "id": "conv-1",
+        "org_id": "org-1",
+        "task_state": {"pending_task": {"status": "cancelled"}},
+    }]
+    service = ConversationStateService(mock_settings)
+    stale = await service.get_task_state("conv-1", "org-1", client=db)
+    assert terminal_task_cleanup(stale) is not None
+
+    await service.update_task_state("conv-1", "org-1", _awaiting_confirm_state(), client=db)
+    current = db.snapshot()
+    await service.update_task_state_from("conv-1", "org-1", terminal_task_cleanup, client=db)
+
+    assert db.snapshot() == current
+    assert has_pending_family(current["conversations"][0]["task_state"])
