@@ -18,6 +18,7 @@ from app.services.agent_tool_permissions import assert_agent_tool_permission
 from app.services.apollo_tools import APOLLO_TOOL_EXECUTORS
 from app.services.tool_service import invoke_tool
 from app.services.tool_types import ToolContext
+from tests.support.provider_write import with_provider_write_ledger
 
 
 def _ctx(*, agent_id: str | None) -> ToolContext:
@@ -67,7 +68,7 @@ def test_invoke_tool_apollo_lists_create_with_synthetic_agent_reaches_apollo(
     mock_create_label.return_value = {"label": {"id": "l1", "name": "MSP Prospects"}}
 
     result = invoke_tool(
-        _ctx(agent_id="synthetic-default"),
+        with_provider_write_ledger(_ctx(agent_id="synthetic-default"), "30f734a2-dbdb-45aa-9112-19c6d604d451"),
         "apollo.lists.create",
         {"name": "MSP Prospects", "modality": "contacts"},
     )

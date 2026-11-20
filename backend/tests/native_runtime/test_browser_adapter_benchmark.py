@@ -89,3 +89,12 @@ def test_strict_snapshot_gate_remains_active_after_fixture_paint_delay():
     assert "await stable_browser_evidence(session, action)" in source
     assert source.index("await asyncio.sleep(0.5)") < source.index("await stable_browser_evidence(session, action)")
     assert "approved=True" in source
+
+
+def test_benchmark_capture_failure_diagnostics_remain_bounded():
+    error = PermissionError('PRIVATE-PAGE-DETAIL')
+    error.evidence_changes = {'capture_transition': True, 'stability_budget_exhausted': True,
+                             'dom': True, 'url': 'PRIVATE-URL', 'private': 'PRIVATE-DETAIL'}
+    assert benchmark['browser_evidence_changes'](error) == {
+        'capture_transition': True, 'stability_budget_exhausted': True, 'dom': True,
+    }

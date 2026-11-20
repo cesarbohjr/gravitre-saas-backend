@@ -33,6 +33,7 @@ DEPLOY_RELEVANT_GLOBS: tuple[str, ...] = (
     # The gate workflow file itself and this detector script — changes to the
     # deploy-verification machinery should always re-run the gate.
     ".github/workflows/railway-backend-production.yml",
+    ".github/workflows/qa-11-release.yml",
     "scripts/railway_commit_touches_backend.py",
     "scripts/railway_prod_deploy.py",
 )

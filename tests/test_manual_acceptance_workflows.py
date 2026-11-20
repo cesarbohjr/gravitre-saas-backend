@@ -4,10 +4,21 @@ import re
 import subprocess
 import sys
 import textwrap
+from runpy import run_path
 
 import pytest
 
 ROOT = Path(__file__).resolve().parents[1] / ".github" / "workflows"
+REPOSITORY_ROOT = ROOT.parents[1]
+contract = run_path(str(REPOSITORY_ROOT / 'scripts/workflow_source_contract.py'))
+
+
+def workflow(name):
+    return contract['definition'](REPOSITORY_ROOT, name)
+
+
+def workflow_text(name):
+    return contract['text'](REPOSITORY_ROOT, name)
 
 
 @pytest.mark.parametrize("override, expected, diagnostic", [
@@ -21,8 +32,10 @@ ROOT = Path(__file__).resolve().parents[1] / ".github" / "workflows"
     ({"E2E_SUPABASE_SERVICE_ROLE_KEY": ""}, 1, "E2E_SUPABASE_SERVICE_ROLE_KEY"),
 ])
 def test_actual_billing_credential_guard_executes_and_fails_closed(override, expected, diagnostic):
-    workflow = (ROOT / "isolated-acceptance.yml").read_text()
-    block = re.search(r"(?ms)^          python - <<'PY'\n(.*?)^          PY$", workflow)
+    suite = workflow('isolated-acceptance.yml')
+    step = next(step for step in suite['jobs']['billing-e2e']['steps']
+                if step.get('name') == 'Assert dedicated test credentials (never production)')
+    block = re.search(r"(?ms)^python - <<'PY'\n(.*?)^PY$", step['run'])
     assert block, "Billing credential guard must exist before fixture seeding"
     source = textwrap.dedent(block.group(1))
     compile(source, "billing-credential-guard", "exec")
@@ -46,26 +59,30 @@ def test_actual_billing_credential_guard_executes_and_fails_closed(override, exp
 
 
 def test_manual_billing_entrypoint_uses_shared_verified_suite():
-    workflow = (ROOT / "run-acceptance-billing.yml").read_text()
+    workflow = workflow_text('run-acceptance-billing.yml')
     assert "workflow_dispatch:" in workflow
-    assert "uses: ./.github/workflows/isolated-acceptance.yml" in workflow
+    assert any(path in workflow for path in ('uses: ./.github/workflows/isolated-acceptance.yml',
+                                             'uses: ./.github/workflows/qa-12-independent-acceptance.yml'))
     assert "suite: billing" in workflow
     assert "secrets: inherit" in workflow
 
 
 def test_manual_voice_entrypoint_uses_shared_verified_suite():
-    workflow = (ROOT / "run-acceptance-voice.yml").read_text()
+    workflow = workflow_text('run-acceptance-voice.yml')
     assert "workflow_dispatch:" in workflow
-    assert "uses: ./.github/workflows/isolated-acceptance.yml" in workflow
+    assert any(path in workflow for path in ('uses: ./.github/workflows/isolated-acceptance.yml',
+                                             'uses: ./.github/workflows/qa-12-independent-acceptance.yml'))
     assert "suite: voice" in workflow
     assert "secrets: inherit" in workflow
 
 
 def test_reusable_suite_target_and_provider_contracts():
-    workflow = (ROOT / "isolated-acceptance.yml").read_text()
+    workflow = workflow_text('isolated-acceptance.yml')
     assert "workflow_call:" in workflow
-    assert "inputs.suite == 'billing'" in workflow
-    assert "inputs.suite == 'voice'" in workflow
+    assert any(condition in workflow for condition in (
+        "inputs.suite == 'billing'", "(inputs.isolated_acceptance__suite || inputs.suite) == 'billing'"))
+    assert any(condition in workflow for condition in (
+        "inputs.suite == 'voice'", "(inputs.isolated_acceptance__suite || inputs.suite) == 'voice'"))
     assert "https://aadnwmjzrmbvadszroqt.supabase.co" in workflow
     assert "scripts/check-isolated-acceptance-db.py" in workflow
     assert "E2E_STRIPE_SECRET_KEY" in workflow
@@ -74,7 +91,7 @@ def test_reusable_suite_target_and_provider_contracts():
 
 
 def test_database_preparation_is_explicitly_read_only():
-    workflow = (ROOT / "acceptance-db-preflight.yml").read_text()
+    workflow = workflow_text('acceptance-db-preflight.yml')
     assert "workflow_dispatch:" in workflow
     assert "scripts/prepare_acceptance_baseline.py" in workflow
     assert "scripts/check_acceptance_remote_readonly.py" in workflow
@@ -83,10 +100,12 @@ def test_database_preparation_is_explicitly_read_only():
 
 
 def test_generated_quality_stays_manual_and_checks_actual_production_revision():
-    workflow = (ROOT / "live-generated-response-quality.yml").read_text()
+    workflow = workflow_text('live-generated-response-quality.yml')
     assert "workflow_dispatch:" in workflow
     assert "pull_request:" not in workflow
     assert "github.ref == 'refs/heads/main'" in workflow
     assert 'https://api.gravitre.app/health' in workflow
-    assert 'health.get("git_sha") != os.environ["DEPLOYED_SHA"]' in workflow
+    job = contract['definition'](REPOSITORY_ROOT, 'live-generated-response-quality.yml')['jobs']['generated-response-quality']
+    code = '\n'.join(step.get('run', '') for step in job['steps'])
+    assert 'health.get("git_sha") != os.environ["DEPLOYED_SHA"]' in code
     assert "environment: production-evaluation" in workflow

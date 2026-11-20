@@ -1,0 +1,681 @@
+# STAGED: not installed in .github/workflows; automatic trigger cutover pending.
+name: QA 11-release
+'on':
+  workflow_dispatch:
+    inputs:
+      source:
+        description: Original workflow contract to execute
+        required: true
+        type: choice
+        options:
+        - production-hardening-smoke
+        - production-release-verification
+        - railway-backend-production
+        - railway-safety-vars
+        - release1-production-smoke
+        - unified-turn-phase4-cutover
+        default: production-hardening-smoke
+      production_hardening_smoke__reason:
+        description: 'production-hardening-smoke: Reason for manual trigger'
+        required: false
+      railway_backend_production__force_railway_up:
+        description: 'railway-backend-production: If GitHub auto-deploy is stuck, GraphQL-redeploy tip (never CLI railway
+          up)'
+        type: boolean
+        default: true
+        required: false
+      railway_safety_vars__mode:
+        description: 'railway-safety-vars: audit (read-only) or apply (add absent safety pins)'
+        type: choice
+        options:
+        - audit
+        - apply
+        default: audit
+        required: false
+      railway_safety_vars__railway_environment:
+        description: 'railway-safety-vars: Railway environment name'
+        required: false
+        default: production
+      unified_turn_phase4_cutover__enable_live:
+        description: 'unified-turn-phase4-cutover: Set UNIFIED_TURN_LIVE_ENABLED (true/false)'
+        required: false
+        default: 'true'
+      unified_turn_phase4_cutover__railway_environment:
+        description: 'unified-turn-phase4-cutover: Railway environment name'
+        required: false
+        default: production
+  push:
+    branches:
+    - main
+  workflow_run:
+    branches:
+    - main
+    types:
+    - completed
+    workflows:
+    - CI
+    - Production release verification
+    - QA 01-core
+    - Railway backend production
+  schedule:
+  - cron: 0 5 * * *
+concurrency:
+  group: ${{ format('candidate-{0}', (inputs.source == 'production-hardening-smoke' && ('production-hardening-smoke')) ||
+    (inputs.source == 'production-release-verification' && ('production-release-verification')) || (inputs.source == 'railway-backend-production'
+    && ('railway-backend-production')) || (inputs.source == 'railway-safety-vars' && ('railway-safety-vars')) || (inputs.source
+    == 'unified-turn-phase4-cutover' && ('unified-turn-phase4-cutover')) || github.run_id) }}
+  cancel-in-progress: ${{ (inputs.source == 'production-hardening-smoke' && (false)) || (inputs.source == 'production-release-verification'
+    && (false)) || (inputs.source == 'railway-backend-production' && (false)) || (inputs.source == 'railway-safety-vars' &&
+    (false)) || (inputs.source == 'unified-turn-phase4-cutover' && (true)) || false }}
+jobs:
+  upstream_contract:
+    name: Read trusted upstream outcome metadata
+    if: ${{ github.event_name == 'workflow_run' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    permissions:
+      contents: read
+      actions: read
+    outputs:
+      evidence: ${{ steps.upstream.outputs.evidence }}
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        ref: ${{ github.sha }}
+        persist-credentials: false
+    - id: upstream
+      run: python scripts/route-workflow-event.py --lane 11-release --fetch-upstream
+      env:
+        GITHUB_TOKEN: ${{ github.token }}
+  dispatch_contract:
+    name: Validate selected source inputs
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    timeout-minutes: 4
+    needs:
+    - upstream_contract
+    if: ${{ always() && (needs.upstream_contract.result == 'success' || needs.upstream_contract.result == 'skipped') }}
+    outputs:
+      selected: ${{ steps.contract.outputs.selected }}
+      derived: ${{ steps.contract.outputs.derived }}
+      context_conclusions: ${{ steps.contract.outputs.context_conclusions }}
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        persist-credentials: false
+        fetch-depth: 0
+    - id: contract
+      name: Validate source contract
+      shell: python
+      env:
+        SOURCE_SCHEMAS: '{"production-hardening-smoke": {"reason": {"description": "Reason for manual trigger", "required":
+          false}}, "production-release-verification": {}, "railway-backend-production": {"force_railway_up": {"description":
+          "If GitHub auto-deploy is stuck, GraphQL-redeploy tip (never CLI railway up)", "type": "boolean", "default": true}},
+          "railway-safety-vars": {"mode": {"description": "audit (read-only) or apply (add absent safety pins)", "type": "choice",
+          "options": ["audit", "apply"], "default": "audit"}, "railway_environment": {"description": "Railway environment
+          name", "required": false, "default": "production"}}, "release1-production-smoke": {}, "unified-turn-phase4-cutover":
+          {"enable_live": {"description": "Set UNIFIED_TURN_LIVE_ENABLED (true/false)", "required": true, "default": "true"},
+          "railway_environment": {"description": "Railway environment name", "required": false, "default": "production"}}}'
+        MANUAL_SOURCES: '["production-hardening-smoke", "production-release-verification", "railway-backend-production", "railway-safety-vars",
+          "release1-production-smoke", "unified-turn-phase4-cutover"]'
+        DISPATCH_VALUES: ${{ toJSON(inputs) }}
+        EVENT_NAME: ${{ github.event_name }}
+        CANONICAL_LANE: 11-release
+        UPSTREAM_EVIDENCE: ${{ needs.upstream_contract.outputs.evidence }}
+      run: "import json, os\nschemas = json.loads(os.environ['SOURCE_SCHEMAS'])\nvalues = json.loads(os.environ['DISPATCH_VALUES'])\n\
+        event_name = os.environ['EVENT_NAME']\ncalled = values.get('_reusable', False)\nif not called and event_name not in\
+        \ ('workflow_dispatch', 'workflow_call'):\n    import subprocess\n    subprocess.run(['python', 'scripts/route-workflow-event.py',\
+        \ '--lane', os.environ['CANONICAL_LANE']], check=True)\n    raise SystemExit(0)\nsource = values.get('source')\nif\
+        \ source not in schemas:\n    raise SystemExit('Unknown source workflow')\nif not called and event_name == 'workflow_dispatch'\
+        \ and source not in json.loads(os.environ['MANUAL_SOURCES']):\n    raise SystemExit('Source has no manual trigger')\n\
+        if called and source != 'isolated-acceptance':\n    raise SystemExit('Unsupported reusable source')\nfor key, config\
+        \ in schemas[source].items():\n    value = values.get(source.replace('-', '_') + '__' + key)\n    if called and key\
+        \ == 'suite':\n        value = values.get('suite')\n    if config.get('required') and (value is None or value == ''):\n\
+        \        raise SystemExit('Required selected-source input missing: ' + key)\nprint('Selected source input contract\
+        \ validated; this is not execution acceptance')\nwith open(os.environ['GITHUB_OUTPUT'], 'a') as output:\n    output.write('selected='\
+        \ + json.dumps([source]) + '\\n')\n    output.write('derived=[]\\ncontext_conclusions={}\\n')\n"
+  production_hardening_smoke__hardening-smoke:
+    name: Lane D production API verification
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+        cache: pip
+        cache-dependency-path: backend/requirements.txt
+    - name: Install dependencies
+      working-directory: backend
+      run: 'python -m pip install --upgrade pip
+
+        pip install -r requirements-dev.txt
+
+        '
+    - name: Verify marketplace catalog seed (STA-229)
+      run: python -m pytest tests/marketplace/test_marketplace_seed_catalog.py::test_catalog_asset_counts -q
+      working-directory: backend
+      env:
+        APP_ENV: dev
+        SUPABASE_URL: https://test.supabase.co
+        SUPABASE_ANON_KEY: anon-test
+        SUPABASE_SERVICE_ROLE_KEY: service-role-test
+        SUPABASE_JWT_SECRET: jwt-secret-test
+        OPENAI_API_KEY: sk-test-openai
+    - name: Remove stale smoke reports
+      run: "rm -f docs/delivery/smoke-marketplace-production-latest.json \\\n  docs/delivery/smoke-ai-production-latest.json\
+        \ \\\n  docs/delivery/smoke-research-cascade-prod-latest.json \\\n  docs/delivery/link-check-production-latest.json\n"
+    - name: Run post-Tier 5 production smoke
+      id: post_tier5
+      continue-on-error: true
+      env:
+        BACKEND_URL: https://gravitre-saas-backend-production.up.railway.app
+        SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+        SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        SUPABASE_JWT_SECRET: ${{ secrets.SUPABASE_JWT_SECRET }}
+      run: python scripts/smoke-post-tier5-platform.py
+    - name: Run marketplace production smoke
+      id: marketplace
+      continue-on-error: true
+      env:
+        BACKEND_URL: https://gravitre-saas-backend-production.up.railway.app
+        SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+        SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        SUPABASE_JWT_SECRET: ${{ secrets.SUPABASE_JWT_SECRET }}
+      run: "python scripts/smoke-marketplace-production.py \\\n  --json docs/delivery/smoke-marketplace-production-latest.json\n"
+    - name: Run AI production smoke report
+      id: ai_smoke
+      continue-on-error: true
+      env:
+        BACKEND_URL: https://gravitre-saas-backend-production.up.railway.app
+        SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+        SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        SUPABASE_JWT_SECRET: ${{ secrets.SUPABASE_JWT_SECRET }}
+      run: python scripts/smoke-ai-production.py --json docs/delivery/smoke-ai-production-latest.json
+    - name: "Run research cascade production smoke (Phases 1\u20136)"
+      id: research
+      continue-on-error: true
+      env:
+        BACKEND_URL: https://gravitre-saas-backend-production.up.railway.app
+        SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+        SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        SUPABASE_JWT_SECRET: ${{ secrets.SUPABASE_JWT_SECRET }}
+      run: "python scripts/smoke-research-cascade-prod.py \\\n  --json docs/delivery/smoke-research-cascade-prod-latest.json\n"
+    - name: Check deployed marketing/app links (gravitre.app)
+      id: link_check
+      continue-on-error: true
+      run: "python scripts/check-deployed-links.py \\\n  --base-url https://gravitre.app \\\n  --json docs/delivery/link-check-production-latest.json\n"
+    - name: Upload smoke reports
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: production-hardening-reports
+        path: 'docs/delivery/smoke-marketplace-production-latest.json
+
+          docs/delivery/smoke-ai-production-latest.json
+
+          docs/delivery/smoke-research-cascade-prod-latest.json
+
+          docs/delivery/link-check-production-latest.json
+
+          '
+        if-no-files-found: ignore
+    - name: Write hardening smoke platform signal
+      if: always()
+      env:
+        SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+        SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        PROBE_OUTCOME_POST_TIER5: ${{ steps.post_tier5.outcome }}
+        PROBE_OUTCOME_MARKETPLACE: ${{ steps.marketplace.outcome }}
+        PROBE_OUTCOME_AI_SMOKE: ${{ steps.ai_smoke.outcome }}
+        PROBE_OUTCOME_RESEARCH: ${{ steps.research.outcome }}
+        PROBE_OUTCOME_LINK_CHECK: ${{ steps.link_check.outcome }}
+      run: python scripts/smoke-hardening-summary-live.py
+    - name: Fail when any probe failed
+      if: always()
+      env:
+        POST_TIER5: ${{ steps.post_tier5.outcome }}
+        MARKETPLACE: ${{ steps.marketplace.outcome }}
+        AI_SMOKE: ${{ steps.ai_smoke.outcome }}
+        RESEARCH: ${{ steps.research.outcome }}
+        LINK_CHECK: ${{ steps.link_check.outcome }}
+      run: "failed=0\nfor name in POST_TIER5 MARKETPLACE AI_SMOKE RESEARCH LINK_CHECK; do\n  outcome=\"${!name}\"\n  echo\
+        \ \"$name=$outcome\"\n  if [ \"$outcome\" != \"success\" ]; then\n    echo \"::error::$name probe outcome: $outcome\"\
+        \n    failed=1\n  fi\ndone\nexit $failed\n"
+    needs:
+    - dispatch_contract
+    if: ${{ always() && needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected),
+      'production-hardening-smoke') && ((!cancelled() && (true))) }}
+    concurrency:
+      group: ${{ format('candidate-{0}-{1}-{2}', 'production-hardening-smoke', 'production_hardening_smoke__hardening-smoke',
+        toJSON(matrix)) }}
+      cancel-in-progress: ${{ false }}
+  production_release_verification__verify:
+    if: ${{ always() && needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected),
+      'production-release-verification') && (!cancelled() && (true) && (github.event_name == 'workflow_dispatch' || (fromJSON(needs.dispatch_contract.outputs.context_conclusions)['production-release-verification']
+      || github.event.workflow_run.conclusion) == 'success')) }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        ref: main
+        fetch-depth: 0
+        persist-credentials: false
+    - name: Determine current production target
+      id: target
+      shell: bash
+      run: 'set -euo pipefail
+
+        SHA="$(git rev-parse HEAD)"
+
+        echo "sha=$SHA" >> "$GITHUB_OUTPUT"
+
+        echo "Verifying main commit $SHA"
+
+        '
+    - name: Verify web and backend production
+      shell: bash
+      env:
+        EXPECT_SHA: ${{ steps.target.outputs.sha }}
+      run: "set -euo pipefail\necho \"Verifying https://gravitre.app and https://api.gravitre.app/health\"\nweb_ok=0\napi_ok=0\n\
+        for attempt in $(seq 1 60); do\n  # Don't expose response bodies or secrets in action logs.\n  if curl -fsSL --retry\
+        \ 2 --connect-timeout 10 --max-time 20 -o /dev/null https://gravitre.app/; then\n    web_ok=1\n  fi\n  if curl -fsS\
+        \ --connect-timeout 10 --max-time 20 https://api.gravitre.app/health -o /tmp/gravitre-health.json; then\n    if python3\
+        \ scripts/verify_backend_deploy_revision.py --health-json /tmp/gravitre-health.json --expected-sha \"$EXPECT_SHA\"\
+        \n    then\n      api_ok=1\n    fi\n  fi\n  if [ \"$web_ok\" = 1 ] && [ \"$api_ok\" = 1 ]; then\n    echo \"Web responds\
+        \ successfully and API backend revision is verified against main.\"\n    exit 0\n  fi\n  echo \"Attempt $attempt/60:\
+        \ web=$web_ok api_commit_matches=$api_ok\"\n  sleep 15\ndone\necho \"::error::Production not verified against main\
+        \ commit $EXPECT_SHA (web=$web_ok api_commit_matches=$api_ok)\"\nexit 1\n"
+    name: verify
+    needs:
+    - dispatch_contract
+    permissions:
+      contents: read
+    concurrency:
+      group: ${{ format('candidate-{0}-{1}-{2}', 'production-release-verification', 'production_release_verification__verify',
+        toJSON(matrix)) }}
+      cancel-in-progress: ${{ false }}
+  railway_backend_production__detect-backend-changes:
+    name: Detect backend changes
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      changed: ${{ steps.detect.outputs.changed }}
+      ref: ${{ steps.detect.outputs.ref }}
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 2
+    - id: detect
+      run: "set -euo pipefail\nREF=\"$(git rev-parse HEAD)\"\necho \"ref=$REF\" >> \"$GITHUB_OUTPUT\"\nif [ \"${{ github.event_name\
+        \ }}\" = \"workflow_dispatch\" ]; then\n  echo \"changed=true\" >> \"$GITHUB_OUTPUT\"\n  echo \"workflow_dispatch\
+        \ \u2014 force deploy path.\"\n  exit 0\nfi\nif ! git rev-parse HEAD~1 >/dev/null 2>&1; then\n  echo \"changed=true\"\
+        \ >> \"$GITHUB_OUTPUT\"\n  echo \"Single-commit checkout \u2014 assume backend deploy required.\"\n  exit 0\nfi\n\
+        if python3 scripts/railway_commit_touches_backend.py --base HEAD~1 --head HEAD || \\\n   git diff --name-only HEAD~1\
+        \ HEAD | grep -Eq '^(scripts/verify-agent-roi-live[.]py|apps/web/lib/supabase/memberships[.]ts|[.]github/workflows/railway-backend-production[.]yml)$';\
+        \ then\n  echo \"changed=true\" >> \"$GITHUB_OUTPUT\"\nelse\n  echo \"changed=false\" >> \"$GITHUB_OUTPUT\"\n  echo\
+        \ \"::notice::No backend/ changes in this push \u2014 skipping Railway deploy gate.\"\nfi\n"
+    needs:
+    - dispatch_contract
+    if: ${{ always() && needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected),
+      'railway-backend-production') && ((!cancelled() && (true))) }}
+    concurrency:
+      group: ${{ format('candidate-{0}-{1}-{2}', 'railway-backend-production', 'railway_backend_production__detect-backend-changes',
+        toJSON(matrix)) }}
+      cancel-in-progress: ${{ false }}
+  railway_backend_production__deploy:
+    name: Verify Railway prod /health
+    needs:
+    - dispatch_contract
+    - railway_backend_production__detect-backend-changes
+    if: ${{ always() && needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected),
+      'railway-backend-production') && (!cancelled() && (needs.railway_backend_production__detect-backend-changes.result ==
+      'success') && (needs.railway_backend_production__detect-backend-changes.outputs.changed == 'true')) }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        ref: ${{ needs.railway_backend_production__detect-backend-changes.outputs.ref }}
+        fetch-depth: 0
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+    - name: Install Railway CLI
+      run: npm install -g @railway/cli@4.65.0
+    - name: Wait for GitHub-connected Railway auto-deploy
+      env:
+        RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+      run: "set -euo pipefail\nSHA=\"$(git rev-parse --short=8 HEAD)\"\nFULL=\"$(git rev-parse HEAD)\"\nSVC=\"gravitre-saas-backend\"\
+        \nENV_NAME=\"production\"\nFORCE=\"${{ github.event_name == 'workflow_dispatch' && inputs.railway_backend_production__force_railway_up\
+        \ || 'false' }}\"\n# Push-triggered backend changes: allow GraphQL force if GitHub auto-deploy lags.\nif [ \"${{ github.event_name\
+        \ }}\" = \"push\" ]; then\n  FORCE=\"true\"\nfi\n\nmatch_health() {\n  local url=\"$1\" timeout=\"$2\"\n  python3\
+        \ scripts/railway_prod_deploy.py \\\n    --wait-health-only \\\n    --timeout-s \"$timeout\" \\\n    --health-url\
+        \ \"$url\" \\\n    --commit-sha \"$SHA\"\n}\n\ntip_matches() {\n  local current=\"$1\"\n  [[ \"$current\" == \"$FULL\"\
+        * ]] || [[ \"$current\" == \"$SHA\"* ]]\n}\n\n# Never leave a fake tip: /health prefers RAILWAY_GIT_COMMIT_SHA then\
+        \ GIT_SHA.\n# A stale GIT_SHA env var can report a tip that is not actually running.\necho \"Clearing override GIT_SHA\
+        \ (if set) so health reflects the real commit...\"\nrailway variables delete GIT_SHA --service \"$SVC\" --environment\
+        \ \"$ENV_NAME\" || true\n\nCURRENT=\"$(curl -fsS https://api.gravitre.app/health | python3 -c 'import sys,json; print(json.load(sys.stdin).get(\"\
+        git_sha\",\"\"))' || true)\"\necho \"current_health_sha=$CURRENT expect=$FULL force=$FORCE\"\n\nif tip_matches \"\
+        $CURRENT\"; then\n  echo \"Prod already on tip \u2014 nothing to deploy.\"\n  exit 0\nfi\n\n# Always prefer GitHub-connected\
+        \ auto-deploy first. CLI `railway up`\n# racing that path fails at Dockerfile COPY with\n# \"failed to calculate checksum\"\
+        \ while the GitHub deploy often succeeds\n# (see docs/delivery/railway-github-actions-deploy-status.md).\necho \"\
+        Waiting for GitHub-connected Railway auto-deploy...\"\nset +e\nmatch_health \"https://gravitre-saas-backend-production.up.railway.app/health\"\
+        \ 600\nRAIL_WAIT=$?\nset -e\nCURRENT=\"$(curl -fsS https://api.gravitre.app/health | python3 -c 'import sys,json;\
+        \ print(json.load(sys.stdin).get(\"git_sha\",\"\"))' || true)\"\nif tip_matches \"$CURRENT\"; then\n  match_health\
+        \ \"https://api.gravitre.app/health\" 180\n  echo \"GitHub auto-deploy reached tip \u2014 no GraphQL force deploy\
+        \ needed.\"\n  exit 0\nfi\n\nif [ \"$FORCE\" != \"true\" ]; then\n  echo \"::error::Prod still on $CURRENT after GitHub\
+        \ auto-deploy wait (expect $SHA). Re-run with force_railway_up=true (GraphQL redeploy, not CLI upload).\"\n  exit\
+        \ 1\nfi\n\n# Force path: GraphQL / CLI redeploy of the GitHub commit \u2014 never set GIT_SHA\n# (that previously\
+        \ faked /health tip without loading the new image).\necho \"::warning::force deploy \u2014 tip still stale ($CURRENT)\
+        \ \u2014 GraphQL redeploy (no CLI upload, no GIT_SHA override)\"\nset +e\npython3 scripts/railway_prod_deploy.py \\\
+        \n  --commit-sha \"$FULL\" \\\n  --wait-health \\\n  --timeout-s 900 \\\n  --health-url \"https://gravitre-saas-backend-production.up.railway.app/health\"\
+        \nDEPLOY_EXIT=$?\nset -e\necho \"railway_graphql_deploy_exit=$DEPLOY_EXIT railway_wait_exit=$RAIL_WAIT\"\nif [ \"\
+        $DEPLOY_EXIT\" -ne 0 ]; then\n  echo \"::warning::GraphQL deploy helper exited $DEPLOY_EXIT \u2014 waiting on /health\
+        \ tip anyway\"\nfi\n\nmatch_health \"https://gravitre-saas-backend-production.up.railway.app/health\" 900\nmatch_health\
+        \ \"https://api.gravitre.app/health\" 180\n"
+    - name: Report API region and database round trip
+      continue-on-error: true
+      run: "# Every sequential Supabase query on a page load pays this round trip.\n# A few ms means the API and the database\
+        \ share a region; tens of ms means they don't.\nfor i in 1 2 3 4 5; do\n  curl -fsS https://gravitre-saas-backend-production.up.railway.app/health\
+        \ \\\n    | python3 -c 'import sys,json; d=json.load(sys.stdin); print(\"region=%s database_latency_ms=%s\" % (d.get(\"\
+        region\"), d.get(\"database_latency_ms\")))' || true\n  sleep 1\ndone\n"
+    - name: Post-deploy chat smoke (isolated org)
+      env:
+        SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+        SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        SUPABASE_JWT_SECRET: ${{ secrets.SUPABASE_JWT_SECRET }}
+        EXPECT_SHA: ${{ needs.railway_backend_production__detect-backend-changes.outputs.ref }}
+      run: 'set -euo pipefail
+
+        pip install httpx PyJWT python-dotenv supabase
+
+        python3 scripts/smoke-post-deploy-chat-live.py
+
+        '
+    - name: Upload post-deploy chat smoke artifact
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: smoke-post-deploy-chat-live
+        path: docs/delivery/smoke-post-deploy-chat-live.json
+        if-no-files-found: ignore
+    - name: Golden benchmark live smoke (isolated org)
+      if: always()
+      env:
+        LIVE_API_BASE: https://api.gravitre.app
+        EXPECT_SHA: ${{ needs.railway_backend_production__detect-backend-changes.outputs.ref }}
+        SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+        SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        SUPABASE_JWT_SECRET: ${{ secrets.SUPABASE_JWT_SECRET }}
+      run: "set +e\npip install httpx PyJWT python-dotenv supabase\npython3 scripts/smoke-golden-benchmark-live.py\nCODE=$?\n\
+        set -e\necho \"golden_benchmark_live_exit=$CODE\"\n# 0 PASS / 2 NOT RUN or PARTIAL skip are acceptable; 1 FAIL is\
+        \ a warning\nif [ \"$CODE\" -eq 1 ]; then\n  echo \"::warning::Golden benchmark live smoke FAIL \u2014 see artifact\"\
+        \nfi\n"
+    - name: Upload golden benchmark live artifact
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: smoke-golden-benchmark-live
+        path: docs/delivery/smoke-golden-benchmark-live.json
+        if-no-files-found: ignore
+    - name: MSP enrichment workflow live smoke
+      if: always()
+      env:
+        BACKEND_URL: https://gravitre-saas-backend-production.up.railway.app
+        SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+        SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        SUPABASE_JWT_SECRET: ${{ secrets.SUPABASE_JWT_SECRET }}
+        CONNECTOR_SECRETS_ENCRYPTION_KEY: ${{ secrets.CONNECTOR_SECRETS_ENCRYPTION_KEY }}
+        OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        INTERNAL_API_SECRET: ${{ secrets.INTERNAL_API_SECRET }}
+        HUBSPOT_CLIENT_ID: ${{ secrets.HUBSPOT_CLIENT_ID }}
+        HUBSPOT_CLIENT_SECRET: ${{ secrets.HUBSPOT_CLIENT_SECRET }}
+      run: "set +e\npython -m pip install --upgrade pip\npip install -r backend/requirements-dev.txt\npython3 scripts/smoke-msp-enrichment-workflow-live.py\n\
+        CODE=$?\nset -e\necho \"msp_enrichment_smoke_exit=$CODE\"\n# 0 PASS / 2 PARTIAL are acceptable; 1 FAIL soft-fails\
+        \ deploy gate\nif [ \"$CODE\" -eq 1 ]; then\n  echo \"::warning::MSP enrichment live smoke FAIL \u2014 see artifact\"\
+        \nfi\n"
+    - name: Upload MSP enrichment smoke artifact
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: msp-enrichment-workflow-live
+        path: docs/delivery/msp-enrichment-workflow-live.json
+        if-no-files-found: ignore
+    concurrency:
+      group: ${{ format('candidate-{0}-{1}-{2}', 'railway-backend-production', 'railway_backend_production__deploy', toJSON(matrix))
+        }}
+      cancel-in-progress: ${{ false }}
+  railway_safety_vars__safety-vars:
+    name: Railway safety variables (${{ inputs.railway_safety_vars__mode }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+      ENV_NAME: ${{ inputs.railway_safety_vars__railway_environment }}
+      SVC: gravitre-saas-backend
+    steps:
+    - uses: actions/checkout@v4
+    - name: Install Railway CLI
+      run: npm install -g @railway/cli@4.65.0
+    - name: Audit current variables
+      id: audit
+      run: 'set -euo pipefail
+
+        railway variables --service "$SVC" --environment "$ENV_NAME" --json > "$RUNNER_TEMP/vars.json"
+
+        set +e
+
+        python3 scripts/railway_safety_vars.py "$RUNNER_TEMP/vars.json" --plan-out "$RUNNER_TEMP/pins.txt" | tee "$RUNNER_TEMP/audit.txt"
+
+        rc=${PIPESTATUS[0]}
+
+        set -e
+
+        { echo ''### Railway safety variables (before)''; echo ''```''; cat "$RUNNER_TEMP/audit.txt"; echo ''```''; } >> "$GITHUB_STEP_SUMMARY"
+
+        exit "$rc"
+
+        '
+    - name: Add absent safety pins without redeploying
+      if: inputs.railway_safety_vars__mode == 'apply'
+      run: "set -euo pipefail\nif [ ! -s \"$RUNNER_TEMP/pins.txt\" ]; then\n  echo \"Every safety pin is already present.\"\
+        \n  exit 0\nfi\nargs=()\nwhile IFS= read -r pin; do\n  case \"$pin\" in\n    *=true) [ \"${pin%%=*}\" = \"SOURCE_PURGE_DRY_RUN\"\
+        \ ] || { echo \"refusing to set $pin\"; exit 1; } ;;\n  esac\n  args+=(--set \"$pin\")\ndone < \"$RUNNER_TEMP/pins.txt\"\
+        \nrailway variables --service \"$SVC\" --environment \"$ENV_NAME\" --skip-deploys \"${args[@]}\"\n"
+    - name: Verify
+      if: inputs.railway_safety_vars__mode == 'apply'
+      run: "set -euo pipefail\nrailway variables --service \"$SVC\" --environment \"$ENV_NAME\" --json > \"$RUNNER_TEMP/vars-after.json\"\
+        \npython3 scripts/railway_safety_vars.py \"$RUNNER_TEMP/vars-after.json\" --plan-out \"$RUNNER_TEMP/pins-after.txt\"\
+        \ | tee \"$RUNNER_TEMP/after.txt\"\n{ echo '### Railway safety variables (after)'; echo '```'; cat \"$RUNNER_TEMP/after.txt\"\
+        ; echo '```'; } >> \"$GITHUB_STEP_SUMMARY\"\nif [ -s \"$RUNNER_TEMP/pins-after.txt\" ]; then\n  echo \"Pins still\
+        \ absent after apply:\"; cat \"$RUNNER_TEMP/pins-after.txt\"; exit 1\nfi\n"
+    needs:
+    - dispatch_contract
+    if: ${{ always() && needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected),
+      'railway-safety-vars') && ((!cancelled() && (true))) }}
+    permissions:
+      contents: read
+    concurrency:
+      group: ${{ format('candidate-{0}-{1}-{2}', 'railway-safety-vars', 'railway_safety_vars__safety-vars', toJSON(matrix))
+        }}
+      cancel-in-progress: ${{ false }}
+  release1_production_smoke__smoke:
+    if: ${{ always() && (always() && needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected),
+      'release1-production-smoke') && (!cancelled() && (true) && ((contains(fromJSON(needs.dispatch_contract.outputs.derived),
+      'release1-production-smoke') && 'workflow_run' || github.event_name) != 'workflow_run' || (contains(fromJSON(needs.dispatch_contract.outputs.derived),
+      'release1-production-smoke') && 'success' || fromJSON(needs.dispatch_contract.outputs.context_conclusions)['release1-production-smoke']
+      || github.event.workflow_run.conclusion) == 'success'))) && (!contains(fromJSON(needs.dispatch_contract.outputs.derived),
+      'release1-production-smoke') || (needs.production_release_verification__verify.result != 'failure' && needs.production_release_verification__verify.result
+      != 'cancelled' && (needs.production_release_verification__verify.result == 'success')) || (needs.railway_backend_production__detect-backend-changes.result
+      != 'failure' && needs.railway_backend_production__detect-backend-changes.result != 'cancelled' && needs.railway_backend_production__deploy.result
+      != 'failure' && needs.railway_backend_production__deploy.result != 'cancelled' && (needs.railway_backend_production__detect-backend-changes.result
+      == 'success' || needs.railway_backend_production__deploy.result == 'success'))) }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        ref: ${{ (contains(fromJSON(needs.dispatch_contract.outputs.derived), 'release1-production-smoke') && 'workflow_run'
+          || github.event_name) == 'workflow_run' && (contains(fromJSON(needs.dispatch_contract.outputs.derived), 'release1-production-smoke')
+          && (github.event.workflow_run.head_sha || github.sha) || github.event.workflow_run.head_sha) || 'main' }}
+        persist-credentials: false
+        fetch-depth: 0
+    - name: Clear stale evidence
+      run: rm -f docs/delivery/release1-production-smoke.json
+    - name: Probe production anonymously
+      env:
+        EXPECT_SHA: ${{ (contains(fromJSON(needs.dispatch_contract.outputs.derived), 'release1-production-smoke') && 'workflow_run'
+          || github.event_name) == 'workflow_run' && (contains(fromJSON(needs.dispatch_contract.outputs.derived), 'release1-production-smoke')
+          && (github.event.workflow_run.head_sha || github.sha) || github.event.workflow_run.head_sha) || github.sha }}
+      run: "set -euo pipefail\nif [ -n \"$EXPECT_SHA\" ]; then\n  DEPLOY_SHA=\"$(python3 - <<'PY'\nimport json, urllib.request\n\
+        with urllib.request.urlopen(\"https://api.gravitre.app/health\", timeout=20) as response:\n    sha = str(json.loads(response.read()).get(\"\
+        git_sha\") or \"\")\n    if len(sha) != 40 or any(c not in \"0123456789abcdef\" for c in sha.lower()):\n        raise\
+        \ SystemExit(\"Missing or invalid deployed backend SHA\")\n    print(sha)\nPY\n)\"\n  git cat-file -e \"$DEPLOY_SHA^{commit}\"\
+        \n  # Strict: if backend runtime code/config changed since the live revision,\n  # the service MUST deploy the expected\
+        \ commit before this probe passes.\\n            # Test-only backend/tests edits do not change the deployed application.\n\
+        \  if git diff --quiet \"$DEPLOY_SHA\" \"$EXPECT_SHA\" -- backend/ ':(exclude)backend/tests/**'; then\n    echo \"\
+        No backend changes since deployed SHA; run anonymous checks against live revision.\"\n    EXPECT_SHA=\"$DEPLOY_SHA\"\
+        \n  else\n    echo \"Backend changed since deployed SHA; require production to match triggering commit.\"\n  fi\n\
+        fi\npython3 scripts/verify-release1-production-smoke.py \\\n  --web-base https://gravitre.app \\\n  --api-health https://api.gravitre.app/health\
+        \ \\\n  --expect-sha \"$EXPECT_SHA\"\n"
+    - name: Upload Release 1 smoke evidence
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: release1-production-smoke
+        path: docs/delivery/release1-production-smoke.json
+        if-no-files-found: error
+    name: smoke
+    needs:
+    - dispatch_contract
+    - production_release_verification__verify
+    - railway_backend_production__detect-backend-changes
+    - railway_backend_production__deploy
+    permissions:
+      contents: read
+  unified_turn_phase4_cutover__cutover:
+    name: Enable LIVE + redeploy + probe
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+        cache: pip
+        cache-dependency-path: backend/requirements.txt
+    - name: Install backend deps
+      working-directory: backend
+      run: 'python -m pip install --upgrade pip
+
+        pip install -r requirements-dev.txt
+
+        '
+    - name: Install Railway CLI
+      run: npm install -g @railway/cli@4.65.0
+    - name: Set LIVE flag and restart prod process
+      env:
+        RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+        RAILWAY_ENV: ${{ inputs.unified_turn_phase4_cutover__railway_environment }}
+        ENABLE_LIVE: ${{ inputs.unified_turn_phase4_cutover__enable_live }}
+      run: "set -euo pipefail\nENV_NAME=\"${RAILWAY_ENV:-production}\"\nSVC=\"gravitre-saas-backend\"\necho \"LIVE=$ENABLE_LIVE\
+        \ svc=$SVC env=$ENV_NAME\"\nrailway variables set \"UNIFIED_TURN_LIVE_ENABLED=${ENABLE_LIVE}\" --service \"$SVC\"\
+        \ --environment \"$ENV_NAME\"\nrailway variables set \"UNIFIED_TURN_SHADOW_ENABLED=true\" --service \"$SVC\" --environment\
+        \ \"$ENV_NAME\"\n# Never set GIT_SHA \u2014 it pins /health when RAILWAY_GIT_COMMIT_SHA is absent.\nrailway variables\
+        \ delete GIT_SHA --service \"$SVC\" --environment \"$ENV_NAME\" || true\n# Force a config change so Railway must restart\
+        \ even if the image digest is unchanged.\nNONCE=\"$(date -u +%Y%m%dT%H%M%SZ)-$RANDOM\"\nrailway variables set \"UNIFIED_TURN_RESTART_NONCE=${NONCE}\"\
+        \ --service \"$SVC\" --environment \"$ENV_NAME\"\necho \"restart_nonce=$NONCE\"\nrailway variables --service \"$SVC\"\
+        \ --environment \"$ENV_NAME\" --json > /tmp/vars.json || true\npython3 scripts/print_unified_turn_railway_vars.py\
+        \ /tmp/vars.json\nset +e\nrailway redeploy --service \"$SVC\" --environment \"$ENV_NAME\" --yes\necho \"railway_redeploy_exit=$?\"\
+        \nset -e\n"
+    - name: Wait for LIVE (health flags and/or tip) then probe
+      if: inputs.unified_turn_phase4_cutover__enable_live == 'true'
+      env:
+        LIVE_API_BASE: https://api.gravitre.app
+        SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+        SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        SUPABASE_JWT_SECRET: ${{ secrets.SUPABASE_JWT_SECRET }}
+        SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        OAUTH_SMOKE_ORG_ID: ${{ secrets.OAUTH_SMOKE_ORG_ID }}
+      run: "set -euo pipefail\n# Tip may stay on 444371f9 (cutover code) while LIVE env loads via redeploy.\n# Prefer health\
+        \ live=true when schema tip is live; otherwise rely on audit probe.\nset +e\npython3 scripts/wait_unified_turn_health.py\
+        \ \\\n  --expect-sha-prefix 444371f9 \\\n  --expect-live true \\\n  --timeout-s 180 \\\n  --allow-missing-flag-keys\n\
+        python3 scripts/wait_unified_turn_health.py \\\n  --expect-sha-prefix \"$(git rev-parse --short=8 HEAD)\" \\\n  --expect-live\
+        \ true \\\n  --timeout-s 420 || true\nset -e\n# Poll probe up to ~10 minutes for process restart + audit.\nfor i in\
+        \ $(seq 1 30); do\n  echo \"phase4_probe_attempt=$i\"\n  if python3 scripts/verify-unified-turn-phase4-live.py; then\n\
+        \    echo \"phase4_probe PASS\"\n    exit 0\n  fi\n  sleep 20\ndone\necho \"phase4_probe TIMEOUT\" >&2\nexit 1\n"
+    - name: Upload Phase 4 probe
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: unified-turn-phase4-cutover
+        path: 'docs/delivery/unified-turn-phase4-live-probe.json
+
+          docs/delivery/unified-turn-phase4-live.json
+
+          '
+        if-no-files-found: ignore
+    needs:
+    - dispatch_contract
+    if: ${{ always() && needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected),
+      'unified-turn-phase4-cutover') && ((!cancelled() && (true))) }}
+    concurrency:
+      group: ${{ format('candidate-{0}-{1}-{2}', 'unified-turn-phase4-cutover', 'unified_turn_phase4_cutover__cutover', toJSON(matrix))
+        }}
+      cancel-in-progress: ${{ true }}
+  source_outcomes:
+    name: Record independent source workflow outcomes
+    if: ${{ always() && needs.dispatch_contract.result == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    permissions: {}
+    needs:
+    - upstream_contract
+    - dispatch_contract
+    - production_hardening_smoke__hardening-smoke
+    - production_release_verification__verify
+    - railway_backend_production__detect-backend-changes
+    - railway_backend_production__deploy
+    - railway_safety_vars__safety-vars
+    - release1_production_smoke__smoke
+    - unified_turn_phase4_cutover__cutover
+    steps:
+    - name: Bind source outcomes to this run
+      shell: python
+      run: "import json, os\nsources = json.loads(os.environ['SOURCE_JOBS'])\nneeds = json.loads(os.environ['JOB_RESULTS'])\n\
+        selected = json.loads(os.environ['SELECTED'])\noutcomes = {}\nfor name, source in sources.items():\n    if name not\
+        \ in selected:\n        continue\n    results = [needs[key]['result'] for key in source['jobs']]\n    outcome = ('failure'\
+        \ if 'failure' in results else 'cancelled' if 'cancelled' in results\n               else 'success' if 'success' in\
+        \ results else 'skipped')\n    outcomes[source['display_name']] = outcome\nevidence = {'run_id': int(os.environ['GITHUB_RUN_ID']),\
+        \ 'head_sha': os.environ['GITHUB_SHA'],\n            'source_outcomes': outcomes}\nwith open('canonical-workflow-outcomes.json',\
+        \ 'w') as output:\n    json.dump(evidence, output)\n"
+      env:
+        SOURCE_JOBS: '{"production-hardening-smoke": {"display_name": "Production Hardening Smoke", "jobs": ["production_hardening_smoke__hardening-smoke"]},
+          "production-release-verification": {"display_name": "Production release verification", "jobs": ["production_release_verification__verify"]},
+          "railway-backend-production": {"display_name": "Railway backend production", "jobs": ["railway_backend_production__detect-backend-changes",
+          "railway_backend_production__deploy"]}, "railway-safety-vars": {"display_name": "Railway safety variables", "jobs":
+          ["railway_safety_vars__safety-vars"]}, "release1-production-smoke": {"display_name": "Release 1 production smoke",
+          "jobs": ["release1_production_smoke__smoke"]}, "unified-turn-phase4-cutover": {"display_name": "Unified Turn Phase
+          4 Cutover", "jobs": ["unified_turn_phase4_cutover__cutover"]}}'
+        JOB_RESULTS: '{"production_hardening_smoke__hardening-smoke": {"result": "${{ needs.production_hardening_smoke__hardening-smoke.result
+          }}"}, "production_release_verification__verify": {"result": "${{ needs.production_release_verification__verify.result
+          }}"}, "railway_backend_production__detect-backend-changes": {"result": "${{ needs.railway_backend_production__detect-backend-changes.result
+          }}"}, "railway_backend_production__deploy": {"result": "${{ needs.railway_backend_production__deploy.result }}"},
+          "railway_safety_vars__safety-vars": {"result": "${{ needs.railway_safety_vars__safety-vars.result }}"}, "release1_production_smoke__smoke":
+          {"result": "${{ needs.release1_production_smoke__smoke.result }}"}, "unified_turn_phase4_cutover__cutover": {"result":
+          "${{ needs.unified_turn_phase4_cutover__cutover.result }}"}}'
+        SELECTED: ${{ needs.dispatch_contract.outputs.selected }}
+    - uses: actions/upload-artifact@v4
+      with:
+        name: canonical-workflow-outcomes-11-release
+        path: canonical-workflow-outcomes.json
+        if-no-files-found: error
+        retention-days: 14

@@ -39,7 +39,7 @@ async def _searches_for(surface: str, message: str) -> int:
         return {"results": []}
 
     with ScenarioHarness() as h, patch("app.services.web_research.search_web", _fake_search):
-        h.connected.extend(["gmail", "google_analytics"])
+        h.connect("gmail", "google_analytics")
         conv = h.conversation(surface)
         await conv.say("Hi", "Hi! What can I help with?")
         await conv.say(message, "Sure.")

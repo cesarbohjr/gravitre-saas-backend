@@ -9,6 +9,7 @@ from app.core.logging import get_logger
 from app.services.company_intelligence_orchestrator import get_company_intelligence_orchestrator
 from app.services.unified_retrieval_service import RetrievalScopes, get_unified_retrieval_service
 from app.services.research_service import get_research_service
+from app.services.context_stage_metrics import measure as measure_context_stage, timed_context_assembly
 from app.workflows.repository import get_supabase_client
 
 logger = get_logger(__name__)
@@ -22,6 +23,7 @@ class ContextAssembler:
     def __init__(self, settings: Settings | None = None) -> None:
         self.settings = settings or get_settings()
 
+    @timed_context_assembly
     async def assemble(
         self,
         org_id: str,
@@ -39,7 +41,7 @@ class ContextAssembler:
         strict_mode = bool(classification.get("strict_assignment_mode"))
 
         try:
-            bundle = await get_unified_retrieval_service().retrieve(
+            bundle = await measure_context_stage("unified_retrieval", get_unified_retrieval_service().retrieve(
                 org_id=org_id,
                 query=request,
                 client=db_client,
@@ -53,9 +55,14 @@ class ContextAssembler:
                 environment_name=environment_name,
                 user_id=user_id,
                 scopes=RetrievalScopes(knowledge=True, org_context=True, agent_memory=True),
-            )
+            ))
+        except PermissionError:
+            # A denied tenant/user/agent scope is not a retrieval outage.
+            # Returning empty context would conceal the authorization failure
+            # and let downstream reasoning continue as if access succeeded.
+            raise
         except Exception as exc:  # noqa: BLE001
-            logger.warning("context_assembler_retrieve_failed org_id=%s error=%s", org_id, exc)
+            logger.warning("context_assembler_retrieve_failed error_type=%s", type(exc).__name__)
             bundle = SimpleNamespace(
                 rag_sources=[],
                 memory_context={},
@@ -78,14 +85,14 @@ class ContextAssembler:
                 }
             )
 
-        company_intelligence = await get_company_intelligence_orchestrator().get_context_for_prompt(org_id)
+        company_intelligence = await measure_context_stage("company_intelligence", get_company_intelligence_orchestrator().get_context_for_prompt(org_id))
         external_context: dict[str, Any] = {}
         if classification.get("requires_web_search"):
-            external_context = await get_research_service(self.settings).research(
+            external_context = await measure_context_stage("external_research", get_research_service(self.settings).research(
                 org_id,
                 request,
                 depth="standard",
-            )
+            ))
 
         return {
             "rag_context": rag_context,

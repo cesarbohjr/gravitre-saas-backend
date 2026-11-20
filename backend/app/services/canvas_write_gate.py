@@ -237,6 +237,24 @@ def require_approved_authority_run(
     return run
 
 
+def canvas_invoke_params(
+    *,
+    action: str,
+    invoke_params: dict[str, Any],
+    run_parameters: dict[str, Any],
+) -> dict[str, Any]:
+    """Keep inherited Play routing metadata out of catalog write arguments."""
+    play_context = run_parameters.get("play")
+    if (
+        isinstance(play_context, dict)
+        and play_context.get("execution_authority") == "canonical_workflow_runtime"
+        and invoke_params.get("play") is play_context
+        and invoke_action_requires_write_approval(action)
+    ):
+        return {key: value for key, value in invoke_params.items() if key != "play"}
+    return invoke_params
+
+
 def bind_f1_write_hmac_context(
     *,
     tool_ctx: ToolContext,

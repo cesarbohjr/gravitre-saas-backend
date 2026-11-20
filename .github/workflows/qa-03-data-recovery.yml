@@ -1,0 +1,708 @@
+# Canonical development-branch lane; production release requires separate certification.
+name: QA 03-data-recovery
+'on':
+  workflow_dispatch:
+    inputs:
+      source:
+        description: Original workflow contract to execute
+        required: true
+        type: choice
+        options:
+        - acceptance-db-preflight
+        - migration-history-recovery
+        - supabase-migration-safety
+        - pr605-gate26-postgres-outbox
+        default: acceptance-db-preflight
+      acceptance_db_preflight__verified_migration_run_id:
+        description: 'acceptance-db-preflight: Explicit successful Migration history recovery run with a retained data-free
+          baseline artifact'
+        required: false
+        type: string
+  pull_request:
+    branches:
+    - main
+    types:
+    - opened
+    - reopened
+    - synchronize
+concurrency:
+  group: ${{ format('candidate-{0}', (inputs.source == 'migration-history-recovery' && (format('migration-history-recovery-{0}',
+    github.ref))) || (inputs.source == 'supabase-migration-safety' && (format('supabase-migration-safety-{0}', github.event.pull_request.number
+    || github.run_id))) || github.run_id) }}
+  cancel-in-progress: ${{ (inputs.source == 'migration-history-recovery' && (true)) || (inputs.source == 'supabase-migration-safety'
+    && (true)) || false }}
+jobs:
+  upstream_contract:
+    name: Read trusted upstream outcome metadata
+    if: ${{ github.event_name == 'workflow_run' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    permissions:
+      contents: read
+      actions: read
+    outputs:
+      evidence: ${{ steps.upstream.outputs.evidence }}
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        ref: ${{ github.sha }}
+        persist-credentials: false
+    - id: upstream
+      run: python scripts/route-workflow-event.py --lane 03-data-recovery --fetch-upstream
+      env:
+        GITHUB_TOKEN: ${{ github.token }}
+  dispatch_contract:
+    name: Validate selected source inputs
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    timeout-minutes: 4
+    needs:
+    - upstream_contract
+    if: ${{ always() && (needs.upstream_contract.result == 'success' || needs.upstream_contract.result == 'skipped') }}
+    outputs:
+      selected: ${{ steps.contract.outputs.selected }}
+      derived: ${{ steps.contract.outputs.derived }}
+      context_conclusions: ${{ steps.contract.outputs.context_conclusions }}
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        persist-credentials: false
+        fetch-depth: 0
+    - id: contract
+      name: Validate source contract
+      shell: python
+      env:
+        SOURCE_SCHEMAS: '{"acceptance-db-preflight": {"verified_migration_run_id": {"description": "Explicit successful Migration
+          history recovery run with a retained data-free baseline artifact", "required": true, "type": "string"}}, "migration-history-recovery":
+          {}, "supabase-migration-safety": {}, "pr605-gate26-postgres-outbox": {}}'
+        MANUAL_SOURCES: '["acceptance-db-preflight", "migration-history-recovery", "supabase-migration-safety", "pr605-gate26-postgres-outbox"]'
+        DISPATCH_VALUES: ${{ toJSON(inputs) }}
+        EVENT_NAME: ${{ github.event_name }}
+        CANONICAL_LANE: 03-data-recovery
+        UPSTREAM_EVIDENCE: ${{ needs.upstream_contract.outputs.evidence }}
+      run: "import json, os\nschemas = json.loads(os.environ['SOURCE_SCHEMAS'])\nvalues = json.loads(os.environ['DISPATCH_VALUES'])\n\
+        event_name = os.environ['EVENT_NAME']\ncalled = values.get('_reusable', False)\nif not called and event_name not in\
+        \ ('workflow_dispatch', 'workflow_call'):\n    import subprocess\n    subprocess.run(['python', 'scripts/route-workflow-event.py',\
+        \ '--lane', os.environ['CANONICAL_LANE']], check=True)\n    raise SystemExit(0)\nsource = values.get('source')\nif\
+        \ source not in schemas:\n    raise SystemExit('Unknown source workflow')\nif not called and event_name == 'workflow_dispatch'\
+        \ and source not in json.loads(os.environ['MANUAL_SOURCES']):\n    raise SystemExit('Source has no manual trigger')\n\
+        if called and source != 'isolated-acceptance':\n    raise SystemExit('Unsupported reusable source')\nfor key, config\
+        \ in schemas[source].items():\n    value = values.get(source.replace('-', '_') + '__' + key)\n    if called and key\
+        \ == 'suite':\n        value = values.get('suite')\n    if config.get('required') and (value is None or value == ''):\n\
+        \        raise SystemExit('Required selected-source input missing: ' + key)\nprint('Selected source input contract\
+        \ validated; this is not execution acceptance')\nwith open(os.environ['GITHUB_OUTPUT'], 'a') as output:\n    output.write('selected='\
+        \ + json.dumps([source]) + '\\n')\n    output.write('derived=[]\\ncontext_conclusions={}\\n')\n"
+  acceptance_db_preflight__schema-preflight:
+    if: ${{ always() && needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected),
+      'acceptance-db-preflight') && (!cancelled() && (needs.acceptance_db_preflight__static-contracts.result == 'success')
+      && (github.event_name == 'workflow_dispatch' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name
+      == github.repository))) }}
+    name: Verify baseline and dedicated acceptance database (read only)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+    - uses: actions/checkout@v4
+    - name: Fetch the verified baseline artifact
+      env:
+        GH_TOKEN: ${{ github.token }}
+        SOURCE_RUN_ID: ${{ inputs.acceptance_db_preflight__verified_migration_run_id }}
+      run: "case \"$SOURCE_RUN_ID\" in\n  ''|*[!0-9]*) echo 'Invalid run ID'; exit 2 ;;\nesac\nmkdir -p acceptance-baseline\n\
+        gh run download \"$SOURCE_RUN_ID\" --repo \"$GITHUB_REPOSITORY\" --name migration-history-replay --dir acceptance-baseline\n"
+    - name: Verify baseline checksum and ensure source does not contain user data
+      run: 'python scripts/prepare_acceptance_baseline.py acceptance-baseline
+
+        '
+    - name: Verify remote target and migration state using read-only management API
+      env:
+        SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        ACCEPTANCE_PROJECT_REF: aadnwmjzrmbvadszroqt
+      run: 'python scripts/check_acceptance_remote_readonly.py
+
+        '
+    - name: Publish preflight evidence, never database credentials
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: acceptance-init-preflight-${{ github.sha }}
+        path: acceptance-baseline/readiness-report.json
+        retention-days: 7
+        if-no-files-found: ignore
+    needs:
+    - dispatch_contract
+    - acceptance_db_preflight__static-contracts
+    permissions:
+      contents: read
+      actions: read
+  acceptance_db_preflight__static-contracts:
+    name: Acceptance initialization offline contracts
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        persist-credentials: false
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+    - name: Install isolated test runner
+      run: python -m pip install --disable-pip-version-check pytest
+    - name: Verify baseline and read-only initialization guards without remote calls
+      run: python -m pytest -q --noconftest tests/test_acceptance_initialization_preflight.py
+    needs:
+    - dispatch_contract
+    if: ${{ always() && needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected),
+      'acceptance-db-preflight') && ((!cancelled() && (true))) }}
+  migration_history_recovery__recorded-history-replay:
+    if: ${{ always() && needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected),
+      'migration-history-recovery') && (!cancelled() && (true) && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name
+      == github.repository)) }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        persist-credentials: false
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+    - uses: supabase/setup-cli@v3
+      with:
+        version: 2.121.0
+    - name: Install PostgreSQL driver
+      run: python -m pip install 'psycopg[binary]==3.2.9' 'fastapi==0.115.12'
+    - name: Export original production migration metadata (read only)
+      env:
+        SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        RECOVERY_SOURCE_PROJECT_REF: smyeexlrqdpymwjmgzqu
+        RECOVERY_HISTORY_PATH: ${{ runner.temp }}/migration-recovery/original-history.json
+      run: python scripts/migration_recovery/export_history.py
+    - name: Start empty local Supabase (no application migrations or seed)
+      run: 'mkdir -p "$RUNNER_TEMP/migration-recovery/local/supabase/migrations"
+
+        cp supabase/config.toml "$RUNNER_TEMP/migration-recovery/local/supabase/config.toml"
+
+        cp -a supabase/templates "$RUNNER_TEMP/migration-recovery/local/supabase/templates"
+
+        sed -i ''s/major_version = 15/major_version = 17/'' "$RUNNER_TEMP/migration-recovery/local/supabase/config.toml"
+
+        cd "$RUNNER_TEMP/migration-recovery/local"
+
+        supabase start -x studio,imgproxy,edge-runtime,logflare,vector
+
+        '
+    - name: Pin local pgvector extension to production version (0.8.0)
+      run: '# The local Supabase PG17 image ships 0.8.2, while production uses
+
+        # pgvector 0.8.0. Build the exact extension version in disposable
+
+        # CI PostgreSQL, rather than exempting version drift from parity.
+
+        git clone --depth 1 --branch v0.8.0 https://github.com/pgvector/pgvector.git "$RUNNER_TEMP/pgvector-0.8.0"
+
+        bash scripts/migration_recovery/install_pgvector.sh "$RUNNER_TEMP/pgvector-0.8.0"
+
+        '
+    - name: Reproduce original history failure and validate exact SQLSTATE
+      run: 'python scripts/migration_recovery/replay.py --history "$RUNNER_TEMP/migration-recovery/original-history.json"
+        --database-url postgresql://postgres:postgres@127.0.0.1:54322/postgres --report test-results/migration-history-original.json
+        && exit 1
+
+        python - <<''PYCODE''
+
+        import json
+
+        report=json.load(open(''test-results/migration-history-original.json''))
+
+        assert report[''failure''][''version'']==''20250220000006'', report
+
+        assert report[''failure''][''sqlstate'']==''42P13'', report
+
+        assert len(report[''applied''])==18, report
+
+        PYCODE
+
+        '
+    - name: Recreate empty local database and build corrected replay candidate
+      run: 'supabase db reset --local --no-seed --workdir "$RUNNER_TEMP/migration-recovery/local"
+
+        # A Supabase reset can recreate the database container, dropping the
+
+        # previously installed 0.8.0 control and SQL files. Reinstall into
+
+        # the running container before CREATE EXTENSION / version assertions.
+
+        bash scripts/migration_recovery/install_pgvector.sh "$RUNNER_TEMP/pgvector-0.8.0"
+
+        python scripts/migration_recovery/candidate.py "$RUNNER_TEMP/migration-recovery/original-history.json" "$RUNNER_TEMP/migration-recovery/candidate-history.json"
+
+        '
+    - name: Replay all corrected recorded migrations on real PostgreSQL
+      run: python scripts/migration_recovery/replay.py --history "$RUNNER_TEMP/migration-recovery/candidate-history.json"
+        --database-url postgresql://postgres:postgres@127.0.0.1:54322/postgres --report test-results/migration-history-candidate.json
+    - name: Restore original migration metadata backup and verify exact SQL arrays
+      run: python scripts/migration_recovery/rollback_drill.py postgresql://postgres:postgres@127.0.0.1:54322/postgres "$RUNNER_TEMP/migration-recovery/original-history.json"
+        test-results/migration-history-rollback-drill.json
+    - name: Reconcile isolated schema to captured production definitions and verify parity
+      run: python scripts/migration_recovery/validate_baseline.py postgresql://postgres:postgres@127.0.0.1:54322/postgres
+        "$RUNNER_TEMP/migration-recovery" test-results/migration-history-schema-parity.json
+    - name: Generate data-free baseline from verified isolated schema
+      run: 'supabase db dump --help > "$RUNNER_TEMP/migration-recovery/db-dump-help.txt"
+
+        supabase db dump --local --schema public --file "$GITHUB_WORKSPACE/test-results/production-schema-baseline.sql" --workdir
+        "$RUNNER_TEMP/migration-recovery/local"
+
+        python scripts/migration_recovery/append_dependencies.py "$RUNNER_TEMP/migration-recovery/production-inventory.json"
+        test-results/production-schema-baseline.sql
+
+        sha256sum test-results/production-schema-baseline.sql > test-results/production-schema-baseline.sha256
+
+        '
+    - name: Restore baseline into a fresh database and verify without repairs
+      run: 'supabase db reset --local --no-seed --workdir "$RUNNER_TEMP/migration-recovery/local"
+
+        # A Supabase reset can recreate the database container, dropping the
+
+        # previously installed 0.8.0 control and SQL files. Reinstall into
+
+        # the running container before CREATE EXTENSION / version assertions.
+
+        bash scripts/migration_recovery/install_pgvector.sh "$RUNNER_TEMP/pgvector-0.8.0"
+
+        docker exec -i supabase_db_gravitre-operator-ai psql -U postgres -d postgres -v ON_ERROR_STOP=1 < test-results/production-schema-baseline.sql
+
+        python scripts/migration_recovery/validate_baseline.py postgresql://postgres:postgres@127.0.0.1:54322/postgres "$RUNNER_TEMP/migration-recovery"
+        test-results/migration-history-baseline-restore.json --verify-only
+
+        '
+    - name: Real PostgreSQL concurrency, authorization and fail-closed acceptance on restored baseline
+      run: python scripts/migration_recovery/acceptance.py postgresql://postgres:postgres@127.0.0.1:54322/postgres test-results/migration-history-acceptance.json
+    - name: Prove failed atomic metadata replacement preserves every original SQL array
+      run: "# The pinned CLI squash command edits local files only. It does NOT\n# replace remote history; never treat its\
+        \ success as rollback proof.\npython scripts/migration_recovery/metadata_drill.py prepare postgresql://postgres:postgres@127.0.0.1:54322/postgres\
+        \ \"$RUNNER_TEMP/migration-recovery/original-history.json\" 20261022162553 test-results/migration-history-atomic-baseline.json\n\
+        if python scripts/migration_recovery/atomic_baseline.py postgresql://postgres:postgres@127.0.0.1:54322/postgres \"\
+        $RUNNER_TEMP/migration-recovery/original-history.json\" 20261022162553 test-results/production-schema-baseline.sql;\
+        \ then\n  echo 'Expected rejected baseline INSERT; refusing an unproven rollback.'\n  exit 1\nfi\npython scripts/migration_recovery/metadata_drill.py\
+        \ check-rollback postgresql://postgres:postgres@127.0.0.1:54322/postgres \"$RUNNER_TEMP/migration-recovery/original-history.json\"\
+        \ 20261022162553 test-results/migration-history-atomic-baseline.json\n"
+    - name: Prove successful atomic replacement changes only disposable metadata
+      run: 'python scripts/migration_recovery/atomic_baseline.py postgresql://postgres:postgres@127.0.0.1:54322/postgres "$RUNNER_TEMP/migration-recovery/original-history.json"
+        20261022162553 test-results/production-schema-baseline.sql
+
+        python scripts/migration_recovery/metadata_drill.py check-success postgresql://postgres:postgres@127.0.0.1:54322/postgres
+        "$RUNNER_TEMP/migration-recovery/original-history.json" 20261022162553 test-results/migration-history-atomic-baseline.json
+
+        python scripts/migration_recovery/validate_baseline.py postgresql://postgres:postgres@127.0.0.1:54322/postgres "$RUNNER_TEMP/migration-recovery"
+        test-results/migration-history-atomic-schema-unchanged.json --verify-only
+
+        '
+    - name: Preserve sanitized failure or success evidence
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: migration-history-replay
+        path: 'test-results/migration-history-*.json
+
+          test-results/production-schema-baseline.*
+
+          '
+        if-no-files-found: warn
+        retention-days: 14
+    - name: Stop local compute and remove original SQL export
+      if: always()
+      run: "if [ -f \"$RUNNER_TEMP/migration-recovery/local/supabase/config.toml\" ]; then\n  supabase stop --workdir \"$RUNNER_TEMP/migration-recovery/local\"\
+        \ --no-backup\nfi\nrm -f \"$RUNNER_TEMP/migration-recovery/\"*.json\n"
+    name: recorded-history-replay
+    needs:
+    - dispatch_contract
+    permissions:
+      contents: read
+    concurrency:
+      group: ${{ format('candidate-{0}-{1}-{2}', format('migration-history-recovery-{0}', github.ref), 'migration_history_recovery__recorded-history-replay',
+        toJSON(matrix)) }}
+      cancel-in-progress: ${{ true }}
+  supabase_migration_safety__validate-migrations:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        persist-credentials: false
+        fetch-depth: 0
+    - name: Check migration version uniqueness and file format
+      shell: bash
+      run: "set -euo pipefail\npython3 - <<'PY'\nimport pathlib, re, sys\nroot = pathlib.Path(\"supabase/migrations\")\nif\
+        \ not root.is_dir():\n    sys.exit(\"Missing supabase/migrations\")\nversions = {}\nbad = []\nfor f in root.iterdir():\n\
+        \    if not f.is_file() or f.suffix != \".sql\":\n        continue\n    m = re.fullmatch(r\"(\\d{8,14})_[A-Za-z0-9_]+\\\
+        .sql\", f.name)\n    if not m:\n        bad.append(f\"Invalid filename: {f.name}\")\n        continue\n    v = m.group(1)\n\
+        \    if v in versions:\n        bad.append(f\"Duplicate version {v}: {versions[v]} and {f.name}\")\n    versions[v]\
+        \ = f.name\n    if not f.read_text(encoding=\"utf-8\").strip():\n        bad.append(f\"Empty migration: {f.name}\"\
+        )\nif bad:\n    sys.exit(\"\\n\".join(bad))\nprint(f\"Validated {len(versions)} migration filenames (no database touched).\"\
+        )\nPY\n"
+    - name: List migrations changed in this pull request
+      if: github.event_name == 'pull_request'
+      id: changed
+      shell: bash
+      run: "set -euo pipefail\ngit fetch origin \"${{ github.base_ref }}\" --depth=1\nmapfile -t files < <(git diff --name-only\
+        \ \"origin/${{ github.base_ref }}...HEAD\" -- 'supabase/migrations/*.sql' || true)\nif [ \"${#files[@]}\" -eq 0 ];\
+        \ then\n  echo \"changed=false\" >> \"$GITHUB_OUTPUT\"\n  echo \"No migration SQL files changed in this PR.\"\n  exit\
+        \ 0\nfi\nprintf '%s\\n' \"${files[@]}\" > /tmp/changed-migrations.txt\necho \"changed=true\" >> \"$GITHUB_OUTPUT\"\
+        \necho \"Changed migration files:\"\ncat /tmp/changed-migrations.txt\n"
+    - name: Security scan on changed migration files
+      if: github.event_name == 'pull_request' && steps.changed.outputs.changed == 'true'
+      shell: bash
+      run: "set -euo pipefail\npython3 - <<'PY'\nimport pathlib, re, sys\nfiles = [pathlib.Path(p.strip()) for p in open(\"\
+        /tmp/changed-migrations.txt\") if p.strip()]\nif not files:\n    sys.exit(0)\nblocked = [\n    (re.compile(r\"-----BEGIN\
+        \ (?:RSA |EC |OPENSSH )?PRIVATE KEY-----\"), \"embedded private key material\"),\n    (re.compile(r\"\\bAKIA[0-9A-Z]{16}\\\
+        b\"), \"possible AWS access key id\"),\n    (\n        re.compile(r\"\\bGRANT\\b[^;]*\\bTO\\s+(PUBLIC|anon)\\b\",\
+        \ re.I),\n        \"GRANT to PUBLIC/anon (same statement)\",\n    ),\n    (re.compile(r\"\\bpg_read_file\\s*\\(\"\
+        , re.I), \"pg_read_file()\"),\n    (re.compile(r\"\\\\copy\\b.*\\bprogram\\b\", re.I), \"\\\\copy PROGRAM\"),\n  \
+        \  (re.compile(r\"\\blo_import\\s*\\(\", re.I), \"lo_import()\"),\n    (re.compile(r\"postgresql://[^\\s'\\\"]+:[^\\\
+        s'\\\"]+@\", re.I), \"postgres URL with embedded password\"),\n]\nrisky = re.compile(\n    r\"\\b(drop\\s+(?:table|schema|column)|truncate|delete\\\
+        s+from|alter\\s+table[\\s\\S]{0,120}drop\\s+column|revoke|create\\s+policy|drop\\s+policy)\\b\",\n    re.I,\n)\nerrors\
+        \ = []\nwarnings = []\nfor f in files:\n    if not f.is_file():\n        errors.append(f\"Missing changed migration\
+        \ file: {f}\")\n        continue\n    text = f.read_text(encoding=\"utf-8\")\n    for pat, label in blocked:\n   \
+        \     if pat.search(text):\n            errors.append(f\"{f.name}: blocked pattern ({label})\")\n    if risky.search(text):\n\
+        \        warnings.append(f.name)\nif warnings:\n    print(\"Changed migrations flagged for human review (destructive/RLS):\
+        \ \" + \", \".join(warnings))\nif errors:\n    sys.exit(\"\\n\".join(errors))\nprint(f\"Security scan passed for {len(files)}\
+        \ changed migration file(s).\")\nPY\n"
+    - name: Show potential destructive statements for review (repository-wide, informational)
+      shell: bash
+      run: "python3 - <<'PY'\nimport pathlib, re\nroot=pathlib.Path(\"supabase/migrations\")\nrisky=re.compile(r\"\\b(drop\\\
+        s+(?:table|schema|column)|truncate|delete\\s+from|alter\\s+table[\\s\\S]{0,120}drop\\s+column|revoke|create\\s+policy|drop\\\
+        s+policy)\\b\", re.I)\nmatched=[]\nfor f in root.glob(\"*.sql\"):\n    if risky.search(f.read_text(encoding=\"utf-8\"\
+        )):\n        matched.append(f.name)\nprint(f\"Historical migrations flagged for human review: {len(matched)} (informational;\
+        \ not executing SQL).\")\nPY\n"
+    name: validate-migrations
+    needs:
+    - dispatch_contract
+    if: ${{ always() && needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected),
+      'supabase-migration-safety') && ((!cancelled() && (true))) }}
+    permissions:
+      contents: read
+    concurrency:
+      group: ${{ format('candidate-{0}-{1}-{2}', format('supabase-migration-safety-{0}', github.event.pull_request.number
+        || github.run_id), 'supabase_migration_safety__validate-migrations', toJSON(matrix)) }}
+      cancel-in-progress: ${{ true }}
+  supabase_migration_safety__staging-validate:
+    name: Local migration and billing acceptance
+    needs:
+    - dispatch_contract
+    - supabase_migration_safety__validate-migrations
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    if: ${{ always() && needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected),
+      'supabase-migration-safety') && (!cancelled() && (needs.supabase_migration_safety__validate-migrations.result == 'success')
+      && (github.event_name == 'pull_request')) }}
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        persist-credentials: false
+        fetch-depth: 0
+    - name: Select migration and billing acceptance
+      id: gate
+      shell: bash
+      run: "set -euo pipefail\ngit fetch origin \"${{ github.base_ref }}\" --depth=1\nbilling=false\nif ! git diff --quiet\
+        \ \"origin/${{ github.base_ref }}...HEAD\" -- '.github/workflows/qa-03-data-recovery.yml' 'backend/app/billing/**'\
+        \ 'backend/app/routers/billing.py' 'backend/app/routers/webhooks/stripe.py' 'apps/web/app/(app)/admin/commercial/**'\
+        \ 'apps/web/app/(app)/settings/billing/**' 'e2e/*billing*.spec.ts' 'e2e/helpers/auth.ts' 'e2e/global-setup.ts' 'e2e/load-env.ts'\
+        \ 'scripts/*billing*.py' 'playwright.billing.acceptance.config.ts'; then\n  billing=true\nfi\necho \"billing=$billing\"\
+        \ >> \"$GITHUB_OUTPUT\"\nif [ \"$billing\" = false ] && git diff --quiet \"origin/${{ github.base_ref }}...HEAD\"\
+        \ -- 'supabase/migrations/*.sql'; then\n  echo \"run=false\" >> \"$GITHUB_OUTPUT\"\n  echo \"No migration or billing\
+        \ changes \u2014 skipping isolated acceptance.\"\nelse\n  echo \"run=true\" >> \"$GITHUB_OUTPUT\"\nfi\n"
+    - uses: supabase/setup-cli@v3
+      if: steps.gate.outputs.run == 'true'
+      with:
+        version: 2.121.0
+    - name: supabase db reset (local only)
+      if: steps.gate.outputs.run == 'true'
+      shell: bash
+      run: "set -euo pipefail\n# Historical migration 20250220000006 changes two function\n# signatures. PostgreSQL cannot\
+        \ CREATE OR REPLACE the old return\n# type. Preserve immutable applied files: repair only a throwaway\n# workspace\
+        \ used to replay ALL migrations in this CI job.\nreplay_dir=\"$(mktemp -d)\"\ncp -a supabase \"$replay_dir/supabase\"\
+        \necho \"BILLING_REPLAY_DIR=$replay_dir\" >> \"$GITHUB_ENV\"\npython3 - \"$replay_dir/supabase/migrations/20250220000006_phase7_multi_environment.sql\"\
+        \ <<'PY'\nimport pathlib\nimport sys\npath = pathlib.Path(sys.argv[1])\nsql = path.read_text()\nreplacements = (\n\
+        \    (\"CREATE OR REPLACE FUNCTION public.rag_search(\", \"DROP FUNCTION IF EXISTS public.rag_search(uuid, text, int,\
+        \ uuid, uuid);\\nCREATE OR REPLACE FUNCTION public.rag_search(\"),\n    (\"CREATE OR REPLACE FUNCTION public.claim_rag_ingest_job()\"\
+        , \"DROP FUNCTION IF EXISTS public.claim_rag_ingest_job();\\nCREATE OR REPLACE FUNCTION public.claim_rag_ingest_job()\"\
+        ),\n)\nfor before, after in replacements:\n    if sql.count(before) != 1:\n        raise SystemExit(f\"Unexpected\
+        \ historical SQL shape: {before}\")\n    sql = sql.replace(before, after, 1)\npath.write_text(sql)\nprint(\"CI-only\
+        \ historical return-type compatibility replay; tracked migration bytes unchanged.\")\n# A May 29 signup migration\
+        \ references billing tables only created\n# by the May 31 active migration. Stage those exact table DDL\n# statements\
+        \ earlier in this disposable replay, never in production.\nbilling_source = pathlib.Path(\"supabase/migrations/20260531000400_activate_billing_core.sql\"\
+        )\n# The runner is at the repository root before cd into replay_dir.\nsource_sql = billing_source.read_text()\ntable_start\
+        \ = source_sql.index(\"CREATE TABLE IF NOT EXISTS public.billing_plans\")\ntable_end = source_sql.index(\"-- billing_events\"\
+        , table_start)\nbootstrap_ddl = source_sql[table_start:table_end]\nonboarding = path.parent / \"20260529120000_auth_onboarding_bootstrap.sql\"\
+        \noriginal_onboarding = onboarding.read_text()\nif not original_onboarding.startswith(\"-- Phase A: Auto-provision\"\
+        ):\n    raise SystemExit(\"Unexpected onboarding migration content\")\nonboarding.write_text(\"-- CI-only dependency\
+        \ prelude from active May 31 billing DDL.\\n\" + bootstrap_ddl + \"\\n\" + original_onboarding)\nprint(\"CI-only billing\
+        \ table dependency ordering; tracked migration bytes unchanged.\")\n# July 3 references notifications, defined by\
+        \ the active July 8 migration.\nnotifications_sql = pathlib.Path(\"supabase/migrations/20260708150000_notifications.sql\"\
+        ).read_text()\nfirst = notifications_sql.index(\"CREATE TABLE IF NOT EXISTS public.notifications (\")\nlast = notifications_sql.index(\"\
+        ALTER TABLE public.notifications\", first)\nnotifications_table_ddl = notifications_sql[first:last]\nnotifications_early\
+        \ = path.parent / \"20260703170000_chat_execution_notifications.sql\"\nnotifications_original = notifications_early.read_text()\n\
+        if not notifications_original.startswith(\"-- Extend notification types\"):\n    raise SystemExit(\"Unexpected early\
+        \ notifications migration\")\nnotifications_early.write_text(\n    \"-- CI-only historical dependency prelude from\
+        \ July 8 migration.\\n\"\n    + notifications_table_ddl + \"\\n\" + notifications_original\n)\nprint(\"CI-only notifications\
+        \ dependency ordering; original files untouched.\")\n# The July 5 conformance ALTER precedes the July 9 inventory\
+        \ CREATE.\ninventory_source = pathlib.Path(\"supabase/migrations/20260709200000_extended_intelligence_engine.sql\"\
+        ).read_text()\ninventory_start = inventory_source.index(\"CREATE TABLE IF NOT EXISTS public.organization_process_inventory\
+        \ (\")\ninventory_end = inventory_source.index(\"CREATE INDEX IF NOT EXISTS idx_organization_process_inventory_org\"\
+        , inventory_start)\ninventory_ddl = inventory_source[inventory_start:inventory_end]\ninventory_early = path.parent\
+        \ / \"20260705050000_process_inventory_conformance_columns.sql\"\nif not inventory_early.read_text().startswith(\"\
+        -- Process mining\"):\n    raise SystemExit(\"Unexpected process inventory migration\")\ninventory_early.write_text(\n\
+        \    \"-- CI-only historical inventory dependency prelude.\\n\"\n    + inventory_ddl + \"\\n\" + inventory_early.read_text()\n\
+        )\nprint(\"CI-only process inventory table ordering; original files untouched.\")\n# The production test-credential\
+        \ allowlist contains a real org id\n# which intentionally does not exist in an empty local database.\n# Retain the\
+        \ security trigger and schema; omit only the missing-org\n# fixture row in this disposable replay.\nguard = path.parent\
+        \ / \"20260719180000_test_credential_isolated_org_guard.sql\"\nguard_sql = guard.read_text()\nold_seed = \"\\n\".join([\n\
+        \    \"INSERT INTO public.test_credential_org_allowlist (org_id, note)\",\n    \"VALUES (\",\n    \"  'f07e57c0-1501-4000-8000-c04e57a00001',\"\
+        ,\n    \"  'gravitre-isolated-conversation-smoke'\",\n    \")\",\n    \"ON CONFLICT (org_id) DO NOTHING;\",\n])\n\
+        new_seed = \"\\n\".join([\n    \"INSERT INTO public.test_credential_org_allowlist (org_id, note)\",\n    \"SELECT\
+        \ 'f07e57c0-1501-4000-8000-c04e57a00001'::uuid,\",\n    \"       'gravitre-isolated-conversation-smoke'\",\n    \"\
+        WHERE EXISTS (\",\n    \"    SELECT 1 FROM public.organizations\",\n    \"    WHERE id='f07e57c0-1501-4000-8000-c04e57a00001'::uuid\"\
+        ,\n    \")\",\n    \"ON CONFLICT (org_id) DO NOTHING;\",\n])\nif guard_sql.count(old_seed) != 1:\n    raise SystemExit(\"\
+        Unexpected isolated-org seed shape\")\nguard.write_text(guard_sql.replace(old_seed, new_seed))\nprint(\"CI-only conditional\
+        \ test-org seed; production guard unchanged.\")\n# PostgreSQL advisor indexes were created against a live schema\n\
+        # that had out-of-band columns. Retain each index where its real\n# target column exists; an absent column must not\
+        \ abort the\n# remaining functional migrations in a disposable fresh database.\nimport re\nperf = path.parent / \"\
+        20260805221000_perf_advisor_fk_indexes.sql\"\nperf_sql = perf.read_text()\nindex_pat = re.compile(\n    r\"^CREATE\
+        \ INDEX IF NOT EXISTS ([A-Za-z0-9_]+) ON public[.]([A-Za-z0-9_]+) [(]([A-Za-z0-9_]+)[)];$\",\n    re.MULTILINE,\n\
+        )\ndef guarded_index(match):\n    name, table, column = match.groups()\n    sql = (\n        \"DO $ci_index$ BEGIN\
+        \ \"\n        \"IF EXISTS (SELECT 1 FROM information_schema.columns \"\n        \"WHERE table_schema='public' AND\
+        \ table_name='\" + table + \"' \"\n        \"AND column_name='\" + column + \"') THEN \"\n        \"EXECUTE 'CREATE\
+        \ INDEX IF NOT EXISTS \" + name + \" ON public.\"\n        + table + \" (\" + column + \")'; \"\n        \"END IF;\
+        \ END $ci_index$;\"\n    )\n    return sql\nperf_sql, index_count = index_pat.subn(guarded_index, perf_sql)\nif index_count\
+        \ != 11:\n    raise SystemExit(f\"Unexpected historical advisor index count: {index_count}\")\nperf.write_text(perf_sql)\n\
+        print(\"CI-only guarded advisor indexes; original migration unchanged.\")\n# CI-local replay: metadata ALTER predates\
+        \ the knowledge table CREATE.\nfabric_sql = pathlib.Path(\"supabase/migrations/20260811180000_platform_knowledge_fabric.sql\"\
+        ).read_text()\nbegin = fabric_sql.index(\"CREATE TABLE IF NOT EXISTS public.knowledge_sources (\")\nfinish = fabric_sql.index(\"\
+        CREATE TABLE IF NOT EXISTS public.knowledge_documents\", begin)\nsource_ddl = fabric_sql[begin:finish]\nlicense_migration\
+        \ = path.parent / \"20260811175745_knowledge_sources_license_metadata.sql\"\nlicense_sql = license_migration.read_text()\n\
+        if not license_sql.startswith(\"-- Extend knowledge_sources\"):\n    raise SystemExit(\"Unexpected license-metadata\
+        \ migration\")\nlicense_migration.write_text(source_ddl + \"\\n\" + license_sql)\nprint(\"CI replay: knowledge_sources\
+        \ DDL ordered before license metadata.\")\n\n\n\n\nPY\ncd \"$replay_dir\"\n# A GitHub hosted runner can already have\
+        \ the default Supabase\n# 54322/tcp bound by unrelated jobs. Configure unique local-only\n# ports *in this disposable\
+        \ copy* before starting Docker. Do not\n# change the tracked Supabase config or use production services.\npython3\
+        \ - <<'PY'\nfrom pathlib import Path\nimport os\nimport random\nimport re\nimport socket\ncfg = Path(\"supabase/config.toml\"\
+        )\noriginal = cfg.read_text()\ndefaults = (54320, 54321, 54322, 54323, 54324, 54329)\nrandomizer = random.SystemRandom()\n\
+        def available(port):\n    for family, host in ((socket.AF_INET, \"127.0.0.1\"),):\n        with socket.socket(family,\
+        \ socket.SOCK_STREAM) as sock:\n            try:\n                sock.bind((host, port))\n            except OSError:\n\
+        \                return False\n    return True\nfor _ in range(200):\n    base = randomizer.randint(25000, 49000)\n\
+        \    ports = {old: base + (old - 54320) for old in defaults}\n    if all(available(port) for port in ports.values()):\n\
+        \        break\nelse:\n    raise SystemExit(\"Unable to reserve a free local Supabase port group\")\nconfig = original\n\
+        for old, port in ports.items():\n    config, changed = re.subn(\n        rf\"(?m)^((?:shadow_)?port\\s*=\\s*){old}$\"\
+        ,\n        lambda match: match.group(1) + str(port),\n        config,\n    )\n    if changed != 1:\n        raise\
+        \ SystemExit(f\"Unexpected local Supabase port config for {old}: {changed}\")\nold_name = \"gravitre-operator-ai\"\
+        \nif config.count(old_name) != 1:\n    raise SystemExit(\"Missing unique local project identifier\")\nconfig = config.replace(\n\
+        \    old_name, \"gravitre-qa-\" + os.environ.get(\"GITHUB_RUN_ID\", \"local\"), 1\n)\ncfg.write_text(config)\nprint(\"\
+        Disposable Supabase replay uses isolated ports and project identity.\")\nPY\n# Docker may race the free-port probe\
+        \ above. Retry only a confirmed\n# host-port collision with a fresh disposable set; all other\n# Supabase startup\
+        \ or SQL errors remain hard failures.\nfor attempt in 1 2 3; do\n  if supabase start -x studio,imgproxy,edge-runtime,logflare,vector\
+        \ > \"$RUNNER_TEMP/supabase-start.log\" 2>&1; then\n    cat \"$RUNNER_TEMP/supabase-start.log\"\n    break\n  fi\n\
+        \  cat \"$RUNNER_TEMP/supabase-start.log\"\n  if ! grep -q 'failed to bind host port.*address already in use' \"$RUNNER_TEMP/supabase-start.log\"\
+        \ || [ \"$attempt\" -eq 3 ]; then\n    exit 1\n  fi\n  supabase stop --no-backup > /dev/null 2>&1 || true\n  python3\
+        \ - <<'PY'\nfrom pathlib import Path\nimport random\nimport re\nimport socket\ncfg = Path(\"supabase/config.toml\"\
+        )\noriginal = cfg.read_text()\npattern = re.compile(r\"(?m)^((?:shadow_)?port\\s*=\\s*)(\\d+)$\")\nmatches = list(pattern.finditer(original))\n\
+        if len(matches) < 6:\n    raise SystemExit(\"Unexpected isolated port configuration\")\nold_ports = {int(m.group(2))\
+        \ for m in matches}\nsmallest = min(old_ports)\nrng = random.SystemRandom()\nfor _ in range(300):\n    base = rng.randint(25000,\
+        \ 49000)\n    mapped = {old: base + (old - smallest) for old in old_ports}\n    if max(mapped.values()) > 65000:\n\
+        \        continue\n    def free(port):\n        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:\n\
+        \            try:\n                sock.bind((\"0.0.0.0\", port))\n                return True\n            except\
+        \ OSError:\n                return False\n    if all(free(port) for port in mapped.values()):\n        break\nelse:\n\
+        \    raise SystemExit(\"No free replacement Supabase port group\")\ncfg.write_text(pattern.sub(lambda match:\n   \
+        \ match.group(1) + str(mapped[int(match.group(2))]), original))\nprint(\"Retrying local-only Supabase on a new port\
+        \ group.\")\nPY\ndone\nsupabase db reset --no-seed\necho \"Local Supabase replayed all migrations on isolated Docker\
+        \ ports (production untouched).\"\n"
+    - name: Set up isolated billing browser acceptance
+      if: steps.gate.outputs.billing == 'true'
+      uses: actions/setup-node@v4
+      with:
+        node-version: 22
+    - uses: pnpm/action-setup@v4
+      if: steps.gate.outputs.billing == 'true'
+      with:
+        version: 10.11.0
+    - uses: actions/setup-python@v5
+      if: steps.gate.outputs.billing == 'true'
+      with:
+        python-version: '3.12'
+    - name: Install billing acceptance dependencies
+      if: steps.gate.outputs.billing == 'true'
+      run: 'pnpm install --frozen-lockfile --ignore-scripts
+
+        pnpm --dir apps/web install --frozen-lockfile
+
+        pip install --no-cache-dir -r backend/requirements-dev.txt
+
+        npx playwright install --with-deps chromium
+
+        '
+    - name: Configure disposable authenticated role acceptance
+      if: steps.gate.outputs.billing == 'true'
+      run: 'umask 077
+
+        supabase status --workdir "$BILLING_REPLAY_DIR" -o json > "$RUNNER_TEMP/billing-supabase.json"
+
+        python scripts/configure-billing-acceptance.py --supabase-status "$RUNNER_TEMP/billing-supabase.json" --auth-only
+
+        '
+    - name: Genuine founder and organization-owner browser authorization
+      if: steps.gate.outputs.billing == 'true'
+      env:
+        CI: 'true'
+        PYTHON: python
+      run: npx playwright test --config playwright.billing.acceptance.config.ts --grep 'signed-in organization owner|founder
+        can read controls'
+    - name: Upload sanitized authenticated role evidence
+      if: always() && steps.gate.outputs.billing == 'true'
+      uses: actions/upload-artifact@v4
+      with:
+        name: billing-authenticated-roles
+        path: 'test-results/billing-acceptance-summary.json
+
+          test-results/**/*.png
+
+          '
+    - name: Configure disposable Supabase and Stripe sandbox only
+      env:
+        BILLING_REQUIRE_STRIPE_TEST_KEYS: '1'
+        STRIPE_TEST_SECRET_KEY: ${{ secrets.STRIPE_TEST_SECRET_KEY }}
+        STRIPE_TEST_PUBLISHABLE_KEY: ${{ secrets.STRIPE_TEST_PUBLISHABLE_KEY }}
+        STRIPE_EXISTING_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
+        STRIPE_EXISTING_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY }}
+      if: steps.gate.outputs.billing == 'true'
+      run: 'umask 077
+
+        supabase status --workdir "$BILLING_REPLAY_DIR" -o json > "$RUNNER_TEMP/billing-supabase.json"
+
+        python scripts/configure-billing-acceptance.py --supabase-status "$RUNNER_TEMP/billing-supabase.json"
+
+        '
+    - name: Authenticated billing browser and sandbox invoice acceptance
+      if: steps.gate.outputs.billing == 'true'
+      env:
+        CI: 'true'
+        PYTHON: python
+      run: npx playwright test --config playwright.billing.acceptance.config.ts
+    - name: Upload sanitized billing acceptance evidence
+      if: always() && steps.gate.outputs.billing == 'true'
+      uses: actions/upload-artifact@v4
+      with:
+        name: billing-isolated-acceptance
+        path: 'test-results/billing-acceptance-summary.json
+
+          test-results/stripe-submit-dom.json
+
+          test-results/**/*.png
+
+          test-results/**/error-context.md
+
+          '
+        if-no-files-found: warn
+    - name: Remote staging reconcile (when configured)
+      if: steps.gate.outputs.run == 'true' && vars.SUPABASE_STAGING_PROJECT_REF != ''
+      env:
+        SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+        STAGING_REF: ${{ vars.SUPABASE_STAGING_PROJECT_REF }}
+      shell: bash
+      run: "set -euo pipefail\nif [ -z \"${SUPABASE_ACCESS_TOKEN:-}\" ]; then\n  echo \"::error::SUPABASE_STAGING_PROJECT_REF\
+        \ is set but SUPABASE_ACCESS_TOKEN is missing.\"\n  exit 1\nfi\nsupabase link --project-ref \"$STAGING_REF\" --password\
+        \ \"${{ secrets.SUPABASE_STAGING_DB_PASSWORD }}\"\nsupabase migration list\necho \"Staging project linked for history\
+        \ reconciliation (no db push \u2014 human-approved deploy only).\"\n"
+    permissions:
+      contents: read
+    concurrency:
+      group: ${{ format('candidate-{0}-{1}-{2}', format('supabase-migration-safety-{0}', github.event.pull_request.number
+        || github.run_id), 'supabase_migration_safety__staging-validate', toJSON(matrix)) }}
+      cancel-in-progress: ${{ true }}
+  pr605_gate26_postgres_outbox__isolated-outbox:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        persist-credentials: false
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+    - name: Prepare isolated PostgreSQL binaries and runner
+      shell: bash
+      run: "set -euo pipefail\nfor dir in /usr/local/lib/android /usr/share/dotnet /opt/ghc /usr/local/share/powershell; do\n\
+        \  if [ -d \"$dir\" ]; then sudo rm -rf -- \"$dir\"; fi\ndone\nsudo apt-get update -qq\nsudo apt-get install -y postgresql\
+        \ postgresql-client\ntest -n \"$(find /usr/lib/postgresql -name initdb -type f -print -quit)\"\ndf -h /\n"
+    - name: Install test dependencies
+      run: 'python -m pip install --no-cache-dir --no-compile -r requirements-dev.txt
+
+        python -m pip check
+
+        '
+    - name: Execute real throwaway PostgreSQL outbox suite
+      env:
+        APP_ENV: dev
+        SUPABASE_URL: https://test.supabase.co
+        SUPABASE_ANON_KEY: anon-test
+        SUPABASE_SERVICE_ROLE_KEY: service-role-test
+        SUPABASE_JWT_SECRET: jwt-secret-test
+        OPENAI_API_KEY: sk-test-openai
+      run: "set -euo pipefail\npython - <<'PY'\nfrom tests.db.pg_harness import PG_BIN\nif PG_BIN is None:\n    raise SystemExit(\"\
+        PostgreSQL binaries absent: refusing to certify skipped tests\")\nprint(\"Isolated PostgreSQL binaries:\", PG_BIN)\n\
+        PY\npython -m pytest -q -rs tests/db/test_domain_event_outbox_pg.py\n"
+    name: isolated-outbox
+    needs:
+    - dispatch_contract
+    if: ${{ always() && needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected),
+      'pr605-gate26-postgres-outbox') && ((!cancelled() && (true))) }}
+    permissions:
+      contents: read
+  source_outcomes:
+    name: Record independent source workflow outcomes
+    if: ${{ always() && needs.dispatch_contract.result == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    permissions: {}
+    needs:
+    - upstream_contract
+    - dispatch_contract
+    - acceptance_db_preflight__schema-preflight
+    - acceptance_db_preflight__static-contracts
+    - migration_history_recovery__recorded-history-replay
+    - supabase_migration_safety__validate-migrations
+    - supabase_migration_safety__staging-validate
+    - pr605_gate26_postgres_outbox__isolated-outbox
+    steps:
+    - name: Bind source outcomes to this run
+      shell: python
+      run: "import json, os\nsources = json.loads(os.environ['SOURCE_JOBS'])\nneeds = json.loads(os.environ['JOB_RESULTS'])\n\
+        selected = json.loads(os.environ['SELECTED'])\noutcomes = {}\nfor name, source in sources.items():\n    if name not\
+        \ in selected:\n        continue\n    results = [needs[key]['result'] for key in source['jobs']]\n    outcome = ('failure'\
+        \ if 'failure' in results else 'cancelled' if 'cancelled' in results\n               else 'success' if 'success' in\
+        \ results else 'skipped')\n    outcomes[source['display_name']] = outcome\nevidence = {'run_id': int(os.environ['GITHUB_RUN_ID']),\
+        \ 'head_sha': os.environ['GITHUB_SHA'],\n            'source_outcomes': outcomes}\nwith open('canonical-workflow-outcomes.json',\
+        \ 'w') as output:\n    json.dump(evidence, output)\n"
+      env:
+        SOURCE_JOBS: '{"acceptance-db-preflight": {"display_name": "Prepare acceptance database initialization", "jobs": ["acceptance_db_preflight__schema-preflight",
+          "acceptance_db_preflight__static-contracts"]}, "migration-history-recovery": {"display_name": "Migration history
+          recovery", "jobs": ["migration_history_recovery__recorded-history-replay"]}, "supabase-migration-safety": {"display_name":
+          "Supabase migration safety", "jobs": ["supabase_migration_safety__validate-migrations", "supabase_migration_safety__staging-validate"]},
+          "pr605-gate26-postgres-outbox": {"display_name": "PR605 Gate26 isolated PostgreSQL outbox acceptance", "jobs": ["pr605_gate26_postgres_outbox__isolated-outbox"]}}'
+        JOB_RESULTS: '{"acceptance_db_preflight__schema-preflight": {"result": "${{ needs.acceptance_db_preflight__schema-preflight.result
+          }}"}, "acceptance_db_preflight__static-contracts": {"result": "${{ needs.acceptance_db_preflight__static-contracts.result
+          }}"}, "migration_history_recovery__recorded-history-replay": {"result": "${{ needs.migration_history_recovery__recorded-history-replay.result
+          }}"}, "supabase_migration_safety__validate-migrations": {"result": "${{ needs.supabase_migration_safety__validate-migrations.result
+          }}"}, "supabase_migration_safety__staging-validate": {"result": "${{ needs.supabase_migration_safety__staging-validate.result
+          }}"}, "pr605_gate26_postgres_outbox__isolated-outbox": {"result": "${{ needs.pr605_gate26_postgres_outbox__isolated-outbox.result
+          }}"}}'
+        SELECTED: ${{ needs.dispatch_contract.outputs.selected }}
+    - uses: actions/upload-artifact@v4
+      with:
+        name: canonical-workflow-outcomes-03-data-recovery
+        path: canonical-workflow-outcomes.json
+        if-no-files-found: error
+        retention-days: 14

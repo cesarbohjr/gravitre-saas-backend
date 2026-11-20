@@ -732,6 +732,7 @@ async def test_consensus_summary_never_raw_debate():
     service.deliberate = AsyncMock(
         return_value={
             "consensus_recommendation": "Proceed with caution",
+            "independent_review_available": True,
             "confidence": 0.7,
             "minority_opinions": [{"agent": "Skeptic"}],
             "consensus_explanation": "Independent review reached 70% confidence.",

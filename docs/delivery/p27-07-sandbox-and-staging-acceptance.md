@@ -1,0 +1,67 @@
+# P27-07 release gate — zero-additional-infrastructure-cost live acceptance
+
+**User-approved testing strategy:** Gravitre has no live customers yet. Existing production Railway and the existing Gravitre HubSpot portal are the **primary controlled live testing targets**. A separate Railway test/staging environment existed previously, generated charges, and was intentionally removed. **Do not recreate it, provision a second backend/Redis/PostgreSQL service, buy an upgrade, or incur new recurring infrastructure cost just to satisfy this gate.**
+
+PR #611 remains draft/unmerged/undeployed. Default `WORKFLOW_ORPHAN_RECOVERY_ENABLED=false`. Testing approval is not approval to merge, restart, or interrupt production services without a controlled release plan.
+
+## Current inventory and evidence
+
+- Connected HubSpot Gravitre AI portal `343328749` is type `STANDARD`. This is the intended live-test account, **not a dedicated developer-test portal**. Existing data must be preserved; use uniquely tagged `p27qa` records, a narrowly restricted test org and reversible actions.
+- Connected Railway `spirited-communication` contains the live backend and Redis in its `production` environment. There is no need to create an additional staging environment.
+- Prior CI has demonstrated disposable PostgreSQL tests, a synthetic provider effect, atomic SQL ownership, and separate real OS recovery processes. **These do not establish real Railway production worker restart or HubSpot live readback**.
+- GitHub Actions manual workflow `.github/workflows/master-qa-p27-sandbox-readback.yml` and `backend/scripts/p27_hubspot_sandbox_readback.py` currently reject `STANDARD` HubSpot portals. The script and protected manual workflow **have now been revised** for existing STANDARD portal ID `343328749`, require exact portal binding, `APPROVE_LIVE_TEST_CONTACT`, a dedicated QA email domain, independent GET, same-key replay, and DELETE followed by GET 404. Offline negative tests cover wrong portal, missing approval, duplicate, mismatch and cleanup failure. This is code, **not live readback certification**.
+- A workflow_dispatch workflow may need to exist on GitHub's default branch before it can be invoked; a PR-only YAML change is not proof of dispatch availability.
+
+## Zero-extra-cost live verification sequence
+
+1. **Complete engineering and CI first:** resolve all required checks on the exact PR SHA, verify idempotency and fail-closed unknown-readback handling, review migration security, and approve a controlled merge/deployment to the existing Railway backend. Preserve rollback instructions and confirm the deployed SHA.
+2. **No separate provider account:** use the existing connected HubSpot Gravitre AI portal and test-only `p27qa` contact identifiers. Review existing records before writes. A single contact upsert followed by authoritative GET and same-key retry is the allowed scope; no emails, bulk updates, real customer records, billing, advertising, or third-party messages.
+3. **Keep provider testing explicitly gated:** the provider-specific readback adapter and offline negative tests now require the exact expected portal ID, `APPROVE_LIVE_TEST_CONTACT` input, a unique QA marker, a test-only email namespace, test-scoped CRM permissions, resource IDs, and contact DELETE + GET 404 cleanup verification. Ensure an operator verifies credentials are least-privileged and that the workflow is actually dispatchable before live invocation. No secret may be logged, committed, or pasted into a PR. Use **existing secrets/credentials only** when their scopes and test permission are independently verified; never create a new paid service.
+4. **Verify readback:** run one controlled HubSpot test record and independently retrieve its fields by record ID, then resubmit the identical upsert and prove the ID is unchanged. Record the actual provider response and remove/mark the test record with independent readback; the adapter now verifies archival by a GET 404. Do not label a mock response as provider acceptance.
+5. **Worker restart on existing Railway:** first check active jobs, approvals, scheduled workloads, other testing sessions and backend health; ensure no users or critical operations will be interrupted. Plan a reversible, limited maintenance action on the existing backend **only with explicit authorization for that service restart**. Prefer process-scoped worker termination if isolation is available. Do **not** blindly kill the only API instance, Redis, Postgres, or a shared worker. If safe process-level isolation is not available within existing infrastructure, keep this gate blocked rather than add paid staging.
+6. **Live failure-injection:** use a uniquely keyed approved test workflow and verified connector, persist `executor_in_flight` checkpoint before provider dispatch, simulate/observe post-commit-before-receipt worker interruption, recover with an atomic SQL claim, and independently read the provider record. Require a single resource, a single completion fanout, durable evidence, no unauthorized retry, and preserved pause on unknown readback. Verify cancellation/rollback and return `WORKFLOW_ORPHAN_RECOVERY_ENABLED` to `false` after testing unless separately authorized for broad release.
+7. **Evidence:** archive precise PR and deployed SHAs, CI URLs, migration result, Railway deployment/worker logs, HubSpot portal ID and test resource ID, unique write idempotency key, readback proof, SQL lease result, cleanup and rollback proof. Do not merge/deploy solely to satisfy documentation.
+
+## Hard constraints / stop conditions
+
+- **Zero additional testing infrastructure cost:** no new Railway testing service, staging DB, Redis, always-on runner or paid add-on.
+- Do not touch existing HubSpot contacts or invoke non-QA outbound actions. If no safe QA-only contact can be created or cleaned up, block.
+- No uncontrolled interruption to production APIs or external activities. No active real-user sessions or outstanding critical jobs at the start of worker termination.
+- Missing authorization, missing credential permission, unclear source-of-record response, duplicate write, invalid lease, missing checkpoint or failed required CI blocks live certification.
+- The absence of customers narrows operational exposure; it **does not remove** the need to preserve service security, test data isolation, controlled downtime and independently verified readback.
+
+**Current status:** corrected acceptance plan only. No existing Railway or HubSpot resources were mutated by this documentation update. No live write, Railway restart, migration, merge, deployment, or new infrastructure spend is claimed.
+
+## Engineering update (2026-11-07)
+
+- Reviewed adapter: `backend/scripts/p27_hubspot_sandbox_readback.py` accepts only the known Gravitre portal ID `343328749` reporting `STANDARD`, provided that both manual approval booleans are true. It requires non-public QA email domain and a real bearer token, upserts one random synthetic contact, verifies provider GET, replays exactly the same request, and verifies cleanup by DELETE/GET 404.
+- Manual workflow: `.github/workflows/master-qa-p27-sandbox-readback.yml`; dispatch input must equal `APPROVE_LIVE_TEST_CONTACT` and protected environment `p27-provider-sandbox` must supply `P27_HUBSPOT_EXPECTED_PORTAL_ID`, `P27_HUBSPOT_QA_EMAIL_DOMAIN` and secret `P27_HUBSPOT_LIVE_TEST_TOKEN`. Do not add raw credentials to documentation, repo code, or ordinary variables.
+- Offline contract negatives: `backend/tests/master_qa/test_hubspot_sandbox_readback_contract.py`. Actual provider testing still awaits protected secret and manual approval; no live HubSpot write has yet been executed.
+- Railway inspected: existing backend **one live replica**, Redis **one live replica**, no extra staging. **Do not kill/restart the only shared backend container** as the process crash test; require a process-specific isolation demonstration and job-drain proof. The existing CI OS-process crash/restart regression covers worker termination without impacting the live service, but does not certify Railway worker termination.
+
+## Live worker interruption feasibility check — 2026-11-07
+
+- Railway project `spirited-communication`, production backend service `20c41db0-3e3d-400e-95d5-eef57ba2bc0c`: **one healthy replica**; Redis also has one. No staged patch. Last successful backend deployment is `78fb8af7-2c90-4a4f-9a34-180398ad20fb` from 2026-11-04, commit `557be844f191767ea51c9f1d1d4958e5b046ca53` (not PR #611).
+- `backend/app/workers/workflow_worker.py` starts the consumer via `asyncio.create_task(_worker_loop(...))` in the API application. The Railway service has no independent worker process. A `kill -9` of the only backend process would also terminate the API. **No permission to harm unrelated traffic is inferred from zero live customers.**
+- The deployed worker termination gate therefore remains **BLOCKED without process isolation, a controlled approved maintenance window, or verified no-impact method**. A cancellation of the asyncio task is not equivalent to a real OS-process crash. Existing 2-process PostgreSQL CI evidence satisfies the isolated death/restart regression, but not deployed Railway restart certification.
+- No new infrastructure was created, no Railway restart performed, no credentials retrieved or changed. Test acceptance should use existing resources only; do not create a paid staging environment.
+
+## P27-08 — no-extra-service isolated worker execution (opt-in)
+
+Code: `backend/app/workers/isolated_workflow_supervisor.py`, `backend/app/workers/workflow_worker_process.py`, `backend/app/workers/workflow_worker.py`, `backend/app/main.py`.
+
+- `WORKFLOW_WORKER_PROCESS_ISOLATION_ENABLED=false` **by default**. When explicitly enabled alongside `WORKFLOW_QUEUE_ENABLED=true`, FastAPI starts one supervisor asyncio task and suppresses its own in-process workflow queue consumer.
+- The supervisor invokes the fixed `python -m app.workers.workflow_worker_process` command as a **child OS process in the existing Railway backend container** (no additional service or database). The child alone runs the existing queue processing and optionally the SQL-orphan sweep. Redis queue ownership and SQL recovery lease fencing remain authoritative.
+- The parent awaits the child exit and restarts an unexpectedly terminated child. A signal to that **child PID** leaves the parent API PID and HTTP listener running. On API shutdown the supervisor first sends SIGTERM to its own child, then SIGKILL after a bounded five-second grace period.
+- The opt-in subprocess consumes memory/CPU on the **existing** Railway service; no new Railway service bill is created, but load/resource use must still be monitored. Isolation does not mean zero compute use.
+- CI: `backend/tests/master_qa/test_isolated_workflow_supervisor.py` SIGKILLs an actual OS child and verifies a test HTTP parent remains responsive before and after automatic restart. The companion disposable PostgreSQL tests continue validating committed external effects, SQL lease takeover, independent readback and non-duplication. The test HTTP listener is **not the deployed FastAPI server**.
+
+### Two-phase controlled existing-Railway acceptance
+
+1. Review **exact-head all-required CI**, preserve existing backend deployment rollback target, and **obtain explicit approval to merge and deploy**. Do not use live Railway service to run unmerged PR code.
+2. Enable `WORKFLOW_WORKER_PROCESS_ISOLATION_ENABLED=true` with `WORKFLOW_ORPHAN_RECOVERY_ENABLED=false` for phase A; verify healthy API requests, background worker child PID, no duplicate queue consumer, and no unrelated active workflow run. Roll back on OOM, unexpected task spawn, queue lag or API errors.
+3. With verified no unrelated active work, terminate **only the dedicated child PID**, not the uvicorn parent or Redis. Verify unchanged API health, distinct restarted child PID, queue claim fencing, and healthy redis state. Disable the isolation flag if process supervision is unstable.
+4. In phase B, with migrated SQL lease functions and a single uniquely tagged approved test workflow, enable `WORKFLOW_ORPHAN_RECOVERY_ENABLED=true` for the controlled window. Kill the dedicated child after an externally verified synthetic provider commit but before local output acknowledgment. Require a new owner lease, source-of-record readback, one provider effect, one event/outbox, and safe pause on indeterminate reads.
+5. Explicitly disable orphan auto-recovery and either retain or revert isolation according to separate release approval. Record real Railway deployment SHA, child PIDs, API health, no-impact proof, lease/Redis logs, HubSpot test object and deletion evidence.
+
+Do not claim phase A/B production acceptance merely because the OS child simulation passes CI. Do not set the flags in Railway or touch the live process until deployment and explicit approval gates are satisfied.

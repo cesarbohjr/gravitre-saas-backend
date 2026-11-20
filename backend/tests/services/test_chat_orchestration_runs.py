@@ -1,6 +1,8 @@
 """Unit tests for chat orchestration run URL resolution and failure finalize bridge."""
 
 from unittest.mock import MagicMock, patch
+from app.workflows import repository
+from tests.services.outcome_rpc_fake import outcome_rpc
 
 from app.services.chat_orchestration_runs import (
     _chat_orch_graph_from_steps,
@@ -163,12 +165,20 @@ def test_finalize_orchestration_failure_with_run_delegates_to_run_finalize():
     assert finalize_run.call_args.kwargs["success"] is False
 
 
-def test_finalize_orchestration_run_failure_emits_audit_and_notification():
+def _atomic_run_client():
     client = MagicMock()
+    row = {"status": "running", "parameters": {}, "workflow_id": "workflow-test"}
+    client.table.return_value.select.return_value.eq.return_value.eq.return_value.limit.return_value.execute.return_value.data = [row]
+    client.rpc.side_effect = lambda name, args: outcome_rpc(row, name, args)
+    return client, row
+
+
+def test_finalize_orchestration_run_failure_emits_audit_and_notification():
+    client, row = _atomic_run_client()
     with (
-        patch("app.workflows.repository.update_run") as update_run,
-        patch("app.workflows.repository.emit_execute_failed") as emit_failed,
-        patch("app.services.notification_emitter.emit_notification") as emit_note,
+        patch("app.workflows.repository.persist_run_outcome", wraps=repository.persist_run_outcome) as update_run,
+        patch("app.workflows.repository.emit_execute_failed", return_value=True) as emit_failed,
+        patch("app.services.notification_emitter.emit_notification", return_value="notification-test") as emit_note,
     ):
         finalize_orchestration_run(
             client,
@@ -180,6 +190,9 @@ def test_finalize_orchestration_run_failure_emits_audit_and_notification():
         )
     update_run.assert_called_once()
     assert update_run.call_args.kwargs["status"] == "failed"
+    assert update_run.call_args.kwargs["org_id"] == "org-1"
+    assert row["status"] == "failed"
+    assert "verified_output" in row["parameters"]
     emit_failed.assert_called_once()
     failed_args = emit_failed.call_args[0]
     assert failed_args[:4] == (client, "org-1", "user-1", "run-9")
@@ -190,12 +203,12 @@ def test_finalize_orchestration_run_failure_emits_audit_and_notification():
 
 
 def test_finalize_orchestration_run_success_skips_failure_emit():
-    client = MagicMock()
+    client, row = _atomic_run_client()
     with (
-        patch("app.workflows.repository.update_run") as update_run,
-        patch("app.workflows.repository.emit_execute_failed") as emit_failed,
-        patch("app.workflows.repository.emit_execute_completed") as emit_completed,
-        patch("app.services.notification_emitter.emit_notification") as emit_note,
+        patch("app.workflows.repository.persist_run_outcome", wraps=repository.persist_run_outcome) as update_run,
+        patch("app.workflows.repository.emit_execute_failed", return_value=True) as emit_failed,
+        patch("app.workflows.repository.emit_execute_completed", return_value=True) as emit_completed,
+        patch("app.services.notification_emitter.emit_notification", return_value="notification-test") as emit_note,
     ):
         finalize_orchestration_run(
             client,
@@ -207,7 +220,24 @@ def test_finalize_orchestration_run_success_skips_failure_emit():
         )
     update_run.assert_called_once()
     assert update_run.call_args.kwargs["status"] == "completed"
+    assert update_run.call_args.kwargs["org_id"] == "org-1"
+    assert row["status"] == "completed"
+    assert "verified_output" in row["parameters"]
     emit_failed.assert_not_called()
     emit_completed.assert_called_once()
     emit_note.assert_called_once()
     assert emit_note.call_args.kwargs["event_type"] == "run_completed"
+
+
+def test_orchestration_finalizer_exception_never_falls_back_to_raw_status_stamp():
+    from app.services import chat_orchestration_runs as bridge
+    with (
+        patch.object(bridge, "finalize_execution_outcome", side_effect=RuntimeError("canonical outage")),
+        patch("app.workflows.repository.update_run") as raw_update,
+        patch("app.workflows.audit.write_audit_event", return_value=True) as alert,
+    ):
+        bridge.finalize_orchestration_run(MagicMock(), org_id="org-1", run_id="run-9",
+            success=True, summary="Uncommitted result", user_id="user-1")
+    raw_update.assert_not_called()
+    alert.assert_called_once()
+    assert alert.call_args.args[6]["terminal_stamp_suppressed"] is True

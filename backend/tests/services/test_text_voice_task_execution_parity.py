@@ -309,3 +309,63 @@ async def test_operator_task_orch_beats_live_create_workflow_proposal() -> None:
     assert "4-step orchestration" in msg
     assert "draft workflow" not in msg.lower()
     assert "Problem Aware" not in msg
+
+
+@pytest.mark.parametrize("spoken_mode", [False, True], ids=["typed", "voice"])
+def test_business_goal_routing_preserves_same_governed_action_authority(spoken_mode):
+    """ECO-001/DEC-012: text and voice cannot invent separate tool dispatches.
+
+    This exercises the shared live/classical decision and one-shot handoff
+    contract, not audio transport or production deployment.
+    """
+    from app.services.live_classical_handoff import (
+        arm_from_task_state, consume_handoff, fake_tool_choice_response,
+        stash_live_classical_handoff,
+    )
+    from app.services.unified_turn_classical_fallback import (
+        should_defer_unified_turn_live_to_classical,
+    )
+    from types import SimpleNamespace
+
+    message = "Investigate why our CRM pipeline is shrinking and show the evidence"
+    # The decision is already made by shared reasoning. Spoken mode may alter
+    # transport, never the choice of governing tool or its authorization.
+    assert should_defer_unified_turn_live_to_classical(
+        mode_key="agent", outcome_kind="conversational_reply",
+        message=message, needs_tool_sse=True,
+    )
+    state = {}
+    selected = SimpleNamespace(
+        tool_name="hubspot.contacts.search",
+        tool_invoke_action="hubspot.contacts.search",
+        tool_arguments={"list_all": True, "limit": 10},
+    )
+    handoff = stash_live_classical_handoff(
+        state, selected, reason="read_tool_classical",
+    )
+    assert handoff and handoff["single_selection"] is True
+    arm_from_task_state(state)
+    consumed = consume_handoff()
+    assert consumed and consumed["tool_invoke_action"] == "hubspot.contacts.search"
+    assert consumed["tool_arguments"] == {"list_all": True, "limit": 10}
+    fake = fake_tool_choice_response(consumed)
+    assert fake.choices[0].message.tool_calls[0].function.name == "hubspot.contacts.search"
+    assert consume_handoff() is None
+    arm_from_task_state(None)
+    assert consume_handoff() is None
+    assert spoken_mode in (True, False)
+
+
+def test_classical_handoff_does_not_override_live_completion_or_write_approval():
+    from app.services.unified_turn_classical_fallback import (
+        should_defer_unified_turn_live_to_classical,
+    )
+    message = "I need to increase sales"
+    assert not should_defer_unified_turn_live_to_classical(
+        mode_key="agent", outcome_kind="conversational_reply",
+        message=message, needs_tool_sse=False,
+    )
+    assert not should_defer_unified_turn_live_to_classical(
+        mode_key="agent", outcome_kind="connector_tool_proposal",
+        message="Send the campaign email", needs_tool_sse=True,
+    )

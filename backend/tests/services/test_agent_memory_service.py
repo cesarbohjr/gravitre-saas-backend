@@ -217,3 +217,62 @@ def test_update_agent_memory_rejects_empty_content(mock_embed):
     with pytest.raises(HTTPException) as exc:
         update_agent_memory(settings, client, org_id, agent_id, memory_id, content="   ")
     assert exc.value.status_code == 400
+
+
+@pytest.mark.parametrize("source", ["agent_memory", "department_rag"])
+def test_eco003_agent_memory_access_denial_is_not_silenced(source):
+    settings = MagicMock()
+    client = MagicMock()
+    agent = {"id": "agent-a"}
+    context = {"include_agent_memory": source == "agent_memory",
+               "include_department_rag": source == "department_rag"}
+    target = (
+        "app.services.agent_memory_service.search_agent_memories"
+        if source == "agent_memory"
+        else "app.services.agent_memory_service.resolve_department_id_for_agent"
+    )
+    with patch(target, side_effect=PermissionError(f"{source} scope denied")):
+        with pytest.raises(PermissionError, match="scope denied"):
+            build_task_retrieval_context(
+                settings, client, org_id="tenant-a",
+                agent=agent, task="tenant-scoped memory",
+                parameters=context,
+            )
+
+
+def test_eco003_unowned_agent_http_denial_survives_memory_context_fallback():
+    from fastapi import HTTPException
+
+    with patch(
+        "app.services.agent_memory_service.search_agent_memories",
+        side_effect=HTTPException(status_code=404, detail="Agent not found"),
+    ):
+        with pytest.raises(HTTPException) as error:
+            build_task_retrieval_context(
+                MagicMock(), MagicMock(), org_id="tenant-a",
+                agent={"id": "not-owned"},
+                task="private memory",
+                parameters={"include_agent_memory": True},
+            )
+    assert error.value.status_code == 404
+
+
+@pytest.mark.parametrize("denial", [
+    PermissionError("department scope denied"),
+    HTTPException(status_code=403, detail="department forbidden"),
+])
+def test_eco003_department_memory_denial_does_not_try_alternate_table(denial):
+    from app.services.agent_memory_service import search_department_memories
+
+    client = MagicMock()
+    client.rpc.return_value.execute.side_effect = denial
+    with patch(
+        "app.services.agent_memory_service.get_embedding",
+        return_value=[0.1, 0.2],
+    ):
+        with pytest.raises((PermissionError, HTTPException)):
+            search_department_memories(
+                MagicMock(), client, "tenant-a", "department-a",
+                query="private data",
+            )
+    client.table.assert_not_called()

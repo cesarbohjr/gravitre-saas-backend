@@ -326,101 +326,23 @@ def _duration_ms(started_at: str | None, completed_at: str | None) -> int | None
         return None
 
 
-def mirror_legacy_run_to_contract(client: Any, run_id: str) -> None:
-    """C.3: Mirror workflow_runs + workflow_steps into runs + run_steps."""
+def mirror_legacy_run_to_contract(client: Any, run_id: str) -> bool:
+    """Refresh intentional run/step projections from locked database sources.
+
+    A stale application snapshot must never replace newer contract truth. The
+    RPC does the read and both writes together, preserving unrelated metadata.
+    Missing RPCs and partial acknowledgements fail; no client-upsert fallback.
+    Canonical terminal finalization invokes this refresh inside its transaction.
+    Other existing repository callers can retry this idempotent refresh.
+    """
     try:
-        run_result = client.table("workflow_runs").select("*").eq("id", run_id).limit(1).execute()
-        if not run_result.data:
-            return
-        run = dict(run_result.data[0])
-        org_id = run.get("org_id")
-        workflow_id = run.get("workflow_id")
-        workflow_name: str | None = None
-        if workflow_id and org_id:
-            wf = client.table("workflows").select("name").eq("id", workflow_id).eq("org_id", org_id).limit(1).execute()
-            if wf.data:
-                workflow_name = wf.data[0].get("name")
-            if not workflow_name:
-                legacy_wf = (
-                    client.table("workflow_defs")
-                    .select("name")
-                    .eq("id", workflow_id)
-                    .eq("org_id", org_id)
-                    .limit(1)
-                    .execute()
-                )
-                if legacy_wf.data:
-                    workflow_name = legacy_wf.data[0].get("name")
-
-        run_row: dict[str, Any] = {
-            "id": run_id,
-            "org_id": org_id,
-            "workflow_id": workflow_id,
-            "workflow_name": workflow_name,
-            "status": contract_run_status(run.get("status")),
-            "trigger": run.get("trigger_type") or run.get("run_type") or "manual",
-            "approval_status": contract_approval_status(run.get("approval_status")),
-            "started_at": run.get("started_at") or run.get("created_at"),
-            "completed_at": run.get("completed_at"),
-            "duration_ms": run.get("duration_ms") or _duration_ms(run.get("started_at"), run.get("completed_at")),
-            "error_message": run.get("error_message"),
-            "metadata": {
-                "run_type": run.get("run_type"),
-                "run_hash": run.get("run_hash"),
-                "environment": run.get("environment"),
-                # Preserve source lifecycle for consumers of coarse run statuses.
-                **run_status_metadata(lifecycle=str(run.get("status") or ""), origin="schema_sync"),
-            },
-            "updated_at": datetime.now(timezone.utc).isoformat(),
-        }
-        client.table("runs").upsert(run_row, on_conflict="id").execute()
-
-        steps_result = (
-            client.table("workflow_steps")
-            .select("*")
-            .eq("run_id", run_id)
-            .order("step_index")
-            .execute()
-        )
-        step_rows: list[dict[str, Any]] = []
-        for step in steps_result.data or []:
-            logs_value = step.get("logs")
-            logs: list[str]
-            if isinstance(logs_value, list):
-                logs = [str(item) for item in logs_value]
-            elif logs_value:
-                logs = [str(logs_value)]
-            else:
-                logs = []
-            metadata = {
-                "step_id": step.get("step_id"),
-                "step_type": step.get("step_type"),
-                "error_code": step.get("error_code"),
-            }
-            if step.get("input_snapshot") is not None:
-                metadata["input_snapshot"] = step.get("input_snapshot")
-            if step.get("output_snapshot") is not None:
-                metadata["output_snapshot"] = step.get("output_snapshot")
-            step_rows.append(
-                {
-                    "id": step.get("id"),
-                    "org_id": step.get("org_id") or org_id,
-                    "run_id": run_id,
-                    "name": step.get("step_name") or step.get("step_id") or "step",
-                    "status": contract_step_status(step.get("status")),
-                    "order_index": step.get("step_index") or 0,
-                    "started_at": step.get("started_at"),
-                    "completed_at": step.get("completed_at"),
-                    "duration_ms": _duration_ms(step.get("started_at"), step.get("completed_at")),
-                    "logs": logs,
-                    "metadata": metadata,
-                    "updated_at": datetime.now(timezone.utc).isoformat(),
-                }
-            )
-        if step_rows:
-            client.table("run_steps").upsert(step_rows, on_conflict="id").execute()
+        result = client.rpc("refresh_workflow_run_projection", {"p_run_id": run_id}).execute()
+        if result.data is not True:
+            raise RuntimeError("run projection refresh was not acknowledged")
+        return True
     except Exception as exc:  # noqa: BLE001
-        logger.warning("schema_sync run mirror failed run_id=%s error=%s", run_id, exc)
+        logger.warning("schema_sync run mirror failed run_id=%s error=%s", run_id, type(exc).__name__)
+        return False
 
 
 def mirror_legacy_workflow_row_to_contract(

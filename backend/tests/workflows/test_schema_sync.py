@@ -195,3 +195,29 @@ def test_sync_contract_workflow_to_legacy_upserts_defs():
     payload = table.upsert.call_args.args[0]
     assert payload["status"] == "active"
     assert payload["definition"]["steps"]
+
+
+@pytest.mark.parametrize("ack", [None, False, [], {"ok": True}, "true"])
+def test_run_projection_refresh_requires_explicit_database_ack_without_fallback(ack):
+    from app.workflows.schema_sync import mirror_legacy_run_to_contract
+    client = MagicMock()
+    client.rpc.return_value.execute.return_value.data = ack
+    assert mirror_legacy_run_to_contract(client, "run-1") is False
+    client.table.assert_not_called()
+
+
+def test_run_projection_refresh_propagates_only_identity_to_atomic_boundary():
+    from app.workflows.schema_sync import mirror_legacy_run_to_contract
+    client = MagicMock()
+    client.rpc.return_value.execute.return_value.data = True
+    assert mirror_legacy_run_to_contract(client, "run-1") is True
+    client.rpc.assert_called_once_with("refresh_workflow_run_projection", {"p_run_id": "run-1"})
+    client.table.assert_not_called()
+
+
+def test_run_projection_rpc_outage_never_uses_stale_client_upserts():
+    from app.workflows.schema_sync import mirror_legacy_run_to_contract
+    client = MagicMock()
+    client.rpc.return_value.execute.side_effect = RuntimeError("RPC unavailable")
+    assert mirror_legacy_run_to_contract(client, "run-1") is False
+    client.table.assert_not_called()

@@ -7,6 +7,7 @@ import pytest
 
 from app.services.tool_service import invoke_tool, list_registered_actions
 from app.services.tool_types import ToolContext
+from tests.support.provider_write import with_provider_write_ledger
 
 
 @pytest.fixture
@@ -43,7 +44,7 @@ def test_salesforce_actions_registered():
 
 def test_salesforce_opportunities_update_stage_success(tool_ctx: ToolContext):
     conn = {"id": "sf-conn", "type": "salesforce", "status": "active", "environment": "production"}
-    with patch("app.services.tool_service.get_connector_by_type", return_value=conn):
+    with patch("app.services.tool_service.get_connector", return_value=conn):
         with patch("app.services.tool_service.enforce_rate_limit"):
             with patch(
                 "app.services.tool_service.ensure_salesforce_session",
@@ -65,7 +66,7 @@ def test_salesforce_opportunities_update_stage_success(tool_ctx: ToolContext):
                             ],
                         ):
                             result = invoke_tool(
-                                tool_ctx,
+                                with_provider_write_ledger(tool_ctx, conn["id"]),
                                 "salesforce.opportunities.update_stage",
                                 {
                                     "opportunity_id": "006xx",
@@ -78,7 +79,7 @@ def test_salesforce_opportunities_update_stage_success(tool_ctx: ToolContext):
 
 def test_salesforce_leads_update_requires_fields(tool_ctx: ToolContext):
     conn = {"id": "sf-conn", "type": "salesforce", "status": "active", "environment": "production"}
-    with patch("app.services.tool_service.get_connector_by_type", return_value=conn):
+    with patch("app.services.tool_service.get_connector", return_value=conn):
         with patch("app.services.tool_service.enforce_rate_limit"):
             with patch(
                 "app.services.tool_service.ensure_salesforce_session",
@@ -96,7 +97,7 @@ def test_salesforce_leads_update_requires_fields(tool_ctx: ToolContext):
                         ],
                     ):
                         result = invoke_tool(
-                            tool_ctx,
+                            with_provider_write_ledger(tool_ctx, conn["id"]),
                             "salesforce.leads.update",
                             {"lead_id": "00Qxx"},
                         )

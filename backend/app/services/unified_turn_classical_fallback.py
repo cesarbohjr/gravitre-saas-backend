@@ -92,9 +92,20 @@ def should_defer_unified_turn_live_to_classical(
     if is_human_moment_venting_no_ask(msg):
         return False
 
-    # F2 primary: structured signal from LIVE reasoning.
-    if needs_tool_sse is True:
-        return True
+    # The LIVE reasoning caller already reconciles orchestration intent,
+    # operator-task state and the bounded legacy SSE probe into this signal.
+    # A provided boolean is an AUTHORITATIVE decision; re-running keyword
+    # detection here after an explicit False gave message wording a second,
+    # contradictory routing vote. Only callers lacking a structured decision
+    # may use the legacy compatibility heuristic.
+    if needs_tool_sse is not None:
+        # A non-boolean value (for example the string "false") must not
+        # silently become a truthy routing vote and override LIVE authority.
+        # Fail closed instead of selecting a second execution pipeline.
+        if type(needs_tool_sse) is not bool:
+            raise TypeError("needs_tool_sse must be a boolean or None")
+        return needs_tool_sse
 
-    # Secondary safety net (reduced pattern bag).
+    # Compatibility for callers that have not migrated to structured routing.
+    # This is not a second executor, and may only choose a guarded handoff.
     return message_requires_classical_tool_sse(msg)

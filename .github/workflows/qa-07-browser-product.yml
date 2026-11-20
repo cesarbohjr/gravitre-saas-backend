@@ -1,0 +1,810 @@
+# Canonical development-branch lane; production release requires separate certification.
+name: QA 07-browser-product
+'on':
+  workflow_dispatch:
+    inputs:
+      source:
+        description: Original workflow contract to execute
+        required: true
+        type: choice
+        options:
+        - authenticated-click-audit
+        - browser-fallback-recovery-certification
+        - conversational-product-acceptance
+        - desktop-tauri
+        - extension-release
+        - navigation-e2e
+        - pr605-route-inventory
+        - release1-authenticated-network-audit
+        - release1-authenticated-smoke
+        - release1-deployed-browser-credentials
+        default: authenticated-click-audit
+  push:
+    branches:
+    - main
+  pull_request:
+    branches:
+    - feature/unified-agent-capability-manifest-recovery
+    - main
+    types:
+    - opened
+    - reopened
+    - synchronize
+  schedule:
+  - cron: 0 7 * * *
+concurrency:
+  group: ${{ format('candidate-{0}', (inputs.source == 'authenticated-click-audit' && ('authenticated-click-audit-isolated-smoke-account'))
+    || (inputs.source == 'browser-fallback-recovery-certification' && (format('browser-fallback-cert-{0}', github.ref))) ||
+    (inputs.source == 'conversational-product-acceptance' && (format('conversational-product-acceptance-{0}', github.ref)))
+    || (inputs.source == 'desktop-tauri' && (format('desktop-tauri-{0}', github.ref))) || (inputs.source == 'extension-release'
+    && ('extension-release')) || (inputs.source == 'navigation-e2e' && (format('navigation-e2e-{0}', github.ref))) || github.run_id)
+    }}
+  cancel-in-progress: ${{ (inputs.source == 'authenticated-click-audit' && (false)) || (inputs.source == 'browser-fallback-recovery-certification'
+    && (true)) || (inputs.source == 'conversational-product-acceptance' && (github.ref != 'refs/heads/main')) || (inputs.source
+    == 'desktop-tauri' && (false)) || (inputs.source == 'extension-release' && (false)) || (inputs.source == 'navigation-e2e'
+    && (true)) || false }}
+jobs:
+  upstream_contract:
+    name: Read trusted upstream outcome metadata
+    if: ${{ github.event_name == 'workflow_run' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    permissions:
+      contents: read
+      actions: read
+    outputs:
+      evidence: ${{ steps.upstream.outputs.evidence }}
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        ref: ${{ github.sha }}
+        persist-credentials: false
+    - id: upstream
+      run: python scripts/route-workflow-event.py --lane 07-browser-product --fetch-upstream
+      env:
+        GITHUB_TOKEN: ${{ github.token }}
+  dispatch_contract:
+    name: Validate selected source inputs
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    timeout-minutes: 4
+    needs:
+    - upstream_contract
+    if: ${{ always() && (needs.upstream_contract.result == 'success' || needs.upstream_contract.result == 'skipped') }}
+    outputs:
+      selected: ${{ steps.contract.outputs.selected }}
+      derived: ${{ steps.contract.outputs.derived }}
+      context_conclusions: ${{ steps.contract.outputs.context_conclusions }}
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        persist-credentials: false
+        fetch-depth: 0
+    - id: contract
+      name: Validate source contract
+      shell: python
+      env:
+        SOURCE_SCHEMAS: '{"authenticated-click-audit": {}, "browser-fallback-recovery-certification": {}, "conversational-product-acceptance":
+          {}, "desktop-tauri": {}, "extension-release": {}, "navigation-e2e": {}, "pr605-route-inventory": {}, "release1-authenticated-network-audit":
+          {}, "release1-authenticated-smoke": {}, "release1-deployed-browser-credentials": {}}'
+        MANUAL_SOURCES: '["authenticated-click-audit", "browser-fallback-recovery-certification", "conversational-product-acceptance",
+          "desktop-tauri", "extension-release", "navigation-e2e", "pr605-route-inventory", "release1-authenticated-network-audit",
+          "release1-authenticated-smoke", "release1-deployed-browser-credentials"]'
+        DISPATCH_VALUES: ${{ toJSON(inputs) }}
+        EVENT_NAME: ${{ github.event_name }}
+        CANONICAL_LANE: 07-browser-product
+        UPSTREAM_EVIDENCE: ${{ needs.upstream_contract.outputs.evidence }}
+      run: "import json, os\nschemas = json.loads(os.environ['SOURCE_SCHEMAS'])\nvalues = json.loads(os.environ['DISPATCH_VALUES'])\n\
+        event_name = os.environ['EVENT_NAME']\ncalled = values.get('_reusable', False)\nif not called and event_name not in\
+        \ ('workflow_dispatch', 'workflow_call'):\n    import subprocess\n    subprocess.run(['python', 'scripts/route-workflow-event.py',\
+        \ '--lane', os.environ['CANONICAL_LANE']], check=True)\n    raise SystemExit(0)\nsource = values.get('source')\nif\
+        \ source not in schemas:\n    raise SystemExit('Unknown source workflow')\nif not called and event_name == 'workflow_dispatch'\
+        \ and source not in json.loads(os.environ['MANUAL_SOURCES']):\n    raise SystemExit('Source has no manual trigger')\n\
+        if called and source != 'isolated-acceptance':\n    raise SystemExit('Unsupported reusable source')\nfor key, config\
+        \ in schemas[source].items():\n    value = values.get(source.replace('-', '_') + '__' + key)\n    if called and key\
+        \ == 'suite':\n        value = values.get('suite')\n    if config.get('required') and (value is None or value == ''):\n\
+        \        raise SystemExit('Required selected-source input missing: ' + key)\nprint('Selected source input contract\
+        \ validated; this is not execution acceptance')\nwith open(os.environ['GITHUB_OUTPUT'], 'a') as output:\n    output.write('selected='\
+        \ + json.dumps([source]) + '\\n')\n    output.write('derived=[]\\ncontext_conclusions={}\\n')\n"
+  authenticated_click_audit__deep-surface-click-audit:
+    name: Prompt3 authenticated surfaces
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-node@v4
+      with:
+        node-version: 22
+        cache: npm
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+    - name: Install root deps + Chromium
+      run: 'npm ci
+
+        npx playwright install --with-deps chromium
+
+        '
+    - name: Install python deps for auth bootstrap
+      run: 'python -m pip install --upgrade pip
+
+        pip install httpx python-dotenv
+
+        '
+    - name: Bootstrap smoke SA password
+      id: auth
+      env:
+        SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+        SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        CLICK_AUDIT_EMAIL: conversation-smoke-sa@gravitre.app
+      run: "if [ -z \"$SUPABASE_URL\" ] || [ -z \"$SUPABASE_SERVICE_ROLE_KEY\" ] || [ -z \"$SUPABASE_ANON_KEY\" ]; then\n\
+        \  echo \"Missing Supabase secrets \u2014 skipping live crawl\"\n  echo \"skip=1\" >> \"$GITHUB_OUTPUT\"\n  exit 0\n\
+        fi\npython scripts/auth-session-bootstrap.py\nEMAIL=$(python -c \"import json; print(json.load(open('docs/delivery/_phase4-auth-session.json'))['email'])\"\
+        )\nPASS=$(python -c \"import json; print(json.load(open('docs/delivery/_phase4-auth-session.json'))['password'])\"\
+        )\necho \"email=$EMAIL\" >> \"$GITHUB_OUTPUT\"\necho \"::add-mask::$PASS\"\necho \"password=$PASS\" >> \"$GITHUB_OUTPUT\"\
+        \necho \"skip=0\" >> \"$GITHUB_OUTPUT\"\n"
+    - name: Run deep-surface click audit (production)
+      if: steps.auth.outputs.skip != '1'
+      env:
+        CLICK_AUDIT_EMAIL: ${{ steps.auth.outputs.email }}
+        CLICK_AUDIT_PASSWORD: ${{ steps.auth.outputs.password }}
+        CLICK_AUDIT_OUT: docs/delivery/prompt3-phase2-click-audit-live.json
+      run: node scripts/prompt3-authenticated-click-audit.js https://gravitre.app
+    - name: Upload findings
+      if: always() && steps.auth.outputs.skip != '1'
+      uses: actions/upload-artifact@v4
+      with:
+        name: prompt3-click-audit
+        path: 'docs/delivery/prompt3-phase2-click-audit-live.json
+
+          docs/delivery/release-surface-screenshots/*.png
+
+          '
+        if-no-files-found: ignore
+    needs:
+    - dispatch_contract
+    if: ${{ always() && needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected),
+      'authenticated-click-audit') && ((!cancelled() && (true))) }}
+    concurrency:
+      group: ${{ format('candidate-{0}-{1}-{2}', 'authenticated-click-audit-isolated-smoke-account', 'authenticated_click_audit__deep-surface-click-audit',
+        toJSON(matrix)) }}
+      cancel-in-progress: ${{ false }}
+  browser_fallback_recovery_certification__independent-recovery-acceptance:
+    name: Real broker SIGKILL and independent receiver write audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    defaults:
+      run:
+        working-directory: backend
+    env:
+      APP_ENV: dev
+      PYTHONPATH: .
+      RECOVERY_AUDIT_PATH: ../recovery-evidence/audit
+      SUPABASE_URL: https://test.supabase.co
+      SUPABASE_ANON_KEY: anon-test
+      SUPABASE_SERVICE_ROLE_KEY: service-role-test
+      SUPABASE_JWT_SECRET: jwt-secret-test
+      OPENAI_API_KEY: sk-test-openai
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+        cache: pip
+        cache-dependency-path: backend/requirements-dev.txt
+    - name: Install backend test dependencies
+      run: 'python -m pip install --upgrade pip
+
+        pip install -r requirements-dev.txt
+
+        '
+    - name: Execute real process and write-audit regressions
+      run: "mkdir -p ../recovery-evidence\npython -m pytest -q --no-header \\\n  tests/native_runtime/test_fallback_journal.py\
+        \ \\\n  tests/native_runtime/test_fallback_policy.py \\\n  tests/native_runtime/test_broker_process_contract.py \\\
+        \n  tests/native_runtime/test_gateway_checkpoint_route.py \\\n  tests/native_runtime/test_fallback_certification.py\
+        \ \\\n  tests/native_runtime/test_playwright_recovery_contract.py \\\n  --junitxml=../recovery-evidence/junit.xml\n"
+    - name: Produce SHA-bound certification manifest
+      if: always()
+      working-directory: .
+      env:
+        EXPECTED_SHA: ${{ github.sha }}
+        PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+      run: "python - <<'PY'\nimport json,os,xml.etree.ElementTree as ET\nfrom pathlib import Path\nroot=Path('recovery-evidence')\n\
+        root.mkdir(exist_ok=True)\nxml=root/'junit.xml'\nmanifest={'head_sha':os.environ.get('PR_HEAD_SHA') or os.environ['EXPECTED_SHA'],\n\
+        \          'github_workflow_sha':os.environ['EXPECTED_SHA'],\n          'test_type':'offline-real-process-and-independent-receiver',\n\
+        \          'limitations':['not production tenant authorization',\n                         'not live two-adapter browser\
+        \ handoff',\n                         'not actual identity-provider revocation']}\nif xml.exists():\n    doc=ET.parse(xml).getroot()\n\
+        \    suite=doc.find('testsuite') if doc.tag!='testsuite' else doc\n    manifest['counts']={field:int(suite.attrib.get(field,0))\n\
+        \                        for field in ('tests','failures','errors','skipped')}\n    manifest['passed']=manifest['counts']['tests']>0\
+        \ and not (\n        manifest['counts']['failures'] or manifest['counts']['errors']\n        or manifest['counts']['skipped'])\n\
+        else:\n    manifest['passed']=False\n    manifest['error']='No JUnit evidence'\ncases=[]\nfor audit in sorted((root/'audit').glob('*.json')):\n\
+        \    cases.append(json.loads(audit.read_text()))\nmanifest['independent_receiver_audit']=cases\nexpected_cases={'sigkill_before_effect','sigkill_after_effect','lost_submit_ack'}\n\
+        manifest['audit_complete']={case['case'] for case in cases}==expected_cases\nmanifest['zero_unauthorized_or_duplicate_writes']=manifest['audit_complete']\
+        \ and all(\n    case['passed'] and case['unauthorized_or_duplicate_writes']==0 for case in cases)\nmanifest['passed']=manifest['passed']\
+        \ and manifest['zero_unauthorized_or_duplicate_writes']\n(root/'manifest.json').write_text(json.dumps(manifest,indent=2))\n\
+        if not manifest['passed']:\n    raise SystemExit('Recovery certification missing or failed required evidence')\nPY\n"
+    - name: Upload evidence
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: browser-fallback-recovery-${{ github.sha }}
+        path: recovery-evidence/
+        if-no-files-found: error
+        retention-days: 30
+    needs:
+    - dispatch_contract
+    if: ${{ always() && needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected),
+      'browser-fallback-recovery-certification') && ((!cancelled() && (true))) }}
+    permissions:
+      contents: read
+    concurrency:
+      group: ${{ format('candidate-{0}-{1}-{2}', format('browser-fallback-cert-{0}', github.ref), 'browser_fallback_recovery_certification__independent-recovery-acceptance',
+        toJSON(matrix)) }}
+      cancel-in-progress: ${{ true }}
+  conversational_product_acceptance__acceptance:
+    name: Text + voice product acceptance
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+        cache: pip
+        cache-dependency-path: backend/requirements.txt
+    - uses: pnpm/action-setup@v4
+      with:
+        version: 10
+    - uses: actions/setup-node@v4
+      with:
+        node-version: 22
+        cache: pnpm
+        cache-dependency-path: apps/web/pnpm-lock.yaml
+    - name: Install backend dependencies
+      working-directory: backend
+      run: 'python -m pip install --upgrade pip
+
+        pip install -r requirements-dev.txt
+
+        '
+    - name: Install web dependencies
+      working-directory: apps/web
+      run: pnpm install --frozen-lockfile
+    - name: Run conversational product acceptance
+      run: bash scripts/run-conversational-product-acceptance.sh
+      env:
+        APP_ENV: dev
+        SUPABASE_URL: https://test.supabase.co
+        SUPABASE_ANON_KEY: anon-test
+        SUPABASE_SERVICE_ROLE_KEY: service-role-test
+        SUPABASE_JWT_SECRET: jwt-secret-test
+        OPENAI_API_KEY: sk-test-openai
+    needs:
+    - dispatch_contract
+    if: ${{ always() && needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected),
+      'conversational-product-acceptance') && ((!cancelled() && (true))) }}
+    concurrency:
+      group: ${{ format('candidate-{0}-{1}-{2}', format('conversational-product-acceptance-{0}', github.ref), 'conversational_product_acceptance__acceptance',
+        toJSON(matrix)) }}
+      cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+  desktop_tauri__plan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      version: ${{ steps.plan.outputs.version }}
+      publish: ${{ steps.plan.outputs.publish }}
+      release_id: ${{ steps.plan.outputs.release_id }}
+    steps:
+    - uses: actions/checkout@v4
+    - name: Decide whether to publish, and prepare the draft release
+      id: plan
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        EVENT: ${{ github.event_name }}
+      run: "set -euo pipefail\nVERSION=$(jq -r .version apps/desktop/src-tauri/tauri.conf.json)\nTAG=\"desktop-v${VERSION}\"\
+        \necho \"version=${VERSION}\" >> \"$GITHUB_OUTPUT\"\n# Newest release carrying this tag (an old stale draft may share\
+        \ it).\nRELEASE=$(gh api \"repos/${GITHUB_REPOSITORY}/releases?per_page=100\" \\\n  --jq \"[.[] | select(.tag_name\
+        \ == \\\"${TAG}\\\")] | sort_by(.draft) | .[0] // empty\")\nif [ -n \"$RELEASE\" ] && [ \"$(jq -r .draft <<<\"$RELEASE\"\
+        )\" = \"false\" ] && [ \"$EVENT\" != \"workflow_dispatch\" ]; then\n  echo \"${TAG} is already published; building\
+        \ without publishing.\"\n  echo \"publish=false\" >> \"$GITHUB_OUTPUT\"\n  exit 0\nfi\nif [ -n \"$RELEASE\" ]; then\n\
+        \  RELEASE_ID=$(jq -r .id <<<\"$RELEASE\")\nelse\n  RELEASE_ID=$(gh api \"repos/${GITHUB_REPOSITORY}/releases\" -X\
+        \ POST \\\n    -f tag_name=\"${TAG}\" -f target_commitish=\"${GITHUB_SHA}\" \\\n    -f name=\"Gravitre Desktop v${VERSION}\"\
+        \ \\\n    -f body=\"Gravitre Desktop v${VERSION}. Early unsigned builds: see https://gravitre.app/download for install\
+        \ steps.\" \\\n    -F draft=true -F prerelease=false --jq .id)\nfi\necho \"publish=true\" >> \"$GITHUB_OUTPUT\"\n\
+        echo \"release_id=${RELEASE_ID}\" >> \"$GITHUB_OUTPUT\"\n"
+    name: plan
+    needs:
+    - dispatch_contract
+    if: ${{ always() && needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected),
+      'desktop-tauri') && ((!cancelled() && (true))) }}
+    permissions:
+      contents: write
+    concurrency:
+      group: ${{ format('candidate-{0}-{1}-{2}', format('desktop-tauri-{0}', github.ref), 'desktop_tauri__plan', toJSON(matrix))
+        }}
+      cancel-in-progress: ${{ false }}
+  desktop_tauri__build:
+    needs:
+    - dispatch_contract
+    - desktop_tauri__plan
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+        - platform: macos-latest
+          args: --target aarch64-apple-darwin
+        - platform: macos-latest
+          args: --target x86_64-apple-darwin
+        - platform: ubuntu-22.04
+          args: ''
+        - platform: windows-latest
+          args: ''
+    runs-on: ${{ matrix.platform }}
+    timeout-minutes: 45
+    defaults:
+      run:
+        working-directory: apps/desktop
+    steps:
+    - uses: actions/checkout@v4
+    - name: Install Linux dependencies
+      if: runner.os == 'Linux'
+      run: 'sudo apt-get update
+
+        sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
+
+        '
+    - uses: pnpm/action-setup@v4
+      with:
+        version: 10
+    - uses: actions/setup-node@v4
+      with:
+        node-version: 20
+        cache: pnpm
+        cache-dependency-path: apps/desktop/pnpm-lock.yaml
+    - name: Install frontend deps
+      run: pnpm install
+    - uses: dtolnay/rust-toolchain@stable
+      with:
+        targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
+    - uses: swatinem/rust-cache@v2
+      with:
+        workspaces: apps/desktop/src-tauri -> target
+    - uses: tauri-apps/tauri-action@v0
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        projectPath: apps/desktop
+        releaseId: ${{ needs.desktop_tauri__plan.outputs.publish == 'true' && needs.desktop_tauri__plan.outputs.release_id
+          || '' }}
+        args: ${{ matrix.args }}
+    name: build
+    if: ${{ always() && needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected),
+      'desktop-tauri') && ((!cancelled() && (needs.desktop_tauri__plan.result == 'success'))) }}
+    permissions:
+      contents: write
+    concurrency:
+      group: ${{ format('candidate-{0}-{1}-{2}', format('desktop-tauri-{0}', github.ref), 'desktop_tauri__build', toJSON(matrix))
+        }}
+      cancel-in-progress: ${{ false }}
+  desktop_tauri__publish:
+    needs:
+    - dispatch_contract
+    - desktop_tauri__plan
+    - desktop_tauri__build
+    if: ${{ always() && needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected),
+      'desktop-tauri') && (!cancelled() && (needs.desktop_tauri__build.result == 'success' && needs.desktop_tauri__plan.result
+      == 'success') && (needs.desktop_tauri__plan.outputs.publish == 'true')) }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+    - name: Publish the release (all platforms built)
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        RELEASE_ID: ${{ needs.desktop_tauri__plan.outputs.release_id }}
+      run: "gh api \"repos/${GITHUB_REPOSITORY}/releases/${RELEASE_ID}\" -X PATCH \\\n  -F draft=false -f make_latest=true\
+        \ --jq '.html_url' \n"
+    name: publish
+    permissions:
+      contents: write
+    concurrency:
+      group: ${{ format('candidate-{0}-{1}-{2}', format('desktop-tauri-{0}', github.ref), 'desktop_tauri__publish', toJSON(matrix))
+        }}
+      cancel-in-progress: ${{ false }}
+  extension_release__release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+    - name: Pack extension
+      run: 'set -euo pipefail
+
+        python scripts/package-extension-chrome-store.py
+
+        cp apps/extension/dist/gravitre-extension-chrome.zip gravitre-extension.zip
+
+        unzip -l gravitre-extension.zip | grep -q '' manifest.json$''
+
+        '
+    - name: Publish to extension-latest
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: "set -euo pipefail\nVERSION=$(jq -r .version apps/extension/manifest.json)\nNOTES=\"Gravitre browser extension\
+        \ v${VERSION} (Chrome, Edge, Brave). Unzip, then Load unpacked: https://gravitre.app/docs/guides/how-to/browser-extension\"\
+        \nif gh release view extension-latest >/dev/null 2>&1; then\n  gh release upload extension-latest gravitre-extension.zip\
+        \ --clobber\n  gh release edit extension-latest --title \"Gravitre browser extension v${VERSION}\" --notes \"$NOTES\"\
+        \nelse\n  gh release create extension-latest gravitre-extension.zip \\\n    --target \"$GITHUB_SHA\" --latest=false\
+        \ \\\n    --title \"Gravitre browser extension v${VERSION}\" --notes \"$NOTES\"\nfi\n"
+    name: release
+    needs:
+    - dispatch_contract
+    if: ${{ always() && needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected),
+      'extension-release') && ((!cancelled() && (true))) }}
+    permissions:
+      contents: write
+    concurrency:
+      group: ${{ format('candidate-{0}-{1}-{2}', 'extension-release', 'extension_release__release', toJSON(matrix)) }}
+      cancel-in-progress: ${{ false }}
+  navigation_e2e__navigation-click-through:
+    name: Playwright navigation crawl
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+    - uses: actions/checkout@v4
+    - uses: pnpm/action-setup@v4
+      with:
+        version: 10
+    - uses: actions/setup-node@v4
+      with:
+        node-version: 22
+        cache: pnpm
+        cache-dependency-path: apps/web/pnpm-lock.yaml
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+        cache: pip
+        cache-dependency-path: backend/requirements.txt
+    - name: Install root dev dependencies
+      run: npm ci
+    - name: Install web dependencies
+      working-directory: apps/web
+      run: pnpm install --frozen-lockfile
+    - name: Install backend dependencies
+      working-directory: backend
+      run: 'python -m pip install --upgrade pip
+
+        pip install -r requirements-dev.txt
+
+        '
+    - name: Install Playwright Chromium
+      run: npx playwright install --with-deps chromium
+    - name: Prepare navigation E2E environment
+      run: "if [ -n \"${{ secrets.SUPABASE_URL }}\" ]; then\n  echo \"E2E_APP_NAV=1\" >> \"$GITHUB_ENV\"\n  echo \"SUPABASE_URL=${{\
+        \ secrets.SUPABASE_URL }}\" >> \"$GITHUB_ENV\"\n  echo \"SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }}\" >> \"\
+        $GITHUB_ENV\"\n  echo \"SUPABASE_SERVICE_ROLE_KEY=${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}\" >> \"$GITHUB_ENV\"\n\
+        \  echo \"SUPABASE_JWT_SECRET=${{ secrets.SUPABASE_JWT_SECRET }}\" >> \"$GITHUB_ENV\"\n  echo \"NEXT_PUBLIC_SUPABASE_URL=${{\
+        \ secrets.SUPABASE_URL }}\" >> \"$GITHUB_ENV\"\n  echo \"NEXT_PUBLIC_SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY\
+        \ }}\" >> \"$GITHUB_ENV\"\nelse\n  echo \"E2E_APP_NAV=0\" >> \"$GITHUB_ENV\"\n  echo \"E2E_SKIP_FIXTURE_SEED=1\" >>\
+        \ \"$GITHUB_ENV\"\n  echo \"SUPABASE_URL=https://placeholder.supabase.co\" >> \"$GITHUB_ENV\"\n  echo \"SUPABASE_ANON_KEY=placeholder-anon-key\"\
+        \ >> \"$GITHUB_ENV\"\n  echo \"SUPABASE_SERVICE_ROLE_KEY=placeholder-service-role\" >> \"$GITHUB_ENV\"\n  echo \"\
+        SUPABASE_JWT_SECRET=placeholder-jwt-secret\" >> \"$GITHUB_ENV\"\n  echo \"NEXT_PUBLIC_SUPABASE_URL=https://placeholder.supabase.co\"\
+        \ >> \"$GITHUB_ENV\"\n  echo \"NEXT_PUBLIC_SUPABASE_ANON_KEY=placeholder-anon-key\" >> \"$GITHUB_ENV\"\nfi\n"
+    - name: Run marketing, app sidebar, and ExecutionResult navigation suites
+      run: npm run test:navigation
+      env:
+        CI: 'true'
+        APP_ENV: dev
+        OPENAI_API_KEY: sk-test-openai
+        FASTAPI_BASE_URL: http://127.0.0.1:8000
+        PLAYWRIGHT_BASE_URL: http://localhost:3001
+        NEXT_PUBLIC_PLAYWRIGHT_E2E: '1'
+    - name: Upload Playwright report artifacts
+      if: failure()
+      uses: actions/upload-artifact@v4
+      with:
+        name: playwright-navigation-artifacts
+        path: 'test-results/
+
+          playwright-report/
+
+          '
+        if-no-files-found: ignore
+    needs:
+    - dispatch_contract
+    if: ${{ always() && needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected),
+      'navigation-e2e') && ((!cancelled() && (true))) }}
+    concurrency:
+      group: ${{ format('candidate-{0}-{1}-{2}', format('navigation-e2e-{0}', github.ref), 'navigation_e2e__navigation-click-through',
+        toJSON(matrix)) }}
+      cancel-in-progress: ${{ true }}
+  pr605_route_inventory__registered-routes:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        persist-credentials: false
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+    - name: Reclaim runner SDKs before full backend dependency installation
+      working-directory: .
+      shell: bash
+      run: "set -euo pipefail\nfor dir in /usr/local/lib/android /usr/share/dotnet /opt/ghc /usr/local/share/powershell; do\n\
+        \  if [ -d \"$dir\" ]; then sudo rm -rf -- \"$dir\"; fi\ndone\nsudo apt-get clean\ndf -h / /tmp\n"
+    - name: Install backend requirements
+      shell: bash
+      run: 'set -euo pipefail
+
+        python -m pip install --no-cache-dir --no-compile -r requirements-dev.txt
+
+        '
+    - name: Export and strictly certify registered routes
+      shell: bash
+      env:
+        APP_ENV: dev
+        SUPABASE_URL: https://test.supabase.co
+        SUPABASE_ANON_KEY: anon-test
+        SUPABASE_SERVICE_ROLE_KEY: service-role-test
+        SUPABASE_JWT_SECRET: jwt-secret-test
+        OPENAI_API_KEY: sk-test-openai
+      run: 'set -euo pipefail
+
+        mkdir -p "$RUNNER_TEMP/pr605"
+
+        timeout 180s python scripts/pr605_runtime_dependency_inventory.py --output "$RUNNER_TEMP/pr605/runtime-route-dependencies.json"
+        --depth 3
+
+        python - "$RUNNER_TEMP/pr605/runtime-route-dependencies.json" <<''PY''
+
+        import json, sys
+
+        report = json.load(open(sys.argv[1], encoding="utf-8"))
+
+        assert report["commit"] == __import__("os").environ["GITHUB_SHA"]
+
+        assert report["route_count"] >= 1000, "unexpectedly small route inventory"
+
+        assert report["openapi_path_count"] >= 800, "unexpectedly small OpenAPI set"
+
+        assert not report["unresolved_wrappers"]
+
+        assert not report["openapi_unmatched_paths"]
+
+        assert not report["openapi_error"]
+
+        assert not report["missing_critical_routes"]
+
+        assert report["websocket_route_count"] > 0
+
+        print("CERTIFIED scope=registered routes + OpenAPI/WS coverage", report["route_count"], report["openapi_path_count"])
+
+        PY
+
+        '
+    - name: Preserve exact-head route inventory
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: pr605-standalone-runtime-routes
+        path: ${{ runner.temp }}/pr605/runtime-route-dependencies.json
+        if-no-files-found: warn
+    name: registered-routes
+    needs:
+    - dispatch_contract
+    if: ${{ always() && needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected),
+      'pr605-route-inventory') && ((!cancelled() && (true))) }}
+    permissions:
+      contents: read
+  release1_authenticated_network_audit__network-credential-audit:
+    runs-on: ubuntu-latest
+    environment: production
+    timeout-minutes: 12
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+    - run: pip install "PyJWT>=2.8,<3" "supabase>=2,<3"
+    - name: Mint isolated authenticated actor
+      env:
+        SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+        SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        SUPABASE_JWT_SECRET: ${{ secrets.SUPABASE_JWT_SECRET }}
+      run: python3 scripts/mint_smoke_org_session.py --github-env
+    - name: Inspect live browser assets and authenticated responses
+      env:
+        SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+        SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        SUPABASE_JWT_SECRET: ${{ secrets.SUPABASE_JWT_SECRET }}
+      run: python3 scripts/verify_release1_authenticated_network.py
+    - name: Upload status-only audit artifact
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: release1-authenticated-network
+        path: docs/delivery/release1-authenticated-network-audit.json
+        if-no-files-found: ignore
+    name: network-credential-audit
+    needs:
+    - dispatch_contract
+    if: ${{ always() && needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected),
+      'release1-authenticated-network-audit') && ((!cancelled() && (true))) }}
+    permissions:
+      contents: read
+  release1_authenticated_smoke__authenticated:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    environment: production
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        persist-credentials: false
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+    - name: Install auth client
+      run: pip install "PyJWT>=2.8,<3" "supabase>=2,<3"
+    - name: Mint isolated smoke session
+      env:
+        SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+        SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        SUPABASE_JWT_SECRET: ${{ secrets.SUPABASE_JWT_SECRET }}
+      run: python3 scripts/mint_smoke_org_session.py --github-env
+    - name: Authenticated smoke
+      run: python3 scripts/verify-release1-authenticated-smoke.py
+    - name: Ensure dedicated nonprivileged smoke member
+      env:
+        SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+        SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      run: python3 scripts/provision_release1_smoke_member.py
+    - name: Isolated member/admin live negative-path matrix
+      env:
+        SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+        SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        SUPABASE_JWT_SECRET: ${{ secrets.SUPABASE_JWT_SECRET }}
+      run: python3 scripts/verify-release1-live-negative-matrix.py
+    - name: Upload live negative-path evidence
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: release1-live-negative-matrix
+        path: docs/delivery/release1-live-negative-matrix.json
+        if-no-files-found: error
+    - name: Verify authorized admin role change audit and restore member
+      env:
+        SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+        SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        SUPABASE_JWT_SECRET: ${{ secrets.SUPABASE_JWT_SECRET }}
+      run: python3 scripts/verify_release1_admin_audit_live.py
+    - name: Upload isolated admin audit evidence
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: release1-admin-role-audit-live
+        path: docs/delivery/release1-admin-audit-live.json
+        if-no-files-found: ignore
+    - name: Verify isolated source and document revocation via live API
+      env:
+        SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+        SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        SUPABASE_JWT_SECRET: ${{ secrets.SUPABASE_JWT_SECRET }}
+      run: python3 scripts/verify_release1_live_source_revocation.py
+    - name: Upload live source revocation evidence
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: release1-live-source-revocation
+        path: docs/delivery/release1-live-source-revocation.json
+        if-no-files-found: ignore
+    - name: Upload results (no credentials)
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: release1-authenticated-smoke
+        path: docs/delivery/release1-authenticated-smoke.json
+        if-no-files-found: ignore
+    name: authenticated
+    needs:
+    - dispatch_contract
+    if: ${{ always() && needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected),
+      'release1-authenticated-smoke') && ((!cancelled() && (true))) }}
+    permissions:
+      contents: read
+  release1_deployed_browser_credentials__browser-runtime:
+    runs-on: ubuntu-latest
+    environment: production
+    timeout-minutes: 8
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+    - name: Verify deployed browser scripts against secret
+      env:
+        SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      run: python scripts/verify-release1-deployed-browser-credentials.py
+    - name: Upload safe evidence
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: release1-deployed-browser-credential-evidence
+        path: docs/delivery/release1-deployed-browser-credentials.json
+        if-no-files-found: ignore
+    name: browser-runtime
+    needs:
+    - dispatch_contract
+    if: ${{ always() && needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected),
+      'release1-deployed-browser-credentials') && ((!cancelled() && (true))) }}
+    permissions:
+      contents: read
+  source_outcomes:
+    name: Record independent source workflow outcomes
+    if: ${{ always() && needs.dispatch_contract.result == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    permissions: {}
+    needs:
+    - upstream_contract
+    - dispatch_contract
+    - authenticated_click_audit__deep-surface-click-audit
+    - browser_fallback_recovery_certification__independent-recovery-acceptance
+    - conversational_product_acceptance__acceptance
+    - desktop_tauri__plan
+    - desktop_tauri__build
+    - desktop_tauri__publish
+    - extension_release__release
+    - navigation_e2e__navigation-click-through
+    - pr605_route_inventory__registered-routes
+    - release1_authenticated_network_audit__network-credential-audit
+    - release1_authenticated_smoke__authenticated
+    - release1_deployed_browser_credentials__browser-runtime
+    steps:
+    - name: Bind source outcomes to this run
+      shell: python
+      run: "import json, os\nsources = json.loads(os.environ['SOURCE_JOBS'])\nneeds = json.loads(os.environ['JOB_RESULTS'])\n\
+        selected = json.loads(os.environ['SELECTED'])\noutcomes = {}\nfor name, source in sources.items():\n    if name not\
+        \ in selected:\n        continue\n    results = [needs[key]['result'] for key in source['jobs']]\n    outcome = ('failure'\
+        \ if 'failure' in results else 'cancelled' if 'cancelled' in results\n               else 'success' if 'success' in\
+        \ results else 'skipped')\n    outcomes[source['display_name']] = outcome\nevidence = {'run_id': int(os.environ['GITHUB_RUN_ID']),\
+        \ 'head_sha': os.environ['GITHUB_SHA'],\n            'source_outcomes': outcomes}\nwith open('canonical-workflow-outcomes.json',\
+        \ 'w') as output:\n    json.dump(evidence, output)\n"
+      env:
+        SOURCE_JOBS: '{"authenticated-click-audit": {"display_name": "Authenticated Click Audit", "jobs": ["authenticated_click_audit__deep-surface-click-audit"]},
+          "browser-fallback-recovery-certification": {"display_name": "Browser fallback recovery certification", "jobs": ["browser_fallback_recovery_certification__independent-recovery-acceptance"]},
+          "conversational-product-acceptance": {"display_name": "Conversational product acceptance", "jobs": ["conversational_product_acceptance__acceptance"]},
+          "desktop-tauri": {"display_name": "Desktop Tauri", "jobs": ["desktop_tauri__plan", "desktop_tauri__build", "desktop_tauri__publish"]},
+          "extension-release": {"display_name": "Extension release", "jobs": ["extension_release__release"]}, "navigation-e2e":
+          {"display_name": "Navigation E2E", "jobs": ["navigation_e2e__navigation-click-through"]}, "pr605-route-inventory":
+          {"display_name": "Master QA | QA00 Routing Inventory Certification", "jobs": ["pr605_route_inventory__registered-routes"]},
+          "release1-authenticated-network-audit": {"display_name": "Release 1 authenticated production network credential
+          audit", "jobs": ["release1_authenticated_network_audit__network-credential-audit"]}, "release1-authenticated-smoke":
+          {"display_name": "Release 1 authenticated production smoke", "jobs": ["release1_authenticated_smoke__authenticated"]},
+          "release1-deployed-browser-credentials": {"display_name": "Release 1 deployed browser credential verification",
+          "jobs": ["release1_deployed_browser_credentials__browser-runtime"]}}'
+        JOB_RESULTS: '{"authenticated_click_audit__deep-surface-click-audit": {"result": "${{ needs.authenticated_click_audit__deep-surface-click-audit.result
+          }}"}, "browser_fallback_recovery_certification__independent-recovery-acceptance": {"result": "${{ needs.browser_fallback_recovery_certification__independent-recovery-acceptance.result
+          }}"}, "conversational_product_acceptance__acceptance": {"result": "${{ needs.conversational_product_acceptance__acceptance.result
+          }}"}, "desktop_tauri__plan": {"result": "${{ needs.desktop_tauri__plan.result }}"}, "desktop_tauri__build": {"result":
+          "${{ needs.desktop_tauri__build.result }}"}, "desktop_tauri__publish": {"result": "${{ needs.desktop_tauri__publish.result
+          }}"}, "extension_release__release": {"result": "${{ needs.extension_release__release.result }}"}, "navigation_e2e__navigation-click-through":
+          {"result": "${{ needs.navigation_e2e__navigation-click-through.result }}"}, "pr605_route_inventory__registered-routes":
+          {"result": "${{ needs.pr605_route_inventory__registered-routes.result }}"}, "release1_authenticated_network_audit__network-credential-audit":
+          {"result": "${{ needs.release1_authenticated_network_audit__network-credential-audit.result }}"}, "release1_authenticated_smoke__authenticated":
+          {"result": "${{ needs.release1_authenticated_smoke__authenticated.result }}"}, "release1_deployed_browser_credentials__browser-runtime":
+          {"result": "${{ needs.release1_deployed_browser_credentials__browser-runtime.result }}"}}'
+        SELECTED: ${{ needs.dispatch_contract.outputs.selected }}
+    - uses: actions/upload-artifact@v4
+      with:
+        name: canonical-workflow-outcomes-07-browser-product
+        path: canonical-workflow-outcomes.json
+        if-no-files-found: error
+        retention-days: 14

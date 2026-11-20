@@ -150,6 +150,12 @@ class _Table:
 
 
 class _Client:
+    def rpc(self, name, args):
+        from tests.services.outcome_rpc_fake import outcome_rpc
+        if not hasattr(self, "outcome_row"):
+            self.outcome_row = {"status": "running", "parameters": {}}
+        return outcome_rpc(self.outcome_row, name, args)
+
     def table(self, name: str) -> _Table:
         return _Table(name)
 
@@ -158,8 +164,6 @@ def _finalize(status: str, metadata: dict[str, Any], email_context: dict[str, An
     from app.services.execution_outcome import finalize_execution_outcome
 
     with (
-        patch("app.workflows.repository.update_run"),
-        patch("app.workflows.repository.merge_run_parameters"),
         patch("app.workflows.repository.emit_execute_completed"),
         patch("app.services.notification_emitter.emit_notification") as emit,
     ):

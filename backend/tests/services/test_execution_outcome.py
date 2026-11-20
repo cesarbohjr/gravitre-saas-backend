@@ -5,6 +5,7 @@ from typing import Any
 from unittest.mock import MagicMock, patch
 
 import pytest
+from app.workflows import repository
 
 from app.services.execution_outcome import (
     VerifiedOutputRef,
@@ -54,9 +55,17 @@ class _Table:
 class _Client:
     def __init__(self) -> None:
         self.store: dict[str, list] = {}
+        self.parameters: dict[str, dict] = {}
 
     def table(self, name: str) -> _Table:
         return _Table(name, self.store)
+
+
+    def rpc(self, name, args):
+        from tests.services.outcome_rpc_fake import outcome_rpc
+        if not hasattr(self, "outcome_row"):
+            self.outcome_row = {"status": "running", "parameters": {}}
+        return outcome_rpc(self.outcome_row, name, args)
 
 
 def test_is_terminal_run_status() -> None:
@@ -79,8 +88,8 @@ def test_finalize_skips_duplicate_terminal_fanout() -> None:
         }
     ]
     with (
-        patch("app.workflows.repository.update_run") as update_run,
-        patch("app.services.notification_emitter.emit_notification") as emit_notification,
+        patch("app.workflows.repository.persist_run_outcome", wraps=repository.persist_run_outcome) as update_run,
+        patch("app.services.notification_emitter.emit_notification", return_value="notification-test") as emit_notification,
     ):
         result = finalize_execution_outcome(
             client,
@@ -100,9 +109,9 @@ def test_finalize_skips_duplicate_terminal_fanout() -> None:
 def test_finalize_failure_fanout() -> None:
     client = _Client()
     with (
-        patch("app.workflows.repository.update_run") as update_run,
-        patch("app.workflows.repository.emit_execute_failed") as emit_failed,
-        patch("app.services.notification_emitter.emit_notification") as emit_notification,
+        patch("app.workflows.repository.persist_run_outcome", wraps=repository.persist_run_outcome) as update_run,
+        patch("app.workflows.repository.emit_execute_failed", return_value=True) as emit_failed,
+        patch("app.services.notification_emitter.emit_notification", return_value="notification-test") as emit_notification,
         patch(
             "app.services.workflow_failure_prediction_service.correlate_observed_run_failure",
             return_value=True,
@@ -149,9 +158,9 @@ def test_finalize_failure_fanout() -> None:
 def test_finalize_success_does_not_correlate_failure_alert() -> None:
     client = _Client()
     with (
-        patch("app.workflows.repository.update_run"),
-        patch("app.workflows.repository.emit_execute_completed"),
-        patch("app.services.notification_emitter.emit_notification") as emit_notification,
+        patch("app.workflows.repository.persist_run_outcome", wraps=repository.persist_run_outcome),
+        patch("app.workflows.repository.emit_execute_completed", return_value=True),
+        patch("app.services.notification_emitter.emit_notification", return_value="notification-test") as emit_notification,
         patch(
             "app.services.workflow_failure_prediction_service.correlate_observed_run_failure"
         ) as correlate,
@@ -189,9 +198,9 @@ def test_finalize_rejects_non_terminal() -> None:
 def test_assistant_chat_without_run_still_notifies() -> None:
     client = _Client()
     with (
-        patch("app.workflows.repository.update_run") as update_run,
-        patch("app.workflows.audit.write_audit_event") as write_audit,
-        patch("app.services.notification_emitter.emit_notification") as emit_notification,
+        patch("app.workflows.repository.persist_run_outcome", wraps=repository.persist_run_outcome) as update_run,
+        patch("app.workflows.audit.write_audit_event", return_value=True) as write_audit,
+        patch("app.services.notification_emitter.emit_notification", return_value="notification-test") as emit_notification,
     ):
         result = finalize_execution_outcome(
             client,
@@ -221,9 +230,9 @@ def test_assistant_chat_without_run_still_notifies() -> None:
 def test_completed_without_verification_is_coerced_inconclusive() -> None:
     client = _Client()
     with (
-        patch("app.workflows.repository.update_run"),
-        patch("app.workflows.repository.emit_execute_completed"),
-        patch("app.services.notification_emitter.emit_notification") as emit_notification,
+        patch("app.workflows.repository.persist_run_outcome", wraps=repository.persist_run_outcome),
+        patch("app.workflows.repository.emit_execute_completed", return_value=True),
+        patch("app.services.notification_emitter.emit_notification", return_value="notification-test") as emit_notification,
     ):
         result = finalize_execution_outcome(
             client,
@@ -244,9 +253,9 @@ def test_completed_without_verification_is_coerced_inconclusive() -> None:
 def test_completed_with_explicit_verification_remains_completed() -> None:
     client = _Client()
     with (
-        patch("app.workflows.repository.update_run"),
-        patch("app.workflows.repository.emit_execute_completed"),
-        patch("app.services.notification_emitter.emit_notification"),
+        patch("app.workflows.repository.persist_run_outcome", wraps=repository.persist_run_outcome),
+        patch("app.workflows.repository.emit_execute_completed", return_value=True),
+        patch("app.services.notification_emitter.emit_notification", return_value="notification-test"),
     ):
         result = finalize_execution_outcome(
             client,

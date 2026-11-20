@@ -91,6 +91,9 @@ class ToolContext:
     capability_id: str | None = None
     cognitive_invoke: bool = False
     autonomous_write_guarded: bool = False
+    # Queue-approved writes must use the canonical service-role ledger even when
+    # the org-level feature flag has not been enabled.
+    write_idempotency_required: bool = False
 
 
 @dataclass

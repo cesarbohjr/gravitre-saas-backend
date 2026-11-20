@@ -475,6 +475,7 @@ def _execute_workflow_steps(
         VerifiedOutputRef,
         finalize_execution_outcome,
         is_terminal_run_status,
+        require_workflow_terminal_outcome,
     )
 
     if is_terminal_run_status(final_status):
@@ -533,7 +534,7 @@ def _execute_workflow_steps(
                 or f"Run finished with status {coerced_status}."
             )
         )
-        finalize_execution_outcome(
+        finalized_outcome = finalize_execution_outcome(
             client,
             org_id=org_id,
             status=coerced_status,
@@ -557,7 +558,9 @@ def _execute_workflow_steps(
             ),
             metadata=meta,
         )
-        final_status = coerced_status
+        final_status = require_workflow_terminal_outcome(
+            client, finalized_outcome, run_id=run_id,
+        )
         if run_failed:
             try:
                 from app.services.compensation_service import compensate_failed_autonomous_run

@@ -880,3 +880,210 @@ async def test_execute_plan_orch_step_skips_module_a_fanout(connector_service):
 
     assert result.success is False
     finalize.assert_not_called()
+
+
+def test_eco002_chat_hubspot_write_uses_same_tenant_connector_as_executor():
+    from types import SimpleNamespace
+    from app.services.chat_connector_execution_service import _bind_approved_write_connector
+    from app.services.tool_types import ToolContext
+
+    ctx = ToolContext(
+        settings=SimpleNamespace(), client=MagicMock(), org_id="org-a",
+        actor_id="actor-a", conversation_id="chat-a",
+    )
+    with patch(
+        "app.connectors.repository.get_connector_by_type",
+        return_value={"id": "hubspot-account-a", "org_id": "org-a", "vendor": "hubspot"},
+    ) as lookup:
+        bound = _bind_approved_write_connector(
+            ctx, client=ctx.client, org_id="org-a",
+            environment_name="production", integration="hubspot", args={"email": "qa@example.invalid"},
+        )
+    lookup.assert_called_once_with(
+        ctx.client, "org-a", "hubspot", environment_name="production",
+    )
+    assert bound.connector_id == "hubspot-account-a"
+    assert ctx.connector_id is None  # immutable original context remains intact
+
+
+def test_eco002_chat_explicit_hubspot_connector_cannot_escape_tenant():
+    from types import SimpleNamespace
+    from app.services.chat_connector_execution_service import _bind_approved_write_connector
+    from app.services.tool_types import ToolContext, ToolConnectorNotConnectedError
+
+    ctx = ToolContext(settings=SimpleNamespace(), client=MagicMock(),
+                      org_id="org-a", actor_id="actor-a")
+    with patch(
+        "app.connectors.repository.get_connector",
+        return_value={"id": "foreign-account", "org_id": "org-b", "vendor": "hubspot"},
+    ) as lookup:
+        with pytest.raises(ToolConnectorNotConnectedError, match="tenant"):
+            _bind_approved_write_connector(
+                ctx, client=ctx.client, org_id="org-a",
+                environment_name="production", integration="hubspot", args={"connector_id": "foreign-account"},
+            )
+    lookup.assert_called_once_with(
+        ctx.client, "org-a", "foreign-account", environment_name="production",
+    )
+
+
+@pytest.mark.parametrize("connector", [
+    None,
+    {"id": "other-account", "org_id": "org-a", "vendor": "slack"},
+    {"id": "", "org_id": "org-a", "vendor": "hubspot"},
+])
+def test_eco002_chat_missing_or_wrong_provider_identity_fails_closed(connector):
+    from types import SimpleNamespace
+    from app.services.chat_connector_execution_service import _bind_approved_write_connector
+    from app.services.tool_types import ToolContext, ToolConnectorNotConnectedError
+
+    ctx = ToolContext(settings=SimpleNamespace(), client=MagicMock(),
+                      org_id="org-a", actor_id="actor-a")
+    with patch("app.connectors.repository.get_connector_by_type", return_value=connector):
+        with pytest.raises(ToolConnectorNotConnectedError):
+            _bind_approved_write_connector(
+                ctx, client=ctx.client, org_id="org-a",
+                environment_name="production", integration="hubspot", args={},
+            )
+
+
+@pytest.mark.parametrize("vendor", ["gmail", "asana"])
+def test_eco002_chat_native_and_catalog_provider_accounts_are_fenced(vendor):
+    """Both provider executors use the same typed repository lookup."""
+    from types import SimpleNamespace
+    from app.services.chat_connector_execution_service import _bind_approved_write_connector
+    from app.services.tool_types import ToolContext, ToolConnectorNotConnectedError
+
+    ctx = ToolContext(settings=SimpleNamespace(), client=MagicMock(),
+                      org_id="org-a", actor_id="actor-a")
+    connector = {"id": f"{vendor}-account", "org_id": "org-a", "vendor": vendor}
+    with patch("app.connectors.repository.get_connector_by_type", return_value=connector) as lookup:
+        bound = _bind_approved_write_connector(
+            ctx, client=ctx.client, org_id="org-a",
+            environment_name="production", integration=vendor, args={"resource_id": "qa"},
+        )
+    lookup.assert_called_once_with(
+        ctx.client, "org-a", vendor, environment_name="production",
+    )
+    assert bound.connector_id == f"{vendor}-account"
+    assert ctx.connector_id is None
+
+    with patch("app.connectors.repository.get_connector", return_value=connector) as lookup:
+        explicit = _bind_approved_write_connector(
+            ctx, client=ctx.client, org_id="org-a",
+            environment_name="production", integration=vendor,
+            args={"connector_id": f"{vendor}-account"},
+        )
+    assert explicit.connector_id == f"{vendor}-account"
+    lookup.assert_called_once_with(
+        ctx.client, "org-a", f"{vendor}-account", environment_name="production",
+    )
+    with patch("app.connectors.repository.get_connector", return_value={
+        "id": "foreign", "org_id": "org-b", "vendor": vendor,
+    }):
+        with pytest.raises(ToolConnectorNotConnectedError, match="tenant"):
+            _bind_approved_write_connector(
+                ctx, client=ctx.client, org_id="org-a",
+                environment_name="production", integration=vendor,
+                args={"connector_id": "foreign"},
+            )
+
+
+def test_eco002_chat_unknown_provider_is_not_assigned_guessed_account():
+    from types import SimpleNamespace
+    from app.services.chat_connector_execution_service import _bind_approved_write_connector
+    from app.services.tool_types import ToolContext
+
+    ctx = ToolContext(settings=SimpleNamespace(), client=MagicMock(),
+                      org_id="org-a", actor_id="actor-a")
+    with patch("app.connectors.repository.get_connector_by_type") as lookup:
+        original = _bind_approved_write_connector(
+            ctx, client=ctx.client, org_id="org-a",
+            environment_name="production", integration="unverified_provider", args={},
+        )
+    assert original is ctx
+    lookup.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_eco005_missing_connected_account_does_not_consume_chat_approval(connector_service):
+    """An absent tenant-owned provider account must block before pending claim."""
+    client = MagicMock()
+    plan = ConnectorActionPlan(
+        tool_name="hubspot_contacts_create",
+        invoke_action="hubspot.contacts.create",
+        integration="hubspot", kind="write", label="Create contact",
+        args={"email": "qa@example.invalid"}, requires_approval=True,
+    )
+    connector_service._registry.execute_invoke_action = AsyncMock()
+    with (
+        patch(
+            "app.services.approval_action_binding.assert_plan_matches_binding",
+        ),
+        patch(
+            "app.services.object_resolution.revalidate_bound_targets",
+            return_value=None,
+        ),
+        patch(
+            "app.services.sync_back_policy_service.is_crm_sync_invoke_action",
+            return_value=False,
+        ),
+        patch(
+            "app.connectors.action_catalog.f1_write_slice.is_f1_write_action",
+            return_value=False,
+        ),
+        patch.object(
+            connector_service, "_replay_existing_write_result",
+            AsyncMock(return_value=None),
+        ),
+        patch.object(
+            connector_service, "_claim_write_before_invoke",
+            AsyncMock(),
+        ) as claim,
+        patch.object(
+            connector_service, "_persist_recent_connector_invocation",
+            AsyncMock(),
+        ),
+        patch.object(
+            connector_service, "_finalize_connector_outcome",
+        ),
+        patch(
+            "app.connectors.repository.get_connector_by_type",
+            return_value=None,
+        ),
+    ):
+        result = await connector_service._execute_plan(
+            org_id="tenant-a", user_id="user-a", conversation_id="conversation-a",
+            plan=plan, client=client, classification={},
+            approved_params={"_approval_queue_id": "approval-a"},
+        )
+    assert result.success is False
+    claim.assert_not_awaited()
+    connector_service._registry.execute_invoke_action.assert_not_awaited()
+    connector_service._state.update_task_state.assert_not_awaited()
+    connector_service._state.update_task_state_from.assert_not_awaited()
+
+
+@pytest.mark.parametrize("inactive_status", [
+    "needs_connection", "pending_auth", "disconnected", "disabled", "revoked",
+])
+def test_eco005_explicit_unconnected_account_cannot_be_bound_for_write(inactive_status):
+    from types import SimpleNamespace
+    from app.services.chat_connector_execution_service import _bind_approved_write_connector
+    from app.services.tool_types import ToolContext, ToolConnectorNotConnectedError
+
+    ctx = ToolContext(
+        settings=SimpleNamespace(), client=MagicMock(),
+        org_id="tenant-a", actor_id="user-a",
+    )
+    with patch("app.connectors.repository.get_connector", return_value={
+        "id": "stub-1", "org_id": "tenant-a",
+        "vendor": "hubspot", "status": inactive_status,
+    }):
+        with pytest.raises(ToolConnectorNotConnectedError, match="not connected"):
+            _bind_approved_write_connector(
+                ctx, client=ctx.client, org_id="tenant-a",
+                environment_name="production", integration="hubspot",
+                args={"connector_id": "stub-1"},
+            )
+    assert ctx.connector_id is None

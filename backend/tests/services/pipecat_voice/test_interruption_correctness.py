@@ -395,7 +395,18 @@ def _invoke(monkeypatch: pytest.MonkeyPatch, impl) -> Any:
     ), patch("app.services.tool_service._TOOL_REGISTRY", {WRITE_ACTION: impl}), patch(
         "app.services.tool_service.write_audit_event"
     ), patch("app.services.tool_service.time.sleep"):
-        return invoke_tool(ctx, WRITE_ACTION, {})
+        from app.services.write_invoke_idempotency import WriteClaimResult, WriteFinalizeResult
+        # These voice interruption fixtures require an accepted durable claim
+        # to reach the provider boundary under mandatory ledger enforcement.
+        with patch("app.services.write_invoke_idempotency.claim_write_invoke",
+                   return_value=WriteClaimResult(outcome="claimed", claim_token="voice-test-fence", claim_generation=1)), patch(
+            "app.services.write_invoke_idempotency.bind_write_recovery_context",
+            return_value=True,
+        ), patch(
+            "app.services.write_invoke_idempotency.finalize_write_invoke",
+            return_value=WriteFinalizeResult(outcome="finalized")
+        ):
+            return invoke_tool(ctx, WRITE_ACTION, {})
 
 
 def test_completed_write_is_recorded_as_completed(monkeypatch: pytest.MonkeyPatch) -> None:

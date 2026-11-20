@@ -51,6 +51,10 @@ def build_write_idempotency_key(
 ) -> tuple[str, str | None]:
     """Return (idempotency_key, logical_action_id)."""
     params = params if isinstance(params, dict) else {}
+    # Provider-facing deduplication metadata is an output of this calculation,
+    # never part of the input identity. Retaining it allows the same logical
+    # write to mint distinct ledger claims across an injected/replayed call.
+    params = {key: value for key, value in params.items() if key != "_gravitre_idempotency_key"}
     nonce = str(params.get("_write_idempotency_nonce") or params.get("write_idempotency_nonce") or "").strip()
     connector = str(params.get("connector_id") or ctx.connector_id or "")
     logical_id: str | None = None
@@ -62,9 +66,17 @@ def build_write_idempotency_key(
             conversation_id=str(ctx.conversation_id),
             invoke_action=action,
             pending_action_id=pending_id or turn or None,
-            args=params,
+            args=(
+                {k: v for k, v in params.items() if k not in {"turn_id", "_turn_id"}}
+                if pending_id else params
+            ),
         )
-        parts = ["chat", logical_id, turn, connector, nonce]
+        # A pending approval identifies the same logical WRITE across chat,
+        # voice and replayed turns. Including the latest turn ID would mint a
+        # fresh claim after a crash or repeated confirmation, permitting a
+        # second provider side effect. Use turn only when no stable pending
+        # action identity is available.
+        parts = ["chat", logical_id, "" if pending_id else turn, connector, nonce]
         key = hashlib.sha256(":".join(p for p in parts if p).encode()).hexdigest()
         return f"chat:{key}", logical_id
     lineage = {
@@ -258,9 +270,58 @@ def finalize_write_invoke(
     return WriteFinalizeResult(outcome="rejected", reason=str(body.get("reason") or outcome))
 
 
+_RECOVERY_SECRET_FIELDS = frozenset({
+    "authorization", "cookie", "set_cookie", "password", "api_key",
+    "apikey", "access_token", "refresh_token", "client_secret",
+    "private_key", "secret", "bearer_token",
+})
+
+
+def _redact_recovery_args(value: Any) -> Any:
+    """Do not persist auth material supplied alongside a provider write.
+
+    Keep business-object fields for readback, but remove provider credentials
+    and transport metadata from the recovery payload.
+    """
+    if isinstance(value, dict):
+        return {
+            str(key): ("[REDACTED]" if str(key).lower().replace("-", "_") in _RECOVERY_SECRET_FIELDS
+                       else _redact_recovery_args(item))
+            for key, item in value.items()
+            if str(key) != "_gravitre_idempotency_key"
+        }
+    if isinstance(value, list):
+        return [_redact_recovery_args(item) for item in value]
+    return value
+
+
+def bind_write_recovery_context(
+    client: Any, *, org_id: str, idempotency_key: str,
+    claim_token: str, invoke_action: str, connector_id: str,
+    original_args: dict[str, Any],
+) -> bool:
+    """Fenced, service-role-only original-request binding before dispatch."""
+    if not connector_id or not claim_token or not isinstance(original_args, dict):
+        return False
+    try:
+        res = client.rpc("bind_write_recovery_context", {
+            "p_org_id": org_id, "p_key": idempotency_key,
+            "p_claim_token": claim_token, "p_invoke_action": invoke_action,
+            "p_connector_id": connector_id,
+            "p_original_args": safe_normalize_stored_dict(_redact_recovery_args(original_args)),
+        }).execute()
+        return isinstance(res.data, dict) and res.data.get("outcome") == "bound"
+    except Exception:
+        logger.exception("write_recovery_context_bind_failed org_id=%s", org_id)
+        return False
+
+
 def inject_provider_idempotency(params: dict[str, Any], idempotency_key: str) -> dict[str, Any]:
+    # The provider must receive the exact key reserved in the canonical ledger.
+    # A caller-supplied value must never override the computed claim identity:
+    # mismatched provider/ledger keys can defeat crash/retry deduplication.
     out = dict(params)
-    out.setdefault("_gravitre_idempotency_key", idempotency_key)
+    out["_gravitre_idempotency_key"] = idempotency_key
     return out
 
 

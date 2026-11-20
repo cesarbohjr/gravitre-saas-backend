@@ -13,6 +13,7 @@ from app.services.tool_types import (
     ToolRateLimitedError,
     ToolValidationError,
 )
+from tests.support.provider_write import with_provider_write_ledger
 
 
 @pytest.fixture
@@ -49,13 +50,13 @@ def test_invoke_unknown_action(tool_ctx: ToolContext):
 def test_invoke_slack_success(tool_ctx: ToolContext):
     conn = {"id": "conn-slack", "type": "slack", "status": "active"}
     with patch("app.services.write_preflight.enforce_invoke_write_preflight", side_effect=lambda _c, _a, p: p):
-        with patch("app.services.tool_service.get_connector_by_type", return_value=conn):
+        with patch("app.services.tool_service.get_connector", return_value=conn):
             with patch("app.connectors.connector_tool_auth.resolve_slack_bot_token", return_value="xoxb-test"):
                 with patch("app.services.tool_service.enforce_rate_limit"):
                     with patch("app.services.tool_service.send_slack_message", return_value={"ts": "123", "_latency_ms": 42}):
                         with patch("app.services.tool_service.write_audit_event"):
                             result = invoke_tool(
-                                tool_ctx,
+                                with_provider_write_ledger(tool_ctx, conn["id"]),
                                 "slack.post_message",
                                 {"channel": "#general", "message": "hello"},
                             )
@@ -67,17 +68,17 @@ def test_invoke_slack_success(tool_ctx: ToolContext):
 def test_invoke_validation_error_no_retry(tool_ctx: ToolContext):
     conn = {"id": "conn-slack", "type": "slack", "status": "active"}
     with patch("app.services.write_preflight.enforce_invoke_write_preflight", side_effect=lambda _c, _a, p: p):
-        with patch("app.services.tool_service.get_connector_by_type", return_value=conn):
+        with patch("app.services.tool_service.get_connector", return_value=conn):
             with patch("app.connectors.connector_tool_auth.resolve_slack_bot_token", return_value="xoxb-test"):
-                with patch("app.services.tool_service.write_audit_event"):
+                with patch("app.services.tool_service.write_audit_event"), patch("app.services.tool_service.enforce_rate_limit"):
                     with patch("app.services.tool_service.time.sleep") as sleep_mock:
-                        result = invoke_tool(tool_ctx, "slack.post_message", {"channel": "", "message": "x"})
+                        result = invoke_tool(with_provider_write_ledger(tool_ctx, conn["id"]), "slack.post_message", {"channel": "", "message": "x"})
     assert result.success is False
     assert result.error_code == "validation_error"
     sleep_mock.assert_not_called()
 
 
-def test_invoke_rate_limit_retries(tool_ctx: ToolContext):
+def test_write_rate_limit_does_not_retry_under_same_claim(tool_ctx: ToolContext):
     calls = {"n": 0}
 
     def flaky(*_args, **_kwargs):
@@ -95,6 +96,7 @@ def test_invoke_rate_limit_retries(tool_ctx: ToolContext):
         with patch("app.services.tool_service._TOOL_REGISTRY", {"slack.post_message": flaky}):
             with patch("app.services.tool_service.write_audit_event"):
                 with patch("app.services.tool_service.time.sleep"):
-                    result = invoke_tool(tool_ctx, "slack.post_message", {})
-    assert result.success is True
-    assert calls["n"] == 2
+                    result = invoke_tool(with_provider_write_ledger(tool_ctx, "c1"), "slack.post_message", {})
+    assert result.success is False
+    assert result.error_code == "rate_limited"
+    assert calls["n"] == 1

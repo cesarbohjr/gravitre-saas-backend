@@ -8,7 +8,7 @@ function getFastApiBaseUrl() {
   // Prefer Railway prod when FASTAPI_BASE_URL is unset or still points at api.gravitre.app
   // before DNS is live. Local dev falls back to localhost when nothing is configured.
   const configured = process.env.FASTAPI_BASE_URL?.trim()
-  if (configured) {
+  if (configured || process.env.NODE_ENV === "production") {
     return backendBaseUrl()
   }
   return "http://localhost:8000"
@@ -148,7 +148,7 @@ export async function callFastApiAsCaller(
 
 /** STA-271 C.2: best-effort mirror of contract workflow row into legacy workflow_defs. */
 export async function syncWorkflowSchemaFromContract(request: NextRequest, workflowId: string) {
-  if (!process.env.FASTAPI_BASE_URL?.trim()) {
+  if (!process.env.FASTAPI_BASE_URL?.trim() && process.env.NODE_ENV !== "production") {
     return
   }
   try {

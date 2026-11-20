@@ -123,7 +123,7 @@ async def conversations(latency: float) -> list[dict[str, Any]]:
     for surface in ("text", "voice"):
         for label, turns, data, expected_to in flows:
             with ScenarioHarness() as h:
-                h.connected += ["gmail", "google_drive"]
+                h.connect("gmail", "google_drive")
                 h.connectors.mailbox += data.get("mailbox", [])
                 h.connectors.files += data.get("files", [])
                 h.connectors.read_latency_s = latency

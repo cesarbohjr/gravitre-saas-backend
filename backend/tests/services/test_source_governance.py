@@ -154,11 +154,23 @@ def test_prune_removes_only_expired_documents_of_that_vendor():
 
 
 def test_run_retention_prune_audits(monkeypatch):
+    # Keep the same clock as the fixed document ages above. Once the real date
+    # reached Nov 9, the fixture's Oct 10 "new" document legitimately expired
+    # and this audit contract started failing despite correct retention logic.
+    class RetentionClock(datetime):
+        @classmethod
+        def now(cls, tz=None):
+            return datetime(2026, 10, 12, tzinfo=UTC)
+
+    monkeypatch.setattr(kr, "datetime", RetentionClock)
     audits: list[dict[str, Any]] = []
     monkeypatch.setattr("app.workflows.audit.write_audit_event", lambda c, **kw: audits.append(kw))
-    out = kr.run_retention_prune(_retention_client())
+    client = _retention_client()
+    out = kr.run_retention_prune(client)
     assert out == {ORG: {"hubspot": 1}}
+    assert sorted(d["id"] for d in client.tables["rag_documents"]) == ["new", "old-notion"]
     assert audits[0]["action"] == "knowledge.retention_pruned"
+    assert audits[0]["metadata"] == {"removed": {"hubspot": 1}, "retentionDays": {"hubspot": 30}}
 
 
 def test_retention_scheduler_off_by_default(monkeypatch):

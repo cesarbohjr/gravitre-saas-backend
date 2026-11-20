@@ -309,6 +309,15 @@ async def lifespan(app: FastAPI):
             registry_summary["warnings"],
             registry_summary.get("byCode"),
         )
+    # Isolated ECO-001 ingress certification must never start scheduled writers.
+    # This gate is opt-in and refuses to run outside the dedicated QA environment.
+    if os.environ.get("ECO001_QA_HTTP_PREFLIGHT_ONLY", "").strip().lower() in {"1", "true", "yes"}:
+        if os.environ.get("APP_ENV", "").strip().lower() != "qa":
+            raise RuntimeError("ECO001_QA_HTTP_PREFLIGHT_ONLY requires APP_ENV=qa")
+        logger.warning("eco001_qa_http_preflight_only enabled=true background_workers_started=false")
+        yield
+        return
+
     # Background loops: hourly usage-sync (idempotent Stripe metering) + the
     # durable async agent-job worker. Both are gated by env flags.
     from app.billing.usage_scheduler import start_usage_sync_scheduler, stop_usage_sync_scheduler
@@ -340,6 +349,10 @@ async def lifespan(app: FastAPI):
     from app.schedulers.domain_event_relay_scheduler import (
         start_domain_event_relay_scheduler,
         stop_domain_event_relay_scheduler,
+    )
+    from app.schedulers.write_recovery_scheduler import (
+        start_write_recovery_scheduler,
+        stop_write_recovery_scheduler,
     )
     from app.schedulers.stale_run_recovery_scheduler import (
         start_stale_run_recovery_scheduler,
@@ -391,6 +404,9 @@ async def lifespan(app: FastAPI):
         stop_capability_marketplace_sync_scheduler,
     )
     from app.workers.workflow_worker import start_workflow_run_worker, stop_workflow_run_worker
+    from app.workers.isolated_workflow_supervisor import (
+        start_isolated_workflow_worker, stop_isolated_workflow_worker,
+    )
 
     temporal_host = (os.environ.get("TEMPORAL_HOST") or "").strip()
     use_temporal = bool(temporal_host)
@@ -449,6 +465,7 @@ async def lifespan(app: FastAPI):
     app.state.storage_meter_task = start_storage_meter_scheduler()
     app.state.prediction_labeling_task = start_prediction_labeling_scheduler()
     app.state.stale_run_recovery_task = start_stale_run_recovery_scheduler()
+    app.state.write_recovery_task = start_write_recovery_scheduler()
     # Customer ingestion stays inert until source lifecycle is enforced; log what is held back.
     try:
         from app.config import get_settings as _ingestion_settings
@@ -513,6 +530,7 @@ async def lifespan(app: FastAPI):
 
     app.state.agent_job_task = start_agent_job_worker()
     app.state.workflow_run_task = start_workflow_run_worker()
+    app.state.isolated_workflow_worker_task = start_isolated_workflow_worker()
     _log_billing_startup_config()
     try:
         yield
@@ -541,6 +559,7 @@ async def lifespan(app: FastAPI):
         await stop_storage_meter_scheduler(getattr(app.state, "storage_meter_task", None))
         await stop_prediction_labeling_scheduler(getattr(app.state, "prediction_labeling_task", None))
         await stop_stale_run_recovery_scheduler(getattr(app.state, "stale_run_recovery_task", None))
+        await stop_write_recovery_scheduler(getattr(app.state, "write_recovery_task", None))
         await stop_entity_behavior_signals_scheduler(getattr(app.state, "entity_behavior_signals_task", None))
         await stop_rag_ingest_pilot_scheduler(getattr(app.state, "rag_ingest_pilot_task", None))
         await stop_memory_scheduler(getattr(app.state, "memory_promotion_task", None))
@@ -568,6 +587,8 @@ async def lifespan(app: FastAPI):
                 pass
             except Exception as exc:  # noqa: BLE001
                 logger.debug("voice_perceive_warmup_stop_skipped error=%s", exc)
+        await stop_isolated_workflow_worker(
+            getattr(app.state, "isolated_workflow_worker_task", None))
         await stop_workflow_run_worker(getattr(app.state, "workflow_run_task", None))
 
 

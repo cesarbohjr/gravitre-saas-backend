@@ -463,9 +463,18 @@ async def _change_recipient(
         CANDIDATES_KEY: candidates,
         RECIPIENT_CHANGE_KEY: marker,
     }
-    if just_sent:
+    if sent_to:
         # The finished plan belongs to the email that already went out.
-        patch["execution_plan"] = None
+        # Publish a distinct plan for the new draft so the terminal plan's
+        # compatibility projection cannot overwrite the new confirmation.
+        from app.services.execution_plan_adapters import execution_plan_from_connector_action
+
+        plan = execution_plan_from_connector_action(
+            ChatConnectorExecutionService.plan_from_dict(new_params)
+        )
+        if pending["status"] == "awaiting_params":
+            plan.terminal_status = "pending"
+        patch["execution_plan"] = plan.as_dict()
     else:
         plan_dict = execution_plan_with_revised_args(
             state, invoke_action=str(new_params.get("invoke_action") or ""), args=args

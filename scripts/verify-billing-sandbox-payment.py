@@ -19,10 +19,14 @@ if args.session:
     from supabase import create_client
     db = create_client(os.environ['SUPABASE_URL'], os.environ['SUPABASE_SERVICE_ROLE_KEY'])
     metadata = session.get('metadata') or {}
+    customer_ref = session.get('customer')
+    customer_id = customer_ref.get('id') if isinstance(customer_ref, dict) else customer_ref
+    customer = client.v1.customers.retrieve(customer_id) if customer_id else {}
+    customer_email = (session.get('customer_details') or {}).get('email') or session.get('customer_email') or customer.get('email')
     grants = db.table('org_promotional_grants').select('status').eq('id', metadata['offer_grant_id']).eq('org_id', metadata['org_id']).execute().data or []
     billing = db.table('org_billing').select('stripe_subscription_id').eq('org_id', metadata['org_id']).execute().data or []
     items = subscription.get('items', {}).get('data', [])
-    print(json.dumps({'session_id': session.id, 'livemode': session.livemode, 'checkout_status': session.status, 'subscription_status': subscription.get('status'), 'trial_end': subscription.get('trial_end'), 'invoice_id': invoice.get('id'), 'invoice_number': invoice.get('number'), 'invoice_status': invoice.get('status'), 'invoice_amount_paid': invoice.get('amount_paid'), 'grant_status': grants[0]['status'] if grants else None, 'subscription_persisted': bool(billing and billing[0]['stripe_subscription_id'] == subscription.get('id')), 'trial_has_only_licensed_items': bool(items) and all(i['price']['recurring'].get('usage_type') == 'licensed' for i in items)}))
+    print(json.dumps({'session_id': session.id, 'customer_email': customer_email, 'livemode': session.livemode, 'checkout_status': session.status, 'subscription_status': subscription.get('status'), 'trial_end': subscription.get('trial_end'), 'invoice_id': invoice.get('id'), 'invoice_number': invoice.get('number'), 'invoice_status': invoice.get('status'), 'invoice_amount_paid': invoice.get('amount_paid'), 'grant_status': grants[0]['status'] if grants else None, 'subscription_persisted': bool(billing and billing[0]['stripe_subscription_id'] == subscription.get('id')), 'trial_has_only_licensed_items': bool(items) and all(i['price']['recurring'].get('usage_type') == 'licensed' for i in items)}))
 else:
     verify_test_price(client.v1.prices.retrieve(os.environ['STRIPE_PRICE_ID_NODE_MONTHLY']))
     customer = client.v1.customers.create({'name': 'Disposable invoice acceptance', 'payment_method': 'pm_card_visa', 'invoice_settings': {'default_payment_method': 'pm_card_visa'}})

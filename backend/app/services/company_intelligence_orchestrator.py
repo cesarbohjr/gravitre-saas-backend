@@ -324,6 +324,11 @@ class CompanyIntelligenceOrchestrator:
             if updated:
                 markdown = f"{markdown}\n\n(Company intelligence last updated: {updated})"
             return markdown[:4200]
+        except PermissionError:
+            # Authorization failures are not an optional intelligence outage.
+            # Do not silently convert cross-tenant scope denial into empty
+            # context and permit downstream reasoning to continue.
+            raise
         except Exception as exc:  # noqa: BLE001
             logger.debug("company_intelligence_prompt_load_skipped org_id=%s error=%s", org_id, exc)
             return ""
@@ -565,17 +570,22 @@ class CompanyIntelligenceOrchestrator:
         ).execute()
 
     async def _load_latest_snapshot(self, org_id: str) -> dict[str, Any] | None:
-        client = self._client()
-        result = (
-            client.table("org_intelligence_snapshots")
-            .select("*")
-            .eq("org_id", org_id)
-            .limit(1)
-            .execute()
-        )
-        if not result.data:
-            return None
-        return result.data[0]
+        # Supabase's .execute() is synchronous. Run the entire connector
+        # creation + tenant-scoped read in one worker thread so that slow
+        # database I/O cannot block the Chat/Voice asyncio event loop.
+        # No cache, shared tenant state, or new retrieval authority is added.
+        def _read() -> dict[str, Any] | None:
+            client = self._client()
+            result = (
+                client.table("org_intelligence_snapshots")
+                .select("*")
+                .eq("org_id", org_id)
+                .limit(1)
+                .execute()
+            )
+            return result.data[0] if result.data else None
+
+        return await asyncio.to_thread(_read)
 
     def _is_stale(self, row: dict[str, Any]) -> bool:
         updated = row.get("updated_at")

@@ -29,6 +29,23 @@ _UNCERTAIN_CODES = frozenset({"outcome_uncertain", "connector_timeout", "native_
 _NATIVE_ACTIONS = frozenset("assistant." + op for op in NATIVE_TOOL_DEFINITIONS)
 
 
+def _connector_read_cache_scope(
+    ctx: ToolContext, params: dict[str, Any]
+) -> dict[str, str] | None:
+    """Limit cache hits to the authenticated caller and context-bound account."""
+    actor = str(ctx.actor_id or "").strip()
+    account = str(ctx.connector_id or "").strip()
+    requested_account = str(params.get("connector_id") or "").strip()
+    if not actor or not account or (requested_account and requested_account != account):
+        return None
+    return {
+        "environment": str(ctx.environment_name),
+        "actor": actor,
+        "agent": str(ctx.agent_id or ""),
+        "connector": account,
+    }
+
+
 def _uncertain_write_payload(*, tool: str, action: str, detail: str) -> dict[str, Any]:
     """Uniform result for a write whose provider-side effect is unknown."""
     integration = action.split(".", 1)[0] if "." in action else "the connected system"
@@ -1542,10 +1559,12 @@ class ToolRegistry:
             set_cached_read_result,
         )
 
-        if invoke_action not in _NATIVE_ACTIONS and is_read_invoke_action(invoke_action):
-            cached = get_cached_read_result(ctx.org_id, invoke_action, invoke_params)
+        read_cache_scope = _connector_read_cache_scope(ctx, invoke_params)
+        is_connector_read = invoke_action not in _NATIVE_ACTIONS and is_read_invoke_action(invoke_action)
+        if is_connector_read and read_cache_scope is not None:
+            cached = get_cached_read_result(ctx.org_id, invoke_action, invoke_params, scope=read_cache_scope)
             if cached is not None:
-                return cached
+                return {**cached, "tool": tool_name}
 
         try:
             timeout_s = max(150, int(ctx.connector_timeout_seconds or 30)) if invoke_action == "assistant.generate_image" else int(ctx.connector_timeout_seconds or 30)
@@ -1609,8 +1628,11 @@ class ToolRegistry:
                 "result": result.data,
                 "connector_id": result.connector_id,
             }
-            if invoke_action not in _NATIVE_ACTIONS and is_read_invoke_action(invoke_action):
-                set_cached_read_result(ctx.org_id, invoke_action, invoke_params, payload)
+            if is_connector_read:
+                if read_cache_scope is not None and result.connector_id == read_cache_scope["connector"]:
+                    set_cached_read_result(
+                        ctx.org_id, invoke_action, invoke_params, payload, scope=read_cache_scope
+                    )
                 return payload
             return await _settle_write_payload(
                 ctx, tool=tool_name, action=invoke_action, params=invoke_params, payload=payload, verify=True
@@ -1674,10 +1696,12 @@ class ToolRegistry:
                 "error": f"Backend action not implemented: {action}",
             }
 
-        if action not in _NATIVE_ACTIONS and is_read_invoke_action(action):
-            cached = get_cached_read_result(ctx.org_id, action, invoke_params)
+        read_cache_scope = _connector_read_cache_scope(ctx, invoke_params)
+        is_connector_read = action not in _NATIVE_ACTIONS and is_read_invoke_action(action)
+        if is_connector_read and read_cache_scope is not None:
+            cached = get_cached_read_result(ctx.org_id, action, invoke_params, scope=read_cache_scope)
             if cached is not None:
-                return cached
+                return {**cached, "tool": telemetry_tool}
 
         try:
             timeout_s = int(ctx.connector_timeout_seconds or 30)
@@ -1742,8 +1766,12 @@ class ToolRegistry:
                 "result": result.data,
                 "connector_id": result.connector_id,
             }
-            if action not in _NATIVE_ACTIONS and is_read_invoke_action(action):
-                set_cached_read_result(ctx.org_id, action, invoke_params, payload)
+            if is_connector_read:
+                if read_cache_scope is not None and result.connector_id == read_cache_scope["connector"]:
+                    set_cached_read_result(
+                        ctx.org_id, action, invoke_params, payload,
+                        scope=read_cache_scope,
+                    )
                 return payload
             return await _settle_write_payload(
                 ctx, tool=telemetry_tool, action=action, params=invoke_params, payload=payload, verify=verify_writes

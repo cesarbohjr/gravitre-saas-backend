@@ -11,9 +11,9 @@ stuck. This module reads the provider back and decides:
 * ``unknown``      — the source of record could not settle it → stay blocked and
                      tell the user exactly what is unconfirmed.
 
-``not_applied`` is only concluded from a positive, filtered read that returned no
-records, never from "the first page did not contain it": an unfiltered list that
-happens not to include the record is not proof of absence.
+The generic lookups here can confirm a matching record. An empty search or
+list response cannot establish authoritative absence, and a field mismatch may
+reflect provider formatting. Both observations leave the write uncertain.
 """
 from __future__ import annotations
 
@@ -159,9 +159,12 @@ def _reconcile_by_id(
             "applied", "requested_values_present", record_id, read_action, checked.as_dict()
         )
     if not checked.verified and checked.detail == "requested_field_differs":
-        # The change is not present; re-applying an idempotent update is safe.
+        # The verifier explicitly warns that vendor formatting can differ.
+        # A field mismatch is not authoritative proof that a previous write
+        # did not apply; never authorize an automatic duplicate update.
         return ReconciliationResult(
-            "not_applied", "requested_values_absent", record_id, read_action, checked.as_dict()
+            "unknown", "record_field_mismatch_not_authoritative",
+            record_id, read_action, checked.as_dict(),
         )
     return ReconciliationResult("unknown", "record_values_not_comparable", record_id, read_action)
 
@@ -180,6 +183,7 @@ def _reconcile_by_lookup(
     lookups = [a for a in (f"{vendor}.{resource}.{verb}" for verb in _LOOKUP_VERBS) if _registered(a)]
     if not lookups:
         return ReconciliationResult("unknown", "no_lookup_action")
+    empty_observed = False
     for lookup in lookups:
         param_sets: list[dict[str, Any]] = [{key: value}] + [{name: value} for name in _QUERY_PARAM_NAMES]
         for params in param_sets:
@@ -209,11 +213,12 @@ def _reconcile_by_lookup(
                     )
             records = _records(payload)
             if records is not None and not records:
-                return ReconciliationResult(
-                    "not_applied",
-                    f"no_record_with_{key}",
-                    None,
-                    lookup,
-                    {"verified": False, "method": "reconcile_lookup", "read_action": lookup, "field": key, "expected": value},
-                )
-    return ReconciliationResult("unknown", "lookup_inconclusive", None, lookups[0])
+                # An empty generic response is not authoritative absence.
+                # Keep looking for a positive match with the other supported
+                # lookup parameter variants, but never authorize a resend.
+                empty_observed = True
+    return ReconciliationResult(
+        "unknown",
+        "empty_lookup_not_authoritative" if empty_observed else "lookup_inconclusive",
+        None, lookups[0],
+    )

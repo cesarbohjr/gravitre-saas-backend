@@ -251,3 +251,28 @@ async def test_unified_retrieval_pack_stage_when_scope_enabled():
     assert bundle.research_cascade["intelligence_packs"]["ran"] is True
     assert bundle.research_cascade["intelligence_packs"]["result_count"] == 1
     assert "<intelligence_pack_sources>" in bundle.rag_section
+
+
+@pytest.mark.asyncio
+async def test_eco003_knowledge_access_denial_is_not_converted_to_empty_context():
+    """Tenant-scoped RAG denial must propagate through optional retrieval."""
+    rag = MagicMock()
+    rag.retrieve_hybrid_rows = AsyncMock(side_effect=PermissionError("tenant RAG scope denied"))
+    service = UnifiedRetrievalService(
+        settings=SimpleNamespace(rag_top_k=5, domain_adaptive_learning_enabled=False),
+        rag_service=rag,
+    )
+    with patch(
+        "app.services.adaptive_learning_service.get_adaptive_learning_service"
+    ) as adaptive:
+        adaptive.return_value.is_enabled_for_org = AsyncMock(return_value=False)
+        with pytest.raises(PermissionError, match="tenant RAG scope denied"):
+            await service.retrieve(
+                org_id="tenant-a", query="restricted knowledge",
+                client=MagicMock(), agent={"id": "agent-a"},
+                scopes=RetrievalScopes(
+                    knowledge=True, org_context=False, agent_memory=False,
+                ),
+            )
+    rag.retrieve_hybrid_rows.assert_awaited_once()
+    assert rag.retrieve_hybrid_rows.call_args.args[0] == "tenant-a"

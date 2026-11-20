@@ -672,6 +672,8 @@ class Settings(BaseSettings):
     domain_event_relay_enabled: bool = False
     # Stale run recovery: marks runs left "running"/"verifying" by a dead worker as
     # failed / flagged_for_review / verification_inconclusive. Never re-runs work.
+    write_recovery_scheduler_enabled: bool = False
+    write_recovery_scheduler_interval_seconds: int = 120
     stale_run_recovery_enabled: bool = False
     stale_run_recovery_interval_seconds: int = 600
     stale_run_recovery_threshold_minutes: int = 60
@@ -861,6 +863,26 @@ class Settings(BaseSettings):
     workflow_queue_enabled: bool = True
     workflow_queue_poll_seconds: int = 5
     workflow_queue_lease_seconds: int = 60
+    # P27-06: automatic orphan graph reconciliation is rollout-gated until
+    # provider-specific sandbox acceptance and lease fencing are approved.
+    workflow_orphan_recovery_enabled: bool = Field(
+        default=False,
+        validation_alias=AliasChoices(
+            "WORKFLOW_ORPHAN_RECOVERY_ENABLED", "workflow_orphan_recovery_enabled",
+        ),
+    )
+    # P27-08: keep the API alive when a workflow-worker *process* dies.
+    # Disabled by default until a reviewed, controlled existing-Railway rollout.
+    workflow_worker_process_isolation_enabled: bool = Field(
+        default=False,
+        validation_alias=AliasChoices(
+            "WORKFLOW_WORKER_PROCESS_ISOLATION_ENABLED",
+            "workflow_worker_process_isolation_enabled",
+        ),
+    )
+    workflow_orphan_recovery_interval_seconds: int = 60
+    workflow_orphan_stale_seconds: int = 3600
+    workflow_orphan_lease_seconds: int = 600
     workflow_queue_max_delivery_attempts: int = Field(
         default=5,
         validation_alias=AliasChoices(

@@ -1,0 +1,598 @@
+"""P27-02/03 joined offline journey through actual routing and step handler.
+
+Real: AgentSelector.select, Play run router preflight/dispatch, approval route,
+execute_workflow_steps registered invoke_tool handler, Canvas authorization
+and dispatch, sealed read gate, SQL workflow status trigger, outbox relay and
+idempotent durable consumer.
+
+Adapted: local tenant connector query, deterministic version/policy/billing,
+outbound vendor transport, verification read transport and optional delivery channels. Canonical terminal
+proof/receipt persistence and core audit/inbox/learning writers execute unchanged.
+Canonical repository methods and legacy/contract run, step and approval
+tables are real, backed by disposable PostgreSQL via a SQL transport adapter.
+This is NOT an unmodified production API/worker, process crash or external
+provider readback certification.
+"""
+from __future__ import annotations
+
+import json
+from types import SimpleNamespace
+from unittest.mock import Mock
+from uuid import UUID
+
+import pytest
+from fastapi import HTTPException
+
+from tests.db.pg_harness import MIGRATIONS, requires_pg
+from tests.db.test_domain_event_outbox_pg import ORG, _PsqlRpcClient
+from tests.master_qa.canonical_pg_repository import (
+    PgRepositoryClient, canonical_pg_cluster,
+)
+
+@pytest.fixture
+def pg():
+    with canonical_pg_cluster() as database:
+        yield database
+
+pytestmark = requires_pg
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("decision", [
+    "approve", "approve_write", "reject", "forbidden_approver", "foreign_tenant",
+    "cancel_before_dispatch", "cancel_write_before_dispatch",
+    "revoke_before_dispatch", "cancel_during_finalize",
+    "terminal_persistence_failure",
+])
+async def test_agent_play_approval_real_step_to_durable_consumer(pg, monkeypatch, tmp_path, request, decision):
+    from app.services import agent_selector, domain_events, tool_service, work_loop_links
+    from app.routers import plays, workflows
+    from app.workflows.registry import StepContext
+    from app.workflows import execute, handlers, repository
+    from app.services.tool_types import NormalizedResult
+    from app.services.connector_resource_resolver import ResourceResolution
+
+    workflow_id = "22222222-2222-4222-8222-222222222222"
+    # Start from the actual goal-to-canvas compiler, not a hand-written
+    # workflow definition. The established approval/runtime and canonical
+    # PostgreSQL repository remain the only execution authorities.
+    from app.workflows.sales_growth_recipe import (
+        compile_sales_growth_goal, verified_sales_observations,
+    )
+    from app.workflows.graph_model import build_execution_graph, validate_execution_graph
+    compiled = compile_sales_growth_goal(
+        goal="I need to increase sales",
+        recognized_objective="increase_sales",
+        connected_integrations=["hubspot"],
+        action_entries=[SimpleNamespace(
+            connector_id="hubspot", action_key="hubspot.contacts.search",
+            display_name="Inspect CRM leads", kind="read",
+            chat_executable=True, invoke_tool_handler="hubspot.contacts.search",
+            implementation_status="executable",
+        )],
+    )
+    validate_execution_graph(build_execution_graph(
+        compiled.graph["nodes"], compiled.graph["edges"],
+    ))
+    assert compiled.capabilities == ("hubspot.contacts.search",)
+    assert compiled.status == "READ_DIAGNOSTIC_READY"
+    assert compiled.observation_status == "NOT_RUN"
+    definition = compiled.workflow_definition
+    revoked_before_dispatch = decision == "revoke_before_dispatch"
+    cancel_write_before_dispatch = decision == "cancel_write_before_dispatch"
+    approve_write = decision == "approve_write"
+    governed_write = revoked_before_dispatch or cancel_write_before_dispatch or approve_write
+    if governed_write:
+        # Persist the write in the saved Canvas version so the approval
+        # covers the action that would have reached the provider.
+        step = definition["steps"][0]
+        config = {
+            "action": "hubspot.contacts.create",
+            "connector_id": "local-conn",
+            "params": {
+                "email": "fixture@example.invalid",
+                "properties": {"email": "fixture@example.invalid"},
+                "portal_id": "99887",
+            },
+        }
+        definition = {**definition, "steps": [{**step, "config": config}]}
+    settings = SimpleNamespace(
+        disable_execute=False, disable_connectors=False,
+        write_authority_mode="enforce",
+        connector_secrets_encryption_key="k" * 32,
+        policy_allowed_envs="synthetic",
+        policy_max_steps=10, policy_max_runtime_seconds=60,
+    )
+    client = PgRepositoryClient(pg)
+    if approve_write:
+        from tests.db.test_autonomous_full_dispatcher_pg import PgClient
+        from tests.db.write_recovery_context_fixture import AUTH_ROLE_SQL, CONTEXT_SQL
+
+        pg.psql(AUTH_ROLE_SQL)
+        for migration in (
+            "20261016032018_write_invoke_idempotency.sql",
+            "20261016032029_write_invoke_idempotency_grants.sql",
+            "20261102095000_autonomous_atomic_write_claim.sql",
+        ):
+            pg.psql((MIGRATIONS / migration).read_text())
+        pg.psql(CONTEXT_SQL)
+        ledger = PgClient(str(pg.sock), pg.port)
+        repository_rpc = client.rpc
+        ledger_rpcs = {
+            "claim_approved_autonomous_write", "bind_write_recovery_context",
+            "finalize_write_invoke_idempotency",
+        }
+
+        def rpc(name, params):
+            if name not in ledger_rpcs:
+                return repository_rpc(name, params)
+            if name == "finalize_write_invoke_idempotency":
+                params = {**params, "p_result": json.dumps(params["p_result"])}
+            return ledger.rpc(name, params)
+
+        monkeypatch.setattr(client, "rpc", rpc)
+    from tests.master_qa.test_canonical_repository_persistence_pg import (
+        _core_effect_tables, _disable_optional_delivery,
+    )
+    _core_effect_tables(pg)
+    _disable_optional_delivery(monkeypatch)
+    pg.psql("ALTER TABLE public.audit_logs ALTER COLUMN id SET DEFAULT gen_random_uuid();"
+            "ALTER TABLE public.audit_events ALTER COLUMN id SET DEFAULT gen_random_uuid();")
+    pg.psql("CREATE TABLE public.agent_jobs (status text);")
+    pg.psql((MIGRATIONS / "20260606200000_agent_execution_interrupts.sql").read_text())
+    def connector_table(name):
+        assert name == "connectors"
+        class Query:
+            def __init__(self): self.filters = []
+            def select(self, *args): return self
+            def eq(self, k, v): self.filters.append((k, v)); return self
+            def execute(self):
+                return SimpleNamespace(data=[{"provider": "hubspot", "org_id": ORG,
+                    "status": "connected"}] if ("org_id", ORG) in self.filters else [])
+        return Query()
+    monkeypatch.setattr(agent_selector, "get_supabase_client", lambda _: SimpleNamespace(table=connector_table))
+    monkeypatch.setattr("app.services.meta_learning_service.get_meta_learning_service",
+                        lambda _: SimpleNamespace(is_enabled=lambda: False))
+    selected = await agent_selector.AgentSelector(settings=settings).select(
+        ORG, {"department": "sales", "intent": "sales_task",
+              "requires_action": True, "agent_manifest_role": "qa"})
+    assert selected["agent_manifest"]["role"] == "qa"
+    assert selected["requires_swarm"]
+    assert "hubspot" in await agent_selector.AgentSelector(settings=settings)._get_connected(ORG)
+
+    run_id = None
+    play_parameters = None
+    monkeypatch.setattr(plays, "get_supabase_client", lambda _: client)
+    monkeypatch.setattr(plays, "_load_installation", lambda *a, **kw:
+                        {"id": "fixture-install", "operating_mode": "ACT WITH APPROVAL"})
+    monkeypatch.setattr(work_loop_links, "resolve_run_links", lambda *a, **kw: (None, None))
+    monkeypatch.setattr(plays, "connected_vendors", lambda *a, **kw: {"hubspot"})
+    monkeypatch.setattr(plays, "resolve_play_readiness", lambda *a, **kw:
+                        SimpleNamespace(act_with_approval_ready=True))
+    monkeypatch.setattr(plays, "_observed_signals", lambda *a, **kw: set())
+    monkeypatch.setattr(plays, "list_play_workflow_bindings", lambda *a, **kw:
+                        [{"workflowId": workflow_id}])
+    monkeypatch.setattr(plays, "get_workflow_def", lambda *a, **kw: {"id": workflow_id})
+    monkeypatch.setattr(plays, "resolve_policy", lambda *a, **kw: (1, ["admin"]))
+    monkeypatch.setattr(plays, "write_audit_event", lambda *a, **kw: None)
+
+    # Exercise production execute_workflow from Play dispatch. Policy, active
+    # version, billing and notification side dependencies are deterministic;
+    # repository creation/step insertion remain the original implementations.
+    pg.psql(f"INSERT INTO public.workflows (id, org_id, name) "
+            f"VALUES ('{workflow_id}', '{ORG}', 'Synthetic QA Play workflow')")
+    monkeypatch.setattr(workflows, "get_supabase_client", lambda _: client)
+    monkeypatch.setattr(workflows, "get_plan_for_org", lambda *a: {"features": {"approvals": True}})
+    monkeypatch.setattr(workflows, "get_workflow_def", lambda *a: {"id": workflow_id})
+    monkeypatch.setattr(workflows, "play_binding_for_workflow",
+                        lambda *a, **kw: {"key": "customer-rescue", "version": "1"})
+    monkeypatch.setattr(workflows, "get_active_workflow_version",
+                        lambda *a: {"id": "33333333-3333-4333-8333-333333333333",
+                                    "definition": definition})
+    monkeypatch.setattr("app.workflows.definition_resolver.resolve_executable_definition",
+                        lambda _client, _org, _workflow, definition, _env: definition)
+    monkeypatch.setattr(workflows, "validate_definition", lambda value: value)
+    monkeypatch.setattr(workflows, "validate_execute_steps", lambda value: None)
+    monkeypatch.setattr(workflows, "enrich_vertical_workflow_parameters",
+                        lambda _org, _workflow, parameters, _wf, **kw: parameters)
+    monkeypatch.setattr(workflows, "resolve_policy", lambda *a: (1, ["admin"]))
+    monkeypatch.setattr(workflows, "get_user_role", lambda *a: "admin")
+    monkeypatch.setattr(workflows, "check_concurrency", lambda *a, **kw: None)
+    monkeypatch.setattr(workflows, "evaluate_policy", lambda ctx:
+                        SimpleNamespace(allowed=True, required_approvals=1,
+                                        approver_roles=["admin"], approval_floor_applied=False))
+    monkeypatch.setattr("app.services.org_approval_rules.required_approvals_for_definition",
+                        lambda *a: 1)
+    monkeypatch.setattr(workflows, "require_feature", lambda *a: None)
+    monkeypatch.setattr(workflows, "_record_workflow_run_usage", lambda *a: None)
+    monkeypatch.setattr(workflows, "write_audit_event", lambda *a, **kw: None)
+    if not governed_write:
+        monkeypatch.setattr("app.services.workflow_approval_scope.persist_run_approval_scope",
+                            lambda *a, **kw: None)
+    monkeypatch.setattr("app.services.approval_record_service.sync_workflow_pending_approval",
+                        lambda *a, **kw: None)
+    for event_name in ("emit_execute_created", "emit_execute_pending_approval"):
+        monkeypatch.setattr(workflows, event_name, lambda *a, **kw: None)
+    # Use actual repository functions without replacing their write logic.
+    monkeypatch.setattr(workflows, "create_execute_run", repository.create_execute_run)
+    monkeypatch.setattr(workflows, "create_step", repository.create_step)
+    production_execute = workflows.execute_workflow
+
+    async def initial_execute(body, *, current_user, org_id, environment_name, settings):
+        nonlocal run_id, play_parameters
+        assert pg.value("SELECT count(*) FROM public.workflow_runs") == "0"
+        assert org_id == ORG and str(body.workflow_id) == workflow_id
+        assert body.play_key == "customer-rescue"
+        result = await production_execute(
+            body, current_user=current_user, org_id=org_id,
+            environment_name=environment_name, settings=settings)
+        run_id = result["run_id"]
+        play_parameters = repository.get_run_with_steps(client, ORG, run_id,
+                                                         "synthetic")["parameters"]
+        assert play_parameters["play"]["execution_authority"] == "canonical_workflow_runtime"
+        return result
+
+    # Thin inspection wrapper, not an execution stub.
+    monkeypatch.setattr(workflows, "execute_workflow", initial_execute)
+    response = await plays.run_play("customer-rescue",
+        plays.RunPlayRequest(installationId="fixture-install"),
+        ({"user_id": "33333333-3333-4333-8333-333333333333"}, ORG, "admin"), "synthetic", settings)
+    assert response["workflowRuns"][0]["runId"] == run_id
+    assert response["status"] == "awaiting_approval"
+    assert pg.value(f"SELECT status FROM public.workflow_runs WHERE id='{run_id}'") == "pending_approval"
+    assert pg.value("SELECT count(*) FROM public.domain_event_outbox") == "0"
+
+    assert pg.value(f"SELECT count(*) FROM public.workflow_steps WHERE run_id='{run_id}'") == "1"
+    monkeypatch.setattr(workflows, "get_supabase_client", lambda _: client)
+    monkeypatch.setattr(workflows, "get_plan_for_org", lambda *_: {"features": {"approvals": True}})
+    monkeypatch.setattr(workflows, "require_feature", lambda *_: None)
+    monkeypatch.setattr(workflows, "get_user_role", lambda *_: "admin")
+    monkeypatch.setattr(workflows, "has_capability", lambda *_: True)
+    # Approval store, counts and run reader now use unpatched repository.
+    monkeypatch.setattr(workflows, "get_run_with_steps", repository.get_run_with_steps)
+    monkeypatch.setattr(workflows, "insert_run_approval", repository.insert_run_approval)
+    monkeypatch.setattr(workflows, "get_approval_counts", repository.get_approval_counts)
+    monkeypatch.setattr("app.services.approval_record_service.finalize_contract_approval",
+                        lambda *a, **kw: None)
+    monkeypatch.setattr("app.services.transparency_service.record_human_override",
+                        lambda *a, **kw: None)
+    monkeypatch.setattr(workflows, "try_mark_run_running", repository.try_mark_run_running)
+    for name in ("emit_execute_approval_recorded", "emit_execute_approved", "emit_execute_started"):
+        monkeypatch.setattr(workflows, name, lambda *a, **kw: None)
+
+    # Existing step rows were created at approval time; the real handler
+    # must perform the pending -> running -> completed step transition.
+    # Production repository step reader and writers remain unpatched.
+    monkeypatch.setattr(execute, "emit_execute_step_completed", lambda *a, **kw: None)
+    monkeypatch.setattr(execute, "write_audit_event", lambda *a, **kw: None)
+    monkeypatch.setattr(execute, "resolve_active_branch", lambda *_: None)
+    monkeypatch.setattr(execute, "should_skip_for_branch", lambda *a, **kw: False)
+    monkeypatch.setattr(execute, "_add_run_execution_time", lambda *a, **kw: None)
+    # An independent receiver persists the vendor observation outside the
+    # application PostgreSQL transaction and outside the process's mock state.
+    import urllib.request
+    from tests.db.test_autonomous_independent_write_pg import IndependentFixture
+    receiver = IndependentFixture(
+        tmp_path / "joined-agent-provider.sqlite3", b"<h1>isolated</h1>",
+        capability="joined-agent-cap",
+    )
+    request.addfinalizer(receiver.close)
+    readback = Mock()
+
+    def observed_contact(context, action, params):
+        assert action == "hubspot.contacts.get"
+        assert context.org_id == ORG and context.run_id == run_id
+        assert params["connector_id"] == "local-conn"
+        contact_id = params.get("contact_id") or params.get("id")
+        get_request = urllib.request.Request(
+            f"{receiver.origin}/records/{contact_id}",
+            headers={"X-QA-Capability": "joined-agent-cap"},
+        )
+        with urllib.request.urlopen(get_request, timeout=5) as response:
+            body = json.load(response)
+        readback(contact_id)
+        return NormalizedResult(success=True, action=action, data=body)
+
+    def observed_vendor(context, params):
+        assert context.client is client
+        assert context.org_id == ORG and str(context.run_id) == run_id
+        assert context.environment_name == "synthetic"
+        assert context.step_id
+        assert context.preflight_result.ok
+        action = "hubspot.contacts.create" if approve_write else "hubspot.contacts.search"
+        assert context.preflight_result.action_key == action
+        assert context.preflight_result.resource["connection_id"] == "local-conn"
+        if approve_write:
+            assert params["properties"]["email"] == "fixture@example.invalid"
+            assert "play" not in params
+            assert pg.value(
+                "SELECT count(*) FROM public.write_invoke_idempotency "
+                "WHERE status='in_progress' AND invoke_action='hubspot.contacts.create' "
+                "AND connector_id='local-conn' AND recovery_context_bound_at IS NOT NULL"
+            ) == "1"
+        else:
+            assert str(params["portal_id"]) == "99887"
+        request = urllib.request.Request(
+            receiver.origin + "/write",
+            data=json.dumps({"cap": "joined-agent-cap"}).encode(),
+            headers={"Content-Type": "application/json"}, method="POST",
+        )
+        with urllib.request.urlopen(request, timeout=5) as response:
+            assert response.status == 204
+        if decision == "cancel_during_finalize":
+            # Provider observation exists, but cancellation commits before the
+            # step executor's late completion callback. Do not undo the read.
+            from app.services.execution_outcome import finalize_execution_outcome
+            finalize_execution_outcome(client, org_id=ORG, run_id=run_id,
+                status="cancelled", source="api",
+                actor_id="44444444-4444-4444-8444-444444444444")
+        return NormalizedResult(
+            success=True, action=action,
+            data={"id": "1"} if approve_write else {"results": [{"id": "synthetic-contact-1"}]},
+        )
+    vendor = Mock(side_effect=observed_vendor)
+    resource = ResourceResolution(
+        status="resolved", connector_id="hubspot", connection_id="local-conn",
+        resource_type="portal", resource_id="99887", display_name="99887",
+        confidence=0.98, resolution_reason="linked_config", candidate_count=1)
+    def resolve_fixture_executor(action, _context):
+        assert action == ("hubspot.contacts.create" if approve_write else "hubspot.contacts.search")
+        return vendor
+
+    # The SQL adapter owns workflow rows, run approval, and terminal evidence.
+    # Other service lookups get synthetic inputs at their own data boundaries.
+    monkeypatch.setattr("app.services.read_preflight.resolve_resource", lambda **_: resource)
+    if approve_write:
+        monkeypatch.setattr("app.services.write_preflight.resolve_resource", lambda **_: resource)
+        monkeypatch.setattr("app.services.sealed_read_execution.invoke_compiled_read", observed_contact)
+    monkeypatch.setattr("app.services.hipaa_service.get_hipaa_status", lambda *_: {"hipaaReady": False})
+    monkeypatch.setattr("app.services.agent_tool_permissions.list_agent_tool_permissions",
+                        lambda *a, **kw: [{"connector_type": "hubspot",
+                                           "scopes": ["hubspot:read", "hubspot:write"] if approve_write
+                                           else ["hubspot:read"], "expires_at": None}])
+    monkeypatch.setattr(tool_service, "write_audit_event", lambda *a, **kw: None)
+    monkeypatch.setattr(tool_service, "_resolve_tool_executor", resolve_fixture_executor)
+    if decision == "approve":
+        from app.services.canvas_write_gate import CANVAS_WRITE_AUTHORITY_BLOCKED
+
+        # Check the actual handler against the same still-pending SQL run.
+        write_step = StepContext(
+            settings=settings, org_id=ORG, user_id="33333333-3333-4333-8333-333333333333",
+            run_id=run_id, environment_name="synthetic", step_id="unapproved-write",
+            step_type="invoke_tool", step_index=0, config={"action": "hubspot.contacts.create"},
+            parameters={}, step_outputs={}, client=client, is_dry_run=False,
+        )
+        with pytest.raises(PermissionError, match=CANVAS_WRITE_AUTHORITY_BLOCKED):
+            handlers.InvokeToolHandler().execute(write_step)
+        assert vendor.call_count == 0 and receiver.writes == 0
+    # No synthetic stand-in for the executor: route calls real implementation.
+    monkeypatch.setattr(workflows, "execute_workflow_steps", execute.execute_workflow_steps)
+    monkeypatch.setattr(workflows, "_step_to_out", lambda x: x)
+    assert pg.value("SELECT count(*) FROM public.domain_event_outbox") == "0"
+    cancelled_before_dispatch = decision in {"cancel_before_dispatch", "cancel_write_before_dispatch"}
+
+    def assert_persisted_write_approval(writer):
+        from app.services.canvas_write_gate import block_canvas_write_step, load_run_for_write_gate
+        from app.services.workflow_approval_scope import (
+            block_invoke_by_approval_scope, scope_from_run_parameters,
+        )
+
+        run = load_run_for_write_gate(writer, ORG, run_id)
+        assert run["status"] == "running" and run["approval_status"] == "approved"
+        assert repository.get_approval_counts(writer, run_id) == (1, False)
+        scope = scope_from_run_parameters(run["parameters"])
+        assert scope and scope["allowed_invoke_actions"] == ["hubspot.contacts.create"]
+        step = definition["steps"][0]
+        assert block_canvas_write_step(
+            step_type=step["type"], config=step["config"], run_row=run,
+        ) is None
+        assert block_invoke_by_approval_scope(
+            invoke_action=step["config"]["action"], run_row=run,
+            run_parameters=run["parameters"], definition=run["definition_snapshot"],
+            invoke_params={**step["config"]["params"], "connector_id": step["config"]["connector_id"]},
+        ) is None
+
+    if cancelled_before_dispatch:
+        from app.services.agent_interrupt_service import request_interrupt
+
+        def cancel_then_execute(*args, **kwargs):
+            assert pg.value(f"SELECT status FROM public.workflow_runs WHERE id='{run_id}'") == "running"
+            writer = PgRepositoryClient(pg)
+            if cancel_write_before_dispatch:
+                assert_persisted_write_approval(writer)
+            interrupt = request_interrupt(
+                writer, org_id=ORG, target_type="workflow_run", target_id=run_id,
+                signal="cancel", actor_id="44444444-4444-4444-8444-444444444444", source="api",
+            )
+            assert interrupt["status"] == "pending" and interrupt["applied_eagerly"]
+            return execute.execute_workflow_steps(*args, **kwargs)
+
+        monkeypatch.setattr(workflows, "execute_workflow_steps", cancel_then_execute)
+    if revoked_before_dispatch:
+        from app.services.canvas_write_gate import (
+            CANVAS_WRITE_AUTHORITY_BLOCKED, load_run_for_write_gate,
+        )
+
+        def revoke_then_execute(*args, **kwargs):
+            writer = PgRepositoryClient(pg)
+            assert_persisted_write_approval(writer)
+            # Apply the same durable status transition used by the existing
+            # revocation QA cases, between approval and the real dispatcher.
+            repository.update_run(writer, run_id, status="running", approval_status="revoked")
+            assert load_run_for_write_gate(PgRepositoryClient(pg), ORG, run_id)["approval_status"] == "revoked"
+            return execute.execute_workflow_steps(*args, **kwargs)
+
+        monkeypatch.setattr(workflows, "execute_workflow_steps", revoke_then_execute)
+    if decision in {"reject", "forbidden_approver", "foreign_tenant"}:
+        actor = {"user_id": "44444444-4444-4444-8444-444444444444"}
+        if decision == "reject":
+            monkeypatch.setattr(workflows, "emit_execute_rejected", lambda *a, **kw: None)
+            rejected = await workflows.reject_run(UUID(run_id), workflows.ApproveRejectRequest(),
+                actor, ORG, "synthetic", settings)
+            assert rejected["status"] == "cancelled" and rejected["approval_status"] == "rejected"
+            assert repository.get_approval_counts(client, run_id) == (0, True)
+            assert pg.value(f"SELECT status FROM public.workflow_runs WHERE id='{run_id}'") == "cancelled"
+            assert pg.value(f"SELECT status FROM public.runs WHERE id='{run_id}'") == "cancelled"
+            assert pg.value("SELECT count(*) FROM public.domain_event_outbox") == "1"
+            assert pg.value(f"SELECT parameters->>'outcome_finalized' FROM public.workflow_runs WHERE id='{run_id}'") == "true"
+        else:
+            if decision == "forbidden_approver":
+                monkeypatch.setattr(workflows, "has_capability", lambda *_: False)
+            tenant = "99999999-9999-4999-8999-999999999999" if decision == "foreign_tenant" else ORG
+            with pytest.raises(HTTPException) as denied:
+                await workflows.approve_run(UUID(run_id), workflows.ApproveRejectRequest(),
+                    actor, tenant, "synthetic", settings)
+            assert denied.value.status_code == (404 if decision == "foreign_tenant" else 403)
+            assert repository.get_approval_counts(client, run_id) == (0, False)
+            assert pg.value(f"SELECT status FROM public.workflow_runs WHERE id='{run_id}'") == "pending_approval"
+            assert pg.value("SELECT count(*) FROM public.domain_event_outbox") == "0"
+        assert vendor.call_count == 0 and receiver.writes == 0
+        assert pg.value(f"SELECT status FROM public.workflow_steps WHERE run_id='{run_id}'") == "pending"
+        for table in ("audit_logs", "audit_events", "notifications", "intelligence_outcome_events"):
+            assert pg.value(f"SELECT count(*) FROM public.{table}") == ("1" if decision == "reject" else "0")
+        with pytest.raises(HTTPException):
+            await workflows.approve_run(UUID(run_id), workflows.ApproveRejectRequest(),
+                actor, tenant if decision == "foreign_tenant" else ORG, "synthetic", settings)
+        assert receiver.writes == 0
+        return
+    if decision == "terminal_persistence_failure":
+        from app.services import execution_outcome
+        def unavailable(*_args, **_kwargs):
+            raise RuntimeError("synthetic terminal store outage")
+        monkeypatch.setattr(execution_outcome, "_persist_run", unavailable)
+        with pytest.raises(RuntimeError, match="terminal persistence failed"):
+            await workflows.approve_run(UUID(run_id), workflows.ApproveRejectRequest(),
+                {"user_id": "44444444-4444-4444-8444-444444444444"}, ORG, "synthetic", settings)
+        assert pg.value(f"SELECT status FROM public.workflow_runs WHERE id='{run_id}'") == "running"
+        assert pg.value(f"SELECT status FROM public.runs WHERE id='{run_id}'") == "running"
+        assert pg.value("SELECT count(*) FROM public.domain_event_outbox") == "0"
+        assert vendor.call_count == 1 and receiver.writes == 1
+        for table in ("audit_logs", "audit_events", "notifications", "intelligence_outcome_events"):
+            assert pg.value(f"SELECT count(*) FROM public.{table}") == "0"
+        with pytest.raises(HTTPException):
+            await workflows.approve_run(UUID(run_id), workflows.ApproveRejectRequest(),
+                {"user_id": "44444444-4444-4444-8444-444444444444"}, ORG, "synthetic", settings)
+        assert receiver.writes == 1
+        return
+    if revoked_before_dispatch:
+        terminal, step_status, expected_provider_calls = "failed", "failed", 0
+    elif cancelled_before_dispatch:
+        terminal, step_status, expected_provider_calls = "cancelled", "pending", 0
+    else:
+        terminal = "cancelled" if decision == "cancel_during_finalize" else "completed"
+        step_status, expected_provider_calls = "completed", 1
+    approved = await workflows.approve_run(
+        UUID(run_id), workflows.ApproveRejectRequest(comment="approved in QA"),
+        {"user_id": "44444444-4444-4444-8444-444444444444"}, ORG, "synthetic", settings)
+    assert approved["status"] == terminal, pg.value(
+        f"SELECT concat_ws(' | ', error_code, error_message, logs) FROM public.workflow_steps WHERE run_id='{run_id}'"
+    )
+    assert approved["approval_status"] == ("revoked" if revoked_before_dispatch else "approved")
+    assert repository.get_approval_counts(PgRepositoryClient(pg), run_id) == (1, False)
+    steps = repository.get_run_with_steps(PgRepositoryClient(pg), ORG, run_id, "synthetic")["steps"]
+    assert steps[0]["status"] == step_status
+    if revoked_before_dispatch:
+        assert steps[0]["error_code"] == CANVAS_WRITE_AUTHORITY_BLOCKED
+    elif cancelled_before_dispatch:
+        assert pg.value(
+            "SELECT count(*) FROM public.agent_execution_interrupts "
+            f"WHERE target_id='{run_id}' AND status='acknowledged' AND acknowledged_at IS NOT NULL"
+        ) == "1"
+    elif approve_write:
+        snapshot = steps[0]["output_snapshot"]
+        assert snapshot["outcome_verified"] is True
+        assert snapshot["verification"]["resource_id"] == "1"
+        assert snapshot["verification"]["read_action"] == "hubspot.contacts.get"
+        assert readback.call_count >= 1
+        assert pg.value(
+            "SELECT count(*) FROM public.write_invoke_idempotency "
+            f"WHERE org_id='{ORG}' AND status='completed' "
+            "AND invoke_action='hubspot.contacts.create' AND result #>> '{data,id}'='1'"
+        ) == "1"
+    else:
+        assert steps[0]["output_snapshot"]
+        observed = verified_sales_observations(compiled, completed_steps=steps)
+        assert observed["status"] == "DIAGNOSTIC_READS_OBSERVED"
+        assert observed["verified_actions"][0]["action"] == "hubspot.contacts.search"
+        assert observed["business_outcome"] == "NOT_MEASURED"
+    assert pg.value(f"SELECT status FROM public.runs WHERE id='{run_id}'") == terminal
+    assert pg.value(f"SELECT status FROM public.run_steps WHERE run_id='{run_id}'") == step_status
+    assert vendor.call_count == receiver.writes == expected_provider_calls
+    assert pg.value(f"SELECT status FROM public.workflow_runs WHERE id='{run_id}'") == terminal
+    assert pg.value(f"SELECT parameters->>'outcome_finalized' FROM public.workflow_runs WHERE id='{run_id}'") == "true"
+    audit_count = 1 + 2 * cancelled_before_dispatch + revoked_before_dispatch
+    for table in ("audit_logs", "audit_events"):
+        assert pg.value(f"SELECT count(*) FROM public.{table}") == str(audit_count)
+    for table in ("notifications", "intelligence_outcome_events"):
+        assert pg.value(f"SELECT count(*) FROM public.{table}") == "1"
+    if cancelled_before_dispatch:
+        assert pg.value(
+            "SELECT action FROM public.audit_events "
+            "WHERE action LIKE 'agent.interrupt.%' ORDER BY action"
+        ).splitlines() == ["agent.interrupt.acknowledged", "agent.interrupt.requested"]
+    if revoked_before_dispatch:
+        assert pg.value(
+            "SELECT action FROM public.audit_events ORDER BY action"
+        ).splitlines() == ["workflow.execute.failed", "workflow.execute.step_failed"]
+    # ECO-001 independent readback: the returned HTTP-equivalent result and
+    # in-memory step objects cannot substitute for durable terminal evidence.
+    # Reopen the canonical repository reader after approval/execution.
+    persisted = repository.get_run_with_steps(
+        PgRepositoryClient(pg), ORG, run_id, "synthetic"
+    )
+    assert persisted["status"] == terminal
+    assert persisted["approval_status"] == ("revoked" if revoked_before_dispatch else "approved")
+    assert persisted["steps"][0]["status"] == step_status
+    assert bool(persisted["steps"][0]["output_snapshot"]) == bool(expected_provider_calls)
+    assert pg.value(
+        f"SELECT count(*) FROM public.run_steps "
+        f"WHERE run_id='{run_id}' AND status='completed'"
+    ) == str(expected_provider_calls)
+    assert pg.value(
+        f"SELECT count(*) FROM public.domain_event_outbox "
+        f"WHERE aggregate_id='{run_id}'"
+    ) == "1"
+    assert pg.value("SELECT count(*) FROM public.domain_event_outbox") == "1"
+    with pytest.raises(HTTPException) as replay:
+        await workflows.approve_run(
+            UUID(run_id), workflows.ApproveRejectRequest(),
+            {"user_id": "44444444-4444-4444-8444-444444444444"}, ORG, "synthetic", settings)
+    assert replay.value.status_code == 400
+    assert vendor.call_count == receiver.writes == expected_provider_calls
+
+    pg.psql("CREATE TABLE public.qa_p27_joined_effects ("
+            "event_id bigint PRIMARY KEY, org_id uuid NOT NULL, run_id uuid NOT NULL)")
+    def consumer(_client, event):
+        assert event["org_id"] == ORG and event["aggregate_id"] == run_id
+        assert event["payload"]["run_id"] == run_id
+        assert event["payload"]["status"] == terminal
+        pg.psql("INSERT INTO public.qa_p27_joined_effects (event_id,org_id,run_id) "
+                f"VALUES ({int(event['id'])},'{ORG}','{run_id}') "
+                "ON CONFLICT (event_id) DO NOTHING")
+    domain_events.reset_domain_event_handlers_for_tests()
+    domain_events.register_domain_event_handler(
+        domain_events.EVENT_EXECUTION_OUTCOME_FINALIZED, "qa_p27_joined_consumer", consumer)
+    try:
+        relay = domain_events.DomainEventRelay(
+            _PsqlRpcClient(pg), worker_id="qa-p27-joined-worker")
+        first, repeated = relay.run_once(), relay.run_once()
+        assert first.delivered == 1 and repeated.claimed == 0
+        # Simulate an already-delivered event being replayed after transport
+        # reconciliation. The business consumer must still persist ONE effect
+        # by the immutable event ID, even if handler bookkeeping were lost.
+        pg.psql(
+            "UPDATE public.domain_event_outbox SET "
+            "status='pending', available_at=now(), delivered_at=NULL, "
+            "delivered_handlers='{}'::text[] "
+            f"WHERE aggregate_id='{run_id}'")
+        replayed = relay.run_once()
+    finally:
+        domain_events.reset_domain_event_handlers_for_tests()
+    assert replayed.delivered == 1
+    assert vendor.call_count == receiver.writes == expected_provider_calls
+    if revoked_before_dispatch:
+        current = repository.get_run_with_steps(PgRepositoryClient(pg), ORG, run_id, "synthetic")
+        assert (current["status"], current["approval_status"]) == ("failed", "revoked")
+    assert pg.value("SELECT count(*) FROM public.qa_p27_joined_effects") == "1"
+    assert pg.value(
+        f"SELECT count(*) FROM public.domain_event_outbox "
+        f"WHERE aggregate_id='{run_id}' AND status='delivered'") == "1"

@@ -250,7 +250,7 @@ def _dry_run_patches(service: ChatConnectorExecutionService, connected: list[str
             "tool": label,
             "action": action,
             "result": {"dry_run": True},
-            "connector_id": "conn-e2e",
+            "connector_id": ctx.connector_id or "conn-e2e",
         }
 
     async def _fake_execute_tool(*, ctx, tool_name, args=None):
@@ -268,9 +268,21 @@ def _dry_run_patches(service: ChatConnectorExecutionService, connected: list[str
             "approval_reason": "Write action" if requires else None,
         }
 
+    def _fake_connector(_client, org_id, connector_type, *, environment_name):
+        if connector_type not in connected:
+            return None
+        return {
+            "id": f"conn-e2e-{connector_type}",
+            "org_id": org_id,
+            "type": connector_type,
+            "status": "connected",
+            "environment": environment_name,
+        }
+
     with (
         patch.object(service, "_live_connected_integrations", return_value=connected),
         patch.object(service, "_verify_plan_executable", return_value=None),
+        patch("app.connectors.repository.get_connector_by_type", side_effect=_fake_connector),
         patch.object(service, "_evaluate_risk", side_effect=_fake_risk),
         # Scenario actors are treated as approvers so confirm-path gating still exercises.
         patch.object(service, "_user_can_approve_writes", return_value=True),

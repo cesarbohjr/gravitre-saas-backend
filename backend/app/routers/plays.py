@@ -43,6 +43,10 @@ class RunPlayRequest(BaseModel):
     # objective, and capability steps try the plan's chosen provider first.
     objective_id: str | None = Field(default=None, alias="objectiveId", max_length=64)
     capability_vendors: dict[str, str] = Field(default_factory=dict, alias="capabilityVendors")
+    # Advisory evidence lineage, never execution authority. The acceptance
+    # verifier re-reads both source runs independently before certification.
+    opportunity_id: str | None = Field(default=None, alias="opportunityId", max_length=100)
+    source_run_ids: dict[str, str] = Field(default_factory=dict, alias="sourceRunIds")
     # Set when the run serves a work object (e.g. an accepted proposal) and/or one
     # business entity. Both are checked against the org; needs work_loop_links_enabled.
     work_object_id: str | None = Field(default=None, alias="workObjectId", max_length=64)
@@ -589,6 +593,9 @@ async def run_play(
         "started_at": datetime.now(timezone.utc).isoformat(),
         "metadata": {
             "execution_authority": "canonical_workflow_runtime",
+            **({"opportunity_id": body.opportunity_id,
+                "source_run_ids": dict(body.source_run_ids)}
+               if body.opportunity_id and body.source_run_ids else {}),
             **({"work_object_id": work_object_id} if work_object_id else {}),
             **({"business_entity_id": business_entity_id} if business_entity_id else {}),
         },
@@ -611,6 +618,9 @@ async def run_play(
                             "run_id": play_run_id,
                             "operating_mode": mode,
                             "execution_authority": "canonical_workflow_runtime",
+                            **({"opportunity_id": body.opportunity_id,
+                                "source_run_ids": dict(body.source_run_ids)}
+                               if body.opportunity_id and body.source_run_ids else {}),
                             "objective_id": body.objective_id,
                             "capability_vendors": dict(body.capability_vendors or {}),
                             **({"work_object_id": work_object_id} if work_object_id else {}),

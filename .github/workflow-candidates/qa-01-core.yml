@@ -1,0 +1,854 @@
+# STAGED: not installed in .github/workflows; automatic trigger cutover pending.
+name: QA 01-core
+'on':
+  workflow_dispatch:
+    inputs:
+      source:
+        description: Original workflow contract to execute
+        required: true
+        type: choice
+        options:
+        - ci
+        default: ci
+  push:
+    branches:
+    - main
+  pull_request:
+    branches:
+    - main
+    types:
+    - opened
+    - reopened
+    - synchronize
+concurrency:
+  group: ci-${{ github.event_name == 'pull_request' && format('pr-{0}', github.event.pull_request.number) || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+jobs:
+  upstream_contract:
+    name: Read trusted upstream outcome metadata
+    if: ${{ github.event_name == 'workflow_run' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    permissions:
+      contents: read
+      actions: read
+    outputs:
+      evidence: ${{ steps.upstream.outputs.evidence }}
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        ref: ${{ github.sha }}
+        persist-credentials: false
+    - id: upstream
+      run: python scripts/route-workflow-event.py --lane 01-core --fetch-upstream
+      env:
+        GITHUB_TOKEN: ${{ github.token }}
+  dispatch_contract:
+    name: Validate selected source inputs
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    timeout-minutes: 4
+    needs:
+    - upstream_contract
+    if: ${{ always() && (needs.upstream_contract.result == 'success' || needs.upstream_contract.result == 'skipped') }}
+    outputs:
+      selected: ${{ steps.contract.outputs.selected }}
+      derived: ${{ steps.contract.outputs.derived }}
+      context_conclusions: ${{ steps.contract.outputs.context_conclusions }}
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        persist-credentials: false
+        fetch-depth: 0
+    - id: contract
+      name: Validate source contract
+      shell: python
+      env:
+        SOURCE_SCHEMAS: '{"ci": {}, "repair-root-npm-lock": {}}'
+        MANUAL_SOURCES: '["ci"]'
+        DISPATCH_VALUES: ${{ toJSON(inputs) }}
+        EVENT_NAME: ${{ github.event_name }}
+        CANONICAL_LANE: 01-core
+        UPSTREAM_EVIDENCE: ${{ needs.upstream_contract.outputs.evidence }}
+      run: "import json, os\nschemas = json.loads(os.environ['SOURCE_SCHEMAS'])\nvalues = json.loads(os.environ['DISPATCH_VALUES'])\n\
+        event_name = os.environ['EVENT_NAME']\ncalled = values.get('_reusable', False)\nif not called and event_name not in\
+        \ ('workflow_dispatch', 'workflow_call'):\n    import subprocess\n    subprocess.run(['python', 'scripts/route-workflow-event.py',\
+        \ '--lane', os.environ['CANONICAL_LANE']], check=True)\n    raise SystemExit(0)\nsource = values.get('source')\nif\
+        \ source not in schemas:\n    raise SystemExit('Unknown source workflow')\nif not called and event_name == 'workflow_dispatch'\
+        \ and source not in json.loads(os.environ['MANUAL_SOURCES']):\n    raise SystemExit('Source has no manual trigger')\n\
+        if called and source != 'isolated-acceptance':\n    raise SystemExit('Unsupported reusable source')\nfor key, config\
+        \ in schemas[source].items():\n    value = values.get(source.replace('-', '_') + '__' + key)\n    if called and key\
+        \ == 'suite':\n        value = values.get('suite')\n    if config.get('required') and (value is None or value == ''):\n\
+        \        raise SystemExit('Required selected-source input missing: ' + key)\nprint('Selected source input contract\
+        \ validated; this is not execution acceptance')\nwith open(os.environ['GITHUB_OUTPUT'], 'a') as output:\n    output.write('selected='\
+        \ + json.dumps([source]) + '\\n')\n    output.write('derived=[]\\ncontext_conclusions={}\\n')\n"
+  ci__web:
+    name: Web (lint + typecheck + build)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: apps/web
+    steps:
+    - uses: actions/checkout@v4
+    - uses: pnpm/action-setup@v4
+      with:
+        version: 10
+    - uses: actions/setup-node@v4
+      with:
+        node-version: 22
+        cache: pnpm
+        cache-dependency-path: apps/web/pnpm-lock.yaml
+    - name: Install dependencies
+      run: pnpm install --frozen-lockfile
+    - name: Vercel frontend build selection
+      run: node --test scripts/vercel-ignore-build.test.mjs
+    - name: Run unit tests
+      run: pnpm test
+    - name: Chat surface drift guard
+      working-directory: .
+      run: node scripts/check-chat-surface-drift.mjs
+    - name: User-facing status leak guard
+      working-directory: .
+      run: node scripts/check-user-facing-status-leak.mjs
+    - name: Intelligence customer surface guard
+      working-directory: .
+      run: node scripts/check-intelligence-customer-surface.mjs
+    - name: Cognitive regression suite
+      working-directory: .
+      run: node scripts/cognitive-regression-suite.mjs
+    - name: Gravitre brand rename guard
+      working-directory: .
+      run: node scripts/check-gravitre-brand.mjs
+    - name: Lint
+      run: pnpm lint
+    - name: Typecheck
+      run: pnpm typecheck
+    - name: Build
+      run: pnpm build
+      env:
+        NEXT_PUBLIC_SUPABASE_URL: https://placeholder.supabase.co
+        NEXT_PUBLIC_SUPABASE_ANON_KEY: placeholder-anon-key
+        FASTAPI_BASE_URL: http://127.0.0.1:8000
+    needs:
+    - dispatch_contract
+    if: ${{ always() && needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected),
+      'ci') && ((!cancelled() && (true))) }}
+    concurrency:
+      group: ${{ format('candidate-{0}-{1}-{2}', format('ci-{0}', github.event_name == 'pull_request' && format('pr-{0}',
+        github.event.pull_request.number) || github.ref), 'ci__web', toJSON(matrix)) }}
+      cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  ci__integration-smoke-test:
+    name: Integration Smoke Test
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+        cache: pip
+        cache-dependency-path: backend/requirements.txt
+    - name: Reclaim unused hosted-runner SDKs before Python dependencies
+      run: "set -euo pipefail\necho \"Disk before cleanup:\"\ndf -h / /tmp\nfor dir in /usr/local/lib/android /usr/share/dotnet\
+        \ /opt/ghc /usr/local/share/powershell; do\n  if [ -d \"$dir\" ]; then\n    echo \"Removing unused SDK: $dir\"\n \
+        \   sudo rm -rf -- \"$dir\"\n  fi\ndone\npython -m pip cache purge || true\nsudo apt-get clean\necho \"Disk after\
+        \ cleanup:\"\ndf -h / /tmp\nfree_kib=$(df -Pk / | awk 'NR==2 {print $4}')\nif [ \"$free_kib\" -lt 10485760 ]; then\n\
+        \  echo \"::error::Backend CI needs at least 10 GiB disk free before heavy dependency install (KiB=$free_kib)\"\n\
+        \  exit 1\nfi\n"
+    - name: Install backend dependencies
+      working-directory: backend
+      run: 'python -m pip install --upgrade pip
+
+        python -m pip install --no-cache-dir --no-compile -r requirements-dev.txt
+
+        '
+    - name: Start backend and run integration smoke test
+      working-directory: backend
+      env:
+        APP_ENV: dev
+        SUPABASE_URL: https://test.supabase.co
+        SUPABASE_ANON_KEY: anon-test
+        SUPABASE_SERVICE_ROLE_KEY: service-role-test
+        SUPABASE_JWT_SECRET: jwt-secret-test
+        OPENAI_API_KEY: sk-test-openai
+      run: "# Logged to a file, not inherited stdout: the failure branch needs the\n# startup trace, and reading it must not\
+        \ depend on waiting for exit.\npython -m uvicorn app.main:app --host 127.0.0.1 --port 8765 >/tmp/backend.log 2>&1\
+        \ &\nSERVER_PID=$!\ntrap 'kill $SERVER_PID 2>/dev/null || true' EXIT\n# CI telemetry from run 41787238076 showed repeated\
+        \ /health 200\n# responses taking ~9 seconds. A 5-second client cutoff incorrectly\n# treated healthy responses as\
+        \ unready. Allow up to 20 seconds per\n# request while bounding total startup readiness to 180 seconds.\nstart=$SECONDS\n\
+        ready=0\nwhile (( SECONDS - start < 180 )); do\n  if curl -fsS --max-time 20 \"http://127.0.0.1:8765/health\" >/dev/null;\
+        \ then\n    ready=1\n    break\n  fi\n  # Do not wait out the deadline if uvicorn exited.\n  if ! kill -0 \"$SERVER_PID\"\
+        \ 2>/dev/null; then\n    echo \"Backend process exited during startup after $((SECONDS-start))s\"\n    tail -n 200\
+        \ /tmp/backend.log\n    exit 1\n  fi\n  sleep 2\ndone\nif [ \"$ready\" -ne 1 ]; then\n  echo \"Backend failed to become\
+        \ ready on port 8765 within 180s (20s request timeout)\"\n  # Never `wait` here. The server is still running by definition\
+        \ of\n  # reaching this branch, so waiting for it blocked forever and turned\n  # a legible failure into an unbounded\
+        \ hang.\n  cat /tmp/backend.log\n  exit 1\nfi\nexport BACKEND_URL=\"http://127.0.0.1:8765\"\nchmod +x ../scripts/test-integration.sh\n\
+        bash ../scripts/test-integration.sh\n"
+    - name: Annotate on failure
+      if: failure()
+      run: 'echo "::error::Integration smoke test failed against the CI-local backend."
+
+        echo "::error::Check scripts/test-integration.sh and app startup on port 8765."
+
+        '
+    needs:
+    - dispatch_contract
+    if: ${{ always() && needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected),
+      'ci') && ((!cancelled() && (true))) }}
+    concurrency:
+      group: ${{ format('candidate-{0}-{1}-{2}', format('ci-{0}', github.event_name == 'pull_request' && format('pr-{0}',
+        github.event.pull_request.number) || github.ref), 'ci__integration-smoke-test', toJSON(matrix)) }}
+      cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  ci__shared-runtime-gate:
+    name: Shared runtime text/voice gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+        cache: pip
+        cache-dependency-path: backend/requirements.txt
+    - name: Reclaim unused hosted-runner SDKs before Python dependencies
+      run: "set -euo pipefail\necho \"Disk before cleanup:\"\ndf -h / /tmp\nfor dir in /usr/local/lib/android /usr/share/dotnet\
+        \ /opt/ghc /usr/local/share/powershell; do\n  if [ -d \"$dir\" ]; then\n    echo \"Removing unused SDK: $dir\"\n \
+        \   sudo rm -rf -- \"$dir\"\n  fi\ndone\npython -m pip cache purge || true\nsudo apt-get clean\necho \"Disk after\
+        \ cleanup:\"\ndf -h / /tmp\nfree_kib=$(df -Pk / | awk 'NR==2 {print $4}')\nif [ \"$free_kib\" -lt 10485760 ]; then\n\
+        \  echo \"::error::Backend CI needs at least 10 GiB disk free before heavy dependency install (KiB=$free_kib)\"\n\
+        \  exit 1\nfi\n"
+    - name: Install dependencies
+      run: 'python -m pip install --upgrade pip
+
+        python -m pip install --no-cache-dir --no-compile -r requirements-dev.txt
+
+        '
+    - name: Typed greeting and spoken plan-hold both complete
+      run: 'python -m pytest -q tests/operators/test_agent_intelligence.py::test_shared_kernel_typed_and_spoken_plan_hold_both_complete
+        tests/operators/test_agent_intelligence.py::test_execute_task_streaming_does_not_rebind_module_imports tests/operators/test_agent_intelligence.py::test_shared_runtime_typed_normal_turn_emits_composer_and_complete
+        tests/operators/test_agent_intelligence.py::test_shared_runtime_typed_read_clarify_emits_composer tests/operators/test_agent_intelligence.py::test_shared_runtime_shortcut_complete_carries_task_state
+        tests/operators/test_agent_intelligence.py::test_shared_runtime_write_approval_does_not_invoke_provider tests/services/test_voice_session_service.py::test_operator_turn_speaks_perceive_before_kernel
+        tests/services/test_voice_session_service.py::test_voice_cancel_near_approval_emits_cancelled tests/services/test_platform_execution_2_0_a_invariants.py::test_execute_task_streaming_does_not_shadow_asyncio_or_composer
+        tests/services/test_platform_execution_2_0_a_invariants.py::test_execute_task_streaming_has_no_branch_local_asyncio_import
+
+        '
+      env:
+        APP_ENV: dev
+        SUPABASE_URL: https://test.supabase.co
+        SUPABASE_ANON_KEY: anon-test
+        SUPABASE_SERVICE_ROLE_KEY: service-role-test
+        SUPABASE_JWT_SECRET: jwt-secret-test
+        OPENAI_API_KEY: sk-test-openai
+    needs:
+    - dispatch_contract
+    if: ${{ always() && needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected),
+      'ci') && ((!cancelled() && (true))) }}
+    concurrency:
+      group: ${{ format('candidate-{0}-{1}-{2}', format('ci-{0}', github.event_name == 'pull_request' && format('pr-{0}',
+        github.event.pull_request.number) || github.ref), 'ci__shared-runtime-gate', toJSON(matrix)) }}
+      cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  ci__backend:
+    name: Backend (pytest)
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+        cache: pip
+        cache-dependency-path: backend/requirements.txt
+    - name: Reclaim unused hosted-runner SDKs before Python dependencies
+      run: "set -euo pipefail\necho \"Disk before cleanup:\"\ndf -h / /tmp\nfor dir in /usr/local/lib/android /usr/share/dotnet\
+        \ /opt/ghc /usr/local/share/powershell; do\n  if [ -d \"$dir\" ]; then\n    echo \"Removing unused SDK: $dir\"\n \
+        \   sudo rm -rf -- \"$dir\"\n  fi\ndone\npython -m pip cache purge || true\nsudo apt-get clean\necho \"Disk after\
+        \ cleanup:\"\ndf -h / /tmp\nfree_kib=$(df -Pk / | awk 'NR==2 {print $4}')\nif [ \"$free_kib\" -lt 10485760 ]; then\n\
+        \  echo \"::error::Backend CI needs at least 10 GiB disk free before heavy dependency install (KiB=$free_kib)\"\n\
+        \  exit 1\nfi\n"
+    - name: Install dependencies
+      run: 'python -m pip install --upgrade pip
+
+        python -m pip install --no-cache-dir --no-compile -r requirements-dev.txt
+
+        '
+    - name: PR605 runtime mounted-route and dependency export
+      run: 'mkdir -p "$RUNNER_TEMP/pr605"
+
+        timeout 120s python scripts/pr605_runtime_dependency_inventory.py --output "$RUNNER_TEMP/pr605/runtime-route-dependencies.json"
+        --depth 3
+
+        '
+      env:
+        APP_ENV: dev
+        SUPABASE_URL: https://test.supabase.co
+        SUPABASE_ANON_KEY: anon-test
+        SUPABASE_SERVICE_ROLE_KEY: service-role-test
+        SUPABASE_JWT_SECRET: jwt-secret-test
+        OPENAI_API_KEY: sk-test-openai
+    - name: Upload PR605 exact-head runtime route inventory
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: pr605-runtime-route-dependencies
+        path: ${{ runner.temp }}/pr605/runtime-route-dependencies.json
+        if-no-files-found: warn
+    - name: Pinned Mem0 SDK engineering integration (isolated, no provider calls)
+      run: 'python -m venv "$RUNNER_TEMP/mem0-engine-venv"
+
+        "$RUNNER_TEMP/mem0-engine-venv/bin/pip" install --require-hashes -r ../scripts/memory_benchmark/engine-requirements.lock
+
+        mkdir -p "$RUNNER_TEMP/mem0-engine-source"
+
+        git -C "$RUNNER_TEMP/mem0-engine-source" init
+
+        git -C "$RUNNER_TEMP/mem0-engine-source" remote add origin https://github.com/mem0ai/mem0.git
+
+        git -C "$RUNNER_TEMP/mem0-engine-source" fetch --depth=1 origin 26cdefb46600c0fa5953c4b5ee5003c125539fc4
+
+        git -C "$RUNNER_TEMP/mem0-engine-source" checkout --detach FETCH_HEAD
+
+        test "$(git -C "$RUNNER_TEMP/mem0-engine-source" rev-parse HEAD)" = 26cdefb46600c0fa5953c4b5ee5003c125539fc4
+
+        "$RUNNER_TEMP/mem0-engine-venv/bin/pip" install --no-deps --no-build-isolation "$RUNNER_TEMP/mem0-engine-source"
+
+        timeout 30s python ../scripts/memory_benchmark/audit_erasure.py --package-root "$RUNNER_TEMP/mem0-engine-source" --output
+        "$RUNNER_TEMP/mem0-erasure-audit.json"
+
+        timeout 300s python ../scripts/memory_benchmark/run_engine.py --engine-python "$RUNNER_TEMP/mem0-engine-venv/bin/python"
+        --output "$RUNNER_TEMP/mem0-sdk-report.json"
+
+        '
+      env:
+        APP_ENV: dev
+        SUPABASE_URL: https://test.supabase.co
+        SUPABASE_ANON_KEY: anon-test
+        SUPABASE_SERVICE_ROLE_KEY: service-role-test
+        OPENAI_API_KEY: sk-test-openai
+    - name: Upload sanitized Mem0 engineering evidence
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: mem0-sdk-engineering-evidence
+        path: '${{ runner.temp }}/mem0-sdk-report.json
+
+          ${{ runner.temp }}/mem0-erasure-audit.json
+
+          '
+        if-no-files-found: warn
+    - name: Provision FFmpeg for bounded media decoder tests
+      timeout-minutes: 7
+      run: "set -euo pipefail\nif ! command -v ffmpeg >/dev/null 2>&1; then\n  sudo env DEBIAN_FRONTEND=noninteractive timeout\
+        \ 90s apt-get -o Acquire::Retries=1 -o Acquire::http::Timeout=20 update -y -q\n  sudo env DEBIAN_FRONTEND=noninteractive\
+        \ timeout 240s apt-get -o Acquire::Retries=1 -o Acquire::http::Timeout=20 install -y -q --no-install-recommends ffmpeg\n\
+        fi\n"
+    - name: Verify bounded media decoder
+      timeout-minutes: 1
+      run: 'set -euo pipefail
+
+        command -v ffmpeg
+
+        ffmpeg -version | head -n 1
+
+        '
+    - name: Install pgvector for migration tests
+      run: sudo apt-get install -y -q postgresql-16-pgvector || echo "pgvector unavailable; vector migration tests will skip"
+    - name: ECO-001 consolidated PostgreSQL and authenticated ingress acceptance
+      timeout-minutes: 20
+      env:
+        APP_ENV: dev
+        SUPABASE_URL: https://test.supabase.co
+        SUPABASE_ANON_KEY: anon-test
+        SUPABASE_SERVICE_ROLE_KEY: service-role-test
+        SUPABASE_JWT_SECRET: jwt-secret-test
+        OPENAI_API_KEY: sk-test-openai
+      run: python scripts/eco001_master_acceptance.py
+    - name: Lint confidence honesty (Module C)
+      working-directory: .
+      run: 'python scripts/lint-confidence-honesty.py
+
+        python scripts/lint-confidence-honesty.py --report
+
+        python -c "import json; d=json.load(open(''docs/delivery/confidence-honesty-debt.json'')); print(f\"DEBT_TRACKER active={d[''active_findings'']}
+        grandfathered_remaining={d[''grandfathered_remaining'']} fixed_since_baseline={len(d.get(''fixed_since_baseline'')
+        or [])} target={d[''target'']}\")"
+
+        '
+    - name: Lint smoke harness (conversation isolation)
+      working-directory: .
+      run: python scripts/lint-smoke-harness.py
+    - name: Golden benchmark (Phase A + traffic scenarios)
+      run: python -m pytest tests/services/test_phase_a_cognitive_runtime_benchmark.py tests/services/test_golden_benchmark_traffic.py
+        tests/services/test_action_execute_now.py -q
+      env:
+        APP_ENV: dev
+        SUPABASE_URL: https://test.supabase.co
+        SUPABASE_ANON_KEY: anon-test
+        SUPABASE_SERVICE_ROLE_KEY: service-role-test
+        SUPABASE_JWT_SECRET: jwt-secret-test
+        OPENAI_API_KEY: sk-test-openai
+    - name: Install PostgreSQL server (write invoke idempotency gate)
+      run: 'sudo apt-get update -y -q
+
+        sudo apt-get install -y -q postgresql postgresql-client
+
+        PGVER="$(ls /usr/lib/postgresql | sort -V | tail -1)"
+
+        echo "GRAVITRE_PG_BIN=/usr/lib/postgresql/${PGVER}/bin" >> "$GITHUB_ENV"
+
+        '
+    - name: PR605 lossless run status Postgres migration certification (must not skip)
+      run: 'python -m pytest tests/db/test_pr605_run_status_contract_pg.py -q --no-header -rs
+
+        python -c "from tests.db.pg_harness import PG_BIN; assert PG_BIN is not None, ''PostgreSQL binaries required''"
+
+        '
+      env:
+        APP_ENV: dev
+        GRAVITRE_REQUIRE_PG: '1'
+    - name: Write invoke idempotency Postgres acceptance (must not skip)
+      run: python -m pytest tests/db/test_write_invoke_idempotency_pg.py -q --no-header
+      env:
+        APP_ENV: dev
+        GRAVITRE_REQUIRE_PG: '1'
+    - name: Marketplace certification PostgreSQL acceptance (must not skip)
+      working-directory: backend
+      run: GRAVITRE_REQUIRE_PG=1 APP_ENV=dev python -m pytest -q tests/db/test_marketplace_certification_pg.py
+    - name: Founder billing safety PostgreSQL acceptance (must not skip)
+      run: python -m pytest tests/db/test_founder_billing_safety_pg.py tests/billing/test_billing_safety_controls.py -q --no-header
+      env:
+        APP_ENV: dev
+        GRAVITRE_REQUIRE_PG: '1'
+    - name: Assistant atomic usage Postgres acceptance (must not skip)
+      run: python -m pytest tests/db/test_assistant_usage_atomic_pg.py -q --no-header
+      env:
+        APP_ENV: dev
+        GRAVITRE_REQUIRE_PG: '1'
+    - name: Mixed-source atomic usage Postgres acceptance (must not skip)
+      run: python -m pytest tests/db/test_atomic_usage_all_sources_pg.py -q --no-header
+      env:
+        APP_ENV: dev
+        GRAVITRE_REQUIRE_PG: '1'
+    - name: Durable assistant recovery Postgres acceptance (must not skip)
+      run: 'python -m pytest tests/db/test_assistant_billing_recovery_pg.py -q --no-header
+
+        python -m pytest tests/services/test_assistant_billing_contract.py tests/billing/test_usage_scheduler.py -q --no-header
+
+        '
+      env:
+        APP_ENV: dev
+        GRAVITRE_REQUIRE_PG: '1'
+    - name: Stripe outbox PostgreSQL acceptance (must not skip)
+      run: 'python -m pytest tests/db/test_stripe_meter_outbox_pg.py -q --no-header
+
+        python -m pytest tests/billing/test_stripe_meter_outbox.py tests/billing/test_stripe_meter_intents.py -q --no-header
+
+        '
+      env:
+        APP_ENV: dev
+        GRAVITRE_REQUIRE_PG: '1'
+    - name: Company intelligence source revocation contract
+      run: python -m pytest tests/services/test_company_intelligence_memory_lineage.py tests/test_company_intelligence_prompt_injection.py
+        -q --no-header
+      env:
+        APP_ENV: dev
+    - name: Workflow model comparison contract (no provider requests)
+      run: 'python -m pytest tests/services/test_llm_workflow_evaluation.py -q --no-header
+
+        python ../scripts/evaluate_llm_workflows.py --models gpt-5.4-mini
+
+        '
+      env:
+        APP_ENV: dev
+    - name: Memory lineage write integrity contract
+      run: python -m pytest -q --no-header tests/services/test_memory_source_lineage.py tests/services/test_memory_lineage_coverage.py
+        tests/services/test_memory_source_liveness.py
+      env:
+        APP_ENV: dev
+    - name: Workflow approval projection contract
+      run: python -m pytest -q tests/services/test_react_canvas_write_gate.py tests/services/test_workflow_approval_scope_audit.py
+        tests/services/test_write_authority_spine.py tests/services/test_write_approval_fingerprints.py
+    - name: Resolved MCP approval and verification contract
+      run: python -m pytest -q --no-header tests/services/test_mcp_approval_decision.py tests/services/test_mcp_approval_binding.py
+        tests/routers/test_admin_queue_approval_binding.py tests/test_mcp_tool_layer.py tests/capabilities/test_portable_mcp_write_verification.py
+      env:
+        APP_ENV: dev
+    - name: Connector credential tenant-scope contract
+      run: python -m pytest tests/connectors/test_connector_secret_org_scope.py tests/routers/test_connectors_list_secrets_batch.py
+        tests/connectors/test_twilio_api_key_auth.py tests/connectors/test_semrush_api.py tests/connectors/test_segment_api.py
+        tests/services/test_source_lifecycle.py -q --no-header
+      env:
+        APP_ENV: dev
+    - name: Assistant crash-gap recovery contract
+      working-directory: .
+      run: python -m pytest scripts/tests/test_reconcile_assistant_billing.py -q --no-header
+      env:
+        APP_ENV: dev
+    - name: Install and start Redis (workflow queue integration)
+      run: 'sudo apt-get install -y -q redis-server
+
+        sudo systemctl start redis-server
+
+        '
+    - name: Workflow queue Redis integration
+      run: python -m pytest tests/workers/test_workflow_queue_redis_integration.py -q --no-header
+      env:
+        APP_ENV: dev
+        REDIS_URL: redis://127.0.0.1:6379/15
+        GRAVITRE_REQUIRE_REDIS: '1'
+    - name: Assistant stream contract
+      run: python -m pytest tests/test_assistant_unified_pipeline.py -q --no-header
+      env:
+        APP_ENV: dev
+        SUPABASE_URL: https://test.supabase.co
+        SUPABASE_ANON_KEY: anon-test
+        SUPABASE_SERVICE_ROLE_KEY: service-role-test
+        SUPABASE_JWT_SECRET: jwt-secret-test
+        OPENAI_API_KEY: sk-test-openai
+    - name: Approved Agency Agents offline lifecycle and streaming contracts
+      run: python -m pytest -p tests.offline_network -q tests/test_offline_network_guard.py tests/marketplace/test_approved_agency_enrichment.py
+        tests/marketplace/test_agency_agents_catalog.py tests/routers/test_marketplace_install_pack_routes.py tests/services/test_native_agent_adapters.py
+        tests/marketplace/test_paid_media.py tests/services/test_pr581_shared_prompt_compatibility.py tests/operators/test_agent_intelligence.py::test_streaming_emits_text_events_when_react_returns_answer_only
+      env:
+        APP_ENV: dev
+        SUPABASE_URL: https://test.supabase.co
+        SUPABASE_ANON_KEY: anon-test
+        SUPABASE_SERVICE_ROLE_KEY: service-role-test
+        SUPABASE_JWT_SECRET: jwt-secret-test
+        OPENAI_API_KEY: sk-test-openai
+        GOOGLE_API_KEY: test-google-key
+        ANTHROPIC_API_KEY: sk-test-anthropic
+    - name: Run tests
+      run: python -m pytest -q
+      env:
+        APP_ENV: dev
+        SUPABASE_URL: https://test.supabase.co
+        SUPABASE_ANON_KEY: anon-test
+        SUPABASE_SERVICE_ROLE_KEY: service-role-test
+        SUPABASE_JWT_SECRET: jwt-secret-test
+        OPENAI_API_KEY: sk-test-openai
+        GRAVITRE_SMOKE_RUN: ''
+        GRAVITREE_SMOKE_RUN: ''
+        GRAVITRE_CONVERSATION_SMOKE: ''
+        GRAVITREE_CONVERSATION_SMOKE: ''
+    - name: Scripted voice external-source isolation (offline)
+      run: python -m pytest -p tests.offline_network -q tests/services/pipecat_voice/test_interrupt_intents.py tests/services/pipecat_voice/test_cognitive_llm_barge_in_and_seed.py
+        tests/services/pipecat_voice/test_cognitive_llm_speculative_adoption.py tests/services/pipecat_voice/test_cognitive_llm_text_streaming.py
+        tests/services/pipecat_voice/test_cognitive_llm_tool_latency.py tests/services/pipecat_voice/test_cognitive_llm_tool_narration.py
+        tests/services/pipecat_voice/test_cognitive_llm_tts_word_boundary_regression.py tests/services/pipecat_voice/test_cognitive_llm_turn_trace.py
+        tests/services/pipecat_voice/test_conversation_tier_speculative_parity.py tests/services/pipecat_voice/test_speculative_bounds_and_revisions.py
+        tests/services/pipecat_voice/test_spoken_formatting.py tests/services/pipecat_voice/test_scripted_voice_external_sources.py
+        tests/services/pipecat_voice/test_voice_shared_turn_guardrails.py tests/services/test_ai_guardrails.py tests/services/test_model_policy_service.py
+        tests/services/test_conversation_evaluation_bundle.py tests/services/test_conversation_benchmark_evidence.py tests/services/test_catalog_channel_authority_matrix.py
+        tests/services/test_guidance_optimization.py tests/services/test_agent_creation_dialogue.py tests/services/test_dialogue_evaluation_feedback.py
+        tests/services/test_social_intelligence_evaluation_bundle.py tests/services/test_governed_memory_benchmark.py tests/services/test_memory_quarantine_boundaries.py
+        tests/services/test_mem0_engine_protocol.py
+      env:
+        APP_ENV: dev
+        SUPABASE_URL: https://test.supabase.co
+        SUPABASE_ANON_KEY: anon-test
+        SUPABASE_SERVICE_ROLE_KEY: service-role-test
+        SUPABASE_JWT_SECRET: jwt-secret-test
+        OPENAI_API_KEY: sk-test-openai
+        GOOGLE_API_KEY: test-google-key
+        ANTHROPIC_API_KEY: sk-test-anthropic
+    - name: Cognitive regression suite (structural + targeted pytest)
+      working-directory: .
+      run: node scripts/cognitive-regression-suite.mjs
+      env:
+        COGNITIVE_REGRESSION_RUN_PYTEST: '1'
+        APP_ENV: dev
+        SUPABASE_URL: https://test.supabase.co
+        SUPABASE_ANON_KEY: anon-test
+        SUPABASE_SERVICE_ROLE_KEY: service-role-test
+        SUPABASE_JWT_SECRET: jwt-secret-test
+        OPENAI_API_KEY: sk-test-openai
+    - name: Marketplace QA (schemas, install, RLS)
+      run: python -m pytest tests/marketplace/ -q
+      env:
+        APP_ENV: dev
+        SUPABASE_URL: https://test.supabase.co
+        SUPABASE_ANON_KEY: anon-test
+        SUPABASE_SERVICE_ROLE_KEY: service-role-test
+        SUPABASE_JWT_SECRET: jwt-secret-test
+        OPENAI_API_KEY: sk-test-openai
+    needs:
+    - dispatch_contract
+    if: ${{ always() && needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected),
+      'ci') && ((!cancelled() && (true))) }}
+    concurrency:
+      group: ${{ format('candidate-{0}-{1}-{2}', format('ci-{0}', github.event_name == 'pull_request' && format('pr-{0}',
+        github.event.pull_request.number) || github.ref), 'ci__backend', toJSON(matrix)) }}
+      cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  ci__security-scan:
+    name: Dependency audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+    - name: pip-audit (backend)
+      run: python scripts/pip-audit-backend.py
+    - name: pip-audit (isolated SDK worker lock)
+      run: 'python -m pip install pip-audit
+
+        python -m pip_audit --no-deps --disable-pip -r scripts/memory_benchmark/engine-audit.txt
+
+        '
+    - uses: pnpm/action-setup@v4
+      with:
+        version: 10
+    - uses: actions/setup-node@v4
+      with:
+        node-version: 22
+        cache: pnpm
+        cache-dependency-path: apps/web/pnpm-lock.yaml
+    - name: pnpm audit (web, fail on critical)
+      working-directory: apps/web
+      run: "pnpm install --frozen-lockfile\n# Retry: npm audit registry occasionally returns gzip/binary that pnpm cannot\
+        \ JSON.parse.\nfor attempt in 1 2 3 4 5; do\n  if out=\"$(pnpm audit --audit-level=critical 2>&1)\"; then\n    echo\
+        \ \"$out\"\n    exit 0\n  fi\n  echo \"$out\"\n  if echo \"$out\" | grep -q \"Unexpected token\"; then\n    echo \"\
+        pnpm audit registry parse flake (attempt $attempt) \u2014 retrying...\"\n    sleep $((attempt * 3))\n    continue\n\
+        \  fi\n  exit 1\ndone\necho \"pnpm audit still failing after retries on registry parse flake \u2014 continuing (pip-audit\
+        \ already ran)\"\nexit 0\n"
+    - name: pnpm audit (web, high report)
+      working-directory: apps/web
+      continue-on-error: true
+      run: pnpm audit --audit-level=high
+    needs:
+    - dispatch_contract
+    if: ${{ always() && needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected),
+      'ci') && ((!cancelled() && (true))) }}
+    concurrency:
+      group: ${{ format('candidate-{0}-{1}-{2}', format('ci-{0}', github.event_name == 'pull_request' && format('pr-{0}',
+        github.event.pull_request.number) || github.ref), 'ci__security-scan', toJSON(matrix)) }}
+      cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  ci__billing-e2e:
+    name: Billing E2E (Playwright)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    if: ${{ always() && needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected),
+      'ci') && (!cancelled() && (needs.ci__backend.result == 'success' && needs.ci__web.result == 'success') && (github.event_name
+      == 'workflow_dispatch')) }}
+    needs:
+    - dispatch_contract
+    - ci__web
+    - ci__backend
+    steps:
+    - uses: actions/checkout@v4
+    - uses: pnpm/action-setup@v4
+      with:
+        version: 10
+    - uses: actions/setup-node@v4
+      with:
+        node-version: 22
+        cache: npm
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+        cache: pip
+        cache-dependency-path: backend/requirements.txt
+    - name: Reclaim unused hosted-runner SDKs before Python dependencies
+      run: "set -euo pipefail\necho \"Disk before cleanup:\"\ndf -h / /tmp\nfor dir in /usr/local/lib/android /usr/share/dotnet\
+        \ /opt/ghc /usr/local/share/powershell; do\n  if [ -d \"$dir\" ]; then\n    echo \"Removing unused SDK: $dir\"\n \
+        \   sudo rm -rf -- \"$dir\"\n  fi\ndone\npython -m pip cache purge || true\nsudo apt-get clean\necho \"Disk after\
+        \ cleanup:\"\ndf -h / /tmp\nfree_kib=$(df -Pk / | awk 'NR==2 {print $4}')\nif [ \"$free_kib\" -lt 10485760 ]; then\n\
+        \  echo \"::error::Backend CI needs at least 10 GiB disk free before heavy dependency install (KiB=$free_kib)\"\n\
+        \  exit 1\nfi\n"
+    - name: Install root + web + backend dependencies
+      run: 'npm install
+
+        cd apps/web && pnpm install --frozen-lockfile
+
+        cd ../../backend
+
+        python -m pip install --upgrade pip
+
+        python -m pip install --no-cache-dir --no-compile -r requirements-dev.txt
+
+        '
+    - name: Install Playwright Chromium
+      run: npx playwright install --with-deps chromium
+    - name: Run billing Playwright suite
+      run: npm run test:e2e
+      env:
+        CI: 'true'
+        SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+        SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        SUPABASE_JWT_SECRET: ${{ secrets.SUPABASE_JWT_SECRET }}
+        NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+        NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
+        STRIPE_PRICE_ID_NODE_MONTHLY: ${{ secrets.STRIPE_PRICE_ID_NODE_MONTHLY }}
+        FASTAPI_BASE_URL: http://127.0.0.1:8000
+        PLAYWRIGHT_BASE_URL: http://localhost:3000
+        NEXT_PUBLIC_PLAYWRIGHT_E2E: '1'
+    concurrency:
+      group: ${{ format('candidate-{0}-{1}-{2}', format('ci-{0}', github.event_name == 'pull_request' && format('pr-{0}',
+        github.event.pull_request.number) || github.ref), 'ci__billing-e2e', toJSON(matrix)) }}
+      cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  ci__mcp-crash-acceptance:
+    name: MCP approval crash/restart acceptance (isolated)
+    if: ${{ always() && needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected),
+      'ci') && (!cancelled() && (true) && (github.event_name == 'pull_request' && github.event.pull_request.number == 611
+      && github.event.pull_request.head.repo.full_name == github.repository && github.head_ref == 'feat/master-qa-tranche27-orchestration'))
+      }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    environment: acceptance
+    defaults:
+      run:
+        working-directory: backend
+    permissions:
+      contents: read
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        persist-credentials: false
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+        cache: pip
+        cache-dependency-path: backend/requirements.txt
+    - name: Prepare acceptance dependencies
+      run: 'python -m pip install --upgrade pip
+
+        python -m pip install --no-cache-dir --no-compile -r requirements-dev.txt
+
+        '
+    - name: Execute isolated worker-death acceptance
+      env:
+        MCP_CRASH_ACCEPTANCE: '1'
+        MCP_ACCEPTANCE_URL: ${{ vars.MCP_ACCEPTANCE_URL }}
+        MCP_ACCEPTANCE_ORG_ID: ${{ vars.MCP_ACCEPTANCE_ORG_ID }}
+        MCP_ACCEPTANCE_SERVICE_KEY: ${{ secrets.MCP_ACCEPTANCE_SERVICE_KEY }}
+      run: 'set -euo pipefail
+
+        python scripts/mcp_approval_crash_acceptance.py
+
+        '
+    - name: Execute isolated connector_chat crash/restart acceptance
+      env:
+        MCP_CRASH_ACCEPTANCE: '1'
+        MCP_ACCEPTANCE_URL: ${{ vars.MCP_ACCEPTANCE_URL }}
+        MCP_ACCEPTANCE_ORG_ID: ${{ vars.MCP_ACCEPTANCE_ORG_ID }}
+        MCP_ACCEPTANCE_SERVICE_KEY: ${{ secrets.MCP_ACCEPTANCE_SERVICE_KEY }}
+      run: 'set -euo pipefail
+
+        python scripts/connector_chat_crash_acceptance.py
+
+        '
+    - name: Execute connector_chat canonical ledger acceptance (isolated)
+      env:
+        MCP_CRASH_ACCEPTANCE: '1'
+        MCP_ACCEPTANCE_URL: ${{ vars.MCP_ACCEPTANCE_URL }}
+        MCP_ACCEPTANCE_ORG_ID: ${{ vars.MCP_ACCEPTANCE_ORG_ID }}
+        MCP_ACCEPTANCE_SERVICE_KEY: ${{ secrets.MCP_ACCEPTANCE_SERVICE_KEY }}
+      run: 'set -euo pipefail
+
+        python scripts/connector_chat_ledger_acceptance.py
+
+        '
+    - name: Execute isolated shared-ledger crash/restart acceptance
+      env:
+        MCP_CRASH_ACCEPTANCE: '1'
+        MCP_ACCEPTANCE_URL: ${{ vars.MCP_ACCEPTANCE_URL }}
+        MCP_ACCEPTANCE_ORG_ID: ${{ vars.MCP_ACCEPTANCE_ORG_ID }}
+        MCP_ACCEPTANCE_SERVICE_KEY: ${{ secrets.MCP_ACCEPTANCE_SERVICE_KEY }}
+      run: 'set -euo pipefail
+
+        python scripts/connector_chat_ledger_crash_acceptance.py
+
+        '
+    needs:
+    - dispatch_contract
+    concurrency:
+      group: ${{ format('candidate-{0}-{1}-{2}', format('ci-{0}', github.event_name == 'pull_request' && format('pr-{0}',
+        github.event.pull_request.number) || github.ref), 'ci__mcp-crash-acceptance', toJSON(matrix)) }}
+      cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  repair_root_npm_lock__repair-root-npm-lock:
+    if: ${{ always() && needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected),
+      'repair-root-npm-lock') && (!cancelled() && (true) && (github.event.pull_request.head.repo.full_name == github.repository
+      && github.event.pull_request.number == 557)) }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        ref: ${{ github.event.pull_request.head.sha }}
+        persist-credentials: true
+    - uses: actions/setup-node@v4
+      with:
+        node-version: '22'
+    - name: Generate and verify committed root npm lockfile
+      run: 'npm install --package-lock-only --ignore-scripts --no-audit --no-fund
+
+        npm ci --ignore-scripts --no-audit --no-fund
+
+        '
+    - name: Commit only corrected npm lockfile, if changed
+      env:
+        TARGET_BRANCH: ${{ github.event.pull_request.head.ref }}
+      run: "if git diff --quiet -- package-lock.json; then\n  echo 'Root lockfile already matches package manifest.'\n  exit\
+        \ 0\nfi\ngit config user.name 'github-actions[bot]'\ngit config user.email '41898282+github-actions[bot]@users.noreply.github.com'\n\
+        git add -- package-lock.json\ngit commit -m 'fix: synchronize root npm lockfile for frozen billing acceptance'\ngit\
+        \ push origin HEAD:\"$TARGET_BRANCH\"\n"
+    name: repair-root-npm-lock
+    needs:
+    - dispatch_contract
+    permissions:
+      contents: write
+  source_outcomes:
+    name: Record independent source workflow outcomes
+    if: ${{ always() && needs.dispatch_contract.result == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    permissions: {}
+    needs:
+    - upstream_contract
+    - dispatch_contract
+    - ci__web
+    - ci__integration-smoke-test
+    - ci__shared-runtime-gate
+    - ci__backend
+    - ci__security-scan
+    - ci__billing-e2e
+    - ci__mcp-crash-acceptance
+    - repair_root_npm_lock__repair-root-npm-lock
+    steps:
+    - name: Bind source outcomes to this run
+      shell: python
+      run: "import json, os\nsources = json.loads(os.environ['SOURCE_JOBS'])\nneeds = json.loads(os.environ['JOB_RESULTS'])\n\
+        selected = json.loads(os.environ['SELECTED'])\noutcomes = {}\nfor name, source in sources.items():\n    if name not\
+        \ in selected:\n        continue\n    results = [needs[key]['result'] for key in source['jobs']]\n    outcome = ('failure'\
+        \ if 'failure' in results else 'cancelled' if 'cancelled' in results\n               else 'success' if 'success' in\
+        \ results else 'skipped')\n    outcomes[source['display_name']] = outcome\nevidence = {'run_id': int(os.environ['GITHUB_RUN_ID']),\
+        \ 'head_sha': os.environ['GITHUB_SHA'],\n            'source_outcomes': outcomes}\nwith open('canonical-workflow-outcomes.json',\
+        \ 'w') as output:\n    json.dump(evidence, output)\n"
+      env:
+        SOURCE_JOBS: '{"ci": {"display_name": "CI", "jobs": ["ci__web", "ci__integration-smoke-test", "ci__shared-runtime-gate",
+          "ci__backend", "ci__security-scan", "ci__billing-e2e", "ci__mcp-crash-acceptance"]}, "repair-root-npm-lock": {"display_name":
+          "Repair root npm lockfile (guarded)", "jobs": ["repair_root_npm_lock__repair-root-npm-lock"]}}'
+        JOB_RESULTS: '{"ci__web": {"result": "${{ needs.ci__web.result }}"}, "ci__integration-smoke-test": {"result": "${{
+          needs.ci__integration-smoke-test.result }}"}, "ci__shared-runtime-gate": {"result": "${{ needs.ci__shared-runtime-gate.result
+          }}"}, "ci__backend": {"result": "${{ needs.ci__backend.result }}"}, "ci__security-scan": {"result": "${{ needs.ci__security-scan.result
+          }}"}, "ci__billing-e2e": {"result": "${{ needs.ci__billing-e2e.result }}"}, "ci__mcp-crash-acceptance": {"result":
+          "${{ needs.ci__mcp-crash-acceptance.result }}"}, "repair_root_npm_lock__repair-root-npm-lock": {"result": "${{ needs.repair_root_npm_lock__repair-root-npm-lock.result
+          }}"}}'
+        SELECTED: ${{ needs.dispatch_contract.outputs.selected }}
+    - uses: actions/upload-artifact@v4
+      with:
+        name: canonical-workflow-outcomes-01-core
+        path: canonical-workflow-outcomes.json
+        if-no-files-found: error
+        retention-days: 14

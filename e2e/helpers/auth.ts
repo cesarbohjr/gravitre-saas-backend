@@ -1,6 +1,6 @@
 import fs from "node:fs"
 import path from "node:path"
-import type { Page } from "@playwright/test"
+import { expect, type Page } from "@playwright/test"
 
 const FIXTURES_PATH = path.resolve(__dirname, "..", ".fixtures", "billing-users.json")
 
@@ -39,14 +39,21 @@ export async function loginWithPassword(page: Page, email: string, password: str
   } finally {
     page.off("pageerror", recordError)
   }
-  await page.getByPlaceholder("you@company.com").fill(email)
-  await page.getByPlaceholder("Enter your password").fill(password)
+  // Animated login transitions can briefly expose two copies of the form. Wait
+  // for a single hydrated, visible login form rather than filling an arbitrary
+  // duplicate (which could be stale or detached).
+  const loginForm = page.locator("form:visible").filter({
+    has: page.getByPlaceholder("you@company.com"),
+  })
+  await expect(loginForm).toHaveCount(1, { timeout: 30_000 })
+  await loginForm.getByPlaceholder("you@company.com").fill(email)
+  await loginForm.getByPlaceholder("Enter your password").fill(password)
   // MarketingProviders performs a document reload when sign-in enters the app.
   // Wait for that bridge to finish before another protected-page navigation.
   const appDocumentReady = page.waitForEvent("domcontentloaded", { timeout: 90_000 })
     .then(() => true, () => false)
   const authenticated = page.waitForResponse(response => new URL(response.url()).pathname === "/auth/v1/token" && response.request().method() === "POST", { timeout: 30_000 })
-  await page.getByRole("button", { name: "Sign in" }).click()
+  await loginForm.getByRole("button", { name: "Sign in" }).click()
   const response = await authenticated.catch(async () => {
     throw new Error(`Supabase sign-in sent no completed token response: ${(await page.locator("body").innerText()).slice(-6000)}`)
   })

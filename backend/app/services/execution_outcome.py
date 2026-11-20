@@ -27,6 +27,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Any, Literal
 from uuid import uuid4
+from app.core.durable_insert import insert_once, outcome_delivery_id
 
 from app.core.logging import get_logger
 from app.core.safe_dict import safe_normalize_stored_dict
@@ -160,6 +161,31 @@ class FinalizeExecutionOutcomeResult:
     learning_event: str | None
     timestamp: str
     fanout: dict[str, bool]
+
+
+def require_workflow_terminal_outcome(
+    client: Any, result: FinalizeExecutionOutcomeResult, *, run_id: str,
+) -> str:
+    """Expose only the canonical terminal decision to workflow callers.
+
+    Step rollups express intent. The finalizer arbitrates concurrent terminals
+    and may decline persistence. A late step can also follow a winning terminal
+    transaction, so refresh its projection from locked current source truth.
+    """
+    status = getattr(result, "status", None)
+    receipt = getattr(result, "fanout", None)
+    if (not isinstance(status, str) or not is_terminal_run_status(status)
+            or getattr(result, "run_id", None) != run_id or not isinstance(receipt, dict)):
+        raise RuntimeError("Canonical workflow terminal status was not acknowledged")
+    if (receipt.get("persistence_failed") is True
+            or (receipt.get("run_persisted") is not True
+                and receipt.get("terminal_conflict") is not True)):
+        raise RuntimeError("Canonical workflow terminal persistence failed")
+    if receipt.get("terminal_conflict") is True:
+        from app.workflows.schema_sync import mirror_legacy_run_to_contract
+        if not mirror_legacy_run_to_contract(client, run_id):
+            raise RuntimeError("Canonical workflow terminal projection refresh failed")
+    return status
 
 
 def _now_iso() -> str:
@@ -310,25 +336,18 @@ def _audit_summary(event: ExecutionOutcomeEvent, status: TerminalStatus) -> str 
         source=event.source,
     )
 
-def _persist_run(client: Any, event: ExecutionOutcomeEvent, status: TerminalStatus, ts: str) -> None:
+def _persist_run(client: Any, event: ExecutionOutcomeEvent, status: TerminalStatus, ts: str) -> dict[str, Any] | None:
     if not event.persist_run or not event.run_id:
         return
-    from app.workflows.repository import merge_run_parameters, update_run
+    from app.workflows.repository import persist_run_outcome
 
     auditish = _audit_summary(event, status) if status == "failed" else event.error_summary
-    update_run(
-        client,
-        event.run_id,
-        status=status,
-        completed_at=ts,
-        error_message=auditish if status == "failed" else event.error_summary,
-        approval_status=event.approval_status,
-    )
     # Persist Module A verified output + proof fields onto the run so Runs /
     # BusinessOutcome can show recipient/subject/message id — not only chat state.
     vo = event.verified_output
+    patch: dict[str, Any] = {}
     if vo is not None:
-        patch: dict[str, Any] = {
+        patch = {
             "verified_output": {
                 "summary": vo.summary,
                 "result_url": vo.result_url or f"/runs/{event.run_id}",
@@ -338,44 +357,64 @@ def _persist_run(client: Any, event: ExecutionOutcomeEvent, status: TerminalStat
                 "integration": vo.integration,
             },
             "summary": vo.summary,
-            "notification_emitted": True,
-            "outcome_finalized": True,
+            "outcome_fanout_version": 1,
         }
-        meta = dict(event.metadata or {})
-        for key in (
-            "action_args",
-            "invoke_action",
-            "integration",
-            "tool_name",
-            "conversation_id",
-            "work_object_id",
-            "work_object_type",
-            "already_existed",
-            "outcome_effect",
-            "step_results",
-            "connector_output_refs",
-            "batch_degeneracy",
-            "population_verify",
-            "verification",
-            "verification_status",
-            "execution_lifecycle",
-        ):
-            if key in meta and meta[key] is not None:
-                patch[key] = meta[key]
-        # Phase 6 — surface nested honesty payloads from structured onto run params
-        # so BusinessOutcome projection can distinguish Phase 3 vs Phase 4 findings.
-        structured_meta = meta.get("structured") if isinstance(meta.get("structured"), dict) else {}
-        for key in ("batch_degeneracy", "population_verify", "outcome_effect"):
-            if key not in patch and isinstance(structured_meta.get(key), (dict, str)):
-                patch[key] = structured_meta[key]
-        try:
-            merge_run_parameters(client, event.run_id, patch)
-        except Exception as exc:  # noqa: BLE001
-            logger.warning(
-                "execution_outcome_verified_output_persist_failed run_id=%s error=%s",
-                event.run_id,
-                exc,
-            )
+    meta = dict(event.metadata or {})
+    proof_keys = (
+        "action_args",
+        "invoke_action",
+        "integration",
+        "tool_name",
+        "conversation_id",
+        "work_object_id",
+        "work_object_type",
+        "already_existed",
+        "outcome_effect",
+        "step_results",
+        "connector_output_refs",
+        "batch_degeneracy",
+        "population_verify",
+        "verification",
+        "outcome_rollup",
+        "requires_outcome_verification",
+        "verification_status",
+        "execution_lifecycle",
+    )
+    for key in proof_keys:
+        if key in meta and meta[key] is not None:
+            patch[key] = meta[key]
+    # Phase 6 — surface nested honesty payloads from structured onto run params
+    # so BusinessOutcome projection can distinguish Phase 3 vs Phase 4 findings.
+    structured_meta = meta.get("structured") if isinstance(meta.get("structured"), dict) else {}
+    for key in ("batch_degeneracy", "population_verify", "outcome_effect"):
+        if key not in patch and isinstance(structured_meta.get(key), (dict, str)):
+            patch[key] = structured_meta[key]
+
+    result = persist_run_outcome(
+        client, event.run_id, org_id=event.org_id, status=status,
+        parameters=patch, completed_at=ts,
+        error_message=auditish if status == "failed" else event.error_summary,
+        approval_status=event.approval_status,
+        completion_proven=_completion_proven(event.metadata), actor_id=event.actor_id,
+    )
+    if result["accepted"]:
+        # Retries deliver the first committed outcome's proof/actor, not a late
+        # caller's competing summary or recipient for the same terminal status.
+        persisted = result["parameters"]
+        if isinstance(persisted.get("verified_output"), dict):
+            event.verified_output = VerifiedOutputRef(**{
+                key: persisted["verified_output"].get(key) for key in (
+                    "summary", "result_url", "external_url", "entity_type", "entity_id", "integration")
+            })
+        for key in proof_keys:
+            if key in persisted:
+                event.metadata[key] = persisted[key]
+            else:
+                event.metadata.pop(key, None)
+        if persisted.get("terminal_outcome_version") == 2:
+            event.actor_id = persisted.get("outcome_actor_id")
+        event.error_summary = result.get("error_message")
+    return result
 
 
 def _write_audit(client: Any, event: ExecutionOutcomeEvent, status: TerminalStatus) -> str | None:
@@ -397,13 +436,15 @@ def _write_audit(client: Any, event: ExecutionOutcomeEvent, status: TerminalStat
             emit_execute_failed,
         )
 
+        delivery = ({"delivery_id": outcome_delivery_id(event.org_id, resource_id, status, "audit")}
+                    if event.persist_run else {})
         if status == "failed":
-            emit_execute_failed(client, event.org_id, actor, resource_id, voiced_error)
+            acknowledged = emit_execute_failed(client, event.org_id, actor, resource_id, voiced_error, **delivery)
         elif status == "cancelled":
-            emit_execute_cancelled(client, event.org_id, actor, resource_id)
+            acknowledged = emit_execute_cancelled(client, event.org_id, actor, resource_id, **delivery)
         else:
-            emit_execute_completed(client, event.org_id, actor, resource_id, status)
-        return _audit_action_for(status)
+            acknowledged = emit_execute_completed(client, event.org_id, actor, resource_id, status, **delivery)
+        return _audit_action_for(status) if acknowledged is True else None
 
     # Assistant/connector paths without a workflow run still need audit integrity.
     from app.workflows.audit import write_audit_event
@@ -418,7 +459,7 @@ def _write_audit(client: Any, event: ExecutionOutcomeEvent, status: TerminalStat
         )
         return None
     action = _audit_action_for(status)
-    write_audit_event(
+    acknowledged = write_audit_event(
         client,
         org_id=event.org_id,
         actor_id=actor,
@@ -433,7 +474,7 @@ def _write_audit(client: Any, event: ExecutionOutcomeEvent, status: TerminalStat
             **dict(event.metadata or {}),
         },
     )
-    return action
+    return action if acknowledged is True else None
 
 
 def _emit_notification(
@@ -456,7 +497,7 @@ def _emit_notification(
     notify_event = _notification_event_for(status)
     verified = event.verified_output or VerifiedOutputRef()
     # Always Module D house titles — caller notification_title must not bypass voice.
-    emit_notification(
+    notification_id = emit_notification(
         client,
         org_id=event.org_id,
         user_id=actor,
@@ -466,8 +507,10 @@ def _emit_notification(
         entity_ref=verified.as_entity_ref(run_id=event.run_id),
         channel_hints=dict(event.channel_hints or {"bell": True, "email": False}),
         email_context=event.email_context,
+        **({"delivery_id": outcome_delivery_id(event.org_id, event.run_id, status, "notification")}
+           if event.persist_run and event.run_id else {}),
     )
-    return notify_event
+    return notify_event if isinstance(notification_id, str) and notification_id.strip() else None
 
 
 def _resolve_workflow_id(client: Any, event: ExecutionOutcomeEvent) -> str | None:
@@ -495,7 +538,8 @@ def _record_learning(client: Any, event: ExecutionOutcomeEvent, status: Terminal
     workflow_id = event.workflow_id or ""
     run_id = event.run_id or ""
     payload = {
-        "id": str(uuid4()),
+        "id": (outcome_delivery_id(event.org_id, run_id, status, "learning")
+               if event.persist_run and run_id else str(uuid4())),
         "org_id": event.org_id,
         "outcome_event": learning_event,
         "entity_type": "workflow" if (workflow_id or run_id) else "execution",
@@ -523,7 +567,15 @@ def _record_learning(client: Any, event: ExecutionOutcomeEvent, status: Terminal
     }
 
     try:
-        client.table("intelligence_outcome_events").insert(payload).execute()
+        if event.persist_run and run_id:
+            acknowledged, _ = insert_once(client, "intelligence_outcome_events", payload,
+                identity=("org_id", "outcome_event", "workflow_run_id", "workflow_id", "entity_type", "entity_id"))
+            if not acknowledged:
+                return None
+        else:
+            response = client.table("intelligence_outcome_events").insert(payload).execute()
+            if not isinstance(response.data, list) or not response.data:
+                return None
     except Exception as exc:  # noqa: BLE001
         logger.warning(
             "execution_outcome_learning_skipped org_id=%s run_id=%s error=%s",
@@ -758,9 +810,13 @@ def _run_already_finalized(client: Any, event: ExecutionOutcomeEvent) -> bool:
         )
         data = (row.data or [{}])[0]
         status = str(data.get("status") or "")
-        params = data.get("parameters") if isinstance(data.get("parameters"), dict) else {}
+        params = safe_normalize_stored_dict(data, key="parameters")
         if not is_terminal_run_status(status):
             return False
+        if params.get("outcome_fanout_version") == 1:
+            receipt = safe_normalize_stored_dict(params, key="outcome_fanout")
+            return (status == event.status and receipt.get("status") == event.status
+                    and receipt.get("complete") is True)
         return bool(params.get("notification_emitted") or params.get("outcome_finalized"))
     except Exception as exc:  # noqa: BLE001
         logger.debug(
@@ -768,6 +824,61 @@ def _run_already_finalized(client: Any, event: ExecutionOutcomeEvent) -> bool:
             event.run_id,
             exc,
         )
+        return False
+
+
+_DURABLE_FANOUT_CHANNELS = (
+    "run_persisted", "audit_written", "notification_emitted", "learning_recorded",
+)
+
+
+def _load_fanout_receipt(client: Any, event: ExecutionOutcomeEvent) -> dict[str, Any]:
+    """Read only this tenant/run/status's versioned delivery acknowledgements."""
+    if not event.persist_run or not event.run_id:
+        return {}
+    try:
+        rows = (client.table("workflow_runs").select("status, parameters")
+                .eq("id", event.run_id).eq("org_id", event.org_id).limit(1).execute()).data
+        row = rows[0] if isinstance(rows, list) and rows else {}
+        params = safe_normalize_stored_dict(row, key="parameters")
+        receipt = safe_normalize_stored_dict(params, key="outcome_fanout")
+        if (row.get("status") == event.status
+                and params.get("outcome_fanout_version") == 1
+                and receipt.get("status") == event.status):
+            return receipt
+        if is_terminal_run_status(row.get("status")):
+            return {"stored_terminal_status": row["status"]}
+    except Exception:  # noqa: BLE001 — no acknowledgement is inferred on read failure
+        pass
+    return {}
+
+
+def _checkpoint_fanout(
+    client: Any, event: ExecutionOutcomeEvent, fanout: dict[str, bool], *, finalize: bool = False,
+) -> bool:
+    """Checkpoint successful channels for a later retry; never invoke a provider.
+
+    These are restart receipts, not a concurrent exactly-once claim. Consumers
+    still need idempotency across a crash between a side effect and its receipt.
+    """
+    if not event.persist_run or not event.run_id or not fanout["run_persisted"]:
+        return False
+    receipt = {name: fanout.get(name) is True for name in _DURABLE_FANOUT_CHANNELS}
+    try:
+        from app.workflows.repository import checkpoint_outcome_fanout
+
+        result = checkpoint_outcome_fanout(
+            client, event.run_id, org_id=event.org_id, status=event.status,
+            receipt=receipt, finalize=finalize, actor_required=bool(event.actor_id),
+        )
+        if not result["accepted"]:
+            return False
+        for name in _DURABLE_FANOUT_CHANNELS:
+            fanout[name] = result["receipt"][name]
+        return True
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("execution_outcome_checkpoint_failed run_id=%s error=%s",
+                       event.run_id, type(exc).__name__)
         return False
 
 
@@ -792,7 +903,7 @@ def finalize_execution_outcome(
     persist_run: bool = True,
     metadata: dict[str, Any] | None = None,
 ) -> FinalizeExecutionOutcomeResult:
-    """Atomic fanout for one terminal execution outcome.
+    """Persist and checkpoint core fanout for one terminal execution outcome.
 
     1. Persist/update the canonical run row (via repository.update_run → mirror).
     2. Write audit via write_audit_event (STA-274 single writer).
@@ -822,6 +933,7 @@ def finalize_execution_outcome(
         )
 
     terminal = _normalize_status(event.status)
+    event.status = terminal
     ts = event.timestamp or _now_iso()
 
     # Outcome Ownership invariant: "completed" is a verified business claim,
@@ -920,7 +1032,20 @@ def finalize_execution_outcome(
     if isinstance(event.email_context, dict) and "final_status" in event.email_context:
         event.email_context = {**event.email_context, "final_status": terminal}
 
-    if _run_already_finalized(client, event):
+    receipt = _load_fanout_receipt(client, event)
+    stored_terminal = receipt.get("stored_terminal_status")
+    terminal_conflict = stored_terminal not in {
+        None, terminal, "verification_inconclusive", "flagged_for_review",
+    }
+    if (stored_terminal in {"verification_inconclusive", "flagged_for_review"}
+            and terminal == "completed" and not _completion_proven(event.metadata)):
+        terminal_conflict = True
+    if terminal_conflict:
+        # A late caller cannot turn persisted cancellation/failure into success.
+        # Reconciliation of explicitly uncertain states remains a separate path.
+        terminal = _normalize_status(stored_terminal)
+        event.status = terminal
+    if terminal_conflict or _run_already_finalized(client, event):
         logger.info(
             "execution_outcome_idempotent_skip org_id=%s run_id=%s status=%s source=%s",
             event.org_id,
@@ -937,12 +1062,50 @@ def finalize_execution_outcome(
             timestamp=ts,
             fanout={
                 "run_persisted": True,
-                "audit_written": True,
-                "notification_emitted": True,
-                "learning_recorded": True,
-                "failure_alert_correlated": terminal == "failed",
+                # Legacy skip markers prevent duplicate historical delivery but
+                # do not prove individual channels. Versioned receipts do.
+                "audit_written": receipt.get("audit_written") is True,
+                "notification_emitted": receipt.get("notification_emitted") is True,
+                "learning_recorded": receipt.get("learning_recorded") is True,
+                "failure_alert_correlated": False,
                 "idempotent_skip": True,
+                "terminal_conflict": terminal_conflict,
             },
+        )
+
+    fanout = {
+        "run_persisted": receipt.get("run_persisted") is True,
+        "audit_written": receipt.get("audit_written") is True,
+        "notification_emitted": receipt.get("notification_emitted") is True,
+        "learning_recorded": receipt.get("learning_recorded") is True,
+        "failure_alert_correlated": False,
+        "work_object_attributed": bool(event.metadata.get("work_object_id")),
+        "play_actioned_recorded": False,
+    }
+    audit_action = _audit_action_for(terminal) if fanout["audit_written"] else None
+    notification_event = _notification_event_for(terminal) if fanout["notification_emitted"] else None
+    learning_event = _learning_event_for(terminal) if fanout["learning_recorded"] else None
+
+    try:
+        if event.persist_run and event.run_id:
+            persisted = _persist_run(client, event, terminal, ts)
+            if not isinstance(persisted, dict):
+                raise RuntimeError("outcome persistence was not acknowledged")
+            if not persisted["accepted"]:
+                return FinalizeExecutionOutcomeResult(
+                    status=persisted["status"], run_id=event.run_id, timestamp=ts,
+                    audit_action=None, notification_event=None, learning_event=None,
+                    fanout={**{key: False for key in fanout}, "terminal_conflict": True},
+                )
+            fanout["run_persisted"] = True
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("execution_outcome_run_persist_failed run_id=%s error=%s",
+                       event.run_id, type(exc).__name__)
+        return FinalizeExecutionOutcomeResult(
+            status="verification_inconclusive" if terminal == "completed" else terminal,
+            run_id=event.run_id, timestamp=ts,
+            audit_action=None, notification_event=None, learning_event=None,
+            fanout={**{key: False for key in fanout}, "persistence_failed": True},
         )
 
     try:
@@ -976,6 +1139,13 @@ def finalize_execution_outcome(
                 "work_object_type",
                 ((work_ref.get("work_object") or {}).get("objectType")),
             )
+            if event.persist_run and event.run_id:
+                from app.workflows.repository import merge_run_parameters
+                merge_run_parameters(client, event.run_id, {
+                    "work_object_id": event.metadata["work_object_id"],
+                    "work_object_type": event.metadata.get("work_object_type"),
+                })
+        fanout["work_object_attributed"] = bool(event.metadata.get("work_object_id"))
     except Exception as exc:  # noqa: BLE001
         logger.debug(
             "execution_outcome_work_object_attribution_skipped run_id=%s error=%s",
@@ -983,31 +1153,12 @@ def finalize_execution_outcome(
             exc,
         )
 
-    fanout = {
-        "run_persisted": False,
-        "audit_written": False,
-        "notification_emitted": False,
-        "learning_recorded": False,
-        "failure_alert_correlated": False,
-        "work_object_attributed": bool(event.metadata.get("work_object_id")),
-        "play_actioned_recorded": False,
-    }
-    audit_action: str | None = None
-    notification_event: str | None = None
-    learning_event: str | None = None
-
+    fanout["fanout_checkpoint_persisted"] = _checkpoint_fanout(client, event, fanout)
     try:
-        _persist_run(client, event, terminal, ts)
-        fanout["run_persisted"] = bool(event.persist_run and event.run_id)
-    except Exception as exc:  # noqa: BLE001
-        logger.warning(
-            "execution_outcome_run_persist_failed run_id=%s error=%s",
-            event.run_id,
-            exc,
-        )
-
-    try:
-        audit_action = _write_audit(client, event, terminal)
+        if fanout["audit_written"]:
+            audit_action = _audit_action_for(terminal)
+        if not fanout["audit_written"]:
+            audit_action = _write_audit(client, event, terminal)
         fanout["audit_written"] = bool(audit_action)
     except Exception as exc:  # noqa: BLE001
         logger.warning(
@@ -1016,8 +1167,12 @@ def finalize_execution_outcome(
             exc,
         )
 
+    fanout["fanout_checkpoint_persisted"] = _checkpoint_fanout(client, event, fanout)
     try:
-        notification_event = _emit_notification(client, event, terminal)
+        if fanout["notification_emitted"]:
+            notification_event = _notification_event_for(terminal)
+        if not fanout["notification_emitted"]:
+            notification_event = _emit_notification(client, event, terminal)
         fanout["notification_emitted"] = bool(notification_event)
     except Exception as exc:  # noqa: BLE001
         logger.warning(
@@ -1026,8 +1181,12 @@ def finalize_execution_outcome(
             exc,
         )
 
+    fanout["fanout_checkpoint_persisted"] = _checkpoint_fanout(client, event, fanout)
     try:
-        learning_event = _record_learning(client, event, terminal, ts)
+        if fanout["learning_recorded"]:
+            learning_event = _learning_event_for(terminal)
+        if not fanout["learning_recorded"]:
+            learning_event = _record_learning(client, event, terminal, ts)
         fanout["learning_recorded"] = bool(learning_event)
     except Exception as exc:  # noqa: BLE001
         logger.warning(
@@ -1036,6 +1195,7 @@ def finalize_execution_outcome(
             exc,
         )
 
+    fanout["fanout_checkpoint_persisted"] = _checkpoint_fanout(client, event, fanout)
     fanout["play_actioned_recorded"] = _record_play_actioned_result(
         client,
         event,
@@ -1150,6 +1310,7 @@ def finalize_execution_outcome(
         if fanout.get("play_actioned_recorded"):
             correlation.record(owner="play", stage="observed",
                                source="play_actioned")
+    fanout["fanout_checkpoint_persisted"] = _checkpoint_fanout(client, event, fanout, finalize=True)
     logger.info(
         "execution_outcome_finalized org_id=%s run_id=%s status=%s source=%s "
         "schema_version=%s fanout=%s",

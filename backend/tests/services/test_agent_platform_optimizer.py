@@ -97,3 +97,40 @@ def test_read_action_cache_and_classifier():
     set_cached_read_result("org-1", "hubspot.contacts.search", {"query": "jane"}, payload)
     cached = get_cached_read_result("org-1", "hubspot.contacts.search", {"query": "jane"})
     assert cached == payload
+
+
+def test_eco006_read_cache_is_partitioned_by_actor_account_and_environment():
+    """The same org/action/query cannot share credential-scoped provider reads."""
+    from app.services.read_action_result_cache import (
+        clear_read_action_result_cache,
+    )
+
+    clear_read_action_result_cache()
+    try:
+        args = {"query": "confidential"}
+        a = {"actor": "alice", "agent": "a1", "connector": "hubspot-a", "environment": "production"}
+        b = {**a, "actor": "bob"}
+        c = {**a, "connector": "hubspot-b"}
+        d = {**a, "environment": "preview"}
+        set_cached_read_result(
+            "tenant-a", "hubspot.contacts.search", args,
+            {"success": True, "result": {"owner": "alice"}}, scope=a,
+        )
+        assert get_cached_read_result(
+            "tenant-a", "hubspot.contacts.search", args, scope=a,
+        )["result"]["owner"] == "alice"
+        assert get_cached_read_result(
+            "tenant-a", "hubspot.contacts.search", args, scope=b,
+        ) is None
+        assert get_cached_read_result(
+            "tenant-a", "hubspot.contacts.search", args, scope=c,
+        ) is None
+        assert get_cached_read_result(
+            "tenant-a", "hubspot.contacts.search", args, scope=d,
+        ) is None
+        assert get_cached_read_result("tenant-a", "hubspot.contacts.search", args) is None
+        assert get_cached_read_result(
+            "tenant-b", "hubspot.contacts.search", args, scope=a,
+        ) is None
+    finally:
+        clear_read_action_result_cache()

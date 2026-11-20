@@ -2708,12 +2708,16 @@ async def apply_unified_turn_live(
     if (
         not human_moment
         and not result.needs_tool_sse
-        and isinstance(classification, dict)
-        and classification.get("requires_action")
         and result.outcome_kind
-        in {"conversational_reply", "clarifying_question", "knowledge_boundary"}
+        in {"conversational_reply", "clarifying_question", "knowledge_boundary",
+            "confirmation_request"}
     ):
-        # Probe/tool SSE path when classical classifiers already flagged action.
+        # F2 compatibility: the previously supported connector-status and
+        # tool-SSE probes must still enter classical even when the general
+        # classifier calls them read-only (requires_action=False). Evaluate
+        # this heuristic ONCE in the existing LIVE decision block, then pass
+        # the reconciled boolean to the handoff helper. The helper cannot
+        # contradict the structured decision by re-parsing message wording.
         from app.services.unified_turn_classical_fallback import (
             message_requires_classical_tool_sse,
         )

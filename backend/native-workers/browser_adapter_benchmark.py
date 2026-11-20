@@ -26,11 +26,11 @@ import urllib.request
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 try:
-    from engine import configure_browser_sdk, fresh_browser_evidence, stable_browser_evidence,ensure_rejecting_dialog_handlers,close_dialog_handlers
+    from engine import configure_browser_sdk, fresh_browser_evidence, stable_browser_evidence,ensure_rejecting_dialog_handlers,close_dialog_handlers,browser_evidence_changes
 except ModuleNotFoundError as error:
     if error.name != 'engine':
         raise
-    from app.services.native_runtime.engine import configure_browser_sdk, fresh_browser_evidence, stable_browser_evidence,ensure_rejecting_dialog_handlers,close_dialog_handlers
+    from app.services.native_runtime.engine import configure_browser_sdk, fresh_browser_evidence, stable_browser_evidence,ensure_rejecting_dialog_handlers,close_dialog_handlers,browser_evidence_changes
 
 TRIALS = 5
 ACTION_TIMEOUT = 10
@@ -343,8 +343,8 @@ async def run():
             except Exception as error:
                 # No SDK exception body, page content or process log is exported.
                 rows.append({'adapter': adapter, 'trial': number, 'passed': False,
-                             'failure_class': type(error).__name__,
-                             'evidence_changes': getattr(error, 'evidence_changes', {}),
+                             'failure_class': 'PermissionError' if isinstance(error, PermissionError) else type(error).__name__,
+                             'evidence_changes': browser_evidence_changes(error),
                              'failure_stage': getattr(error, 'benchmark_stage', 'trial_timeout')})
     summary = {}
     for adapter in ('browser_use', 'playwright'):

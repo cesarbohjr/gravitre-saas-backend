@@ -48,7 +48,7 @@ async def test_email_conversation_end_to_end(surface: str) -> None:
         return {"results": []}
 
     with ScenarioHarness() as h, patch("app.services.web_research.search_web", _fake_search):
-        h.connected.append("gmail")
+        h.connect("gmail")
         # Stephanie is someone the user has corresponded with; the recipient
         # comes from the mailbox, never from the model's guess.
         h.connectors.mailbox.append(

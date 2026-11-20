@@ -133,6 +133,28 @@ def browser_result(history):
     return {'observations':[{'summary':summary[:2000],'url':url}]}
 
 
+class _BrowserCaptureTransition(PermissionError):
+    def __init__(self, changes):
+        super().__init__('Browser changed during viewport evidence capture')
+        self.evidence_changes={**changes,'capture_transition':True}
+
+
+class _BrowserStabilityExhausted(PermissionError):
+    def __init__(self, saw_capture_transition):
+        super().__init__('Browser viewport did not stabilize before approval')
+        self.evidence_changes={'stability_budget_exhausted':True,
+                               'capture_transition':saw_capture_transition}
+
+
+def browser_evidence_changes(error):
+    """Fixed boolean diagnostic flags; never copy exception/page content."""
+    changes=getattr(error,'evidence_changes',None)
+    if not isinstance(changes,dict):return {}
+    allowed={'url','dom','title','targets','fingerprint','capture_transition',
+             'stability_budget_exhausted'}
+    return {key:value for key,value in changes.items() if key in allowed and type(value) is bool}
+
+
 async def fresh_browser_evidence(browser_session,requested,phase):
     try:
         await ensure_rejecting_dialog_handlers(browser_session)
@@ -148,14 +170,17 @@ async def fresh_browser_evidence(browser_session,requested,phase):
         if not isinstance(image,bytes) or not image.startswith(b'\x89PNG\r\n\x1a\n') or len(image)>3145728:
             raise PermissionError('Bounded actual viewport screenshot required')
         after=await browser_session.get_browser_state_summary(include_screenshot=False,cached=False)
-        if getattr(after,'state_error',None) or (after.url,after.title)!=(before_url,before_title) or after.dom_state.llm_representation()!=dom or _browser_targets(after,requested)!=targets:
-            raise PermissionError('Browser changed during viewport evidence capture')
+        if getattr(after,'state_error',None):raise PermissionError('Fresh browser DOM required')
+        changes={'url':after.url!=before_url,'title':after.title!=before_title,
+                 'dom':after.dom_state.llm_representation()!=dom,
+                 'targets':_browser_targets(after,requested)!=targets}
+        if any(changes.values()):raise _BrowserCaptureTransition(changes)
         state=copy.copy(after)
         state.screenshot=base64.b64encode(image).decode('ascii')
         return state,browser_evidence(state,requested)
     except Exception as error:
         frames=[{'file':Path(frame.filename).name,'line':frame.lineno,'function':frame.name} for frame in traceback.extract_tb(error.__traceback__) if '/browser_use/' in frame.filename or frame.filename.endswith('/engine.py')][-16:]
-        print(json.dumps({'browser_failure_stage':phase,'browser_failure_class':type(error).__name__ if type(error).__name__ in {'ValueError','PermissionError','RuntimeError','TimeoutError','AttributeError'} else 'InternalError','frames':frames}),file=sys.stderr,flush=True)
+        print(json.dumps({'browser_failure_stage':phase,'browser_failure_class':'PermissionError' if isinstance(error,PermissionError) else type(error).__name__ if type(error).__name__ in {'ValueError','RuntimeError','TimeoutError','AttributeError'} else 'InternalError','evidence_changes':browser_evidence_changes(error),'frames':frames}),file=sys.stderr,flush=True)
         raise
 
 
@@ -163,12 +188,21 @@ async def stable_browser_evidence(browser_session,requested,*,settle_interval=0.
     # Initial paint can lag the DOM. Obtain two identical fresh captures before
     # presenting a review; never retry or refresh an already approved action.
     previous=None
-    for _ in range(6):
-        state,evidence=await fresh_browser_evidence(browser_session,requested,'before_approval')
-        if evidence==previous:return state,evidence
-        previous=evidence
-        await asyncio.sleep(settle_interval)
-    raise PermissionError('Browser viewport did not stabilize before approval')
+    saw_capture_transition=False
+    for attempt in range(6):
+        try:
+            state,evidence=await fresh_browser_evidence(browser_session,requested,'before_approval')
+        except _BrowserCaptureTransition:
+            # No review has been presented. Count this failed capture against
+            # the same budget, and discard the preceding sample. An approved
+            # action's fresh after_approval capture never enters this retry loop.
+            previous=None
+            saw_capture_transition=True
+        else:
+            if evidence==previous:return state,evidence
+            previous=evidence
+        if attempt<5:await asyncio.sleep(settle_interval)
+    raise _BrowserStabilityExhausted(saw_capture_transition)
 
 
 _DIALOG_SETUP: dict[int,dict] = {}

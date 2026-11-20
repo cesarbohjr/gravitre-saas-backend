@@ -286,7 +286,13 @@ def continue_execution_plan(
         if message:
             plan.summary = str(message)[:240]
     else:
-        plan.terminal_status = "running"
+        # A confirmation utterance is not authorization to revive a terminal
+        # execution. Late voice/chat turns and replayed approvals must preserve
+        # the persisted outcome; a new operation requires a separate replan.
+        from app.services.execution_plan_authority import is_terminal_write_plan
+
+        if not is_terminal_write_plan(plan):
+            plan.terminal_status = "running"
         if message:
             plan.summary = plan.summary or message[:240]
     if turn_id:

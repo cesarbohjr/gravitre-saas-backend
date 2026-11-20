@@ -5,7 +5,7 @@
 WITH pairs AS (
  SELECT w.id AS workflow_id, r.id AS contract_id,
         w.status AS workflow_status, r.status AS contract_status,
-        w.run_type,
+        w.run_type, w.org_id AS source_org, r.org_id AS projection_org,
         r.metadata ->> 'status_contract_version' AS contract_version,
         r.metadata ->> 'execution_lifecycle' AS projected_lifecycle,
         CASE lower(coalesce(w.status,'')) 
@@ -25,6 +25,14 @@ WITH pairs AS (
  SELECT CASE
   WHEN workflow_id IS NULL THEN 'runs_only_different_domain_possible'
   WHEN contract_id IS NULL THEN 'missing_contract_projection'
+  WHEN source_org IS DISTINCT FROM projection_org THEN 'tenant_identity_conflict'
+  WHEN expected_v2 IS NULL OR expected_v2 NOT IN ('queued','running','completed','failed','cancelled',
+      'needs_approval','paused','partial_success','flagged_for_review')
+      THEN 'unknown_lifecycle_requires_review'
+  WHEN contract_status IS DISTINCT FROM expected_v2 THEN 'needs_authorized_reconciliation'
+  WHEN contract_version IS DISTINCT FROM '2'
+      OR projected_lifecycle IS DISTINCT FROM lower(trim(workflow_status))
+      THEN 'metadata_reconciliation_required'
   WHEN contract_status IS NOT DISTINCT FROM expected_v2 THEN 'matches_v2'
   ELSE 'needs_authorized_reconciliation'
  END AS category,
@@ -42,7 +50,7 @@ FROM categorized
 GROUP BY 1,2,3,4,5,6,7
 ORDER BY category,n DESC;
 
--- NOT APPROVED FOR EXECUTION: no UPDATE/INSERT is part of this file.
+-- Inspection only: no UPDATE, INSERT or DELETE is part of this file.
 -- A later reconciler requires:
 --   1. explicit org scope + approved whitelist of run IDs;
 --   2. source and contract status compare-and-set conditions;

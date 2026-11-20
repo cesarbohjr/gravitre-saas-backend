@@ -7,6 +7,7 @@ import pytest
 
 from app.services.tool_service import invoke_tool, list_registered_actions
 from app.services.tool_types import ToolContext, ToolValidationError
+from tests.support.provider_write import with_provider_write_ledger
 
 
 @pytest.fixture
@@ -52,7 +53,7 @@ def test_zendesk_and_github_actions_registered():
 
 def test_zendesk_create_ticket(tool_ctx: ToolContext):
     conn = {"id": "zd-1", "type": "zendesk", "config": {"subdomain": "acme"}, "environment": "production"}
-    with patch("app.services.tool_service.get_connector_by_type", return_value=conn):
+    with patch("app.services.tool_service.get_connector", return_value=conn):
         with patch("app.services.tool_service.enforce_rate_limit"):
             with patch(
                 "app.connectors.connector_tool_auth.resolve_zendesk_auth",
@@ -68,7 +69,7 @@ def test_zendesk_create_ticket(tool_ctx: ToolContext):
                             return_value=[{"connector_type": "zendesk", "scopes": ["zendesk:*"], "expires_at": None}],
                         ):
                             result = invoke_tool(
-                                tool_ctx,
+                                with_provider_write_ledger(tool_ctx, conn["id"]),
                                 "zendesk.tickets.create",
                                 {"subject": "Help", "comment": "Body"},
                             )
