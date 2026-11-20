@@ -154,6 +154,13 @@ def test_prune_removes_only_expired_documents_of_that_vendor():
 
 
 def test_run_retention_prune_audits(monkeypatch):
+    # Use the same clock as the fixed document ages in the retention fixture.
+    class RetentionClock(datetime):
+        @classmethod
+        def now(cls, tz=None):
+            return datetime(2026, 10, 12, tzinfo=UTC)
+
+    monkeypatch.setattr(kr, "datetime", RetentionClock)
     audits: list[dict[str, Any]] = []
     monkeypatch.setattr("app.workflows.audit.write_audit_event", lambda c, **kw: audits.append(kw))
     out = kr.run_retention_prune(_retention_client())
