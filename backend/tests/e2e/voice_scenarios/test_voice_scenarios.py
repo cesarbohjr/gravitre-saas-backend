@@ -255,3 +255,36 @@ def test_yes_then_filler_still_sends(bench: dict[str, Any], seed: int) -> None:
     result = bench["harness"].run_scenario(scenario, seed=seed, settings=bench["settings"])
     assert result.error is None, result.error
     assert len(_committed(result)) == 1
+
+
+@pytest.mark.parametrize("seed", [7, 1234])
+def test_final_stability_hard_yes_then_wait_never_authorizes_write(
+    bench: dict[str, Any], seed: int,
+) -> None:
+    """Actual Pipecat scenario: a hard Flux final at 'yes' is not approval."""
+    settings = bench["harness"].build_settings({
+        "VOICE_FINAL_STABILITY_V2": "true",
+        "VOICE_FINAL_STABILITY_NORMAL_MS": "400",
+        "VOICE_FINAL_STABILITY_APPROVAL_MS": "1200",
+    })
+    scenario = _scenario(bench, "wait change the subject line before you send it", pause_s=0.6)
+    result = bench["harness"].run_scenario(scenario, seed=seed, settings=settings)
+    assert result.error is None, result.error
+    assert _committed(result) == [], "hard-final 'yes' prematurely authorized a write"
+
+
+@pytest.mark.parametrize("seed", [7, 1234])
+def test_final_stability_bare_yes_still_commits_exactly_once(
+    bench: dict[str, Any], seed: int,
+) -> None:
+    """Security hold must not turn an actual approved action into a timeout."""
+    settings = bench["harness"].build_settings({
+        "VOICE_FINAL_STABILITY_V2": "true",
+        "VOICE_FINAL_STABILITY_NORMAL_MS": "400",
+        "VOICE_FINAL_STABILITY_APPROVAL_MS": "1200",
+    })
+    result = bench["harness"].run_scenario(
+        _scenario(bench, None), seed=seed, settings=settings,
+    )
+    assert result.error is None, result.error
+    assert len(_committed(result)) == 1

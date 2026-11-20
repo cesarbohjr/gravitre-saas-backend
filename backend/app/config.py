@@ -1176,6 +1176,24 @@ class Settings(BaseSettings):
             "VOICE_REQUEST_REVISIONS_V1", "voice_request_revisions_v1"
         ),
     )
+    # Voice V2: hard provider-final stabilization remains off until paired
+    # latency, short-approval and live-acoustic acceptance is certified.
+    voice_final_stability_v2: bool = Field(
+        default=False,
+        validation_alias=AliasChoices("VOICE_FINAL_STABILITY_V2", "voice_final_stability_v2"),
+    )
+    voice_final_stability_normal_ms: int = Field(
+        default=400, ge=0, le=1500,
+        validation_alias=AliasChoices(
+            "VOICE_FINAL_STABILITY_NORMAL_MS", "voice_final_stability_normal_ms",
+        ),
+    )
+    voice_final_stability_approval_ms: int = Field(
+        default=1200, ge=0, le=1500,
+        validation_alias=AliasChoices(
+            "VOICE_FINAL_STABILITY_APPROVAL_MS", "voice_final_stability_approval_ms",
+        ),
+    )
     voice_tts_chunk_v2: bool = Field(
         default=False,
         validation_alias=AliasChoices("VOICE_TTS_CHUNK_V2", "voice_tts_chunk_v2"),
