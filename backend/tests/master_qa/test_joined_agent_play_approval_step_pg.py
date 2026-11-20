@@ -6,7 +6,7 @@ and dispatch, sealed read gate, SQL workflow status trigger, outbox relay and
 idempotent durable consumer.
 
 Adapted: local tenant connector query, deterministic version/policy/billing,
-outbound vendor transport and optional delivery channels. Canonical terminal
+outbound vendor transport, verification read transport and optional delivery channels. Canonical terminal
 proof/receipt persistence and core audit/inbox/learning writers execute unchanged.
 Canonical repository methods and legacy/contract run, step and approval
 tables are real, backed by disposable PostgreSQL via a SQL transport adapter.
@@ -15,6 +15,7 @@ provider readback certification.
 """
 from __future__ import annotations
 
+import json
 from types import SimpleNamespace
 from unittest.mock import Mock
 from uuid import UUID
@@ -37,7 +38,7 @@ pytestmark = requires_pg
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("decision", [
-    "approve", "reject", "forbidden_approver", "foreign_tenant",
+    "approve", "approve_write", "reject", "forbidden_approver", "foreign_tenant",
     "cancel_before_dispatch", "cancel_write_before_dispatch",
     "revoke_before_dispatch", "cancel_during_finalize",
     "terminal_persistence_failure",
@@ -78,14 +79,22 @@ async def test_agent_play_approval_real_step_to_durable_consumer(pg, monkeypatch
     definition = compiled.workflow_definition
     revoked_before_dispatch = decision == "revoke_before_dispatch"
     cancel_write_before_dispatch = decision == "cancel_write_before_dispatch"
-    governed_write = revoked_before_dispatch or cancel_write_before_dispatch
+    approve_write = decision == "approve_write"
+    governed_write = revoked_before_dispatch or cancel_write_before_dispatch or approve_write
     if governed_write:
         # Persist the write in the saved Canvas version so the approval
         # covers the action that would have reached the provider.
         step = definition["steps"][0]
-        definition = {**definition, "steps": [{
-            **step, "config": {"action": "hubspot.contacts.create", "email": "fixture@example.invalid"},
-        }]}
+        config = {
+            "action": "hubspot.contacts.create",
+            "connector_id": "local-conn",
+            "params": {
+                "email": "fixture@example.invalid",
+                "properties": {"email": "fixture@example.invalid"},
+                "portal_id": "99887",
+            },
+        }
+        definition = {**definition, "steps": [{**step, "config": config}]}
     settings = SimpleNamespace(
         disable_execute=False, disable_connectors=False,
         write_authority_mode="enforce",
@@ -94,6 +103,33 @@ async def test_agent_play_approval_real_step_to_durable_consumer(pg, monkeypatch
         policy_max_steps=10, policy_max_runtime_seconds=60,
     )
     client = PgRepositoryClient(pg)
+    if approve_write:
+        from tests.db.test_autonomous_full_dispatcher_pg import PgClient
+        from tests.db.write_recovery_context_fixture import AUTH_ROLE_SQL, CONTEXT_SQL
+
+        pg.psql(AUTH_ROLE_SQL)
+        for migration in (
+            "20261016032018_write_invoke_idempotency.sql",
+            "20261016032029_write_invoke_idempotency_grants.sql",
+            "20261102095000_autonomous_atomic_write_claim.sql",
+        ):
+            pg.psql((MIGRATIONS / migration).read_text())
+        pg.psql(CONTEXT_SQL)
+        ledger = PgClient(str(pg.sock), pg.port)
+        repository_rpc = client.rpc
+        ledger_rpcs = {
+            "claim_approved_autonomous_write", "bind_write_recovery_context",
+            "finalize_write_invoke_idempotency",
+        }
+
+        def rpc(name, params):
+            if name not in ledger_rpcs:
+                return repository_rpc(name, params)
+            if name == "finalize_write_invoke_idempotency":
+                params = {**params, "p_result": json.dumps(params["p_result"])}
+            return ledger.rpc(name, params)
+
+        monkeypatch.setattr(client, "rpc", rpc)
     from tests.master_qa.test_canonical_repository_persistence_pg import (
         _core_effect_tables, _disable_optional_delivery,
     )
@@ -233,7 +269,6 @@ async def test_agent_play_approval_real_step_to_durable_consumer(pg, monkeypatch
     monkeypatch.setattr(execute, "_add_run_execution_time", lambda *a, **kw: None)
     # An independent receiver persists the vendor observation outside the
     # application PostgreSQL transaction and outside the process's mock state.
-    import json
     import urllib.request
     from tests.db.test_autonomous_independent_write_pg import IndependentFixture
     receiver = IndependentFixture(
@@ -241,15 +276,41 @@ async def test_agent_play_approval_real_step_to_durable_consumer(pg, monkeypatch
         capability="joined-agent-cap",
     )
     request.addfinalizer(receiver.close)
+    readback = Mock()
+
+    def observed_contact(context, action, params):
+        assert action == "hubspot.contacts.get"
+        assert context.org_id == ORG and context.run_id == run_id
+        assert params["connector_id"] == "local-conn"
+        contact_id = params.get("contact_id") or params.get("id")
+        get_request = urllib.request.Request(
+            f"{receiver.origin}/records/{contact_id}",
+            headers={"X-QA-Capability": "joined-agent-cap"},
+        )
+        with urllib.request.urlopen(get_request, timeout=5) as response:
+            body = json.load(response)
+        readback(contact_id)
+        return NormalizedResult(success=True, action=action, data=body)
+
     def observed_vendor(context, params):
         assert context.client is client
         assert context.org_id == ORG and str(context.run_id) == run_id
         assert context.environment_name == "synthetic"
         assert context.step_id
         assert context.preflight_result.ok
-        assert context.preflight_result.action_key == "hubspot.contacts.search"
+        action = "hubspot.contacts.create" if approve_write else "hubspot.contacts.search"
+        assert context.preflight_result.action_key == action
         assert context.preflight_result.resource["connection_id"] == "local-conn"
-        assert str(params["portal_id"]) == "99887"
+        if approve_write:
+            assert params["properties"]["email"] == "fixture@example.invalid"
+            assert "play" not in params
+            assert pg.value(
+                "SELECT count(*) FROM public.write_invoke_idempotency "
+                "WHERE status='in_progress' AND invoke_action='hubspot.contacts.create' "
+                "AND connector_id='local-conn' AND recovery_context_bound_at IS NOT NULL"
+            ) == "1"
+        else:
+            assert str(params["portal_id"]) == "99887"
         request = urllib.request.Request(
             receiver.origin + "/write",
             data=json.dumps({"cap": "joined-agent-cap"}).encode(),
@@ -265,8 +326,8 @@ async def test_agent_play_approval_real_step_to_durable_consumer(pg, monkeypatch
                 status="cancelled", source="api",
                 actor_id="44444444-4444-4444-8444-444444444444")
         return NormalizedResult(
-            success=True, action="hubspot.contacts.search",
-            data={"results": [{"id": "synthetic-contact-1"}]},
+            success=True, action=action,
+            data={"id": "1"} if approve_write else {"results": [{"id": "synthetic-contact-1"}]},
         )
     vendor = Mock(side_effect=observed_vendor)
     resource = ResourceResolution(
@@ -274,16 +335,20 @@ async def test_agent_play_approval_real_step_to_durable_consumer(pg, monkeypatch
         resource_type="portal", resource_id="99887", display_name="99887",
         confidence=0.98, resolution_reason="linked_config", candidate_count=1)
     def resolve_fixture_executor(action, _context):
-        assert action == "hubspot.contacts.search"
+        assert action == ("hubspot.contacts.create" if approve_write else "hubspot.contacts.search")
         return vendor
 
     # The SQL adapter owns workflow rows, run approval, and terminal evidence.
     # Other service lookups get synthetic inputs at their own data boundaries.
     monkeypatch.setattr("app.services.read_preflight.resolve_resource", lambda **_: resource)
+    if approve_write:
+        monkeypatch.setattr("app.services.write_preflight.resolve_resource", lambda **_: resource)
+        monkeypatch.setattr("app.services.sealed_read_execution.invoke_compiled_read", observed_contact)
     monkeypatch.setattr("app.services.hipaa_service.get_hipaa_status", lambda *_: {"hipaaReady": False})
     monkeypatch.setattr("app.services.agent_tool_permissions.list_agent_tool_permissions",
                         lambda *a, **kw: [{"connector_type": "hubspot",
-                                           "scopes": ["hubspot:read"], "expires_at": None}])
+                                           "scopes": ["hubspot:read", "hubspot:write"] if approve_write
+                                           else ["hubspot:read"], "expires_at": None}])
     monkeypatch.setattr(tool_service, "write_audit_event", lambda *a, **kw: None)
     monkeypatch.setattr(tool_service, "_resolve_tool_executor", resolve_fixture_executor)
     if decision == "approve":
@@ -323,7 +388,7 @@ async def test_agent_play_approval_real_step_to_durable_consumer(pg, monkeypatch
         assert block_invoke_by_approval_scope(
             invoke_action=step["config"]["action"], run_row=run,
             run_parameters=run["parameters"], definition=run["definition_snapshot"],
-            invoke_params={"email": step["config"]["email"]},
+            invoke_params={**step["config"]["params"], "connector_id": step["config"]["connector_id"]},
         ) is None
 
     if cancelled_before_dispatch:
@@ -418,7 +483,9 @@ async def test_agent_play_approval_real_step_to_durable_consumer(pg, monkeypatch
     approved = await workflows.approve_run(
         UUID(run_id), workflows.ApproveRejectRequest(comment="approved in QA"),
         {"user_id": "44444444-4444-4444-8444-444444444444"}, ORG, "synthetic", settings)
-    assert approved["status"] == terminal
+    assert approved["status"] == terminal, pg.value(
+        f"SELECT concat_ws(' | ', error_code, error_message, logs) FROM public.workflow_steps WHERE run_id='{run_id}'"
+    )
     assert approved["approval_status"] == ("revoked" if revoked_before_dispatch else "approved")
     assert repository.get_approval_counts(PgRepositoryClient(pg), run_id) == (1, False)
     steps = repository.get_run_with_steps(PgRepositoryClient(pg), ORG, run_id, "synthetic")["steps"]
@@ -429,6 +496,17 @@ async def test_agent_play_approval_real_step_to_durable_consumer(pg, monkeypatch
         assert pg.value(
             "SELECT count(*) FROM public.agent_execution_interrupts "
             f"WHERE target_id='{run_id}' AND status='acknowledged' AND acknowledged_at IS NOT NULL"
+        ) == "1"
+    elif approve_write:
+        snapshot = steps[0]["output_snapshot"]
+        assert snapshot["outcome_verified"] is True
+        assert snapshot["verification"]["resource_id"] == "1"
+        assert snapshot["verification"]["read_action"] == "hubspot.contacts.get"
+        assert readback.call_count >= 1
+        assert pg.value(
+            "SELECT count(*) FROM public.write_invoke_idempotency "
+            f"WHERE org_id='{ORG}' AND status='completed' "
+            "AND invoke_action='hubspot.contacts.create' AND result #>> '{data,id}'='1'"
         ) == "1"
     else:
         assert steps[0]["output_snapshot"]

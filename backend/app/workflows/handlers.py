@@ -280,8 +280,19 @@ class InvokeToolHandler(StepHandler):
         )
         # Part 5 — shared call-time resolve + schema gate (with chat write staging).
         from app.services.action_selection_gate import gate_workflow_invoke
+        from app.services.catalog_write_authority import invoke_action_requires_write_approval
 
         resolved_action = gate_workflow_invoke(action=str(action), args=invoke_params)
+        # Play routing uses the run context. Keep inherited Play metadata out
+        # of provider arguments so it cannot change the approved fingerprint.
+        play_context = params.get("play")
+        if (
+            invoke_action_requires_write_approval(resolved_action)
+            and isinstance(play_context, dict)
+            and play_context.get("execution_authority") == "canonical_workflow_runtime"
+            and invoke_params.get("play") is play_context
+        ):
+            invoke_params.pop("play")
         result = _invoke_canvas_registered_tool(
             context,
             resolved_action,
