@@ -264,8 +264,8 @@
           },
           {
             "name": "Provision FFmpeg for bounded media decoder tests",
-            "timeout-minutes": 5,
-            "run": "set -euo pipefail\nif ! command -v ffmpeg >/dev/null 2>&1; then\n  sudo env DEBIAN_FRONTEND=noninteractive timeout 90s apt-get -o Acquire::Retries=1 -o Acquire::http::Timeout=20 update -y -q\n  sudo env DEBIAN_FRONTEND=noninteractive timeout 150s apt-get -o Acquire::Retries=1 -o Acquire::http::Timeout=20 install -y -q --no-install-recommends ffmpeg\nfi\n"
+            "timeout-minutes": 7,
+            "run": "set -euo pipefail\nif ! command -v ffmpeg >/dev/null 2>&1; then\n  sudo env DEBIAN_FRONTEND=noninteractive timeout 90s apt-get -o Acquire::Retries=1 -o Acquire::http::Timeout=20 update -y -q\n  sudo env DEBIAN_FRONTEND=noninteractive timeout 240s apt-get -o Acquire::Retries=1 -o Acquire::http::Timeout=20 install -y -q --no-install-recommends ffmpeg\nfi\n"
           },
           {
             "name": "Verify bounded media decoder",
