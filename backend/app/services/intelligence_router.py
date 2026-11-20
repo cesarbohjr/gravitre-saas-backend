@@ -122,8 +122,11 @@ class IntelligenceRouter:
     ) -> dict[str, Any]:
         from app.services.intelligence_overview_policy import load_overview_policy
         from app.core.io_pool import run_io
-        overview_policy = await measure_route_stage("overview_policy", run_io(lambda: load_overview_policy(org_id, self.settings)))
-        dialogue_settings = await measure_route_stage("dialogue_settings", load_chat_dialogue_settings(org_id, self.settings))
+        # Independent tenant-scoped reads: overlap I/O without changing either fallback contract.
+        overview_policy, dialogue_settings = await asyncio.gather(
+            measure_route_stage("overview_policy", run_io(lambda: load_overview_policy(org_id, self.settings))),
+            measure_route_stage("dialogue_settings", load_chat_dialogue_settings(org_id, self.settings)),
+        )
         sentiment = (
             self._sentiment.analyze(request, conversation_history or [])
             if dialogue_settings.get("sentiment_detection_enabled", True)
