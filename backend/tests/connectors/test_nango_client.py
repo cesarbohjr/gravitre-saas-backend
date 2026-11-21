@@ -14,8 +14,11 @@ class _Settings:
 
 def test_registry_is_net_new_and_large_enough() -> None:
     assert len(NANGO_CONNECTOR_VENDORS) >= 35
-    for native_candidate in {"notion", "airtable", "xero", "confluence", "linear"}:
+    for native_candidate in {"notion", "airtable", "xero", "confluence"}:
         assert native_candidate not in NANGO_CONNECTOR_REGISTRY
+    # Linear's requested opt-in OAuth path preserves existing native accounts.
+    assert NANGO_CONNECTOR_REGISTRY["linear"].native_fallback
+    assert NANGO_CONNECTOR_REGISTRY["linear"].auth_mode == "OAUTH2"
 
 
 def test_nango_configured() -> None:

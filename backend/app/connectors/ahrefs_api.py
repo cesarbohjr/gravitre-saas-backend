@@ -44,6 +44,16 @@ def resolve_ahrefs_connector(
     if not conn:
         raise AhrefsAPIError("No active Ahrefs connector found", status_code=404)
     cid = str(conn["id"])
+    from app.core.safe_dict import safe_normalize_stored_dict
+    if safe_normalize_stored_dict(conn, key="config").get("auth_provider") == "managed":
+        from app.connectors.managed_oauth import managed_oauth_tokens
+        try:
+            tokens = managed_oauth_tokens(client, org_id, cid, settings, environment_name=environment_name, expected_vendor="ahrefs")
+            if not tokens:
+                raise ValueError("Managed authorization unavailable")
+        except ValueError as exc:
+            raise AhrefsAPIError("Ahrefs authorization unavailable; reconnect", status_code=401) from exc
+        return cid, tokens["access_token"]
     api_key = get_decrypted_secret(client, cid, "api_token", settings, org_id=org_id) or get_decrypted_secret(
         client, cid, "api_key", settings,
         org_id=org_id,

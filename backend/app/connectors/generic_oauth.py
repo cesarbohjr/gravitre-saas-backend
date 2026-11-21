@@ -468,6 +468,16 @@ def ensure_generic_session(
     environment_name: str | None = None,
 ) -> tuple[str | None, str | None]:
     env = environment_name or _connector_environment(client, org_id, connector_id)
+    from app.connectors.nango_registry import get_nango_connector_spec
+    managed_spec = get_nango_connector_spec(vendor)
+    if managed_spec and managed_spec.native_fallback:
+        from app.connectors.managed_oauth import managed_oauth_tokens, ManagedOAuthAccessToken
+        try:
+            managed = managed_oauth_tokens(client, org_id, connector_id, settings, environment_name=env, expected_vendor=vendor)
+        except ValueError:
+            return None, "Managed authorization unavailable; reconnect this account"
+        if managed is not None:
+            return ManagedOAuthAccessToken(managed["access_token"]), None
     tokens = load_oauth_tokens(client, connector_id, settings, org_id=org_id)
     if not tokens:
         return None, f"{vendor} OAuth not connected"
