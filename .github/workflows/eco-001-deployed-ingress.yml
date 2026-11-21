@@ -1,0 +1,80 @@
+name: Signed isolated QA ingress preflight
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: eco001-signed-qa-ingress-readonly
+  cancel-in-progress: false
+
+env:
+  QA_BACKEND_URL: https://eco001-fastapi-qa.up.railway.app
+  QA_EXPECTED_SHA: c10d8a764f67c428adc408d65429149e7686498f
+  PREFLIGHT_SHA256: 347761a26bc874a0d885b0a463797708661bcb6fac9cbf5fdc047e9dfeb4ae82
+
+jobs:
+  authorize:
+    name: Verify signed QA dispatch scope
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Require the existing owner and opt-in
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          REPOSITORY: ${{ github.repository }}
+          ACTOR: ${{ github.actor }}
+          DISPATCH_REF: ${{ github.ref }}
+          SIGNED_QA_ENABLED: ${{ vars.ECO001_SIGNED_QA_ENABLED }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$EVENT_NAME" = workflow_dispatch
+          test "$REPOSITORY" = cesarbohjr/gravitre-saas-backend
+          test "$ACTOR" = cesarbohjr
+          test "$DISPATCH_REF" = refs/heads/main
+          test "$SIGNED_QA_ENABLED" = true
+
+  signed-qa-ingress-preflight:
+    name: Signed isolated QA ingress (read-only)
+    needs: authorize
+    environment: eco001-isolated-qa
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - name: Check out the reviewed preflight at the deployed SHA
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.QA_EXPECTED_SHA }}
+          persist-credentials: false
+          sparse-checkout: backend/scripts/eco001_deployed_ingress_preflight.py
+          sparse-checkout-cone-mode: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Verify the pinned preflight source
+        shell: bash
+        run: |
+          set -euo pipefail
+          printf '%s  %s\n' "$PREFLIGHT_SHA256" backend/scripts/eco001_deployed_ingress_preflight.py |
+            sha256sum --check --status
+      - name: Verify authenticated conversation state without dispatching work
+        env:
+          ECO001_QA_BEARER: ${{ secrets.ECO001_QA_BEARER }}
+          ECO001_QA_CONVERSATION: ${{ vars.ECO001_QA_CONVERSATION }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python backend/scripts/eco001_deployed_ingress_preflight.py --signed-qa \
+            --url "$QA_BACKEND_URL" \
+            --sha "$QA_EXPECTED_SHA" \
+            --output "$RUNNER_TEMP/eco001-signed-qa-ingress.json"
+      - name: Retain sanitized signed QA evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: eco001-signed-qa-ingress-readonly
+          path: ${{ runner.temp }}/eco001-signed-qa-ingress.json
+          if-no-files-found: error
+          retention-days: 90
