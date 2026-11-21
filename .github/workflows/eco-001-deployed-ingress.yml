@@ -2,6 +2,17 @@ name: Signed isolated QA ingress preflight
 
 on:
   workflow_dispatch:
+    inputs:
+      confirm_disposable_fixture:
+        description: Create and clean up one isolated acceptance user and conversation
+        type: boolean
+        required: true
+        default: false
+  pull_request:
+    paths:
+      - .github/workflows/eco-001-deployed-ingress.yml
+      - scripts/eco001_disposable_preflight.py
+      - tests/test_eco001_disposable_preflight.py
 
 permissions:
   contents: read
@@ -16,38 +27,65 @@ env:
   PREFLIGHT_SHA256: 347761a26bc874a0d885b0a463797708661bcb6fac9cbf5fdc047e9dfeb4ae82
 
 jobs:
+  fixture-contracts:
+    name: Disposable QA fixture safety contracts (offline)
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install pytest==8.3.5 PyYAML==6.0.2
+      - run: python -m pytest -q tests/test_eco001_disposable_preflight.py
+
   authorize:
     name: Verify signed QA dispatch scope
+    if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     timeout-minutes: 2
     steps:
-      - name: Require the existing owner and opt-in
+      - name: Require the existing owner and explicit fixture opt-in
         env:
           EVENT_NAME: ${{ github.event_name }}
           REPOSITORY: ${{ github.repository }}
           ACTOR: ${{ github.actor }}
           DISPATCH_REF: ${{ github.ref }}
-          SIGNED_QA_ENABLED: ${{ vars.ECO001_SIGNED_QA_ENABLED }}
+          CONFIRM_DISPOSABLE_FIXTURE: ${{ inputs.confirm_disposable_fixture }}
         shell: bash
         run: |
           set -euo pipefail
           test "$EVENT_NAME" = workflow_dispatch
           test "$REPOSITORY" = cesarbohjr/gravitre-saas-backend
           test "$ACTOR" = cesarbohjr
-          test "$DISPATCH_REF" = refs/heads/main
-          test "$SIGNED_QA_ENABLED" = true
+          case "$DISPATCH_REF" in
+            refs/heads/main|refs/heads/ci/eco001-disposable-signed-preflight) ;;
+            *) exit 1 ;;
+          esac
+          test "$CONFIRM_DISPOSABLE_FIXTURE" = true
 
   signed-qa-ingress-preflight:
     name: Signed isolated QA ingress (read-only)
-    needs: authorize
-    environment: eco001-isolated-qa
+    needs: [authorize, fixture-contracts]
+    if: github.event_name == 'workflow_dispatch'
+    environment: acceptance
     runs-on: ubuntu-latest
-    timeout-minutes: 6
+    timeout-minutes: 10
     steps:
+      - name: Check out this run's fixture harness
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+          sparse-checkout: scripts/eco001_disposable_preflight.py
+          sparse-checkout-cone-mode: false
       - name: Check out the reviewed preflight at the deployed SHA
         uses: actions/checkout@v4
         with:
           ref: ${{ env.QA_EXPECTED_SHA }}
+          path: deployed-probe
           persist-credentials: false
           sparse-checkout: backend/scripts/eco001_deployed_ingress_preflight.py
           sparse-checkout-cone-mode: false
@@ -58,20 +96,39 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          printf '%s  %s\n' "$PREFLIGHT_SHA256" backend/scripts/eco001_deployed_ingress_preflight.py |
+          printf '%s  %s\n' "$PREFLIGHT_SHA256" deployed-probe/backend/scripts/eco001_deployed_ingress_preflight.py |
             sha256sum --check --status
-      - name: Verify authenticated conversation state without dispatching work
+      - name: Create disposable fixture, verify deployed GET and verify cleanup
+        timeout-minutes: 5
         env:
-          ECO001_QA_BEARER: ${{ secrets.ECO001_QA_BEARER }}
-          ECO001_QA_CONVERSATION: ${{ vars.ECO001_QA_CONVERSATION }}
+          E2E_SUPABASE_URL: ${{ secrets.E2E_SUPABASE_URL }}
+          E2E_SUPABASE_ALLOWED_URL: ${{ vars.E2E_SUPABASE_ALLOWED_URL }}
+          E2E_SUPABASE_ANON_KEY: ${{ secrets.E2E_SUPABASE_ANON_KEY }}
+          E2E_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.E2E_SUPABASE_SERVICE_ROLE_KEY }}
         shell: bash
         run: |
           set -euo pipefail
-          python backend/scripts/eco001_deployed_ingress_preflight.py --signed-qa \
-            --url "$QA_BACKEND_URL" \
-            --sha "$QA_EXPECTED_SHA" \
+          python scripts/eco001_disposable_preflight.py \
+            --probe deployed-probe/backend/scripts/eco001_deployed_ingress_preflight.py \
+            --journal "$RUNNER_TEMP/eco001-private-fixture.json" \
+            --output "$RUNNER_TEMP/eco001-signed-qa-ingress.json"
+      - name: Always retry scoped cleanup and verify persisted absence
+        if: always()
+        timeout-minutes: 3
+        env:
+          E2E_SUPABASE_URL: ${{ secrets.E2E_SUPABASE_URL }}
+          E2E_SUPABASE_ALLOWED_URL: ${{ vars.E2E_SUPABASE_ALLOWED_URL }}
+          E2E_SUPABASE_ANON_KEY: ${{ secrets.E2E_SUPABASE_ANON_KEY }}
+          E2E_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.E2E_SUPABASE_SERVICE_ROLE_KEY }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python scripts/eco001_disposable_preflight.py --cleanup-only \
+            --probe deployed-probe/backend/scripts/eco001_deployed_ingress_preflight.py \
+            --journal "$RUNNER_TEMP/eco001-private-fixture.json" \
             --output "$RUNNER_TEMP/eco001-signed-qa-ingress.json"
       - name: Retain sanitized signed QA evidence
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: eco001-signed-qa-ingress-readonly
