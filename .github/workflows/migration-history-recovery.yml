@@ -100,6 +100,11 @@ jobs:
           bash scripts/migration_recovery/install_pgvector.sh "$RUNNER_TEMP/pgvector-0.8.0"
           docker exec -i supabase_db_gravitre-operator-ai psql -U postgres -d postgres -v ON_ERROR_STOP=1 < test-results/production-schema-baseline.sql
           python scripts/migration_recovery/validate_baseline.py postgresql://postgres:postgres@127.0.0.1:54322/postgres "$RUNNER_TEMP/migration-recovery" test-results/migration-history-baseline-restore.json --verify-only
+      - name: QA90 production-shaped deferred migrations and transactional rollback
+        run: >-
+          python scripts/migration_recovery/qa90_full_shape_replay.py
+          --database-url postgresql://postgres:postgres@127.0.0.1:54322/postgres
+          --report test-results/migration-history-qa90-full-shape.json
       - name: Real PostgreSQL concurrency, authorization and fail-closed acceptance on restored baseline
         run: >-
           python scripts/migration_recovery/acceptance.py
