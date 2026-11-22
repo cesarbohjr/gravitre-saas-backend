@@ -5,6 +5,8 @@ on:
     branches: [main]
     paths:
       - "scripts/migration_recovery/qa90_isolated_migration_parity.py"
+      - "scripts/migration_recovery/qa90_deferred_migration_replay.py"
+      - "supabase/migrations/**"
       - ".github/workflows/qa90-isolated-migration-parity.yml"
       - "supabase/migrations/20261025170000_add_smartlead_connector_type.sql"
       - "supabase/migrations/20261026200000_conversation_surface.sql"
@@ -48,3 +50,11 @@ jobs:
           PGPASSWORD: qa90-isolated-fixture
           PGCONNECT_TIMEOUT: "5"
         run: python scripts/migration_recovery/qa90_isolated_migration_parity.py
+      - name: Replay 16 deferred migrations and fail closed on security regressions
+        env:
+          PGHOST: 127.0.0.1
+          PGPORT: "5432"
+          PGUSER: postgres
+          PGPASSWORD: qa90-isolated-fixture
+          PGCONNECT_TIMEOUT: "5"
+        run: python scripts/migration_recovery/qa90_deferred_migration_replay.py
