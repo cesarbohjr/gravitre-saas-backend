@@ -1,4 +1,4 @@
-# Canonical development-branch lane; production release requires separate certification.
+# STAGED: not installed in .github/workflows; automatic trigger cutover pending.
 name: QA 12-independent-acceptance
 'on':
   workflow_dispatch:
@@ -649,6 +649,7 @@ jobs:
     - uses: actions/checkout@v4
       with:
         persist-credentials: false
+        ref: ${{ github.event.pull_request.head.sha || github.sha }}
     - uses: actions/setup-python@v5
       with:
         python-version: '3.12'
@@ -693,6 +694,35 @@ jobs:
         \ tests/master_qa/test_authenticated_sales_run_diagnosis_pg.py tests/master_qa/test_opportunity_acceptance_pg.py tests/master_qa/test_graph_checkpoint_process_recovery_pg.py\
         \ tests/master_qa/test_ambiguous_provider_commit_recovery_pg.py tests/master_qa/test_orphan_graph_claim_pg.py tests/master_qa/test_graph_pre_dispatch_journal_pg.py\
         \ tests/master_qa/test_auto_orphan_reconciliation_pg.py tests/master_qa/test_worker_process_crash_restart_pg.py\n"
+    - name: Install pinned real PostgREST for DEC-008
+      run: 'set -euo pipefail
+
+        mkdir -p "$RUNNER_TEMP/dec008-postgrest"
+
+        curl --fail --location --silent --show-error --retry 3 --max-time 90 https://github.com/PostgREST/postgrest/releases/download/v16.6/postgrest-v16.6-linux-static-x86-64.tar.xz
+        -o "$RUNNER_TEMP/dec008-postgrest/postgrest.tar.xz"
+
+        echo "335ea29f00145705fb569b1268b9c8e53d062f8f6f9188192e92ea3781d2dca1  $RUNNER_TEMP/dec008-postgrest/postgrest.tar.xz"
+        | sha256sum --check
+
+        tar -xJf "$RUNNER_TEMP/dec008-postgrest/postgrest.tar.xz" -C "$RUNNER_TEMP/dec008-postgrest"
+
+        echo "GRAVITRE_POSTGREST_BIN=$RUNNER_TEMP/dec008-postgrest/postgrest" >> "$GITHUB_ENV"
+
+        "$RUNNER_TEMP/dec008-postgrest/postgrest" --version
+
+        '
+    - name: DEC-008 real PostgREST reader and consumer gate (zero skips)
+      env:
+        DEC008_EXPECTED_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+      run: PYTHONPATH=. python scripts/run_dec008_postgrest_gate.py
+    - name: Retain sanitized DEC-008 PostgREST evidence
+      if: ${{ always() }}
+      uses: actions/upload-artifact@v4
+      with:
+        name: dec008-real-postgrest-${{ github.event.pull_request.head.sha || github.sha }}
+        path: backend/dec008-postgrest-evidence.json
+        if-no-files-found: error
     needs:
     - dispatch_contract
     if: ${{ always() && needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected),

@@ -1,0 +1,359 @@
+{
+  "source_sha": "16176b8a2e6bcf98cd367b4bfedf36bb161acea1",
+  "classification": "STATIC_LITERAL_READER_INVENTORY_NOT_DEPLOYED_PROOF",
+  "scope": "All literal table(audit_logs/audit_events).select chains in backend/app; dynamic table names, SQL-internal consumers and runtime reachability need separate review. Org-eq flag is syntactic, not authorization certification.",
+  "read_sites": [
+    {
+      "path": "backend/app/audit/query.py",
+      "line": 107,
+      "function": "query_audit_log",
+      "store": "audit_events",
+      "operations": [
+        "eq",
+        "select",
+        "table"
+      ],
+      "explicit_org_eq": true
+    },
+    {
+      "path": "backend/app/metrics/service.py",
+      "line": 715,
+      "function": "weekly_throughput_metrics",
+      "store": "audit_events",
+      "operations": [
+        "eq",
+        "execute",
+        "gte",
+        "isoformat",
+        "select",
+        "table"
+      ],
+      "explicit_org_eq": true
+    },
+    {
+      "path": "backend/app/metrics/service.py",
+      "line": 214,
+      "function": "count_action",
+      "store": "audit_events",
+      "operations": [
+        "eq",
+        "execute",
+        "gte",
+        "isoformat",
+        "select",
+        "table"
+      ],
+      "explicit_org_eq": true
+    },
+    {
+      "path": "backend/app/metrics/service.py",
+      "line": 486,
+      "function": "count_action",
+      "store": "audit_events",
+      "operations": [
+        "eq",
+        "execute",
+        "gte",
+        "isoformat",
+        "select",
+        "table"
+      ],
+      "explicit_org_eq": true
+    },
+    {
+      "path": "backend/app/metrics/service.py",
+      "line": 641,
+      "function": "timeseries_metrics",
+      "store": "audit_events",
+      "operations": [
+        "eq",
+        "execute",
+        "gte",
+        "in_",
+        "isoformat",
+        "select",
+        "table"
+      ],
+      "explicit_org_eq": true
+    },
+    {
+      "path": "backend/app/routers/audit.py",
+      "line": 345,
+      "function": "_query",
+      "store": "audit_logs",
+      "operations": [
+        "eq",
+        "select",
+        "table"
+      ],
+      "explicit_org_eq": true
+    },
+    {
+      "path": "backend/app/routers/audit.py",
+      "line": 618,
+      "function": "get_audit_log",
+      "store": "audit_logs",
+      "operations": [
+        "eq",
+        "execute",
+        "limit",
+        "select",
+        "table"
+      ],
+      "explicit_org_eq": true
+    },
+    {
+      "path": "backend/app/routers/connectors.py",
+      "line": 885,
+      "function": "connector_activity_route",
+      "store": "audit_events",
+      "operations": [
+        "eq",
+        "execute",
+        "limit",
+        "order",
+        "select",
+        "table"
+      ],
+      "explicit_org_eq": true
+    },
+    {
+      "path": "backend/app/routers/enterprise.py",
+      "line": 242,
+      "function": "export_soc2_bundle",
+      "store": "audit_logs",
+      "operations": [
+        "eq",
+        "execute",
+        "select",
+        "table"
+      ],
+      "explicit_org_eq": true
+    },
+    {
+      "path": "backend/app/routers/enterprise.py",
+      "line": 380,
+      "function": "workforce_analytics",
+      "store": "audit_logs",
+      "operations": [
+        "eq",
+        "execute",
+        "select",
+        "table"
+      ],
+      "explicit_org_eq": true
+    },
+    {
+      "path": "backend/app/routers/ops_internal.py",
+      "line": 1146,
+      "function": "cognitive_one_brain_smoke",
+      "store": "audit_events",
+      "operations": [
+        "eq",
+        "execute",
+        "gte",
+        "limit",
+        "order",
+        "select",
+        "table"
+      ],
+      "explicit_org_eq": true
+    },
+    {
+      "path": "backend/app/services/chat_workflow_e2e_live.py",
+      "line": 369,
+      "function": "_tracking",
+      "store": "audit_events",
+      "operations": [
+        "eq",
+        "execute",
+        "limit",
+        "order",
+        "select",
+        "table"
+      ],
+      "explicit_org_eq": true
+    },
+    {
+      "path": "backend/app/services/connector_ops_metrics_service.py",
+      "line": 53,
+      "function": "_fetch_tool_invoke_events",
+      "store": "audit_events",
+      "operations": [
+        "eq",
+        "execute",
+        "gte",
+        "like",
+        "limit",
+        "order",
+        "select",
+        "table"
+      ],
+      "explicit_org_eq": true
+    },
+    {
+      "path": "backend/app/services/golden_signals_service.py",
+      "line": 73,
+      "function": "_fetch_rows",
+      "store": "audit_events",
+      "operations": [
+        "eq",
+        "gte",
+        "order",
+        "select",
+        "table"
+      ],
+      "explicit_org_eq": false
+    },
+    {
+      "path": "backend/app/services/integration_suggestion_service.py",
+      "line": 189,
+      "function": "fetch_tool_usage_events",
+      "store": "audit_events",
+      "operations": [
+        "eq",
+        "execute",
+        "gte",
+        "like",
+        "limit",
+        "order",
+        "select",
+        "table"
+      ],
+      "explicit_org_eq": true
+    },
+    {
+      "path": "backend/app/services/marketplace_sandbox_service.py",
+      "line": 394,
+      "function": "_fetch_recent_audit_trail",
+      "store": "audit_events",
+      "operations": [
+        "eq",
+        "execute",
+        "in_",
+        "limit",
+        "order",
+        "select",
+        "table"
+      ],
+      "explicit_org_eq": true
+    },
+    {
+      "path": "backend/app/services/meson_service.py",
+      "line": 797,
+      "function": "load_feedback_summary",
+      "store": "audit_events",
+      "operations": [
+        "eq",
+        "execute",
+        "limit",
+        "order",
+        "select",
+        "table"
+      ],
+      "explicit_org_eq": true
+    },
+    {
+      "path": "backend/app/services/platform_health_tools.py",
+      "line": 29,
+      "function": "_count_audit_actions",
+      "store": "audit_events",
+      "operations": [
+        "eq",
+        "execute",
+        "gte",
+        "like",
+        "limit",
+        "select",
+        "table"
+      ],
+      "explicit_org_eq": true
+    },
+    {
+      "path": "backend/app/services/run_observability_service.py",
+      "line": 59,
+      "function": "_audit_for_run",
+      "store": "audit_events",
+      "operations": [
+        "eq",
+        "execute",
+        "limit",
+        "order",
+        "select",
+        "table"
+      ],
+      "explicit_org_eq": true
+    },
+    {
+      "path": "backend/app/services/run_observability_service.py",
+      "line": 41,
+      "function": "_audit_for_run",
+      "store": "audit_events",
+      "operations": [
+        "eq",
+        "execute",
+        "limit",
+        "order",
+        "select",
+        "table"
+      ],
+      "explicit_org_eq": true
+    },
+    {
+      "path": "backend/app/services/source_sync_service.py",
+      "line": 94,
+      "function": "list_source_sync_history",
+      "store": "audit_events",
+      "operations": [
+        "eq",
+        "execute",
+        "like",
+        "limit",
+        "order",
+        "select",
+        "table"
+      ],
+      "explicit_org_eq": true
+    },
+    {
+      "path": "backend/app/services/source_sync_service.py",
+      "line": 150,
+      "function": "list_recent_source_activity",
+      "store": "audit_events",
+      "operations": [
+        "eq",
+        "execute",
+        "in_",
+        "like",
+        "limit",
+        "order",
+        "select",
+        "table"
+      ],
+      "explicit_org_eq": true
+    },
+    {
+      "path": "backend/app/services/workspace_changes.py",
+      "line": 274,
+      "function": "_read_audit",
+      "store": "audit_events",
+      "operations": [
+        "eq",
+        "execute",
+        "limit",
+        "order",
+        "select",
+        "table"
+      ],
+      "explicit_org_eq": true
+    }
+  ],
+  "query_helper_call_sites": [
+    {
+      "path": "backend/app/operator_module/services/context_packs.py",
+      "line": 97,
+      "function": "build_run_context",
+      "reader": "query_audit_events"
+    }
+  ]
+}

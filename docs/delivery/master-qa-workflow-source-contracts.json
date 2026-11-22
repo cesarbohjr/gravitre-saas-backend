@@ -8323,7 +8323,8 @@
           {
             "uses": "actions/checkout@v4",
             "with": {
-              "persist-credentials": false
+              "persist-credentials": false,
+              "ref": "${{ github.event.pull_request.head.sha || github.sha }}"
             }
           },
           {
@@ -8355,6 +8356,27 @@
           {
             "name": "Certify disposable PostgreSQL trigger, relay and idempotency",
             "run": "python - <<'PY'\nfrom tests.db.pg_harness import PG_BIN\nif PG_BIN is None:\n    raise SystemExit(\"PostgreSQL unavailable: not certifying skipped tests\")\nPY\npython -m pytest -q -rs tests/db/test_domain_event_outbox_pg.py tests/master_qa/test_real_guard_postgres_consumer_pg.py tests/master_qa/test_canonical_play_outbox_pg.py tests/master_qa/test_actual_workflow_step_pg.py tests/master_qa/test_actual_approval_resume_pg.py tests/master_qa/test_joined_agent_play_approval_step_pg.py tests/master_qa/test_canonical_repository_persistence_pg.py tests/master_qa/test_authenticated_sales_run_diagnosis_pg.py tests/master_qa/test_opportunity_acceptance_pg.py tests/master_qa/test_graph_checkpoint_process_recovery_pg.py tests/master_qa/test_ambiguous_provider_commit_recovery_pg.py tests/master_qa/test_orphan_graph_claim_pg.py tests/master_qa/test_graph_pre_dispatch_journal_pg.py tests/master_qa/test_auto_orphan_reconciliation_pg.py tests/master_qa/test_worker_process_crash_restart_pg.py\n"
+          },
+          {
+            "name": "Install pinned real PostgREST for DEC-008",
+            "run": "set -euo pipefail\nmkdir -p \"$RUNNER_TEMP/dec008-postgrest\"\ncurl --fail --location --silent --show-error --retry 3 --max-time 90 https://github.com/PostgREST/postgrest/releases/download/v16.6/postgrest-v16.6-linux-static-x86-64.tar.xz -o \"$RUNNER_TEMP/dec008-postgrest/postgrest.tar.xz\"\necho \"335ea29f00145705fb569b1268b9c8e53d062f8f6f9188192e92ea3781d2dca1  $RUNNER_TEMP/dec008-postgrest/postgrest.tar.xz\" | sha256sum --check\ntar -xJf \"$RUNNER_TEMP/dec008-postgrest/postgrest.tar.xz\" -C \"$RUNNER_TEMP/dec008-postgrest\"\necho \"GRAVITRE_POSTGREST_BIN=$RUNNER_TEMP/dec008-postgrest/postgrest\" >> \"$GITHUB_ENV\"\n\"$RUNNER_TEMP/dec008-postgrest/postgrest\" --version\n"
+          },
+          {
+            "name": "DEC-008 real PostgREST reader and consumer gate (zero skips)",
+            "env": {
+              "DEC008_EXPECTED_SHA": "${{ github.event.pull_request.head.sha || github.sha }}"
+            },
+            "run": "PYTHONPATH=. python scripts/run_dec008_postgrest_gate.py"
+          },
+          {
+            "name": "Retain sanitized DEC-008 PostgREST evidence",
+            "if": "${{ always() }}",
+            "uses": "actions/upload-artifact@v4",
+            "with": {
+              "name": "dec008-real-postgrest-${{ github.event.pull_request.head.sha || github.sha }}",
+              "path": "backend/dec008-postgrest-evidence.json",
+              "if-no-files-found": "error"
+            }
           }
         ]
       }
