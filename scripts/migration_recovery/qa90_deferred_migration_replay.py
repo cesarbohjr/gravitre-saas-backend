@@ -139,6 +139,36 @@ def main() -> None:
         '00000000-0000-0000-0000-000000000002',
         '00000000-0000-0000-0000-000000000101')""", expect_failure=True)
     assert "foreign key" in error.lower(), error[-700:]
+    # Negative and positive provider-free delivery checks on synthetic tenant data.
+    # No connected vendor calls: only the disposable PostgreSQL function is invoked.
+    missing = psql(PGDATABASE, """select public.prospect_record_delivery_atomic(
+        '00000000-0000-0000-0000-000000000001','smartlead','evt-missing',
+        'lead-missing','delivered','person@example.test')""", expect_failure=True)
+    assert "tenant-owned contact mapping" in missing.lower(), missing[-700:]
+    psql(PGDATABASE, """insert into public.prospect_contacts(
+        id,org_id,company_id,email) values(
+        '00000000-0000-0000-0000-000000000102',
+        '00000000-0000-0000-0000-000000000001',
+        '00000000-0000-0000-0000-000000000101','person@example.test');
+        insert into public.prospect_outreach_lead_links(org_id,provider,provider_lead_id,contact_id)
+        values('00000000-0000-0000-0000-000000000001',
+          'smartlead','lead-mapped','00000000-0000-0000-0000-000000000102')""")
+    wrong_recipient = psql(PGDATABASE, """select public.prospect_record_delivery_atomic(
+        '00000000-0000-0000-0000-000000000001','smartlead','evt-mismatch',
+        'lead-mapped','delivered','wrong@example.test')""", expect_failure=True)
+    assert "recipient mismatch" in wrong_recipient.lower(), wrong_recipient[-700:]
+    wrong_tenant = psql(PGDATABASE, """select public.prospect_record_delivery_atomic(
+        '00000000-0000-0000-0000-000000000002','smartlead','evt-cross-tenant',
+        'lead-mapped','delivered','person@example.test')""", expect_failure=True)
+    assert "tenant-owned contact mapping" in wrong_tenant.lower(), wrong_tenant[-700:]
+    first = psql(PGDATABASE, """select public.prospect_record_delivery_atomic(
+        '00000000-0000-0000-0000-000000000001','smartlead','evt-valid',
+        'lead-mapped','delivered','PERSON@example.test')""")
+    replay = psql(PGDATABASE, """select public.prospect_record_delivery_atomic(
+        '00000000-0000-0000-0000-000000000001','smartlead','evt-valid',
+        'lead-mapped','delivered','person@example.test')""")
+    assert first == "t" and replay == "f", (first, replay)
+    assert psql(PGDATABASE, "select count(*) from public.prospect_outreach_events") == "1"
     # A valid v2 status is admitted; an unsupported status is rejected.
     psql(PGDATABASE, """insert into public.runs(id,status)
         values('00000000-0000-0000-0000-000000000201','partial_success')""")
@@ -149,7 +179,7 @@ def main() -> None:
     print(json.dumps({"result": "PASS", "migrations": len(observed),
         "scope": "isolated minimal-schema ordered replay; no Supabase or provider calls",
         "assertions": ["SQL execution order", "RLS", "function grants",
-                       "ownership guard", "tenant foreign key",
+                       "ownership guard", "provider event negative/positive replay", "tenant foreign key",
                        "catalog prices", "v2 statuses"]}))
 
 
