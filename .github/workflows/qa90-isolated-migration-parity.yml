@@ -1,0 +1,50 @@
+name: QA90 isolated migration DDL parity
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "scripts/migration_recovery/qa90_isolated_migration_parity.py"
+      - ".github/workflows/qa90-isolated-migration-parity.yml"
+      - "supabase/migrations/20261025170000_add_smartlead_connector_type.sql"
+      - "supabase/migrations/20261026200000_conversation_surface.sql"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  replay:
+    name: Disposable PostgreSQL DDL parity (no provider)
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: qa90-isolated-fixture
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install local PostgreSQL CLI
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq postgresql-client
+      - name: Verify isolated remote-vs-repo DDL and repeatability
+        env:
+          PGHOST: 127.0.0.1
+          PGPORT: "5432"
+          PGUSER: postgres
+          PGPASSWORD: qa90-isolated-fixture
+          PGCONNECT_TIMEOUT: "5"
+        run: python scripts/migration_recovery/qa90_isolated_migration_parity.py
