@@ -18,12 +18,11 @@ The unsigned deployment identity gate runs before any fixture creation.
 
 Manual dispatch requires repository owner `cesarbohjr`, this repository, and
 `confirm_disposable_fixture=true` (default false). This explicit per-run opt-in
-replaces the absent repository toggle. `main` and the single implementation
-branch `ci/eco001-disposable-signed-preflight` are permitted so the requested
-bounded acceptance can run before any further merge. Other refs fail closed.
-PR-triggered execution runs offline fixture contracts only and receives no
-environment credentials. This branch permission is temporary and should be
-removed when the harness is reviewed and merged. The existing `acceptance`
+replaces the absent repository toggle. Only `refs/heads/main` may
+dispatch the credentialed preflight. The former implementation branch
+`ci/eco001-disposable-signed-preflight`, all other branches and tags fail
+closed. PR-triggered execution runs offline fixture contracts only and
+receives no environment credentials. The existing `acceptance`
 environment has no reviewer/branch protection; no protected-environment claim
 is made and no protection or secret is changed by this implementation.
 

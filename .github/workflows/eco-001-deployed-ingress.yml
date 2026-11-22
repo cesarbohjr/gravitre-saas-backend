@@ -60,10 +60,7 @@ jobs:
           test "$EVENT_NAME" = workflow_dispatch
           test "$REPOSITORY" = cesarbohjr/gravitre-saas-backend
           test "$ACTOR" = cesarbohjr
-          case "$DISPATCH_REF" in
-            refs/heads/main|refs/heads/ci/eco001-disposable-signed-preflight) ;;
-            *) exit 1 ;;
-          esac
+          test "$DISPATCH_REF" = refs/heads/main
           test "$CONFIRM_DISPOSABLE_FIXTURE" = true
 
   signed-qa-ingress-preflight:

@@ -216,11 +216,13 @@ def workflow():
 @pytest.mark.parametrize("override", [
     {}, {"EVENT_NAME": "pull_request"}, {"REPOSITORY": "elsewhere/repository"},
     {"ACTOR": "someone-else"}, {"DISPATCH_REF": "refs/heads/unreviewed"},
+    {"DISPATCH_REF": "refs/heads/ci/eco001-disposable-signed-preflight"},
+    {"DISPATCH_REF": "refs/tags/v1.0.0"},
     {"CONFIRM_DISPOSABLE_FIXTURE": "false"}, {"CONFIRM_DISPOSABLE_FIXTURE": ""},
 ])
 def test_actual_dispatch_guard_is_fail_closed(override):
     env = {"EVENT_NAME": "workflow_dispatch", "REPOSITORY": "cesarbohjr/gravitre-saas-backend",
-           "ACTOR": "cesarbohjr", "DISPATCH_REF": "refs/heads/ci/eco001-disposable-signed-preflight",
+           "ACTOR": "cesarbohjr", "DISPATCH_REF": "refs/heads/main",
            "CONFIRM_DISPOSABLE_FIXTURE": "true", **override}
     step = workflow()["jobs"]["authorize"]["steps"][0]
     out = subprocess.run(["bash", "-c", step["run"]], env=env, capture_output=True)
