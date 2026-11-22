@@ -82,8 +82,8 @@ def assert_loopback(url: str) -> None:
         or u.hostname not in ("127.0.0.1", "localhost", "::1")
         or u.query or u.fragment):
         raise ValueError("Only loopback PostgreSQL database URLs allowed")
-    if u.path != "/qa90_full_shape":
-        raise ValueError("Dedicated scratch database qa90_full_shape is mandatory")
+    if u.path != "/postgres":
+        raise ValueError("Only the disposable local Supabase postgres database is permitted")
 
 
 def fingerprint(conn: psycopg.Connection) -> str:
@@ -137,15 +137,22 @@ def main() -> None:
             assert before == after_rollback, "Rollback altered catalog: baseline lost"
             result["rollback_verified"] = True
 
-            # Independently prove the same files can commit in timestamp order.
-            for name in VERSIONS:
+            # Positive execution/compatibility pass; deliberately abort this
+            # transaction too so the verified recovery baseline remains intact.
+            try:
                 with conn.transaction():
-                    conn.execute((ROOT / "supabase/migrations" / f"{name}.sql").read_text(),
-                                 prepare=False)
-                result["applied"].append(name)
-            verify(conn)
-            result["after_application_schema_sha256"] = fingerprint(conn)
-            assert len(result["applied"]) == 16
+                    for name in VERSIONS:
+                        conn.execute((ROOT / "supabase/migrations" / f"{name}.sql").read_text(),
+                                     prepare=False)
+                        result["applied"].append(name)
+                    verify(conn)
+                    result["after_application_schema_sha256"] = fingerprint(conn)
+                    assert len(result["applied"]) == 16
+                    raise RuntimeError("QA90_EXPECTED_POSITIVE_ROLLBACK")
+            except RuntimeError as exc:
+                if str(exc) != "QA90_EXPECTED_POSITIVE_ROLLBACK":
+                    raise
+            assert fingerprint(conn) == before, "Post-positive rollback changed baseline"
             result["passed"] = True
     finally:
         args.report.parent.mkdir(parents=True, exist_ok=True)
