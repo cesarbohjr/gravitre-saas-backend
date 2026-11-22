@@ -469,7 +469,7 @@ jobs:
 
         assert report["commit"] == os.environ["GITHUB_SHA"]
 
-        assert report["candidate_source_count"] == 10
+        assert report["candidate_source_count"] == 16  # Includes Agent/Play/workflow/Canvas/worker/recovery owners
 
         assert not report["missing_sources"]
 
