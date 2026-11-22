@@ -46,8 +46,8 @@ class EventRouting(unittest.TestCase):
                 result = router.select(self.records, record['lane'], event_name, event, paths)
                 self.assertIn(Path(record['source']).stem, result['selected'], (record['source'], event_name, paths))
                 replays += 1
-        # The audited snapshot contains 96 automatic source-event contracts.
-        self.assertEqual(replays, 96)
+        # Main's signed fixture registration adds one offline PR event contract.
+        self.assertEqual(replays, 97)
 
     def test_globs_respect_directories_literal_parentheses_and_ordered_exclusions(self):
         self.assertTrue(router.glob_match('backend/tests/a.py', 'backend/**'))
@@ -67,6 +67,19 @@ class EventRouting(unittest.TestCase):
             self.assertNotIn('connector-verified-writes-live', selected)
         event['ref'] = 'refs/heads/unrelated'
         self.assertNotIn('railway-backend-production', router.select(self.records, '11-release', 'push', event, ['backend/app/main.py'])['selected'])
+
+    def test_disposable_fixture_pr_contract_routes_to_existing_acceptance_lane(self):
+        event = {'repository': REPO, 'action': 'synchronize',
+                 'pull_request': {'base': {'ref': 'main'}}}
+        for path in ('scripts/eco001_disposable_preflight.py',
+                     'tests/test_eco001_disposable_preflight.py',
+                     '.github/workflows/qa-12-independent-acceptance.yml'):
+            selected = router.select(self.records, '12-independent-acceptance',
+                                     'pull_request', event, [path])['selected']
+            self.assertIn('eco-001-deployed-ingress', selected)
+        selected = router.select(self.records, '12-independent-acceptance',
+                                 'pull_request', event, ['docs/unrelated.md'])['selected']
+        self.assertNotIn('eco-001-deployed-ingress', selected)
 
     def test_label_only_preflight_does_not_turn_into_pr_provider_writes(self):
         event = {'repository': REPO, 'action': 'synchronize', 'pull_request': {'base': {'ref': 'main'}}}

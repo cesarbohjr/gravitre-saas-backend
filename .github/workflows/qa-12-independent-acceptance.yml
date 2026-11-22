@@ -18,15 +18,11 @@ name: QA 12-independent-acceptance
         - release1-live-memory-liveness
         - release1-live-public-mcp
         default: eco-001-deployed-ingress
-      eco_001_deployed_ingress__backend_url:
-        description: 'eco-001-deployed-ingress: HTTPS URL of an already-deployed, isolated FastAPI nonproduction backend (not
-          frontend or production)'
+      eco_001_deployed_ingress__confirm_disposable_fixture:
+        description: 'eco-001-deployed-ingress: Create and clean up one isolated acceptance user and conversation'
+        type: boolean
         required: false
-        type: string
-      eco_001_deployed_ingress__runtime_sha:
-        description: 'eco-001-deployed-ingress: Exact Git commit deployed to that backend; /health git_sha must match'
-        required: false
-        type: string
+        default: false
       isolated_acceptance__suite:
         description: 'isolated-acceptance: Choose isolated acceptance suite'
         required: false
@@ -77,8 +73,6 @@ name: QA 12-independent-acceptance
     branches:
     - main
   pull_request:
-    branches:
-    - main
     types:
     - labeled
     - opened
@@ -93,13 +87,14 @@ name: QA 12-independent-acceptance
     - Production release verification
     - QA 11-release
 concurrency:
-  group: ${{ format('candidate-{0}', (inputs.source == 'isolated-acceptance' && (format('external-acceptance-{0}', github.event.pull_request.number
-    || github.ref))) || (inputs.source == 'master-qa-p0-synthetic' && (format('master-qa-p0-{0}', github.event.pull_request.number
-    || github.ref))) || (inputs.source == 'master-qa-p27-sandbox-readback' && ('p27-existing-live-hubspot-qa')) || (inputs.source
-    == 'milestone1-live-reverify' && ('milestone1-live-reverify')) || github.run_id) }}
-  cancel-in-progress: ${{ (inputs.source == 'isolated-acceptance' && (true)) || (inputs.source == 'master-qa-p0-synthetic'
-    && (true)) || (inputs.source == 'master-qa-p27-sandbox-readback' && (false)) || (inputs.source == 'milestone1-live-reverify'
-    && (false)) || false }}
+  group: ${{ format('candidate-{0}', (inputs.source == 'eco-001-deployed-ingress' && ('eco001-signed-qa-ingress-readonly'))
+    || (inputs.source == 'isolated-acceptance' && (format('external-acceptance-{0}', github.event.pull_request.number || github.ref)))
+    || (inputs.source == 'master-qa-p0-synthetic' && (format('master-qa-p0-{0}', github.event.pull_request.number || github.ref)))
+    || (inputs.source == 'master-qa-p27-sandbox-readback' && ('p27-existing-live-hubspot-qa')) || (inputs.source == 'milestone1-live-reverify'
+    && ('milestone1-live-reverify')) || github.run_id) }}
+  cancel-in-progress: ${{ (inputs.source == 'eco-001-deployed-ingress' && (false)) || (inputs.source == 'isolated-acceptance'
+    && (true)) || (inputs.source == 'master-qa-p0-synthetic' && (true)) || (inputs.source == 'master-qa-p27-sandbox-readback'
+    && (false)) || (inputs.source == 'milestone1-live-reverify' && (false)) || false }}
 jobs:
   upstream_contract:
     name: Read trusted upstream outcome metadata
@@ -142,14 +137,13 @@ jobs:
       name: Validate source contract
       shell: python
       env:
-        SOURCE_SCHEMAS: '{"eco-001-deployed-ingress": {"backend_url": {"description": "HTTPS URL of an already-deployed, isolated
-          FastAPI nonproduction backend (not frontend or production)", "required": true, "type": "string"}, "runtime_sha":
-          {"description": "Exact Git commit deployed to that backend; /health git_sha must match", "required": true, "type":
-          "string"}}, "isolated-acceptance": {"suite": {"description": "Choose isolated acceptance suite", "required": true,
-          "type": "choice", "options": ["all", "billing", "voice"], "default": "all"}}, "master-qa-p0-synthetic": {}, "master-qa-p27-sandbox-readback":
-          {"approval": {"description": "Type APPROVE_LIVE_TEST_CONTACT for one disposable record in the existing Gravitre
-          HubSpot portal", "required": true, "type": "string"}}, "milestone1-live-reverify": {"min_sha": {"description": "Minimum
-          deployed git sha prefix (Research Manager)", "required": false, "default": "4eb6adbe"}, "skip_wave67_write": {"description":
+        SOURCE_SCHEMAS: '{"eco-001-deployed-ingress": {"confirm_disposable_fixture": {"description": "Create and clean up
+          one isolated acceptance user and conversation", "type": "boolean", "required": true, "default": false}}, "isolated-acceptance":
+          {"suite": {"description": "Choose isolated acceptance suite", "required": true, "type": "choice", "options": ["all",
+          "billing", "voice"], "default": "all"}}, "master-qa-p0-synthetic": {}, "master-qa-p27-sandbox-readback": {"approval":
+          {"description": "Type APPROVE_LIVE_TEST_CONTACT for one disposable record in the existing Gravitre HubSpot portal",
+          "required": true, "type": "string"}}, "milestone1-live-reverify": {"min_sha": {"description": "Minimum deployed
+          git sha prefix (Research Manager)", "required": false, "default": "4eb6adbe"}, "skip_wave67_write": {"description":
           "Skip Wave67 write/approve turns (read-only spotcheck)", "required": false, "type": "boolean", "default": false}},
           "plays-datasets-live-proof": {"dataset_query": {"description": "Public dataset metadata search query", "required":
           false, "default": "customer support"}, "backend_url": {"description": "Backend base URL", "required": false, "default":
@@ -175,65 +169,149 @@ jobs:
         \        raise SystemExit('Required selected-source input missing: ' + key)\nprint('Selected source input contract\
         \ validated; this is not execution acceptance')\nwith open(os.environ['GITHUB_OUTPUT'], 'a') as output:\n    output.write('selected='\
         \ + json.dumps([source]) + '\\n')\n    output.write('derived=[]\\ncontext_conclusions={}\\n')\n"
-  eco_001_deployed_ingress__deployed-ingress-preflight:
+  eco_001_deployed_ingress__fixture-contracts:
+    name: Disposable QA fixture safety contracts (offline)
     runs-on: ubuntu-latest
-    timeout-minutes: 6
-    steps:
-    - uses: actions/checkout@v4
-    - uses: actions/setup-python@v5
-      with:
-        python-version: '3.12'
-    - name: Verify protected backend runtime without dispatching work
-      env:
-        QA_BACKEND_URL: ${{ inputs.eco_001_deployed_ingress__backend_url }}
-        QA_EXPECTED_SHA: ${{ inputs.eco_001_deployed_ingress__runtime_sha }}
-      run: "set -euo pipefail\npython backend/scripts/eco001_deployed_ingress_preflight.py \\\n  --url \"$QA_BACKEND_URL\"\
-        \ \\\n  --sha \"$QA_EXPECTED_SHA\" \\\n  --output \"$RUNNER_TEMP/eco001-deployed-ingress.json\"\n"
-    - name: Upload sanitized nonproduction runtime identity evidence
-      if: always()
-      uses: actions/upload-artifact@v4
-      with:
-        name: eco001-deployed-ingress-readonly
-        path: ${{ runner.temp }}/eco001-deployed-ingress.json
-        if-no-files-found: warn
-    name: deployed-ingress-preflight
-    needs:
-    - dispatch_contract
-    if: ${{ always() && needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected),
-      'eco-001-deployed-ingress') && ((!cancelled() && (true))) }}
-    permissions:
-      contents: read
-  eco_001_deployed_ingress__signed-qa-ingress-preflight:
-    name: Signed isolated QA ingress (read-only)
-    if: ${{ always() && needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected),
-      'eco-001-deployed-ingress') && (!cancelled() && (true) && (github.event_name == 'workflow_dispatch' && github.actor
-      == 'cesarbohjr' && vars.ECO001_SIGNED_QA_ENABLED == 'true' && inputs.eco_001_deployed_ingress__backend_url == 'https://eco001-fastapi-qa.up.railway.app'))
-      }}
-    environment: eco001-isolated-qa
-    runs-on: ubuntu-latest
-    timeout-minutes: 6
+    timeout-minutes: 3
     steps:
     - uses: actions/checkout@v4
       with:
         persist-credentials: false
-    - name: Verify signed isolated QA ingress without dispatching work
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+    - run: pip install pytest==8.3.5 PyYAML==6.0.2
+    - run: python -m pytest -q tests/test_eco001_disposable_preflight.py
+    needs:
+    - dispatch_contract
+    if: ${{ always() && needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected),
+      'eco-001-deployed-ingress') && ((!cancelled() && (true))) }}
+    env:
+      QA_BACKEND_URL: https://eco001-fastapi-qa.up.railway.app
+      QA_EXPECTED_SHA: c10d8a764f67c428adc408d65429149e7686498f
+      PREFLIGHT_SHA256: 347761a26bc874a0d885b0a463797708661bcb6fac9cbf5fdc047e9dfeb4ae82
+    permissions:
+      contents: read
+    concurrency:
+      group: ${{ format('candidate-{0}-{1}-{2}', 'eco001-signed-qa-ingress-readonly', 'eco_001_deployed_ingress__fixture-contracts',
+        toJSON(matrix)) }}
+      cancel-in-progress: ${{ false }}
+  eco_001_deployed_ingress__authorize:
+    name: Verify signed QA dispatch scope
+    if: ${{ always() && needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected),
+      'eco-001-deployed-ingress') && (!cancelled() && (true) && (github.event_name == 'workflow_dispatch')) }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+    - name: Require the existing owner and explicit fixture opt-in
       env:
-        QA_BACKEND_URL: ${{ inputs.eco_001_deployed_ingress__backend_url }}
-        QA_EXPECTED_SHA: ${{ inputs.eco_001_deployed_ingress__runtime_sha }}
-        ECO001_QA_BEARER: ${{ secrets.ECO001_QA_BEARER }}
-        ECO001_QA_CONVERSATION: ${{ vars.ECO001_QA_CONVERSATION }}
-      run: "set -euo pipefail\npython3 backend/scripts/eco001_deployed_ingress_preflight.py --signed-qa \\\n  --url \"$QA_BACKEND_URL\"\
-        \ \\\n  --sha \"$QA_EXPECTED_SHA\" \\\n  --output \"$RUNNER_TEMP/eco001-signed-qa-ingress.json\"\n"
-    - name: Upload sanitized signed QA ingress evidence
+        EVENT_NAME: ${{ github.event_name }}
+        REPOSITORY: ${{ github.repository }}
+        ACTOR: ${{ github.actor }}
+        DISPATCH_REF: ${{ github.ref }}
+        CONFIRM_DISPOSABLE_FIXTURE: ${{ inputs.eco_001_deployed_ingress__confirm_disposable_fixture }}
+      shell: bash
+      run: 'set -euo pipefail
+
+        test "$EVENT_NAME" = workflow_dispatch
+
+        test "$REPOSITORY" = cesarbohjr/gravitre-saas-backend
+
+        test "$ACTOR" = cesarbohjr
+
+        test "$DISPATCH_REF" = refs/heads/main
+
+        test "$CONFIRM_DISPOSABLE_FIXTURE" = true
+
+        '
+    needs:
+    - dispatch_contract
+    env:
+      QA_BACKEND_URL: https://eco001-fastapi-qa.up.railway.app
+      QA_EXPECTED_SHA: c10d8a764f67c428adc408d65429149e7686498f
+      PREFLIGHT_SHA256: 347761a26bc874a0d885b0a463797708661bcb6fac9cbf5fdc047e9dfeb4ae82
+    permissions:
+      contents: read
+    concurrency:
+      group: ${{ format('candidate-{0}-{1}-{2}', 'eco001-signed-qa-ingress-readonly', 'eco_001_deployed_ingress__authorize',
+        toJSON(matrix)) }}
+      cancel-in-progress: ${{ false }}
+  eco_001_deployed_ingress__signed-qa-ingress-preflight:
+    name: Signed isolated QA ingress (read-only)
+    needs:
+    - dispatch_contract
+    - eco_001_deployed_ingress__authorize
+    - eco_001_deployed_ingress__fixture-contracts
+    if: ${{ always() && needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected),
+      'eco-001-deployed-ingress') && (!cancelled() && (needs.eco_001_deployed_ingress__authorize.result == 'success' && needs.eco_001_deployed_ingress__fixture-contracts.result
+      == 'success') && (github.event_name == 'workflow_dispatch')) }}
+    environment: acceptance
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+    - name: Check out this run's fixture harness
+      uses: actions/checkout@v4
+      with:
+        ref: ${{ github.sha }}
+        persist-credentials: false
+        sparse-checkout: scripts/eco001_disposable_preflight.py
+        sparse-checkout-cone-mode: false
+    - name: Check out the reviewed preflight at the deployed SHA
+      uses: actions/checkout@v4
+      with:
+        ref: ${{ env.QA_EXPECTED_SHA }}
+        path: deployed-probe
+        persist-credentials: false
+        sparse-checkout: backend/scripts/eco001_deployed_ingress_preflight.py
+        sparse-checkout-cone-mode: false
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+    - name: Verify the pinned preflight source
+      shell: bash
+      run: "set -euo pipefail\nprintf '%s  %s\\n' \"$PREFLIGHT_SHA256\" deployed-probe/backend/scripts/eco001_deployed_ingress_preflight.py\
+        \ |\n  sha256sum --check --status\n"
+    - name: Create disposable fixture, verify deployed GET and verify cleanup
+      timeout-minutes: 5
+      env:
+        E2E_SUPABASE_URL: ${{ secrets.E2E_SUPABASE_URL }}
+        E2E_SUPABASE_ALLOWED_URL: ${{ vars.E2E_SUPABASE_ALLOWED_URL }}
+        E2E_SUPABASE_ANON_KEY: ${{ secrets.E2E_SUPABASE_ANON_KEY }}
+        E2E_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.E2E_SUPABASE_SERVICE_ROLE_KEY }}
+      shell: bash
+      run: "set -euo pipefail\npython scripts/eco001_disposable_preflight.py \\\n  --probe deployed-probe/backend/scripts/eco001_deployed_ingress_preflight.py\
+        \ \\\n  --journal \"$RUNNER_TEMP/eco001-private-fixture.json\" \\\n  --output \"$RUNNER_TEMP/eco001-signed-qa-ingress.json\"\
+        \n"
+    - name: Always retry scoped cleanup and verify persisted absence
+      if: always()
+      timeout-minutes: 3
+      env:
+        E2E_SUPABASE_URL: ${{ secrets.E2E_SUPABASE_URL }}
+        E2E_SUPABASE_ALLOWED_URL: ${{ vars.E2E_SUPABASE_ALLOWED_URL }}
+        E2E_SUPABASE_ANON_KEY: ${{ secrets.E2E_SUPABASE_ANON_KEY }}
+        E2E_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.E2E_SUPABASE_SERVICE_ROLE_KEY }}
+      shell: bash
+      run: "set -euo pipefail\npython scripts/eco001_disposable_preflight.py --cleanup-only \\\n  --probe deployed-probe/backend/scripts/eco001_deployed_ingress_preflight.py\
+        \ \\\n  --journal \"$RUNNER_TEMP/eco001-private-fixture.json\" \\\n  --output \"$RUNNER_TEMP/eco001-signed-qa-ingress.json\"\
+        \n"
+    - name: Retain sanitized signed QA evidence
+      if: always()
       uses: actions/upload-artifact@v4
       with:
         name: eco001-signed-qa-ingress-readonly
         path: ${{ runner.temp }}/eco001-signed-qa-ingress.json
         if-no-files-found: error
-    needs:
-    - dispatch_contract
+        retention-days: 90
+    env:
+      QA_BACKEND_URL: https://eco001-fastapi-qa.up.railway.app
+      QA_EXPECTED_SHA: c10d8a764f67c428adc408d65429149e7686498f
+      PREFLIGHT_SHA256: 347761a26bc874a0d885b0a463797708661bcb6fac9cbf5fdc047e9dfeb4ae82
     permissions:
       contents: read
+    concurrency:
+      group: ${{ format('candidate-{0}-{1}-{2}', 'eco001-signed-qa-ingress-readonly', 'eco_001_deployed_ingress__signed-qa-ingress-preflight',
+        toJSON(matrix)) }}
+      cancel-in-progress: ${{ false }}
   isolated_acceptance__billing-e2e:
     name: Billing Playwright (isolated test)
     if: ${{ always() && needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected),
@@ -1026,7 +1104,8 @@ jobs:
     needs:
     - upstream_contract
     - dispatch_contract
-    - eco_001_deployed_ingress__deployed-ingress-preflight
+    - eco_001_deployed_ingress__fixture-contracts
+    - eco_001_deployed_ingress__authorize
     - eco_001_deployed_ingress__signed-qa-ingress-preflight
     - isolated_acceptance__billing-e2e
     - isolated_acceptance__live-provider-voice
@@ -1052,21 +1131,22 @@ jobs:
         \ 'head_sha': os.environ['GITHUB_SHA'],\n            'source_outcomes': outcomes}\nwith open('canonical-workflow-outcomes.json',\
         \ 'w') as output:\n    json.dump(evidence, output)\n"
       env:
-        SOURCE_JOBS: '{"eco-001-deployed-ingress": {"display_name": "Master QA | QA20 Governed Ingress Read-Only Preflight",
-          "jobs": ["eco_001_deployed_ingress__deployed-ingress-preflight", "eco_001_deployed_ingress__signed-qa-ingress-preflight"]},
-          "isolated-acceptance": {"display_name": "Isolated billing and live voice acceptance", "jobs": ["isolated_acceptance__billing-e2e",
-          "isolated_acceptance__live-provider-voice", "isolated_acceptance__physical-voice-readiness"]}, "master-qa-p0-synthetic":
-          {"display_name": "Master QA | QA00\u2013QA90 Core Evidence & Runtime", "jobs": ["master_qa_p0_synthetic__synthetic-fixtures",
-          "master_qa_p0_synthetic__actual-runtime-and-postgres"]}, "master-qa-p27-sandbox-readback": {"display_name": "Master
-          QA | QA50 Authorized HubSpot Provider Readback", "jobs": ["master_qa_p27_sandbox_readback__label-preflight", "master_qa_p27_sandbox_readback__provider-readback"]},
-          "milestone1-live-reverify": {"display_name": "Milestone 1 Live Reverify", "jobs": ["milestone1_live_reverify__live-reverify"]},
-          "plays-datasets-live-proof": {"display_name": "Plays + datasets authenticated live proof", "jobs": ["plays_datasets_live_proof__live-read-proof"]},
+        SOURCE_JOBS: '{"eco-001-deployed-ingress": {"display_name": "Signed isolated QA ingress preflight", "jobs": ["eco_001_deployed_ingress__fixture-contracts",
+          "eco_001_deployed_ingress__authorize", "eco_001_deployed_ingress__signed-qa-ingress-preflight"]}, "isolated-acceptance":
+          {"display_name": "Isolated billing and live voice acceptance", "jobs": ["isolated_acceptance__billing-e2e", "isolated_acceptance__live-provider-voice",
+          "isolated_acceptance__physical-voice-readiness"]}, "master-qa-p0-synthetic": {"display_name": "Master QA | QA00\u2013QA90
+          Core Evidence & Runtime", "jobs": ["master_qa_p0_synthetic__synthetic-fixtures", "master_qa_p0_synthetic__actual-runtime-and-postgres"]},
+          "master-qa-p27-sandbox-readback": {"display_name": "Master QA | QA50 Authorized HubSpot Provider Readback", "jobs":
+          ["master_qa_p27_sandbox_readback__label-preflight", "master_qa_p27_sandbox_readback__provider-readback"]}, "milestone1-live-reverify":
+          {"display_name": "Milestone 1 Live Reverify", "jobs": ["milestone1_live_reverify__live-reverify"]}, "plays-datasets-live-proof":
+          {"display_name": "Plays + datasets authenticated live proof", "jobs": ["plays_datasets_live_proof__live-read-proof"]},
           "plays-production-acceptance": {"display_name": "Plays production acceptance", "jobs": ["plays_production_acceptance__deterministic-contract",
           "plays_production_acceptance__authenticated-production-read"]}, "release1-live-memory-liveness": {"display_name":
           "Release 1 live memory source revocation", "jobs": ["release1_live_memory_liveness__memory-liveness"]}, "release1-live-public-mcp":
           {"display_name": "Release 1 public MCP and SSRF live verification", "jobs": ["release1_live_public_mcp__public-mcp"]}}'
-        JOB_RESULTS: '{"eco_001_deployed_ingress__deployed-ingress-preflight": {"result": "${{ needs.eco_001_deployed_ingress__deployed-ingress-preflight.result
-          }}"}, "eco_001_deployed_ingress__signed-qa-ingress-preflight": {"result": "${{ needs.eco_001_deployed_ingress__signed-qa-ingress-preflight.result
+        JOB_RESULTS: '{"eco_001_deployed_ingress__fixture-contracts": {"result": "${{ needs.eco_001_deployed_ingress__fixture-contracts.result
+          }}"}, "eco_001_deployed_ingress__authorize": {"result": "${{ needs.eco_001_deployed_ingress__authorize.result }}"},
+          "eco_001_deployed_ingress__signed-qa-ingress-preflight": {"result": "${{ needs.eco_001_deployed_ingress__signed-qa-ingress-preflight.result
           }}"}, "isolated_acceptance__billing-e2e": {"result": "${{ needs.isolated_acceptance__billing-e2e.result }}"}, "isolated_acceptance__live-provider-voice":
           {"result": "${{ needs.isolated_acceptance__live-provider-voice.result }}"}, "isolated_acceptance__physical-voice-readiness":
           {"result": "${{ needs.isolated_acceptance__physical-voice-readiness.result }}"}, "master_qa_p0_synthetic__synthetic-fixtures":

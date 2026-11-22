@@ -1,3 +1,24 @@
+## Main reconciliation checkpoint — hosted verification pending
+
+PR #611 incorporates main `8fbab752591f3abf7a44de9aa753eab81a9de376`
+without rebasing or dropping its fixture registration. Both branches' workforce
+and retention clocks remain pinned to their fixture dates, and all original
+assertions survive. Main's signed disposable QA workflow is carried into the
+existing QA12 source contract and regenerated lane, keeping **12 installed
+workflows, 94 source contracts, 123 source jobs and 97 automatic source-event
+contracts**. The three fixture jobs replace the old two-job manual-token source.
+
+This is the registration already exercised by manual run 44863581946, with its
+prior evidence retained. No live test is repeated here. Owner/main-only dispatch,
+explicit fixture opt-in, acceptance-only credentials, pinned probe/runtime,
+always-run scoped cleanup and sanitized evidence retention remain intact. PRs
+run offline fixture contracts only. Exact-head hosted verification of the merge
+is required; prior-head CI and live proof do not certify this reconciled head.
+
+The DEC-020/ECO-006 inventory batch from `c6d7013` is preserved. No finding is
+certified closed, provider-write/rollback acceptance remains deferred, and no
+main merge, deployment, hosted migration or retirement is authorized here.
+
 ## Verified consolidation checkpoint and remediation continuation
 
 PR #611 at `2702736d0ab798511dde594265010d598e44f17a` has exactly **12** active workflow files, replacing **94** historical source definitions. All **10 automatic PR lanes passed**, including all five protected Core CI checks. The backend run passed **16,987 tests**, with **44 skips** and **14 passed subtests**. [Exact-SHA Core CI](https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/43801223572). The two manual/release lanes were not dispatched. Main and production are unchanged; this is branch-level verification, not production qualification. Earlier checkpoints below are historical.

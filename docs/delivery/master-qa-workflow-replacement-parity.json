@@ -1,11 +1,11 @@
 {
   "source_count": 94,
   "candidate_count": 12,
-  "source_job_count": 122,
+  "source_job_count": 123,
   "static_contract_parity": "PASS",
   "runtime_parity": "REQUIRES_INDEPENDENT_RUN_EVIDENCE",
   "automatic_trigger_parity": "STATIC_REPLAY_PASS_RUNTIME_PENDING",
-  "automatic_source_event_contract_count": 96,
+  "automatic_source_event_contract_count": 97,
   "required_checks": "VERIFIED_ADMIN_UI",
   "retirement_authorized": false,
   "required_contexts": [
@@ -2224,26 +2224,30 @@
     },
     {
       "source": ".github/workflows/eco-001-deployed-ingress.yml",
-      "display_name": "Master QA | QA20 Governed Ingress Read-Only Preflight",
+      "display_name": "Signed isolated QA ingress preflight",
       "lane": "12-independent-acceptance",
       "jobs": {
-        "deployed-ingress-preflight": "eco_001_deployed_ingress__deployed-ingress-preflight",
+        "fixture-contracts": "eco_001_deployed_ingress__fixture-contracts",
+        "authorize": "eco_001_deployed_ingress__authorize",
         "signed-qa-ingress-preflight": "eco_001_deployed_ingress__signed-qa-ingress-preflight"
       },
       "automatic_trigger_contract": {
         "workflow_dispatch": {
           "inputs": {
-            "backend_url": {
-              "description": "HTTPS URL of an already-deployed, isolated FastAPI nonproduction backend (not frontend or production)",
+            "confirm_disposable_fixture": {
+              "description": "Create and clean up one isolated acceptance user and conversation",
+              "type": "boolean",
               "required": true,
-              "type": "string"
-            },
-            "runtime_sha": {
-              "description": "Exact Git commit deployed to that backend; /health git_sha must match",
-              "required": true,
-              "type": "string"
+              "default": false
             }
           }
+        },
+        "pull_request": {
+          "paths": [
+            ".github/workflows/eco-001-deployed-ingress.yml",
+            "scripts/eco001_disposable_preflight.py",
+            "tests/test_eco001_disposable_preflight.py"
+          ]
         }
       },
       "manual_dispatch_supported": true

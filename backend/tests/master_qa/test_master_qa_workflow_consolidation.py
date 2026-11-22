@@ -58,7 +58,9 @@ def test_required_specialist_coverage_and_manual_live_approval_are_retained():
     ingress = workflow("eco-001-deployed-ingress.yml")
     assert "workflow_dispatch:" in ingress
     assert "eco001_deployed_ingress_preflight.py" in ingress
-    assert "pull_request:" not in ingress
+    # PRs run main's offline fixture contracts; credentialed jobs stay manual.
+    assert "pull_request:" in ingress
+    assert "tests/test_eco001_disposable_preflight.py" in ingress
 
 
 def test_obsolete_write_capable_branch_reconcile_not_reintroduced():
@@ -76,22 +78,29 @@ def test_obsolete_write_capable_branch_reconcile_not_reintroduced():
 
 def test_signed_qa_ingress_uses_only_the_owner_dispatched_isolated_environment():
     jobs = source_contract['definition'](ROOT, 'eco-001-deployed-ingress.yml')['jobs']
-    anonymous = jobs['deployed-ingress-preflight']
+    offline = jobs['fixture-contracts']
+    authorize = jobs['authorize']
     signed = jobs['signed-qa-ingress-preflight']
-    assert 'ECO001_QA_BEARER' not in str(anonymous)
-    assert signed['environment'] == 'eco001-isolated-qa'
+    assert 'environment' not in offline
+    assert 'secrets.' not in str(offline)
+    assert signed['environment'] == 'acceptance'
     assert signed['permissions'] == {'contents': 'read'}
-    for condition in (
-        "github.event_name == 'workflow_dispatch'",
-        "github.actor == 'cesarbohjr'",
-        "vars.ECO001_SIGNED_QA_ENABLED == 'true'",
-        "https://eco001-fastapi-qa.up.railway.app",
-    ):
-        assert condition in signed['if']
+    assert "github.event_name == 'workflow_dispatch'" in signed['if']
+    assert "github.event_name == 'workflow_dispatch'" in authorize['if']
+    guard = authorize['steps'][0]
+    assert 'test "$ACTOR" = cesarbohjr' in guard['run']
+    assert 'test "$DISPATCH_REF" = refs/heads/main' in guard['run']
+    assert 'test "$CONFIRM_DISPOSABLE_FIXTURE" = true' in guard['run']
+    assert signed['env']['QA_BACKEND_URL'] == 'https://eco001-fastapi-qa.up.railway.app'
+    assert any('authorize' in dependency for dependency in signed['needs'])
+    assert any('fixture-contracts' in dependency for dependency in signed['needs'])
     assert signed['steps'][0]['with']['persist-credentials'] is False
-    assert signed['steps'][1]['env']['ECO001_QA_BEARER'] == '${{ secrets.ECO001_QA_BEARER }}'
-    assert '--signed-qa' in signed['steps'][1]['run']
-    assert signed['steps'][2]['with']['path'].endswith('/eco001-signed-qa-ingress.json')
+    assert 'ECO001_QA_BEARER' not in str(signed)
+    assert 'E2E_SUPABASE_SERVICE_ROLE_KEY' in str(signed)
+    cleanup, upload = signed['steps'][-2:]
+    assert cleanup['if'] == upload['if'] == 'always()'
+    assert '--cleanup-only' in cleanup['run']
+    assert upload['with']['path'].endswith('/eco001-signed-qa-ingress.json')
 
 
 def test_full_ci_preserves_comprehensive_backend_and_web_jobs():

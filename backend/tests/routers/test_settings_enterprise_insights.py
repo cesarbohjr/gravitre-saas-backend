@@ -227,7 +227,10 @@ def test_workforce_route_reads_completed_jobs():
             row["org_id"] = "org-1"
     # The fixture is anchored to NOW; the endpoint must use the same clock.
     # Otherwise this test becomes a rolling-date failure after 30 days.
-    with patch.object(mod, "shared_service_client", return_value=_Db(tables)), patch.object(mod, "_now", return_value=NOW):
+    with (
+        patch.object(mod, "shared_service_client", return_value=_Db(tables)),
+        patch.object(mod, "_now", return_value=NOW),
+    ):
         out = mod.workforce(ADMIN, MagicMock(), days=30)
     assert out["tasksCompleted"] == 1
 
