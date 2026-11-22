@@ -3,7 +3,9 @@ from __future__ import annotations
 
 import base64
 import json
+from datetime import datetime
 from typing import Any
+from uuid import UUID
 
 from supabase import create_client
 from app.core.db import shared_service_client
@@ -21,10 +23,16 @@ def _decode_cursor(cursor: str) -> tuple[str, str] | None:
         padded = cursor + "=" * (4 - len(cursor) % 4)
         raw = base64.urlsafe_b64decode(padded)
         data = json.loads(raw.decode("utf-8"))
+        if not isinstance(data, dict):
+            return None
         c_at = data.get("created_at")
         c_id = data.get("id")
         if isinstance(c_at, str) and isinstance(c_id, str):
-            return (c_at, c_id)
+            timestamp = datetime.fromisoformat(c_at)
+            if timestamp.tzinfo is None:
+                return None
+            # Canonical typed values are safe in PostgREST's filter grammar.
+            return (timestamp.isoformat(), str(UUID(c_id)))
     except (ValueError, TypeError, KeyError):
         pass
     return None
@@ -90,10 +98,11 @@ def query_audit_log(
     """List audit events for an org with optional filters."""
     client = shared_service_client(settings, create_client)
     cursor_created_at: str | None = None
+    cursor_id: str | None = None
     if cursor:
         decoded = _decode_cursor(cursor)
         if decoded:
-            cursor_created_at, _ = decoded
+            cursor_created_at, cursor_id = decoded
     q = (
         client.table("audit_events")
         .select("id, action, actor_id, resource_type, resource_id, metadata, created_at")
@@ -111,8 +120,13 @@ def query_audit_log(
         q = q.gte("created_at", start_at)
     if end_at:
         q = q.lte("created_at", end_at)
-    if cursor_created_at:
-        q = q.lt("created_at", cursor_created_at)
+    if cursor_created_at is not None and cursor_id is not None:
+        # Match the descending (created_at, id) ordering without skipping ties.
+        # The outer org/filter predicates remain ANDed with this seek boundary.
+        q = q.or_(
+            f"created_at.lt.{cursor_created_at},"
+            f"and(created_at.eq.{cursor_created_at},id.lt.{cursor_id})"
+        )
     r = q.order("created_at", desc=True).order("id", desc=True).limit(limit + 1).execute()
     rows = list(r.data) if r.data else []
     has_more = len(rows) > limit

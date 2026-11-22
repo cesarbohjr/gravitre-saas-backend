@@ -3465,9 +3465,9 @@
       "root_cause": "UNVERIFIED",
       "remediation": "Trace retention, read models and analytics; preserve compliance dual-write until parity demonstrated",
       "dependencies": [],
-      "regression_candidate": null,
-      "regression_state": "NOT_YET_IMPLEMENTED",
-      "implementation_state": "EVIDENCE_OR_REPAIR_PENDING",
+      "regression_candidate": "backend/tests/test_audit_reader_dec008_reproduction.py",
+      "regression_state": "ADDED_EXACT_HEAD_CI_PENDING",
+      "implementation_state": "SOURCE_REPAIR_HOSTED_AND_LIVE_PENDING",
       "implemented_commit": null,
       "synthetic_status": "NOT_CERTIFIED",
       "live_status": "NOT_RUN",
@@ -3492,7 +3492,18 @@
         "independent durable consumer/provider observation",
         "exact-SHA CI and release/rollback evidence"
       ],
-      "partial_test_evidence": null,
+      "partial_test_evidence": {
+        "test_path": "backend/tests/test_audit_reader_dec008_reproduction.py",
+        "source_path": "backend/app/audit/query.py",
+        "base_head_sha": "9b136df947a05bac56d7ec20b240e3f904ea8cf5",
+        "publication_status": "PREPARED_FOR_PR611_EXACT_HEAD_CI",
+        "local_result": "83 passed: 41 reader/parser cases (17 disposable PostgreSQL, 17 memory transport, 7 parser/RPC payload) and 42 dual-store delivery/receipt cases",
+        "before_repair_postgres_result": "1 failed, 6 passed; equal-timestamp traversal returned 3 of 7 expected records",
+        "scope": "Actual reader and Supabase SDK; isolated transport translates emitted predicates into parameterized SQL on disposable PostgreSQL 16.2. No running PostgREST server, RLS, deployed caller or audit-store parity certification.",
+        "evidence_path": "docs/delivery/pr611-dec008-reader-repair.md",
+        "remaining": "API audit suites need local SSO dependencies; hosted exact-head CI, caller tracing, full consumer parity and original live/rollback/owner criteria remain pending",
+        "certifies_whole_finding": false
+      },
       "audit_evidence_class": "SOURCE_CANDIDATE_REQUIRES_RUNTIME_PROOF",
       "audit_observation": "Original audit and source candidate require caller/runtime evidence; no final root-cause claim."
     },
