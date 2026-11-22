@@ -43,3 +43,46 @@ def test_registered_target_paths_exist_and_retirement_stays_uncertified():
     assert all(report["critical_source_assertions"].values())
     assert report["retirement_certified"] is False
     assert report["unknowns"]
+
+
+def test_rpc_candidates_preserve_line_and_name_without_payload():
+    result = inventory.inspect_text(
+        "backend/app/services/fixture.py",
+        "# client.rpc('comment_only')\n"
+        "client.rpc('claim_write', {'token': 'private-payload'})\n"
+        "client.rpc(fn='settle_write', params={'user': 'private-user'})\n",
+    )
+    assert result["rpc_call_candidates"] == [
+        {"line": 2, "kind": "literal_python_rpc_candidate", "target": "claim_write"},
+        {"line": 3, "kind": "literal_python_rpc_candidate", "target": "settle_write"},
+    ]
+    assert "private-payload" not in repr(result)
+    assert "private-user" not in repr(result)
+    assert "comment_only" not in repr(result)
+
+
+def test_computed_or_non_identifier_rpc_names_remain_unknown():
+    result = inventory.inspect_text(
+        "backend/app/services/fixture.py",
+        "client.rpc(selected_name, payload)\n"
+        "client.rpc('customer@example.invalid', payload)\n"
+        "client.rpc()\n",
+    )
+    assert len(result["rpc_call_candidates"]) == 3
+    assert all(call["target"] is None for call in result["rpc_call_candidates"])
+    assert all(call["kind"] == "unresolved_python_rpc_candidate"
+               for call in result["rpc_call_candidates"])
+    assert "customer@example.invalid" not in repr(result)
+    assert "selected_name" not in repr(result)
+
+
+def test_inventory_covers_governed_callers_without_runtime_certification():
+    report = inventory.collect()
+    owners = {item["candidate_owner"] for item in report["source_files"]}
+    assert {
+        "agent_intelligence", "play_router", "workflow_router",
+        "canvas_write_authority", "workflow_worker", "workflow_recovery",
+    } <= owners
+    assert report["retirement_certified"] is False
+    assert all(item["source_type"] == "static_source_only"
+               for item in report["source_files"])

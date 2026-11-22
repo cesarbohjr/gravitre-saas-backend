@@ -11,7 +11,10 @@
     "failing_head": "4c846003503df2c7953aeded285a7b908d0d9735",
     "failing_run": "https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/44396966106/job/135131733934",
     "state": "TARGETED_REGRESSION_EVIDENCE_PENDING_EXACT_HEAD_CI_AND_ACCEPTANCE",
-    "local_regressions": {"prior_core_failures_passed": 103, "neighboring_tests_passed": 117},
+    "local_regressions": {
+      "prior_core_failures_passed": 103,
+      "neighboring_tests_passed": 117
+    },
     "finding_links": {
       "ECO-002": "Chat and Voice preserve a completed connector receipt, stage an explicitly requested resend on a fresh plan and require fresh approval.",
       "ECO-005": "Chat scenarios use tenant-owned connector rows and reach the real readiness, claim and execution path with a synthetic provider.",
@@ -986,6 +989,19 @@
         ],
         "verified": false,
         "certified": false
+      },
+      "ownership_inventory_rpc_batch": {
+        "state": "SOURCE_AND_REGRESSIONS_PREPARED_HOSTED_VERIFICATION_PENDING",
+        "source": "backend/scripts/pr605_cross_surface_ownership_inventory.py",
+        "tests": "backend/tests/scripts/test_pr605_cross_surface_ownership_inventory.py",
+        "scope": "Extend existing bounded static inventory to Agent, Play, workflow, Canvas authority, isolated worker and recovery; retain literal Python RPC identifiers and source lines, with computed or invalid names explicitly unresolved and no payload export.",
+        "runtime_dispatch_verified": false,
+        "retirement_authorized": false,
+        "remaining": [
+          "Exact-head hosted CI",
+          "Active deployed caller traces and RPC client identity",
+          "Finding-specific provider, parity, rollback and owner acceptance"
+        ]
       }
     },
     {
@@ -4291,7 +4307,20 @@
       ],
       "partial_test_evidence": null,
       "audit_evidence_class": "SOURCE_CANDIDATE_REQUIRES_RUNTIME_PROOF",
-      "audit_observation": "Original audit and source candidate require caller/runtime evidence; no final root-cause claim."
+      "audit_observation": "Original audit and source candidate require caller/runtime evidence; no final root-cause claim.",
+      "ownership_inventory_rpc_batch": {
+        "state": "SOURCE_AND_REGRESSIONS_PREPARED_HOSTED_VERIFICATION_PENDING",
+        "source": "backend/scripts/pr605_cross_surface_ownership_inventory.py",
+        "tests": "backend/tests/scripts/test_pr605_cross_surface_ownership_inventory.py",
+        "scope": "Extend existing bounded static inventory to Agent, Play, workflow, Canvas authority, isolated worker and recovery; retain literal Python RPC identifiers and source lines, with computed or invalid names explicitly unresolved and no payload export.",
+        "runtime_dispatch_verified": false,
+        "retirement_authorized": false,
+        "remaining": [
+          "Exact-head hosted CI",
+          "Active deployed caller traces and RPC client identity",
+          "Finding-specific provider, parity, rollback and owner acceptance"
+        ]
+      }
     }
   ],
   "partial_test_mappings_count": 14,
