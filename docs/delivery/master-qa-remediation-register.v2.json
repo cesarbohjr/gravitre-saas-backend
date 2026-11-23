@@ -1854,8 +1854,8 @@
       "remediation": "Map readiness/scope/registered-action states and verify each caller respects authority",
       "dependencies": [],
       "regression_candidate": "backend/tests/connectors/test_eco015_action_vendor_authority.py",
-      "regression_state": "VENDOR_OWNERSHIP_CI_VERIFIED_SNAPSHOT_REPAIR_LOCAL_PASS_HOSTED_PENDING",
-      "implementation_state": "BOUNDED_OWNERSHIP_AND_SNAPSHOT_REPAIRS_ACCEPTANCE_PENDING",
+      "regression_state": "OWNERSHIP_AND_SNAPSHOT_REPAIRS_EXACT_HEAD_HOSTED_PASS_ACCEPTANCE_PENDING",
+      "implementation_state": "BOUNDED_OWNERSHIP_AND_SNAPSHOT_REPAIRS_CI_VERIFIED_ACCEPTANCE_PENDING",
       "implemented_commit": null,
       "synthetic_status": "NOT_CERTIFIED",
       "live_status": "NOT_RUN",
@@ -1913,8 +1913,23 @@
         "local_result": "162 passed including8 snapshot tests and prior783 catalog ownership pairs",
         "action_specific_application_producer_found": false,
         "scope": "Actual ToolRegistry/cache/availability chain; connector/OAuth storage and auth-health I/O synthetic. Named-call static inventory has action parameters only in wrappers; fresh vendor-level source callers exist. No production traffic or provider bypass proven.",
-        "remaining": "Exact-head hosted CI, deployed/freshness/authorization qualification, provider-scope completeness and original acceptance criteria",
-        "certifies_whole_finding": false
+        "remaining": "Deployed/freshness/authorization qualification, provider-scope completeness and original acceptance criteria; further source changes require fresh exact-head CI",
+        "certifies_whole_finding": false,
+        "hosted_verification": {
+          "executed_sha": "65af0f49e793fdcd10e7efe14c81b9b6e5804774",
+          "workflow_count_success": 10,
+          "core_run_url": "https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/45110752057",
+          "core_backend_passed": 17494,
+          "core_backend_skipped": 64,
+          "core_subtests_passed": 14,
+          "operations_run_url": "https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/45110752064",
+          "qa12_run_url": "https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/45110752054",
+          "qa12_postgrest_tests": 20,
+          "qa12_postgrest_skipped": 0,
+          "qa12_artifact_id": 14789219228,
+          "qa12_artifact_zip_sha256": "2238aa1e21d36d41b21632e021e4bd6e7630176d94ef3163673554172d9093a9",
+          "certifies_whole_finding": false
+        }
       }
     },
     {
@@ -3638,9 +3653,9 @@
       "root_cause": "UNVERIFIED",
       "remediation": "Verify source spans, per-stage attribution, cost measurement, privacy approval before enabling live correlation",
       "dependencies": [],
-      "regression_candidate": null,
-      "regression_state": "NOT_YET_IMPLEMENTED",
-      "implementation_state": "EVIDENCE_OR_REPAIR_PENDING",
+      "regression_candidate": "backend/tests/services/test_dec009_pipeline_bridge_contract.py",
+      "regression_state": "BRIDGE_SOURCE_CONTRACT_LOCAL_PASS_HOSTED_PENDING",
+      "implementation_state": "BOUNDED_SOURCE_CONTRACT_NO_PRODUCTION_CHANGE_ACCEPTANCE_PENDING",
       "implemented_commit": null,
       "synthetic_status": "NOT_CERTIFIED",
       "live_status": "NOT_RUN",
@@ -3665,7 +3680,34 @@
         "independent durable consumer/provider observation",
         "exact-SHA CI and release/rollback evidence"
       ],
-      "partial_test_evidence": null,
+      "partial_test_evidence": {
+        "scope": "ISOLATED_PRODUCER_BRIDGE_WRITER_AND_WATERFALL_CONTRACT_NOT_DURABLE_ACCEPTANCE",
+        "base_sha": "65af0f49e793fdcd10e7efe14c81b9b6e5804774",
+        "evidence_document": "docs/delivery/pr611-dec009-pipeline-bridge-contract.md",
+        "new_contract_cases_passed": 14,
+        "new_contract_cases_skipped": 0,
+        "combined_local_passed": 75,
+        "combined_local_skipped": 1,
+        "skip_reason": "Existing optional uncached tiktoken encoding check #366; no new contract skipped",
+        "production_code_changed": false,
+        "confirmed_regression_reproduced": false,
+        "no_change_justification": "Existing mapped stage attribution, failure isolation and speculative deferral passed; no source defect reproduced in bounded cases.",
+        "application_log_call_sites": 3,
+        "application_message_ids": "ALL_THREE_EXPLICITLY_NONE",
+        "io_isolation": [
+          "Postgres recording double",
+          "ClickHouse recording double"
+        ],
+        "unresolved": [
+          "Actual caller and feature-flag runtime evidence",
+          "Per-turn correlation and source spans",
+          "Provider and billing cost reconciliation",
+          "Independent durable tenant-scoped observation",
+          "Privacy approval before new live correlation",
+          "Deployment and rollback evidence"
+        ],
+        "certifies_whole_finding": false
+      },
       "audit_evidence_class": "SOURCE_CANDIDATE_REQUIRES_RUNTIME_PROOF",
       "audit_observation": "Original audit and source candidate require caller/runtime evidence; no final root-cause claim."
     },
