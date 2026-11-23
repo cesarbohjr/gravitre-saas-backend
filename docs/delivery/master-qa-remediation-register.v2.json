@@ -1854,8 +1854,8 @@
       "remediation": "Map readiness/scope/registered-action states and verify each caller respects authority",
       "dependencies": [],
       "regression_candidate": "backend/tests/connectors/test_eco015_action_vendor_authority.py",
-      "regression_state": "CROSS_VENDOR_PREFLIGHT_REPRODUCED_REPAIRED_LOCAL_PASS_HOSTED_PENDING",
-      "implementation_state": "BOUNDED_ACTION_OWNERSHIP_REPAIR_PREPARED_ACCEPTANCE_PENDING",
+      "regression_state": "VENDOR_OWNERSHIP_CI_VERIFIED_SNAPSHOT_REPAIR_LOCAL_PASS_HOSTED_PENDING",
+      "implementation_state": "BOUNDED_OWNERSHIP_AND_SNAPSHOT_REPAIRS_ACCEPTANCE_PENDING",
       "implemented_commit": null,
       "synthetic_status": "NOT_CERTIFIED",
       "live_status": "NOT_RUN",
@@ -1899,7 +1899,21 @@
         "before_repair_result": "2 failed,41 passed: HubSpot availability and actual chat plan verifier both accepted registered Gmail read/write actions",
         "local_result": "142 passed; all783 registered catalog ownership pairs retained",
         "scope": "Actual evaluator, lookup and chat readiness verifier; synthetic connector/OAuth storage/health. No provider execution, production mismatched-plan occurrence or downstream authorization bypass proven.",
-        "remaining": "Exact-head hosted CI; deployed caller/scope parity, independent provider/persistence evidence, rollback and owner criteria",
+        "remaining": "Deployed caller/scope parity, independent provider/persistence evidence, rollback and owner criteria",
+        "certifies_whole_finding": false,
+        "hosted_sha": "323a9dbd1ed569e2508c7458d611082ed2541937",
+        "hosted_status": "ALL_TEN_WORKFLOWS_SUCCESS",
+        "hosted_ci_run_url": "https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/45102959562"
+      },
+      "snapshot_authority_evidence": {
+        "base_head_sha": "323a9dbd1ed569e2508c7458d611082ed2541937",
+        "evidence_path": "docs/delivery/pr611-eco015-snapshot-authority.md",
+        "test_path": "backend/tests/services/test_connector_snapshot_authority.py",
+        "before_repair_result": "4 failed: action query reused/overwrote generic snapshot; explicit authorization denial and forced outage returned cached positive",
+        "local_result": "162 passed including8 snapshot tests and prior783 catalog ownership pairs",
+        "action_specific_application_producer_found": false,
+        "scope": "Actual ToolRegistry/cache/availability chain; connector/OAuth storage and auth-health I/O synthetic. Named-call static inventory has action parameters only in wrappers; fresh vendor-level source callers exist. No production traffic or provider bypass proven.",
+        "remaining": "Exact-head hosted CI, deployed/freshness/authorization qualification, provider-scope completeness and original acceptance criteria",
         "certifies_whole_finding": false
       }
     },
