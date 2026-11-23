@@ -6,6 +6,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 from fastapi import HTTPException, status
+from postgrest.exceptions import APIError
 
 from app.config import Settings
 from app.rag.department import resolve_department_id_for_agent
@@ -456,19 +457,26 @@ def search_department_memories(
         # Only a missing/unsupported RPC may justify fallback; never use
         # alternate table access after an explicit authorization denial.
         raise
-    except Exception:  # noqa: BLE001
-        # Fallback when RPC not yet migrated: filter by department_id directly.
-        rows = (
+    except APIError as exc:
+        # Only PostgREST's missing-function/schema-cache response permits the
+        # compatibility table reader. Denial, outage and SQL errors must not
+        # silently select an alternate authority path.
+        if exc.code != "PGRST202":
+            raise
+        fallback = (
             client.table("agent_memories")
             .select("id,org_id,agent_id,department_id,content,category,provenance,confidence,usage_count,editable,created_at")
             .eq("org_id", org_id)
             .eq("department_id", department_id)
-            .order("created_at", desc=True)
-            .limit(top_k)
-            .execute()
-            .data
-            or []
+            # Match the retained RPC's COALESCE(boolean, true) semantics for
+            # legacy nulls, while excluding inactive/superseded memories.
+            .not_.is_("is_active", False)
+            .not_.is_("is_current", False)
+            .or_(f"expires_at.is.null,expires_at.gt.{datetime.now(timezone.utc).isoformat()}")
         )
+        if payload["p_category"] is not None:
+            fallback = fallback.eq("category", payload["p_category"])
+        rows = fallback.order("created_at", desc=True).limit(top_k).execute().data or []
         rows = drop_memories_from_revoked_sources(
             client, org_id, rows, settings=settings, surface="department_memory_fallback"
         )
