@@ -193,6 +193,33 @@ def test_evidence_queue_consumes_each_choice_once_without_stale_rearm():
         arm_from_task_state({})
 
 
+def test_pending_handoff_names_snapshot_does_not_consume_or_leak_prior_turn():
+    from app.services.live_classical_handoff import (
+        arm_from_task_state, arm_handoff, consume_handoff,
+        pending_handoff_tool_names, stash_handoff_queue,
+    )
+
+    state = {}
+    stash_handoff_queue(state, [
+        {"tool_name": "first_read", "tool_invoke_action": "first.read"},
+        {"tool_name": "second_read", "tool_invoke_action": "first.read"},
+    ])
+    try:
+        arm_from_task_state(state)
+        assert pending_handoff_tool_names() == ["first_read", "first.read", "second_read"]
+        assert pending_handoff_tool_names() == ["first_read", "first.read", "second_read"]
+        assert consume_handoff()["tool_name"] == "first_read"
+        assert pending_handoff_tool_names() == ["second_read", "first.read"]
+        arm_handoff({"tool_name": "current_read"})
+        assert pending_handoff_tool_names() == ["current_read"]
+        assert consume_handoff()["tool_name"] == "current_read"
+        assert pending_handoff_tool_names() == []
+        arm_from_task_state({})
+        assert pending_handoff_tool_names() == []
+    finally:
+        arm_from_task_state(None)
+
+
 def test_new_direct_handoff_replaces_unconsumed_prior_queue():
     """DEC-001: a new turn must never inherit the previous turn's queued action."""
     from app.services.live_classical_handoff import (

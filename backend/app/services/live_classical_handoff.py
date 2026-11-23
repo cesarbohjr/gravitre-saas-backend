@@ -116,6 +116,25 @@ def peek_handoff() -> dict[str, Any] | None:
     return _armed.get()
 
 
+def pending_handoff_tool_names() -> list[str]:
+    """Snapshot all selected names for visibility, without consuming choices.
+
+    These are candidates to pin from the already-authorized registry output,
+    never additional authority to execute unavailable tools.
+    """
+    queue = _armed_queue.get()
+    payloads = queue if queue else [_armed.get()]
+    names: list[str] = []
+    for payload in payloads:
+        if not isinstance(payload, dict):
+            continue
+        for field in ("tool_name", "tool_invoke_action"):
+            name = str(payload.get(field) or "").strip()
+            if name and name not in names:
+                names.append(name)
+    return names
+
+
 def consume_handoff() -> dict[str, Any] | None:
     queue = _armed_queue.get()
     if isinstance(queue, list) and queue:

@@ -578,10 +578,10 @@ class ReActEngine:
             ),
             max_tools=_react_max_tools,
         )
-        from app.services.live_classical_handoff import peek_handoff
+        from app.services.live_classical_handoff import pending_handoff_tool_names
 
-        _queued = peek_handoff()
-        if _queued:
+        _queued_names = pending_handoff_tool_names()
+        if _queued_names:
             from app.services.capability_evidence_plan import (
                 pin_tools_for_evidence,
                 strip_internal_tools,
@@ -590,12 +590,7 @@ class ReActEngine:
             tools = pin_tools_for_evidence(
                 list(tools or []),
                 list(all_tools or []),
-                {
-                    "pin_tools": [
-                        str(_queued.get("tool_name") or ""),
-                        str(_queued.get("tool_invoke_action") or ""),
-                    ]
-                },
+                {"pin_tools": _queued_names},
             )
             tools = strip_internal_tools(list(tools or []), {"kf_may_substitute": False})
         if not tools:
