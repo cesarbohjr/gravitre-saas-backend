@@ -8395,6 +8395,24 @@
               "path": "backend/dec011-postgrest-evidence.json",
               "if-no-files-found": "error"
             }
+          },
+          {
+            "name": "ECO-013 real PostgREST terminal authority gate (zero skips)",
+            "env": {
+              "ECO013_EXPECTED_SHA": "${{ github.event.pull_request.head.sha || github.sha }}",
+              "ECO013_EXPECTED_PG_VERSION": "18.7"
+            },
+            "run": "python -m unittest discover -s ../scripts/tests -p 'test_eco013_postgrest_gate.py'\nPYTHONPATH=. python scripts/run_eco013_postgrest_gate.py\n"
+          },
+          {
+            "name": "Retain sanitized ECO-013 PostgREST evidence",
+            "if": "${{ always() }}",
+            "uses": "actions/upload-artifact@v4",
+            "with": {
+              "name": "eco013-real-postgrest-${{ github.event.pull_request.head.sha || github.sha }}",
+              "path": "backend/eco013-postgrest-evidence.json",
+              "if-no-files-found": "error"
+            }
           }
         ]
       }
