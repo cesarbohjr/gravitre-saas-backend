@@ -1,11 +1,13 @@
 """P27-02/03 joined offline journey through actual routing and step handler.
 
-Real: AgentSelector.select, Play run router preflight/dispatch, approval route,
+Real: AgentSelector.select (separate observation), governed opportunity handoff,
+Play run router preflight/dispatch, approval route,
 execute_workflow_steps registered invoke_tool handler, Canvas authorization
 and dispatch, sealed read gate, SQL workflow status trigger, outbox relay and
 idempotent durable consumer.
 
-Adapted: local tenant connector query, deterministic version/policy/billing,
+Adapted: upstream opportunity evidence discovery, local tenant connector query,
+deterministic version/policy/billing,
 outbound vendor transport, verification read transport and optional delivery channels. Canonical terminal
 proof/receipt persistence and core audit/inbox/learning writers execute unchanged.
 Canonical repository methods and legacy/contract run, step and approval
@@ -233,9 +235,59 @@ async def test_agent_play_approval_real_step_to_durable_consumer(pg, monkeypatch
 
     # Thin inspection wrapper, not an execution stub.
     monkeypatch.setattr(workflows, "execute_workflow", initial_execute)
-    response = await plays.run_play("customer-rescue",
-        plays.RunPlayRequest(installationId="fixture-install"),
-        ({"user_id": "33333333-3333-4333-8333-333333333333"}, ORG, "admin"), "synthetic", settings)
+    # Exercise the real upstream governed opportunity handoff, not a
+    # manually assembled Play request. Evidence discovery alone is adapted;
+    # confirmation, candidate selection, dispatch and attribution are real.
+    from app.routers import goals
+
+    crm_id = "44444444-4444-4444-8444-444444444444"
+    analytics_id = "55555555-5555-4555-8555-555555555555"
+    opportunity_id = "fixture-opportunity"
+    member = ({"user_id": "33333333-3333-4333-8333-333333333333"}, ORG, "admin")
+
+    def preview(body, *, _user, org_id, environment_name, settings):
+        assert org_id == ORG and environment_name == "synthetic"
+        assert body.crm_run_id == crm_id and body.analytics_run_id == analytics_id
+        return {
+            "source_runs": {"crm": crm_id, "analytics": analytics_id},
+            "opportunities": [{
+                "id": opportunity_id, "status": "REVIEW_REQUIRED",
+                "play_key": "customer-rescue", "installation_id": "fixture-install",
+                "workflow_id": workflow_id,
+            }],
+        }
+
+    monkeypatch.setattr(goals, "preview_cross_source_opportunities", preview)
+    handoff_args = dict(crmRunId=crm_id, analyticsRunId=analytics_id,
+                        opportunityId=opportunity_id)
+    with pytest.raises(HTTPException) as unconfirmed:
+        await goals.handoff_cross_source_opportunity(
+            goals.GovernedOpportunityHandoffRequest(**handoff_args),
+            member, "synthetic", settings)
+    assert unconfirmed.value.status_code == 409
+    assert pg.value("SELECT count(*) FROM public.play_runs") == "0"
+    assert pg.value("SELECT count(*) FROM public.workflow_runs") == "0"
+
+    handoff = await goals.handoff_cross_source_opportunity(
+        goals.GovernedOpportunityHandoffRequest(
+            **handoff_args, confirmSubmitToPlay=True),
+        member, "synthetic", settings)
+    assert handoff["approvalGrantedByIntelligence"] is False
+    assert handoff["businessOutcome"] == "NOT_MEASURED"
+    assert handoff["workflowId"] == workflow_id
+    response = handoff["canonicalPlayResult"]
+    assert play_parameters["play"]["opportunity_id"] == opportunity_id
+    assert play_parameters["play"]["source_run_ids"] == {
+        "crm": crm_id, "analytics": analytics_id,
+    }
+    persisted = client.table("play_runs").select("*").eq(
+        "id", response["playRunId"]).eq("org_id", ORG).execute().data
+    assert len(persisted) == 1
+    assert persisted[0]["workflow_run_ids"] == [run_id]
+    assert persisted[0]["metadata"]["opportunity_id"] == opportunity_id
+    assert persisted[0]["metadata"]["source_run_ids"] == {
+        "crm": crm_id, "analytics": analytics_id,
+    }
     assert response["workflowRuns"][0]["runId"] == run_id
     assert response["status"] == "awaiting_approval"
     assert pg.value(f"SELECT status FROM public.workflow_runs WHERE id='{run_id}'") == "pending_approval"
