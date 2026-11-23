@@ -30,6 +30,63 @@ from tests.conftest import patch_agent_streaming_dialogue_pipeline
 _CLASSICAL = "Classical answer from the read."
 
 
+@pytest.mark.asyncio
+async def test_stopped_live_result_never_enters_classical_or_success_composition():
+    """ECO-012/DEC-003: a known stop is terminal, not an ordinary fallback."""
+    from app.services.unified_turn_reasoning_service import (
+        UnifiedTurnShadowResult, apply_unified_turn_live,
+    )
+
+    stopped = UnifiedTurnShadowResult(
+        outcome_kind="skipped", fallthrough_reason="chat_stop", error="stopped",
+        user_message="This partial model text must not become a completion.",
+    )
+    audit = MagicMock()
+    decisions = []
+
+    async def actual_live(**kwargs):
+        with (
+            patch("app.services.unified_turn_pending_live.resolve_unified_live_pending_reply", AsyncMock(return_value=None)),
+            patch("app.services.unified_turn_reasoning_service.run_unified_turn_shadow", AsyncMock(return_value=stopped)),
+            patch("app.workflows.audit.write_audit_event", audit),
+        ):
+            decision = await apply_unified_turn_live(**kwargs)
+            decisions.append(decision)
+            return decision
+
+    classical_calls = []
+
+    async def forbidden_classical(**kwargs):
+        classical_calls.append(kwargs)
+        raise AssertionError("Stopped LIVE turn reached the classical executor")
+        yield SimpleNamespace(kind="done", react_result=ReActResult(
+            status=ReActStatus.COMPLETED, answer=_CLASSICAL,
+        ))
+
+    with patch("app.services.context_compiler.compile_unified_reasoning_context", AsyncMock(
+        return_value=SimpleNamespace(to_trace_dict=lambda: {}),
+    )):
+        timeline = await _run_typed_turn(
+            actual_live, query="Explain customer acquisition costs for a stopped turn.",
+            react_runner=forbidden_classical,
+        )
+    assert classical_calls == []
+    assert decisions[0]["stop_pipeline"] is True
+    assert decisions[0]["turn_terminal_state"] == "cancelled"
+    complete = _complete(timeline)
+    assert complete.model == "cancelled"
+    assert complete.full_content == ""
+    assert complete.tool_results == []
+    assert _deltas(timeline) == []
+    assert stopped.fallthrough_reason == "chat_stop"
+    payload = stopped.to_audit_payload()
+    assert payload["classical_path_active"] is False
+    assert payload["shadow_user_visible"] is False
+    assert payload["turn_terminal_state"] == "cancelled"
+    assert audit.call_count == 1
+    assert audit.call_args.args[3] == "unified_turn.live.cancelled"
+
+
 def _make_intelligence(*, streaming: bool = True) -> AgentIntelligence:
     settings = SimpleNamespace(
         disable_ai=False,

@@ -1372,8 +1372,8 @@
       "remediation": "Replace wording-sensitive silent downgrade with explicit typed reason only after tool SSE parity",
       "dependencies": [],
       "regression_candidate": "backend/tests/operators/test_react_engine.py",
-      "regression_state": "QUEUED_READ_PARITY_LOCAL_PASS_HOSTED_PENDING",
-      "implementation_state": "BOUNDED_HANDOFF_REPAIR_PREPARED_ACCEPTANCE_PENDING",
+      "regression_state": "QUEUED_READ_PARITY_EXACT_HEAD_HOSTED_PASS_ACCEPTANCE_PENDING",
+      "implementation_state": "BOUNDED_HANDOFF_REPAIR_CI_VERIFIED_ACCEPTANCE_PENDING",
       "implemented_commit": null,
       "synthetic_status": "NOT_CERTIFIED",
       "live_status": "NOT_RUN",
@@ -1405,8 +1405,11 @@
         "local_result": "78 loop/routing/handoff tests and 35 existing write-gate/register/runtime guards passed",
         "before_repair_result": "Streaming and non-streaming actual-loop cases rejected the second available queued read as tool_not_available",
         "scope": "Registry-only pinning of every queued tool; actual ReAct loop and availability guard, isolated model/provider/audit I/O. Shared prerequisite evidence only for ECO-011/DEC-001; wording-sensitive routing not eliminated.",
-        "remaining": "Fresh exact-head hosted CI, deployed caller/SSE/approval parity, independent provider/persistence evidence, rollback and owner criteria remain pending",
-        "certifies_whole_finding": false
+        "remaining": "Deployed caller/SSE/approval parity, independent provider/persistence evidence, rollback and owner criteria remain pending",
+        "certifies_whole_finding": false,
+        "hosted_sha": "04c08b3c183ce1e3c404a72f6de3b582d813c59e",
+        "hosted_ci_run_url": "https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/45087810692",
+        "hosted_status": "ALL_TEN_WORKFLOWS_SUCCESS"
       },
       "audit_evidence_class": "SOURCE_CONFIRMED_FALLBACK",
       "audit_observation": "phrase-based fallback still exists, active invocation unknown",
@@ -1431,9 +1434,9 @@
       "root_cause": "UNVERIFIED",
       "remediation": "Enumerate each reason; prove no fake completion/unauthorized write before consolidating legacy",
       "dependencies": [],
-      "regression_candidate": "backend/tests/master_qa/test_runtime_guard_integration.py",
-      "regression_state": "EXISTS_NOT_MAPPED_TO_FULL_FINDING",
-      "implementation_state": "PARTIAL_ENGINEERING_TESTED_NOT_CLOSED",
+      "regression_candidate": "backend/tests/services/test_live_fallthrough_terminal_contract.py",
+      "regression_state": "STOP_DELEGATION_REPRODUCED_REPAIRED_LOCAL_PASS_HOSTED_PENDING",
+      "implementation_state": "BOUNDED_TERMINAL_STOP_REPAIR_PREPARED_ACCEPTANCE_PENDING",
       "implemented_commit": null,
       "synthetic_status": "NOT_CERTIFIED",
       "live_status": "NOT_RUN",
@@ -1466,7 +1469,18 @@
         "certifies_whole_finding": false
       },
       "audit_evidence_class": "SOURCE_CANDIDATE_REQUIRES_RUNTIME_PROOF",
-      "audit_observation": "Original audit and source candidate require caller/runtime evidence; no final root-cause claim."
+      "audit_observation": "Original audit and source candidate require caller/runtime evidence; no final root-cause claim.",
+      "fallthrough_terminal_evidence": {
+        "base_head_sha": "04c08b3c183ce1e3c404a72f6de3b582d813c59e",
+        "evidence_path": "docs/delivery/pr611-live-stop-terminal-integrity.md",
+        "test_path": "backend/tests/services/test_live_fallthrough_terminal_contract.py",
+        "joined_test": "backend/tests/operators/test_typed_live_streaming.py::test_stopped_live_result_never_enters_classical_or_success_composition",
+        "before_repair_result": "Actual AgentIntelligence/LIVE joined test reached the classical executor after injected runner stop result",
+        "local_result": "183 focused checks passed:60 terminal/enum/prefix,122 existing routing/write/ReAct/runtime,1 joined cancelled stream",
+        "scope": "Actual LIVE decision, marker/audit emitter and streaming caller. Model/context compiler/audit/provider I/O isolated; not durable or deployed acceptance. All11 exact delegation reasons plus2 dynamic examples checked at audit layer; not every full caller branch.",
+        "remaining": "Exact-head hosted CI, deployed stop races/caller journeys, independent durable/provider observation, rollback and owner criteria",
+        "certifies_whole_finding": false
+      }
     },
     {
       "finding_id": "ECO-013",
@@ -2725,8 +2739,8 @@
       "remediation": "Trace live invocations and structured-intent parity; prevent ungoverned phrase fallback",
       "dependencies": [],
       "regression_candidate": "backend/tests/operators/test_react_engine.py",
-      "regression_state": "QUEUED_READ_PARITY_LOCAL_PASS_HOSTED_PENDING",
-      "implementation_state": "BOUNDED_HANDOFF_REPAIR_PREPARED_ACCEPTANCE_PENDING",
+      "regression_state": "QUEUED_READ_PARITY_EXACT_HEAD_HOSTED_PASS_ACCEPTANCE_PENDING",
+      "implementation_state": "BOUNDED_HANDOFF_REPAIR_CI_VERIFIED_ACCEPTANCE_PENDING",
       "implemented_commit": null,
       "synthetic_status": "NOT_CERTIFIED",
       "live_status": "NOT_RUN",
@@ -2758,8 +2772,11 @@
         "local_result": "78 loop/routing/handoff tests and 35 existing write-gate/register/runtime guards passed",
         "before_repair_result": "Streaming and non-streaming actual-loop cases rejected the second available queued read as tool_not_available",
         "scope": "Registry-only pinning of every queued tool; actual ReAct loop and availability guard, isolated model/provider/audit I/O. Shared prerequisite evidence only for ECO-011/DEC-001; wording-sensitive routing not eliminated.",
-        "remaining": "Fresh exact-head hosted CI, deployed caller/SSE/approval parity, independent provider/persistence evidence, rollback and owner criteria remain pending",
-        "certifies_whole_finding": false
+        "remaining": "Deployed caller/SSE/approval parity, independent provider/persistence evidence, rollback and owner criteria remain pending",
+        "certifies_whole_finding": false,
+        "hosted_sha": "04c08b3c183ce1e3c404a72f6de3b582d813c59e",
+        "hosted_ci_run_url": "https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/45087810692",
+        "hosted_status": "ALL_TEN_WORKFLOWS_SUCCESS"
       },
       "audit_evidence_class": "SOURCE_CONFIRMED_FALLBACK",
       "audit_observation": "reduced phrase-pattern fallback exists, no deletion authorized"
@@ -2782,8 +2799,8 @@
       "remediation": "Record active callers, capability parity, exact approvals, audit and rollback before retirement",
       "dependencies": [],
       "regression_candidate": "backend/tests/operators/test_react_engine.py",
-      "regression_state": "QUEUED_READ_PARITY_LOCAL_PASS_HOSTED_PENDING",
-      "implementation_state": "BOUNDED_HANDOFF_REPAIR_PREPARED_ACCEPTANCE_PENDING",
+      "regression_state": "QUEUED_READ_PARITY_EXACT_HEAD_HOSTED_PASS_ACCEPTANCE_PENDING",
+      "implementation_state": "BOUNDED_HANDOFF_REPAIR_CI_VERIFIED_ACCEPTANCE_PENDING",
       "implemented_commit": null,
       "synthetic_status": "NOT_CERTIFIED",
       "live_status": "NOT_RUN",
@@ -2815,8 +2832,11 @@
         "local_result": "78 loop/routing/handoff tests and 35 existing write-gate/register/runtime guards passed",
         "before_repair_result": "Streaming and non-streaming actual-loop cases rejected the second available queued read as tool_not_available",
         "scope": "Registry-only pinning of every queued tool; actual ReAct loop and availability guard, isolated model/provider/audit I/O. Shared prerequisite evidence only for ECO-011/DEC-001; wording-sensitive routing not eliminated.",
-        "remaining": "Fresh exact-head hosted CI, deployed caller/SSE/approval parity, independent provider/persistence evidence, rollback and owner criteria remain pending",
-        "certifies_whole_finding": false
+        "remaining": "Deployed caller/SSE/approval parity, independent provider/persistence evidence, rollback and owner criteria remain pending",
+        "certifies_whole_finding": false,
+        "hosted_sha": "04c08b3c183ce1e3c404a72f6de3b582d813c59e",
+        "hosted_ci_run_url": "https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/45087810692",
+        "hosted_status": "ALL_TEN_WORKFLOWS_SUCCESS"
       },
       "audit_evidence_class": "SOURCE_CANDIDATE_REQUIRES_RUNTIME_PROOF",
       "audit_observation": "Original audit and source candidate require caller/runtime evidence; no final root-cause claim."
@@ -2838,9 +2858,9 @@
       "root_cause": "UNVERIFIED",
       "remediation": "Use typed explicit delegation/failure and test every reason including no fake provider success",
       "dependencies": [],
-      "regression_candidate": null,
-      "regression_state": "NOT_YET_IMPLEMENTED",
-      "implementation_state": "EVIDENCE_OR_REPAIR_PENDING",
+      "regression_candidate": "backend/tests/services/test_live_fallthrough_terminal_contract.py",
+      "regression_state": "STOP_DELEGATION_REPRODUCED_REPAIRED_LOCAL_PASS_HOSTED_PENDING",
+      "implementation_state": "BOUNDED_TERMINAL_STOP_REPAIR_PREPARED_ACCEPTANCE_PENDING",
       "implemented_commit": null,
       "synthetic_status": "NOT_CERTIFIED",
       "live_status": "NOT_RUN",
@@ -2867,7 +2887,18 @@
       ],
       "partial_test_evidence": null,
       "audit_evidence_class": "SOURCE_CANDIDATE_REQUIRES_RUNTIME_PROOF",
-      "audit_observation": "Original audit and source candidate require caller/runtime evidence; no final root-cause claim."
+      "audit_observation": "Original audit and source candidate require caller/runtime evidence; no final root-cause claim.",
+      "fallthrough_terminal_evidence": {
+        "base_head_sha": "04c08b3c183ce1e3c404a72f6de3b582d813c59e",
+        "evidence_path": "docs/delivery/pr611-live-stop-terminal-integrity.md",
+        "test_path": "backend/tests/services/test_live_fallthrough_terminal_contract.py",
+        "joined_test": "backend/tests/operators/test_typed_live_streaming.py::test_stopped_live_result_never_enters_classical_or_success_composition",
+        "before_repair_result": "Actual AgentIntelligence/LIVE joined test reached the classical executor after injected runner stop result",
+        "local_result": "183 focused checks passed:60 terminal/enum/prefix,122 existing routing/write/ReAct/runtime,1 joined cancelled stream",
+        "scope": "Actual LIVE decision, marker/audit emitter and streaming caller. Model/context compiler/audit/provider I/O isolated; not durable or deployed acceptance. All11 exact delegation reasons plus2 dynamic examples checked at audit layer; not every full caller branch.",
+        "remaining": "Exact-head hosted CI, deployed stop races/caller journeys, independent durable/provider observation, rollback and owner criteria",
+        "certifies_whole_finding": false
+      }
     },
     {
       "finding_id": "DEC-004",
@@ -4079,8 +4110,8 @@
       "remediation": "Preserve connector SSE and approvals while eliminating wording-sensitive fallback via parity",
       "dependencies": [],
       "regression_candidate": "backend/tests/operators/test_react_engine.py",
-      "regression_state": "QUEUED_READ_PARITY_LOCAL_PASS_HOSTED_PENDING",
-      "implementation_state": "BOUNDED_HANDOFF_REPAIR_PREPARED_ACCEPTANCE_PENDING",
+      "regression_state": "QUEUED_READ_PARITY_EXACT_HEAD_HOSTED_PASS_ACCEPTANCE_PENDING",
+      "implementation_state": "BOUNDED_HANDOFF_REPAIR_CI_VERIFIED_ACCEPTANCE_PENDING",
       "implemented_commit": null,
       "synthetic_status": "NOT_CERTIFIED",
       "live_status": "NOT_RUN",
@@ -4112,8 +4143,11 @@
         "local_result": "78 loop/routing/handoff tests and 35 existing write-gate/register/runtime guards passed",
         "before_repair_result": "Streaming and non-streaming actual-loop cases rejected the second available queued read as tool_not_available",
         "scope": "Registry-only pinning of every queued tool; actual ReAct loop and availability guard, isolated model/provider/audit I/O. Shared prerequisite evidence only for ECO-011/DEC-001; wording-sensitive routing not eliminated.",
-        "remaining": "Fresh exact-head hosted CI, deployed caller/SSE/approval parity, independent provider/persistence evidence, rollback and owner criteria remain pending",
-        "certifies_whole_finding": false
+        "remaining": "Deployed caller/SSE/approval parity, independent provider/persistence evidence, rollback and owner criteria remain pending",
+        "certifies_whole_finding": false,
+        "hosted_sha": "04c08b3c183ce1e3c404a72f6de3b582d813c59e",
+        "hosted_ci_run_url": "https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/45087810692",
+        "hosted_status": "ALL_TEN_WORKFLOWS_SUCCESS"
       },
       "audit_evidence_class": "SOURCE_CANDIDATE_REQUIRES_RUNTIME_PROOF",
       "audit_observation": "Original audit and source candidate require caller/runtime evidence; no final root-cause claim."

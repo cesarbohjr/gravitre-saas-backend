@@ -4377,6 +4377,20 @@ class AgentIntelligence:
                 live_turn = await _run_unified_live()
             _mark("unified_live_resolved")
 
+            if live_turn and live_turn.get("turn_terminal_state") == "cancelled":
+                if _context_task is not None and not _context_task.done():
+                    _context_task.cancel()
+                    _mark("context_prefetch_cancelled")
+                if text_id is not None:
+                    yield emit_text_end(text_id)
+                # Match the existing pre-LIVE cancellation response. Do not
+                # compose success prose, finalize work, or enter another executor.
+                yield AssistantStreamComplete(
+                    full_content="", tool_results=[], react_result=None,
+                    model="cancelled", message_id=message_id,
+                )
+                return
+
             typed_streamed_text = ""
             if typed_release is not None and streamed_voice_text:
                 typed_streamed_text = typed_release.released
