@@ -72,6 +72,37 @@ def _hubspot_scopes_valid(tokens: dict[str, Any] | None, action_key: str | None)
     return True, None
 
 
+def _registered_action_matches_vendor(vendor: str, action_key: str) -> bool:
+    """Registration establishes an executor, not ownership by every connector.
+
+    Retain the canonical catalog's explicit aliases; do not infer ownership
+    from a connected account or a substring in the action name.
+    """
+    if action_key not in set(list_registered_actions()):
+        return False
+    owner = _canonical_executable_vendor(normalize_hubspot_vendor(vendor))
+    namespace, separator, _ = action_key.partition(".")
+    if separator and _canonical_executable_vendor(namespace) == owner:
+        return True
+    from app.connectors.action_catalog.tool_aliases import REGISTRY_VENDOR_PREFIX_ALIASES
+
+    if any(
+        _canonical_executable_vendor(catalog_vendor) == owner
+        and _canonical_executable_vendor(registry_vendor) == _canonical_executable_vendor(namespace)
+        for catalog_vendor, registry_vendor in REGISTRY_VENDOR_PREFIX_ALIASES.items()
+    ):
+        return True
+    # Exact aliases (Outlook -> Microsoft365) and native catalog ownership
+    # cannot be generalized into permission for the entire other namespace.
+    from app.services.connector_execution_matrix import build_connector_execution_matrix
+
+    return any(
+        _canonical_executable_vendor(entry.connector_id) == owner
+        and action_key in {entry.action_key, entry.registry_key}
+        for entry in build_connector_execution_matrix()
+    )
+
+
 def _blocking_details(
     *,
     vendor: str,
@@ -113,7 +144,7 @@ def _blocking_details(
         )
     if action_key and not action_registered:
         return "unsupported_action", (
-            f"{vendor.title()} is connected, but {action_key} is not executable because the action is not registered."
+            f"{vendor.title()} is connected, but {action_key} is not executable because the action is not registered for this connector."
         )
     return None, None
 
@@ -190,7 +221,7 @@ def evaluate_connector_availability(
             recovery_action = f"Activate {vendor} (Gravitre-managed) — no customer credentials required."
             action_registered = True
             if action_key:
-                action_registered = action_key in set(list_registered_actions())
+                action_registered = _registered_action_matches_vendor(vendor, action_key)
             from app.services.connector_certification_scorecard import attach_internal_readiness
 
             return attach_internal_readiness(
@@ -240,7 +271,7 @@ def evaluate_connector_availability(
 
     action_registered = True
     if action_key:
-        action_registered = action_key in set(list_registered_actions())
+        action_registered = _registered_action_matches_vendor(vendor, action_key)
 
     blocking_reason, recovery_action = _blocking_details(
         vendor=vendor,

@@ -1435,8 +1435,8 @@
       "remediation": "Enumerate each reason; prove no fake completion/unauthorized write before consolidating legacy",
       "dependencies": [],
       "regression_candidate": "backend/tests/services/test_live_fallthrough_terminal_contract.py",
-      "regression_state": "STOP_DELEGATION_REPRODUCED_REPAIRED_LOCAL_PASS_HOSTED_PENDING",
-      "implementation_state": "BOUNDED_TERMINAL_STOP_REPAIR_PREPARED_ACCEPTANCE_PENDING",
+      "regression_state": "STOP_DELEGATION_REPAIR_EXACT_HEAD_HOSTED_PASS_ACCEPTANCE_PENDING",
+      "implementation_state": "BOUNDED_TERMINAL_STOP_REPAIR_CI_VERIFIED_ACCEPTANCE_PENDING",
       "implemented_commit": null,
       "synthetic_status": "NOT_CERTIFIED",
       "live_status": "NOT_RUN",
@@ -1478,8 +1478,11 @@
         "before_repair_result": "Actual AgentIntelligence/LIVE joined test reached the classical executor after injected runner stop result",
         "local_result": "183 focused checks passed:60 terminal/enum/prefix,122 existing routing/write/ReAct/runtime,1 joined cancelled stream",
         "scope": "Actual LIVE decision, marker/audit emitter and streaming caller. Model/context compiler/audit/provider I/O isolated; not durable or deployed acceptance. All11 exact delegation reasons plus2 dynamic examples checked at audit layer; not every full caller branch.",
-        "remaining": "Exact-head hosted CI, deployed stop races/caller journeys, independent durable/provider observation, rollback and owner criteria",
-        "certifies_whole_finding": false
+        "remaining": "Deployed stop races/caller journeys, independent durable/provider observation, rollback and owner criteria",
+        "certifies_whole_finding": false,
+        "hosted_status": "ALL_TEN_WORKFLOWS_SUCCESS",
+        "hosted_sha": "37c49bb280cd07fe95c65b68caf1a254257efe79",
+        "hosted_ci_run_url": "https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/45095846435"
       }
     },
     {
@@ -1850,9 +1853,9 @@
       "root_cause": "UNVERIFIED",
       "remediation": "Map readiness/scope/registered-action states and verify each caller respects authority",
       "dependencies": [],
-      "regression_candidate": null,
-      "regression_state": "NOT_YET_IMPLEMENTED",
-      "implementation_state": "PARTIAL_REPAIR_SOURCE_COMMITTED_UNMERGED_NOT_CERTIFIED",
+      "regression_candidate": "backend/tests/connectors/test_eco015_action_vendor_authority.py",
+      "regression_state": "CROSS_VENDOR_PREFLIGHT_REPRODUCED_REPAIRED_LOCAL_PASS_HOSTED_PENDING",
+      "implementation_state": "BOUNDED_ACTION_OWNERSHIP_REPAIR_PREPARED_ACCEPTANCE_PENDING",
       "implemented_commit": null,
       "synthetic_status": "NOT_CERTIFIED",
       "live_status": "NOT_RUN",
@@ -1888,6 +1891,16 @@
         "targeted_result": "28 passed locally; 9 selected regression cases fail against pre-repair source",
         "remaining": "Full CI and actual governed provider receipts/scopes, native/managed precedence and deployed cross-surface qualification remain open.",
         "release_certified": false
+      },
+      "action_vendor_authority_evidence": {
+        "base_head_sha": "37c49bb280cd07fe95c65b68caf1a254257efe79",
+        "evidence_path": "docs/delivery/pr611-eco015-action-vendor-authority.md",
+        "test_path": "backend/tests/connectors/test_eco015_action_vendor_authority.py",
+        "before_repair_result": "2 failed,41 passed: HubSpot availability and actual chat plan verifier both accepted registered Gmail read/write actions",
+        "local_result": "142 passed; all783 registered catalog ownership pairs retained",
+        "scope": "Actual evaluator, lookup and chat readiness verifier; synthetic connector/OAuth storage/health. No provider execution, production mismatched-plan occurrence or downstream authorization bypass proven.",
+        "remaining": "Exact-head hosted CI; deployed caller/scope parity, independent provider/persistence evidence, rollback and owner criteria",
+        "certifies_whole_finding": false
       }
     },
     {
@@ -2859,8 +2872,8 @@
       "remediation": "Use typed explicit delegation/failure and test every reason including no fake provider success",
       "dependencies": [],
       "regression_candidate": "backend/tests/services/test_live_fallthrough_terminal_contract.py",
-      "regression_state": "STOP_DELEGATION_REPRODUCED_REPAIRED_LOCAL_PASS_HOSTED_PENDING",
-      "implementation_state": "BOUNDED_TERMINAL_STOP_REPAIR_PREPARED_ACCEPTANCE_PENDING",
+      "regression_state": "STOP_DELEGATION_REPAIR_EXACT_HEAD_HOSTED_PASS_ACCEPTANCE_PENDING",
+      "implementation_state": "BOUNDED_TERMINAL_STOP_REPAIR_CI_VERIFIED_ACCEPTANCE_PENDING",
       "implemented_commit": null,
       "synthetic_status": "NOT_CERTIFIED",
       "live_status": "NOT_RUN",
@@ -2896,8 +2909,11 @@
         "before_repair_result": "Actual AgentIntelligence/LIVE joined test reached the classical executor after injected runner stop result",
         "local_result": "183 focused checks passed:60 terminal/enum/prefix,122 existing routing/write/ReAct/runtime,1 joined cancelled stream",
         "scope": "Actual LIVE decision, marker/audit emitter and streaming caller. Model/context compiler/audit/provider I/O isolated; not durable or deployed acceptance. All11 exact delegation reasons plus2 dynamic examples checked at audit layer; not every full caller branch.",
-        "remaining": "Exact-head hosted CI, deployed stop races/caller journeys, independent durable/provider observation, rollback and owner criteria",
-        "certifies_whole_finding": false
+        "remaining": "Deployed stop races/caller journeys, independent durable/provider observation, rollback and owner criteria",
+        "certifies_whole_finding": false,
+        "hosted_status": "ALL_TEN_WORKFLOWS_SUCCESS",
+        "hosted_sha": "37c49bb280cd07fe95c65b68caf1a254257efe79",
+        "hosted_ci_run_url": "https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/45095846435"
       }
     },
     {
