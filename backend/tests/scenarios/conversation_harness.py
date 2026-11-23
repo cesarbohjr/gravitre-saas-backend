@@ -34,6 +34,8 @@ from types import SimpleNamespace
 from typing import Any
 from unittest.mock import AsyncMock, patch
 
+from postgrest.exceptions import APIError
+
 from tests.services.outcome_rpc_fake import outcome_rpc
 
 ORG = "00000000-0000-4000-8000-00000000a001"
@@ -259,6 +261,18 @@ class _Noop:
         return _Resp(None)
 
 
+class _MissingPendingClaimRPC:
+    def execute(self) -> _Resp:
+        # This fixture exercises the table fallback. PostgREST reports an
+        # absent function with PGRST202, while a successful null denies a claim.
+        raise APIError({
+            "code": "PGRST202",
+            "message": "claim_pending_connector_write is absent from the fixture schema",
+            "details": None,
+            "hint": None,
+        })
+
+
 class ScenarioDB:
     def __init__(self) -> None:
         self.tables: dict[str, list[dict[str, Any]]] = {}
@@ -294,6 +308,8 @@ class ScenarioDB:
             return outcome_rpc(row, name, args).execute().data
 
     def rpc(self, name: str, payload: dict[str, Any] | None = None) -> Any:
+        if name == "claim_pending_connector_write":
+            return _MissingPendingClaimRPC()
         if name in {
             "merge_workflow_run_parameters",
             "refresh_workflow_run_projection",
