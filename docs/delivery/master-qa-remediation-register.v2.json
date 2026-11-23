@@ -1504,7 +1504,7 @@
       "dependencies": [],
       "regression_candidate": "backend/tests/master_qa/test_canonical_repository_persistence_pg.py",
       "regression_state": "EXISTS_NOT_MAPPED_TO_FULL_FINDING",
-      "implementation_state": "PARTIAL_ENGINEERING_TESTED_NOT_CLOSED",
+      "implementation_state": "BOUNDED_UNFINISHED_WRITE_TERMINAL_REPAIR_LOCAL_PASS_CI_PENDING",
       "implemented_commit": null,
       "synthetic_status": "NOT_CERTIFIED",
       "live_status": "NOT_RUN",
@@ -1612,6 +1612,31 @@
         "complete_hosted_ingress_cases_passed": 94,
         "postgres_cases_passed": 135,
         "full_backend_cases_passed": 17224
+      },
+      "unfinished_write_terminal_authority": {
+        "base_sha": "4dacbfc7196ff5323373b6e2fb870900fa9d66cc",
+        "evidence_document": "docs/delivery/pr611-eco013-unfinished-write-terminal-authority.md",
+        "source": "backend/app/services/execution_plan_authority.py",
+        "test_path": "backend/tests/services/test_eco013_unfinished_write_authority.py",
+        "scope": "Actual producer terminals with pending/running WRITE steps survive older/equal revision patches, continuation and weak compose; actual state writer rechecks after synthetic CAS conflict; actual replay dispatch blocks",
+        "initial_baseline_failed": 28,
+        "initial_baseline_control_passed": 1,
+        "final_new_cases_passed": 31,
+        "broader_targeted_passed": 210,
+        "targeted_skipped": 0,
+        "local_route_scenarios_blocked": 4,
+        "local_route_blocker": "ScenarioHarness imports SSO router; task Python missing onelogin. Hosted Core must verify.",
+        "storage": "SYNTHETIC_WITH_REVISION_PREDICATES",
+        "provider_executed": false,
+        "durable_cas_concurrency_verified": false,
+        "hosted_status": "PENDING_NEW_EXACT_HEAD",
+        "remaining": [
+          "Independent durable consumer/provider observation",
+          "All actual producer/surface and revocation races",
+          "Deployed flags/caller timing and owner approval",
+          "Rollback acceptance"
+        ],
+        "certifies_whole_finding": false
       }
     },
     {
@@ -3031,7 +3056,7 @@
       "dependencies": [],
       "regression_candidate": "backend/tests/master_qa/test_joined_agent_play_approval_step_pg.py",
       "regression_state": "EXISTS_NOT_MAPPED_TO_FULL_FINDING",
-      "implementation_state": "PARTIAL_ENGINEERING_TESTED_NOT_CLOSED",
+      "implementation_state": "BOUNDED_UNFINISHED_WRITE_TERMINAL_REPAIR_LOCAL_PASS_CI_PENDING",
       "implemented_commit": null,
       "synthetic_status": "NOT_CERTIFIED",
       "live_status": "NOT_RUN",
@@ -3133,6 +3158,31 @@
         "complete_hosted_ingress_cases_passed": 94,
         "postgres_cases_passed": 135,
         "full_backend_cases_passed": 17224
+      },
+      "unfinished_write_terminal_authority": {
+        "base_sha": "4dacbfc7196ff5323373b6e2fb870900fa9d66cc",
+        "evidence_document": "docs/delivery/pr611-eco013-unfinished-write-terminal-authority.md",
+        "source": "backend/app/services/execution_plan_authority.py",
+        "test_path": "backend/tests/services/test_eco013_unfinished_write_authority.py",
+        "scope": "Actual producer terminals with pending/running WRITE steps survive older/equal revision patches, continuation and weak compose; actual state writer rechecks after synthetic CAS conflict; actual replay dispatch blocks",
+        "initial_baseline_failed": 28,
+        "initial_baseline_control_passed": 1,
+        "final_new_cases_passed": 31,
+        "broader_targeted_passed": 210,
+        "targeted_skipped": 0,
+        "local_route_scenarios_blocked": 4,
+        "local_route_blocker": "ScenarioHarness imports SSO router; task Python missing onelogin. Hosted Core must verify.",
+        "storage": "SYNTHETIC_WITH_REVISION_PREDICATES",
+        "provider_executed": false,
+        "durable_cas_concurrency_verified": false,
+        "hosted_status": "PENDING_NEW_EXACT_HEAD",
+        "remaining": [
+          "Independent durable consumer/provider observation",
+          "All actual producer/surface and revocation races",
+          "Deployed flags/caller timing and owner approval",
+          "Rollback acceptance"
+        ],
+        "certifies_whole_finding": false
       }
     },
     {
@@ -3796,7 +3846,7 @@
       "remediation": "Identify all memory stores, active callers, staleness and tenant/erasure semantics",
       "dependencies": [],
       "regression_candidate": "backend/tests/services/test_dec011_department_memory_fallback.py",
-      "regression_state": "READER_AND_REQUIRED_GATE_HOSTED_PASS_CACHE_REPAIR_LOCAL_PASS_CI_PENDING",
+      "regression_state": "READER_REQUIRED_GATE_AND_CACHE_REPAIR_HOSTED_PASS_NOT_CERTIFIED",
       "implementation_state": "BOUNDED_MEMORY_READER_AND_CACHE_REPAIR_ACCEPTANCE_PENDING",
       "implemented_commit": null,
       "synthetic_status": "NOT_CERTIFIED",
@@ -3847,7 +3897,6 @@
         "data_retained_before_teardown": true,
         "cleanup_independently_checked": true,
         "unresolved": [
-          "New exact-head CI and both mandatory artifacts",
           "Full literal/dynamic store and cache/erasure semantics",
           "Shared Redis/outage and durable erasure qualification",
           "Deployed flags and actual caller traces",
@@ -3927,8 +3976,33 @@
           "production_tier0_enabled_proven": false,
           "concrete_application_forget_utility_caller_found": false,
           "redis_cross_replica_verified": false,
-          "hosted_status": "PENDING_NEW_EXACT_HEAD",
-          "certifies_whole_finding": false
+          "hosted_status": "EXACT_HEAD_PASS_NOT_FINDING_CERTIFICATION",
+          "certifies_whole_finding": false,
+          "hosted_verification": {
+            "executed_sha": "4dacbfc7196ff5323373b6e2fb870900fa9d66cc",
+            "successful_workflows": 10,
+            "core_run_url": "https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/45173906022",
+            "core_backend_passed": 17534,
+            "core_backend_skipped": 70,
+            "core_subtests_passed": 14,
+            "operations_run_url": "https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/45173906007",
+            "operations_attempt": 2,
+            "initial_operations_failure": "Owned HTTPS fixture readiness; origin_unreachable twice before worker execution; source unchanged",
+            "initial_operations_artifact_id": 14820140544,
+            "initial_operations_zip_sha256": "40592dc4a2381d87fc2006dbae26c8c26fd665a5c00d5ba7dfd169cc4a0c25ea",
+            "qa12_run_url": "https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/45173906138",
+            "dec008_artifact_id": 14818616778,
+            "dec008_tests": 20,
+            "dec008_skipped": 0,
+            "dec008_zip_sha256": "34a091b239640fb66fd347d30224f463a3e37044b095be9495851a1159d095f4",
+            "dec011_artifact_id": 14818636871,
+            "dec011_tests": 6,
+            "dec011_skipped": 0,
+            "dec011_zip_sha256": "b8545da7b8a218ddba13e10c7305b09a5cd4818f5abe1f77772c107bd1e692c9",
+            "postgrest_version": "16.6",
+            "postgres_version": "18.7",
+            "certifies_whole_finding": false
+          }
         }
       },
       "audit_evidence_class": "SOURCE_CANDIDATE_REQUIRES_RUNTIME_PROOF",
