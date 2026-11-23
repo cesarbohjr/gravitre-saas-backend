@@ -34,7 +34,7 @@ ORG, OTHER_ORG, CONV, OTHER_CONV = [str(UUID(int=i)) for i in range(201, 205)]
 
 
 @pytest.fixture
-def plan_api():
+def plan_api(request):
     with tcp_pg_cluster() as pg:
         with psycopg.connect(host=pg.sock, port=pg.port, user="postgres", dbname="postgres",
                              autocommit=True) as conn:
@@ -49,10 +49,16 @@ def plan_api():
                 GRANT SELECT ON conversations TO plan_writer,plan_reader,plan_anonymous;
                 GRANT UPDATE ON conversations TO plan_writer;
             """)
+            if getattr(request, "param", None) == "claim_rpc":
+                from pathlib import Path
+                conn.execute("CREATE ROLE service_role; GRANT service_role TO plan_writer")
+                conn.execute("ALTER TABLE conversations ADD COLUMN updated_at timestamptz")
+                sql = Path(__file__).resolve().parents[2] / "supabase/migrations/20260923194438_claim_pending_connector_write.sql"
+                conn.execute(sql.read_text())
             terminal = _terminal_from_actual_producer("cancelled")
             stored = {"execution_plan": terminal.as_dict(), "task_revision": 9,
                       "other_writer": "preserved"}
-            conn.execute("INSERT INTO conversations VALUES (%s,%s,%s),(%s,%s,%s)",
+            conn.execute("INSERT INTO conversations (id,org_id,task_state) VALUES (%s,%s,%s),(%s,%s,%s)",
                          (CONV,ORG,Jsonb(stored),OTHER_CONV,OTHER_ORG,Jsonb({"task_revision":3,"foreign":"kept"})))
             with socket.socket() as reservation:
                 reservation.bind(("127.0.0.1", 0)); port = reservation.getsockname()[1]
@@ -66,6 +72,9 @@ def plan_api():
 
             def request_hook(request):
                 api.requests.append((request.method, str(request.url)))
+                if request.method == "POST" and getattr(api, "before_rpc", None):
+                    callback, api.before_rpc = api.before_rpc, None
+                    callback()
                 if request.method == "PATCH" and api.before_patch is not None:
                     callback, api.before_patch = api.before_patch, None
                     callback()  # independent committed SQL writer, before actual HTTP CAS

@@ -1679,7 +1679,8 @@
         "no_additional_production_defect_reproduced": true,
         "certifies_whole_finding": false
       },
-      "sync_writer_revision_evidence": "docs/delivery/pr611-eco013-sync-writer-revision.md"
+      "sync_writer_revision_evidence": "docs/delivery/pr611-eco013-sync-writer-revision.md",
+      "claim_fallback_revision_evidence": "docs/delivery/pr611-eco013-claim-fallback-revision.md"
     },
     {
       "finding_id": "ECO-014",
@@ -3267,7 +3268,8 @@
         "no_additional_production_defect_reproduced": true,
         "certifies_whole_finding": false
       },
-      "sync_writer_revision_evidence": "docs/delivery/pr611-eco013-sync-writer-revision.md"
+      "sync_writer_revision_evidence": "docs/delivery/pr611-eco013-sync-writer-revision.md",
+      "claim_fallback_revision_evidence": "docs/delivery/pr611-eco013-claim-fallback-revision.md"
     },
     {
       "finding_id": "DEC-006",
