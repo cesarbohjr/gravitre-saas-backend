@@ -2871,6 +2871,13 @@ class AgentIntelligence:
         )
 
         tier0_started = time.monotonic()
+        tier0_source_epoch: tuple[str, ...] | None = None
+        if tier0_enabled(engine_settings):
+            from app.services.memory_source_liveness import epoch_parts
+
+            # Capture before recall/generation, not after the streamed answer:
+            # an intervening memory mutation must fence a late cache fill.
+            tier0_source_epoch = epoch_parts(org_id, active_settings)
         # Voice turns must run the spoken-aware reasoning path. Tier-0 cache can
         # return text-formatted copy (lists/markdown) that sounds like a transcriber.
         tier0_skip = bool(spoken_mode) or mode_key in {"reasoning", "agent"}
@@ -6810,6 +6817,7 @@ class AgentIntelligence:
                 confidence=finalized["confidence"],
                 answer_explanation=finalized["explanation"],
                 ttl_seconds=tier0_ttl_seconds(engine_settings),
+                source_epoch=tier0_source_epoch,
             )
 
         from app.services.outcome_tracker import get_outcome_tracker

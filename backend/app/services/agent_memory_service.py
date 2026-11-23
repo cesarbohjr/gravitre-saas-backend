@@ -23,7 +23,10 @@ from app.services.memory_contamination_guard import (
     validate_memory_write,
     LINEAGE_COLUMNS,
 )
-from app.services.memory_source_liveness import drop_memories_from_revoked_sources
+from app.services.memory_source_liveness import (
+    drop_memories_from_revoked_sources,
+    invalidate_org_retrieval_cache,
+)
 
 VALID_CATEGORIES = frozenset(
     {
@@ -307,6 +310,7 @@ def create_agent_memory(
         r = client.table("agent_memories").insert(legacy).execute()
     if not r.data:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to create memory")
+    invalidate_org_retrieval_cache(org_id, reason="memory.created")
     return _serialize_row(r.data[0])
 
 
@@ -368,6 +372,7 @@ def update_agent_memory(
     )
     if not r.data:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Memory not found")
+    invalidate_org_retrieval_cache(org_id, reason="memory.updated")
     return _serialize_row(r.data[0])
 
 
@@ -376,6 +381,7 @@ def delete_agent_memory(client: Any, org_id: str, agent_id: str, memory_id: str)
     if not existing.get("editable"):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Memory is protected and cannot be deleted")
     client.table("agent_memories").delete().eq("org_id", org_id).eq("agent_id", agent_id).eq("id", memory_id).execute()
+    invalidate_org_retrieval_cache(org_id, reason="memory.deleted")
 
 
 def search_agent_memories(

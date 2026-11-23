@@ -13,6 +13,7 @@ from typing import Any
 from uuid import uuid4
 
 from app.core.logging import get_logger
+from app.services.memory_source_liveness import invalidate_org_retrieval_cache
 
 logger = get_logger(__name__)
 
@@ -184,6 +185,7 @@ def upsert_temporal_memory(
     if not current:
         try:
             inserted = _insert_memory(client, payload)
+            invalidate_org_retrieval_cache(str(payload["org_id"]), reason="memory.temporal_insert")
             return inserted[0] if inserted else payload
         except Exception as exc:  # noqa: BLE001
             logger.debug("memory_temporal_insert_failed error=%s", _format_exc(exc))
@@ -199,6 +201,9 @@ def upsert_temporal_memory(
 
     try:
         inserted = _insert_memory(client, payload)
+        # Invalidate after each visible mutation, including a partial write if
+        # superseding the prior row later fails. This is not transaction repair.
+        invalidate_org_retrieval_cache(str(payload["org_id"]), reason="memory.temporal_insert")
         new_row = inserted[0] if inserted else payload
         client.table("agent_memories").update(
             {
@@ -208,6 +213,7 @@ def upsert_temporal_memory(
                 "updated_at": now,
             }
         ).eq("id", current["id"]).execute()
+        invalidate_org_retrieval_cache(str(payload["org_id"]), reason="memory.superseded")
         _copy_to_history(
             client,
             row=current,

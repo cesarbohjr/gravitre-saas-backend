@@ -71,12 +71,15 @@ async def get_tier0_answer(
     from app.services.memory_source_liveness import epoch_parts
 
     cache = get_cache_service(settings)
-    cached = await cache.get("tier0_answer", org_id, normalized, *epoch_parts(org_id, settings))
+    read_epoch = epoch_parts(org_id, settings)
+    cached = await cache.get("tier0_answer", org_id, normalized, *read_epoch)
     if not isinstance(cached, dict):
         return None
     if await is_cache_entry_stale(settings, cached, org_id, client=client):
         return None
     await cache.record_hit("tier0_answer")
+    if read_epoch != epoch_parts(org_id, settings):
+        return None
     return cached
 
 
@@ -90,14 +93,20 @@ async def set_tier0_answer(
     confidence: dict[str, Any] | None = None,
     answer_explanation: str | None = None,
     ttl_seconds: int = TIER0_TTL_SECONDS,
+    source_epoch: tuple[str, ...] | None = None,
 ) -> None:
     if is_tier0_ineligible_query(query):
         return
     normalized = normalize_query(query)
     if not normalized or not (answer or "").strip():
         return
+    from app.services.memory_source_liveness import epoch_parts
+
+    write_epoch = source_epoch if source_epoch is not None else epoch_parts(org_id, settings)
     cache = get_cache_service(settings)
     fingerprint = await _source_fingerprint(settings, org_id, source_document_ids)
+    if write_epoch != epoch_parts(org_id, settings):
+        return
     payload = {
         "answer": answer.strip(),
         "cached_at": datetime.now(timezone.utc).isoformat(),
@@ -106,9 +115,9 @@ async def set_tier0_answer(
         "confidence": confidence or {},
         "answer_explanation": answer_explanation or "",
     }
-    from app.services.memory_source_liveness import epoch_parts
-
-    await cache.set("tier0_answer", payload, ttl_seconds, org_id, normalized, *epoch_parts(org_id, settings))
+    # A concurrent mutation during the write leaves this entry under the old
+    # key; it must never be moved into a newer epoch after generating the answer.
+    await cache.set("tier0_answer", payload, ttl_seconds, org_id, normalized, *write_epoch)
 
 
 async def is_cache_entry_stale(
