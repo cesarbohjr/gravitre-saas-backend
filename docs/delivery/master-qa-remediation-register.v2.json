@@ -1678,7 +1678,8 @@
         "hosted_status": "PENDING_NEW_EXACT_HEAD",
         "no_additional_production_defect_reproduced": true,
         "certifies_whole_finding": false
-      }
+      },
+      "sync_writer_revision_evidence": "docs/delivery/pr611-eco013-sync-writer-revision.md"
     },
     {
       "finding_id": "ECO-014",
@@ -3265,7 +3266,8 @@
         "hosted_status": "PENDING_NEW_EXACT_HEAD",
         "no_additional_production_defect_reproduced": true,
         "certifies_whole_finding": false
-      }
+      },
+      "sync_writer_revision_evidence": "docs/delivery/pr611-eco013-sync-writer-revision.md"
     },
     {
       "finding_id": "DEC-006",

@@ -628,19 +628,26 @@ class ConversationStateService:
         from app.services.turn_cancellation import current_turn_cancelled
 
         with _task_state_lock(conversation_id, org_id):
-            state = self._read_task_state_sync(conversation_id, org_id, client)
-            change(state)
-            if current_turn_cancelled():
-                # Same fence as the save: under the lock, right before the write.
-                logger.info(
-                    "apply_task_state_change_dropped_for_cancelled_turn conversation_id=%s",
-                    conversation_id,
-                )
-                return False
-            self._client(client).table("conversations").update(
-                {"task_state": state, **(extra_columns or {})}
-            ).eq("id", conversation_id).eq("org_id", org_id).execute()
-        return True
+            for _ in range(5):
+                state = self._read_task_state_sync(conversation_id, org_id, client)
+                revision = state.get("task_revision")
+                change(state)
+                if current_turn_cancelled():
+                    return False
+                try:
+                    state["task_revision"] = int(revision or 0) + 1
+                except (TypeError, ValueError):
+                    state["task_revision"] = 1
+                query = self._client(client).table("conversations").update(
+                    {**(extra_columns or {}), "task_state": state}
+                ).eq("id", conversation_id).eq("org_id", org_id)
+                if revision is None:
+                    query = query.filter("task_state->>task_revision", "is", "null")
+                else:
+                    query = query.eq("task_state->>task_revision", str(revision))
+                if query.execute().data:
+                    return True
+        return False
 
     async def ensure_owned_conversation(
         self,
