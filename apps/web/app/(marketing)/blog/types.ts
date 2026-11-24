@@ -38,6 +38,8 @@ export type BlogPost = {
   /** Tailwind gradient classes when no hero image asset exists. */
   heroGradient?: string
   heroAlt: string
+  /** Photo credit for licensed stock imagery (rendered as a caption and in ImageObject JSON-LD). */
+  heroCredit?: { creator: string; source: string; url: string; licenseUrl?: string }
   keywords: string[]
   /** Short, extractable summary points surfaced to answer engines and readers. */
   takeaways: string[]

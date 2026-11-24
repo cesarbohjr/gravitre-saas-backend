@@ -99,7 +99,21 @@ function ArticleJsonLd({ post }: { post: BlogPost }) {
     mainEntityOfPage: { "@type": "WebPage", "@id": url },
     headline: post.title,
     description: post.description,
-    image: post.heroImage ? `${SITE_URL}${post.heroImage}` : `${SITE_URL}/images/gravitre-logo-black.png`,
+    image: post.heroImage
+      ? post.heroCredit
+        ? {
+            "@type": "ImageObject",
+            url: `${SITE_URL}${post.heroImage}`,
+            contentUrl: `${SITE_URL}${post.heroImage}`,
+            width: 1200,
+            height: 630,
+            caption: post.heroAlt,
+            creditText: `${post.heroCredit.creator} / ${post.heroCredit.source}`,
+            creator: { "@type": "Person", name: post.heroCredit.creator },
+            ...(post.heroCredit.licenseUrl ? { license: post.heroCredit.licenseUrl } : {}),
+          }
+        : `${SITE_URL}${post.heroImage}`
+      : `${SITE_URL}/images/gravitre-logo-black.png`,
     datePublished: post.datePublished,
     dateModified: post.dateModified,
     author,
@@ -201,7 +215,8 @@ export default async function BlogPostPage({
           </header>
 
           {/* Hero image */}
-          <figure className="mt-8 overflow-hidden rounded-2xl border border-border">
+          <figure className="mt-8">
+            <div className="overflow-hidden rounded-2xl border border-border">
             {post.heroImage ? (
               /* eslint-disable-next-line @next/next/no-img-element */
               <img
@@ -222,6 +237,16 @@ export default async function BlogPostPage({
                 </span>
               </div>
             )}
+            </div>
+            {post.heroCredit ? (
+              <figcaption className="mt-2 text-right text-xs text-muted-foreground">
+                Photo by{" "}
+                <a href={post.heroCredit.url} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2 hover:text-foreground">
+                  {post.heroCredit.creator}
+                </a>{" "}
+                on {post.heroCredit.source}
+              </figcaption>
+            ) : null}
           </figure>
 
           {/* Key takeaways: extractable summary for answer engines (AEO) */}
