@@ -9,6 +9,7 @@ import { aiAgentBestPracticesPost } from "./content/ai-agent-best-practices"
 import { governedAiForMspsPost } from "./content/governed-ai-for-msps"
 import { aiAgentsForBusinessPost } from "./content/ai-agents-for-business-types"
 import { aiDecisionMakingPost } from "./content/ai-in-decision-making"
+import { aiInflectionPointPost } from "./content/ai-inflection-point"
 import { SITE_URL, type BlogFAQ, type BlogPost } from "./types"
 
 export { GRAVITRE_BLOG_AUTHOR } from "./authors"
@@ -219,6 +220,7 @@ export const BLOG_LISTING_EXCLUDED_SLUGS = new Set([
 ])
 
 export const blogPosts: BlogPost[] = [
+  aiInflectionPointPost,
   aiDecisionMakingPost,
   aiAgentsForBusinessPost,
   aiWontTakeYourJob,

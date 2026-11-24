@@ -63,4 +63,11 @@ describe("blog publishing metadata invariants", () => {
       expect(post.heroAlt.trim(), post.slug).not.toBe("")
     }
   })
+
+  it("ships every referenced hero image asset", () => {
+    for (const post of blogPosts) {
+      if (!post.heroImage) continue
+      expect(existsSync(join(process.cwd(), "public", post.heroImage)), post.slug).toBe(true)
+    }
+  })
 })
