@@ -58,3 +58,14 @@ def test_state_patch_adapter_preserves_newer_cancellation(incoming_status):
     )
     assert patch["execution_plan"]["terminal_status"] == "cancelled"
     assert patch["execution_plan"]["revision"] == 5
+
+
+@pytest.mark.parametrize("legacy_status", ["awaiting_confirm", "awaiting_params", "executing"])
+def test_canonical_clarification_cannot_be_projected_as_approval(legacy_status):
+    plan = replace(_terminal(), terminal_status="clarification_required", pending_action_id=None)
+    patch = enrich_task_state_patch(
+        {"pending_task": {"status": legacy_status}},
+        current_state={"execution_plan": plan.as_dict()},
+    )
+    assert patch["pending_task"]["status"] == "awaiting_params"
+    assert patch["pending_task"]["execution_plan_id"] == plan.plan_id

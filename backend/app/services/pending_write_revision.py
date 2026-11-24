@@ -237,7 +237,7 @@ def execution_plan_with_revised_args(
             continue
         meta = step.get("meta") if isinstance(step.get("meta"), dict) else {}
         action = str(step.get("action_key") or meta.get("invoke_action") or "")
-        if action == invoke_action and isinstance(meta.get("args"), dict) and meta.get("args"):
+        if action == invoke_action and step.get("kind") == "write":
             steps.append({**step, "meta": {**meta, "args": dict(args)}})
             changed = True
         else:

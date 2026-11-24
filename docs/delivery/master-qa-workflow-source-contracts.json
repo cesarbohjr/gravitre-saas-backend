@@ -463,6 +463,10 @@
             }
           },
           {
+            "name": "DEC-012 and recipient approval regressions (ten cases, zero skips)",
+            "run": "python -m pytest -vv -rs tests/operators/test_agent_intelligence.py::test_dec012_execute_task_real_react_dispatch tests/services/test_react_bounded_loop_dispatch_gate.py::test_initial_reasoning_placeholder_admits_first_tool_without_waiving_write_proof tests/services/test_react_bounded_loop_dispatch_gate.py::test_bootstrap_reasoning_placeholder_does_not_bypass_existing_gates tests/scenarios/test_recipient_change_scenarios.py::test_two_matches_ask_which_one_then_show_the_approval_again tests/scenarios/test_recipient_change_scenarios.py::test_no_match_asks_for_the_address_and_keeps_the_draft --junitxml=dec012-targeted.xml\npython -c \"import xml.etree.ElementTree as E; r=E.parse('dec012-targeted.xml').getroot(); s=list(r.iter('testsuite')); assert sum(int(x.get('tests',0)) for x in s)==10; assert all(int(x.get(k,0))==0 for x in s for k in ('failures','errors','skipped'))\""
+          },
+          {
             "name": "Run tests",
             "run": "python -m pytest -q",
             "env": {
