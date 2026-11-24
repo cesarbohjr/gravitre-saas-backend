@@ -220,7 +220,7 @@ export const aiInflectionPointPost: BlogPost = {
         infrastructure needs to be built in parallel, not as an afterthought.
       </p>
 
-      <h2>What This Means for How You Should Be Operating</h2>
+      <h2>What Does This Mean for How You Should Be Operating?</h2>
       <p>
         The mistake most businesses make is treating AI as a single project. It is not. It is an ongoing operating
         decision. The organizations seeing real results right now share a few things in common:
