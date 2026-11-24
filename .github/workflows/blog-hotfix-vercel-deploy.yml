@@ -1,0 +1,42 @@
+name: Blog hotfix production deploy
+
+# One-off: deploys the current production build (#609, 2e78e03) plus the
+# "AI Inflection Point" blog post to Vercel production with the CLI, because
+# Git-triggered production deploys are on hold since #605. Runs only on this
+# branch; it does not ship anything from main beyond the blog post.
+
+on:
+  push:
+    branches:
+      - claude/project-thread-7ucy9i
+
+concurrency:
+  group: blog-hotfix-vercel-deploy
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: prj_ZKQZcnavQ8UnQTWH85125nBgTVfO
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Deploy to Vercel production (remote build)
+        run: |
+          npx --yes vercel@latest deploy --prod --yes \
+            --token "$VERCEL_TOKEN" --scope "$VERCEL_ORG_ID" \
+            --meta githubCommitSha="$GITHUB_SHA" | tee deploy-url.txt
+      - name: Check the blog post responds
+        run: |
+          sleep 20
+          curl -fsS -o /dev/null -w "%{http_code}\n" \
+            https://gravitre.app/blog/ai-inflection-point-what-it-means-for-your-business
