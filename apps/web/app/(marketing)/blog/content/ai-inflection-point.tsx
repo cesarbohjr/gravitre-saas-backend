@@ -89,9 +89,15 @@ export const aiInflectionPointPost: BlogPost = {
   category: "Perspective",
   readTime: "6 min read",
   ...createBlogDates("2026-11-24"),
-  heroImage: "",
-  heroGradient: "from-primary/15 via-[color:var(--g-marketing-surface)] to-muted",
-  heroAlt: "The AI inflection point: what is happening now and what it means for business",
+  heroImage: "/images/blog/ai-inflection-point-hero.jpg",
+  heroAlt:
+    "Torn brown paper revealing black keyboard keys labeled A and I, symbolizing artificial intelligence emerging in everyday business work.",
+  heroCredit: {
+    creator: "Immo Wegmann",
+    source: "Unsplash",
+    url: "https://unsplash.com/photos/vi1HXPw6hyw",
+    licenseUrl: "https://unsplash.com/license",
+  },
   keywords: [
     "AI inflection point",
     "agentic AI",
