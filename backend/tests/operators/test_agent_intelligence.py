@@ -1231,3 +1231,99 @@ async def test_run_agent_task_delegates_to_intelligence():
             )
     assert output["summary"] == "ok"
     assert output["agent_id"] == "a1"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "approval_status,expected_dispatch",
+    [("pending_approval", False), ("revoked", False), ("approved", True)],
+)
+async def test_dec012_execute_task_real_react_dispatch(
+    agent_row, intelligence, monkeypatch, approval_status, expected_dispatch,
+):
+    """Exercise the non-streaming entrypoint with the real ReAct runtime.
+
+    The SQL transport is disposable; approval classification and scope checks
+    are not patched. The registry dispatch boundary is a spy/stop sentinel,
+    not evidence of a committed provider effect or durable ledger completion.
+    """
+    import json
+    from app.operators.react_engine import ReActEngine
+    from app.services.tool_registry import ToolRegistry
+    from app.services.workflow_approval_scope import seal_approval_scope
+    from tests.db.pg_harness import PG_BIN
+    from tests.master_qa.canonical_pg_repository import (
+        ORG, USER, PgRepositoryClient, canonical_pg_cluster,
+    )
+
+    if PG_BIN is None:
+        pytest.skip("Disposable PostgreSQL binaries unavailable")
+    tool = "hubspot_update_deal"
+    action = "hubspot.deals.update"
+    args = {"deal_id": "fixture-deal", "stage": "qualified"}
+    registry = ToolRegistry()
+    spec = registry.get_spec(tool)
+    assert spec is not None and spec.invoke_action == action
+    definition = {
+        "steps": [{"id": "write-1", "type": "invoke_tool",
+                   "config": {"action": action, "params": args}}]
+    }
+    scope = seal_approval_scope(definition)
+    # Connector discovery is synthetic; retain the actual catalog classifier.
+    monkeypatch.setattr(registry, "list_connected_integrations", lambda *a, **kw: ["hubspot"])
+    monkeypatch.setattr(registry, "enrich_connected_integrations", AsyncMock(return_value=["hubspot"]))
+    monkeypatch.setattr(registry, "get_available_tools", AsyncMock(return_value=[spec.to_openai_tool()]))
+    dispatch = AsyncMock(return_value={
+        "success": False, "action": action, "error": "fixture transport stopped",
+        "error_code": "fixture_transport_stopped", "provider_invoked": False,
+    })
+    monkeypatch.setattr(registry, "execute_tool", dispatch)
+    engine = ReActEngine(settings=intelligence.settings, registry=registry)
+    engine.router = MagicMock()
+    model_call = SimpleNamespace(
+        id="dec012-call",
+        function=SimpleNamespace(name=tool, arguments=json.dumps(args)),
+    )
+    def response(content, calls):
+        return SimpleNamespace(choices=[SimpleNamespace(
+            message=SimpleNamespace(content=content, tool_calls=calls),
+            finish_reason="stop",
+        )])
+    monkeypatch.setattr(engine, "_chat_with_tools", AsyncMock(side_effect=[
+        response("", [model_call]), response("The deal was updated.", []),
+    ]))
+    intelligence.react_engine = engine
+    intelligence.tool_registry = registry
+    monkeypatch.setattr("app.operators.react_engine.moderate_input", AsyncMock())
+    monkeypatch.setattr("app.operators.agent_intelligence.load_agent_task_history", lambda *a, **kw: [])
+    with canonical_pg_cluster() as pg:
+        client = PgRepositoryClient(pg)
+        row = client.table("workflow_runs").insert({
+            "org_id": ORG, "status": "running", "approval_status": approval_status,
+            "required_approvals": 1, "definition_snapshot": definition,
+            "parameters": {"approval_scope": scope},
+        }).execute().data[0]
+        run_id = row["id"]
+        result = await intelligence.execute_task(
+            org_id=ORG, actor_id=USER, agent=agent_row,
+            task="Update the fixture deal stage",
+            run_id=run_id, task_id=run_id, environment_name="synthetic",
+            parameters={"include_task_history": False, "knowledge_assignments": []},
+            client=client, max_iterations=2,
+        )
+        assert len(result.tool_calls) == 1, result.to_handoff_dict()
+        call = result.tool_calls[0]
+        assert call["execution_plan_id"] and call["execution_step_id"]
+        if expected_dispatch:
+            dispatch.assert_awaited_once()
+            ctx = dispatch.await_args.kwargs["ctx"]
+            assert (ctx.org_id, ctx.actor_id, ctx.run_id) == (ORG, USER, run_id)
+            assert ctx.plan_id == call["execution_plan_id"]
+            assert ctx.step_id == call["execution_step_id"]
+        else:
+            dispatch.assert_not_awaited()
+            assert call["result"]["error_code"] == "canvas_write_authority_blocked"
+        assert not result.outcome_verified
+        assert client.table("workflow_runs").select("approval_status").eq(
+            "id", run_id
+        ).eq("org_id", ORG).limit(1).execute().data[0]["approval_status"] == approval_status
