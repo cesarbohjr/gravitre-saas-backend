@@ -8,6 +8,7 @@ overwriting a newly changed ledger state.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from typing import Any, Literal
 
 from app.services.outcome_reconciliation import reconcile_uncertain_write
@@ -74,6 +75,14 @@ def recover_uncertain_write(
             return RecoveryResult("rejected", "original_arguments_mismatch")
         if str(stored_connector) != str(getattr(ctx, "connector_id", "") or ""):
             return RecoveryResult("rejected", "connector_identity_mismatch")
+        # SQL also fences settlement by expiry. A matching token alone must
+        # not let an expired worker initiate privileged provider readback.
+        try:
+            expires_at = datetime.fromisoformat(str(rows[0].get("recovery_lease_expires_at") or ""))
+            if expires_at.tzinfo is None or expires_at <= datetime.now(timezone.utc):
+                return RecoveryResult("rejected", "recovery_lease_expired_or_invalid")
+        except (TypeError, ValueError):
+            return RecoveryResult("rejected", "recovery_lease_expired_or_invalid")
     except Exception:
         return RecoveryResult("error", "ledger_read_unavailable")
 

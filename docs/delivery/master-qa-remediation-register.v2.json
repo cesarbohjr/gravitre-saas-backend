@@ -574,6 +574,22 @@
         ],
         "decision": "DO NOT DECLARE CLOSED; DO NOT REPEAT BROAD TEST LOOP FOR EVERY DOCUMENTATION CHANGE",
         "finding_certified": false
+      },
+      "recovery_lease_expiry_batch_20261124": {
+        "engineering_state": "LOCAL_REGRESSIONS_PASSED_HOSTED_VERIFICATION_PENDING",
+        "master_plan_stage": "R4 interruption and tenant/privacy, following persisted R3 recovery ownership",
+        "source_base_sha": "403daac5a950b54a87d63642637ca110575e4b8d",
+        "source": "backend/app/services/write_recovery_service.py",
+        "test": "backend/tests/services/test_write_recovery_service.py",
+        "defect": "Matching lease token was accepted for provider readback after expiry. SQL already rejects expired settlement.",
+        "repair": "Reject expired or unverifiable persisted expiry before readback. SQL settlement remains authoritative against expiry or ownership changes during readback.",
+        "local_validation": "Four new negative cases failed before repair. Recovery service, recovery worker and connector reconciliation suites: 26 passed, zero skips.",
+        "remaining": [
+          "Hosted exact-SHA CI",
+          "Disposable PostgreSQL and process-level expiry/reassignment acceptance",
+          "Original independent live provider, deployed rollback and owner acceptance"
+        ],
+        "finding_certified": false
       }
     },
     {
