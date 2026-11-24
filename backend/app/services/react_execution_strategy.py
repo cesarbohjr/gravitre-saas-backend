@@ -80,12 +80,35 @@ class ReactPlanRuntime:
             self.dispatched_steps.setdefault((iteration, tool_name), []).append(step_id)
             return step_id
         if pending:
-            step_id = pending[0].step_id
+            step = pending[0]
+            step_id = step.step_id
             self._admit_autonomous_step(
                 step_id, tool_name, is_write=is_write, tenant_id=tenant_id, actor_id=actor_id,
                 fresh_permission_granted=fresh_permission_granted,
                 fresh_approval_granted=fresh_approval_granted,
             )
+            # The bootstrap composition placeholder is not an in-flight effect.
+            # Materialize the first actual tool step only after bounded admission.
+            # A write must retain its verification obligation from dispatch,
+            # even if the tool later returns no usable action/effect evidence.
+            if (
+                self.autonomous_task is None
+                and step.step_id == "react_compose"
+                and step.kind == "compose"
+                and step.meta.get("strategy") == "REACT"
+            ):
+                from dataclasses import replace
+
+                self.plan.steps = [
+                    replace(
+                        item,
+                        title=f"ReAct: {tool_name.replace('_', ' ')}",
+                        kind="write" if is_write else "read",
+                        action_key=tool_name,
+                        meta={**item.meta, "react_iteration": iteration, "dynamic": True},
+                    ) if item.step_id == step_id else item
+                    for item in self.plan.steps
+                ]
             self.dispatched_steps.setdefault((iteration, tool_name), []).append(step_id)
             return step_id
         if self.autonomous_task is not None:
@@ -174,7 +197,7 @@ class ReactPlanRuntime:
 
         self.plan.steps = [
             replace(step, kind="write", action_key=action)
-            if step.step_id == step_id and (step.meta or {}).get("dynamic") and step.kind == "read"
+            if step.step_id == step_id and (step.meta or {}).get("dynamic") and step.kind in {"read", "write"}
             else step
             for step in self.plan.steps
         ]
@@ -207,7 +230,8 @@ def prepare_react_execution_plan(
                 step_id="react_compose",
                 title="ReAct reasoning loop",
                 kind="compose",
-                status="running",
+                # No tool has crossed the dispatch boundary yet.
+                status="pending",
                 meta={"strategy": "REACT"},
             )
         ]
