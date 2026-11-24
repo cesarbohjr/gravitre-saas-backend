@@ -220,3 +220,45 @@ def test_scheduled_recovery_settles_independent_receiver_without_redispatch(
             assert receiver.writes == 1
     finally:
         receiver.close()
+
+
+@pytest.mark.parametrize("lease_state", ["expired", "reassigned"])
+def test_persisted_invalid_lease_blocks_provider_readback(pg, lease_state):
+    """Actual SQL lease state must reach Python before external readback."""
+    from types import SimpleNamespace
+    from unittest.mock import patch
+    from app.services.write_recovery_service import recover_uncertain_write
+    from tests.db.write_recovery_context_fixture import PgRecoveryClient
+
+    key = "readback-lease-" + lease_state
+    pg.psql(f"""INSERT INTO public.write_invoke_idempotency
+      (org_id,idempotency_key,invoke_action,status,connector_id,original_args)
+      VALUES('{ORG}','{key}','hubspot.contacts.create','uncertain',
+        'conn-a','{{"email":"qa@example.invalid"}}'::jsonb);""")
+    leased = _json(pg, "coalesce((SELECT row_to_json(x) FROM public.claim_due_write_recoveries(1,60) AS x),'{}'::json)")
+    token = leased["recovery_lease_token"]
+    pg.psql(f"""UPDATE public.write_invoke_idempotency
+      SET recovery_lease_expires_at=now()-interval '1 minute'
+      WHERE org_id='{ORG}' AND idempotency_key='{key}';""")
+    if lease_state == "reassigned":
+        replacement = _json(pg, "coalesce((SELECT row_to_json(x) FROM public.claim_due_write_recoveries(1,60) AS x),'{}'::json)")
+        assert replacement["recovery_lease_token"] != token
+    service = PgRecoveryClient(pg)
+    persisted = service.table("write_invoke_idempotency").select("*").eq(
+        "org_id", ORG).eq("idempotency_key", key).limit(1).execute().data[0]
+    assert persisted["recovery_lease_expires_at"]
+    ctx = SimpleNamespace(client=service, org_id=ORG, connector_id="conn-a")
+    with patch("app.services.write_recovery_service.reconcile_uncertain_write") as readback:
+        result = recover_uncertain_write(
+            ctx=ctx, idempotency_key=key,
+            invoke_action="hubspot.contacts.create",
+            original_args={"email": "qa@example.invalid"},
+            recovery_lease_token=token,
+        )
+    assert result.state == "rejected"
+    assert result.detail == (
+        "recovery_lease_expired_or_invalid" if lease_state == "expired"
+        else "recovery_lease_mismatch"
+    )
+    readback.assert_not_called()
+    assert pg.value(f"SELECT status FROM public.write_invoke_idempotency WHERE idempotency_key='{key}';") == "uncertain"

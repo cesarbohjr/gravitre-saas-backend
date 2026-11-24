@@ -126,14 +126,14 @@ class PgRecoveryClient:
                     records = conn.execute(
                         "SELECT org_id::text, idempotency_key, invoke_action,"
                         " connector_id, original_args, status,"
-                        " recovery_lease_token::text FROM public.write_invoke_idempotency"
+                        " recovery_lease_token::text, recovery_lease_expires_at::text FROM public.write_invoke_idempotency"
                         " WHERE org_id=%s::uuid AND idempotency_key=%s LIMIT %s",
                         (self.filters["org_id"], self.filters["idempotency_key"],
                          self.limit_value),
                     ).fetchall()
                 columns = ("org_id", "idempotency_key", "invoke_action",
                            "connector_id", "original_args", "status",
-                           "recovery_lease_token")
+                           "recovery_lease_token", "recovery_lease_expires_at")
                 return SimpleNamespace(data=[dict(zip(columns, row)) for row in records])
 
         return Query()
