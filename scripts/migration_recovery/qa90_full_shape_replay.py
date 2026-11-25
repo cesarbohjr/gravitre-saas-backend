@@ -33,6 +33,7 @@ VERSIONS = (
     "20261025213000_prospect_atomic_delivery",
     "20261102095000_autonomous_atomic_write_claim",
     "20261105090000_run_status_contract_v2",
+    "20261125060000_prospect_delivery_tenant_ownership",
 )
 
 # Public schema catalog including roles/grants, triggers, RLS, functions, indexes,
