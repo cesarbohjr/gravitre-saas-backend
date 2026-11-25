@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""QA90 replay of 16 deferred migrations on minimal isolated PostgreSQL fixtures.
+"""QA90 ordered replay of deferred migrations on minimal isolated PostgreSQL fixtures.
 
 This does NOT emulate the complete production schema and does not certify a
 Supabase migration repair. It applies real SQL in timestamp order to a disposable

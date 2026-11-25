@@ -148,7 +148,7 @@ def main() -> None:
                         result["applied"].append(name)
                     verify(conn)
                     result["after_application_schema_sha256"] = fingerprint(conn)
-                    assert len(result["applied"]) == 16
+                    assert result["applied"] == list(VERSIONS), "Incomplete or out-of-order migration replay"
                     raise RuntimeError("QA90_EXPECTED_POSITIVE_ROLLBACK")
             except RuntimeError as exc:
                 if str(exc) != "QA90_EXPECTED_POSITIVE_ROLLBACK":
