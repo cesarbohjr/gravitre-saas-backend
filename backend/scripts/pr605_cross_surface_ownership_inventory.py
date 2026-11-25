@@ -20,6 +20,9 @@ BACKEND = ROOT / "backend" / "app"
 # Explicit targeted surfaces only. Extend the registry with source-backed
 # candidates and tests before using it for any retirement decision.
 TARGETS = {
+    "voice_duplex_hook": "apps/web/hooks/use-voice-duplex-session.ts",
+    "backend_router_registration": "backend/app/main.py",
+    "agent_job_worker": "backend/app/operators/agent_jobs.py",
     "voice_ws_client": "apps/web/lib/pipecat-voice-client.ts",
     "voice_session_proxy": "apps/web/app/api/voice/session/turn/route.ts",
     "voice_proxy_origin": "apps/web/lib/voice-api-proxy.ts",
@@ -49,6 +52,8 @@ def inspect_text(path: str, source: str) -> dict:
     imports = set()
     dynamic = []
     rpc_calls = []
+    route_registrations = []
+    entrypoint_candidates = []
     if suffix == ".py":
         tree = ast.parse(source, filename=path)
         imported_dynamic_names = set()
@@ -56,6 +61,14 @@ def inspect_text(path: str, source: str) -> dict:
             if isinstance(node, ast.ImportFrom) and node.module == "importlib":
                 imported_dynamic_names.update(alias.asname or alias.name for alias in node.names if alias.name == "import_module")
         for node in ast.walk(tree):
+            if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+                for decorator in node.decorator_list:
+                    if isinstance(decorator, ast.Call) and isinstance(decorator.func, ast.Attribute) and decorator.func.attr in {"get", "post", "put", "patch", "delete", "websocket"}:
+                        arg = decorator.args[0] if decorator.args else None
+                        target = arg.value if isinstance(arg, ast.Constant) and isinstance(arg.value, str) and re.fullmatch(r"/[A-Za-z0-9_/{}/.-]*", arg.value) else None
+                        route_registrations.append({"line": decorator.lineno, "method": decorator.func.attr.upper(), "target": target, "handler": node.name})
+            if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute) and node.func.attr in {"include_router", "create_task", "submit", "enqueue"}:
+                entrypoint_candidates.append({"line": node.lineno, "kind": node.func.attr})
             if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute) and node.func.attr == "rpc":
                 # Only identifier-shaped names are retained. Never emit arguments,
                 # computed expressions or customer payloads into evidence artifacts.
@@ -86,6 +99,8 @@ def inspect_text(path: str, source: str) -> dict:
         imports.update(m.group("target") for m in TS_IMPORT.finditer(source))
         dynamic.extend({"line": source.count("\n", 0, m.start()) + 1, "kind": "dynamic_js_import_candidate"}
                        for m in re.finditer(r"\bimport\s*\(", source))
+        for match in re.finditer(r"\b(?:new\s+WebSocket|fetch|buildPipecatVoiceWsUrl)\s*\(", source):
+            entrypoint_candidates.append({"line": source.count("\n", 0, match.start()) + 1, "kind": match.group().split("(")[0].strip()})
     paths = sorted(set(API_LITERAL.findall(source)))
     return {
         "file": path,
@@ -94,6 +109,8 @@ def inspect_text(path: str, source: str) -> dict:
         "literal_api_paths": paths,
         "dynamic_dispatch_candidates": dynamic,
         "rpc_call_candidates": rpc_calls,
+        "route_registration_candidates": route_registrations,
+        "entrypoint_candidates": entrypoint_candidates,
         "environment_variable_names": sorted({v for v in ENV_NAME.findall(source) if not SENSITIVE.search(v)}),
         "limits": ["literal path can be a comment, test, default or inactive branch",
                    "imports are not method calls or production invocation evidence",
@@ -136,6 +153,7 @@ def collect(root: Path = ROOT) -> dict:
             "registered event/RPC subscribers, worker deployment and tenant access not fully traced",
             "no inference of dead code, production traffic, or retirement permission",
         ],
+        "runtime_dispatch_verified": False,
         "retirement_certified": False,
     }
 

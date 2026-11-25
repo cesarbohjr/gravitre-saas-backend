@@ -86,3 +86,23 @@ def test_inventory_covers_governed_callers_without_runtime_certification():
     assert report["retirement_certified"] is False
     assert all(item["source_type"] == "static_source_only"
                for item in report["source_files"])
+
+
+def test_route_and_worker_registration_candidates_do_not_export_arguments():
+    result = inventory.inspect_text("backend/app/fixture.py",
+        "@router.websocket('/ws')\nasync def handler():\n    asyncio.create_task(work('private-payload'))\n"
+        "app.include_router(router)\nclient.enqueue('private-job')\n")
+    assert result["route_registration_candidates"] == [{"line": 1, "method": "WEBSOCKET", "target": "/ws", "handler": "handler"}]
+    assert {item["kind"] for item in result["entrypoint_candidates"]} == {"create_task", "include_router", "enqueue"}
+    assert "private-payload" not in repr(result) and "private-job" not in repr(result)
+
+
+def test_frontend_transport_and_backend_registration_are_inventoried():
+    report = inventory.collect()
+    by_owner = {item["candidate_owner"]: item for item in report["source_files"]}
+    assert any(item["kind"] == "new WebSocket" for item in by_owner["voice_duplex_hook"]["entrypoint_candidates"])
+    assert any(item["kind"] == "include_router" for item in by_owner["backend_router_registration"]["entrypoint_candidates"])
+    assert any(item["method"] == "WEBSOCKET" and item["target"] == "/ws" for item in by_owner["voice_ws_router"]["route_registration_candidates"])
+    assert "agent_job_worker" in by_owner
+    assert report["runtime_dispatch_verified"] is False
+    assert report["retirement_certified"] is False

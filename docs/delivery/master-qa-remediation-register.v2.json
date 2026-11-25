@@ -4540,9 +4540,9 @@
       "root_cause": "UNVERIFIED",
       "remediation": "Verify auth/org-scoped WS URL selection, redirects, reconnect and production route from browser",
       "dependencies": [],
-      "regression_candidate": null,
-      "regression_state": "NOT_YET_IMPLEMENTED",
-      "implementation_state": "EVIDENCE_OR_REPAIR_PENDING",
+      "regression_candidate": "apps/web/__tests__/lib/pipecat-voice-routing.test.ts",
+      "regression_state": "EXPANDED_TARGETED_REGRESSIONS_HOSTED_PENDING",
+      "implementation_state": "PARTIAL_ENGINEERING_IMPLEMENTED_HOSTED_VERIFICATION_PENDING",
       "implemented_commit": null,
       "synthetic_status": "NOT_CERTIFIED",
       "live_status": "NOT_RUN",
@@ -4569,7 +4569,14 @@
       ],
       "partial_test_evidence": null,
       "audit_evidence_class": "SOURCE_CANDIDATE_REQUIRES_RUNTIME_PROOF",
-      "audit_observation": "Original audit and source candidate require caller/runtime evidence; no final root-cause claim."
+      "audit_observation": "Original audit and source candidate require caller/runtime evidence; no final root-cause claim.",
+      "architecture_batch": {
+        "state": "SOURCE_REPAIR_HOSTED_PENDING",
+        "source_base_sha": "75cdf1d567482e16fc07595a07f9303d95540bff",
+        "source": "apps/web/lib/pipecat-voice-client.ts",
+        "scope": "Canonical trusted credential destination, exact WS path, TLS except loopback, org race rejection and fresh token on reconnect URL construction",
+        "finding_certified": false
+      }
     },
     {
       "finding_id": "DEC-016",
@@ -5002,9 +5009,9 @@
       "root_cause": "UNVERIFIED",
       "remediation": "Extend static imports to active frontend→backend/RPC/worker edges; confirm unknowns with actual safe traces",
       "dependencies": [],
-      "regression_candidate": null,
-      "regression_state": "NOT_YET_IMPLEMENTED",
-      "implementation_state": "EVIDENCE_OR_REPAIR_PENDING",
+      "regression_candidate": "backend/tests/scripts/test_pr605_cross_surface_ownership_inventory.py",
+      "regression_state": "EXPANDED_TARGETED_REGRESSIONS_HOSTED_PENDING",
+      "implementation_state": "PARTIAL_ENGINEERING_IMPLEMENTED_HOSTED_VERIFICATION_PENDING",
       "implemented_commit": null,
       "synthetic_status": "NOT_CERTIFIED",
       "live_status": "NOT_RUN",
@@ -5044,6 +5051,13 @@
           "Active deployed caller traces and RPC client identity",
           "Finding-specific provider, parity, rollback and owner acceptance"
         ]
+      },
+      "architecture_batch": {
+        "state": "SOURCE_REPAIR_HOSTED_PENDING",
+        "source_base_sha": "75cdf1d567482e16fc07595a07f9303d95540bff",
+        "source": "backend/scripts/pr605_cross_surface_ownership_inventory.py",
+        "scope": "Expanded bounded static frontend socket, backend route and worker registration candidates; no runtime dispatch proof",
+        "finding_certified": false
       }
     }
   ],
