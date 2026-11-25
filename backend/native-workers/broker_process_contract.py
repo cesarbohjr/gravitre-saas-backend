@@ -8,12 +8,13 @@ import os
 from pathlib import Path
 import signal
 import sqlite3
+import ssl
 import threading
 import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 
-def _fixture(pipe, path, page, capability=None):
+def _fixture(pipe, path, page, capability=None, tls=None):
     # Public test receiver has no need for application, CI or database credentials.
     for name in tuple(os.environ):
         if name.startswith(('SUPABASE_','E2E_','NATIVE_','ACTIONS_','GITHUB_')) or name.endswith(('_KEY','_TOKEN','_SECRET','_PASSWORD')):
@@ -69,12 +70,22 @@ def _fixture(pipe, path, page, capability=None):
                 db.execute('INSERT INTO writes(cap_hash) VALUES(?)',(cap_hash,))
             release.wait(10)
             self.send_response(204);self.end_headers()
+    tls_context=None
+    if tls is not None:
+        tls_context=ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+        tls_context.minimum_version=ssl.TLSVersion.TLSv1_2
+        tls_context.load_cert_chain(tls['cert'],tls['key'])
     class Server(ThreadingHTTPServer):
         daemon_threads=True
         request_queue_size=16
         slots=threading.BoundedSemaphore(16)
         def get_request(self):
-            connection,address=super().get_request();connection.settimeout(5);return connection,address
+            connection,address=super().get_request();connection.settimeout(5)
+            if tls_context is not None:
+                try:connection=tls_context.wrap_socket(connection,server_side=True)
+                except OSError:
+                    connection.close();raise
+            return connection,address
         def process_request(self,request,address):
             if not self.slots.acquire(blocking=False):self.shutdown_request(request);return
             try:super().process_request(request,address)
@@ -82,7 +93,7 @@ def _fixture(pipe, path, page, capability=None):
         def process_request_thread(self,request,address):
             try:super().process_request_thread(request,address)
             finally:self.slots.release()
-    server=Server(('127.0.0.1',0),Handler)
+    server=Server((tls['bind'] if tls is not None else '127.0.0.1',0),Handler)
     thread=threading.Thread(target=server.serve_forever,daemon=True);thread.start()
     pipe.send({'port':server.server_port,'pid':os.getpid()})
     try:
@@ -101,11 +112,12 @@ def _fixture(pipe, path, page, capability=None):
 
 
 class IndependentFixture:
-    def __init__(self,path,page,*,capability=None):
+    def __init__(self,path,page,*,capability=None,tls=None):
         context=mp.get_context('spawn');self.pipe,child=context.Pipe()
-        self.process=context.Process(target=_fixture,args=(child,str(path),page,capability))
+        self.process=context.Process(target=_fixture,args=(child,str(path),page,capability,tls))
         self.process.start();child.close()
-        ready=self._receive();self.pid=ready['pid'];self.origin='http://127.0.0.1:'+str(ready['port'])
+        ready=self._receive();self.pid=ready['pid'];self.port=ready['port']
+        self.origin=('https://'+tls['bind'] if tls is not None else 'http://127.0.0.1')+':'+str(self.port)
         assert self.pid!=os.getpid()
     def _receive(self):
         if not self.pipe.poll(10):raise TimeoutError('Independent fixture unavailable')

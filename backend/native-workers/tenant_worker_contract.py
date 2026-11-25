@@ -28,6 +28,7 @@ from urllib.request import Request, urlopen
 from uuid import uuid4
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
 from broker_process_contract import IndependentFixture
+from private_https_fixture import FixtureRoute, issue_fixture_certificate, probe_private_https, build_fixture_images
 from app.services.native_runtime.docker_runner import DockerRunner, SandboxImages
 from app.services.native_runtime.store import Journal
 from app.services.native_agent_adapters import AdapterScope
@@ -194,6 +195,19 @@ def publish(tag):
 
 
 def worker_main(adapter):
+    # Only this acceptance executable can install the single synthetic route.
+    # Production worker.py, public-address validation and gateway images stay unchanged.
+    if (os.environ.get('APP_ENV')!='dev' or any(os.environ.get(k,'').rstrip('/')!=ACCEPTANCE
+            for k in ('E2E_SUPABASE_URL','E2E_SUPABASE_ALLOWED_URL','SUPABASE_URL'))):
+        raise RuntimeError('Private fixture requires dedicated acceptance configuration')
+    route=FixtureRoute(**json.loads(os.environ['CERT_PRIVATE_FIXTURE_ROUTE']))
+    bridge=DockerRunner.private_ipv4(docker('network','inspect','bridge','--format','{{(index .IPAM.Config 0).Gateway}}'))
+    url=urlsplit(os.environ['CERT_FIXTURE_URL'])
+    if route.address!=bridge or url.scheme!='https' or url.hostname!=route.host or url.port is not None or url.path!='/page' or url.username or url.password:
+        raise RuntimeError('Private fixture route mismatch')
+    from app.services.native_runtime import network, docker_runner
+    network.public_addresses=route.resolve
+    docker_runner.public_addresses=route.resolve
     import uvicorn
     from app.services.native_runtime.worker import build_app
     def factory(images):
@@ -337,7 +351,7 @@ class Worker:
 
 
 def run():
-    stage='acceptance_preflight';rows=[];case_counts=[];private_captures=[];user=None;orgs=[];admin=None;logged=None;fixture=None;tunnel=None;model=None;worker=None
+    stage='acceptance_preflight';rows=[];case_counts=[];private_captures=[];user=None;orgs=[];admin=None;logged=None;fixture=None;model=None;worker=None
     temporary=None
     target=Path(os.environ.get('NATIVE_TENANT_EVIDENCE','native-tenant-worker-evidence.json'))
     report={'schema_version':1,'git_sha':os.environ.get('CERT_HEAD_SHA',os.environ.get('GITHUB_SHA','local')),'status':'BLOCKED','scenarios':rows,
@@ -380,18 +394,38 @@ def run():
         temporary=tempfile.TemporaryDirectory(prefix='native-tenant-')
         root=Path(temporary.name);cap=secrets.token_hex(32)
         page = PAGE + b'\n<!-- fixture-' + secrets.token_hex(16).encode('ascii') + b' -->'
-        fixture=IndependentFixture(root/'effects.sqlite3',page,capability=cap)
         stage='owned_https_fixture_readiness'
-        report['https_fixture_attempts'] = []
-        tunnel, origin = start_fixture_tunnel(root, fixture.origin, page, report['https_fixture_attempts'])
-        fixture_url=origin+'/page#'+cap;host=urlsplit(origin).hostname
+        bridge=DockerRunner.private_ipv4(docker('network','inspect','bridge','--format','{{(index .IPAM.Config 0).Gateway}}'))
+        host='qa-'+uuid4().hex+'.example.invalid'
+        cert_root=root/'fixture-pki';cert_root.mkdir(mode=0o700)
+        ca,cert,key=issue_fixture_certificate(cert_root,host)
+        fixture=IndependentFixture(root/'effects.sqlite3',page,capability=cap,
+            tls={'bind':bridge,'cert':str(cert),'key':str(key)})
+        route=FixtureRoute(host=host,address=bridge,port=fixture.port)
+        report['https_fixture_transport']={'kind':'private_bridge_tls','public_tunnel':False,'public_dns':False,
+            'verified_tls':False,'exact_page':False}
+        probe_private_https(route.address,route.port,route.host,ca,page)
+        # Fail closed on an unexpected hostname or an untrusted issuer.
+        for check_host,check_ca in ((host, None), ('wrong.example.invalid',ca)):
+            try:probe_private_https(route.address,route.port,check_host,check_ca,page)
+            except ssl.SSLCertVerificationError:pass
+            else:raise AssertionError('Private fixture accepted an invalid TLS identity')
+        report['https_fixture_transport'].update(verified_tls=True,exact_page=True,
+            wrong_hostname_rejected=True,untrusted_issuer_rejected=True)
+        origin='https://'+host
+        fixture_url=origin+'/page#'+cap
         model_root=root/'model';model_root.mkdir(mode=0o700);model=Model(model_root,fixture_url)
-        images=SandboxImages(publish('native-openhands'),publish('native-browser'),publish('native-tenant-gateway'),
-                             playwright_comparison=publish('native-playwright-comparison'))
+        stage='acceptance_fixture_images'
+        report['fixture_base_image_ids']={name:docker('image','inspect',name,'--format','{{.Id}}')
+            for name in ('native-browser','native-playwright-comparison','native-tenant-gateway')}
+        build_fixture_images(root,route,ca)
+        images=SandboxImages(publish('native-openhands'),publish('native-fixture-browser'),publish('native-fixture-gateway'),
+                             playwright_comparison=publish('native-fixture-playwright'))
         base_env={**os.environ,'APP_ENV':'dev','PYTHONPATH':str(Path(__file__).resolve().parents[1]),
             'NATIVE_OPENHANDS_IMAGE':images.openhands,'NATIVE_BROWSER_IMAGE':images.browser_use,'NATIVE_GATEWAY_IMAGE':images.gateway,
             'NATIVE_SANDBOX_RUNTIME':'runsc','NATIVE_WORKER_SIGNING_KEY':secrets.token_hex(32),
             'CERT_PLAYWRIGHT_IMAGE':images.playwright_comparison,'CERT_FIXTURE_URL':fixture_url,
+            'CERT_PRIVATE_FIXTURE_ROUTE':json.dumps(asdict(route)),
             'NATIVE_TENANTS_JSON':json.dumps({orgs[0]:{'processing_permission':{'owner':user,'reference':'authorized-disposable-native-certification',
                 'expires_at':(datetime.now(timezone.utc)+timedelta(hours=1)).isoformat()},'model':model.route}})}
         report['images']=asdict(images)
@@ -589,7 +623,6 @@ def run():
                 report.setdefault('cleanup_failures',[]).append(label)
         if worker is not None:cleanup('worker',worker.close)
         if model is not None:cleanup('scripted_model',model.close)
-        if tunnel is not None:cleanup('https_fixture_tunnel',lambda:stop_tunnel(tunnel))
         if fixture is not None:
             def stop_receiver():
                 fixture.hold=False;fixture.close()

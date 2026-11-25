@@ -311,3 +311,70 @@ def test_unreachable_fixture_records_transport_category_and_still_blocks(tmp_pat
     assert len(processes) == 2
     for process in processes:
         process.terminate.assert_called_once()
+
+
+
+def test_private_fixture_route_is_exact_and_production_resolver_stays_private_deny(monkeypatch):
+    from private_https_fixture import FixtureRoute, FixtureSocket
+    from app.services.native_runtime.network import public_addresses
+    host='qa-'+'a'*32+'.example.invalid'
+    route=FixtureRoute(host,'172.17.0.1',23456)
+    assert route.resolve(host)==['172.17.0.1']
+    for other in ('host.docker.internal','localhost','other.example.invalid','172.17.0.1'):
+        with pytest.raises(ValueError):route.resolve(other)
+    monkeypatch.setattr(socket,'getaddrinfo',lambda *_a,**_kw:[(socket.AF_INET,socket.SOCK_STREAM,0,'',('172.17.0.1',443))])
+    with pytest.raises(ValueError):public_addresses(host)
+    delegate=Mock()
+    transport=FixtureSocket(route,delegate)
+    assert transport.create_connection(('172.17.0.1',443),timeout=10)==delegate.create_connection.return_value
+    delegate.create_connection.assert_called_once_with(('172.17.0.1',23456),timeout=10)
+    for address in (('172.17.0.1',80),('172.17.0.2',443),('127.0.0.1',443)):
+        with pytest.raises(ValueError):transport.create_connection(address)
+    assert delegate.create_connection.call_count==1
+
+
+@pytest.mark.parametrize('host,address,port',[
+    ('other.example.invalid','172.17.0.1',23456),
+    ('qa-'+'a'*32+'.example.invalid','127.0.0.1',23456),
+    ('qa-'+'a'*32+'.example.invalid','169.254.169.254',23456),
+    ('qa-'+'a'*32+'.example.invalid','8.8.8.8',23456),
+    ('qa-'+'a'*32+'.example.invalid','172.17.0.1',443),
+])
+def test_private_route_rejects_invalid_scope(host,address,port):
+    from private_https_fixture import FixtureRoute
+    with pytest.raises(ValueError):FixtureRoute(host,address,port)
+
+
+def test_real_private_tls_receiver_validates_identity_and_exact_page(tmp_path,monkeypatch):
+    from private_https_fixture import issue_fixture_certificate, probe_private_https
+    host='qa-'+'b'*32+'.example.invalid'
+    ca,cert,key=issue_fixture_certificate(tmp_path,host)
+    fixture=contract.IndependentFixture(tmp_path/'effects.sqlite3',b'owned',capability='private-cap',
+        tls={'bind':'127.0.0.1','cert':str(cert),'key':str(key)})
+    try:
+        # Ensure the probe uses the numeric address, even if all public DNS fails.
+        original=socket.getaddrinfo
+        def numeric_only(name,*args,**kwargs):
+            assert name=='127.0.0.1'
+            return original(name,*args,**kwargs)
+        monkeypatch.setattr(socket,'getaddrinfo',numeric_only)
+        probe_private_https('127.0.0.1',fixture.port,host,ca,b'owned')
+        with pytest.raises(ssl.SSLCertVerificationError):
+            probe_private_https('127.0.0.1',fixture.port,host,None,b'owned')
+        with pytest.raises(ssl.SSLCertVerificationError):
+            probe_private_https('127.0.0.1',fixture.port,'wrong.example.invalid',ca,b'owned')
+        with pytest.raises(ValueError,match='Unexpected disposable fixture response'):
+            probe_private_https('127.0.0.1',fixture.port,host,ca,b'other')
+        assert fixture.writes==0
+        assert not (tmp_path/'ca.key').exists()
+    finally:fixture.close()
+
+
+def test_fixture_browser_wrapper_refuses_certificate_bypass():
+    from private_https_fixture import CHROMIUM_WRAPPER
+    import subprocess
+    for flag in ('--ignore-certificate-errors','--ignore-certificate-errors-spki-list=abc','--allow-insecure-localhost'):
+        result=subprocess.run(['sh','-c',CHROMIUM_WRAPPER,'chromium',flag],
+            env={'HOME':'/workspace','PATH':'/usr/bin:/bin'},capture_output=True)
+        assert result.returncode==1
+        assert b'Certificate bypass forbidden' in result.stderr

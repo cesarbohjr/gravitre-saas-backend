@@ -6811,10 +6811,6 @@
             "run": "docker run -d --name native-cert-registry -p 127.0.0.1:5050:5000 mirror.gcr.io/library/registry@sha256:a3d8aaa63ed8681a604f1dea0aa03f100d5895b6a58ace528858a7b332415373"
           },
           {
-            "name": "Install hash-verified ephemeral test tunnel",
-            "run": "curl --fail --location --silent --show-error https://github.com/cloudflare/cloudflared/releases/download/2026.10.6/cloudflared-linux-amd64 -o \"$RUNNER_TEMP/cloudflared\"\necho \"1d356dac769d0dbf62ebe588c4034824bbff98d5790c2f844cc99e0e2f57462d  $RUNNER_TEMP/cloudflared\" | sha256sum --check\nchmod 700 \"$RUNNER_TEMP/cloudflared\"\n\"$RUNNER_TEMP/cloudflared\" --version\n"
-          },
-          {
             "name": "Execute both real workers through persisted acceptance IAM",
             "timeout-minutes": 30,
             "env": {
@@ -6823,7 +6819,6 @@
               "E2E_SUPABASE_ANON_KEY": "${{ secrets.E2E_SUPABASE_ANON_KEY }}",
               "E2E_SUPABASE_SERVICE_ROLE_KEY": "${{ secrets.E2E_SUPABASE_SERVICE_ROLE_KEY }}",
               "E2E_SUPABASE_JWT_SECRET": "${{ secrets.E2E_SUPABASE_JWT_SECRET }}",
-              "CLOUDFLARED_BIN": "${{ runner.temp }}/cloudflared",
               "NATIVE_TENANT_EVIDENCE": "native-tenant-worker-evidence.json",
               "CERT_HEAD_SHA": "${{ github.event.pull_request.head.sha || github.sha }}"
             },
