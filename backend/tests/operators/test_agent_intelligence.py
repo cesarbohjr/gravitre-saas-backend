@@ -1445,7 +1445,7 @@ async def test_dec012_agent_write_to_durable_outcome(
 
         monkeypatch.setattr(client, "rpc", rpc)
         run = client.table("workflow_runs").insert({
-            "org_id": ORG, "status": "running", "approval_status": approval_status,
+            "org_id": ORG, "triggered_by": USER, "status": "running", "approval_status": approval_status,
             "required_approvals": 1, "definition_snapshot": definition,
             "parameters": {"approval_scope": seal_approval_scope(definition)},
         }).execute().data[0]
@@ -1513,7 +1513,8 @@ async def test_dec012_agent_write_to_durable_outcome(
                         "WHERE status='completed' AND result #>> '{data,id}'='1'") == "1"
         # Follow the worker's existing completion path with the actual rollup.
         job = {"id": run_id, "org_id": ORG, "created_by": USER, "kind": "agent_task",
-               "status": "completed", "payload": {"task": "Create the fixture contact", "run_id": run_id}}
+               "status": "completed", "environment": "synthetic", "bound_run_id": run_id,
+               "payload": {"task": "Create the fixture contact", "run_id": "untrusted"}}
         await agent_jobs._notify_operator_job_finished(settings, client, job, result.to_handoff_dict())
         persisted = repository.get_run_with_steps(PgRepositoryClient(pg), ORG, run_id, "synthetic")
         assert persisted["status"] == "completed"

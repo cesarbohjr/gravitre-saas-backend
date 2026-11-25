@@ -27,6 +27,7 @@ from app.billing.service import (
 from app.config import Settings, get_settings
 from app.core.logging import get_logger
 from app.core.safe_dict import safe_normalize_stored_dict
+from app.operators.agent_run_binding import resolve_bound_run
 from app.workflows.repository import get_supabase_client
 
 logger = get_logger(__name__)
@@ -56,6 +57,7 @@ def create_job(
     max_attempts: int = 3,
     goal_id: str | None = None,
     work_object_id: str | None = None,
+    trusted_run_id: str | None = None,
 ) -> dict[str, Any]:
     """Insert a queued agent job row.
 
@@ -91,6 +93,10 @@ def create_job(
             "Assignment creation was cancelled before its database write.",
             code="write_commit_interrupted",
         )
+    # Only internal callers may supply this explicit argument; never read payload IDs.
+    if trusted_run_id is not None:
+        row["bound_run_id"] = trusted_run_id
+        resolve_bound_run(client, row)
     resp = client.table("agent_jobs").insert(row).execute()
     job = resp.data[0] if resp.data else row
     # Lifecycle notify on queue (claim path skipped to avoid double spam).
@@ -793,6 +799,7 @@ async def run_operator_job(settings: Settings, job: dict[str, Any]) -> dict[str,
             parameters=parameters,
             actor_id=str(job.get("created_by") or agent.get("id") or "system"),
             task_id=str(job["id"]),
+            run_id=resolve_bound_run(client, job),
             environment_name=environment,
             client=client,
         )
@@ -963,6 +970,7 @@ async def run_agent_task_job(settings: Settings, job: dict[str, Any]) -> dict[st
         parameters=parameters,
         actor_id=str(job.get("created_by") or agent_id),
         task_id=str(job["id"]),
+        run_id=resolve_bound_run(client, job),
         environment_name=environment,
         client=client,
     )
@@ -995,12 +1003,8 @@ async def _notify_operator_job_finished(
     org_id = str(job.get("org_id") or "").strip()
     if not user_id or not org_id:
         return
-    import hashlib
-    from uuid import uuid4
-
     from app.services.entity_link_service import build_entity_url
     from app.services.execution_outcome import VerifiedOutputRef, finalize_execution_outcome
-    from app.workflows.repository import create_run
 
     payload = job.get("payload") if isinstance(job.get("payload"), dict) else {}
     session_id = str(payload.get("session_id") or payload.get("sessionId") or "").strip()
@@ -1021,13 +1025,13 @@ async def _notify_operator_job_finished(
         "failed",
     }:
         terminal_status = str(outcome["status"])
-    run_id = str(
-        payload.get("workflow_run_id")
-        or payload.get("run_id")
-        or result.get("workflow_run_id")
-        or result.get("run_id")
-        or ""
-    ).strip() or None
+    # Completion must never take its authority from a task payload or model result.
+    from app.operators.agent_run_binding import resolve_bound_run
+    run_id = resolve_bound_run(client, job)
+    # Unbound legacy jobs may record a separate outcome, never borrow approval.
+    import hashlib
+    from uuid import uuid4
+    from app.workflows.repository import create_run
     if not run_id:
         job_id = str(job.get("id") or "")
         label = (task or "Operator assignment")[:120]
@@ -1052,7 +1056,7 @@ async def _notify_operator_job_finished(
                     f"assignment|{job_id}|{uuid4()}".encode("utf-8")
                 ).hexdigest()[:48],
                 workflow_id=None,
-                environment_name="production",
+                environment_name=str(job.get("environment") or "production"),
                 trigger_type="api",
                 run_type="execute",
             )
@@ -1064,6 +1068,7 @@ async def _notify_operator_job_finished(
                 exc,
             )
             run_id = None
+
 
     finalize_execution_outcome(
         client,
