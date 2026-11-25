@@ -1336,8 +1336,9 @@ async def test_dec012_agent_write_to_durable_outcome(
 ):
     """Real Agent/ReAct/registry/write ledger, HTTP readback and completion hook.
 
-    The existing worker completion hook is called explicitly after execute_task,
-    as its caller does. This does not certify the job queue or Play ingress.
+    A persisted job is created through the repository and executed through the
+    agent worker handler. Completion and replay use the persisted job row.
+    This does not certify queue transport or Play ingress.
     Only model/retrieval inputs, connector discovery/resource metadata, SQL
     transport and the external vendor transport are disposable fixtures.
     """
@@ -1430,7 +1431,12 @@ async def test_dec012_agent_write_to_durable_outcome(
         _disable_optional_delivery(monkeypatch)
         pg.psql("ALTER TABLE public.audit_logs ALTER COLUMN id SET DEFAULT gen_random_uuid();"
                 "ALTER TABLE public.audit_events ALTER COLUMN id SET DEFAULT gen_random_uuid();"
-                "CREATE TABLE public.agent_jobs (status text);")
+                "CREATE TABLE public.agent_jobs (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), "
+                "org_id uuid NOT NULL, created_by text, environment text, kind text, session_id text, "
+                "payload jsonb, status text, max_attempts integer, queued_at timestamptz, "
+                "timeout_at timestamptz, retry_count integer, result jsonb, error text, "
+                "finished_at timestamptz, updated_at timestamptz);")
+        pg.psql((MIGRATIONS / "20261125040000_agent_job_run_binding.sql").read_text())
         pg.psql((MIGRATIONS / "20260606200000_agent_execution_interrupts.sql").read_text())
         ledger = PgClient(str(pg.sock), pg.port)
         repository_rpc = client.rpc
@@ -1450,6 +1456,19 @@ async def test_dec012_agent_write_to_durable_outcome(
             "parameters": {"approval_scope": seal_approval_scope(definition)},
         }).execute().data[0]
         run_id = run["id"]
+        monkeypatch.setattr(agent_jobs, "get_supabase_client", lambda *_: client)
+        monkeypatch.setattr("app.operators.agent_intelligence.get_agent_intelligence", lambda: intelligence)
+        monkeypatch.setattr("app.operators.agent_intelligence.resolve_agent_record", lambda *a, **kw: agent_row)
+        monkeypatch.setattr("app.services.job_workspace_service.get_job_workspace_service",
+                            lambda *_: SimpleNamespace(ensure_workspace=AsyncMock()))
+        monkeypatch.setattr("app.services.agent_activity_notifications.notify_agent_started", lambda *a, **kw: None)
+        job = agent_jobs.create_job(client, ORG, kind="agent_task", environment="synthetic",
+                                    created_by=USER, trusted_run_id=run_id,
+                                    payload={"task": "Create the fixture contact", "agent_id": agent_row["id"],
+                                             "run_id": "untrusted", "context": {"include_task_history": False,
+                                             "knowledge_assignments": []}})
+        job = client.table("agent_jobs").update({"status": "running"}).eq("id", job["id"]).execute().data[0]
+        assert job["bound_run_id"] == run_id
 
         def vendor(context, params):
             assert (context.org_id, context.actor_id, context.run_id) == (ORG, USER, run_id)
@@ -1491,7 +1510,22 @@ async def test_dec012_agent_write_to_durable_outcome(
                 parameters={"include_task_history": False, "knowledge_assignments": []}, max_iterations=2,
             )
 
-        result = await execute_agent()
+        # Capture the actual AgentResult without replacing the worker or execution engine.
+        captured = []
+        original_execute = intelligence.execute_task
+        async def capture(**kwargs):
+            result = await original_execute(**kwargs)
+            captured.append(result)
+            return result
+        monkeypatch.setattr(intelligence, "execute_task", capture)
+        call = SimpleNamespace(id="dec012-write", function=SimpleNamespace(name=tool, arguments=json.dumps(args)))
+        def reply(calls):
+            return SimpleNamespace(choices=[SimpleNamespace(message=SimpleNamespace(
+                content="" if calls else "Finished the fixture task.", tool_calls=calls), finish_reason="stop")])
+        monkeypatch.setattr(engine, "_chat_with_tools", AsyncMock(side_effect=[reply([call]), reply([])]))
+        worker_result = await agent_jobs.run_agent_task_job(settings, job)
+        assert len(captured) == 1
+        result = captured[0]
         assert len(result.tool_calls) == 1, result.to_handoff_dict()
         observation = result.tool_calls[0]["result"]
         if approval_status != "approved":
@@ -1512,10 +1546,10 @@ async def test_dec012_agent_write_to_durable_outcome(
         assert pg.value("SELECT count(*) FROM public.write_invoke_idempotency "
                         "WHERE status='completed' AND result #>> '{data,id}'='1'") == "1"
         # Follow the worker's existing completion path with the actual rollup.
-        job = {"id": run_id, "org_id": ORG, "created_by": USER, "kind": "agent_task",
-               "status": "completed", "environment": "synthetic", "bound_run_id": run_id,
-               "payload": {"task": "Create the fixture contact", "run_id": "untrusted"}}
-        await agent_jobs._notify_operator_job_finished(settings, client, job, result.to_handoff_dict())
+        agent_jobs.complete_job(client, job["id"], worker_result)
+        job = agent_jobs.get_job(client, ORG, job["id"])
+        assert job["status"] == "completed" and job["bound_run_id"] == run_id
+        await agent_jobs._notify_operator_job_finished(settings, client, job, worker_result)
         persisted = repository.get_run_with_steps(PgRepositoryClient(pg), ORG, run_id, "synthetic")
         assert persisted["status"] == "completed"
         assert persisted["parameters"]["outcome_finalized"] is True
@@ -1535,7 +1569,10 @@ async def test_dec012_agent_write_to_durable_outcome(
         assert not rejected.outcome_verified
         assert receiver.writes == 1
         assert pg.value("SELECT count(*) FROM public.write_invoke_idempotency") == "1"
-        await agent_jobs._notify_operator_job_finished(settings, client, job, result.to_handoff_dict())
+        # Separate threads and database connections exercise the completion replay race.
+        def complete_again():
+            asyncio.run(agent_jobs._notify_operator_job_finished(settings, PgRepositoryClient(pg), job, worker_result))
+        await asyncio.gather(*(asyncio.to_thread(complete_again) for _ in range(4)))
         assert pg.value("SELECT count(*) FROM public.domain_event_outbox") == "1"
         pg.psql("CREATE TABLE public.qa_dec012_effects (event_id bigint PRIMARY KEY, run_id uuid NOT NULL)")
 
