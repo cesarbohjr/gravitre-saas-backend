@@ -30,6 +30,8 @@ def test_weekly_throughput_aggregates_rag_chunks(mock_week_start):
         chain.select.return_value = chain
         chain.eq.return_value = chain
         chain.gte.return_value = chain
+        chain.order.return_value = chain
+        chain.limit.return_value = chain
         if name == "rag_ingest_jobs":
             chain.execute.return_value = SimpleNamespace(
                 data=[{"created_at": monday_noon.isoformat(), "chunk_count": 100, "status": "completed"}]

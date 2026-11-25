@@ -69,9 +69,9 @@ def run_gate(*, finding: str, test_file: str, count: int, output_name: str,
 
 
 def main() -> int:
-    # Preserve the independent DEC-008 command, file selection and 20-case gate.
+    # Preserve the original twenty cases and require five capped-consumer cases.
     return run_gate(finding="DEC-008", test_file="tests/test_audit_reader_postgrest.py",
-                    count=20, output_name="dec008-postgrest-evidence.json",
+                    count=25, output_name="dec008-postgrest-evidence.json",
                     expected_sha_env="DEC008_EXPECTED_SHA")
 
 

@@ -48,3 +48,12 @@ class RequiredPostgrestGate(unittest.TestCase):
         self.assertNotIn('if',step)
         self.assertFalse(step.get('continue-on-error',False))
         self.assertNotIn('continue-on-error',job)
+
+    def test_expanded_gate_requires_twenty_five(self):
+        from unittest.mock import patch
+        with patch.object(gate, "run_gate", return_value=0) as run:
+            self.assertEqual(gate.main(), 0)
+            self.assertEqual(run.call_args.kwargs["count"], 25)
+        self.assertEqual(gate.require_complete_junit(self.report(25), count=25), 25)
+        with self.assertRaises(ValueError):
+            gate.require_complete_junit(self.report(20), count=25)

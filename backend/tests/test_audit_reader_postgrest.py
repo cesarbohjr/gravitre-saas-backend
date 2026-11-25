@@ -38,7 +38,7 @@ EXPECTED = [str(UUID(int=i)) for i in [90, 15, 14, 13, 12, 11, 1]]
 
 
 @pytest.fixture
-def real_audit_api(monkeypatch):
+def real_audit_api(monkeypatch, request):
     with tcp_pg_cluster() as pg:
         with psycopg.connect(host=pg.sock, port=pg.port, user="postgres", dbname="postgres",
                              autocommit=True) as conn:
@@ -58,6 +58,9 @@ def real_audit_api(monkeypatch):
                 CREATE TABLE workflow_steps (run_id uuid,org_id uuid,step_index int,step_name text,
                     step_type text,status text,error_code text);
                 CREATE TABLE run_approvals (run_id uuid,org_id uuid,status text);
+                CREATE TABLE rag_ingest_jobs (org_id uuid, created_at timestamptz, chunk_count int, status text);
+                CREATE TABLE agent_jobs (org_id uuid, created_at timestamptz, kind text, status text);
+                ALTER TABLE workflow_runs ADD COLUMN run_type text;
                 ALTER TABLE organization_members ENABLE ROW LEVEL SECURITY;
                 ALTER TABLE audit_events ENABLE ROW LEVEL SECURITY;
                 ALTER TABLE audit_logs ENABLE ROW LEVEL SECURITY;
@@ -70,14 +73,14 @@ def real_audit_api(monkeypatch):
                 GRANT USAGE ON SCHEMA public TO audit_member;
                 GRANT SELECT ON organization_members,audit_events,audit_logs TO audit_member;
             """)
-            for table in ('workflow_runs','workflow_steps','run_approvals'):
+            for table in ('workflow_runs','workflow_steps','run_approvals','rag_ingest_jobs','agent_jobs'):
                 conn.execute(f'ALTER TABLE {table} ENABLE ROW LEVEL SECURITY')
                 conn.execute(f'CREATE POLICY own_rows ON {table} FOR SELECT TO audit_member USING '
                              f'(EXISTS (SELECT 1 FROM organization_members m WHERE m.org_id={table}.org_id))')
                 conn.execute(f'GRANT SELECT ON {table} TO audit_member')
             conn.execute("INSERT INTO organization_members VALUES (%s,%s),(%s,%s)",
                          (ORG_A, ACTOR_A, ORG_B, ACTOR_B))
-            conn.execute("INSERT INTO workflow_runs VALUES (%s,%s,'default','completed',%s,NULL,0,NULL),"
+            conn.execute("INSERT INTO workflow_runs (id,org_id,environment,status,created_at,workflow_id,required_approvals,approval_status) VALUES (%s,%s,'default','completed',%s,NULL,0,NULL),"
                          "(%s,%s,'default','completed',%s,NULL,0,NULL)",
                          (RESOURCE,ORG_A,TIE,str(UUID(int=302)),ORG_B,TIE))
             fixtures = [event(90, NEW), *[event(i) for i in range(11, 16)], event(1, OLD),
@@ -100,6 +103,8 @@ def real_audit_api(monkeypatch):
             env.update(PGRST_DB_URI=f"postgresql://audit_authenticator@127.0.0.1:{pg.port}/postgres",
                        PGRST_DB_SCHEMAS="public", PGRST_JWT_SECRET=secret,
                        PGRST_SERVER_HOST="127.0.0.1", PGRST_SERVER_PORT=str(port))
+            if getattr(request, "param", None) == "capped":
+                env["PGRST_DB_MAX_ROWS"] = "2"
             token = jwt.encode({"role":"audit_member","sub":ACTOR_A,"exp":int(time.time())+300},
                                secret,algorithm="HS256")
             requests = []
@@ -230,3 +235,78 @@ def test_real_boundary_preserves_optional_filters(real_audit_api,mock_settings):
     rows,_=query.query_audit_log(mock_settings,ORG_A,10,cursor,
         action_prefix='tool.invoke',actor_id=ACTOR_A,resource_type='conversation',start_at=TIE,end_at=TIE)
     assert [r['id'] for r in rows] == [str(UUID(int=i)) for i in (13,12,11)]
+
+
+@pytest.mark.parametrize("real_audit_api", ["capped"], indirect=True)
+def test_capped_soc2_export_retains_compliance_store(real_audit_api, monkeypatch, mock_settings):
+    from app.routers import enterprise
+    api = real_audit_api
+    # Deliberately different store semantics: only the compliance row changes.
+    api.conn.execute("UPDATE audit_logs SET action='enterprise.settings.updated' WHERE id=%s",
+                     (EXPECTED[0],))
+    assert len(api.client.table("audit_logs").select("*").eq("org_id", ORG_A).execute().data) == 2
+    monkeypatch.setattr(enterprise, "shared_service_client", lambda *_: api.client)
+    monkeypatch.setattr(enterprise, "get_plan_for_org", lambda *_: {})
+    monkeypatch.setattr(enterprise, "require_feature", lambda *_: None)
+    report = enterprise.export_soc2_bundle({"user_id": ACTOR_A}, ORG_A, mock_settings)
+    assert report["summary"]["auditLogCount"] == 7
+    assert report["summary"]["toolInvocationCount"] == 6
+    assert report["summary"]["adminActionCount"] == 1
+    assert enterprise.export_soc2_bundle({"user_id": ACTOR_A}, ORG_B, mock_settings)["summary"]["auditLogCount"] == 0
+    assert api.conn.execute("SELECT action FROM audit_events WHERE id=%s", (EXPECTED[0],)).fetchone()[0] == "tool.invoke.completed"
+
+
+@pytest.mark.parametrize("real_audit_api", ["capped"], indirect=True)
+def test_capped_workforce_analytics_uses_all_compliance_rows(real_audit_api, monkeypatch, mock_settings):
+    from app.routers import enterprise
+    api = real_audit_api
+    api.conn.execute("UPDATE audit_logs SET action='agent.handoff.completed' WHERE id=%s", (EXPECTED[0],))
+    api.conn.execute("UPDATE audit_logs SET action='tool.invoke.failed' WHERE id=%s", (EXPECTED[1],))
+    monkeypatch.setattr(enterprise, "shared_service_client", lambda *_: api.client)
+    report = enterprise.workforce_analytics({"user_id": ACTOR_A}, ORG_A, mock_settings)
+    assert report["handoffs"] == 1
+    assert report["toolSuccessRate"] == 83.33
+    assert enterprise.workforce_analytics({"user_id": ACTOR_A}, ORG_B, mock_settings)["handoffs"] == 0
+
+
+@pytest.mark.parametrize("real_audit_api", ["capped"], indirect=True)
+def test_capped_connector_timeseries_matches_independent_sql(real_audit_api, monkeypatch, mock_settings):
+    from datetime import datetime
+    from app.metrics import service
+    api = real_audit_api
+    api.conn.execute("UPDATE audit_events SET action='slack.send.sent'")
+    monkeypatch.setattr(service, "_client", lambda *_: api.client)
+    monkeypatch.setattr(service, "parse_range", lambda *_: ("7d", datetime.fromisoformat(OLD), datetime.fromisoformat(NEW)))
+    monkeypatch.setattr(service, "_rollup_enabled", lambda: False)
+    report = service.timeseries_metrics(mock_settings, ORG_A, "7d", "connector_sends_total")
+    expected = api.conn.execute("SELECT count(*) FROM audit_events WHERE org_id=%s AND action='slack.send.sent'", (ORG_A,)).fetchone()[0]
+    assert report["points"] == [{"date": "2026-11-22", "value": expected}]
+    assert expected == 7
+    assert service.timeseries_metrics(mock_settings, ORG_B, "7d", "connector_sends_total")["points"] == []
+
+
+@pytest.mark.parametrize("real_audit_api", ["capped"], indirect=True)
+def test_capped_weekly_throughput_matches_independent_sql(real_audit_api, monkeypatch, mock_settings):
+    from datetime import datetime, timezone
+    from app.metrics import service
+    api = real_audit_api
+    api.conn.execute("UPDATE audit_events SET metadata=jsonb_build_object('records', 3)")
+    monkeypatch.setattr(service, "_client", lambda *_: api.client)
+    monkeypatch.setattr(service, "_start_of_week_utc", lambda: datetime(2026, 11, 16, tzinfo=timezone.utc))
+    report = service.weekly_throughput_metrics(mock_settings, ORG_A)
+    expected = api.conn.execute("SELECT sum((metadata->>'records')::int) FROM audit_events WHERE org_id=%s", (ORG_A,)).fetchone()[0]
+    assert report["days"][-1]["records"] == expected == 21
+    assert sum(day["records"] for day in service.weekly_throughput_metrics(mock_settings, ORG_B)["days"]) == 0
+
+
+@pytest.mark.parametrize("real_audit_api", ["capped"], indirect=True)
+def test_capped_scan_is_complete_unique_and_fails_closed_at_budget(real_audit_api, monkeypatch):
+    from app.audit import consumer_pagination as reader
+    api = real_audit_api
+    for store in ("audit_logs", "audit_events"):
+        rows = reader.scan_audit_rows(api.client, store, ORG_A)
+        assert [row["id"] for row in rows] == sorted(EXPECTED)
+        assert reader.scan_audit_rows(api.client, store, ORG_B) == []
+    monkeypatch.setattr(reader, "_MAX_ROWS", 3)
+    with pytest.raises(RuntimeError, match="safe synchronous limit"):
+        reader.scan_audit_rows(api.client, "audit_logs", ORG_A)

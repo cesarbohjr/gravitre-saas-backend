@@ -7,6 +7,7 @@ from typing import Any
 
 from supabase import Client, create_client
 from app.core.db import shared_service_client
+from app.audit.consumer_pagination import scan_audit_rows
 
 from app.config import Settings
 from app.core.logging import get_logger, request_id_ctx
@@ -637,15 +638,9 @@ def timeseries_metrics(settings: Settings, org_id: str, range_str: str, metric: 
             points[day] = points.get(day, 0) + int(row.get("count") or 0)
     elif metric == "connector_sends_total":
         actions = ["slack.send.sent", "email.send.sent", "webhook.send.sent"]
-        events = (
-            client.table("audit_events")
-            .select("created_at, action")
-            .eq("org_id", org_id)
-            .gte("created_at", start.isoformat())
-            .in_("action", actions)
-            .execute()
-        )
-        for row in (events.data or []):
+        events = scan_audit_rows(client, "audit_events", org_id,
+                                 columns="created_at,action", since=start.isoformat(), actions=actions)
+        for row in events:
             day = bucket_date(row["created_at"])
             points[day] = points.get(day, 0) + 1
 
@@ -711,14 +706,9 @@ def weekly_throughput_metrics(settings: Settings, org_id: str) -> dict[str, Any]
             continue
         buckets[_WEEKDAY_LABELS[created_at.weekday()]] += int(row.get("chunk_count") or 0)
 
-    audit_events = (
-        client.table("audit_events")
-        .select("created_at, metadata")
-        .eq("org_id", org_id)
-        .gte("created_at", week_start.isoformat())
-        .execute()
-    )
-    for row in audit_events.data or []:
+    audit_events = scan_audit_rows(client, "audit_events", org_id,
+                                   columns="created_at,metadata", since=week_start.isoformat())
+    for row in audit_events:
         metadata = row.get("metadata") or {}
         if not isinstance(metadata, dict):
             continue
