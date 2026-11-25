@@ -22,7 +22,7 @@ import tempfile
 import threading
 import time
 import traceback
-from urllib.error import HTTPError
+from urllib.error import HTTPError, URLError
 from urllib.parse import urlsplit
 from urllib.request import Request, urlopen
 from uuid import uuid4
@@ -79,6 +79,24 @@ def stop_tunnel(process):
         process.wait(timeout=5)
 
 
+def fixture_transport_failure(error):
+    """Fixed diagnostic labels only: exception messages may contain private URLs."""
+    reason = error.reason if isinstance(error, URLError) else error
+    if isinstance(reason, ssl.SSLCertVerificationError):
+        return 'tls_certificate'
+    if isinstance(reason, ssl.SSLError):
+        return 'tls_handshake'
+    if isinstance(reason, socket.gaierror):
+        return 'dns_resolution'
+    if isinstance(reason, TimeoutError):
+        return 'connection_timeout'
+    if isinstance(reason, ConnectionRefusedError):
+        return 'connection_refused'
+    if isinstance(reason, ConnectionResetError):
+        return 'connection_reset'
+    return 'transport_other'
+
+
 def start_fixture_tunnel(root, fixture_origin, page, attempts):
     for attempt in range(2):
         log = root / f'tunnel-{attempt}-private.log'
@@ -110,8 +128,11 @@ def start_fixture_tunnel(root, fixture_origin, page, attempts):
                 except HTTPError as error:
                     evidence.update(outcome='origin_http_error', http_status=error.code)
                     error.close()
-                except OSError:
+                except OSError as error:
                     evidence['outcome'] = 'origin_unreachable'
+                    failures = evidence.setdefault('transport_failures', {})
+                    category = fixture_transport_failure(error)
+                    failures[category] = failures.get(category, 0) + 1
             return None
 
         try:

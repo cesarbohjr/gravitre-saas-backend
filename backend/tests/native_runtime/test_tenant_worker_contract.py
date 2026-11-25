@@ -5,6 +5,9 @@ from io import BytesIO
 from unittest.mock import Mock
 
 import pytest
+import socket
+import ssl
+from urllib.error import URLError
 
 sys.path.insert(0,str(Path(__file__).resolve().parents[2]/'native-workers'))
 import tenant_worker_contract as contract
@@ -39,6 +42,20 @@ def test_lost_ack_acceptance_has_bounded_extended_terminal_wait():
     assert terminal_wait_budget('broker_crash_before_dispatch') == 100
     assert terminal_wait_budget('approved') == 60
     assert terminal_wait_budget('denied') == 60
+
+
+@pytest.mark.parametrize('error,expected', [
+    (socket.gaierror('private-host'), 'dns_resolution'),
+    (ssl.SSLCertVerificationError('private-host'), 'tls_certificate'),
+    (ssl.SSLError('private-host'), 'tls_handshake'),
+    (TimeoutError('private-host'), 'connection_timeout'),
+    (ConnectionRefusedError('private-host'), 'connection_refused'),
+    (ConnectionResetError('private-host'), 'connection_reset'),
+    (OSError('private-host'), 'transport_other'),
+])
+@pytest.mark.parametrize('wrapped', [False, True])
+def test_fixture_transport_diagnostics_do_not_export_exception_messages(error, expected, wrapped):
+    assert contract.fixture_transport_failure(URLError(error) if wrapped else error) == expected
 
 
 @pytest.mark.parametrize('second_serves_fixture', [True, False])
@@ -90,3 +107,39 @@ def test_fixture_readiness_retries_once_without_accepting_an_unrelated_page(
         processes[1].terminate.assert_called_once()
         assert evidence == [{'outcome': 'unexpected_fixture_response'}] * 2
     processes[0].terminate.assert_called_once()
+
+
+def test_unreachable_fixture_records_transport_category_and_still_blocks(tmp_path, monkeypatch):
+    processes = []
+
+    def popen(_command, *, stdout, **_kwargs):
+        stdout.write(b'https://fixture-private.trycloudflare.com\n')
+        stdout.flush()
+        process = Mock()
+        process.poll.return_value = None
+        processes.append(process)
+        return process
+
+    def get(_url, *, timeout):
+        raise URLError(socket.gaierror('sensitive-url-and-token'))
+
+    def wait(predicate, seconds, category):
+        assert seconds == 45
+        assert predicate() is None
+        assert predicate() is None
+        raise TimeoutError(category)
+
+    monkeypatch.setenv('CLOUDFLARED_BIN', 'unused-test-binary')
+    monkeypatch.setattr(contract.subprocess, 'Popen', popen)
+    monkeypatch.setattr(contract, 'urlopen', get)
+    monkeypatch.setattr(contract, 'wait_for', wait)
+    evidence = []
+    with pytest.raises(TimeoutError, match='https_fixture_unavailable'):
+        contract.start_fixture_tunnel(tmp_path, 'http://127.0.0.1:8888', b'owned', evidence)
+    assert evidence == [
+        {'outcome': 'origin_unreachable', 'transport_failures': {'dns_resolution': 2}},
+        {'outcome': 'origin_unreachable', 'transport_failures': {'dns_resolution': 2}},
+    ]
+    assert len(processes) == 2
+    for process in processes:
+        process.terminate.assert_called_once()
