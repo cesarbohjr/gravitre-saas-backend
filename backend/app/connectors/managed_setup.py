@@ -58,6 +58,9 @@ def managed_setup_catalog(settings: Any) -> dict[str, Any]:
     from app.services.managed_service_desk_tools import MANAGED_SERVICE_DESK_TOOL_EXECUTORS
     from app.services.managed_security_tools import MANAGED_SECURITY_TOOL_EXECUTORS
     from app.services.managed_business_tools import MANAGED_BUSINESS_TOOL_EXECUTORS
+    from app.services.bamboohr_tools import BAMBOOHR_TOOL_EXECUTORS
+    from app.services.greenhouse_tools import GREENHOUSE_TOOL_EXECUTORS
+    from app.services.ahrefs_tools import AHREFS_TOOL_EXECUTORS
 
     configured = nango_configured(settings) and bool(settings.nango_webhook_signing_key.strip())
     inventory: list[dict[str, Any]] = []
@@ -69,6 +72,9 @@ def managed_setup_catalog(settings: Any) -> dict[str, Any]:
         except (httpx.HTTPError, ValueError):
             failure = "setup_check_unavailable"
     actions = set(MANAGED_SERVICE_DESK_TOOL_EXECUTORS) | set(MANAGED_SECURITY_TOOL_EXECUTORS) | set(MANAGED_BUSINESS_TOOL_EXECUTORS)
+    actions |= set(BAMBOOHR_TOOL_EXECUTORS) | set(GREENHOUSE_TOOL_EXECUTORS) | set(AHREFS_TOOL_EXECUTORS)
+    from app.connectors.phase2_connector_routes import PHASE2_ROUTES
+    actions |= {action for action in PHASE2_ROUTES if not action.startswith("brevo.")}
     connectors = []
     for spec in (*NANGO_CONNECTOR_REGISTRY.values(), *NANGO_FALLBACK_REGISTRY.values()):
         available, reason = (False, failure) if failure else provider_readiness(spec, inventory)

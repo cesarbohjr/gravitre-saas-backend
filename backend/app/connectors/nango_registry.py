@@ -143,6 +143,43 @@ _SPECS.extend(NangoConnectorSpec(**{k: row[k] for k in (
 )}) for row in BUSINESS_CONNECTORS)
 
 NANGO_CONNECTOR_REGISTRY: dict[str, NangoConnectorSpec] = {spec.vendor: spec for spec in _SPECS}
+# Prefer interactive OAuth for new authorizations. Keep the old integration keys
+# readable so deploying this registry never migrates or disables an account.
+LEGACY_NANGO_CONNECTOR_SPECS: dict[str, NangoConnectorSpec] = {}
+for _vendor, _provider in (
+    ("freshservice", "freshservice-oauth"), ("gong", "gong-oauth"),
+    ("hibob", "hibob-oauth"), ("cal_com", "cal-com-oauth"),
+):
+    _prior = NANGO_CONNECTOR_REGISTRY[_vendor]
+    LEGACY_NANGO_CONNECTOR_SPECS[_vendor] = _prior
+    NANGO_CONNECTOR_REGISTRY[_vendor] = replace(
+        _prior, integration_id=f"gravitre-{_provider}", provider_key=_provider, auth_mode="OAUTH2",
+    )
+
+# Existing API-key clients retain their native executors. Only an explicit,
+# signed managed authorization switches a particular account to OAuth.
+for _spec in (
+    NangoConnectorSpec("bamboohr", "BambooHR", "gravitre-bamboohr", "HR / People",
+                       "Employee and time-off data through your authorized BambooHR account",
+                       provider_key="bamboohr", native_fallback=True),
+    NangoConnectorSpec("greenhouse", "Greenhouse", "gravitre-greenhouse-harvest", "HR / People",
+                       "Recruiting data through Greenhouse Harvest v3 partner OAuth",
+                       provider_key="greenhouse-harvest-partner", native_fallback=True),
+    NangoConnectorSpec("ahrefs", "Ahrefs", "gravitre-ahrefs", "CRM / Marketing",
+                       "SEO and visibility data within your Ahrefs account entitlements",
+                       provider_key="ahrefs", native_fallback=True),
+    NangoConnectorSpec("linear", "Linear", "gravitre-linear", "Operations / Workflow",
+                       "Issues and project coordination", provider_key="linear", native_fallback=True),
+    NangoConnectorSpec("gitlab", "GitLab", "gravitre-gitlab", "Storage / Dev / Infra",
+                       "GitLab.com projects, issues and merge requests", provider_key="gitlab", native_fallback=True),
+    NangoConnectorSpec("shopify", "Shopify", "gravitre-shopify", "CRM / Marketing",
+                       "Store products, orders and customers", provider_key="shopify", native_fallback=True),
+    NangoConnectorSpec("paypal", "PayPal", "gravitre-paypal", "Payments / Finance",
+                       "Authorized payment and dispute records", provider_key="paypal", native_fallback=True),
+    NangoConnectorSpec("meta_marketing", "Meta Marketing", "gravitre-meta-marketing", "CRM / Marketing",
+                       "Ad-account campaigns and ad sets", provider_key="facebook", native_fallback=True),
+):
+    NANGO_CONNECTOR_REGISTRY[_spec.vendor] = _spec
 NANGO_CONNECTOR_VENDORS: frozenset[str] = frozenset(NANGO_CONNECTOR_REGISTRY)
 
 # Opt-in replacements for confirmed failed native authorization. Healthy native
@@ -159,6 +196,10 @@ NANGO_FALLBACK_REGISTRY = {
 }
 
 
-def get_nango_connector_spec(vendor: str) -> NangoConnectorSpec | None:
+def get_nango_connector_spec(vendor: str, *, integration_id: str | None = None) -> NangoConnectorSpec | None:
     key = vendor.strip().lower().replace("-", "_").replace(" ", "_")
-    return NANGO_CONNECTOR_REGISTRY.get(key) or NANGO_FALLBACK_REGISTRY.get(key)
+    primary = NANGO_CONNECTOR_REGISTRY.get(key) or NANGO_FALLBACK_REGISTRY.get(key)
+    if integration_id is None or (primary and primary.integration_id == integration_id):
+        return primary
+    legacy = LEGACY_NANGO_CONNECTOR_SPECS.get(key)
+    return legacy if legacy and legacy.integration_id == integration_id else None

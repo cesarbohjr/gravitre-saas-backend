@@ -12,7 +12,7 @@ rows = [
     {"vendorKey": spec.vendor, "type": spec.display_name,
      "integrationId": spec.integration_id, "category": spec.category,
      "description": spec.description, "authMode": spec.auth_mode, "providerSupported": bool(spec.provider),
-     "hasReadActions": spec.vendor in {"freshservice", "okta"} or any(r["vendor"] == spec.vendor for r in BUSINESS_CONNECTORS)}
+     "hasReadActions": spec.vendor in {"freshservice", "okta", "bamboohr", "greenhouse", "ahrefs", "linear", "gitlab", "shopify", "paypal", "meta_marketing"} or any(r["vendor"] == spec.vendor for r in BUSINESS_CONNECTORS)}
     for spec in NANGO_CONNECTOR_REGISTRY.values()
 ]
 (ROOT / "apps/web/lib/managed-connectors.json").write_text(
