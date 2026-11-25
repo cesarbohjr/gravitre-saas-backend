@@ -310,3 +310,36 @@ def test_capped_scan_is_complete_unique_and_fails_closed_at_budget(real_audit_ap
     monkeypatch.setattr(reader, "_MAX_ROWS", 3)
     with pytest.raises(RuntimeError, match="safe synchronous limit"):
         reader.scan_audit_rows(api.client, "audit_logs", ORG_A)
+
+
+@pytest.mark.parametrize("real_audit_api", ["capped"], indirect=True)
+@pytest.mark.parametrize("legacy", [False, True])
+@pytest.mark.parametrize("scan_limit", [6, 7, 8])
+def test_capped_customer_reader_truthful_truncation(real_audit_api, monkeypatch, mock_settings, legacy, scan_limit):
+    from app.routers import audit
+    api = real_audit_api
+    if legacy:
+        api.conn.execute("ALTER TABLE audit_logs RENAME COLUMN created_at TO timestamp")
+    monkeypatch.setattr(audit, "FETCH_MAX", scan_limit)
+    monkeypatch.setattr(audit, "shared_service_client", lambda *_: api.client)
+    monkeypatch.setattr(audit, "get_plan_for_org", lambda *_: {})
+    monkeypatch.setattr(audit, "require_feature", lambda *_: None)
+    monkeypatch.setattr(audit, "_resolve_actor_names", lambda *_: None)
+    from datetime import datetime
+    rows = audit._fetch_rows(api.client, ORG_A, "tool.invoke.completed",
+                             from_dt=datetime.fromisoformat(OLD))
+    assert [row["id"] for row in rows] == EXPECTED[:scan_limit+1]
+    assert audit._fetch_rows(api.client, ORG_B, None) == []
+    logs, truncated = audit._prepare_logs(api.client, ORG_A, action=None,
+        user_id=None, entity_type=None, from_dt=None, to_dt=None,
+        category=None, outcome=None, q=None)
+    assert [log["id"] for log in logs] == EXPECTED[:scan_limit]
+    assert truncated is (scan_limit < len(EXPECTED))
+    summary = audit.audit_summary(_user={"user_id": ACTOR_A}, org_id=ORG_A, settings=mock_settings)
+    assert summary["truncated"] is truncated and summary["scanLimit"] == scan_limit
+    assert sum(summary["byAction"].values()) == min(scan_limit, len(EXPECTED))
+    exported = audit.export_audit(exporter=({"user_id": ACTOR_A}, ORG_A), settings=mock_settings, format="json")
+    body = json.loads(exported.body)
+    assert body["truncated"] is truncated and body["total"] == min(scan_limit, len(EXPECTED))
+    csv = audit.export_audit(exporter=({"user_id": ACTOR_A}, ORG_A), settings=mock_settings, format="csv")
+    assert csv.headers["X-Audit-Truncated"] == str(truncated).lower()

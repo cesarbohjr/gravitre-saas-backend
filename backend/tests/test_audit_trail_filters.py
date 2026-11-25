@@ -14,6 +14,16 @@ ACTOR_A = "00000000-0000-0000-0000-0000000000a1"
 ACTOR_B = "00000000-0000-0000-0000-0000000000b2"
 
 
+def _audit_chain(data=None):
+    """Simulate one populated seek page followed by an empty page per scan."""
+    from types import SimpleNamespace
+    chain = chain_mock(data=data)
+    chain.or_.return_value = chain
+    from itertools import cycle
+    chain.execute.side_effect = cycle([SimpleNamespace(data=data or []), SimpleNamespace(data=[])])
+    return chain
+
+
 @pytest.fixture(autouse=True)
 def _reset_deps():
     yield
@@ -24,7 +34,7 @@ def _rows() -> list[dict]:
     now = datetime.now(timezone.utc)
     return [
         {
-            "id": "e-1",
+            "id": "00000000-0000-0000-0000-000000000001",
             "org_id": "org-1",
             "action": "source.sync.scheduled",
             "resource_type": "source",
@@ -34,7 +44,7 @@ def _rows() -> list[dict]:
             "details": {"status": "failed", "error": "Linked connector ID is required."},
         },
         {
-            "id": "e-2",
+            "id": "00000000-0000-0000-0000-000000000002",
             "org_id": "org-1",
             "action": "workflow.execute.completed",
             "resource_type": "workflow_run",
@@ -44,7 +54,7 @@ def _rows() -> list[dict]:
             "details": {"duration_ms": 412},
         },
         {
-            "id": "e-3",
+            "id": "00000000-0000-0000-0000-000000000003",
             "org_id": "org-1",
             "action": "tool.invoke.failed",
             "resource_type": "workflow_run",
@@ -54,7 +64,7 @@ def _rows() -> list[dict]:
             "details": {"action": "hubspot.contacts.create", "error": {"message": "HubSpot returned 401."}},
         },
         {
-            "id": "e-4",
+            "id": "00000000-0000-0000-0000-000000000004",
             "org_id": "org-1",
             "action": "settings.workspace_updated",
             "resource_type": "organization",
@@ -69,7 +79,7 @@ def _rows() -> list[dict]:
 def _client():
     return table_client(
         {
-            "audit_logs": chain_mock(data=_rows()),
+            "audit_logs": _audit_chain(data=_rows()),
             "users": chain_mock(
                 data=[{"auth_user_id": ACTOR_A, "full_name": "Dana Admin", "email": "dana@example.com"}]
             ),
@@ -139,15 +149,15 @@ def test_list_filters_by_category_outcome_and_search(mock_plan, mock_create):
     mock_create.return_value = _client()
     authenticate()
     chat = client.get("/api/audit?category=chat").json()
-    assert [log["id"] for log in chat["logs"]] == ["e-3"]
+    assert [log["id"] for log in chat["logs"]] == ["00000000-0000-0000-0000-000000000003"]
     errors = client.get("/api/audit?outcome=err").json()
-    assert {log["id"] for log in errors["logs"]} == {"e-1", "e-3"}
+    assert {log["id"] for log in errors["logs"]} == {"00000000-0000-0000-0000-000000000001", "00000000-0000-0000-0000-000000000003"}
     assert errors["total"] == 2 and errors["errors"] == 2
     ok = client.get("/api/audit?outcome=ok").json()
-    assert {log["id"] for log in ok["logs"]} == {"e-2", "e-4"}
+    assert {log["id"] for log in ok["logs"]} == {"00000000-0000-0000-0000-000000000002", "00000000-0000-0000-0000-000000000004"}
     # Search is server side, ignores dots/underscores and covers resolved names and details.
-    assert [log["id"] for log in client.get("/api/audit?q=workflow%20execute").json()["logs"]] == ["e-2"]
-    assert [log["id"] for log in client.get("/api/audit?q=hubspot").json()["logs"]] == ["e-3"]
+    assert [log["id"] for log in client.get("/api/audit?q=workflow%20execute").json()["logs"]] == ["00000000-0000-0000-0000-000000000002"]
+    assert [log["id"] for log in client.get("/api/audit?q=hubspot").json()["logs"]] == ["00000000-0000-0000-0000-000000000003"]
     assert client.get("/api/audit?q=dana").json()["total"] == 3
     assert client.get(f"/api/audit?user_id={ACTOR_B}").json()["total"] == 1
 
@@ -167,7 +177,7 @@ def test_export_applies_the_same_filters_to_the_whole_range(mock_plan, mock_crea
     authenticate(as_admin=True)  # exporting needs audit_export
     body = client.get("/api/audit/export?format=json&outcome=err&range=7d").json()
     assert body["total"] == 2
-    assert {log["id"] for log in body["logs"]} == {"e-1", "e-3"}
+    assert {log["id"] for log in body["logs"]} == {"00000000-0000-0000-0000-000000000001", "00000000-0000-0000-0000-000000000003"}
     csv_text = client.get("/api/audit/export?format=csv&category=setting").text
     lines = [line for line in csv_text.splitlines() if line]
     assert lines[0].endswith("category,outcome,error_message")

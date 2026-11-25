@@ -69,9 +69,9 @@ def run_gate(*, finding: str, test_file: str, count: int, output_name: str,
 
 
 def main() -> int:
-    # Preserve the original twenty cases and require five capped-consumer cases.
+    # Preserve twenty-five cases and require six customer-reader boundary cases.
     return run_gate(finding="DEC-008", test_file="tests/test_audit_reader_postgrest.py",
-                    count=25, output_name="dec008-postgrest-evidence.json",
+                    count=31, output_name="dec008-postgrest-evidence.json",
                     expected_sha_env="DEC008_EXPECTED_SHA")
 
 

@@ -3933,11 +3933,23 @@
       "audit_evidence_class": "SOURCE_CANDIDATE_REQUIRES_RUNTIME_PROOF",
       "audit_observation": "Original audit and source candidate require caller/runtime evidence; no final root-cause claim.",
       "capped_consumer_batch": {
-        "state": "SOURCE_REPAIR_PREPARED_HOSTED_PENDING",
+        "state": "BOUNDED_EXACT_HEAD_QA12_PASSED_NOT_CLOSED",
         "source_base_sha": "1653a50e1b2317bbe42c7e85fcfb57f792b6b665",
         "scope": "SOC2 audit export, workforce audit analytics, non-rollup connector sends timeseries, weekly audit throughput; UUID keyset, tenant filter, short-page continuation, bounded fail-closed scan; both stores retained.",
         "new_real_postgrest_cases": 5,
         "expected_gate_cases": 25,
+        "finding_certified": false,
+        "executed_sha": "b2e551527ab128e48008966c95892e0592e60ee1",
+        "qa12_job_url": "https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/45705117161/job/139525082508",
+        "passed": 25,
+        "skipped": 0
+      },
+      "customer_audit_pagination_batch": {
+        "state": "SOURCE_REPAIR_HOSTED_PENDING",
+        "source_base_sha": "b2e551527ab128e48008966c95892e0592e60ee1",
+        "scope": "Stable timestamp/UUID seek pages, one-row sentinel, truthful truncation in list/summary/JSON and CSV headers, legacy timestamp fallback, tenant checks",
+        "expected_gate_cases": 31,
+        "new_cases": 6,
         "finding_certified": false
       }
     },
