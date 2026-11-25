@@ -19,7 +19,7 @@ from __future__ import annotations
 
 import json
 from types import SimpleNamespace
-from unittest.mock import Mock
+from unittest.mock import AsyncMock, Mock
 from uuid import UUID
 
 import pytest
@@ -39,13 +39,16 @@ def pg():
 pytestmark = requires_pg
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("decision", [
-    "approve", "approve_write", "reject", "forbidden_approver", "foreign_tenant",
-    "cancel_before_dispatch", "cancel_write_before_dispatch",
-    "revoke_before_dispatch", "cancel_during_finalize",
-    "terminal_persistence_failure",
-])
-async def test_agent_play_approval_real_step_to_durable_consumer(pg, monkeypatch, tmp_path, request, decision):
+@pytest.mark.parametrize("decision,agent_handoff", [
+    (decision, False) for decision in (
+        "approve", "approve_write", "reject", "forbidden_approver", "foreign_tenant",
+        "cancel_before_dispatch", "cancel_write_before_dispatch",
+        "revoke_before_dispatch", "cancel_during_finalize", "terminal_persistence_failure",
+    )
+] + [(decision, True) for decision in (
+    "approve_write", "cancel_write_before_dispatch", "revoke_before_dispatch", "foreign_tenant",
+)])
+async def test_agent_play_approval_real_step_to_durable_consumer(pg, monkeypatch, tmp_path, request, decision, agent_handoff):
     from app.services import agent_selector, domain_events, tool_service, work_loop_links
     from app.routers import plays, workflows
     from app.workflows.registry import StepContext
@@ -139,7 +142,12 @@ async def test_agent_play_approval_real_step_to_durable_consumer(pg, monkeypatch
     _disable_optional_delivery(monkeypatch)
     pg.psql("ALTER TABLE public.audit_logs ALTER COLUMN id SET DEFAULT gen_random_uuid();"
             "ALTER TABLE public.audit_events ALTER COLUMN id SET DEFAULT gen_random_uuid();")
-    pg.psql("CREATE TABLE public.agent_jobs (status text);")
+    pg.psql("CREATE TABLE public.agent_jobs (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), "
+            "org_id uuid NOT NULL, created_by text, environment text, kind text, session_id text, "
+            "payload jsonb, status text, max_attempts integer, queued_at timestamptz, "
+            "timeout_at timestamptz, retry_count integer, result jsonb, error text, "
+            "finished_at timestamptz, updated_at timestamptz, started_at timestamptz, attempts integer DEFAULT 0, "
+            "goal_id uuid, work_object_id uuid);")
     pg.psql((MIGRATIONS / "20260606200000_agent_execution_interrupts.sql").read_text())
     def connector_table(name):
         assert name == "connectors"
@@ -163,6 +171,9 @@ async def test_agent_play_approval_real_step_to_durable_consumer(pg, monkeypatch
 
     run_id = None
     play_parameters = None
+    baseline = {}
+    def count_after_agent(table):
+        return str(int(pg.value(f"SELECT count(*) FROM public.{table}")) - baseline.get(table, 0))
     monkeypatch.setattr(plays, "get_supabase_client", lambda _: client)
     monkeypatch.setattr(plays, "_load_installation", lambda *a, **kw:
                         {"id": "fixture-install", "operating_mode": "ACT WITH APPROVAL"})
@@ -221,7 +232,7 @@ async def test_agent_play_approval_real_step_to_durable_consumer(pg, monkeypatch
 
     async def initial_execute(body, *, current_user, org_id, environment_name, settings):
         nonlocal run_id, play_parameters
-        assert pg.value("SELECT count(*) FROM public.workflow_runs") == "0"
+        assert count_after_agent("workflow_runs") == "0"
         assert org_id == ORG and str(body.workflow_id) == workflow_id
         assert body.play_key == "customer-rescue"
         result = await production_execute(
@@ -260,13 +271,91 @@ async def test_agent_play_approval_real_step_to_durable_consumer(pg, monkeypatch
     monkeypatch.setattr(goals, "preview_cross_source_opportunities", preview)
     handoff_args = dict(crmRunId=crm_id, analyticsRunId=analytics_id,
                         opportunityId=opportunity_id)
+    agent_lineage = None
+    if agent_handoff:
+        from app.operators import agent_jobs
+        from app.operators.agent_intelligence import AgentResult
+        pg.psql((MIGRATIONS / "20261125040000_agent_job_run_binding.sql").read_text())
+        pg.psql((MIGRATIONS / "20261125050000_atomic_assignment_tracking_job.sql").read_text())
+        monkeypatch.setattr(agent_jobs, "get_supabase_client", lambda _: client)
+        # Deterministic advisory inference boundary, not a replacement for the
+        # worker, job claim, atomic run creation, completion or Play dispatcher.
+        advisory = AsyncMock(return_value=AgentResult(
+            answer="Review the customer-rescue opportunity; human approval required for the Play.",
+            summary="Review customer rescue", status="completed", react_status="completed",
+            outcome={"status": "completed", "consequential": 0}))
+        monkeypatch.setattr("app.operators.agent_intelligence.get_agent_intelligence",
+                            lambda: SimpleNamespace(execute_task=advisory))
+        monkeypatch.setattr("app.services.agent_activity_notifications.notify_agent_started", lambda *a, **kw: None)
+        monkeypatch.setattr("app.services.approval_record_service.maybe_create_agent_job_approval", lambda *a: None)
+        monkeypatch.setattr(agent_jobs, "_notify_swarm_job_finished", AsyncMock())
+        requested = {"opportunity_id": opportunity_id,
+                     "source_run_ids": {"crm": crm_id, "analytics": analytics_id},
+                     "play_key": "customer-rescue", "installation_id": "fixture-install",
+                     "workflow_id": workflow_id}
+        job = agent_jobs.create_job(client, ORG, kind="operator_task", environment="synthetic",
+            created_by=member[0]["user_id"], create_tracking_run=True,
+            payload={"task": "Assess the customer-rescue opportunity",
+                     "context": {"play_handoff": requested}})
+        handoff_args["agentJobId"] = job["id"]
+        async def submit_with(**overrides):
+            return await goals.handoff_cross_source_opportunity(
+                goals.GovernedOpportunityHandoffRequest(**{**handoff_args,
+                    "confirmSubmitToPlay": True, **overrides}), member, "synthetic", settings)
+        with pytest.raises(HTTPException) as pending:
+            await submit_with()
+        assert pending.value.status_code == 409
+        assert pg.value("SELECT count(*) FROM public.play_runs") == "0"
+        assert await agent_jobs._process_job_id(settings, job["id"])
+        completed = agent_jobs.get_job(PgRepositoryClient(pg), ORG, job["id"])
+        assert completed["status"] == "completed" and completed["attempts"] == 1
+        assert completed["result"]["aiStatus"] == "ok"
+        assert advisory.await_count == 1 and advisory.await_args.kwargs["run_id"] is None
+        assert not await agent_jobs._process_job_id(settings, job["id"])
+        tracking_id = completed["bound_run_id"]
+        tracking = repository.get_run_with_steps(PgRepositoryClient(pg), ORG, tracking_id, "synthetic")
+        assert tracking["status"] == "completed" and tracking["parameters"]["outcome_finalized"] is True
+        agent_lineage = {"agent_job_id": job["id"], "agent_run_id": tracking_id, "authority": "advisory_only"}
+        for overrides in ({"agentJobId": "99999999-9999-4999-8999-999999999999"}, {"agentJobId": "forged"}):
+            with pytest.raises(HTTPException) as forged:
+                await submit_with(**overrides)
+            assert forged.value.status_code == 409
+        # Alter persisted scope one dimension at a time; no Play may be created.
+        for field, wrong in (("created_by", "99999999-9999-4999-8999-999999999999"),
+                             ("environment", "other"), ("bound_run_id", None)):
+            client.table("agent_jobs").update({field: wrong}).eq("id", job["id"]).execute()
+            try:
+                with pytest.raises(HTTPException) as forged:
+                    await submit_with()
+                assert forged.value.status_code == 409
+            finally:
+                client.table("agent_jobs").update({field: completed[field]}).eq("id", job["id"]).execute()
+        assert pg.value("SELECT count(*) FROM public.play_runs") == "0"
+        pg.psql("CREATE TABLE public.qa_agent_source_effects (event_id bigint PRIMARY KEY, run_id uuid NOT NULL)")
+        def agent_consumer(_client, event):
+            assert event["org_id"] == ORG and event["aggregate_id"] == tracking_id
+            pg.psql("INSERT INTO public.qa_agent_source_effects VALUES "
+                    f"({int(event['id'])},'{tracking_id}') ON CONFLICT DO NOTHING")
+        domain_events.reset_domain_event_handlers_for_tests()
+        domain_events.register_domain_event_handler(domain_events.EVENT_EXECUTION_OUTCOME_FINALIZED,
+                                                     "qa_agent_source_consumer", agent_consumer)
+        try:
+            relay = domain_events.DomainEventRelay(_PsqlRpcClient(pg), worker_id="qa-agent-source")
+            assert relay.run_once().delivered == 1
+            assert relay.run_once().claimed == 0
+        finally:
+            domain_events.reset_domain_event_handlers_for_tests()
+        assert pg.value("SELECT count(*) FROM public.qa_agent_source_effects") == "1"
+        baseline.update({table: int(pg.value(f"SELECT count(*) FROM public.{table}")) for table in
+                         ("workflow_runs", "domain_event_outbox", "audit_logs", "audit_events",
+                          "notifications", "intelligence_outcome_events")})
     with pytest.raises(HTTPException) as unconfirmed:
         await goals.handoff_cross_source_opportunity(
             goals.GovernedOpportunityHandoffRequest(**handoff_args),
             member, "synthetic", settings)
     assert unconfirmed.value.status_code == 409
     assert pg.value("SELECT count(*) FROM public.play_runs") == "0"
-    assert pg.value("SELECT count(*) FROM public.workflow_runs") == "0"
+    assert count_after_agent("workflow_runs") == "0"
 
     handoff = await goals.handoff_cross_source_opportunity(
         goals.GovernedOpportunityHandoffRequest(
@@ -284,6 +373,10 @@ async def test_agent_play_approval_real_step_to_durable_consumer(pg, monkeypatch
         "id", response["playRunId"]).eq("org_id", ORG).execute().data
     assert len(persisted) == 1
     assert persisted[0]["workflow_run_ids"] == [run_id]
+    if agent_handoff:
+        assert persisted[0]["metadata"]["agent_lineage"] == agent_lineage
+        assert play_parameters["play"]["agent_lineage"] == agent_lineage
+        assert run_id != agent_lineage["agent_run_id"]
     assert persisted[0]["metadata"]["opportunity_id"] == opportunity_id
     assert persisted[0]["metadata"]["source_run_ids"] == {
         "crm": crm_id, "analytics": analytics_id,
@@ -291,7 +384,7 @@ async def test_agent_play_approval_real_step_to_durable_consumer(pg, monkeypatch
     assert response["workflowRuns"][0]["runId"] == run_id
     assert response["status"] == "awaiting_approval"
     assert pg.value(f"SELECT status FROM public.workflow_runs WHERE id='{run_id}'") == "pending_approval"
-    assert pg.value("SELECT count(*) FROM public.domain_event_outbox") == "0"
+    assert count_after_agent("domain_event_outbox") == "0"
 
     assert pg.value(f"SELECT count(*) FROM public.workflow_steps WHERE run_id='{run_id}'") == "1"
     monkeypatch.setattr(workflows, "get_supabase_client", lambda _: client)
@@ -419,7 +512,7 @@ async def test_agent_play_approval_real_step_to_durable_consumer(pg, monkeypatch
     # No synthetic stand-in for the executor: route calls real implementation.
     monkeypatch.setattr(workflows, "execute_workflow_steps", execute.execute_workflow_steps)
     monkeypatch.setattr(workflows, "_step_to_out", lambda x: x)
-    assert pg.value("SELECT count(*) FROM public.domain_event_outbox") == "0"
+    assert count_after_agent("domain_event_outbox") == "0"
     cancelled_before_dispatch = decision in {"cancel_before_dispatch", "cancel_write_before_dispatch"}
 
     def assert_persisted_write_approval(writer):
@@ -484,7 +577,7 @@ async def test_agent_play_approval_real_step_to_durable_consumer(pg, monkeypatch
             assert repository.get_approval_counts(client, run_id) == (0, True)
             assert pg.value(f"SELECT status FROM public.workflow_runs WHERE id='{run_id}'") == "cancelled"
             assert pg.value(f"SELECT status FROM public.runs WHERE id='{run_id}'") == "cancelled"
-            assert pg.value("SELECT count(*) FROM public.domain_event_outbox") == "1"
+            assert count_after_agent("domain_event_outbox") == "1"
             assert pg.value(f"SELECT parameters->>'outcome_finalized' FROM public.workflow_runs WHERE id='{run_id}'") == "true"
         else:
             if decision == "forbidden_approver":
@@ -496,11 +589,11 @@ async def test_agent_play_approval_real_step_to_durable_consumer(pg, monkeypatch
             assert denied.value.status_code == (404 if decision == "foreign_tenant" else 403)
             assert repository.get_approval_counts(client, run_id) == (0, False)
             assert pg.value(f"SELECT status FROM public.workflow_runs WHERE id='{run_id}'") == "pending_approval"
-            assert pg.value("SELECT count(*) FROM public.domain_event_outbox") == "0"
+            assert count_after_agent("domain_event_outbox") == "0"
         assert vendor.call_count == 0 and receiver.writes == 0
         assert pg.value(f"SELECT status FROM public.workflow_steps WHERE run_id='{run_id}'") == "pending"
         for table in ("audit_logs", "audit_events", "notifications", "intelligence_outcome_events"):
-            assert pg.value(f"SELECT count(*) FROM public.{table}") == ("1" if decision == "reject" else "0")
+            assert count_after_agent(table) == ("1" if decision == "reject" else "0")
         with pytest.raises(HTTPException):
             await workflows.approve_run(UUID(run_id), workflows.ApproveRejectRequest(),
                 actor, tenant if decision == "foreign_tenant" else ORG, "synthetic", settings)
@@ -516,10 +609,10 @@ async def test_agent_play_approval_real_step_to_durable_consumer(pg, monkeypatch
                 {"user_id": "44444444-4444-4444-8444-444444444444"}, ORG, "synthetic", settings)
         assert pg.value(f"SELECT status FROM public.workflow_runs WHERE id='{run_id}'") == "running"
         assert pg.value(f"SELECT status FROM public.runs WHERE id='{run_id}'") == "running"
-        assert pg.value("SELECT count(*) FROM public.domain_event_outbox") == "0"
+        assert count_after_agent("domain_event_outbox") == "0"
         assert vendor.call_count == 1 and receiver.writes == 1
         for table in ("audit_logs", "audit_events", "notifications", "intelligence_outcome_events"):
-            assert pg.value(f"SELECT count(*) FROM public.{table}") == "0"
+            assert count_after_agent(table) == "0"
         with pytest.raises(HTTPException):
             await workflows.approve_run(UUID(run_id), workflows.ApproveRejectRequest(),
                 {"user_id": "44444444-4444-4444-8444-444444444444"}, ORG, "synthetic", settings)
@@ -573,9 +666,9 @@ async def test_agent_play_approval_real_step_to_durable_consumer(pg, monkeypatch
     assert pg.value(f"SELECT parameters->>'outcome_finalized' FROM public.workflow_runs WHERE id='{run_id}'") == "true"
     audit_count = 1 + 2 * cancelled_before_dispatch + revoked_before_dispatch
     for table in ("audit_logs", "audit_events"):
-        assert pg.value(f"SELECT count(*) FROM public.{table}") == str(audit_count)
+        assert count_after_agent(table) == str(audit_count)
     for table in ("notifications", "intelligence_outcome_events"):
-        assert pg.value(f"SELECT count(*) FROM public.{table}") == "1"
+        assert count_after_agent(table) == "1"
     if cancelled_before_dispatch:
         assert pg.value(
             "SELECT action FROM public.audit_events "
@@ -583,7 +676,8 @@ async def test_agent_play_approval_real_step_to_durable_consumer(pg, monkeypatch
         ).splitlines() == ["agent.interrupt.acknowledged", "agent.interrupt.requested"]
     if revoked_before_dispatch:
         assert pg.value(
-            "SELECT action FROM public.audit_events ORDER BY action"
+            "SELECT action FROM public.audit_events WHERE action IN "
+            "('workflow.execute.failed','workflow.execute.step_failed') ORDER BY action"
         ).splitlines() == ["workflow.execute.failed", "workflow.execute.step_failed"]
     # ECO-001 independent readback: the returned HTTP-equivalent result and
     # in-memory step objects cannot substitute for durable terminal evidence.
@@ -603,7 +697,7 @@ async def test_agent_play_approval_real_step_to_durable_consumer(pg, monkeypatch
         f"SELECT count(*) FROM public.domain_event_outbox "
         f"WHERE aggregate_id='{run_id}'"
     ) == "1"
-    assert pg.value("SELECT count(*) FROM public.domain_event_outbox") == "1"
+    assert count_after_agent("domain_event_outbox") == "1"
     with pytest.raises(HTTPException) as replay:
         await workflows.approve_run(
             UUID(run_id), workflows.ApproveRejectRequest(),

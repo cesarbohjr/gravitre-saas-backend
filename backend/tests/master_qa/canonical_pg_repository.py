@@ -231,6 +231,8 @@ class PgRepositoryClient:
     def rpc(self, name, params):
         # Only recovery SQL functions used by offline acceptance are exposed.
         commands = {
+            "create_assignment_tracking_job": (
+                "SELECT public.create_assignment_tracking_job(%s)", ("p_job",), False),
             "refresh_workflow_run_projection": (
                 "SELECT public.refresh_workflow_run_projection(%s)", ("p_run_id",), False),
             "persist_workflow_run_outcome": (

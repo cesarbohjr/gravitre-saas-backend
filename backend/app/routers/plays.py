@@ -496,6 +496,13 @@ async def run_play(
     environment_name: Annotated[str, Depends(get_environment_context)],
     settings: Annotated[Settings, Depends(get_settings)],
 ) -> dict[str, Any]:
+    return await _run_play(play_key, body, member, environment_name, settings)
+
+
+async def _run_play(play_key: str, body: RunPlayRequest, member: tuple,
+                    environment_name: str, settings: Settings, *,
+                    agent_job_id: str | None = None,
+                    expected_workflow_id: str | None = None) -> dict[str, Any]:
     """Start a Play by delegating each bound workflow to canonical execution.
 
     ACT WITH APPROVAL is fail-closed: every bound workflow must already require
@@ -576,6 +583,23 @@ async def run_play(
                 detail=f"Linked workflow {workflow_id} must require approval before this Play can run in Act with approval mode",
             )
 
+    lineage = None
+    if agent_job_id is not None:
+        from app.operators.agent_run_binding import resolve_completed_agent_play_lineage
+        if (not body.opportunity_id or set(body.source_run_ids) != {"crm", "analytics"}
+                or not expected_workflow_id or len(bindings) != 1
+                or str(bindings[0].get("workflowId")) != str(expected_workflow_id)):
+            raise HTTPException(status_code=409, detail="Agent handoff binding changed")
+        try:
+            lineage = resolve_completed_agent_play_lineage(
+                client, org_id=org_id, actor_id=user.get("user_id"),
+                environment=environment_name, job_id=agent_job_id,
+                opportunity_id=body.opportunity_id, source_run_ids=body.source_run_ids,
+                play_key=play.key, installation_id=body.installation_id,
+                workflow_id=str(expected_workflow_id))
+        except ValueError as exc:
+            raise HTTPException(status_code=409, detail="Agent handoff unavailable") from exc
+
     from app.routers.workflows import ExecuteRequest, execute_workflow
 
     play_run_id = str(uuid4())
@@ -593,6 +617,7 @@ async def run_play(
         "started_at": datetime.now(timezone.utc).isoformat(),
         "metadata": {
             "execution_authority": "canonical_workflow_runtime",
+            **({"agent_lineage": lineage} if lineage else {}),
             **({"opportunity_id": body.opportunity_id,
                 "source_run_ids": dict(body.source_run_ids)}
                if body.opportunity_id and body.source_run_ids else {}),
@@ -618,6 +643,7 @@ async def run_play(
                             "run_id": play_run_id,
                             "operating_mode": mode,
                             "execution_authority": "canonical_workflow_runtime",
+                            **({"agent_lineage": lineage} if lineage else {}),
                             **({"opportunity_id": body.opportunity_id,
                                 "source_run_ids": dict(body.source_run_ids)}
                                if body.opportunity_id and body.source_run_ids else {}),

@@ -160,6 +160,7 @@ def preview_cross_source_opportunities(
 class GovernedOpportunityHandoffRequest(CrossSourceOpportunityRequest):
     opportunity_id: str = Field(..., alias="opportunityId")
     confirm_submit_to_play: bool = Field(default=False, alias="confirmSubmitToPlay")
+    agent_job_id: str | None = Field(default=None, alias="agentJobId", max_length=64)
 
 
 @router.post("/diagnostics/opportunities/handoff")
@@ -174,7 +175,7 @@ async def handoff_cross_source_opportunity(
     Recompute evidence and tenant bindings on every request. A submitted Play
     is still governed by Play readiness, workflow policy and human approval.
     """
-    from app.routers.plays import RunPlayRequest, run_play
+    from app.routers.plays import RunPlayRequest, run_play, _run_play
 
     user, org_id, role = member
     if not body.confirm_submit_to_play:
@@ -198,7 +199,14 @@ async def handoff_cross_source_opportunity(
         raise HTTPException(status_code=409, detail="A tenant-installed, workflow-bound Play is required")
     # This request never supplies approval or writes directly. Existing
     # run_play enforces all provider, installation, approval and policy checks.
-    result = await run_play(
+    # The optional Agent attribution is validated inside the canonical Play
+    # dispatch, immediately before any run is created. Legacy handoffs retain
+    # their original route; neither path can grant workflow approval.
+    dispatch = _run_play if body.agent_job_id is not None else run_play
+    lineage_args = ({"agent_job_id": body.agent_job_id,
+                     "expected_workflow_id": candidate["workflow_id"]}
+                    if body.agent_job_id is not None else {})
+    result = await dispatch(
         candidate["play_key"],
         RunPlayRequest(
             installationId=candidate["installation_id"],
@@ -211,6 +219,7 @@ async def handoff_cross_source_opportunity(
         member=(user, org_id, role),
         environment_name=environment_name,
         settings=settings,
+        **lineage_args,
     )
     return {
         "opportunityId": body.opportunity_id,
