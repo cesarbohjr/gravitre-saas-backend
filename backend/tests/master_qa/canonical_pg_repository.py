@@ -129,6 +129,7 @@ class PgTable:
         self.order_col = None
         self.order_desc = False
         self.conflict = "id"
+        self.ignore_duplicates = False
 
     def select(self, columns="*"):
         self.verb, self.columns = "select", columns
@@ -142,8 +143,9 @@ class PgTable:
         self.verb, self.payload = "update", payload
         return self
 
-    def upsert(self, payload, on_conflict="id"):
+    def upsert(self, payload, on_conflict="id", ignore_duplicates=False):
         self.verb, self.payload, self.conflict = "upsert", payload, on_conflict
+        self.ignore_duplicates = ignore_duplicates
         return self
 
     def eq(self, name, value):
@@ -181,8 +183,11 @@ class PgTable:
                 updates = sql.SQL(",").join(
                     sql.SQL("{} = EXCLUDED.{}").format(sql.Identifier(k), sql.Identifier(k))
                     for k in cols if k != self.conflict)
-                stmt += sql.SQL(" ON CONFLICT ({}) DO UPDATE SET {}").format(
-                    sql.Identifier(self.conflict), updates)
+                if self.ignore_duplicates:
+                    stmt += sql.SQL(" ON CONFLICT ({}) DO NOTHING").format(sql.Identifier(self.conflict))
+                else:
+                    stmt += sql.SQL(" ON CONFLICT ({}) DO UPDATE SET {}").format(
+                        sql.Identifier(self.conflict), updates)
             stmt += sql.SQL(" RETURNING *")
         elif self.verb == "update":
             stmt = sql.SQL("UPDATE {} SET {}").format(
