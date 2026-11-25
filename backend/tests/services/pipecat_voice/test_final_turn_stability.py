@@ -226,3 +226,41 @@ def test_real_pipeline_places_stability_after_barrier_and_before_aggregator():
     assert listing.index("CommittedTurnBarrierProcessor(") < listing.index("FinalTurnStabilityProcessor(")
     assert listing.index("FinalTurnStabilityProcessor(") < listing.index("user_agg,")
     assert "if use_flux and settings.voice_final_stability_v2 else []" in source
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("terminal", ["end", "cancel"])
+async def test_terminal_discards_buffered_confirmation_and_late_frames(terminal):
+    from pipecat.frames.frames import CancelFrame, EndFrame
+    proc, clock, out = await _build()
+    start = ProposedUserStartedSpeakingFrame()
+    for frame in (start, TranscriptionFrame("yes", "u", "f", finalized=True), ProposedUserStoppedSpeakingFrame()):
+        await proc.process_frame(frame, FrameDirection.DOWNSTREAM)
+    await _pump()
+    stop = EndFrame() if terminal == "end" else CancelFrame()
+    await proc.process_frame(stop, FrameDirection.DOWNSTREAM)
+    clock.advance()
+    await _pump()
+    await proc.process_frame(TranscriptionFrame("yes", "u", "late", finalized=True), FrameDirection.DOWNSTREAM)
+    await proc.process_frame(ProposedUserStoppedSpeakingFrame(), FrameDirection.DOWNSTREAM)
+    await _pump()
+    assert out == [start, stop]
+    assert proc.cancelled_turns == 1
+    assert proc.released_turns == 0
+
+
+@pytest.mark.asyncio
+async def test_duplicate_stop_does_not_reset_timer_or_emit_twice():
+    proc, clock, out = await _build()
+    start = ProposedUserStartedSpeakingFrame()
+    final = TranscriptionFrame("yes", "u", "f", finalized=True)
+    stop = ProposedUserStoppedSpeakingFrame()
+    for frame in (start, final, stop):
+        await proc.process_frame(frame, FrameDirection.DOWNSTREAM)
+    await _pump()
+    await proc.process_frame(ProposedUserStoppedSpeakingFrame(), FrameDirection.DOWNSTREAM)
+    await _pump()
+    assert clock.delays == [1.2]
+    clock.advance()
+    await _pump()
+    assert out == [start, final, stop]

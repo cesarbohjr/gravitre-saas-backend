@@ -68,6 +68,7 @@ class FinalTurnStabilityProcessor(FrameProcessor):
         self._release_task: asyncio.Task | None = None
         self._generation = 0
         self._continuing = False
+        self._closed = False
         self.rejoined_segments = 0
         self.released_turns = 0
         self.cancelled_turns = 0
@@ -79,6 +80,8 @@ class FinalTurnStabilityProcessor(FrameProcessor):
             task.cancel()
 
     def _clear(self) -> None:
+        if self._finals:
+            self.cancelled_turns += 1
         self._cancel_release()
         self._finals.clear()
         self._stops.clear()
@@ -94,7 +97,7 @@ class FinalTurnStabilityProcessor(FrameProcessor):
         try:
             await self._sleeper(delay)
             async with self._lock:
-                if generation != self._generation or not self._finals or not self._stops:
+                if self._closed or generation != self._generation or not self._finals or not self._stops:
                     return
                 finals, stops = self._finals[:], self._stops[:]
                 self._finals.clear()
@@ -116,8 +119,11 @@ class FinalTurnStabilityProcessor(FrameProcessor):
             return
         async with self._lock:
             if isinstance(frame, (CancelFrame, EndFrame)):
+                self._closed = True
                 self._clear()
                 await self.push_frame(frame, direction)
+                return
+            if self._closed:
                 return
             if isinstance(frame, InterruptionFrame):
                 # Explicit interruption must never wait for the quiet window.
@@ -148,6 +154,10 @@ class FinalTurnStabilityProcessor(FrameProcessor):
                     # An upstream filler-only final was filtered. Pass the
                     # empty-turn cleanup stop through without synthesizing text.
                     await self.push_frame(frame, direction)
+                    return
+                # Retain a single canonical stop and do not extend the window
+                # on a duplicate native stop. A real continuation clears it.
+                if self._stops:
                     return
                 self._stops.append(frame)
                 self._cancel_release()

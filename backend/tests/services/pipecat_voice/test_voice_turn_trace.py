@@ -161,8 +161,11 @@ class TestOneRecordPerTurn:
         _drive_full_turn(trace, clock)
         trace.end_turn()
         assert written == []
-        trace.on_client_playback_started("not a number")
-        assert "browser_playback_startup_ms" not in written[0]["stage_durations_ms"]
+        for invalid in ("not a number", True, False, -1, 60000, float("nan"), float("inf")):
+            trace.on_client_playback_started(invalid)
+            assert written == []
+        trace.on_client_playback_started(40)
+        assert written[0]["stage_durations_ms"]["browser_playback_startup_ms"] == 40
 
 
 class TestTier:

@@ -4,8 +4,16 @@ from typing import Any
 from app.services.tier1_voice_service import CONVERSATIONAL_VOICE_SETTINGS, voice_stability_for_tier
 
 
+# Explicit supported adapter contracts; unknown models cannot silently enter the
+# streaming TTS protocol. Add a model only with a matching adapter test.
+_STREAM_MODELS = frozenset({"eleven_flash_v2_5", "eleven_flash_v2", "eleven_turbo_v2_5", "eleven_turbo_v2", "eleven_multilingual_v2", "eleven_monolingual_v1", "eleven_multilingual_v1"})
+_DIALOGUE_MODELS = frozenset({"eleven_v3", "eleven_v3_conversational"})
+
+
 def build_live_tts_service(*, api_key: str, voice_id: str, model: str, sample_rate: int, delivery_tier: str | None = None) -> Any:
-    if model.startswith("eleven_v3"):
+    if model not in _STREAM_MODELS | _DIALOGUE_MODELS:
+        raise ValueError("Unsupported live voice synthesis model")
+    if model in _DIALOGUE_MODELS:
         from pipecat.services.elevenlabs.dialogue.tts import ElevenLabsDialogueTTSService
 
         # v3 must use Text-to-Dialogue, not the Flash Text-to-Speech socket.

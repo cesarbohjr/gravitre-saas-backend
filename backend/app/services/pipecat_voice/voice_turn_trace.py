@@ -314,12 +314,16 @@ class VoiceTurnTrace:
         turn = self._turn
         if turn is None or turn.audio_out is None or turn.playback_report_rx is not None:
             return
+        # Invalid or boolean telemetry is not a playback receipt. Leave the
+        # slot open for a subsequent valid report or the normal grace timeout.
+        if isinstance(receive_to_playback_ms, bool):
+            return
         try:
             delta = float(receive_to_playback_ms)
-        except (TypeError, ValueError):
-            delta = None
-        if delta is not None and not (0 <= delta < 60_000):
-            delta = None
+        except (TypeError, ValueError, OverflowError):
+            return
+        if not (0 <= delta < 60_000):
+            return
         turn.playback_report_rx = at if at is not None else self.now()
         turn.client_receive_to_playback_ms = delta
         if self._ready_to_flush(turn):

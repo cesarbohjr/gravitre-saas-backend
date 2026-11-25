@@ -306,3 +306,8 @@ class TestNarrateLoopStage:
         assert "nothing has run" in spoken.lower()
         assert narrate_loop_stage("ACT", trace=trace) is None
         assert narrate_loop_stage("LEARN", trace=trace) is None
+
+
+def test_invalid_count_is_not_spoken_as_a_finding():
+    for count in (True, False, -1, -7, 0):
+        assert narrate_tool_completed("listDeals", {"totalResults": count}) is None

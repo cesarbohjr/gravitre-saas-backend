@@ -272,7 +272,7 @@ def narrate_tool_completed(tool_name: str, output: Any) -> str | None:
             return _found_line(len(rows), _result_noun(key, tool_name))
     for key in _COUNT_KEYS:
         val = output.get(key)
-        if isinstance(val, int):
+        if type(val) is int and val > 0:
             return _found_line(val, _result_noun(key, tool_name))
     return None
 
@@ -304,7 +304,7 @@ def _singular(noun: str) -> str:
 
 
 def _found_line(n: int, noun: str | None) -> str | None:
-    if not n or not noun:
+    if n <= 0 or not noun:
         return None
     return f"I found one {_singular(noun)}." if n == 1 else f"I found {n} {noun}."
 

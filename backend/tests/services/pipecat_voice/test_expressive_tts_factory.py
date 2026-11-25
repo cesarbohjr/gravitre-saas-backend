@@ -43,3 +43,12 @@ def test_v3_dialogue_uses_only_supported_stability_setting():
             "voice": "test-voice",
             "stability": 0.5,
         }
+
+
+@pytest.mark.parametrize("model", ["eleven_v4", "eleven_v3_unknown", "unknown", ""])
+def test_unknown_model_cannot_enter_either_provider_adapter(model):
+    with patch("pipecat.services.elevenlabs.tts.ElevenLabsTTSService") as stream, patch("pipecat.services.elevenlabs.dialogue.tts.ElevenLabsDialogueTTSService") as dialogue:
+        with pytest.raises(ValueError, match="Unsupported live voice synthesis model"):
+            build_live_tts_service(api_key="test", voice_id="fixture", model=model, sample_rate=24000)
+        stream.assert_not_called()
+        dialogue.assert_not_called()

@@ -332,12 +332,12 @@ jobs:
       # Keep package provisioning distinct from decoder verification. A slow apt
       # mirror must fail promptly rather than consume the backend test budget.
       - name: Provision FFmpeg for bounded media decoder tests
-        timeout-minutes: 5
+        timeout-minutes: 12
         run: |
           set -euo pipefail
           if ! command -v ffmpeg >/dev/null 2>&1; then
             sudo env DEBIAN_FRONTEND=noninteractive timeout 90s apt-get -o Acquire::Retries=1 -o Acquire::http::Timeout=20 update -y -q
-            sudo env DEBIAN_FRONTEND=noninteractive timeout 150s apt-get -o Acquire::Retries=1 -o Acquire::http::Timeout=20 install -y -q --no-install-recommends ffmpeg
+            sudo env DEBIAN_FRONTEND=noninteractive timeout 540s apt-get -o Acquire::Retries=2 -o Acquire::http::Timeout=30 install -y -q --no-install-recommends ffmpeg
           fi
 
       - name: Verify bounded media decoder
