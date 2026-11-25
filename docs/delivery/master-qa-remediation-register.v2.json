@@ -786,9 +786,9 @@
       "root_cause": "UNVERIFIED",
       "remediation": "Delegate voice turn authority and duplicate-final repair to PR #610 V1/V2; import only certified contracts into QA30",
       "dependencies": [],
-      "regression_candidate": null,
-      "regression_state": "NOT_YET_IMPLEMENTED",
-      "implementation_state": "EVIDENCE_OR_REPAIR_PENDING",
+      "regression_candidate": "backend/tests/services/pipecat_voice/test_final_turn_stability.py",
+      "regression_state": "EXPANDED_TARGETED_REGRESSIONS_HOSTED_PENDING",
+      "implementation_state": "PARTIAL_ENGINEERING_IMPLEMENTED_HOSTED_VERIFICATION_PENDING",
       "implemented_commit": null,
       "synthetic_status": "NOT_CERTIFIED",
       "live_status": "NOT_RUN",
@@ -836,7 +836,18 @@
       "research_derived_acceptance_checks": [
         "On actual PR610 Voice 3.0 head, verify Deepgram probable-EOT speculation and confirmed-turn adoption are wired and enabled; test stale transcript/revision cancellation, duplicate-final rejection, bounded speculative work, and zero speculative connector writes or approval consumption."
       ],
-      "voice_owner_unchanged": "PR610-voice (PR611 integration gate)"
+      "voice_owner_unchanged": "PR610-voice (PR611 integration gate)",
+      "voice_3_batch": {
+        "state": "VOICE_PR_SOURCE_REPAIR_PUBLISHED_HOSTED_PENDING",
+        "pr": 610,
+        "implemented_source_sha": "88f38562c102232fd43dcc1c522afc1c9396afdc",
+        "source": "backend/app/services/pipecat_voice/final_turn_stability.py",
+        "scope": "Terminal cancel/end fences buffered confirmations and late frames; existing eager barrier retained.",
+        "finding_certified": false,
+        "live_provider_verified": false,
+        "physical_device_verified": false,
+        "integrated_with_master": false
+      }
     },
     {
       "finding_id": "ECO-005",
@@ -1186,9 +1197,9 @@
       "root_cause": "UNVERIFIED",
       "remediation": "PR #610 V0–V7 owns P0 conversational and acoustic fixes; #611 owns cross-surface release evidence",
       "dependencies": [],
-      "regression_candidate": null,
-      "regression_state": "NOT_YET_IMPLEMENTED",
-      "implementation_state": "EVIDENCE_OR_REPAIR_PENDING",
+      "regression_candidate": "backend/tests/services/pipecat_voice/test_voice_tool_narration.py",
+      "regression_state": "EXPANDED_TARGETED_REGRESSIONS_HOSTED_PENDING",
+      "implementation_state": "PARTIAL_ENGINEERING_IMPLEMENTED_HOSTED_VERIFICATION_PENDING",
       "implemented_commit": null,
       "synthetic_status": "NOT_CERTIFIED",
       "live_status": "NOT_RUN",
@@ -1218,7 +1229,18 @@
       "audit_observation": "Original audit and source candidate require caller/runtime evidence; no final root-cause claim.",
       "research_derived_acceptance_checks": [
         "Inspect deployed Voice 3.0 feature flags, including voice_playback_grounded_history_v1, speculative generation/revision controls, and Pipecat turn handling; prove browser playback.progress receipts reconcile only heard speech after barge-in, including reconnect/late-report cases. No second turn controller or new voice framework."
-      ]
+      ],
+      "voice_3_batch": {
+        "state": "VOICE_PR_SOURCE_REPAIR_PUBLISHED_HOSTED_PENDING",
+        "pr": 610,
+        "implemented_source_sha": "88f38562c102232fd43dcc1c522afc1c9396afdc",
+        "source": "backend/app/services/pipecat_voice/voice_tool_narration.py",
+        "scope": "Reject invalid boolean/negative spoken result counts; existing verified outcome narration unchanged.",
+        "finding_certified": false,
+        "live_provider_verified": false,
+        "physical_device_verified": false,
+        "integrated_with_master": false
+      }
     },
     {
       "finding_id": "ECO-010",
@@ -2799,9 +2821,9 @@
       "root_cause": "UNVERIFIED",
       "remediation": "PR #610 V0–V7 tests and real device sign-off; #611 imports results, never duplicates voice implementation",
       "dependencies": [],
-      "regression_candidate": null,
-      "regression_state": "NOT_YET_IMPLEMENTED",
-      "implementation_state": "EVIDENCE_OR_REPAIR_PENDING",
+      "regression_candidate": "backend/tests/services/pipecat_voice/test_voice_turn_trace.py",
+      "regression_state": "EXPANDED_TARGETED_REGRESSIONS_HOSTED_PENDING",
+      "implementation_state": "PARTIAL_ENGINEERING_IMPLEMENTED_HOSTED_VERIFICATION_PENDING",
       "implemented_commit": null,
       "synthetic_status": "NOT_CERTIFIED",
       "live_status": "NOT_RUN",
@@ -2833,7 +2855,18 @@
         "Run controlled existing Pipecat vs native realtime/LiveKit comparison only where warranted, with consistent ChatGPT/Claude-style conversational evaluation for pacing, interruptions, continuity, reliability, latency, and cost. No automatic provider migration.",
         "Measure real-device iOS end-to-end and first-audio p50/p95, speculation started/adopted/discarded/timeouts, interruption cancellation, playback accuracy and contextual continuity; compare enabled vs disabled baseline, document config and release SHA, and accept only demonstrated improvement without provider migration.",
         "Perform a documented guide-to-Voice-3.0 cross-comparison using the original SpeakRail voice-agent implementation guide as reference: map each relevant technique (streaming STT/LLM/TTS, probable-EOT speculative generation/adoption, early TTS preparation, barge-in and heard-audio reconciliation, cancellation, turn ownership, context/latency instrumentation) to current PR610 V0–V7 design and actual code; mark implemented/enabled/tested/missing/duplicative, identify the smallest warranted change, and benchmark before altering providers. Record guide source/version and exact code SHA; if the original guide cannot be retrieved, explicitly mark comparison provisional rather than claiming complete source verification."
-      ]
+      ],
+      "voice_3_batch": {
+        "state": "VOICE_PR_SOURCE_REPAIR_PUBLISHED_HOSTED_PENDING",
+        "pr": 610,
+        "implemented_source_sha": "88f38562c102232fd43dcc1c522afc1c9396afdc",
+        "source": "backend/app/services/pipecat_voice/voice_turn_trace.py",
+        "scope": "Reject invalid playback start reports without occupying valid receipt slot. Not proof of audible playback or device acceptance.",
+        "finding_certified": false,
+        "live_provider_verified": false,
+        "physical_device_verified": false,
+        "integrated_with_master": false
+      }
     },
     {
       "finding_id": "P27-08",
@@ -4083,9 +4116,9 @@
       "root_cause": "UNVERIFIED",
       "remediation": "PR #610 owns finality, barge-in and PCM; #611 owns source-to-device evidence integration",
       "dependencies": [],
-      "regression_candidate": null,
-      "regression_state": "NOT_YET_IMPLEMENTED",
-      "implementation_state": "EVIDENCE_OR_REPAIR_PENDING",
+      "regression_candidate": "backend/tests/services/pipecat_voice/test_final_turn_stability.py",
+      "regression_state": "EXPANDED_TARGETED_REGRESSIONS_HOSTED_PENDING",
+      "implementation_state": "PARTIAL_ENGINEERING_IMPLEMENTED_HOSTED_VERIFICATION_PENDING",
       "implemented_commit": null,
       "synthetic_status": "NOT_CERTIFIED",
       "live_status": "NOT_RUN",
@@ -4115,7 +4148,18 @@
       "audit_observation": "Original audit and source candidate require caller/runtime evidence; no final root-cause claim.",
       "research_derived_acceptance_checks": [
         "Require PR610 exact-head negative tests for stale speculative response suppression, transcript corrections/negations, playback interruption and finality; PR611 imports certified contracts and independent cross-surface results, without duplicating implementation."
-      ]
+      ],
+      "voice_3_batch": {
+        "state": "VOICE_PR_SOURCE_REPAIR_PUBLISHED_HOSTED_PENDING",
+        "pr": 610,
+        "implemented_source_sha": "88f38562c102232fd43dcc1c522afc1c9396afdc",
+        "source": "backend/app/services/pipecat_voice/final_turn_stability.py",
+        "scope": "Deduplicate native stop while timer pending; no timer extension or duplicate release. Existing audio stamp not modified.",
+        "finding_certified": false,
+        "live_provider_verified": false,
+        "physical_device_verified": false,
+        "integrated_with_master": false
+      }
     },
     {
       "finding_id": "DEC-011",
@@ -4492,9 +4536,9 @@
       "root_cause": "UNVERIFIED",
       "remediation": "Verify actual configured account and compatibility; Voice 3.0 provider repairs remain PR #610 owned",
       "dependencies": [],
-      "regression_candidate": null,
-      "regression_state": "NOT_YET_IMPLEMENTED",
-      "implementation_state": "EVIDENCE_OR_REPAIR_PENDING",
+      "regression_candidate": "backend/tests/services/pipecat_voice/test_expressive_tts_factory.py",
+      "regression_state": "EXPANDED_TARGETED_REGRESSIONS_HOSTED_PENDING",
+      "implementation_state": "PARTIAL_ENGINEERING_IMPLEMENTED_HOSTED_VERIFICATION_PENDING",
       "implemented_commit": null,
       "synthetic_status": "NOT_CERTIFIED",
       "live_status": "NOT_RUN",
@@ -4521,7 +4565,18 @@
       ],
       "partial_test_evidence": null,
       "audit_evidence_class": "SOURCE_CANDIDATE_REQUIRES_RUNTIME_PROOF",
-      "audit_observation": "Original audit and source candidate require caller/runtime evidence; no final root-cause claim."
+      "audit_observation": "Original audit and source candidate require caller/runtime evidence; no final root-cause claim.",
+      "voice_3_batch": {
+        "state": "VOICE_PR_SOURCE_REPAIR_PUBLISHED_HOSTED_PENDING",
+        "pr": 610,
+        "implemented_source_sha": "88f38562c102232fd43dcc1c522afc1c9396afdc",
+        "source": "backend/app/services/pipecat_voice/tts_factory.py",
+        "scope": "Explicit supported streaming/dialogue adapter model sets and fail-closed unknown model handling.",
+        "finding_certified": false,
+        "live_provider_verified": false,
+        "physical_device_verified": false,
+        "integrated_with_master": false
+      }
     },
     {
       "finding_id": "DEC-015",
