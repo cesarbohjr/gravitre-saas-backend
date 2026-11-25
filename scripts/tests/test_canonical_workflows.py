@@ -232,20 +232,22 @@ class CanonicalContracts(unittest.TestCase):
         self.assertIn('on', data)
         self.assertIs(data['on']['workflow_dispatch']['inputs']['approved']['default'], False)
 
-    def test_inventory_job_requires_sixteen_sources_and_rejects_incomplete_evidence(self):
+    def test_inventory_job_requires_nineteen_sources_and_rejects_incomplete_evidence(self):
         job = self.lanes['qa-04-governed-execution.yml']['jobs'][
             'pr605_cross_surface_ownership__bounded-source-inventory']
         step = next(s for s in job['steps']
                     if s.get('name') == 'Source-only inventory and unit assertions')
         script = re.search(r"<<'PY'\n(.*?)\nPY", step['run'], re.S).group(1)
-        report = {'commit': 'fixture-sha', 'candidate_source_count': 16,
+        report = {'commit': 'fixture-sha', 'candidate_source_count': 19,
                   'missing_sources': [], 'critical_source_assertions': {'route': True},
                   'retirement_certified': False}
         edges = {'commit': 'fixture-sha', 'sources': list(range(19)),
                  'missing_sources': [], 'runtime_executions_observed': 0,
                  'retirement_certified': False}
         cases = [({}, 0), ({'candidate_source_count': 10}, 1),
-                 ({'candidate_source_count': 17}, 1),
+                 ({'candidate_source_count': 16}, 1),
+                 ({'candidate_source_count': 18}, 1),
+                 ({'candidate_source_count': 20}, 1),
                  ({'missing_sources': ['agent_intelligence']}, 1),
                  ({'critical_source_assertions': {'route': False}}, 1),
                  ({'commit': 'stale-sha'}, 1), ({'retirement_certified': True}, 1)]
