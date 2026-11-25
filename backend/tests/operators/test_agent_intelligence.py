@@ -1435,7 +1435,7 @@ async def test_dec012_agent_write_to_durable_outcome(
                 "org_id uuid NOT NULL, created_by text, environment text, kind text, session_id text, "
                 "payload jsonb, status text, max_attempts integer, queued_at timestamptz, "
                 "timeout_at timestamptz, retry_count integer, result jsonb, error text, "
-                "finished_at timestamptz, updated_at timestamptz);")
+                "finished_at timestamptz, updated_at timestamptz, started_at timestamptz, attempts integer DEFAULT 0);")
         pg.psql((MIGRATIONS / "20261125040000_agent_job_run_binding.sql").read_text())
         pg.psql((MIGRATIONS / "20260606200000_agent_execution_interrupts.sql").read_text())
         ledger = PgClient(str(pg.sock), pg.port)
@@ -1467,7 +1467,6 @@ async def test_dec012_agent_write_to_durable_outcome(
                                     payload={"task": "Create the fixture contact", "agent_id": agent_row["id"],
                                              "run_id": "untrusted", "context": {"include_task_history": False,
                                              "knowledge_assignments": []}})
-        job = client.table("agent_jobs").update({"status": "running"}).eq("id", job["id"]).execute().data[0]
         assert job["bound_run_id"] == run_id
 
         def vendor(context, params):
@@ -1523,7 +1522,19 @@ async def test_dec012_agent_write_to_durable_outcome(
             return SimpleNamespace(choices=[SimpleNamespace(message=SimpleNamespace(
                 content="" if calls else "Finished the fixture task.", tool_calls=calls), finish_reason="stop")])
         monkeypatch.setattr(engine, "_chat_with_tools", AsyncMock(side_effect=[reply([call]), reply([])]))
-        worker_result = await agent_jobs.run_agent_task_job(settings, job)
+        # Isolate optional swarm and approval-notification adapters; provider and outcome remain real.
+        monkeypatch.setattr(agent_jobs, "_notify_swarm_job_finished", AsyncMock())
+        monkeypatch.setattr("app.services.approval_record_service.maybe_create_agent_job_approval", lambda *a: None)
+        if approval_status == "approved":
+            assert await agent_jobs._process_job_id(settings, job["id"])
+            job = agent_jobs.get_job(client, ORG, job["id"])
+            assert job["status"] == "completed" and job["attempts"] == 1
+            worker_result = job["result"]
+            assert not await agent_jobs._process_job_id(settings, job["id"])
+        else:
+            job = agent_jobs.claim_job_by_id(client, job["id"])
+            assert job and job["status"] == "running"
+            worker_result = await agent_jobs.run_agent_task_job(settings, job)
         assert len(captured) == 1
         result = captured[0]
         assert len(result.tool_calls) == 1, result.to_handoff_dict()
@@ -1546,10 +1557,7 @@ async def test_dec012_agent_write_to_durable_outcome(
         assert pg.value("SELECT count(*) FROM public.write_invoke_idempotency "
                         "WHERE status='completed' AND result #>> '{data,id}'='1'") == "1"
         # Follow the worker's existing completion path with the actual rollup.
-        agent_jobs.complete_job(client, job["id"], worker_result)
-        job = agent_jobs.get_job(client, ORG, job["id"])
         assert job["status"] == "completed" and job["bound_run_id"] == run_id
-        await agent_jobs._notify_operator_job_finished(settings, client, job, worker_result)
         persisted = repository.get_run_with_steps(PgRepositoryClient(pg), ORG, run_id, "synthetic")
         assert persisted["status"] == "completed"
         assert persisted["parameters"]["outcome_finalized"] is True
