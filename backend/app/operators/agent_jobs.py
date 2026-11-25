@@ -58,6 +58,7 @@ def create_job(
     goal_id: str | None = None,
     work_object_id: str | None = None,
     trusted_run_id: str | None = None,
+    create_tracking_run: bool = False,
 ) -> dict[str, Any]:
     """Insert a queued agent job row.
 
@@ -94,6 +95,17 @@ def create_job(
             code="write_commit_interrupted",
         )
     # Only internal callers may supply this explicit argument; never read payload IDs.
+    if create_tracking_run:
+        if trusted_run_id is not None or not created_by:
+            raise ValueError("Tracking run requires an actor and no supplied run")
+        from uuid import uuid4
+        from app.workflows.repository import create_run
+        tracking = create_run(client, org_id=org_id, triggered_by=created_by,
+            definition_snapshot={"name": "Assignment", "steps": []},
+            parameters={"source": "assignment", "assignment_tracking_only": True},
+            run_hash=uuid4().hex, environment_name=environment,
+            trigger_type="api", run_type="execute")
+        trusted_run_id = str(tracking["id"])
     if trusted_run_id is not None:
         row["bound_run_id"] = trusted_run_id
         resolve_bound_run(client, row)
@@ -799,7 +811,7 @@ async def run_operator_job(settings: Settings, job: dict[str, Any]) -> dict[str,
             parameters=parameters,
             actor_id=str(job.get("created_by") or agent.get("id") or "system"),
             task_id=str(job["id"]),
-            run_id=resolve_bound_run(client, job),
+            run_id=resolve_bound_run(client, job, for_execution=True),
             environment_name=environment,
             client=client,
         )
@@ -970,7 +982,7 @@ async def run_agent_task_job(settings: Settings, job: dict[str, Any]) -> dict[st
         parameters=parameters,
         actor_id=str(job.get("created_by") or agent_id),
         task_id=str(job["id"]),
-        run_id=resolve_bound_run(client, job),
+        run_id=resolve_bound_run(client, job, for_execution=True),
         environment_name=environment,
         client=client,
     )
@@ -1028,47 +1040,22 @@ async def _notify_operator_job_finished(
     # Completion must never take its authority from a task payload or model result.
     from app.operators.agent_run_binding import resolve_bound_run
     run_id = resolve_bound_run(client, job)
-    # Unbound legacy jobs may record a separate outcome, never borrow approval.
-    import hashlib
-    from uuid import uuid4
-    from app.workflows.repository import create_run
+    # Legacy outcomes use a stable identity, never a payload or model run ID.
     if not run_id:
-        job_id = str(job.get("id") or "")
-        label = (task or "Operator assignment")[:120]
-        try:
-            created = create_run(
-                client,
-                org_id=org_id,
-                triggered_by=user_id,
-                definition_snapshot={
-                    "name": label,
-                    "source": "assignment",
-                    "job_id": job_id,
-                    "steps": [],
-                },
-                parameters={
-                    "source": "assignment",
-                    "job_id": job_id,
-                    "task": task,
-                    "session_id": session_id or None,
-                },
-                run_hash=hashlib.sha256(
-                    f"assignment|{job_id}|{uuid4()}".encode("utf-8")
-                ).hexdigest()[:48],
-                workflow_id=None,
-                environment_name=str(job.get("environment") or "production"),
-                trigger_type="api",
-                run_type="execute",
-            )
-            run_id = str(created.get("id") or "") or None
-        except Exception as exc:  # noqa: BLE001
-            logger.warning(
-                "operator_job_run_create_failed job_id=%s error=%s",
-                job.get("id"),
-                exc,
-            )
-            run_id = None
-
+        from uuid import UUID, uuid5, NAMESPACE_URL
+        from app.workflows.repository import mirror_legacy_run_to_contract
+        job_id = str(UUID(str(job["id"])))
+        environment = str(job.get("environment") or "production")
+        run_id = str(uuid5(NAMESPACE_URL, f"gravitre:assignment-outcome:{org_id}:{job_id}"))
+        row = {"id": run_id, "org_id": org_id, "triggered_by": user_id,
+               "environment": environment, "status": "running", "run_type": "execute",
+               "trigger_type": "api", "run_hash": run_id.replace("-", ""),
+               "definition_snapshot": {"name": task[:120], "steps": []},
+               "parameters": {"source": "assignment", "job_id": job_id,
+                              "assignment_tracking_only": True}}
+        client.table("workflow_runs").upsert(row, on_conflict="id", ignore_duplicates=True).execute()
+        resolve_bound_run(client, {**job, "environment": environment, "bound_run_id": run_id})
+        mirror_legacy_run_to_contract(client, run_id)
 
     finalize_execution_outcome(
         client,
