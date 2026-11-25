@@ -97,7 +97,36 @@ def fixture_transport_failure(error):
     return 'transport_other'
 
 
+def fixture_probe(endpoint, page):
+    """Exact owned-page check; export categories, never URLs or exception text."""
+    try:
+        with urlopen(endpoint, timeout=5) as response:
+            if response.status == 200 and response.geturl() == endpoint and response.read(len(page) + 1) == page:
+                return {'outcome': 'ready'}
+            return {'outcome': 'unexpected_fixture_response'}
+    except HTTPError as error:
+        result = {'outcome': 'origin_http_error', 'http_status': error.code}
+        error.close()
+        return result
+    except OSError as error:
+        return {'outcome': 'origin_unreachable', 'error_category': fixture_transport_failure(error)}
+
+
+def tunnel_diagnostics(log):
+    """Retain only allowlisted facts from the private tunnel log before cleanup."""
+    content = log.read_text(errors='replace')[-65536:]
+    return {
+        'connection_registered': 'Registered tunnel connection' in content,
+        'origin_connection_error': 'Unable to reach the origin service' in content,
+        'edge_connection_error': 'Failed to serve tunnel connection' in content,
+    }
+
+
 def start_fixture_tunnel(root, fixture_origin, page, attempts):
+    local_probe = fixture_probe(fixture_origin + '/page', page)
+    if local_probe['outcome'] != 'ready':
+        attempts.append({'outcome': 'local_fixture_unavailable', 'local_probe': local_probe})
+        raise TimeoutError('local_fixture_unavailable')
     for attempt in range(2):
         log = root / f'tunnel-{attempt}-private.log'
         with log.open('wb') as stream:
@@ -106,7 +135,7 @@ def start_fixture_tunnel(root, fixture_origin, page, attempts):
                 stdin=subprocess.DEVNULL, stdout=stream, stderr=stream, start_new_session=True,
                 env={key: os.environ[key] for key in ('PATH', 'HOME', 'TMPDIR', 'LANG', 'SSL_CERT_FILE', 'SSL_CERT_DIR') if key in os.environ},
             )
-        evidence = {'outcome': 'origin_not_announced'}
+        evidence = {'outcome': 'origin_not_announced', 'local_probe': local_probe}
         attempts.append(evidence)
 
         def origin_ready():
@@ -119,20 +148,18 @@ def start_fixture_tunnel(root, fixture_origin, page, attempts):
                 if urlsplit(origin).hostname in {'api.trycloudflare.com', 'www.trycloudflare.com'}:
                     continue
                 endpoint = origin + '/page'
-                try:
-                    with urlopen(endpoint, timeout=5) as response:
-                        if response.status == 200 and response.geturl() == endpoint and response.read(len(page) + 1) == page:
-                            evidence['outcome'] = 'ready'
-                            return origin
-                        evidence['outcome'] = 'unexpected_fixture_response'
-                except HTTPError as error:
-                    evidence.update(outcome='origin_http_error', http_status=error.code)
-                    error.close()
-                except OSError as error:
-                    evidence['outcome'] = 'origin_unreachable'
+                probe = fixture_probe(endpoint, page)
+                # Replace the previous probe so a successful later request does
+                # not retain a stale transport category or HTTP status.
+                for key in ('error_category', 'http_status'):
+                    evidence.pop(key, None)
+                evidence.update(probe)
+                if probe['outcome'] == 'origin_unreachable':
                     failures = evidence.setdefault('transport_failures', {})
-                    category = fixture_transport_failure(error)
+                    category = probe['error_category']
                     failures[category] = failures.get(category, 0) + 1
+                if probe['outcome'] == 'ready':
+                    return origin
             return None
 
         try:
@@ -144,6 +171,8 @@ def start_fixture_tunnel(root, fixture_origin, page, attempts):
         except BaseException:
             stop_tunnel(process)
             raise
+        finally:
+            evidence['tunnel_diagnostics'] = tunnel_diagnostics(log)
 
 
 def terminal_wait_budget(case):
