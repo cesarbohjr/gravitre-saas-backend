@@ -534,6 +534,12 @@ jobs:
 
         python -c "import xml.etree.ElementTree as E; r=E.parse(''dec012-targeted.xml'').getroot(); s=list(r.iter(''testsuite''));
         assert sum(int(x.get(''tests'',0)) for x in s)==10; assert all(int(x.get(k,0))==0 for x in s for k in (''failures'',''errors'',''skipped''))"'
+    - name: DEC-012 durable Agent write outcome (three cases, zero skips)
+      run: 'python -m pytest -vv -rs tests/operators/test_agent_intelligence.py::test_dec012_agent_write_to_durable_outcome
+        --junitxml=dec012-durable.xml
+
+        python -c "import xml.etree.ElementTree as E; r=E.parse(''dec012-durable.xml'').getroot(); s=list(r.iter(''testsuite''));
+        assert sum(int(x.get(''tests'',0)) for x in s)==3; assert all(int(x.get(k,0))==0 for x in s for k in (''failures'',''errors'',''skipped''))"'
     - name: Run tests
       run: python -m pytest -q
       env:

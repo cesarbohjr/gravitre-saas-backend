@@ -4185,6 +4185,25 @@
         "collection": "New tests match the standard __tests__ glob. The older lib/voice-api-proxy.audit.test.ts is outside that default glob and is not counted as executed evidence here.",
         "remaining": "Deployed origin/environment readback, authenticated real-tenant acceptance, configured-host validation beyond existing resolver behavior, SSE/NDJSON/device parity, rollback and owner gates remain open. No runtime variables, DNS, deployment or provider data changed.",
         "release_certified": false
+      },
+      "agent_durable_outcome_batch": {
+        "state": "LOCAL_POSTGRES_PASS_HOSTED_VERIFICATION_PENDING",
+        "source_base_sha": "f300a19b430d42e40940bb52d746c4f9107373ca",
+        "source": "backend/app/operators/react_engine.py",
+        "test": "backend/tests/operators/test_agent_intelligence.py::test_dec012_agent_write_to_durable_outcome",
+        "reproduction": "Approved raw arguments passed the initial scope check, then generated task-prompt text was ingested as body/text during write compilation and the shared invoke scope check rejected the changed payload.",
+        "repair": "The run-approved ReAct branch compiles already scope-checked arguments with args_approved=True. Initial and shared-invoke approval scope checks remain enforced.",
+        "local_validation": "Three parameterized PostgreSQL cases passed with zero failures/errors/skips. Pending/revoked approval creates no ledger claim or receiver write. Approved execution verifies independent receiver readback, persists canonical completion/outbox, rejects changed recipient, and replays execution and outbox delivery with one provider write and one durable consumer effect.",
+        "validation_transport": "Local host prohibits AF_UNIX sockets. An external temporary runner used loopback TCP to the same disposable PostgreSQL harness. Repository harness unchanged.",
+        "scope": "AgentIntelligence.execute_task through actual ReAct/ToolRegistry/invoke_tool and SQL write claims, followed explicitly by the production agent-job completion hook. Advisory/model/connector metadata and external vendor transports are synthetic.",
+        "remaining": [
+          "Exact-head hosted CI using the standard harness",
+          "Actual job-queue and Play ingress",
+          "Full finding-specific deployed/provider/tenant/rollback/owner acceptance"
+        ],
+        "finding_certified": false,
+        "neighbor_validation": "Original ten-case DEC012/recipient gate passed with exact-ten zero-failure/error/skip JUnit assertions. Also 93 ReAct, preflight, approval-scope and text/voice recipient checks, 10 register guards, 17 compiler tests plus seven subtests, and compiler --check passed.",
+        "hosted_gate": "Core runs the three durable cases verbosely with exact-three zero-failure/error/skip JUnit assertions, independently of the retained ten-case gate."
       }
     },
     {
