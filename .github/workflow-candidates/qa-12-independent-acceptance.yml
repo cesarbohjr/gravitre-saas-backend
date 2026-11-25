@@ -686,6 +686,21 @@ jobs:
         tests/master_qa/test_eco003_context_scope_parity.py tests/master_qa/test_eco003_context_stage_latency_report.py tests/master_qa/test_eco002_route_stage_latency_report.py
 
         '
+    - name: Joined Agent Play PostgreSQL acceptance (14 named cases, zero skips)
+      run: |-
+        set -euo pipefail
+        python -m pytest -vv -rs tests/master_qa/test_joined_agent_play_approval_step_pg.py --junitxml=joined-agent-play.xml
+        python - <<'PY'
+        import xml.etree.ElementTree as ET
+        root=ET.parse("joined-agent-play.xml").getroot()
+        cases=list(root.iter("testcase"))
+        expected={f"test_agent_play_approval_real_step_to_durable_consumer[{decision}-{flag}]" for flag, decisions in (
+            ("False", ("approve","approve_write","reject","forbidden_approver","foreign_tenant","cancel_before_dispatch","cancel_write_before_dispatch","revoke_before_dispatch","cancel_during_finalize","terminal_persistence_failure")),
+            ("True", ("approve_write","cancel_write_before_dispatch","revoke_before_dispatch","foreign_tenant"))) for decision in decisions}
+        assert len(cases)==14 and {c.get("name") for c in cases}==expected
+        assert not any(c.find(k) is not None for c in cases for k in ("failure","error","skipped"))
+        print("Joined Agent Play: 14 named cases passed; zero failures, errors or skips")
+        PY
     - name: Certify disposable PostgreSQL trigger, relay and idempotency
       run: "python - <<'PY'\nfrom tests.db.pg_harness import PG_BIN\nif PG_BIN is None:\n    raise SystemExit(\"PostgreSQL\
         \ unavailable: not certifying skipped tests\")\nPY\npython -m pytest -q -rs tests/db/test_domain_event_outbox_pg.py\

@@ -320,16 +320,32 @@ async def test_agent_play_approval_real_step_to_durable_consumer(pg, monkeypatch
             with pytest.raises(HTTPException) as forged:
                 await submit_with(**overrides)
             assert forged.value.status_code == 409
-        # Alter persisted scope one dimension at a time; no Play may be created.
-        for field, wrong in (("created_by", "99999999-9999-4999-8999-999999999999"),
+        # The real SQL trigger must reject identity mutation before it can
+        # reach the handoff. Do not disable it to simulate a forged row.
+        from psycopg.errors import RaiseException
+        foreign_id = "99999999-9999-4999-8999-999999999999"
+        for field, wrong in (("created_by", foreign_id), ("org_id", foreign_id),
                              ("environment", "other"), ("bound_run_id", None)):
-            client.table("agent_jobs").update({field: wrong}).eq("id", job["id"]).execute()
-            try:
-                with pytest.raises(HTTPException) as forged:
-                    await submit_with()
-                assert forged.value.status_code == 409
-            finally:
-                client.table("agent_jobs").update({field: completed[field]}).eq("id", job["id"]).execute()
+            with pytest.raises(RaiseException, match="Persisted job run binding is immutable"):
+                client.table("agent_jobs").update({field: wrong}).eq("id", job["id"]).execute()
+            assert agent_jobs.get_job(PgRepositoryClient(pg), ORG, job["id"])[field] == completed[field]
+        # Independently exercise the handoff resolver with genuine persisted
+        # jobs belonging to another actor/environment or lacking a bound run.
+        from app.operators.agent_run_binding import resolve_completed_agent_play_lineage
+        for actor, env in ((foreign_id, "synthetic"), (member[0]["user_id"], "other")):
+            with pytest.raises(ValueError, match="Agent handoff unavailable"):
+                resolve_completed_agent_play_lineage(client, org_id=ORG, actor_id=actor,
+                    environment=env, job_id=job["id"], **requested)
+        unbound = agent_jobs.create_job(client, ORG, kind="operator_task",
+            environment="synthetic", created_by=member[0]["user_id"],
+            payload={"task": "Unbound assignment", "context": {"play_handoff": requested}})
+        assert agent_jobs.claim_job_by_id(client, unbound["id"])
+        agent_jobs.complete_job(client, unbound["id"], completed["result"])
+        # Legacy completion may produce an outcome, but cannot retroactively
+        # bind an unbound job to a trusted tracking identity.
+        with pytest.raises(HTTPException) as forged:
+            await submit_with(agentJobId=unbound["id"])
+        assert forged.value.status_code == 409
         assert pg.value("SELECT count(*) FROM public.play_runs") == "0"
         pg.psql("CREATE TABLE public.qa_agent_source_effects (event_id bigint PRIMARY KEY, run_id uuid NOT NULL)")
         def agent_consumer(_client, event):
