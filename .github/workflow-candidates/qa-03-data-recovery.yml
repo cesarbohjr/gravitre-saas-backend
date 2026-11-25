@@ -174,7 +174,7 @@ jobs:
     - name: Install PostgreSQL driver
       run: python -m pip install 'psycopg[binary]==3.2.9' 'fastapi==0.115.12'
     - name: QA90 isolated migration parity and tenant ownership replay
-      run: |
+      run: |-
         set -euo pipefail
         sudo apt-get update -qq
         sudo apt-get install -y -qq postgresql-client
@@ -289,7 +289,7 @@ jobs:
 
         '
     - name: QA90 production-shaped deferred migrations and transactional rollback
-      run: |
+      run: |-
         python scripts/migration_recovery/qa90_full_shape_replay.py --database-url postgresql://postgres:postgres@127.0.0.1:54322/postgres --report test-results/migration-history-qa90-full-shape.json
     - name: Real PostgreSQL concurrency, authorization and fail-closed acceptance on restored baseline
       run: python scripts/migration_recovery/acceptance.py postgresql://postgres:postgres@127.0.0.1:54322/postgres test-results/migration-history-acceptance.json
