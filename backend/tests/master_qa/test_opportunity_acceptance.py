@@ -46,7 +46,7 @@ def records():
         "workflow_runs": [{
             "id": RUN, "org_id": ORG, "environment": "synthetic",
             "workflow_id": WF, "run_type": "execute", "status": "completed",
-            "required_approvals": 1,
+            "required_approvals": 1, "approval_status": "approved",
             "definition_snapshot": {"steps": [{
                 "id": "update-deal", "type": "invoke_tool",
                 "config": {"action": "hubspot.deals.update_stage"},

@@ -102,6 +102,10 @@ def inspect_opportunity_play_run(
     all_verified = True
     all_completed = True
     all_measured = True
+    agent_lineage = metadata.get("agent_lineage")
+    lineage_present = "agent_lineage" in metadata
+    agent_lineage_verified = False
+    all_steps_complete = True
     for run_id_value in recorded_ids:
         run_id = str(run_id_value or "")
         run = get_run_with_steps(client, org_id, run_id, environment_name)
@@ -121,6 +125,30 @@ def inspect_opportunity_play_run(
             or play_params.get("source_run_ids") != source_ids
         ):
             raise AcceptanceEvidenceBlocked("play_source_lineage_mismatch")
+        # Both persisted projections must agree; neither is sufficient alone.
+        if ("agent_lineage" in play_params) != lineage_present or play_params.get("agent_lineage") != agent_lineage:
+            raise AcceptanceEvidenceBlocked("agent_play_lineage_mismatch")
+        if lineage_present:
+            from app.operators.agent_run_binding import resolve_completed_agent_play_lineage
+            if (not isinstance(agent_lineage, dict) or set(agent_lineage) != {"agent_job_id", "agent_run_id", "authority"}
+                    or agent_lineage.get("authority") != "advisory_only"
+                    or not isinstance(source_ids, dict) or set(source_ids) != {"crm", "analytics"}
+                    or not opportunity_id or not run.get("workflow_id")
+                    or not play.get("created_by") or str(run.get("triggered_by")) != str(play["created_by"])
+                    or str(agent_lineage.get("agent_run_id")) == run_id
+                    or len(recorded_ids) != 1):
+                raise AcceptanceEvidenceBlocked("invalid_agent_play_lineage")
+            try:
+                resolved = resolve_completed_agent_play_lineage(
+                    client, org_id=org_id, actor_id=play["created_by"], environment=environment_name,
+                    job_id=agent_lineage["agent_job_id"], opportunity_id=opportunity_id,
+                    source_run_ids=source_ids, play_key=play["play_key"], installation_id=installation_id,
+                    workflow_id=str(run["workflow_id"]))
+            except ValueError as exc:
+                raise AcceptanceEvidenceBlocked("invalid_agent_play_lineage") from exc
+            if resolved != agent_lineage:
+                raise AcceptanceEvidenceBlocked("invalid_agent_play_lineage")
+            agent_lineage_verified = True
         approval_required = int(run.get("required_approvals") or 0)
         # This gate covers ACT WITH APPROVAL only. Mode and approval are read
         # from persisted records, never from model-suggested workflow metadata.
@@ -135,7 +163,8 @@ def inspect_opportunity_play_run(
             if a.get("status") == "approved" and a.get("approver_id")
         }
         declined = any(a.get("status") == "rejected" for a in approvals)
-        approved = len(approvers) >= approval_required and not declined
+        approved = (run.get("approval_status") == "approved"
+                    and len(approvers) >= approval_required and not declined)
         all_approved = all_approved and approved
 
         definition = run.get("definition_snapshot")
@@ -150,22 +179,32 @@ def inspect_opportunity_play_run(
         if len(defined_by_id) != len(defined):
             raise AcceptanceEvidenceBlocked("invalid_immutable_workflow_step_identity")
         step_records = run.get("steps") or []
-        if not isinstance(step_records, list) or not step_records:
+        if not isinstance(step_records, list) or any(not isinstance(step, dict) for step in step_records):
+            raise AcceptanceEvidenceBlocked("invalid_persisted_workflow_steps")
+        recorded_step_ids = [str(step.get("step_id") or "") for step in step_records]
+        if len(set(recorded_step_ids)) != len(recorded_step_ids):
+            raise AcceptanceEvidenceBlocked("duplicate_persisted_workflow_step")
+        if set(recorded_step_ids) - set(defined_by_id):
+            raise AcceptanceEvidenceBlocked("unrecognized_persisted_workflow_step")
+        steps_complete = (set(recorded_step_ids) == set(defined_by_id)
+                          and all(step.get("status") == "completed" for step in step_records))
+        all_steps_complete = all_steps_complete and steps_complete
+        if not steps_complete:
             all_verified = False
         verified_writes = []
         for step in step_records:
             if step.get("org_id") != org_id or str(step.get("run_id")) != run_id:
                 raise AcceptanceEvidenceBlocked("cross_tenant_step")
-            snapshot = step.get("output_snapshot")
-            if not isinstance(snapshot, dict) or snapshot.get("simulated") is True:
-                all_verified = False
-                continue
-            action = str(snapshot.get("invoke_action") or "")
             step_def = defined_by_id.get(str(step.get("step_id") or ""))
             if not isinstance(step_def, dict):
                 raise AcceptanceEvidenceBlocked("unrecognized_persisted_workflow_step")
             if step_def.get("type") != step.get("step_type"):
                 raise AcceptanceEvidenceBlocked("workflow_step_type_mismatch")
+            snapshot = step.get("output_snapshot")
+            if not isinstance(snapshot, dict) or snapshot.get("simulated") is True:
+                all_verified = False
+                continue
+            action = str(snapshot.get("invoke_action") or "")
             if step_def.get("type") == "invoke_tool":
                 config = step_def.get("config")
                 if not isinstance(config, dict) or str(config.get("action") or "") != action:
@@ -197,7 +236,7 @@ def inspect_opportunity_play_run(
         # be attributed to this execution, even if read steps completed.
         if not verified_writes:
             all_verified = False
-        completed = run.get("run_type") == "execute" and run.get("status") == "completed"
+        completed = run.get("run_type") == "execute" and run.get("status") == "completed" and steps_complete
         all_completed = all_completed and completed
 
         outcome_rows = (
@@ -236,7 +275,8 @@ def inspect_opportunity_play_run(
         runs.append({
             "runId": run_id, "status": run.get("status"), "approvalVerified": approved,
             "verifiedWrites": verified_writes, "observedOutcomes": observed_outcomes,
-            "sourceReadbacksVerified": bool(verified_writes), "outcomeMeasured": measured,
+            "sourceReadbacksVerified": bool(verified_writes) and steps_complete, "outcomeMeasured": measured,
+            "allDefinedStepsCompleted": steps_complete,
         })
     # A complete evidence report is NOT a promise of positive business lift.
     play_not_failed = play.get("status") not in {"failed", "cancelled", "partial_success"}
@@ -250,6 +290,8 @@ def inspect_opportunity_play_run(
         "orgId": org_id, "environment": environment_name,
         "workflowRuns": runs,
         "sourceEvidenceVerified": source_verified,
+        "agentLineageVerified": agent_lineage_verified if lineage_present else None,
+        "allDefinedStepsCompleted": all_steps_complete,
         "opportunityId": opportunity_id or None,
         "sourceRuns": source_ids if source_verified else None,
         "playNotFailed": play_not_failed,

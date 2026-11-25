@@ -2100,7 +2100,7 @@
       "dependencies": [],
       "regression_candidate": "backend/tests/master_qa/test_joined_agent_play_approval_step_pg.py",
       "regression_state": "EXISTS_NOT_MAPPED_TO_FULL_FINDING",
-      "implementation_state": "PARTIAL_ENGINEERING_TESTED_NOT_CLOSED",
+      "implementation_state": "BOUNDED_JOINED_ACCEPTANCE_HOSTED_VERIFIED_NOT_CLOSED",
       "implemented_commit": null,
       "synthetic_status": "NOT_CERTIFIED",
       "live_status": "NOT_RUN",
@@ -2198,6 +2198,34 @@
         "complete_hosted_ingress_cases_passed": 94,
         "postgres_cases_passed": 135,
         "full_backend_cases_passed": 17224
+      },
+      "joined_agent_play_hosted_evidence": {
+        "state": "BOUNDED_EXACT_HEAD_CI_PASSED_NOT_FULL_FINDING",
+        "executed_sha": "b32efc4dadb1cd61fdd6aa08bed73e579e687af7",
+        "qa12_job_url": "https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/45678015851/job/139430833423",
+        "core_job_url": "https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/45678015849/job/139430832023",
+        "hosted_workflows_passed": 10,
+        "named_joined_cases_passed": 14,
+        "named_joined_cases_failed": 0,
+        "named_joined_cases_errors": 0,
+        "named_joined_cases_skipped": 0,
+        "postgres_cohort_passed": 192,
+        "core_backend_passed": 17709,
+        "core_backend_skipped": 83,
+        "core_cognitive_regression_counts": [
+          2112,
+          835
+        ],
+        "targeted_agent_durable_cases_passed": 3,
+        "targeted_binding_cases_passed": 15,
+        "targeted_oauth_cases_passed": 94,
+        "scope": "Persisted assignment, worker claim/completion, advisory lineage, fresh workflow approval, canonical execution, independent synthetic receiver and durable consumer replay. Agent inference and provider transport synthetic.",
+        "finding_certified": false,
+        "remaining": [
+          "Independent acceptance reader lineage and step completeness verification",
+          "Live provider and actual model acceptance",
+          "Deployed rollback and owner approval"
+        ]
       }
     },
     {
@@ -2363,6 +2391,34 @@
         "complete_hosted_ingress_cases_passed": 94,
         "postgres_cases_passed": 135,
         "full_backend_cases_passed": 17224
+      },
+      "joined_agent_play_hosted_evidence": {
+        "state": "BOUNDED_EXACT_HEAD_CI_PASSED_NOT_FULL_FINDING",
+        "executed_sha": "b32efc4dadb1cd61fdd6aa08bed73e579e687af7",
+        "qa12_job_url": "https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/45678015851/job/139430833423",
+        "core_job_url": "https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/45678015849/job/139430832023",
+        "hosted_workflows_passed": 10,
+        "named_joined_cases_passed": 14,
+        "named_joined_cases_failed": 0,
+        "named_joined_cases_errors": 0,
+        "named_joined_cases_skipped": 0,
+        "postgres_cohort_passed": 192,
+        "core_backend_passed": 17709,
+        "core_backend_skipped": 83,
+        "core_cognitive_regression_counts": [
+          2112,
+          835
+        ],
+        "targeted_agent_durable_cases_passed": 3,
+        "targeted_binding_cases_passed": 15,
+        "targeted_oauth_cases_passed": 94,
+        "scope": "Persisted assignment, worker claim/completion, advisory lineage, fresh workflow approval, canonical execution, independent synthetic receiver and durable consumer replay. Agent inference and provider transport synthetic.",
+        "finding_certified": false,
+        "remaining": [
+          "Independent acceptance reader lineage and step completeness verification",
+          "Live provider and actual model acceptance",
+          "Deployed rollback and owner approval"
+        ]
       }
     },
     {
@@ -2482,6 +2538,34 @@
         "complete_hosted_ingress_cases_passed": 94,
         "postgres_cases_passed": 135,
         "full_backend_cases_passed": 17224
+      },
+      "joined_agent_play_hosted_evidence": {
+        "state": "BOUNDED_EXACT_HEAD_CI_PASSED_NOT_FULL_FINDING",
+        "executed_sha": "b32efc4dadb1cd61fdd6aa08bed73e579e687af7",
+        "qa12_job_url": "https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/45678015851/job/139430833423",
+        "core_job_url": "https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/45678015849/job/139430832023",
+        "hosted_workflows_passed": 10,
+        "named_joined_cases_passed": 14,
+        "named_joined_cases_failed": 0,
+        "named_joined_cases_errors": 0,
+        "named_joined_cases_skipped": 0,
+        "postgres_cohort_passed": 192,
+        "core_backend_passed": 17709,
+        "core_backend_skipped": 83,
+        "core_cognitive_regression_counts": [
+          2112,
+          835
+        ],
+        "targeted_agent_durable_cases_passed": 3,
+        "targeted_binding_cases_passed": 15,
+        "targeted_oauth_cases_passed": 94,
+        "scope": "Persisted assignment, worker claim/completion, advisory lineage, fresh workflow approval, canonical execution, independent synthetic receiver and durable consumer replay. Agent inference and provider transport synthetic.",
+        "finding_certified": false,
+        "remaining": [
+          "Independent acceptance reader lineage and step completeness verification",
+          "Live provider and actual model acceptance",
+          "Deployed rollback and owner approval"
+        ]
       }
     },
     {
@@ -2628,6 +2712,34 @@
         "complete_hosted_ingress_cases_passed": 94,
         "postgres_cases_passed": 135,
         "full_backend_cases_passed": 17224
+      },
+      "joined_agent_play_hosted_evidence": {
+        "state": "BOUNDED_EXACT_HEAD_CI_PASSED_NOT_FULL_FINDING",
+        "executed_sha": "b32efc4dadb1cd61fdd6aa08bed73e579e687af7",
+        "qa12_job_url": "https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/45678015851/job/139430833423",
+        "core_job_url": "https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/45678015849/job/139430832023",
+        "hosted_workflows_passed": 10,
+        "named_joined_cases_passed": 14,
+        "named_joined_cases_failed": 0,
+        "named_joined_cases_errors": 0,
+        "named_joined_cases_skipped": 0,
+        "postgres_cohort_passed": 192,
+        "core_backend_passed": 17709,
+        "core_backend_skipped": 83,
+        "core_cognitive_regression_counts": [
+          2112,
+          835
+        ],
+        "targeted_agent_durable_cases_passed": 3,
+        "targeted_binding_cases_passed": 15,
+        "targeted_oauth_cases_passed": 94,
+        "scope": "Persisted assignment, worker claim/completion, advisory lineage, fresh workflow approval, canonical execution, independent synthetic receiver and durable consumer replay. Agent inference and provider transport synthetic.",
+        "finding_certified": false,
+        "remaining": [
+          "Independent acceptance reader lineage and step completeness verification",
+          "Live provider and actual model acceptance",
+          "Deployed rollback and owner approval"
+        ]
       }
     },
     {
@@ -4140,7 +4252,7 @@
       "dependencies": [],
       "regression_candidate": "backend/tests/master_qa/test_actual_workflow_step_pg.py",
       "regression_state": "EXISTS_NOT_MAPPED_TO_FULL_FINDING",
-      "implementation_state": "PARTIAL_ENGINEERING_TESTED_NOT_CLOSED",
+      "implementation_state": "BOUNDED_JOINED_ACCEPTANCE_HOSTED_VERIFIED_NOT_CLOSED",
       "implemented_commit": null,
       "synthetic_status": "NOT_CERTIFIED",
       "live_status": "NOT_RUN",
@@ -4204,6 +4316,34 @@
         "finding_certified": false,
         "neighbor_validation": "Original ten-case DEC012/recipient gate passed with exact-ten zero-failure/error/skip JUnit assertions. Also 93 ReAct, preflight, approval-scope and text/voice recipient checks, 10 register guards, 17 compiler tests plus seven subtests, and compiler --check passed.",
         "hosted_gate": "Core runs the three durable cases verbosely with exact-three zero-failure/error/skip JUnit assertions, independently of the retained ten-case gate."
+      },
+      "joined_agent_play_hosted_evidence": {
+        "state": "BOUNDED_EXACT_HEAD_CI_PASSED_NOT_FULL_FINDING",
+        "executed_sha": "b32efc4dadb1cd61fdd6aa08bed73e579e687af7",
+        "qa12_job_url": "https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/45678015851/job/139430833423",
+        "core_job_url": "https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/45678015849/job/139430832023",
+        "hosted_workflows_passed": 10,
+        "named_joined_cases_passed": 14,
+        "named_joined_cases_failed": 0,
+        "named_joined_cases_errors": 0,
+        "named_joined_cases_skipped": 0,
+        "postgres_cohort_passed": 192,
+        "core_backend_passed": 17709,
+        "core_backend_skipped": 83,
+        "core_cognitive_regression_counts": [
+          2112,
+          835
+        ],
+        "targeted_agent_durable_cases_passed": 3,
+        "targeted_binding_cases_passed": 15,
+        "targeted_oauth_cases_passed": 94,
+        "scope": "Persisted assignment, worker claim/completion, advisory lineage, fresh workflow approval, canonical execution, independent synthetic receiver and durable consumer replay. Agent inference and provider transport synthetic.",
+        "finding_certified": false,
+        "remaining": [
+          "Independent acceptance reader lineage and step completeness verification",
+          "Live provider and actual model acceptance",
+          "Deployed rollback and owner approval"
+        ]
       }
     },
     {
