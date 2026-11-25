@@ -4,6 +4,8 @@ from __future__ import annotations
 from types import SimpleNamespace
 from typing import Any
 
+from fastapi import HTTPException
+
 from app.config import Settings, get_settings
 from app.core.logging import get_logger
 from app.services.company_intelligence_orchestrator import get_company_intelligence_orchestrator
@@ -60,6 +62,10 @@ class ContextAssembler:
             # A denied tenant/user/agent scope is not a retrieval outage.
             # Returning empty context would conceal the authorization failure
             # and let downstream reasoning continue as if access succeeded.
+            raise
+        except HTTPException as exc:
+            # Agent/department ownership checks deliberately use HTTP 403/404.
+            # Do not downgrade those (or other explicit HTTP failures) into context.
             raise
         except Exception as exc:  # noqa: BLE001
             logger.warning("context_assembler_retrieve_failed error_type=%s", type(exc).__name__)

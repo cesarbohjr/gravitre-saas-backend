@@ -198,9 +198,9 @@
       "root_cause": "UNVERIFIED",
       "remediation": "Own all ECO-001 ingress, canonical authority, approval/denial/cancellation/revocation/replay/durable outcome and independent provider-readback acceptance; additionally record router-stage p50/p95 and dependency DAG, and parallelize only independent stages after baseline and governance parity.",
       "dependencies": [],
-      "regression_candidate": null,
-      "regression_state": "NOT_YET_IMPLEMENTED",
-      "implementation_state": "EVIDENCE_OR_REPAIR_PENDING",
+      "regression_candidate": "backend/tests/master_qa/test_eco002_route_stage_metrics.py",
+      "regression_state": "EXPANDED_TARGETED_REGRESSIONS_HOSTED_PENDING",
+      "implementation_state": "PARTIAL_ENGINEERING_IMPLEMENTED_HOSTED_VERIFICATION_PENDING",
       "implemented_commit": null,
       "synthetic_status": "NOT_CERTIFIED",
       "live_status": "NOT_RUN",
@@ -590,6 +590,15 @@
           "Original independent live provider, deployed rollback and owner acceptance"
         ],
         "finding_certified": false
+      },
+      "performance_batch": {
+        "state": "SOURCE_REPAIR_AND_TARGETED_TESTS_PUBLISHED_PENDING_VERIFICATION",
+        "source_base_sha": "8f93f56416baade3c35a0d37e013ddb5beac87f4",
+        "evidence_document": "docs/delivery/eco-002-003-performance-batch.md",
+        "source_dependency_trace": true,
+        "live_p50_p95": null,
+        "production_speedup_claimed": false,
+        "finding_certified": false
       }
     },
     {
@@ -609,9 +618,9 @@
       "root_cause": "UNVERIFIED",
       "remediation": "Measure fetch latency and tenant scope; add bounded concurrent retrieval/caching and negative isolation tests",
       "dependencies": [],
-      "regression_candidate": null,
-      "regression_state": "NOT_YET_IMPLEMENTED",
-      "implementation_state": "EVIDENCE_OR_REPAIR_PENDING",
+      "regression_candidate": "backend/tests/master_qa/test_eco003_context_scope_parity.py",
+      "regression_state": "EXPANDED_TARGETED_REGRESSIONS_HOSTED_PENDING",
+      "implementation_state": "PARTIAL_ENGINEERING_IMPLEMENTED_HOSTED_VERIFICATION_PENDING",
       "implemented_commit": null,
       "synthetic_status": "NOT_CERTIFIED",
       "live_status": "NOT_RUN",
@@ -748,6 +757,15 @@
         "repair": "Lock cache access and generation checks; reject cache fills crossing an invalidation. Fetches remain outside the lock. Existing unrelated cached entries remain valid; unrelated in-flight loads may miss one fill.",
         "local_validation": "62 passed, zero skips across org context, memory source liveness and ECO003 scope parity tests",
         "remaining": "Hosted exact-SHA verification, deployed source-removal acceptance and original ECO003 runtime latency/tenant/rollback/owner criteria",
+        "finding_certified": false
+      },
+      "performance_batch": {
+        "state": "SOURCE_REPAIR_AND_TARGETED_TESTS_PUBLISHED_PENDING_VERIFICATION",
+        "source_base_sha": "8f93f56416baade3c35a0d37e013ddb5beac87f4",
+        "evidence_document": "docs/delivery/eco-002-003-performance-batch.md",
+        "source_dependency_trace": true,
+        "live_p50_p95": null,
+        "production_speedup_claimed": false,
         "finding_certified": false
       }
     },
@@ -3945,12 +3963,16 @@
         "skipped": 0
       },
       "customer_audit_pagination_batch": {
-        "state": "SOURCE_REPAIR_HOSTED_PENDING",
+        "state": "BOUNDED_EXACT_HEAD_QA12_PASSED_NOT_CLOSED",
         "source_base_sha": "b2e551527ab128e48008966c95892e0592e60ee1",
         "scope": "Stable timestamp/UUID seek pages, one-row sentinel, truthful truncation in list/summary/JSON and CSV headers, legacy timestamp fallback, tenant checks",
         "expected_gate_cases": 31,
         "new_cases": 6,
-        "finding_certified": false
+        "finding_certified": false,
+        "executed_sha": "8f93f56416baade3c35a0d37e013ddb5beac87f4",
+        "qa12_job_url": "https://github.com/cesarbohjr/gravitre-saas-backend/actions/runs/45709331651/job/139539499331",
+        "passed": 31,
+        "skipped": 0
       }
     },
     {

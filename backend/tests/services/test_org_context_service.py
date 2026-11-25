@@ -312,3 +312,26 @@ def test_eco003_parallel_org_source_permission_denial_is_not_cached(monkeypatch:
     with pytest.raises(PermissionError, match="user scope denied"):
         service.get_snapshot(_client_with_org(), "tenant-a", user_id="user-a")
     assert not service._cache
+
+
+@pytest.mark.parametrize("depth,expected", [("minimal", 2), ("standard", 6), ("full", 6)])
+def test_eco003_only_submits_enabled_snapshot_sources(monkeypatch, depth, expected):
+    _patch_connector_availability(monkeypatch)
+    submitted = []
+    workers = []
+    real_pool = ThreadPoolExecutor
+    class CountingPool(real_pool):
+        def __init__(self, *, max_workers):
+            workers.append(max_workers)
+            super().__init__(max_workers=max_workers)
+        def submit(self, fn, *args, **kwargs):
+            submitted.append(fn.__name__)
+            return super().submit(fn, *args, **kwargs)
+    monkeypatch.setattr(org_context_module, "ThreadPoolExecutor", CountingPool)
+    snapshot = OrgContextService().get_snapshot(_client_with_org(), "org-1", depth=depth)
+    assert len(submitted) == expected
+    assert workers == [min(5, expected)]
+    assert snapshot["orgId"] == "org-1" and snapshot["depth"] == depth
+    if depth == "minimal":
+        assert set(submitted) == {"load_org_name", "load_integrations"}
+        assert not snapshot["agents"] and not snapshot["workflows"] and not snapshot["recentRuns"]

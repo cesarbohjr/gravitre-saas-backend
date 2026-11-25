@@ -120,13 +120,9 @@ class IntelligenceRouter:
         conversation_history: list[dict] | None = None,
         conversation_id: str | None = None,
     ) -> dict[str, Any]:
-        from app.services.intelligence_overview_policy import load_overview_policy
-        from app.core.io_pool import run_io
-        # Independent tenant-scoped reads: overlap I/O without changing either fallback contract.
-        overview_policy, dialogue_settings = await asyncio.gather(
-            measure_route_stage("overview_policy", run_io(lambda: load_overview_policy(org_id, self.settings))),
-            measure_route_stage("dialogue_settings", load_chat_dialogue_settings(org_id, self.settings)),
-        )
+        # Dialogue settings drive the clarification gates; optional overview
+        # evidence does not. Do not load optional policy for a clarified turn.
+        dialogue_settings = await measure_route_stage("dialogue_settings", load_chat_dialogue_settings(org_id, self.settings))
         sentiment = (
             self._sentiment.analyze(request, conversation_history or [])
             if dialogue_settings.get("sentiment_detection_enabled", True)
@@ -237,7 +233,7 @@ class IntelligenceRouter:
                 wrapped["entities"] = understanding["entities"]
             return wrapped
 
-        model_selection = await measure_route_stage("model_selection", self._model_selector.select(org_id, classification))
+        model_selection, overview_policy = await self._select_model_and_overview(org_id, classification)
         enrichments = await measure_route_stage("enrichments", self._run_enrichments(org_id, request, classification, {**context, "overview_policy": overview_policy}))
         enrichments["policy_modes"] = overview_policy
         if (context.get("external_context") or {}).get("findings"):
@@ -348,6 +344,26 @@ class IntelligenceRouter:
                 decision_type=str(policy.get("mode") or "answer"),
             )
         return result
+
+    async def _select_model_and_overview(self, org_id: str, classification: dict[str, Any]):
+        """Two independent scoped reads; neither is execution authority."""
+        from app.services.intelligence_overview_policy import load_overview_policy
+        from app.core.io_pool import run_io
+
+        tasks = [
+            asyncio.create_task(measure_route_stage("model_selection", self._model_selector.select(org_id, classification))),
+            asyncio.create_task(measure_route_stage("overview_policy", run_io(load_overview_policy, org_id, self.settings))),
+        ]
+        try:
+            model, overview = await asyncio.gather(*tasks)
+            return model, overview
+        finally:
+            # Never let an orphaned optional async task continue into dispatch.
+            # Already-running blocking reads cannot be interrupted by asyncio.
+            for task in tasks:
+                if not task.done():
+                    task.cancel()
+            await asyncio.gather(*tasks, return_exceptions=True)
 
     async def _run_enrichments(
         self,

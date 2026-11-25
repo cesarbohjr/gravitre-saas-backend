@@ -220,3 +220,22 @@ async def test_company_snapshot_sync_db_read_does_not_block_event_loop(monkeypat
     db.table.assert_called_once_with("org_intelligence_snapshots")
     db.table.return_value.select.return_value.eq.assert_called_once_with("org_id", "tenant-A")
     db.table.return_value.select.return_value.eq.return_value.limit.assert_called_once_with(1)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("status", [401, 403, 404])
+async def test_http_scope_denial_stops_downstream_context(monkeypatch, status):
+    from fastapi import HTTPException
+    retrieval = SimpleNamespace(retrieve=AsyncMock(side_effect=HTTPException(status_code=status, detail="scope denied")))
+    company = SimpleNamespace(get_context_for_prompt=AsyncMock())
+    research = SimpleNamespace(research=AsyncMock())
+    monkeypatch.setattr(module, "get_unified_retrieval_service", lambda: retrieval)
+    monkeypatch.setattr(module, "get_company_intelligence_orchestrator", lambda: company)
+    monkeypatch.setattr(module, "get_research_service", lambda *_: research)
+    with pytest.raises(HTTPException) as exc:
+        await module.ContextAssembler(settings=SimpleNamespace()).assemble(
+            "tenant-A", "user-A", "request", {"requires_web_search": True},
+            client=object(), environment_name="isolated")
+    assert exc.value.status_code == status
+    company.get_context_for_prompt.assert_not_awaited()
+    research.research.assert_not_awaited()

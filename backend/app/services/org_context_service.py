@@ -314,15 +314,13 @@ class OrgContextService:
         recent_runs: list[dict[str, Any]] = []
         alerts: list[dict[str, Any]] = []
 
-        with ThreadPoolExecutor(max_workers=5) as pool:
-            futures = {
-                pool.submit(load_org_name): "org_name",
-                pool.submit(load_integrations): "integrations",
-                pool.submit(load_agents): "agents",
-                pool.submit(load_workflows): "workflows",
-                pool.submit(load_runs): "runs",
-                pool.submit(load_alerts): "alerts",
-            }
+        loaders = {"org_name": load_org_name, "integrations": load_integrations}
+        for key, loader in (("agents", load_agents), ("workflows", load_workflows),
+                            ("runs", load_runs), ("alerts", load_alerts)):
+            if limits[key]:
+                loaders[key] = loader
+        with ThreadPoolExecutor(max_workers=min(5, len(loaders))) as pool:
+            futures = {pool.submit(loader): key for key, loader in loaders.items()}
             for future in as_completed(futures):
                 key = futures[future]
                 try:
