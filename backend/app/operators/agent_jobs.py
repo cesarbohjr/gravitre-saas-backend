@@ -98,19 +98,16 @@ def create_job(
     if create_tracking_run:
         if trusted_run_id is not None or not created_by:
             raise ValueError("Tracking run requires an actor and no supplied run")
-        from uuid import uuid4
-        from app.workflows.repository import create_run
-        tracking = create_run(client, org_id=org_id, triggered_by=created_by,
-            definition_snapshot={"name": "Assignment", "steps": []},
-            parameters={"source": "assignment", "assignment_tracking_only": True},
-            run_hash=uuid4().hex, environment_name=environment,
-            trigger_type="api", run_type="execute")
-        trusted_run_id = str(tracking["id"])
-    if trusted_run_id is not None:
-        row["bound_run_id"] = trusted_run_id
-        resolve_bound_run(client, row)
-    resp = client.table("agent_jobs").insert(row).execute()
-    job = resp.data[0] if resp.data else row
+        receipt = client.rpc("create_assignment_tracking_job", {"p_job": row}).execute().data
+        if not isinstance(receipt, dict) or not receipt.get("id") or not receipt.get("bound_run_id"):
+            raise RuntimeError("Atomic tracking job creation returned no persisted identity")
+        job = receipt
+    else:
+        if trusted_run_id is not None:
+            row["bound_run_id"] = trusted_run_id
+            resolve_bound_run(client, row)
+        resp = client.table("agent_jobs").insert(row).execute()
+        job = resp.data[0] if resp.data else row
     # Lifecycle notify on queue (claim path skipped to avoid double spam).
     if created_by:
         try:
