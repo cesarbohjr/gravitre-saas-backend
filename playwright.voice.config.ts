@@ -59,6 +59,7 @@ export default defineConfig({
               ...e2eEnv,
               PORT: webPort,
               NEXT_PUBLIC_PLAYWRIGHT_E2E: "1",
+              NEXT_PUBLIC_VOICE_WS_BASE: pipecatHarnessURL,
               PLAYWRIGHT_E2E: "1",
             },
           },
