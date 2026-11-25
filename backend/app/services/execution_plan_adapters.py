@@ -186,6 +186,10 @@ def project_pending_task_from_plan(
         pending["status"] = terminal_projection[plan.terminal_status]
     elif plan.terminal_status == "waiting_for_approval":
         pending["status"] = "awaiting_confirm"
+    elif plan.terminal_status == "clarification_required":
+        # Canonical clarification outranks stale confirmation projections.
+        # A recipient still being resolved cannot be approved for dispatch.
+        pending["status"] = "awaiting_params"
     else:
         pending["status"] = pending.get("status") or "awaiting_confirm"
     if primary is not None:

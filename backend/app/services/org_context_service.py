@@ -5,6 +5,7 @@ import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
 from datetime import datetime, timezone
+from threading import Lock
 from typing import Any, Literal
 
 from app.connectors.repository import list_connectors
@@ -79,19 +80,25 @@ class OrgContextService:
     def __init__(self, *, cache_ttl_seconds: int = _CACHE_TTL_SECONDS) -> None:
         self._cache: dict[str, _CacheEntry] = {}
         self._cache_ttl_seconds = cache_ttl_seconds
+        self._cache_lock = Lock()
+        self._cache_generation = 0
 
     def invalidate(self, org_id: str, *, environment_name: str = "production") -> None:
         prefix = f"{org_id}:{environment_name}:"
-        for key in list(self._cache):
-            if key.startswith(prefix):
-                del self._cache[key]
+        with self._cache_lock:
+            self._cache_generation += 1
+            for key in list(self._cache):
+                if key.startswith(prefix):
+                    del self._cache[key]
 
     def invalidate_org(self, org_id: str) -> None:
         """Drop the org's cached snapshots in every environment."""
         prefix = f"{org_id}:"
-        for key in list(self._cache):
-            if key.startswith(prefix):
-                del self._cache[key]
+        with self._cache_lock:
+            self._cache_generation += 1
+            for key in list(self._cache):
+                if key.startswith(prefix):
+                    del self._cache[key]
 
     def get_snapshot(
         self,
@@ -148,9 +155,11 @@ class OrgContextService:
         normalized_depth = _normalize_depth(depth)
         cache_key = self._cache_key(org_id, environment_name, normalized_depth, user_id)
         now = time.monotonic()
-        cached = self._cache.get(cache_key)
-        if cached and cached.expires_at > now:
-            return cached.snapshot, cached.markdown
+        with self._cache_lock:
+            generation = self._cache_generation
+            cached = self._cache.get(cache_key)
+            if cached and cached.expires_at > now:
+                return cached.snapshot, cached.markdown
 
         snapshot = self._fetch_snapshot(
             client,
@@ -160,11 +169,16 @@ class OrgContextService:
             user_id=user_id,
         )
         markdown = self._format_markdown(snapshot, normalized_depth)
-        self._cache[cache_key] = _CacheEntry(
-            snapshot=snapshot,
-            markdown=markdown,
-            expires_at=now + self._cache_ttl_seconds,
-        )
+        with self._cache_lock:
+            # Never repopulate a cache cleared while database work was in flight.
+            # A global generation bounds bookkeeping. Unrelated cached entries
+            # stay valid; unrelated in-flight loads may simply miss one fill.
+            if generation == self._cache_generation:
+                self._cache[cache_key] = _CacheEntry(
+                    snapshot=snapshot,
+                    markdown=markdown,
+                    expires_at=now + self._cache_ttl_seconds,
+                )
         return snapshot, markdown
 
     def _fetch_snapshot(

@@ -4,11 +4,44 @@ import runpy
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
 import urllib.request
+import json
+import re
+import subprocess
 
 from PIL import Image
 import pytest
 
 benchmark = runpy.run_path(str(Path(__file__).resolve().parents[2] / 'native-workers/browser_adapter_benchmark.py'))
+
+
+def test_fixture_polling_mutates_dom_only_when_server_revision_changes():
+    # Execute the actual fixture script; repeated identical textContent writes
+    # replace DOM text nodes even when the rendered text stays the same.
+    script = re.search(r'<script>(.*?)</script>', benchmark['PAGE'].decode(), re.S).group(1)
+    program = r'''
+const vm = require('node:vm');
+let tick, mutated=false, text='Original', writes=0;
+const revision={get textContent(){return text},set textContent(v){writes++;text=v}};
+vm.runInNewContext(SCRIPT, {
+ document:{querySelector:s=>s==='#revision'?revision:{textContent:'Loading'}},
+ setTimeout:f=>f(),setInterval:f=>{tick=f},
+ fetch:async()=>({json:async()=>({mutated})})
+});
+(async()=>{
+ const poll=async()=>{tick();await new Promise(r=>setImmediate(r))};
+ for(let i=0;i<40;i++)await poll();
+ const initial=writes;
+ mutated=true;await poll();const changed={writes,text};
+ for(let i=0;i<40;i++)await poll();const stable=writes;
+ mutated=false;await poll();
+ console.log(JSON.stringify({initial,changed,stable,restored:{writes,text}}));
+})().catch(e=>{console.error(e);process.exit(1)});
+'''.replace('SCRIPT', json.dumps(script))
+    result = subprocess.run(['node', '-e', program], capture_output=True, text=True, timeout=10, check=True)
+    assert json.loads(result.stdout) == {
+        'initial': 0, 'changed': {'writes': 1, 'text': 'Changed'},
+        'stable': 1, 'restored': {'writes': 2, 'text': 'Original'},
+    }
 
 
 class Session:

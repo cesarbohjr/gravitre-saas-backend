@@ -237,7 +237,7 @@ def execution_plan_with_revised_args(
             continue
         meta = step.get("meta") if isinstance(step.get("meta"), dict) else {}
         action = str(step.get("action_key") or meta.get("invoke_action") or "")
-        if action == invoke_action and isinstance(meta.get("args"), dict) and meta.get("args"):
+        if action == invoke_action and step.get("kind") == "write":
             steps.append({**step, "meta": {**meta, "args": dict(args)}})
             changed = True
         else:
@@ -473,14 +473,26 @@ async def _change_recipient(
             ChatConnectorExecutionService.plan_from_dict(new_params)
         )
         if pending["status"] == "awaiting_params":
-            plan.terminal_status = "pending"
+            plan.terminal_status = "clarification_required"
         patch["execution_plan"] = plan.as_dict()
     else:
         plan_dict = execution_plan_with_revised_args(
             state, invoke_action=str(new_params.get("invoke_action") or ""), args=args
         )
         if plan_dict is not None:
+            # The canonical plan and the draft must advance together.
+            # In particular a previously staged approval is not actionable
+            # while the replacement recipient is still being collected.
+            plan_dict["terminal_status"] = (
+                "clarification_required"
+                if pending["status"] == "awaiting_params"
+                else "waiting_for_approval"
+            )
+            plan_dict["pending_action_id"] = None
             patch["execution_plan"] = plan_dict
+    # Invalidate the prior conversational approval identity on every recipient
+    # change. Only the newly bound draft can be approved after resolution.
+    patch["pending_action"] = None
     # Keep the ledger in step so a resumed draft does not bring the old
     # recipient back. Slots merge on save, so an old one is blanked, not dropped.
     ledger = get_ledger(state)

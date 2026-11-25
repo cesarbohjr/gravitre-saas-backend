@@ -39,7 +39,11 @@ PAGE = b'''<!doctype html><title>Adapter fixture</title>
 <button id="commit" onclick="fetch('/write',{method:'POST'}).then(()=>document.querySelector('#result').textContent='Written')">Commit synthetic change</button>
 <p id="result">No change</p><p id="revision">Original</p>
 <script>setTimeout(()=>document.querySelector('#ready').textContent='Ready',100);
-setInterval(()=>fetch('/state').then(r=>r.json()).then(s=>document.querySelector('#revision').textContent=s.mutated?'Changed':'Original'),50)</script>'''
+setInterval(()=>fetch('/state').then(r=>r.json()).then(s=>{
+const revision=document.querySelector('#revision');
+const text=s.mutated?'Changed':'Original';
+if(revision.textContent!==text) revision.textContent=text;
+}),50)</script>'''
 
 
 class Fixture:

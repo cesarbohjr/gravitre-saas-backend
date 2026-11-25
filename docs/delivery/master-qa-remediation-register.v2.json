@@ -574,6 +574,22 @@
         ],
         "decision": "DO NOT DECLARE CLOSED; DO NOT REPEAT BROAD TEST LOOP FOR EVERY DOCUMENTATION CHANGE",
         "finding_certified": false
+      },
+      "recovery_lease_expiry_batch_20261124": {
+        "engineering_state": "LOCAL_REGRESSIONS_PASSED_HOSTED_VERIFICATION_PENDING",
+        "master_plan_stage": "R4 interruption and tenant/privacy, following persisted R3 recovery ownership",
+        "source_base_sha": "403daac5a950b54a87d63642637ca110575e4b8d",
+        "source": "backend/app/services/write_recovery_service.py",
+        "test": "backend/tests/services/test_write_recovery_service.py",
+        "defect": "Matching lease token was accepted for provider readback after expiry. SQL already rejects expired settlement.",
+        "repair": "Reject expired or unverifiable persisted expiry before readback. SQL settlement remains authoritative against expiry or ownership changes during readback.",
+        "local_validation": "Four new negative cases failed before repair. Recovery service, recovery worker and connector reconciliation suites: 26 passed, zero skips.",
+        "remaining": [
+          "Hosted exact-SHA CI",
+          "Disposable PostgreSQL and process-level expiry/reassignment acceptance",
+          "Original independent live provider, deployed rollback and owner acceptance"
+        ],
+        "finding_certified": false
       }
     },
     {
@@ -722,6 +738,17 @@
           "Measured nonproduction p50/p95 and source-to-runtime trace",
           "Independent consumer observation, release/rollback, owner signoff"
         ]
+      },
+      "cache_invalidation_race_batch_20261124": {
+        "engineering_state": "LOCAL_REGRESSIONS_PASSED_HOSTED_VERIFICATION_PENDING",
+        "source_base_sha": "ff56f0f62662044a6293e40e6acb0f3b6608474b",
+        "source": "backend/app/services/org_context_service.py",
+        "test": "backend/tests/services/test_org_context_service.py",
+        "reproduction": "Both environment and whole-org invalidation race cases failed before repair: an in-flight fetch repopulated the cleared cache with the pre-removal snapshot.",
+        "repair": "Lock cache access and generation checks; reject cache fills crossing an invalidation. Fetches remain outside the lock. Existing unrelated cached entries remain valid; unrelated in-flight loads may miss one fill.",
+        "local_validation": "62 passed, zero skips across org context, memory source liveness and ECO003 scope parity tests",
+        "remaining": "Hosted exact-SHA verification, deployed source-removal acceptance and original ECO003 runtime latency/tenant/rollback/owner criteria",
+        "finding_certified": false
       }
     },
     {
@@ -4158,6 +4185,25 @@
         "collection": "New tests match the standard __tests__ glob. The older lib/voice-api-proxy.audit.test.ts is outside that default glob and is not counted as executed evidence here.",
         "remaining": "Deployed origin/environment readback, authenticated real-tenant acceptance, configured-host validation beyond existing resolver behavior, SSE/NDJSON/device parity, rollback and owner gates remain open. No runtime variables, DNS, deployment or provider data changed.",
         "release_certified": false
+      },
+      "agent_durable_outcome_batch": {
+        "state": "LOCAL_POSTGRES_PASS_HOSTED_VERIFICATION_PENDING",
+        "source_base_sha": "f300a19b430d42e40940bb52d746c4f9107373ca",
+        "source": "backend/app/operators/react_engine.py",
+        "test": "backend/tests/operators/test_agent_intelligence.py::test_dec012_agent_write_to_durable_outcome",
+        "reproduction": "Approved raw arguments passed the initial scope check, then generated task-prompt text was ingested as body/text during write compilation and the shared invoke scope check rejected the changed payload.",
+        "repair": "The run-approved ReAct branch compiles already scope-checked arguments with args_approved=True. Initial and shared-invoke approval scope checks remain enforced.",
+        "local_validation": "Three parameterized PostgreSQL cases passed with zero failures/errors/skips. Pending/revoked approval creates no ledger claim or receiver write. Approved execution verifies independent receiver readback, persists canonical completion/outbox, rejects changed recipient, and replays execution and outbox delivery with one provider write and one durable consumer effect.",
+        "validation_transport": "Local host prohibits AF_UNIX sockets. An external temporary runner used loopback TCP to the same disposable PostgreSQL harness. Repository harness unchanged.",
+        "scope": "AgentIntelligence.execute_task through actual ReAct/ToolRegistry/invoke_tool and SQL write claims, followed explicitly by the production agent-job completion hook. Advisory/model/connector metadata and external vendor transports are synthetic.",
+        "remaining": [
+          "Exact-head hosted CI using the standard harness",
+          "Actual job-queue and Play ingress",
+          "Full finding-specific deployed/provider/tenant/rollback/owner acceptance"
+        ],
+        "finding_certified": false,
+        "neighbor_validation": "Original ten-case DEC012/recipient gate passed with exact-ten zero-failure/error/skip JUnit assertions. Also 93 ReAct, preflight, approval-scope and text/voice recipient checks, 10 register guards, 17 compiler tests plus seven subtests, and compiler --check passed.",
+        "hosted_gate": "Core runs the three durable cases verbosely with exact-three zero-failure/error/skip JUnit assertions, independently of the retained ten-case gate."
       }
     },
     {

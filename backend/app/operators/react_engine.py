@@ -1221,6 +1221,10 @@ class ReActEngine:
                             args=args,
                             user_message=user_message,
                             connected_integrations=connected,
+                            # The sealed run scope above already checked these
+                            # arguments. Do not reinterpret the generated task
+                            # prompt as new user input after approval.
+                            args_approved=True,
                         )
                         if not proof.ok:
                             return {

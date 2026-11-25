@@ -1,6 +1,9 @@
 """Recovery never resends writes and only settles uncertain tenant-owned claims."""
 from types import SimpleNamespace
+from datetime import datetime, timedelta, timezone
 from unittest.mock import MagicMock, patch
+
+import pytest
 
 from app.services.outcome_reconciliation import ReconciliationResult
 from app.services.write_recovery_service import recover_uncertain_write
@@ -12,6 +15,7 @@ def _ctx(status="uncertain", action="hubspot.contacts.create"):
         {"status": status, "invoke_action": action, "original_args": {"email": "a@example.test"}, "connector_id": "connector-1", "recovery_lease_token": "lease-1"}
     ]
     client.rpc.return_value.execute.return_value.data = {"outcome": "reconciled"}
+    client.table.return_value.select.return_value.eq.return_value.eq.return_value.limit.return_value.execute.return_value.data[0]["recovery_lease_expires_at"] = (datetime.now(timezone.utc) + timedelta(minutes=5)).isoformat()
     return SimpleNamespace(client=client, org_id="org-1", connector_id="connector-1")
 
 
@@ -21,6 +25,19 @@ def _recover(ctx):
         invoke_action="hubspot.contacts.create", original_args={"email": "a@example.test"},
         recovery_lease_token="lease-1",
     )
+
+
+@pytest.mark.parametrize("expiry", [None, "invalid", "2026-01-01T00:00:00", "2000-01-01T00:00:00Z"])
+def test_expired_or_unverifiable_lease_never_reads_provider(expiry):
+    ctx = _ctx()
+    row = ctx.client.table.return_value.select.return_value.eq.return_value.eq.return_value.limit.return_value.execute.return_value.data[0]
+    row["recovery_lease_expires_at"] = expiry
+    with patch("app.services.write_recovery_service.reconcile_uncertain_write") as readback:
+        outcome = _recover(ctx)
+    assert outcome.state == "rejected"
+    assert outcome.detail == "recovery_lease_expired_or_invalid"
+    readback.assert_not_called()
+    ctx.client.rpc.assert_not_called()
 
 
 def test_applied_provider_effect_is_persisted_without_write_dispatch():
