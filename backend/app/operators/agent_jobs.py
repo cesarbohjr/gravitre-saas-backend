@@ -27,6 +27,7 @@ from app.billing.service import (
 from app.config import Settings, get_settings
 from app.core.logging import get_logger
 from app.core.safe_dict import safe_normalize_stored_dict
+from app.operators.agent_run_binding import resolve_bound_run
 from app.workflows.repository import get_supabase_client
 
 logger = get_logger(__name__)
@@ -793,6 +794,7 @@ async def run_operator_job(settings: Settings, job: dict[str, Any]) -> dict[str,
             parameters=parameters,
             actor_id=str(job.get("created_by") or agent.get("id") or "system"),
             task_id=str(job["id"]),
+            run_id=resolve_bound_run(client, job),
             environment_name=environment,
             client=client,
         )
@@ -963,6 +965,7 @@ async def run_agent_task_job(settings: Settings, job: dict[str, Any]) -> dict[st
         parameters=parameters,
         actor_id=str(job.get("created_by") or agent_id),
         task_id=str(job["id"]),
+        run_id=resolve_bound_run(client, job),
         environment_name=environment,
         client=client,
     )
@@ -995,12 +998,8 @@ async def _notify_operator_job_finished(
     org_id = str(job.get("org_id") or "").strip()
     if not user_id or not org_id:
         return
-    import hashlib
-    from uuid import uuid4
-
     from app.services.entity_link_service import build_entity_url
     from app.services.execution_outcome import VerifiedOutputRef, finalize_execution_outcome
-    from app.workflows.repository import create_run
 
     payload = job.get("payload") if isinstance(job.get("payload"), dict) else {}
     session_id = str(payload.get("session_id") or payload.get("sessionId") or "").strip()
@@ -1021,49 +1020,9 @@ async def _notify_operator_job_finished(
         "failed",
     }:
         terminal_status = str(outcome["status"])
-    run_id = str(
-        payload.get("workflow_run_id")
-        or payload.get("run_id")
-        or result.get("workflow_run_id")
-        or result.get("run_id")
-        or ""
-    ).strip() or None
-    if not run_id:
-        job_id = str(job.get("id") or "")
-        label = (task or "Operator assignment")[:120]
-        try:
-            created = create_run(
-                client,
-                org_id=org_id,
-                triggered_by=user_id,
-                definition_snapshot={
-                    "name": label,
-                    "source": "assignment",
-                    "job_id": job_id,
-                    "steps": [],
-                },
-                parameters={
-                    "source": "assignment",
-                    "job_id": job_id,
-                    "task": task,
-                    "session_id": session_id or None,
-                },
-                run_hash=hashlib.sha256(
-                    f"assignment|{job_id}|{uuid4()}".encode("utf-8")
-                ).hexdigest()[:48],
-                workflow_id=None,
-                environment_name="production",
-                trigger_type="api",
-                run_type="execute",
-            )
-            run_id = str(created.get("id") or "") or None
-        except Exception as exc:  # noqa: BLE001
-            logger.warning(
-                "operator_job_run_create_failed job_id=%s error=%s",
-                job.get("id"),
-                exc,
-            )
-            run_id = None
+    # Completion must never take its authority from a task payload or model result.
+    from app.operators.agent_run_binding import resolve_bound_run
+    run_id = resolve_bound_run(client, job)
 
     finalize_execution_outcome(
         client,
