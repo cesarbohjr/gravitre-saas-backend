@@ -540,6 +540,48 @@ jobs:
 
         python -c "import xml.etree.ElementTree as E; r=E.parse(''dec012-durable.xml'').getroot(); s=list(r.iter(''testsuite''));
         assert sum(int(x.get(''tests'',0)) for x in s)==3; assert all(int(x.get(k,0))==0 for x in s for k in (''failures'',''errors'',''skipped''))"'
+    - name: Consolidated PostgreSQL run binding and OAuth backend regressions (zero skips)
+      run: |-
+        set -euo pipefail
+        python -m pytest -vv -rs tests/operators/test_agent_run_binding.py --junitxml=consolidation-postgres.xml
+        python -m pytest -vv -rs tests/connectors/test_catalog_oauth_coverage.py tests/connectors/test_managed_oauth_inputs.py tests/connectors/test_managed_setup.py tests/connectors/test_nango_client.py tests/routers/test_managed_connector_flow.py --junitxml=consolidation-oauth.xml
+        python - <<'PY'
+        import xml.etree.ElementTree as ET
+
+        for path, minimum in (("consolidation-postgres.xml", 15), ("consolidation-oauth.xml", 44)):
+            root = ET.parse(path).getroot()
+            suites = list(root.iter("testsuite"))
+            cases = list(root.iter("testcase"))
+            if not suites or len(cases) < minimum:
+                raise SystemExit(f"{path}: missing targeted test evidence")
+            if sum(int(s.get("tests", 0)) for s in suites) != len(cases):
+                raise SystemExit(f"{path}: inconsistent test counts")
+            if any(int(s.get(k, 0)) for s in suites for k in ("failures", "errors", "skipped")):
+                raise SystemExit(f"{path}: failures, errors or skips are forbidden")
+            if any(c.find(k) is not None for c in cases for k in ("failure", "error", "skipped")):
+                raise SystemExit(f"{path}: non-passing test case")
+            if path == "consolidation-postgres.xml":
+                required = {"test_atomic_tracking_job_rolls_back_and_preserves_no_write_authority", "test_concurrent_conflict_ignore_preserves_terminal_state", "test_pg_conflict_ignore_preserves_terminal_outcome"}
+                if not required <= {c.get("name") for c in cases}:
+                    raise SystemExit(f"{path}: mandatory PostgreSQL regressions missing")
+            else:
+                required = {"test_catalog_oauth_coverage", "test_managed_oauth_inputs", "test_managed_setup", "test_nango_client", "test_managed_connector_flow"}
+                observed = {c.get("classname", "").split(".")[-1] for c in cases}
+                if not required <= observed:
+                    raise SystemExit(f"{path}: mandatory OAuth modules missing")
+            print(f"{path}: {len(cases)} passed; zero failures, errors or skips")
+        PY
+      env:
+        APP_ENV: dev
+        SUPABASE_URL: https://test.supabase.co
+        SUPABASE_ANON_KEY: anon-test
+        SUPABASE_SERVICE_ROLE_KEY: service-role-test
+        SUPABASE_JWT_SECRET: jwt-secret-test
+        OPENAI_API_KEY: sk-test-openai
+        GRAVITRE_SMOKE_RUN: ''
+        GRAVITREE_SMOKE_RUN: ''
+        GRAVITRE_CONVERSATION_SMOKE: ''
+        GRAVITREE_CONVERSATION_SMOKE: ''
     - name: Run tests
       run: python -m pytest -q
       env:
