@@ -1,9 +1,12 @@
 "use client"
 
+import { createContext, useContext } from "react"
 import type { Session, User } from "@supabase/supabase-js"
 
 import { AuthContext } from "@/lib/auth-context"
 import { SHOT_FIXTURES } from "@/lib/e2e-shot-fixtures"
+
+export const ShotRootAuthReadyContext = createContext(false)
 
 /**
  * Supplies a fixed signed-in user to the surface being captured.
@@ -16,6 +19,8 @@ import { SHOT_FIXTURES } from "@/lib/e2e-shot-fixtures"
  * can never silently screenshot the login page.
  */
 export function ShotAuthProvider({ children }: { children: React.ReactNode }) {
+  const rootAuth = useContext(AuthContext)
+  const rootReady = Boolean(rootAuth?.user?.id) && !rootAuth?.loading
   const user = SHOT_FIXTURES.__supabaseUser as unknown as User
 
   const session = {
@@ -37,7 +42,9 @@ export function ShotAuthProvider({ children }: { children: React.ReactNode }) {
         refreshSession: async () => {},
       }}
     >
-      {children}
+      <ShotRootAuthReadyContext.Provider value={rootReady}>
+        {children}
+      </ShotRootAuthReadyContext.Provider>
     </AuthContext.Provider>
   )
 }

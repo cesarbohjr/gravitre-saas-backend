@@ -2,7 +2,7 @@
 import React, { act, useContext } from "react"
 import { createRoot, type Root } from "react-dom/client"
 import { afterEach, beforeEach, expect, it, vi } from "vitest"
-import { AuthContext } from "@/lib/auth-context"
+import { AuthContext, type AuthContextType } from "@/lib/auth-context"
 import { ShotAuthProvider } from "@/app/e2e/shots/shot-auth"
 import AiWorkspaceCapturePage from "@/app/e2e/shots/_components/ai-workspace-capture-page"
 import { GravitreAIWorkspaceHost } from "@/components/gravitre/ai-workspace-host"
@@ -20,6 +20,7 @@ vi.mock("framer-motion", () => ({ LayoutGroup: ({ children }: { children: React.
 let host: HTMLDivElement, root: Root
 beforeEach(() => {
   vi.stubEnv("NEXT_PUBLIC_PLAYWRIGHT_E2E", "1")
+  state.summon.mockClear()
   state.pathname = "/e2e/shots/ai"
   host = document.createElement("div"); document.body.append(host); root = createRoot(host)
 })
@@ -37,7 +38,18 @@ it("preserves root-host mounting on ordinary product routes", async () => {
 })
 
 it("places the captured canonical runtime inside the AppShell work canvas instead of after a full-height page", async () => {
-  await act(async () => root.render(<ShotAuthProvider><AiWorkspaceCapturePage /></ShotAuthProvider>))
+  const auth: AuthContextType = {
+    user: { id: "fixture-root-user" } as NonNullable<AuthContextType["user"]>,
+    session: null, loading: true, signOut: async () => {}, refreshSession: async () => {},
+  }
+  const renderCapture = (loading: boolean) => root.render(
+    <AuthContext.Provider value={{ ...auth, loading }}>
+      <ShotAuthProvider><AiWorkspaceCapturePage /></ShotAuthProvider>
+    </AuthContext.Provider>,
+  )
+  await act(async () => renderCapture(true))
+  expect(state.summon).not.toHaveBeenCalled()
+  await act(async () => renderCapture(false))
   expect(host.querySelector('[data-app-shell] [data-ai-workspace-capture] [data-runtime]')).not.toBeNull()
   expect(host.querySelectorAll('[data-runtime]')).toHaveLength(1)
   expect(state.summon).toHaveBeenCalledWith({ presentation: "fullscreen" })

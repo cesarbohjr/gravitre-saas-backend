@@ -337,7 +337,17 @@ test.describe("UX Reset 1.0 Phase 1B — canonical AI workspace", () => {
     await expect(page.getByRole("navigation", { name: "Agents hub" }).getByRole("link", { name: "Roster" })).toBeVisible()
 
     await page.goto("/e2e/shots/connectors")
-    await expect(page.locator("[data-gravitre-connector-row]").first()).toBeVisible({ timeout: 60_000 })
+    const list = page.getByTestId("connectors-list-view")
+    await expect(list).toBeVisible({ timeout: 60_000 })
+    const systems = list.getByRole("table", { name: "Connected systems", exact: true })
+    await expect(systems).toBeVisible()
+    for (const vendor of ["HubSpot", "Salesforce", "Slack"]) {
+      const row = systems.getByRole("row").filter({
+        has: page.getByRole("cell").filter({ has: page.getByText(vendor, { exact: true }) }),
+      })
+      await expect(row).toHaveCount(1)
+      await expect(row).toBeVisible()
+    }
   })
 
   test("marketing home does not mount the authenticated canonical runtime", async ({ page }) => {
