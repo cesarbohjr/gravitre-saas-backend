@@ -6,6 +6,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 const mocks = vi.hoisted(() => ({
   swr: {} as Record<string, { data?: unknown; error?: Error }>,
   admin: { isAdmin: true },
+  entitlements: { loading: false, allowed: true },
+  swrKeys: [] as Array<string | readonly unknown[] | null>,
   mutate: vi.fn(),
   updateSecurity: vi.fn(),
   enableSso: vi.fn(),
@@ -20,7 +22,7 @@ const mocks = vi.hoisted(() => ({
 }))
 
 vi.mock("swr", () => ({
-  default: (key: string | readonly unknown[] | null) => ({
+  default: (key: string | readonly unknown[] | null) => (mocks.swrKeys.push(key), {
     ...(typeof key === "string" ? mocks.swr[key] ?? {} : {}),
     mutate: mocks.mutate,
   }),
@@ -29,6 +31,7 @@ vi.mock("sonner", () => ({ toast: { success: mocks.toastSuccess, error: mocks.to
 vi.mock("@/lib/fetcher", () => ({ apiFetch: vi.fn(), fetcher: vi.fn() }))
 vi.mock("@/lib/auth-context", () => ({ useAuth: () => ({ user: null }) }))
 vi.mock("@/lib/use-org-admin", () => ({ useOrgAdmin: () => mocks.admin }))
+vi.mock("@/lib/entitlements-context", () => ({ useEntitlements: () => ({ loading: mocks.entitlements.loading, canAccess: (feature: string) => feature === "sso_saml" && mocks.entitlements.allowed }) }))
 vi.mock("@/lib/api", () => ({
   ssoApi: { getConfig: vi.fn(), saveConfig: vi.fn(), enable: mocks.enableSso, disable: vi.fn(), deleteConfig: vi.fn(), initLogin: vi.fn() },
   enterpriseApi: { getSiem: vi.fn(), updateSiem: mocks.updateSiem, testSiem: mocks.testSiem, updateDataRegion: vi.fn() },
@@ -100,6 +103,8 @@ beforeEach(() => {
   vi.clearAllMocks()
   mocks.mutate.mockResolvedValue(undefined)
   mocks.admin = { isAdmin: true }
+  mocks.entitlements = { loading: false, allowed: true }
+  mocks.swrKeys = []
   mocks.swr = {}
   container = document.createElement("div")
   document.body.append(container)
@@ -198,6 +203,25 @@ describe("Trust & Safety security tab", () => {
     expect(button("Configure")).toBeUndefined()
     expect(container.textContent).not.toContain("Where your data lives")
     expect(container.textContent).not.toContain("Forward events")
+  })
+
+  it("does not dispatch SSO config while entitlements load or deny the feature", () => {
+    mocks.entitlements = { loading: true, allowed: true }
+    render(<SecurityTab />)
+    expect(mocks.swrKeys).not.toContain("/api/auth/sso/config")
+    expect(button("Configure")).toBeUndefined()
+    expect(container.textContent).toContain("Checking availability")
+    mocks.entitlements = { loading: false, allowed: false }
+    mocks.swrKeys = []
+    render(<SecurityTab />)
+    expect(mocks.swrKeys).not.toContain("/api/auth/sso/config")
+    expect(container.textContent).toContain("Not on this plan")
+    expect(container.querySelector('a[href="/settings/billing"]')).not.toBeNull()
+    mocks.entitlements = { loading: false, allowed: true }
+    mocks.swrKeys = []
+    render(<SecurityTab />)
+    expect(mocks.swrKeys).toContain("/api/auth/sso/config")
+    expect(button("Configure")).toBeTruthy()
   })
 
   it("links to plans when single sign on is not on the plan", () => {

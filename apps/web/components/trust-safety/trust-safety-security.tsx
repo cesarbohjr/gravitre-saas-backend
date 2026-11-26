@@ -6,6 +6,7 @@ import useSWR from "swr"
 import { toast } from "./overlays/toast"
 import { ssoApi } from "@/lib/api"
 import { useOrgAdmin } from "@/lib/use-org-admin"
+import { useEntitlements } from "@/lib/entitlements-context"
 import {
   SECURITY_KEY,
   SESSION_TIMEOUT_OPTIONS,
@@ -37,23 +38,25 @@ const SSO_STEPS = ["Add Gravitre to your IdP", "Paste your IdP metadata", "Test 
  */
 export function useSecurityState() {
   const { isAdmin } = useOrgAdmin()
+  const { loading: entitlementsLoading, canAccess } = useEntitlements()
+  const ssoAllowed = !entitlementsLoading && canAccess("sso_saml")
   // Residency and SIEM are admin-only endpoints.
   const residency = useSWR<ResidencyOverview>(isAdmin ? RESIDENCY_KEY : null, fetcher, { revalidateOnFocus: false })
   const siem = useSWR<EnterpriseSiemConfig>(isAdmin ? "enterprise-siem" : null, () => enterpriseApi.getSiem(), { revalidateOnFocus: false })
-  const sso = useSWR<SSOConfiguration | null>(SSO_CONFIG_KEY, () => ssoApi.getConfig(), { revalidateOnFocus: false })
+  const sso = useSWR<SSOConfiguration | null>(ssoAllowed ? SSO_CONFIG_KEY : null, () => ssoApi.getConfig(), { revalidateOnFocus: false })
   const sec = useSWR(SECURITY_KEY, () => securityApi.get(), { revalidateOnFocus: false })
   const sp = useSWR(SSO_SP_KEY, () => securityApi.serviceProvider(), { revalidateOnFocus: false })
-  const stage = ssoStage(sso.data, sso.error)
+  const stage = entitlementsLoading ? "none" : !ssoAllowed ? "unavailable" : ssoStage(sso.data, sso.error)
   const controls = sec.data?.security ?? null
   const posture = securityPosture({ ssoEnabled: stage === "enabled", controls })
-  return { sso, sec, sp, residency, siem, stage, controls, score: posture.score, advice: posture.advice }
+  return { sso, sec, sp, residency, siem, stage, ssoAllowed, entitlementsLoading, controls, score: posture.score, advice: posture.advice }
 }
 
 export type SecurityState = ReturnType<typeof useSecurityState>
 
 export function TrustSafetySecurity({ state }: { state: SecurityState }) {
   const { isAdmin, loading: adminLoading } = useOrgAdmin()
-  const { sso, sec, sp, residency, siem, stage, controls, score, advice } = state
+  const { sso, sec, sp, residency, siem, stage, ssoAllowed, entitlementsLoading, controls, score, advice } = state
   const [busy, setBusy] = useState<string | null>(null)
   const [dialogOpen, setDialogOpen] = useState(false)
   const [ipDraft, setIpDraft] = useState("")
@@ -106,7 +109,7 @@ export function TrustSafetySecurity({ state }: { state: SecurityState }) {
   }
 
   const ssoPill =
-    stage === "enabled"
+    entitlementsLoading ? { ...TONE.mute, label: "Checking availability" } : stage === "enabled"
       ? { ...TONE.ok, label: "Enabled" }
       : stage === "setup"
         ? { ...TONE.warn, label: "Setting up" }
@@ -117,6 +120,7 @@ export function TrustSafetySecurity({ state }: { state: SecurityState }) {
   const metadataUrl = sp.data?.metadata_url ?? null
 
   const testSso = async () => {
+    if (!isAdmin || !ssoAllowed) return
     setBusy("sso-test")
     try {
       const result = await ssoApi.initLogin()
@@ -129,6 +133,7 @@ export function TrustSafetySecurity({ state }: { state: SecurityState }) {
   }
 
   const enableSso = async () => {
+    if (!isAdmin || !ssoAllowed) return
     setBusy("sso-enable")
     try {
       await ssoApi.enable()
@@ -145,7 +150,7 @@ export function TrustSafetySecurity({ state }: { state: SecurityState }) {
   }
 
   const ssoAction = (cls: string) =>
-    stage === "unavailable" ? (
+    entitlementsLoading ? null : stage === "unavailable" ? (
       <Link href="/settings/billing" className={cls}>See plans</Link>
     ) : !isAdmin || sso.error ? null : stage === "setup" ? (
       <button type="button" className={cls} disabled={busy != null} onClick={() => void enableSso()}>Test and enable</button>
@@ -300,7 +305,7 @@ export function TrustSafetySecurity({ state }: { state: SecurityState }) {
         </>
       ) : null}
       <SsoDialog
-        open={dialogOpen}
+        open={dialogOpen && isAdmin && ssoAllowed && !sso.error}
         onOpenChange={setDialogOpen}
         config={sso.data ?? null}
         serviceProvider={sp.data ?? null}
