@@ -112,3 +112,32 @@ The owner of each failing invariant must publish root cause with direct traces, 
 - ElevenLabs: https://elevenlabs.io/docs/eleven-api/guides/how-to/websockets/realtime-tts ; https://elevenlabs.io/docs/eleven-api/concepts/latency-methodology ; https://elevenlabs.io/docs/eleven-api/guides/how-to/best-practices/latency-optimization
 
 **This document is a proposed executable engineering and QA specification, not a code fix, measured baseline, successful CI run, deployment or final acceptance.**
+
+
+## Voice 3.0 extension — expressive intelligence, continuity and platform-wide parity (2026-11-26)
+
+**Ownership:** PR #610 owns voice engineering; PR #611 imports exact-SHA evidence for master integration. These are three additive Voice 3.0 workstreams, **not** amendments to the original 43 ECO/DEC/P27 findings. This section defines engineering acceptance; it does not certify implementation, production audio, or user acceptance.
+
+### VE-01 — expressive conversational parity
+- Inventory all voice-producing routes and the shared canonical intelligence, voice-profile, TTS model, and renderer ownership. Verify that the selected live model is actually used; `tts_factory.py` supports Eleven v3 Dialogue but `pipeline.py::resolve_voice_and_tts_model` currently guards live sessions back to Flash v2.5. Do **not** remove the guard without provider-protocol, latency, quality, cancellation and rollback evidence.
+- Add paired synthetic conversations spanning expert/business, casual, social, empathy, complex reasoning, follow-up context, and genuine tool execution. Measure semantic correctness, relevance, turn consistency, prosody and naturalness independently. Avoid claims of ChatGPT/Claude/Grok equivalence without blind human assessment.
+- Tune existing TTS/voice profiles before adding a model or vendor. Compare expressiveness against first-audio latency, p50/p95 and cost.
+
+### VE-02 — continuous and interruptible audio
+- Reproduce reported stuttering/repeated syllables on mobile Safari and desktop using consent-controlled or synthetic fixtures. Correlate STT finality, TTS first-byte/chunk cadence, WS frames, PCM sample rates, browser queue depth, underruns, duplicate/replayed epochs, ducking and cancellation.
+- Require deterministic starvation/jitter/reconnect/barge-in fixtures plus real-device listening. No clipped/repeated syllables, stale-turn playback, unauthorized speculative speech or cross-turn bleed in controlled fixtures. Establish numeric budgets from a measured baseline rather than inventing thresholds.
+- Repair the **confirmed** producer, transport or browser playback cause only; no blind global buffer increase or redundant speech controller.
+
+### VE-03 — unified conversational intelligence and phrasing
+- Audit Chat, Agents, Plays, Canvas, dashboards, notifications and other supported voice-output surfaces. Route them through the existing canonical context, governance and expressive voice policy where technically applicable; preserve surface-specific accessibility and silent-mode behavior.
+- Replace brittle canned filler with context-aware response patterns and style controls (professional, casual, social, expressive). Enforce a truthful spoken-outcome contract: no invented checks, tool results or action completion; no provider writes before approval.
+- Pipecat remains the real-time orchestration baseline. Evaluate DSPy as an **offline** prompt/dialogue optimization candidate, Rasa dialogue-state **patterns** before adopting any runtime, and DeepEval in isolated evaluation jobs (the existing pinned benchmark lock is not evidence of live integration). Admit an add-on only after measured benefit, compatibility/security/privacy review, latency/cost budget and rollback plan.
+
+### Mandatory acceptance and evidence
+1. Baseline current exact head, active routes/configuration and platform-wide voice inventory; mark untested surfaces UNKNOWN.
+2. Add failing regression fixtures first for each confirmed gap. Collect structured, tenant-safe trace evidence and exact commit SHA.
+3. Run unit, integration, browser/device and cross-surface tests, with explicit pass/fail/skipped counts; skips are not passes.
+4. Compare baseline vs optimized candidate on identical prompts, devices and network conditions; record first-audio p50/p95, underruns, replay, interruption, response quality, subjective prosody, and cost.
+5. Import signed/traceable results into PR #611's master gate only after PR #610's exact-head CI. Keep controlled integration, merge and production deployment pending until all established safeguards and user acoustic acceptance pass.
+
+**Initial code-audit finding (source, not reproduced failure):** `tts_factory.py` supports a separate v3 Dialogue adapter, while the main live pipeline explicitly prevents selecting v3 and defaults to Flash v2.5. This is an intentional guard, not proof of a defect. Evaluate it as a bounded, isolated A/B candidate; do not silently flip production.
