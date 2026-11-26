@@ -27,6 +27,33 @@ test.describe("Web app sidebar navigation — click-through crawl", () => {
     await prepareAdminAppSession(page, user, "/home")
   })
 
+  test("Agents to Assignments survives delayed roster preference hydration", async ({ page }) => {
+    let release!: () => void
+    const pending = new Promise<void>((resolve) => { release = resolve })
+    let requested!: () => void
+    const requestSeen = new Promise<void>((resolve) => { requested = resolve })
+    await page.route("**/api/settings/agents-fleet*", async (route) => {
+      if (route.request().method() !== "GET") return route.continue()
+      requested()
+      await pending
+      await route.continue().catch(() => undefined)
+    })
+    try {
+      await page.goto("/agents", { waitUntil: "domcontentloaded" })
+      await requestSeen
+      const link = page.locator('aside nav[aria-label="Primary"] a[href="/assignments"]')
+      await expect(link).toBeVisible()
+      await link.click()
+      release()
+      await expect(page).toHaveURL(/\/assignments(?:[?#].*)?$/)
+      await expect(page.getByRole("heading", { name: "Assignments", exact: true })).toBeVisible()
+      await expect(page).toHaveURL(/\/assignments(?:[?#].*)?$/)
+    } finally {
+      release()
+      await page.unroute("**/api/settings/agents-fleet*")
+    }
+  })
+
   test("every admin sidebar item navigates via real click", async ({ page }) => {
     test.setTimeout(1_800_000)
 

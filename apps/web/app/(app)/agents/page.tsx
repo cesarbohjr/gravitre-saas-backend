@@ -101,10 +101,13 @@ function AgentsRoster() {
 
   // Keep ?view= in the URL so every roster view is shareable.
   useEffect(() => {
-    if (!hydrated || isRosterView(param)) return
-    const next = new URLSearchParams(searchParams.toString())
-    next.set("view", prefs.view)
-    router.replace(`${pathname || "/agents"}?${next.toString()}`, { scroll: false })
+    // Canonicalize a query parameter without starting an App Router transition.
+    // A delayed preference response must not compete with a sidebar navigation.
+    if (!hydrated || pathname !== "/agents" || isRosterView(param)) return
+    const url = new URL(window.location.href)
+    if (url.pathname !== "/agents" || isRosterView(url.searchParams.get("view"))) return
+    url.searchParams.set("view", prefs.view)
+    window.history.replaceState(null, "", url)
   }, [hydrated, param, pathname, prefs.view, router, searchParams])
 
   useEffect(() => {
