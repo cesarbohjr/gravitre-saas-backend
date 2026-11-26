@@ -1805,7 +1805,7 @@ export function AiWorkspace({
   useEffect(() => {
     if (!composerIntent) return
     const intent = composerIntent
-    consumeComposerIntent()
+    if (!consumeComposerIntent(intent.nonce)) return
     if (intent.submit && intent.text.trim()) {
       void submitPrompt(intent.text)
       return

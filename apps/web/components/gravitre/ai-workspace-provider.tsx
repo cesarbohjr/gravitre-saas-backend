@@ -222,7 +222,7 @@ export interface GravitreAIWorkspaceContextValue {
   /** Clears object selection without starting a new thread. */
   clearSelectedEntity: () => void
   composerIntent: GravitreAIComposerIntent | null
-  consumeComposerIntent: () => void
+  consumeComposerIntent: (nonce: number) => boolean
   pageContext: GravitreAIPageContext
   conversation: GravitreAIConversationSnapshot | null
   setConversation: (snapshot: GravitreAIConversationSnapshot | null) => void
@@ -254,6 +254,7 @@ export function GravitreAIWorkspaceProvider({ children }: { children: ReactNode 
   const [agentScope, setAgentScope] = useState<GravitreAIAgentScope | null>(null)
   const [composerIntent, setComposerIntent] = useState<GravitreAIComposerIntent | null>(null)
   const composerNonceRef = useRef(0)
+  const consumedComposerNonceRef = useRef(0)
 
   const setPresentationMode = useCallback((mode: GravitrePresentationMode) => {
     setPresentationModeState(toLegacyPresentationMode(mode))
@@ -363,8 +364,11 @@ export function GravitreAIWorkspaceProvider({ children }: { children: ReactNode 
     mode: presentationMode,
   })
 
-  const consumeComposerIntent = useCallback(() => {
-    setComposerIntent(null)
+  const consumeComposerIntent = useCallback((nonce: number) => {
+    if (nonce !== composerNonceRef.current || nonce === consumedComposerNonceRef.current) return false
+    consumedComposerNonceRef.current = nonce
+    setComposerIntent(current => current?.nonce === nonce ? null : current)
+    return true
   }, [])
 
   const clearSelectedEntity = useCallback(() => {
