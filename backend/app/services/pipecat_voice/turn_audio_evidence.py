@@ -70,6 +70,11 @@ class VoiceTurnAudioEvidence:
         self.committed_stops += 1
         self._last_stop_at = self._clock()
         self._audio_since_stop = 0
+        # Each committed stop starts a new first-audio measurement window.
+        # A resumed/recommitted turn can share an epoch; keeping the previous
+        # first-audio marker would report stale latency for the new stop.
+        self._first_audio_epoch = None
+        self.first_audio_after_stop_ms = None
 
     def duplicate_stop(self) -> None:
         self.duplicate_stops += 1
