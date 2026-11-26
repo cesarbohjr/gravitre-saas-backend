@@ -153,3 +153,29 @@ async def test_hard_false_final_identifies_audio_emitted_before_continuation():
     assert result["outbound_audio_frames"] == 1
     # Detection alone cannot retract speech already handed to transport.
     assert result["first_audio_after_stop_ms"] is None  # reset for new epoch
+
+
+def test_each_committed_stop_resets_first_audio_latency_within_same_epoch():
+    """A recommitted stop must not reuse the first reply's latency sample."""
+    now = [0.0]
+    evidence = VoiceTurnAudioEvidence(clock=lambda: now[0])
+    evidence.new_start()
+    evidence.final()
+    now[0] = 0.10
+    evidence.stop()
+    now[0] = 0.25
+    evidence.audio()
+    assert evidence.snapshot()["first_audio_after_stop_ms"] == pytest.approx(150.0)
+
+    # Same epoch, second committed stop: no new user-start event required.
+    now[0] = 0.40
+    evidence.stop()
+    assert evidence.snapshot()["first_audio_after_stop_ms"] is None
+    now[0] = 0.46
+    evidence.audio()
+    assert evidence.snapshot()["first_audio_after_stop_ms"] == pytest.approx(60.0)
+    now[0] = 0.50
+    evidence.audio()
+    assert evidence.snapshot()["first_audio_after_stop_ms"] == pytest.approx(60.0)
+    assert evidence.snapshot()["committed_stops"] == 2
+    assert evidence.snapshot()["outbound_audio_frames"] == 3
