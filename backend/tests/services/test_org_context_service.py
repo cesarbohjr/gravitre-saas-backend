@@ -1,12 +1,68 @@
 from __future__ import annotations
 
 import time
+from concurrent.futures import ThreadPoolExecutor
+from threading import Event
 from unittest.mock import MagicMock
 
 import pytest
 
 from app.services import org_context_service as org_context_module
 from app.services.org_context_service import OrgContextService, get_org_context_service
+
+
+@pytest.mark.parametrize("whole_org", [False, True])
+def test_invalidation_fences_inflight_snapshot(monkeypatch, whole_org):
+    service = OrgContextService()
+    started, resume = Event(), Event()
+    calls = []
+
+    def fetch(*args, **kwargs):
+        calls.append(True)
+        if len(calls) == 1:
+            started.set()
+            assert resume.wait(5)
+            return {"version": "before-source-removal"}
+        return {"version": "after-source-removal"}
+
+    monkeypatch.setattr(service, "_fetch_snapshot", fetch)
+    monkeypatch.setattr(service, "_format_markdown", lambda snapshot, depth: snapshot["version"])
+    with ThreadPoolExecutor(max_workers=1) as pool:
+        inflight = pool.submit(service.get_snapshot, None, "tenant-a")
+        try:
+            assert started.wait(5)
+            if whole_org:
+                service.invalidate_org("tenant-a")
+            else:
+                service.invalidate("tenant-a")
+        finally:
+            resume.set()
+        inflight.result(timeout=5)
+
+    assert service.get_snapshot(None, "tenant-a")["version"] == "after-source-removal"
+    assert len(calls) == 2
+
+
+def test_invalidation_preserves_other_tenant_and_environment_cache(monkeypatch):
+    service = OrgContextService()
+    calls = []
+
+    def fetch(client, org_id, **kwargs):
+        calls.append((org_id, kwargs["environment_name"]))
+        return {"orgId": org_id}
+
+    monkeypatch.setattr(service, "_fetch_snapshot", fetch)
+    monkeypatch.setattr(service, "_format_markdown", lambda snapshot, depth: "context")
+    service.get_snapshot(None, "tenant-a")
+    service.get_snapshot(None, "tenant-a", environment_name="test")
+    service.get_snapshot(None, "tenant-b")
+    service.invalidate("tenant-a")
+    service.get_snapshot(None, "tenant-a", environment_name="test")
+    service.get_snapshot(None, "tenant-b")
+    assert len(calls) == 3
+    service.get_snapshot(None, "tenant-a")
+    assert calls[-1] == ("tenant-a", "production")
+    assert len(calls) == 4
 
 
 @pytest.fixture(autouse=True)
@@ -203,3 +259,79 @@ def test_build_assistant_system_prompt_includes_production_connectors(monkeypatc
 
     prompt = _build_assistant_system_prompt(settings, "org-1", environment_name="production")
     assert "hubspot" in prompt.lower()
+
+
+def test_eco003_cached_org_context_is_partitioned_by_user(monkeypatch: pytest.MonkeyPatch):
+    """Identical org/env/depth does not confer another user's cached context."""
+    service = OrgContextService(cache_ttl_seconds=120)
+    observed: list[str | None] = []
+
+    def fetch(_client, org_id, *, environment_name, depth, user_id):
+        observed.append(user_id)
+        return {"orgId": org_id, "userView": user_id, "depth": depth}
+
+    monkeypatch.setattr(service, "_fetch_snapshot", fetch)
+    monkeypatch.setattr(service, "_format_markdown", lambda snap, depth: str(snap["userView"]))
+    client = MagicMock()
+    first = service.get_snapshot(client, "tenant-a", user_id="user-a")
+    again = service.get_snapshot(client, "tenant-a", user_id="user-a")
+    second = service.get_snapshot(client, "tenant-a", user_id="user-b")
+    system = service.get_snapshot(client, "tenant-a", user_id=None)
+
+    assert first is again
+    assert first["userView"] == "user-a"
+    assert second["userView"] == "user-b"
+    assert system["userView"] is None
+    assert observed == ["user-a", "user-b", None]
+    service.invalidate_org("tenant-a")
+    service.get_snapshot(client, "tenant-a", user_id="user-a")
+    assert observed[-1] == "user-a"
+
+
+def test_eco003_org_context_missing_table_fallback_does_not_hide_access_denial():
+    from app.services.org_context_service import _safe_query
+
+    def denied():
+        raise PermissionError("org context access denied")
+
+    with pytest.raises(PermissionError, match="org context access denied"):
+        _safe_query(denied, [])
+    assert _safe_query(lambda: (_ for _ in ()).throw(RuntimeError("temporary db outage")), []) == []
+
+
+def test_eco003_parallel_org_source_permission_denial_is_not_cached(monkeypatch: pytest.MonkeyPatch):
+    from app.services.org_context_service import _safe_query
+
+    _patch_connector_availability(monkeypatch)
+
+    def deny(_client, _org_id):
+        raise PermissionError("user scope denied")
+
+    monkeypatch.setattr(org_context_module, "list_workflows", deny)
+    service = OrgContextService(cache_ttl_seconds=60)
+    with pytest.raises(PermissionError, match="user scope denied"):
+        service.get_snapshot(_client_with_org(), "tenant-a", user_id="user-a")
+    assert not service._cache
+
+
+@pytest.mark.parametrize("depth,expected", [("minimal", 2), ("standard", 6), ("full", 6)])
+def test_eco003_only_submits_enabled_snapshot_sources(monkeypatch, depth, expected):
+    _patch_connector_availability(monkeypatch)
+    submitted = []
+    workers = []
+    real_pool = ThreadPoolExecutor
+    class CountingPool(real_pool):
+        def __init__(self, *, max_workers):
+            workers.append(max_workers)
+            super().__init__(max_workers=max_workers)
+        def submit(self, fn, *args, **kwargs):
+            submitted.append(fn.__name__)
+            return super().submit(fn, *args, **kwargs)
+    monkeypatch.setattr(org_context_module, "ThreadPoolExecutor", CountingPool)
+    snapshot = OrgContextService().get_snapshot(_client_with_org(), "org-1", depth=depth)
+    assert len(submitted) == expected
+    assert workers == [min(5, expected)]
+    assert snapshot["orgId"] == "org-1" and snapshot["depth"] == depth
+    if depth == "minimal":
+        assert set(submitted) == {"load_org_name", "load_integrations"}
+        assert not snapshot["agents"] and not snapshot["workflows"] and not snapshot["recentRuns"]

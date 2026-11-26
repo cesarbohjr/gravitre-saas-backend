@@ -2871,6 +2871,13 @@ class AgentIntelligence:
         )
 
         tier0_started = time.monotonic()
+        tier0_source_epoch: tuple[str, ...] | None = None
+        if tier0_enabled(engine_settings):
+            from app.services.memory_source_liveness import epoch_parts
+
+            # Capture before recall/generation, not after the streamed answer:
+            # an intervening memory mutation must fence a late cache fill.
+            tier0_source_epoch = epoch_parts(org_id, active_settings)
         # Voice turns must run the spoken-aware reasoning path. Tier-0 cache can
         # return text-formatted copy (lists/markdown) that sounds like a transcriber.
         tier0_skip = bool(spoken_mode) or mode_key in {"reasoning", "agent"}
@@ -2940,7 +2947,10 @@ class AgentIntelligence:
         from app.services.proactive_guidance_service import get_proactive_guidance_service
         from app.services.risk_approval_evaluator import get_risk_approval_evaluator
         from app.services.conversational_planning_engine import is_direct_connector_write_intent
-        from app.services.conversation_turn_controller import classify_pending_plan_intent
+        from app.services.conversation_turn_controller import (
+            classify_pending_plan_intent,
+            terminal_task_cleanup,
+        )
 
         # Module B Phase 4 — orphan strategic-plan recovery via shared intent check
         # (continue / modify / cancel), not CONFIRM_PATTERN alone.
@@ -2953,34 +2963,18 @@ class AgentIntelligence:
             )
             early_pending = early_state.get("pending_task")
             early_plan = early_state.get("current_plan")
-            # Module B — terminal orch must not leave sticky current_plan for a later bare "yes".
-            if isinstance(early_pending, dict) and early_pending:
-                terminal = str(early_pending.get("status") or "") in {
-                    "completed",
-                    "failed",
-                    "cancelled",
-                }
-                if terminal:
-                    await get_conversation_state_service(active_settings).update_task_state(
-                        conversation_id,
-                        org_id,
-                        {
-                            "pending_task": None,
-                            "current_plan": None,
-                            "clarified_params": {},
-                            "pending_steps": [],
-                            "completed_steps": [],
-                        },
-                        client=client,
-                    )
-                    logger.info(
-                        "terminal_orchestration_closed conversation_id=%s org_id=%s status=%s",
-                        conversation_id,
-                        org_id,
-                        early_pending.get("status"),
-                    )
-                    early_pending = None
-                    early_plan = None
+            if terminal_task_cleanup(early_state) is not None:
+                await get_conversation_state_service(active_settings).update_task_state_from(
+                    conversation_id, org_id, terminal_task_cleanup, client=client,
+                )
+                logger.info(
+                    "terminal_orchestration_closed conversation_id=%s org_id=%s status=%s",
+                    conversation_id,
+                    org_id,
+                    early_pending.get("status"),
+                )
+                early_pending = None
+                early_plan = None
             from app.services.canonical_cognitive_resolution import (
                 apply_canonical_cognitive_resolution,
                 resolution_already_applied,
@@ -4389,6 +4383,20 @@ class AgentIntelligence:
             else:
                 live_turn = await _run_unified_live()
             _mark("unified_live_resolved")
+
+            if live_turn and live_turn.get("turn_terminal_state") == "cancelled":
+                if _context_task is not None and not _context_task.done():
+                    _context_task.cancel()
+                    _mark("context_prefetch_cancelled")
+                if text_id is not None:
+                    yield emit_text_end(text_id)
+                # Match the existing pre-LIVE cancellation response. Do not
+                # compose success prose, finalize work, or enter another executor.
+                yield AssistantStreamComplete(
+                    full_content="", tool_results=[], react_result=None,
+                    model="cancelled", message_id=message_id,
+                )
+                return
 
             typed_streamed_text = ""
             if typed_release is not None and streamed_voice_text:
@@ -6809,6 +6817,7 @@ class AgentIntelligence:
                 confidence=finalized["confidence"],
                 answer_explanation=finalized["explanation"],
                 ttl_seconds=tier0_ttl_seconds(engine_settings),
+                source_epoch=tier0_source_epoch,
             )
 
         from app.services.outcome_tracker import get_outcome_tracker

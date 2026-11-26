@@ -76,7 +76,7 @@ def _binding(turn: TurnResult) -> str:
 
 
 def _gmail(h: ScenarioHarness, *people: str) -> None:
-    h.connected.append("gmail")
+    h.connect("gmail")
     h.connectors.mailbox += [mail(i, p, ME) for i, p in enumerate(people, start=1)]
 
 
@@ -115,7 +115,7 @@ async def test_a_new_address_after_the_send_says_it_already_went_and_offers_a_re
     with ScenarioHarness() as h:
         _gmail(h)
         conv = h.conversation(surface)
-        await _sent(conv)
+        sent = await _sent(conv)
 
         offer = await conv.say("Send it to steph@work.example instead.", _model)
         assert not _sends(offer), "a second email went out without a new approval"
@@ -124,6 +124,8 @@ async def test_a_new_address_after_the_send_says_it_already_went_and_offers_a_re
         assert "I can send the same email to the new address." in offer.text
         assert _spoken("steph@work.example", surface) in offer.text  # the user approves the address
         assert _status(offer) == "awaiting_confirm"
+        assert sent.pending_task["execution_plan_id"] != offer.pending_task["execution_plan_id"]
+        assert _binding(offer) and _binding(offer) != _binding(sent)
         args = _args(offer)
         assert args["to"] == "steph@work.example"
         assert args["subject"] == SUBJECT and args["body"].rstrip(".") == BODY
@@ -230,12 +232,14 @@ async def test_two_matches_ask_which_one_then_show_the_approval_again(surface: s
     with ScenarioHarness() as h:
         _gmail(h, CHEN, ROSS)
         conv = h.conversation(surface)
-        await _staged(conv)
+        first = await _staged(conv)
 
         asked = await conv.say("Send it to Mike instead.", _model)
         assert asked.text == "I found two Mikes: Mike Chen and Mike Ross. Which one?"
         assert not _sends(asked)
         assert _status(asked) == "awaiting_params", "an ambiguous change left the old recipient approvable"
+        assert asked.task_state["execution_plan"]["terminal_status"] == "clarification_required"
+        assert asked.task_state.get("pending_action") is None
         args = _args(asked)
         assert "to" not in args and args["subject"] == SUBJECT, "the draft was discarded"
 
@@ -247,6 +251,7 @@ async def test_two_matches_ask_which_one_then_show_the_approval_again(surface: s
         assert chosen.text.startswith("Got it, I changed the recipient to Mike Ross."), chosen.text
         assert _spoken("mross@globex.example", surface) in chosen.text
         assert _status(chosen) == "awaiting_confirm"
+        assert _binding(chosen) and _binding(chosen) != _binding(first)
 
         sent = await conv.say("Yes.", _model)
         _assert_sends_once(sent, "mross@globex.example")
@@ -258,7 +263,7 @@ async def test_no_match_asks_for_the_address_and_keeps_the_draft(surface: str) -
     with ScenarioHarness() as h:
         _gmail(h, CHEN)
         conv = h.conversation(surface)
-        await _staged(conv)
+        first = await _staged(conv)
 
         missing = await conv.say("Send it to Jordan instead.", _model)
         assert missing.text.startswith("I couldn't find Jordan in this mailbox."), missing.text
@@ -266,11 +271,17 @@ async def test_no_match_asks_for_the_address_and_keeps_the_draft(surface: str) -
         args = _args(missing)
         assert "to" not in args and args["subject"] == SUBJECT
         assert _status(missing) == "awaiting_params"
+        assert missing.task_state["execution_plan"]["terminal_status"] == "clarification_required"
+        assert missing.task_state.get("pending_action") is None
+
+        premature = await conv.say("Yes.", _model)
+        assert not _sends(premature), "approval before recipient resolution sent an email"
 
         given = await conv.say("It's jordan@acme.example", "Okay.")
         assert not _sends(given)
         assert _args(given)["to"] == "jordan@acme.example"
         assert _status(given) == "awaiting_confirm"
+        assert _binding(given) and _binding(given) != _binding(first)
 
         sent = await conv.say("Yes.", _model)
         _assert_sends_once(sent, "jordan@acme.example")

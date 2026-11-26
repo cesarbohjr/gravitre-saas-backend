@@ -7,6 +7,7 @@ import json
 import sys
 from pathlib import Path
 from typing import Any
+from runpy import run_path
 
 import pytest
 
@@ -153,7 +154,10 @@ def test_summary_passes_only_when_artifacts_and_probes_all_ok() -> None:
 
 
 def test_workflow_passes_every_probe_outcome_to_summary() -> None:
-    wf = (REPO / ".github" / "workflows" / "production-hardening-smoke.yml").read_text()
+    helper = run_path(str(REPO / 'scripts/workflow_source_contract.py'))
+    definition = helper['definition'](REPO, 'production-hardening-smoke.yml')
+    steps = [step for job in definition['jobs'].values() for step in job.get('steps', [])]
+    summary_env = next(step['env'] for step in steps if 'PROBE_OUTCOME_AI_SMOKE' in step.get('env', {}))
     for step_id, name in (
         ("post_tier5", "POST_TIER5"),
         ("marketplace", "MARKETPLACE"),
@@ -161,5 +165,6 @@ def test_workflow_passes_every_probe_outcome_to_summary() -> None:
         ("research", "RESEARCH"),
         ("link_check", "LINK_CHECK"),
     ):
-        assert f"PROBE_OUTCOME_{name}: ${{{{ steps.{step_id}.outcome }}}}" in wf
-    assert "rm -f docs/delivery/smoke-marketplace-production-latest.json" in wf
+        assert summary_env[f'PROBE_OUTCOME_{name}'] == f"${{{{ steps.{step_id}.outcome }}}}"
+    code = '\n'.join(step.get('run', '') for step in steps)
+    assert "rm -f docs/delivery/smoke-marketplace-production-latest.json" in code

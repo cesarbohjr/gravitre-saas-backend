@@ -30,6 +30,7 @@ def tool_ctx() -> ToolContext:
         client=MagicMock(),
         org_id="org-1",
         actor_id="user-1",
+        connector_id="qa-slack-connector",
         run_id="run-1",
         step_id="step-1",
         step_type="slack_post_message",
@@ -40,10 +41,27 @@ def _invoke_with(tool_ctx: ToolContext, action: str, impl):
     with patch("app.services.write_preflight.enforce_invoke_write_preflight", side_effect=lambda _c, _a, p: p), patch(
         "app.services.read_preflight.enforce_invoke_preflight", side_effect=lambda _c, _a, p: p
     ):
-        with patch("app.services.tool_service._TOOL_REGISTRY", {action: impl}):
-            with patch("app.services.tool_service.write_audit_event"):
-                with patch("app.services.tool_service.time.sleep"):
-                    return invoke_tool(tool_ctx, action, {})
+        # Exercise the provider/outcome branch with an explicitly fenced test
+        # reservation; never disable the production durable-write guard.
+        from app.services.write_invoke_idempotency import WriteClaimResult, WriteFinalizeResult
+        with patch("app.services.write_invoke_idempotency.claim_write_invoke",
+                   return_value=WriteClaimResult(outcome="claimed", claim_token="test-fence", claim_generation=1)), patch(
+            "app.services.write_invoke_idempotency.bind_write_recovery_context",
+            return_value=True
+        ) as bind_context, patch(
+            "app.services.write_invoke_idempotency.finalize_write_invoke",
+            return_value=WriteFinalizeResult(outcome="finalized")
+        ):
+            with patch("app.services.tool_service._TOOL_REGISTRY", {action: impl}):
+                with patch("app.services.tool_service.write_audit_event"):
+                    with patch("app.services.tool_service.time.sleep"):
+                        result = invoke_tool(tool_ctx, action, {})
+                        if is_write_action(action):
+                            bind_context.assert_called_once()
+                            assert bind_context.call_args.kwargs["connector_id"] == "qa-slack-connector"
+                        else:
+                            bind_context.assert_not_called()
+                        return result
 
 
 def test_write_timeout_is_not_retried_and_reports_uncertain(tool_ctx: ToolContext) -> None:
@@ -60,18 +78,16 @@ def test_write_timeout_is_not_retried_and_reports_uncertain(tool_ctx: ToolContex
     assert result.error_code == "outcome_uncertain"
 
 
-def test_write_connect_error_is_safe_to_retry(tool_ctx: ToolContext) -> None:
+def test_write_connect_error_is_not_retried_under_durable_claim(tool_ctx: ToolContext) -> None:
     calls = {"n": 0}
 
     def flaky(*_a, **_k):
         calls["n"] += 1
-        if calls["n"] == 1:
-            raise httpx.ConnectError("connection refused")
-        return NormalizedResult(success=True, action="slack.post_message", data={"ok": True, "ts": "1"})
+        raise httpx.ConnectError("connection refused")
 
     result = _invoke_with(tool_ctx, "slack.post_message", flaky)
-    assert result.success is True
-    assert calls["n"] == 2
+    assert calls["n"] == 1, "one fenced claim must never resend a provider write"
+    assert result.success is False
 
 
 def test_read_timeout_still_retries(tool_ctx: ToolContext) -> None:
@@ -164,7 +180,7 @@ def test_reconcile_finds_created_record_by_natural_key(monkeypatch) -> None:
     assert out.evidence["method"] == "reconcile_lookup"
 
 
-def test_reconcile_empty_filtered_search_proves_absence(monkeypatch) -> None:
+def test_reconcile_empty_filtered_search_is_inconclusive(monkeypatch) -> None:
     monkeypatch.setattr(recon, "_registered", lambda a: a if a.endswith(".search") else None)
     monkeypatch.setattr(
         "app.services.sealed_read_execution.invoke_compiled_read",
@@ -173,7 +189,9 @@ def test_reconcile_empty_filtered_search_proves_absence(monkeypatch) -> None:
     out = recon.reconcile_uncertain_write(
         ctx=_lookup_ctx(), invoke_action="hubspot.contacts.create", args={"email": "new@b.co"}
     )
-    assert out.state == "not_applied"
+    assert out.state == "unknown"
+    assert out.detail == "empty_lookup_not_authoritative"
+    assert out.evidence.get("authoritative_absence") is not True
 
 
 def test_reconcile_unfiltered_page_without_record_is_not_proof(monkeypatch) -> None:
@@ -230,19 +248,18 @@ def test_write_unknown_transient_error_is_not_retried(tool_ctx: ToolContext) -> 
     assert calls["n"] == 1
 
 
-def test_write_rate_limit_is_still_retried(tool_ctx: ToolContext) -> None:
+def test_write_rate_limit_is_not_retried_under_durable_claim(tool_ctx: ToolContext) -> None:
     from app.services.tool_types import ToolRateLimitedError
 
     calls = {"n": 0}
 
-    def limited_then_ok(*_a, **_k):
+    def limited(*_a, **_k):
         calls["n"] += 1
-        if calls["n"] == 1:
-            raise ToolRateLimitedError("429")
-        return NormalizedResult(success=True, action="slack.post_message", data={"ok": True, "ts": "1"})
+        raise ToolRateLimitedError("429")
 
-    result = _invoke_with(tool_ctx, "slack.post_message", limited_then_ok)
-    assert result.success is True and calls["n"] == 2
+    result = _invoke_with(tool_ctx, "slack.post_message", limited)
+    assert calls["n"] == 1
+    assert result.success is False
 
 
 def test_read_5xx_still_retries(tool_ctx: ToolContext) -> None:

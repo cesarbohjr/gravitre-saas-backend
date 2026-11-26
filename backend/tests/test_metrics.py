@@ -148,6 +148,8 @@ def test_meson_insights_generated_from_operational_data(mock_week_start, mock_cl
         chain.select.return_value = chain
         chain.eq.return_value = chain
         chain.gte.return_value = chain
+        chain.order.return_value = chain
+        chain.limit.return_value = chain
         chain.execute.return_value = SimpleNamespace(data=[])
         return chain
 

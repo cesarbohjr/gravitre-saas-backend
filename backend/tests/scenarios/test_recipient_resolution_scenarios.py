@@ -59,7 +59,7 @@ def _only_reads(turn: TurnResult) -> bool:
 @pytest.mark.parametrize("surface", SURFACES)
 async def test_one_stephanie_is_found_and_the_send_goes_to_her(surface: str) -> None:
     with ScenarioHarness() as h:
-        h.connected.append("gmail")
+        h.connect("gmail")
         h.connectors.mailbox += [_mail(1, KHAN, ME), _mail(2, ME, KHAN, ("SENT",)), _mail(3, "Pat <pat@acme.example>", ME)]
         conv = h.conversation(surface)
 
@@ -86,7 +86,7 @@ async def test_one_stephanie_is_found_and_the_send_goes_to_her(surface: str) -> 
 @pytest.mark.parametrize("pick", ["Khan", "The first one.", "Stephanie Khan"])
 async def test_two_stephanies_are_asked_about_then_chosen(surface: str, pick: str) -> None:
     with ScenarioHarness() as h:
-        h.connected.append("gmail")
+        h.connect("gmail")
         h.connectors.mailbox += [_mail(1, KHAN, ME), _mail(2, ME, KHAN, ("SENT",)), _mail(3, MILLER, ME)]
         conv = h.conversation(surface)
 
@@ -106,7 +106,7 @@ async def test_two_stephanies_are_asked_about_then_chosen(surface: str, pick: st
 @pytest.mark.parametrize("surface", SURFACES)
 async def test_no_stephanie_asks_and_keeps_the_email(surface: str) -> None:
     with ScenarioHarness() as h:
-        h.connected.append("gmail")
+        h.connect("gmail")
         h.connectors.mailbox.append(_mail(1, "Pat Lee <pat@acme.example>", ME))
         conv = h.conversation(surface)
 

@@ -22,24 +22,34 @@ export type PipecatServerMessage =
   | { type: "error"; error?: string; error_class?: string }
   | { type: string; [key: string]: unknown }
 
+const PIPECAT_WS_PATH = "/api/voice/pipecat/ws"
+
 function httpBaseToWs(base: string): string {
-  const cleaned = base.trim().replace(/\/+$/, "")
-  if (cleaned.startsWith("https://")) return `wss://${cleaned.slice("https://".length)}`
-  if (cleaned.startsWith("http://")) return `ws://${cleaned.slice("http://".length)}`
-  if (cleaned.startsWith("wss://") || cleaned.startsWith("ws://")) return cleaned
-  return `wss://${cleaned}`
+  const cleaned = base.trim()
+  if (!cleaned || /[\\\s]/.test(cleaned)) throw new Error("Invalid voice origin")
+  const parsed = new URL(cleaned.includes("://") ? cleaned : `wss://${cleaned}`)
+  if (parsed.username || parsed.password || parsed.search || parsed.hash || parsed.pathname !== "/") {
+    throw new Error("Invalid voice origin")
+  }
+  const local = ["localhost", "127.0.0.1", "[::1]"].includes(parsed.hostname)
+  if (parsed.protocol === "https:") parsed.protocol = "wss:"
+  if (parsed.protocol === "http:" && local) parsed.protocol = "ws:"
+  if (parsed.protocol !== "wss:" && !(parsed.protocol === "ws:" && local)) {
+    throw new Error("Insecure voice origin")
+  }
+  return parsed.origin
 }
 
-/** Resolve absolute WS origin (no path) for Pipecat. */
+/** Deployment config is trusted; a runtime status response cannot nominate a new credential destination. */
 export function resolvePipecatWsOrigin(status?: VoiceStatus | null): string {
-  const env =
-    (typeof process !== "undefined" &&
-      (process.env.NEXT_PUBLIC_VOICE_WS_BASE || process.env.NEXT_PUBLIC_BACKEND_WS_URL || "").trim()) ||
-    ""
-  if (env) return httpBaseToWs(env)
+  const env = (typeof process !== "undefined" &&
+    (process.env.NEXT_PUBLIC_VOICE_WS_BASE || process.env.NEXT_PUBLIC_BACKEND_WS_URL || "").trim()) || ""
+  const trusted = httpBaseToWs(env || PRODUCTION_API_URL)
   const hint = (status?.pipecat_ws_hint || "").trim()
-  if (hint) return httpBaseToWs(hint)
-  return httpBaseToWs(PRODUCTION_API_URL)
+  if (hint && !env && httpBaseToWs(hint) !== trusted) {
+    throw new Error("Untrusted voice origin")
+  }
+  return trusted
 }
 
 export function shouldUsePipecatVoice(status: VoiceStatus | null | undefined): boolean {
@@ -56,13 +66,19 @@ export async function buildPipecatVoiceWsUrl(options: {
   voice?: string | null
   path?: string
 }): Promise<{ url: string; token: string; orgId: string } | { error: string }> {
+  let origin: string
+  const path = (options.path || options.status?.pipecat_ws_path || PIPECAT_WS_PATH).trim()
+  try {
+    origin = resolvePipecatWsOrigin(options.status)
+    if (path !== PIPECAT_WS_PATH) return { error: "Invalid voice route" }
+  } catch {
+    return { error: "Invalid or untrusted voice origin" }
+  }
+  const orgId = getSelectedOrgFromStorage()?.id || ""
   const token = await getAccessToken()
   if (!token) return { error: "Not signed in" }
-  const orgId = getSelectedOrgFromStorage()?.id || ""
   if (!orgId) return { error: "Organization required" }
-
-  const origin = resolvePipecatWsOrigin(options.status)
-  const path = (options.path || options.status?.pipecat_ws_path || "/api/voice/pipecat/ws").trim()
+  if (getSelectedOrgFromStorage()?.id !== orgId) return { error: "Organization changed; restart voice" }
   const params = new URLSearchParams()
   params.set("access_token", token)
   params.set("org_id", orgId)
@@ -70,9 +86,8 @@ export async function buildPipecatVoiceWsUrl(options: {
   if (options.conversationId) params.set("conversation_id", options.conversationId)
   if (options.voice) params.set("voice", options.voice)
 
-  const slashPath = path.startsWith("/") ? path : `/${path}`
   return {
-    url: `${origin}${slashPath}?${params.toString()}`,
+    url: `${origin}${path}?${params.toString()}`,
     token,
     orgId,
   }

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { createSupabaseServerClient } from "@/lib/supabase-server"
+import { backendBaseUrl } from "@/lib/public-urls"
 
 const JSON_HEADERS = { "content-type": "application/json; charset=utf-8" } as const
 const TIMEOUT_MS = 10_000
@@ -46,7 +47,8 @@ export async function proxyRunAction(request: NextRequest, runId: string, action
     return NextResponse.json({ error: "Authentication required" }, { status: 401, headers: JSON_HEADERS })
   }
 
-  const baseUrl = process.env.FASTAPI_BASE_URL?.trim()?.replace(/\/+$/, "")
+  const configured = process.env.FASTAPI_BASE_URL?.trim()
+  const baseUrl = configured || process.env.NODE_ENV === "production" ? backendBaseUrl() : undefined
   if (!baseUrl) {
     return NextResponse.json(
       { error: "Backend not configured — FASTAPI_BASE_URL is not set" },
@@ -116,7 +118,8 @@ export async function proxyRunStepAction(
     return NextResponse.json({ error: "Authentication required" }, { status: 401, headers: JSON_HEADERS })
   }
 
-  const baseUrl = process.env.FASTAPI_BASE_URL?.trim()?.replace(/\/+$/, "")
+  const configured = process.env.FASTAPI_BASE_URL?.trim()
+  const baseUrl = configured || process.env.NODE_ENV === "production" ? backendBaseUrl() : undefined
   if (!baseUrl) {
     return NextResponse.json(
       { error: "Backend not configured — FASTAPI_BASE_URL is not set" },

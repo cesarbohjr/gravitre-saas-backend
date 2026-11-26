@@ -129,6 +129,31 @@ def test_runs_handlers_then_completes_with_their_names():
     ]
 
 
+@pytest.mark.parametrize("failure_at", ["started", "completed", "link"])
+def test_telemetry_sink_failure_cannot_retry_or_block_committed_consumer(monkeypatch, failure_at):
+    from app.services import runtime_execution_edge_telemetry as telemetry
+
+    monkeypatch.setenv("PR605_EXECUTION_EDGE_TELEMETRY_ENABLED", "true")
+    monkeypatch.setenv("PR605_EXECUTION_EDGE_HMAC_KEY", "test-only-correlation-key-" * 3)
+
+    def log(message, *args):
+        if (failure_at == "link" and "runtime_edge_link" in message
+                or failure_at in args):
+            raise RuntimeError("telemetry sink unavailable")
+
+    monkeypatch.setattr(telemetry.logger, "info", log)
+    calls = []
+    de.register_domain_event_handler(de.EVENT_EXECUTION_OUTCOME_FINALIZED, "consumer",
+                                     lambda c, e: calls.append(e["id"]))
+    client = _FakeClient([_event(aggregate_type="workflow_run",
+                                aggregate_id="aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee")])
+    result = de.DomainEventRelay(client, worker_id="w1").run_once()
+    assert calls == [7]
+    assert result.delivered == 1
+    assert result.retried == 0
+    assert client.settled("fail_domain_event") == []
+
+
 def test_event_without_handlers_is_released_never_completed():
     """Used to be marked delivered with no handler run; now it goes back to pending."""
     de.register_domain_event_handler(de.EVENT_SOURCE_DISCONNECTED, "purge", lambda c, e: None)

@@ -80,6 +80,9 @@ def _linear_token(ctx: ToolContext, cid: str) -> str:
     try:
         return _oauth_token(ctx, cid, "linear")
     except ToolAuthExpiredError:
+        from app.connectors.managed_oauth import managed_oauth_row
+        if managed_oauth_row(ctx.client, ctx.org_id, cid, environment_name=ctx.environment_name) is not None:
+            raise
         token = (
             get_decrypted_secret(ctx.client, cid, "api_token", ctx.settings, org_id=ctx.org_id)
             or get_decrypted_secret(ctx.client, cid, "token", ctx.settings, org_id=ctx.org_id)
@@ -118,7 +121,9 @@ def _format_base_url(vendor: str, conn: dict[str, Any]) -> str:
 
 
 def _linear_graphql(token: str, query: str, variables: dict[str, Any] | None = None) -> dict[str, Any]:
-    headers = {"Authorization": token, "Content-Type": "application/json"}
+    from app.connectors.managed_oauth import ManagedOAuthAccessToken
+    authorization = f"Bearer {token}" if isinstance(token, ManagedOAuthAccessToken) else token
+    headers = {"Authorization": authorization, "Content-Type": "application/json"}
     body: dict[str, Any] = {"query": query}
     if variables:
         body["variables"] = variables
@@ -239,7 +244,9 @@ def _exec_gitlab(ctx: ToolContext, params: dict[str, Any], action: str) -> dict[
     cid = str(conn["id"])
     enforce_rate_limit(ctx.client, ctx.org_id, "gitlab", "gitlab", cid)
     token = _oauth_token(ctx, cid, "gitlab")
-    base = _format_base_url("gitlab", conn)
+    from app.connectors.managed_oauth import ManagedOAuthAccessToken
+    # This template authorizes GitLab.com, never a configurable self-hosted origin.
+    base = PHASE2_BASE_URLS["gitlab"] if isinstance(token, ManagedOAuthAccessToken) else _format_base_url("gitlab", conn)
     headers = {"Authorization": f"Bearer {token}", "Accept": "application/json"}
 
     if action == "gitlab.projects.list":
@@ -330,6 +337,16 @@ def _exec_shopify(ctx: ToolContext, params: dict[str, Any], action: str) -> dict
     enforce_rate_limit(ctx.client, ctx.org_id, "shopify", "shopify", cid)
     token = _oauth_token(ctx, cid, "shopify")
     base = _format_base_url("shopify", conn)
+    from app.connectors.managed_oauth import ManagedOAuthAccessToken
+    if isinstance(token, ManagedOAuthAccessToken):
+        from app.connectors.managed_oauth_inputs import validate_oauth_inputs
+        from app.core.safe_dict import safe_normalize_stored_dict
+        managed_cfg = safe_normalize_stored_dict(conn, key="config")
+        try:
+            subdomain = validate_oauth_inputs("shopify", {"subdomain": str(managed_cfg.get("subdomain") or "")})["subdomain"]
+        except ValueError as exc:
+            raise ToolValidationError("Reconnect Shopify with a valid store subdomain") from exc
+        base = PHASE2_BASE_URLS["shopify"].replace("{shop}", subdomain)
     headers = {"X-Shopify-Access-Token": token, "Accept": "application/json"}
 
     if action == "shopify.products.list":

@@ -78,7 +78,18 @@ def _step_may_have_external_effect(step: dict[str, Any]) -> bool:
     from app.services.outcome_verification import step_action, step_is_consequential
 
     try:
-        return bool(step_is_consequential(step.get("step_type"), step_action(step)))
+        action = step_action(step)
+        if str(step.get("step_type") or "").strip().lower() == "invoke_tool":
+            # A worker can die before writing its action snapshot, or its old
+            # catalog entry can disappear. Neither proves that retry is safe.
+            if not action:
+                return True
+            from app.connectors.action_catalog.registry import get_action_spec
+            from app.services.catalog_write_authority import find_matrix_entry_for_invoke_action
+
+            if get_action_spec(action) is None and find_matrix_entry_for_invoke_action(action) is None:
+                return True
+        return bool(step_is_consequential(step.get("step_type"), action))
     except Exception:  # noqa: BLE001  (unknown means assume it may have)
         return True
 

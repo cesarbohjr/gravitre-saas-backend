@@ -144,11 +144,10 @@ async def resume_frozen_write_on_confirm(
     """Consume the frozen pending WRITE via process_turn — do not compile a new ActionSpec."""
     if not should_resume_frozen_write(message, task_state):
         return None
-    params = frozen_connector_write_params(task_state) or {}
-    integration = str(params.get("integration") or "").strip()
+    # Pending arguments identify the requested target, not proof of a live connection.
+    # Do not promote that target into connected_integrations: cognitive resolution
+    # sees this hint before process_turn reloads authoritative connector state.
     connected = list(connected_integrations or [])
-    if integration and integration not in connected:
-        connected = [*connected, integration]
     from app.services.chat_connector_execution_service import get_chat_connector_execution_service
 
     turn = await get_chat_connector_execution_service(settings).process_turn(

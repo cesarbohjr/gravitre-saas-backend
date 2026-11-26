@@ -144,6 +144,39 @@ def test_hubspot_missing_scope(_configured, mock_tokens, _auth, _actions):
     assert "missing scope" in message.lower() or "scopes are missing" in message.lower()
 
 
+@pytest.mark.parametrize("scopes", [None, [], {}, "crm.objects.contacts.write", [None]])
+@pytest.mark.parametrize("action", ["hubspot.contacts.search", "hubspot.contacts.create", "hubspot.deals.update"])
+@patch("app.connectors.connector_availability_service.resolve_connector_auth_status", return_value="connected")
+@patch("app.connectors.connector_availability_service.load_oauth_tokens")
+@patch("app.connectors.connector_availability_service._hubspot_oauth_configured", return_value=True)
+def test_unknown_grants_do_not_authorize_a_registered_action(
+    _configured, mock_tokens, _auth, scopes, action,
+):
+    mock_tokens.return_value = {"access_token": "tok", "scopes": scopes}
+    with patch("app.connectors.connector_availability_service.list_registered_actions", return_value=[action]):
+        result = evaluate_connector_availability(
+            MagicMock(), "org-1", _hubspot_row(), _settings(), action_key=action,
+        )
+    assert result["connected"] is True
+    assert result["scopes_valid"] is False
+    assert result["blocking_reason"] == "missing_scope"
+    assert result["execution_available"] is False
+    assert result["read_available"] is False
+    assert result["write_available"] is False
+
+
+@patch("app.connectors.connector_availability_service.resolve_connector_auth_status", return_value="connected")
+@patch("app.connectors.connector_availability_service.load_oauth_tokens", return_value={"access_token": "tok"})
+@patch("app.connectors.connector_availability_service._hubspot_oauth_configured", return_value=True)
+def test_unknown_grants_do_not_mislabel_connected_account_as_disconnected(*_mocks):
+    result = evaluate_connector_availability(
+        MagicMock(), "org-1", _hubspot_row(), _settings(), action_key=None,
+    )
+    assert result["connected"] is True
+    assert result["blocking_reason"] is None
+
+
+
 @patch("app.connectors.connector_availability_service.list_registered_actions", return_value=[])
 @patch("app.connectors.connector_availability_service.resolve_connector_auth_status", return_value="connected")
 @patch("app.connectors.connector_availability_service.load_oauth_tokens")
@@ -186,7 +219,7 @@ def test_list_executable_canonicalizes_googleads_vendor(mock_list):
 @patch(
     "app.connectors.connector_availability_service.evaluate_connector_availability",
     side_effect=[
-        ValueError("apollo token exchange failed: revoked"),
+        RuntimeError("apollo availability dependency unreachable"),
         {
             "vendor": "hubspot",
             "execution_available": True,
@@ -203,13 +236,13 @@ def test_list_executable_canonicalizes_googleads_vendor(mock_list):
     ],
 )
 def test_list_connector_availability_soft_fails_one_bad_connector(_list, _eval):
-    """One revoked OAuth connector must not abort availability for the org."""
+    """An availability error should isolate the unhealthy connector."""
     rows = list_connector_availability(MagicMock(), "org-1", _settings(), force_live=True)
     assert len(rows) == 2
     apollo = next(r for r in rows if r.get("vendor") == "apollo")
     hubspot = next(r for r in rows if r.get("vendor") == "hubspot")
     assert apollo["execution_available"] is False
-    assert apollo["auth_status"] == "auth_expired"
+    assert apollo["auth_status"] == "unknown"
     assert hubspot["execution_available"] is True
 
 
@@ -239,3 +272,37 @@ def test_managed_authorization_does_not_invent_action_readiness(_auth,vendor,exp
     assert result['read_available'] == expected_read
     assert result['write_available'] == expected_write
     assert result['execution_available'] == (expected_read or expected_write)
+
+
+def test_eco005_availability_outage_does_not_claim_oauth_token_expired():
+    settings = _settings()
+    with (
+        patch("app.connectors.connector_availability_service.list_connectors",
+              return_value=[_hubspot_row()]),
+        patch("app.connectors.connector_availability_service.evaluate_connector_availability",
+              side_effect=RuntimeError("transient availability dependency outage")),
+    ):
+        result = list_connector_availability(
+            MagicMock(), "tenant-a", settings,
+            environment_name="production", force_live=True,
+        )
+    assert len(result) == 1
+    row = result[0]
+    assert row["execution_available"] is False
+    assert row["auth_status"] == "unknown"
+    assert row["blocking_reason"] == "availability_check_failed"
+    assert "expired" not in row["recovery_action"].lower()
+
+
+def test_eco005_connector_availability_scope_denial_is_not_oauth_reconnect():
+    with (
+        patch("app.connectors.connector_availability_service.list_connectors",
+              return_value=[_hubspot_row()]),
+        patch("app.connectors.connector_availability_service.evaluate_connector_availability",
+              side_effect=PermissionError("tenant connector access denied")),
+    ):
+        with pytest.raises(PermissionError, match="tenant connector access denied"):
+            list_connector_availability(
+                MagicMock(), "tenant-a", _settings(),
+                environment_name="production", force_live=True,
+            )

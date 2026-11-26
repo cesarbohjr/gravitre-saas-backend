@@ -1,7 +1,29 @@
 """Gate 19 privacy and safety contract for execution-edge telemetry."""
 from __future__ import annotations
 
+import pytest
+
 from app.services import runtime_execution_edge_telemetry as telemetry
+
+
+@pytest.mark.parametrize("kind", ["handoff", "outbox", "plan"])
+def test_log_sink_failure_is_advisory_for_each_execution_boundary(monkeypatch, kind):
+    monkeypatch.setenv("PR605_EXECUTION_EDGE_TELEMETRY_ENABLED", "true")
+    monkeypatch.setenv("PR605_EXECUTION_EDGE_HMAC_KEY", "bounded-test-key-" * 3)
+    def unavailable(*_args):
+        raise RuntimeError("log sink unavailable")
+    monkeypatch.setattr(telemetry.logger, "info", unavailable)
+    run_id = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
+    if kind == "handoff":
+        emitted = telemetry.emit_handoff(owner="outcome", stage="observed", correlation_id=run_id,
+                                         source="terminal_fanout")
+    elif kind == "outbox":
+        emitted = telemetry.emit_outbox_run_link(event_id="42", aggregate_type="workflow_run",
+                                                 aggregate_id=run_id, event_type="execution.outcome_finalized")
+    else:
+        emitted = telemetry.emit_plan_run_link(plan_id="isolated-plan", run_id=run_id,
+                                               source="orchestration_step")
+    assert emitted is False
 
 
 def test_disabled_by_default(monkeypatch, caplog):

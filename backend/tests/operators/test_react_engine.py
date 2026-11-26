@@ -52,6 +52,64 @@ def _tool_call(name: str, args: str, call_id: str = "call-1"):
     return SimpleNamespace(id=call_id, function=fn)
 
 
+@pytest.mark.asyncio
+@pytest.mark.parametrize("streaming", [False, True])
+@pytest.mark.parametrize("unavailable", [False, True])
+async def test_evidence_handoff_keeps_all_available_queued_reads_visible(
+    engine: ReActEngine, tool_ctx: ToolContext, streaming: bool, unavailable: bool,
+):
+    """DEC-018: narrowing must not discard the second already-selected read.
+
+    Exercise the actual ReAct loop and availability guard; model/provider and
+    audit I/O are isolated. A queued name absent from the registry stays denied.
+    """
+    from app.services.live_classical_handoff import (
+        arm_from_task_state, consume_handoff, stash_handoff_queue,
+    )
+
+    names = ["hubspot_search_contacts", "hubspot_get_contact"]
+    tools = [{"type": "function", "function": {"name": name}} for name in names]
+    engine.registry.get_available_tools = AsyncMock(return_value=tools)
+    engine.registry.execute_tool = AsyncMock(return_value={"success": True, "result": {"ok": True}})
+    state = {}
+    stash_handoff_queue(state, [
+        {"tool_name": name, "tool_arguments": {"query": "synthetic"}}
+        for name in [*names, *(["unavailable_read"] if unavailable else [])]
+    ])
+    arm_from_task_state(state)
+    try:
+        with (
+            patch("app.services.agent_platform_optimizer.narrow_tools_for_turn", return_value=(tools[:1], {})),
+            patch("app.operators.react_engine.moderate_input", new=AsyncMock()),
+            patch("app.operators.react_engine.write_audit_event"),
+            patch("app.workflows.audit.write_audit_event"),
+            patch.object(engine, "_chat_with_tools", new=AsyncMock(
+                return_value=SimpleNamespace(choices=[_choice("Synthetic reads finished.")])
+            )) as model,
+        ):
+            if streaming:
+                result = None
+                async for event in engine.run_streaming(
+                    ctx=tool_ctx, task="Read both records", permitted_tools=["hubspot"],
+                    connected_integrations=["hubspot"], max_iterations=5,
+                ):
+                    if event.kind == "done":
+                        result = event.react_result
+            else:
+                result = await engine.run(
+                    ctx=tool_ctx, task="Read both records", permitted_tools=["hubspot"],
+                    connected_integrations=["hubspot"], max_iterations=5,
+                )
+        assert result is not None
+        assert result.status == (ReActStatus.NEEDS_HUMAN_INPUT if unavailable else ReActStatus.COMPLETED)
+        assert [call.kwargs["tool_name"] for call in engine.registry.execute_tool.await_args_list] == names
+        assert model.await_count == (0 if unavailable else 1), "queued choices must not trigger another model selection"
+        assert consume_handoff() is None
+        assert "live_classical_handoff_queue" not in state
+    finally:
+        arm_from_task_state(None)
+
+
 def test_default_max_iterations_is_ten():
     assert DEFAULT_MAX_ITERATIONS == 10
 

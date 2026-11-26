@@ -319,12 +319,69 @@ def patch_workflow_run(client: Client, run_id: str, payload: dict[str, Any]) -> 
 
 
 def merge_run_parameters(client: Client, run_id: str, patch: dict[str, Any]) -> dict[str, Any]:
-    """Merge keys into workflow_runs.parameters (read-modify-write)."""
-    row = client.table("workflow_runs").select("parameters").eq("id", run_id).limit(1).execute()
-    current = safe_normalize_stored_dict((row.data or [{}])[0], key='parameters')
-    current.update(patch)
-    patch_workflow_run(client, run_id, {"parameters": current})
-    return current
+    """Atomically merge top-level keys without overwriting concurrent patches.
+
+    Requires the atomic_workflow_run_parameters migration. A missing RPC or
+    malformed acknowledgement fails closed; never fall back to read/replace.
+    Nested objects retain the existing shallow, last-writer-wins semantics.
+    """
+    if not isinstance(patch, dict):
+        raise TypeError("run parameter patch must be an object")
+    result = client.rpc("merge_workflow_run_parameters", {
+        "p_run_id": run_id, "p_patch": patch,
+    }).execute()
+    if not isinstance(result.data, dict) or any(
+        key not in result.data or result.data[key] != value
+        for key, value in patch.items()
+    ):
+        raise RuntimeError("atomic run parameter merge was not acknowledged")
+    mirror_legacy_run_to_contract(client, run_id)
+    return result.data
+
+
+def persist_run_outcome(
+    client: Client, run_id: str, *, org_id: str, status: str,
+    parameters: dict[str, Any], completed_at: str, error_message: str | None,
+    approval_status: str | None, completion_proven: bool, actor_id: str | None,
+) -> dict[str, Any]:
+    """Arbitrate proof and terminal state under a tenant-scoped database lock."""
+    data = client.rpc("persist_workflow_run_outcome", {
+        "p_run_id": run_id, "p_org_id": org_id, "p_status": status,
+        "p_patch": parameters, "p_completed_at": completed_at,
+        "p_error_message": error_message, "p_approval_status": approval_status,
+        "p_completion_proven": completion_proven, "p_actor_id": actor_id,
+    }).execute().data
+    if (not isinstance(data, dict) or type(data.get("accepted")) is not bool
+            or not isinstance(data.get("status"), str)):
+        raise RuntimeError("atomic outcome mutation was not acknowledged")
+    if data["accepted"]:
+        if data["status"] != status or not isinstance(data.get("parameters"), dict):
+            raise RuntimeError("atomic outcome proof was not acknowledged")
+        # The SQL mutation refreshes run/step projections in the same transaction.
+    return data
+
+
+def checkpoint_outcome_fanout(
+    client: Client, run_id: str, *, org_id: str, status: str,
+    receipt: dict[str, bool], finalize: bool, actor_required: bool,
+) -> dict[str, Any]:
+    """OR durable acknowledgements against the current outcome, never replace."""
+    data = client.rpc("checkpoint_workflow_run_outcome", {
+        "p_run_id": run_id, "p_org_id": org_id, "p_status": status,
+        "p_receipt": receipt, "p_finalize": finalize,
+        "p_actor_required": actor_required,
+    }).execute().data
+    if (not isinstance(data, dict) or type(data.get("accepted")) is not bool
+            or not isinstance(data.get("status"), str)):
+        raise RuntimeError("outcome receipt was not acknowledged")
+    if data["accepted"]:
+        stored = data.get("receipt")
+        if (data["status"] != status or not isinstance(stored, dict)
+                or stored.get("status") != status
+                or any(type(stored.get(key)) is not bool for key in (
+                    "run_persisted", "audit_written", "notification_emitted", "learning_recorded", "complete"))):
+            raise RuntimeError("outcome receipt acknowledgement is incomplete")
+    return data
 
 
 def try_mark_run_running(client: Client, run_id: str, org_id: str) -> bool:
@@ -524,17 +581,17 @@ def get_run_with_steps(
     client: Client,
     org_id: str,
     run_id: str,
-    environment_name: str = "default",
+    environment_name: str | None = "default",
 ) -> dict | None:
-    r = (
+    query = (
         client.table("workflow_runs")
         .select("*")
         .eq("id", run_id)
         .eq("org_id", org_id)
-        .eq("environment", environment_name)
-        .limit(1)
-        .execute()
     )
+    if environment_name is not None:
+        query = query.eq("environment", environment_name)
+    r = query.limit(1).execute()
     if not r.data or len(r.data) == 0:
         return None
     run = dict(r.data[0])
@@ -542,11 +599,22 @@ def get_run_with_steps(
         client.table("workflow_steps")
         .select("*")
         .eq("run_id", run_id)
+        .eq("org_id", org_id)
         .order("step_index")
         .execute()
     )
     run["steps"] = list(s.data) if s.data else []
     return run
+
+
+def get_worker_run_with_steps(client: Client, org_id: str, run_id: str) -> dict | None:
+    """Read a queued identity in its tenant, then use its persisted environment.
+
+    Queue messages carry org/run identity, not an environment selector. Applying
+    the interactive reader's default would silently miss production/QA runs.
+    Interactive callers retain their existing explicit/default environment scope.
+    """
+    return get_run_with_steps(client, org_id, run_id, environment_name=None)
 
 
 def list_workflow_nodes(
@@ -1201,8 +1269,9 @@ def emit_execute_completed(
     actor_id: str,
     run_id: str,
     status: str,
-) -> None:
-    write_audit_event(
+    *, delivery_id: str | None = None,
+) -> bool:
+    return write_audit_event(
         client,
         org_id=org_id,
         actor_id=actor_id,
@@ -1210,6 +1279,7 @@ def emit_execute_completed(
         resource_type=RESOURCE_TYPE_WORKFLOW_RUN,
         resource_id=run_id,
         metadata={"status": status},
+        **({"delivery_id": delivery_id} if delivery_id else {}),
     )
 
 
@@ -1219,8 +1289,9 @@ def emit_execute_failed(
     actor_id: str,
     run_id: str,
     error_message: str | None = None,
-) -> None:
-    write_audit_event(
+    *, delivery_id: str | None = None,
+) -> bool:
+    return write_audit_event(
         client,
         org_id=org_id,
         actor_id=actor_id,
@@ -1228,6 +1299,7 @@ def emit_execute_failed(
         resource_type=RESOURCE_TYPE_WORKFLOW_RUN,
         resource_id=run_id,
         metadata={"error_message": (error_message or "")[:200]},
+        **({"delivery_id": delivery_id} if delivery_id else {}),
     )
 
 
@@ -1236,8 +1308,9 @@ def emit_execute_cancelled(
     org_id: str,
     actor_id: str,
     run_id: str,
-) -> None:
-    write_audit_event(
+    *, delivery_id: str | None = None,
+) -> bool:
+    return write_audit_event(
         client,
         org_id=org_id,
         actor_id=actor_id,
@@ -1245,4 +1318,5 @@ def emit_execute_cancelled(
         resource_type=RESOURCE_TYPE_WORKFLOW_RUN,
         resource_id=run_id,
         metadata=None,
+        **({"delivery_id": delivery_id} if delivery_id else {}),
     )

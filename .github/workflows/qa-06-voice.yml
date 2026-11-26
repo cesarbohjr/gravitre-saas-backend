@@ -1,0 +1,966 @@
+# Canonical development-branch lane; production release requires separate certification.
+name: QA 06-voice
+'on':
+  workflow_dispatch:
+    inputs:
+      source:
+        description: Original workflow contract to execute
+        required: true
+        type: choice
+        options:
+        - master-qa-qa30-acoustic-qualification
+        - master-qa-qa30-offline-cancellation
+        - master-qa-qa30-voice-confirmed-turns
+        - run-acceptance-voice
+        - voice-duplex-guard
+        - voice-gates-2-3
+        - voice-livekit-candidate
+        - voice-slo-gates
+        - voice-stt-control-latency
+        - release1-chat-voice-revocation-e2e
+        default: master-qa-qa30-acoustic-qualification
+      voice_gates_2_3__run_paid_voice_acceptance:
+        description: 'voice-gates-2-3: Explicitly authorize paid voice-provider acceptance (never enabled on PR pushes)'
+        type: boolean
+        required: false
+        default: false
+      voice_stt_control_latency__run_paid_provider_tests:
+        description: 'voice-stt-control-latency: Explicit authorization for billable provider calls (default OFF)'
+        required: false
+        type: boolean
+        default: false
+  push:
+    branches:
+    - main
+  pull_request:
+    types:
+    - opened
+    - reopened
+    - synchronize
+  schedule:
+  - cron: 0 7 * * *
+  - cron: 15 6 * * *
+concurrency:
+  group: ${{ format('candidate-{0}', (inputs.source == 'voice-duplex-guard' && ('voice-duplex-guard')) || (inputs.source ==
+    'voice-slo-gates' && ('voice-slo-gates')) || github.run_id) }}
+  cancel-in-progress: ${{ (inputs.source == 'voice-duplex-guard' && (false)) || (inputs.source == 'voice-slo-gates' && (false))
+    || false }}
+jobs:
+  upstream_contract:
+    name: Read trusted upstream outcome metadata
+    if: ${{ github.event_name == 'workflow_run' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    permissions:
+      contents: read
+      actions: read
+    outputs:
+      evidence: ${{ steps.upstream.outputs.evidence }}
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        ref: ${{ github.sha }}
+        persist-credentials: false
+    - id: upstream
+      run: python scripts/route-workflow-event.py --lane 06-voice --fetch-upstream
+      env:
+        GITHUB_TOKEN: ${{ github.token }}
+  dispatch_contract:
+    name: Validate selected source inputs
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    timeout-minutes: 4
+    needs:
+    - upstream_contract
+    if: ${{ always() && (needs.upstream_contract.result == 'success' || needs.upstream_contract.result == 'skipped') }}
+    outputs:
+      selected: ${{ steps.contract.outputs.selected }}
+      derived: ${{ steps.contract.outputs.derived }}
+      context_conclusions: ${{ steps.contract.outputs.context_conclusions }}
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        persist-credentials: false
+        fetch-depth: 0
+    - id: contract
+      name: Validate source contract
+      shell: python
+      env:
+        SOURCE_SCHEMAS: '{"master-qa-qa30-acoustic-qualification": {}, "master-qa-qa30-offline-cancellation": {}, "master-qa-qa30-voice-confirmed-turns":
+          {}, "run-acceptance-voice": {}, "voice-duplex-guard": {}, "voice-gates-2-3": {"run_paid_voice_acceptance": {"description":
+          "Explicitly authorize paid voice-provider acceptance (never enabled on PR pushes)", "type": "boolean", "required":
+          true, "default": false}}, "voice-livekit-candidate": {}, "voice-slo-gates": {}, "voice-stt-control-latency": {"run_paid_provider_tests":
+          {"description": "Explicit authorization for billable provider calls (default OFF)", "required": true, "type": "boolean",
+          "default": false}}, "release1-chat-voice-revocation-e2e": {}}'
+        MANUAL_SOURCES: '["master-qa-qa30-acoustic-qualification", "master-qa-qa30-offline-cancellation", "master-qa-qa30-voice-confirmed-turns",
+          "run-acceptance-voice", "voice-duplex-guard", "voice-gates-2-3", "voice-livekit-candidate", "voice-slo-gates", "voice-stt-control-latency",
+          "release1-chat-voice-revocation-e2e"]'
+        DISPATCH_VALUES: ${{ toJSON(inputs) }}
+        EVENT_NAME: ${{ github.event_name }}
+        CANONICAL_LANE: 06-voice
+        UPSTREAM_EVIDENCE: ${{ needs.upstream_contract.outputs.evidence }}
+      run: "import json, os\nschemas = json.loads(os.environ['SOURCE_SCHEMAS'])\nvalues = json.loads(os.environ['DISPATCH_VALUES'])\n\
+        event_name = os.environ['EVENT_NAME']\ncalled = values.get('_reusable', False)\nif not called and event_name not in\
+        \ ('workflow_dispatch', 'workflow_call'):\n    import subprocess\n    subprocess.run(['python', 'scripts/route-workflow-event.py',\
+        \ '--lane', os.environ['CANONICAL_LANE']], check=True)\n    raise SystemExit(0)\nsource = values.get('source')\nif\
+        \ source not in schemas:\n    raise SystemExit('Unknown source workflow')\nif not called and event_name == 'workflow_dispatch'\
+        \ and source not in json.loads(os.environ['MANUAL_SOURCES']):\n    raise SystemExit('Source has no manual trigger')\n\
+        if called and source != 'isolated-acceptance':\n    raise SystemExit('Unsupported reusable source')\nfor key, config\
+        \ in schemas[source].items():\n    value = values.get(source.replace('-', '_') + '__' + key)\n    if called and key\
+        \ == 'suite':\n        value = values.get('suite')\n    if config.get('required') and (value is None or value == ''):\n\
+        \        raise SystemExit('Required selected-source input missing: ' + key)\nprint('Selected source input contract\
+        \ validated; this is not execution acceptance')\nwith open(os.environ['GITHUB_OUTPUT'], 'a') as output:\n    output.write('selected='\
+        \ + json.dumps([source]) + '\\n')\n    output.write('derived=[]\\ncontext_conclusions={}\\n')\n"
+  master_qa_qa30_acoustic_qualification__kws-qualification:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+    - name: Verify fail-closed KWS configuration and score rules
+      run: python -m unittest discover -s tests -p test_pr587_kws_qualification.py
+    - name: Verify custom model and complete audio corpus are available
+      run: python scripts/pr587_kws_qualification.py --preflight --output acceptance-results/pr587-kws-qualification.json
+    - name: Install local acoustic engine (only with supplied trained assets)
+      if: ${{ hashFiles('acceptance-assets/pr587-kws-manifest.json') != '' }}
+      run: python -m pip install --no-cache-dir 'openwakeword==0.6.0' 'onnxruntime' 'numpy'
+    - name: Run actual repeated custom-model acoustic inference
+      if: ${{ hashFiles('acceptance-assets/pr587-kws-manifest.json') != '' }}
+      run: python scripts/pr587_openwakeword_replay.py --manifest acceptance-assets/pr587-kws-manifest.json
+    - name: Publish actual acoustic replay output
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: pr587-custom-acoustic-results
+        path: acceptance-results/pr587-kws-acoustic-results.json
+        if-no-files-found: ignore
+    - name: Publish blocked or qualified evidence
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: pr587-kws-qualification
+        path: acceptance-results/pr587-kws-qualification.json
+        if-no-files-found: error
+    name: kws-qualification
+    needs:
+    - dispatch_contract
+    if: ${{ always() && needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected),
+      'master-qa-qa30-acoustic-qualification') && ((!cancelled() && (true))) }}
+    permissions:
+      contents: read
+      actions: read
+  master_qa_qa30_offline_cancellation__inspect-without-paid-providers:
+    timeout-minutes: 10
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+    - name: Evaluate real-audio evidence without network or provider credentials
+      run: python scripts/pr587_offline_cancel_gate.py | tee pr587-offline-decision.json
+    - uses: actions/upload-artifact@v4
+      with:
+        name: pr587-offline-decision
+        path: pr587-offline-decision.json
+    name: inspect-without-paid-providers
+    needs:
+    - dispatch_contract
+    if: ${{ always() && needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected),
+      'master-qa-qa30-offline-cancellation') && ((!cancelled() && (true))) }}
+    permissions:
+      contents: read
+  master_qa_qa30_voice_confirmed_turns__replay:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+        cache: pip
+        cache-dependency-path: backend/requirements.txt
+    - name: Install backend test dependencies
+      run: 'python -m pip install --upgrade pip
+
+        pip install -r requirements.txt
+
+        pip install pytest pytest-asyncio
+
+        '
+    - name: Confirmation and turn-taking regression
+      run: python -m pytest -q -p tests.offline_network_guard tests/services/pipecat_voice/test_confirmation_hold.py tests/services/pipecat_voice/test_interruption_correctness.py
+        tests/services/pipecat_voice/test_reconnect_and_approval_contract.py tests/services/pipecat_voice/test_phase3_provider_commit_gate.py
+      env:
+        OPENAI_API_KEY: fake-issue-535
+        ANTHROPIC_API_KEY: fake-issue-535
+        GEMINI_API_KEY: fake-issue-535
+    - name: Reproduce approval race on 20 seeded runs
+      run: python scripts/bench_voice_scenarios.py --runs 20 --seed 1000 --profile production_inferred --scenarios S8 --out
+        "${{ runner.temp }}/voice-approval-replay"
+      env:
+        OPENAI_API_KEY: fake-issue-535
+        ANTHROPIC_API_KEY: fake-issue-535
+        GEMINI_API_KEY: fake-issue-535
+    - name: Require zero premature writes
+      run: 'python - <<''PY''
+
+        import json,os
+
+        from pathlib import Path
+
+        p=Path(os.environ[''RUNNER_TEMP''])/''voice-approval-replay/results.json''
+
+        r=json.loads(p.read_text())[''scenarios''][''S8'']
+
+        acc=r[''aggregate''][''accuracy'']
+
+        assert acc[''n'']==20 and acc[''pass'']==20, (acc,r[''aggregate''][''outcomes''])
+
+        assert r[''aggregate''][''outcomes''].get(''email_sent'',0)==0, r[''aggregate''][''outcomes'']
+
+        print(''PASS: S8 20/20, no premature writes'')
+
+        PY
+
+        '
+    - name: Upload evidence
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: issue-535-voice-replay-${{ github.sha }}
+        path: ${{ runner.temp }}/voice-approval-replay/
+        if-no-files-found: warn
+    name: replay
+    needs:
+    - dispatch_contract
+    if: ${{ always() && needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected),
+      'master-qa-qa30-voice-confirmed-turns') && ((!cancelled() && (true))) }}
+  run_acceptance_voice__voice:
+    name: Bounded live provider and cancelled-write acceptance
+    uses: ./.github/workflows/qa-12-independent-acceptance.yml
+    with:
+      suite: voice
+    secrets: inherit
+    needs:
+    - dispatch_contract
+    if: ${{ always() && needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected),
+      'run-acceptance-voice') && ((!cancelled() && (true))) }}
+    permissions:
+      contents: read
+      actions: read
+      pull-requests: read
+  voice_duplex_guard__voice-duplex:
+    name: Voice duplex capture guard
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+    - uses: actions/checkout@v4
+    - uses: pnpm/action-setup@v4
+      with:
+        version: 10
+    - uses: actions/setup-node@v4
+      with:
+        node-version: 22
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+    - name: Reclaim unused runner toolchains before Python installation
+      run: 'df -h /
+
+        sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/hostedtoolcache/CodeQL
+
+        df -h /
+
+        '
+    - name: Install backend dependencies (Pipecat harness server)
+      env:
+        PIP_NO_CACHE_DIR: '1'
+      working-directory: backend
+      run: 'python -m pip install --upgrade pip
+
+        python -m pip install --no-cache-dir -r requirements.txt
+
+        df -h /
+
+        '
+    - name: Install root + web dependencies
+      run: 'npm install
+
+        cd apps/web && pnpm install --frozen-lockfile
+
+        '
+    - name: Verify local cancellation candidate remains shadow-only
+      working-directory: apps/web
+      run: pnpm exec vitest run __tests__/voice-local-cancel-candidate.test.ts __tests__/voice-local-cancel-shadow-probe.test.ts
+    - name: Install Playwright Chromium
+      run: npx playwright install --with-deps chromium
+    - name: Run voice duplex guard
+      run: npx playwright test --config=playwright.voice.config.ts
+      env:
+        CI: 'true'
+        PLAYWRIGHT_BASE_URL: http://localhost:3021
+        NEXT_PUBLIC_PLAYWRIGHT_E2E: '1'
+        PLAYWRIGHT_E2E: '1'
+        PIPECAT_HARNESS_URL: http://127.0.0.1:8799
+        PIPECAT_HARNESS_PYTHON: python
+        SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+        SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+        NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+    - name: Upload Playwright artifacts
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: voice-duplex-guard-artifacts
+        if-no-files-found: ignore
+        retention-days: 14
+        path: 'test-results/
+
+          playwright-report/
+
+          '
+    needs:
+    - dispatch_contract
+    if: ${{ always() && needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected),
+      'voice-duplex-guard') && ((!cancelled() && (true))) }}
+    concurrency:
+      group: ${{ format('candidate-{0}-{1}-{2}', 'voice-duplex-guard', 'voice_duplex_guard__voice-duplex', toJSON(matrix))
+        }}
+      cancel-in-progress: ${{ false }}
+  voice_gates_2_3__standing-batteries:
+    if: ${{ always() && needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected),
+      'voice-gates-2-3') && (!cancelled() && (needs.voice_gates_2_3__live-provider.result == 'success' && needs.voice_gates_2_3__paired-runtime-readiness.result
+      == 'success') && (github.event_name == 'workflow_dispatch' && inputs.voice_gates_2_3__run_paid_voice_acceptance == true))
+      }}
+    needs:
+    - dispatch_contract
+    - voice_gates_2_3__paired-runtime-readiness
+    - voice_gates_2_3__live-provider
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    environment: acceptance
+    env:
+      PIP_NO_CACHE_DIR: '1'
+      APP_ENV: dev
+      GRAVITRE_VOICE_ISOLATED: '1'
+      SUPABASE_URL: ${{ secrets.E2E_SUPABASE_URL }}
+      SUPABASE_ANON_KEY: ${{ secrets.E2E_SUPABASE_ANON_KEY }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.E2E_SUPABASE_SERVICE_ROLE_KEY }}
+      SUPABASE_JWT_SECRET: ${{ secrets.E2E_SUPABASE_JWT_SECRET }}
+      E2E_SUPABASE_ALLOWED_URL: ${{ vars.E2E_SUPABASE_ALLOWED_URL }}
+      ANTHROPIC_API_KEY: ${{ secrets.ACCEPTANCE_ANTHROPIC_API_KEY }}
+      OPENAI_API_KEY: ''
+      GEMINI_API_KEY: ''
+      PREFERRED_AI_PROVIDER: anthropic
+      AI_FAILOVER_ENABLED: 'true'
+      NOTIFICATION_EMAIL_ENABLED: 'false'
+      ACCEPTANCE_SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        ref: ${{ github.event.pull_request.head.sha || github.sha }}
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+    - name: Install production dependencies without retaining wheel cache
+      run: python -m pip install -r backend/requirements-dev.txt
+    - name: Regress acceptance targeting, report privacy and full-battery retention
+      run: 'python -m unittest discover -s tests -p test_voice_standing_acceptance.py
+
+        python -m unittest discover -s tests -p test_prompt_injection_smoke_auth.py
+
+        '
+    - name: Wait for predecessor acceptance runs before touching the shared smoke actor
+      run: python scripts/wait_voice_acceptance_predecessors.py
+      env:
+        GH_TOKEN: ${{ github.token }}
+    - name: Provision and verify the dedicated acceptance identity
+      run: python scripts/bootstrap_voice_acceptance.py
+    - name: Mint the exported acceptance actor session
+      run: python scripts/mint_smoke_org_session.py --github-env
+    - name: Run complete standing prompt batteries against the loopback acceptance API
+      run: python scripts/voice_standing_acceptance.py
+    - uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: isolated-standing-batteries
+        path: acceptance-results/standing-batteries
+    name: standing-batteries
+    permissions:
+      contents: read
+      actions: read
+  voice_gates_2_3__paired-runtime-readiness:
+    if: ${{ always() && needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected),
+      'voice-gates-2-3') && (!cancelled() && (needs.voice_gates_2_3__live-provider.result == 'success') && (github.event_name
+      == 'workflow_dispatch' && inputs.voice_gates_2_3__run_paid_voice_acceptance == true)) }}
+    needs:
+    - dispatch_contract
+    - voice_gates_2_3__live-provider
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    environment: acceptance
+    env:
+      PIP_NO_CACHE_DIR: '1'
+      PIP_DISABLE_PIP_VERSION_CHECK: '1'
+      PYTHONDONTWRITEBYTECODE: '1'
+      SUPABASE_URL: ${{ secrets.E2E_SUPABASE_URL }}
+      SUPABASE_ANON_KEY: ${{ secrets.E2E_SUPABASE_ANON_KEY }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.E2E_SUPABASE_SERVICE_ROLE_KEY }}
+      SUPABASE_JWT_SECRET: ${{ secrets.E2E_SUPABASE_JWT_SECRET }}
+      E2E_SUPABASE_ALLOWED_URL: ${{ vars.E2E_SUPABASE_ALLOWED_URL }}
+      ANTHROPIC_API_KEY: ${{ secrets.ACCEPTANCE_ANTHROPIC_API_KEY }}
+      OPENAI_API_KEY: ''
+      GEMINI_API_KEY: ''
+      APP_ENV: dev
+      GRAVITRE_VOICE_ISOLATED: '1'
+      VOICE_PIPECAT_ENABLED: 'true'
+      PREFERRED_AI_PROVIDER: anthropic
+      AI_FAILOVER_ENABLED: 'true'
+      DEEPGRAM_API_KEY: ${{ secrets.ACCEPTANCE_DEEPGRAM_API_KEY }}
+      ELEVENLABS_API_KEY: ${{ secrets.ACCEPTANCE_ELEVENLABS_API_KEY }}
+      ELEVENLABS_VOICE_ID: ${{ vars.ACCEPTANCE_ELEVENLABS_VOICE_ID }}
+      ELEVENLABS_VOICE_SARAH: ${{ vars.ACCEPTANCE_ELEVENLABS_VOICE_ID }}
+      ACCEPTANCE_SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+      ACCEPTANCE_INPUT_WAV: /tmp/voice-pinned-recordings/paired-live/input.wav
+      ACCEPTANCE_CANCEL_WAV: /tmp/voice-pinned-recordings/paired-live/cancel-input.wav
+      ACCEPTANCE_NATIVE_RECORDINGS_DIR: /tmp/voice-native-pinned/paired-native-assignment
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        ref: ${{ github.event.pull_request.head.sha || github.sha }}
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+    - name: Reclaim unused hosted-runner toolchains and record disk baseline
+      run: "set -euo pipefail\necho \"Disk before safe hosted-runner cleanup:\"\ndf -h / /tmp\n# Disposable ubuntu-latest\
+        \ runner: these SDKs are unrelated to this Python/RTC job.\n# Do not remove Python, FFmpeg, Docker, GitHub Actions\
+        \ tools, or repository data.\nfor dir in /usr/local/lib/android /usr/share/dotnet /opt/ghc /usr/local/share/powershell;\
+        \ do\n  if [ -d \"$dir\" ]; then\n    echo \"Removing unused hosted SDK: $dir\"\n    sudo rm -rf -- \"$dir\"\n  fi\n\
+        done\npython -m pip cache purge || true\nsudo apt-get clean\necho \"Disk after cleanup:\"\ndf -h / /tmp\navailable_kib=$(df\
+        \ -Pk / | awk 'NR==2 {print $4}')\nif [ \"$available_kib\" -lt 10485760 ]; then\n  echo \"::error::Paired voice runner\
+        \ needs at least 10 GiB free before heavy dependencies; available KiB=$available_kib\"\n  exit 1\nfi\n"
+    - name: Verify isolated runtime configuration (read-only, no production fallback)
+      run: "python - <<'PY'\nimport json, os, pathlib\nnames = ('SUPABASE_URL', 'SUPABASE_ANON_KEY', 'SUPABASE_SERVICE_ROLE_KEY',\
+        \ 'SUPABASE_JWT_SECRET', 'E2E_SUPABASE_ALLOWED_URL', 'ANTHROPIC_API_KEY')\nblockers = ['missing:' + name for name\
+        \ in names if not os.environ.get(name)]\nif os.environ.get('SUPABASE_URL') and (os.environ['SUPABASE_URL'].rstrip('/')\
+        \ != 'https://aadnwmjzrmbvadszroqt.supabase.co' or os.environ['SUPABASE_URL'].rstrip('/') != os.environ.get('E2E_SUPABASE_ALLOWED_URL',\
+        \ '').rstrip('/')):\n    blockers.append('isolated_target_not_explicitly_allowlisted')\nresult = {'status': 'NOT RUN'\
+        \ if blockers else 'CONFIGURATION_PRESENT', 'blockers': blockers,\n          'paired_inference': 'NOT RUN', 'live_action_certification':\
+        \ 'NOT RUN', 'certified': False}\npath = pathlib.Path('acceptance-results/paired-runtime-readiness.json')\npath.parent.mkdir(parents=True,\
+        \ exist_ok=True)\npath.write_text(json.dumps(result, indent=2))\nprint(json.dumps(result))\nif blockers: raise SystemExit(2)\n\
+        PY\n"
+    - name: Regress inference preflight privacy and status mapping
+      run: python -m unittest discover -s tests -p test_verify_acceptance_inference.py
+    - name: Verify authorized live Anthropic inference (bounded request)
+      run: python scripts/verify_acceptance_inference.py --output acceptance-results/anthropic-inference.json
+    - name: Install read-only smoke identity verifier
+      run: python -m pip install 'supabase==2.33.0' 'PyJWT==2.15.1'
+    - name: Verify target-pinning guards
+      run: python -m unittest discover -s tests -p test_bootstrap_voice_acceptance.py
+    - name: Provision authorized disposable acceptance tenant and actor
+      run: python scripts/bootstrap_voice_acceptance.py
+    - name: Verify flagged smoke actor and mint short-lived session
+      run: python scripts/mint_smoke_org_session.py --github-env
+    - name: Verify short-lived smoke token against Supabase Auth
+      run: "python - <<'PY'\nimport os\nfrom supabase import create_client\nclient = create_client(os.environ['SUPABASE_URL'],\
+        \ os.environ['SUPABASE_SERVICE_ROLE_KEY'])\nuser = client.auth.get_user(os.environ['PLATFORM_LIVE_BEARER_TOKEN']).user\n\
+        if not user or str(user.id) != os.environ['ISOLATED_CONVERSATION_TEST_USER_ID']:\n    raise SystemExit('Smoke token\
+        \ identity verification failed')\nprint('AUTHENTICATED_SMOKE_ACTOR_VERIFIED: Auth API identity matches isolated membership')\n\
+        PY\n"
+    - name: Install production voice pipeline and isolated transport dependencies
+      run: 'set -euo pipefail
+
+        echo "Disk before voice dependency installation:"
+
+        df -h / /tmp
+
+        python -m pip install --no-cache-dir --no-compile -r backend/requirements-dev.txt -r backend/requirements-voice-comparison.txt
+        ''livekit-api==1.2.2''
+
+        echo "Disk after voice dependency installation:"
+
+        df -h / /tmp
+
+        python -m pip check
+
+        '
+    - name: Install recording decoder from the runner package repository
+      run: 'sudo apt-get update -qq
+
+        sudo apt-get install --yes --no-install-recommends ffmpeg
+
+        sudo apt-get clean
+
+        ffmpeg -version
+
+        echo "Disk after FFmpeg installation:"
+
+        df -h / /tmp
+
+        '
+    - name: Verify paired controller isolation and capture contracts
+      run: 'python -m unittest discover -s tests -p test_voice_paired_live.py
+
+        python -m unittest discover -s tests -p test_voice_acceptance_sink.py
+
+        python -m unittest discover -s tests -p test_voice_acceptance_repetitions.py
+
+        '
+    - name: Regress real HTTP1 credential serialization
+      working-directory: backend
+      run: python -m pytest -q --confcutdir=tests/core tests/core/test_supabase_credential_whitespace.py tests/core/test_shared_http_client.py
+    - name: Refresh short-lived acceptance identity after dependency installation
+      run: python scripts/mint_smoke_org_session.py --github-env
+    - name: Verify native assignment cancellation against the isolated database
+      run: python scripts/verify_native_assignment_cancel.py
+    - name: Verify production route authorization and fresh membership revocation
+      run: python scripts/verify_voice_route_authorization.py
+    - name: Reuse the exact previously executed recordings (digest checked by controller)
+      uses: actions/download-artifact@v4
+      with:
+        name: paired-runtime-readiness
+        run-id: 41134456513
+        github-token: ${{ github.token }}
+        path: /tmp/voice-pinned-recordings
+    - name: Retrieve the failed reconnect recording for content diagnosis
+      uses: actions/download-artifact@v4
+      with:
+        name: paired-runtime-readiness
+        run-id: 41138120065
+        github-token: ${{ github.token }}
+        path: /tmp/voice-failed-reconnect
+    - name: Reuse the exact executed native-action recordings
+      uses: actions/download-artifact@v4
+      with:
+        name: paired-runtime-readiness
+        run-id: 41141376937
+        github-token: ${{ github.token }}
+        path: /tmp/voice-native-pinned
+    - name: Transcribe the retained synthetic reconnect failure
+      run: "python - <<'PY'\nimport hashlib, json, os, pathlib, httpx\npath = pathlib.Path('/tmp/voice-failed-reconnect/paired-live/livekit-reconnect.wav')\n\
+        audio = path.read_bytes()\nif not 1000 < len(audio) < 5000000: raise SystemExit('diagnostic recording bounds')\nwith\
+        \ httpx.Client(timeout=45) as client:\n    response = client.post('https://api.deepgram.com/v1/listen', params={'model':\
+        \ 'nova-3'},\n        headers={'Authorization': 'Token ' + os.environ['DEEPGRAM_API_KEY'], 'Content-Type': 'audio/wav'},\
+        \ content=audio)\n    if response.status_code != 200: raise SystemExit('diagnostic transcription failed')\n    data\
+        \ = response.json()\nresult = {'source_run': 41138120065, 'source_commit': '2c0f7b464f979f55291dcd00d383734849b22266',\n\
+        \    'wav_sha256': hashlib.sha256(audio).hexdigest(), 'scope': 'retranscription of retained synthetic failure; original\
+        \ verdict unchanged',\n    'request_id': data.get('metadata', {}).get('request_id'),\n    'transcript': data['results']['channels'][0]['alternatives'][0]['transcript'][:3000]}\n\
+        pathlib.Path('acceptance-results/reconnect-content-diagnostic.json').write_text(json.dumps(result, indent=2))\nPY\n"
+    - name: Sequence native evidence after predecessor acceptance runs finish
+      run: python scripts/wait_voice_acceptance_predecessors.py
+      env:
+        GH_TOKEN: ${{ github.token }}
+    - name: Execute three matched repetitions through both real transports and native writes
+      id: paired_voice
+      run: "mkdir -p /tmp/gravitre-paired acceptance-results/paired-live\ncurl -fsSL --retry 2 https://github.com/livekit/livekit/releases/download/v1.13.11/livekit_1.13.11_linux_amd64.tar.gz\
+        \ -o /tmp/gravitre-paired/server.tar.gz\necho '1e9ee90ca301e1842b2887fc77cb122759756a9c8aeb4334ee91de3325ec43fb  /tmp/gravitre-paired/server.tar.gz'\
+        \ | sha256sum -c -\ntar -xzf /tmp/gravitre-paired/server.tar.gz -C /tmp/gravitre-paired\necho 'server_verified=true'\
+        \ >> \"$GITHUB_OUTPUT\"\n/tmp/gravitre-paired/livekit-server --dev --bind 127.0.0.1 --node-ip 127.0.0.1 --rtc.enable_loopback_candidate\
+        \ >/tmp/gravitre-paired/server.log 2>&1 &\nserver_pid=$!\ntrap 'kill \"$server_pid\" 2>/dev/null || true' EXIT\nfor\
+        \ attempt in $(seq 1 40); do\n  if curl -fsS http://127.0.0.1:7880 >/dev/null; then break; fi\n  if ! kill -0 \"$server_pid\"\
+        \ 2>/dev/null; then exit 1; fi\n  sleep 0.25\ndone\npython scripts/voice_acceptance_repetitions.py\n"
+    - uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: paired-runtime-readiness
+        path: 'acceptance-results/paired-runtime-readiness.json
+
+          acceptance-results/smoke-fixture.json
+
+          acceptance-results/anthropic-inference.json
+
+          acceptance-results/native-assignment-cancellation.json
+
+          acceptance-results/voice-route-authorization.json
+
+          acceptance-results/reconnect-content-diagnostic.json
+
+          acceptance-results/paired-live
+
+          acceptance-results/paired-native-assignment
+
+          acceptance-results/repeated-paired
+
+          '
+    name: paired-runtime-readiness
+    permissions:
+      contents: read
+      actions: read
+  voice_gates_2_3__live-provider:
+    if: ${{ always() && needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected),
+      'voice-gates-2-3') && (!cancelled() && (true) && (github.event_name == 'workflow_dispatch' && inputs.voice_gates_2_3__run_paid_voice_acceptance
+      == true)) }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: acceptance
+    env:
+      PIP_NO_CACHE_DIR: '1'
+      APP_ENV: dev
+      ACCEPTANCE_SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+      DEEPGRAM_API_KEY: ${{ secrets.ACCEPTANCE_DEEPGRAM_API_KEY }}
+      ELEVENLABS_API_KEY: ${{ secrets.ACCEPTANCE_ELEVENLABS_API_KEY }}
+      ELEVENLABS_VOICE_ID: ${{ vars.ACCEPTANCE_ELEVENLABS_VOICE_ID }}
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        ref: ${{ github.event.pull_request.head.sha || github.sha }}
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+    - name: Regress read-only account probe and privacy guards
+      run: python -m unittest discover -s tests -p test_elevenlabs_account_probe.py
+    - name: Inspect the exact acceptance key subscription without generating audio
+      run: python scripts/verify_elevenlabs_account.py --output acceptance-results/elevenlabs-account-check.json
+    - uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: elevenlabs-acceptance-account-check
+        path: acceptance-results/elevenlabs-account-check.json
+    - name: Check dedicated provider credentials without disclosing values
+      run: "python - <<'PY'\nimport json, os, pathlib\nmissing = [name for name in ('DEEPGRAM_API_KEY', 'ELEVENLABS_API_KEY')\
+        \ if not os.environ.get(name)]\nif missing:\n    p = pathlib.Path('acceptance-results/provider-roundtrip.json')\n\
+        \    p.parent.mkdir(parents=True, exist_ok=True)\n    p.write_text(json.dumps({'status': 'NOT RUN', 'blockers': ['missing:'\
+        \ + n for n in missing], 'certified': False}))\n    print('Live provider NOT RUN: missing dedicated acceptance credentials:\
+        \ ' + ', '.join(missing))\n    raise SystemExit(2)\nprint('Dedicated provider credentials present; values withheld')\n\
+        PY\n"
+    - name: Install existing provider runner dependencies
+      run: python -m pip install -r backend/requirements-dev.txt
+    - name: Execute bounded real-provider audio and final write-gate acceptance
+      run: python scripts/verify-voice-provider-roundtrip.py --output acceptance-results/provider-roundtrip.json
+    - uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: voice-live-provider-boundaries
+        path: acceptance-results/provider-roundtrip.json
+    name: live-provider
+    needs:
+    - dispatch_contract
+    permissions:
+      contents: read
+      actions: read
+  voice_gates_2_3__governed-actions:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      PIP_NO_CACHE_DIR: '1'
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        ref: ${{ github.event.pull_request.head.sha || github.sha }}
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+    - name: Regress isolated inference gate without paid network calls
+      run: python -m unittest discover -s tests -p test_verify_acceptance_inference.py
+    - name: Reclaim unused hosted-runner toolchains before governed voice dependencies
+      run: "set -euo pipefail\ndf -h / /tmp\nfor dir in /usr/local/lib/android /usr/share/dotnet /opt/ghc /usr/local/share/powershell;\
+        \ do\n  if [ -d \"$dir\" ]; then\n    sudo rm -rf -- \"$dir\"\n  fi\ndone\npython -m pip cache purge || true\nsudo\
+        \ apt-get clean\ndf -h / /tmp\nfree_kib=$(df -Pk / | awk 'NR==2 {print $4}')\nif [ \"$free_kib\" -lt 10485760 ]; then\n\
+        \  echo \"::error::Governed voice runner needs at least 10 GiB free disk before dependency installation (KiB=$free_kib)\"\
+        \n  exit 1\nfi\n"
+    - name: Install backend and RTC test dependencies
+      run: 'python -m pip install --no-cache-dir --no-compile -r backend/requirements-dev.txt ''livekit==1.2.0''
+
+        df -h / /tmp
+
+        python -m pip check
+
+        '
+    - name: Require RTC SDK
+      run: python -c 'from livekit import rtc'
+    - name: Exercise canonical voice write boundaries and RTC stop wiring
+      working-directory: backend
+      run: python -m pytest -q -p tests.offline_network_guard tests/scripts/test_voice_provider_roundtrip.py tests/services/test_unified_turn_conversational_model.py
+        tests/services/test_unified_turn_reasoning.py tests/services/test_repeated_request_composition.py tests/services/test_provider_tool_router.py
+        tests/services/test_ai_guardrails.py::TestPromptHardening tests/services/pipecat_voice/test_flux_partial_bridge.py
+        tests/operators/test_agent_jobs_turn_cancellation.py tests/services/pipecat_voice/test_livekit_write_fence.py tests/services/pipecat_voice/test_phase3_provider_commit_gate.py
+        tests/services/pipecat_voice/test_turn_scoped_cancellation.py tests/services/pipecat_voice/test_reconnect_and_approval_contract.py
+        tests/services/pipecat_voice/test_confirmation_hold.py --junitxml=voice-governance.xml
+      env:
+        OPENAI_API_KEY: fake-offline-governance
+        ANTHROPIC_API_KEY: fake-offline-governance
+        GEMINI_API_KEY: fake-offline-governance
+    - uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: voice-governed-boundaries
+        path: backend/voice-governance.xml
+    name: governed-actions
+    needs:
+    - dispatch_contract
+    if: ${{ always() && needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected),
+      'voice-gates-2-3') && ((!cancelled() && (true))) }}
+    permissions:
+      contents: read
+      actions: read
+  voice_livekit_candidate__sdk-contracts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+    - name: Install isolated RTC test dependencies
+      run: python -m pip install 'livekit==1.2.0' 'starlette>=0.40,<1' 'pytest>=8,<10' 'pytest-asyncio>=0.24,<2'
+    - name: Require real SDK imports
+      run: python -c 'from livekit import rtc; from starlette.websockets import WebSocketState'
+    - name: Test candidate SDK and boundary contracts (not real-audio certification)
+      working-directory: backend
+      run: python -m pytest -q --confcutdir=tests/unit tests/unit/test_livekit_candidate.py --junitxml=livekit-contracts.xml
+    - uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: livekit-candidate-contracts
+        path: backend/livekit-contracts.xml
+    name: sdk-contracts
+    needs:
+    - dispatch_contract
+    if: ${{ always() && needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected),
+      'voice-livekit-candidate') && ((!cancelled() && (true))) }}
+    permissions:
+      contents: read
+  voice_livekit_candidate__connected-rtc:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+    - name: Install isolated RTC dependencies
+      run: python -m pip install 'livekit==1.2.0' 'livekit-api==1.2.2' 'starlette>=0.40,<1' 'imageio-ffmpeg==0.6.0'
+    - name: Fetch hash-verified server and public recorded-speech fixture
+      run: "mkdir -p /tmp/gravitre-rtc artifacts/livekit-connected\ncurl -fsSL --retry 2 https://github.com/livekit/livekit/releases/download/v1.13.11/livekit_1.13.11_linux_amd64.tar.gz\
+        \ -o /tmp/gravitre-rtc/server.tar.gz\necho '1e9ee90ca301e1842b2887fc77cb122759756a9c8aeb4334ee91de3325ec43fb  /tmp/gravitre-rtc/server.tar.gz'\
+        \ | sha256sum -c -\ntar -xzf /tmp/gravitre-rtc/server.tar.gz -C /tmp/gravitre-rtc\ncurl -fsSL --retry 2 https://raw.githubusercontent.com/openai/whisper/main/tests/jfk.flac\
+        \ -o /tmp/gravitre-rtc/speech.flac\necho '63a4b1e4c1dc655ac70961ffbf518acd249df237e5a0152faae9a4a836949715  /tmp/gravitre-rtc/speech.flac'\
+        \ | sha256sum -c -\npython - <<'PY'\nimport imageio_ffmpeg, subprocess\nfor rate, filename in ((16000, 'speech16.wav'),\
+        \ (24000, 'speech24.wav')):\n    subprocess.run([imageio_ffmpeg.get_ffmpeg_exe(), '-v', 'error', '-y',\n        '-i',\
+        \ '/tmp/gravitre-rtc/speech.flac', '-ar', str(rate), '-ac', '1',\n        '-c:a', 'pcm_s16le', '/tmp/gravitre-rtc/'\
+        \ + filename], check=True)\nPY\n"
+    - name: Run connected-room recorded-speech transport test (no inference)
+      run: "/tmp/gravitre-rtc/livekit-server --dev --bind 127.0.0.1 --node-ip 127.0.0.1 --rtc.enable_loopback_candidate >\
+        \ artifacts/livekit-connected/server.log 2>&1 &\nserver_pid=$!\ntrap 'kill \"$server_pid\" 2>/dev/null || true' EXIT\n\
+        for attempt in $(seq 1 40); do\n  if curl -fsS http://127.0.0.1:7880 >/dev/null; then break; fi\n  if ! kill -0 \"\
+        $server_pid\" 2>/dev/null; then cat artifacts/livekit-connected/server.log; exit 1; fi\n  sleep 0.25\ndone\npython\
+        \ scripts/voice_livekit_connected_smoke.py --input-wav /tmp/gravitre-rtc/speech16.wav --output-source-wav /tmp/gravitre-rtc/speech24.wav\
+        \ --artifacts artifacts/livekit-connected\n"
+    - uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: livekit-connected-transport-only
+        path: artifacts/livekit-connected
+    name: connected-rtc
+    needs:
+    - dispatch_contract
+    if: ${{ always() && needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected),
+      'voice-livekit-candidate') && ((!cancelled() && (true))) }}
+    permissions:
+      contents: read
+  voice_slo_gates__voice-slo:
+    name: Two-metric voice SLO alerts
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+        cache: pip
+        cache-dependency-path: backend/requirements.txt
+    - name: Install deps
+      run: pip install -r backend/requirements.txt httpx PyJWT python-dotenv supabase
+    - name: Generate synthetic samples (live HTTP Talk on isolated smoke org)
+      env:
+        LIVE_API_BASE: https://api.gravitre.app
+        VOICE_SLO_LIVE_SAMPLE_N: '5'
+        SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+        SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        SUPABASE_JWT_SECRET: ${{ secrets.SUPABASE_JWT_SECRET }}
+      run: python scripts/verify-voice-slo-two-metric-live.py --samples-only
+    - name: Live window alert (Metric A and Metric B separately)
+      if: always()
+      env:
+        SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+        SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        VOICE_SLO_ALERT_ORG_ID: ${{ env.VOICE_SLO_SMOKE_ORG_ID }}
+      run: python scripts/check-voice-slo-alerts.py
+    - name: Upload voice SLO artifacts
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: voice-slo-alerts
+        path: 'docs/delivery/voice-slo-alerts-latest.json
+
+          docs/delivery/voice-slo-two-metric-live.json
+
+          '
+        if-no-files-found: ignore
+    needs:
+    - dispatch_contract
+    if: ${{ always() && needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected),
+      'voice-slo-gates') && ((!cancelled() && (true))) }}
+    env:
+      VOICE_SLO_SMOKE_ORG_ID: f07e57c0-1501-4000-8000-c04e57a00001
+    concurrency:
+      group: ${{ format('candidate-{0}-{1}-{2}', 'voice-slo-gates', 'voice_slo_gates__voice-slo', toJSON(matrix)) }}
+      cancel-in-progress: ${{ false }}
+  voice_stt_control_latency__control-latency:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: acceptance
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        ref: ${{ github.event.pull_request.head.sha || github.sha }}
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+    - name: Regress timing parser and pinned inputs
+      run: python -m unittest discover -s tests -p test_voice_stt_control_latency.py
+    - name: Install bounded provider transport
+      if: ${{ github.event_name == 'workflow_dispatch' && inputs.voice_stt_control_latency__run_paid_provider_tests == true
+        }}
+      run: python -m pip install --no-cache-dir 'websockets==15.0.1'
+    - name: Reuse unchanged executed cancellation, backchannel and ordinary request recordings
+      if: ${{ github.event_name == 'workflow_dispatch' && inputs.voice_stt_control_latency__run_paid_provider_tests == true
+        }}
+      uses: actions/download-artifact@v4
+      with:
+        name: paired-runtime-readiness
+        run-id: 41216971203
+        github-token: ${{ github.token }}
+        path: /tmp/voice-control-recordings
+    - name: Compare unchanged Flux against fixed control keyterms (three matched repetitions)
+      if: ${{ github.event_name == 'workflow_dispatch' && inputs.voice_stt_control_latency__run_paid_provider_tests == true
+        }}
+      env:
+        DEEPGRAM_API_KEY: ${{ secrets.ACCEPTANCE_DEEPGRAM_API_KEY }}
+        ELEVENLABS_API_KEY: ${{ secrets.ACCEPTANCE_ELEVENLABS_API_KEY }}
+        ACCEPTANCE_SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+      run: python scripts/voice_stt_control_latency.py --flux-control-comparison --recordings /tmp/voice-control-recordings/repeated-paired/repetition-1/voice
+        --output acceptance-results/stt-control-latency.json
+    - uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: stt-control-latency
+        path: acceptance-results/stt-control-latency.json
+    name: control-latency
+    needs:
+    - dispatch_contract
+    if: ${{ always() && needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected),
+      'voice-stt-control-latency') && ((!cancelled() && (true))) }}
+    permissions:
+      contents: read
+      actions: read
+  release1_chat_voice_revocation_e2e__revocation-e2e:
+    runs-on: ubuntu-latest
+    environment: production
+    timeout-minutes: 15
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+    - name: Install isolated proof dependencies
+      run: pip install "PyJWT>=2.8,<3" "supabase>=2,<3"
+    - name: Mint short-lived isolated test session
+      env:
+        SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+        SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        SUPABASE_JWT_SECRET: ${{ secrets.SUPABASE_JWT_SECRET }}
+      run: python scripts/mint_smoke_org_session.py --github-env
+    - name: Verify live chat and voice responses before and after revocation
+      env:
+        SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+        SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      run: python scripts/verify_release1_chat_voice_e2e.py
+    - uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: release1-chat-voice-e2e
+        path: docs/delivery/release1-chat-voice-e2e.json
+        if-no-files-found: ignore
+    name: revocation-e2e
+    needs:
+    - dispatch_contract
+    if: ${{ always() && needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected),
+      'release1-chat-voice-revocation-e2e') && ((!cancelled() && (true))) }}
+    permissions:
+      contents: read
+  source_outcomes:
+    name: Record independent source workflow outcomes
+    if: ${{ always() && needs.dispatch_contract.result == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    permissions: {}
+    needs:
+    - upstream_contract
+    - dispatch_contract
+    - master_qa_qa30_acoustic_qualification__kws-qualification
+    - master_qa_qa30_offline_cancellation__inspect-without-paid-providers
+    - master_qa_qa30_voice_confirmed_turns__replay
+    - run_acceptance_voice__voice
+    - voice_duplex_guard__voice-duplex
+    - voice_gates_2_3__standing-batteries
+    - voice_gates_2_3__paired-runtime-readiness
+    - voice_gates_2_3__live-provider
+    - voice_gates_2_3__governed-actions
+    - voice_livekit_candidate__sdk-contracts
+    - voice_livekit_candidate__connected-rtc
+    - voice_slo_gates__voice-slo
+    - voice_stt_control_latency__control-latency
+    - release1_chat_voice_revocation_e2e__revocation-e2e
+    steps:
+    - name: Bind source outcomes to this run
+      shell: python
+      run: "import json, os\nsources = json.loads(os.environ['SOURCE_JOBS'])\nneeds = json.loads(os.environ['JOB_RESULTS'])\n\
+        selected = json.loads(os.environ['SELECTED'])\noutcomes = {}\nfor name, source in sources.items():\n    if name not\
+        \ in selected:\n        continue\n    results = [needs[key]['result'] for key in source['jobs']]\n    outcome = ('failure'\
+        \ if 'failure' in results else 'cancelled' if 'cancelled' in results\n               else 'success' if 'success' in\
+        \ results else 'skipped')\n    outcomes[source['display_name']] = outcome\nevidence = {'run_id': int(os.environ['GITHUB_RUN_ID']),\
+        \ 'head_sha': os.environ['GITHUB_SHA'],\n            'source_outcomes': outcomes}\nwith open('canonical-workflow-outcomes.json',\
+        \ 'w') as output:\n    json.dump(evidence, output)\n"
+      env:
+        SOURCE_JOBS: '{"master-qa-qa30-acoustic-qualification": {"display_name": "Master QA | QA30 Acoustic Qualification
+          (Manual, No Provider Credits)", "jobs": ["master_qa_qa30_acoustic_qualification__kws-qualification"]}, "master-qa-qa30-offline-cancellation":
+          {"display_name": "Master QA | QA30 Offline Cancellation Safety", "jobs": ["master_qa_qa30_offline_cancellation__inspect-without-paid-providers"]},
+          "master-qa-qa30-voice-confirmed-turns": {"display_name": "Master QA | QA30 Voice Confirmed-Turn Replay", "jobs":
+          ["master_qa_qa30_voice_confirmed_turns__replay"]}, "run-acceptance-voice": {"display_name": "Run live ElevenLabs
+          and Deepgram acceptance", "jobs": ["run_acceptance_voice__voice"]}, "voice-duplex-guard": {"display_name": "Voice
+          duplex browser guard", "jobs": ["voice_duplex_guard__voice-duplex"]}, "voice-gates-2-3": {"display_name": "Master
+          QA | QA30 Voice Safety and Acceptance", "jobs": ["voice_gates_2_3__standing-batteries", "voice_gates_2_3__paired-runtime-readiness",
+          "voice_gates_2_3__live-provider", "voice_gates_2_3__governed-actions"]}, "voice-livekit-candidate": {"display_name":
+          "Isolated LiveKit candidate contracts", "jobs": ["voice_livekit_candidate__sdk-contracts", "voice_livekit_candidate__connected-rtc"]},
+          "voice-slo-gates": {"display_name": "Voice SLO two-metric gates", "jobs": ["voice_slo_gates__voice-slo"]}, "voice-stt-control-latency":
+          {"display_name": "Voice provider control latency diagnosis", "jobs": ["voice_stt_control_latency__control-latency"]},
+          "release1-chat-voice-revocation-e2e": {"display_name": "Release 1 chat and voice revocation end to end", "jobs":
+          ["release1_chat_voice_revocation_e2e__revocation-e2e"]}}'
+        JOB_RESULTS: '{"master_qa_qa30_acoustic_qualification__kws-qualification": {"result": "${{ needs.master_qa_qa30_acoustic_qualification__kws-qualification.result
+          }}"}, "master_qa_qa30_offline_cancellation__inspect-without-paid-providers": {"result": "${{ needs.master_qa_qa30_offline_cancellation__inspect-without-paid-providers.result
+          }}"}, "master_qa_qa30_voice_confirmed_turns__replay": {"result": "${{ needs.master_qa_qa30_voice_confirmed_turns__replay.result
+          }}"}, "run_acceptance_voice__voice": {"result": "${{ needs.run_acceptance_voice__voice.result }}"}, "voice_duplex_guard__voice-duplex":
+          {"result": "${{ needs.voice_duplex_guard__voice-duplex.result }}"}, "voice_gates_2_3__standing-batteries": {"result":
+          "${{ needs.voice_gates_2_3__standing-batteries.result }}"}, "voice_gates_2_3__paired-runtime-readiness": {"result":
+          "${{ needs.voice_gates_2_3__paired-runtime-readiness.result }}"}, "voice_gates_2_3__live-provider": {"result": "${{
+          needs.voice_gates_2_3__live-provider.result }}"}, "voice_gates_2_3__governed-actions": {"result": "${{ needs.voice_gates_2_3__governed-actions.result
+          }}"}, "voice_livekit_candidate__sdk-contracts": {"result": "${{ needs.voice_livekit_candidate__sdk-contracts.result
+          }}"}, "voice_livekit_candidate__connected-rtc": {"result": "${{ needs.voice_livekit_candidate__connected-rtc.result
+          }}"}, "voice_slo_gates__voice-slo": {"result": "${{ needs.voice_slo_gates__voice-slo.result }}"}, "voice_stt_control_latency__control-latency":
+          {"result": "${{ needs.voice_stt_control_latency__control-latency.result }}"}, "release1_chat_voice_revocation_e2e__revocation-e2e":
+          {"result": "${{ needs.release1_chat_voice_revocation_e2e__revocation-e2e.result }}"}}'
+        SELECTED: ${{ needs.dispatch_contract.outputs.selected }}
+    - uses: actions/upload-artifact@v4
+      with:
+        name: canonical-workflow-outcomes-06-voice
+        path: canonical-workflow-outcomes.json
+        if-no-files-found: error
+        retention-days: 14

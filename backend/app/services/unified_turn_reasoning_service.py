@@ -165,6 +165,15 @@ class UnifiedTurnShadowResult:
     qa_overrode_model_tool: str | None = None
     qa_force_outcome: str | None = None
 
+    @property
+    def cancelled(self) -> bool:
+        """A confirmed chat stop is terminal, not permission to delegate."""
+        return (
+            self.outcome_kind == "skipped"
+            and self.fallthrough_reason == "chat_stop"
+            and self.error == "stopped"
+        )
+
     def to_audit_payload(self) -> dict[str, Any]:
         payload = asdict(self)
         payload["user_message"] = (self.user_message or "")[:1200]
@@ -176,7 +185,9 @@ class UnifiedTurnShadowResult:
             payload["connected_integrations"] = list(self.connected_integrations)
         live = bool(self.live_served)
         payload["shadow_user_visible"] = live
-        payload["classical_path_active"] = not live
+        payload["classical_path_active"] = not live and not self.cancelled
+        if self.cancelled:
+            payload["turn_terminal_state"] = "cancelled"
         payload["shadow_executes_tools"] = False  # tools still go through write/execute gates
         if self.fallthrough_reason:
             payload["fallthrough_reason"] = self.fallthrough_reason
@@ -1923,7 +1934,9 @@ def emit_unified_turn_shadow_audit(
     try:
         from app.workflows.audit import write_audit_event
 
-        if result.live_served:
+        if result.cancelled:
+            action = "unified_turn.live.cancelled"
+        elif result.live_served:
             action = "unified_turn.live.completed"
         elif result.fallthrough_reason:
             action = "unified_turn.live.fallthrough"
@@ -2494,6 +2507,23 @@ async def apply_unified_turn_live(
         response_style_key=response_style_key,
         conversation_tier=conversation_tier,
     )
+    if result.cancelled:
+        # The shadow runner already observed the authoritative stop flag.
+        # None means classical delegation to this caller, so stop explicitly
+        # and discard any partial model prose instead of reclassifying the skip.
+        emit_unified_turn_shadow_audit(
+            client=client, org_id=org_id, actor_id=user_id,
+            conversation_id=conversation_id, result=result,
+        )
+        return {
+            "stop_pipeline": True,
+            "turn_terminal_state": "cancelled",
+            "message": "",
+            "task_state": task_state,
+            "tool_results": [],
+            "model": "cancelled",
+            "unified_outcome_kind": "skipped",
+        }
     if spoken_mode and result.outcome_kind == "error":
         from app.services.voice_model_failure import unavailable_voice_model_reply
 
@@ -2708,12 +2738,16 @@ async def apply_unified_turn_live(
     if (
         not human_moment
         and not result.needs_tool_sse
-        and isinstance(classification, dict)
-        and classification.get("requires_action")
         and result.outcome_kind
-        in {"conversational_reply", "clarifying_question", "knowledge_boundary"}
+        in {"conversational_reply", "clarifying_question", "knowledge_boundary",
+            "confirmation_request"}
     ):
-        # Probe/tool SSE path when classical classifiers already flagged action.
+        # F2 compatibility: the previously supported connector-status and
+        # tool-SSE probes must still enter classical even when the general
+        # classifier calls them read-only (requires_action=False). Evaluate
+        # this heuristic ONCE in the existing LIVE decision block, then pass
+        # the reconciled boolean to the handoff helper. The helper cannot
+        # contradict the structured decision by re-parsing message wording.
         from app.services.unified_turn_classical_fallback import (
             message_requires_classical_tool_sse,
         )

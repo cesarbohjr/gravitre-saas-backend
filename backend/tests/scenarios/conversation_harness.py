@@ -29,9 +29,14 @@ import uuid
 from collections.abc import Callable
 from contextlib import ExitStack
 from dataclasses import dataclass, field
+from threading import Lock
 from types import SimpleNamespace
 from typing import Any
 from unittest.mock import AsyncMock, patch
+
+from postgrest.exceptions import APIError
+
+from tests.services.outcome_rpc_fake import outcome_rpc
 
 ORG = "00000000-0000-4000-8000-00000000a001"
 USER = "00000000-0000-4000-8000-00000000c001"
@@ -49,6 +54,8 @@ STATEFUL_TABLES = {
     "organization_members",
     # Connected accounts, when a test adds rows (account selection).
     "connectors",
+    "workflow_runs",
+    "workflow_run_steps",
 }
 
 
@@ -254,10 +261,24 @@ class _Noop:
         return _Resp(None)
 
 
+class _MissingPendingClaimRPC:
+    def execute(self) -> _Resp:
+        # This fixture exercises the table fallback. PostgREST reports an
+        # absent function with PGRST202, while a successful null denies a claim.
+        raise APIError({
+            "code": "PGRST202",
+            "message": "claim_pending_connector_write is absent from the fixture schema",
+            "details": None,
+            "hint": None,
+        })
+
+
 class ScenarioDB:
     def __init__(self) -> None:
         self.tables: dict[str, list[dict[str, Any]]] = {}
         self.log: list[tuple[str, str]] = []
+        self.write_claims: dict[tuple[str, str], dict[str, Any]] = {}
+        self._run_lock = Lock()
 
     def table(self, name: str) -> _Q:
         return _Q(self, name)
@@ -265,8 +286,85 @@ class ScenarioDB:
     def from_(self, name: str) -> _Q:
         return _Q(self, name)
 
-    def rpc(self, *_a: Any, **_k: Any) -> _Noop:
-        return _Noop()
+    def _run_rpc(self, name: str, args: dict[str, Any]) -> Any:
+        with self._run_lock:
+            row = next(
+                (run for run in self.tables.get("workflow_runs", []) if run["id"] == args["p_run_id"]),
+                None,
+            )
+            if name == "refresh_workflow_run_projection":
+                # Projection rows are outside the conversation harness.
+                return row is not None
+            if name == "merge_workflow_run_parameters":
+                if row is None:
+                    return None
+                params = row.setdefault("parameters", {})
+                params.update(copy.deepcopy(args["p_patch"]))
+                return copy.deepcopy(params)
+            if row is None or row["org_id"] != args["p_org_id"]:
+                return {"accepted": False, "status": "not_found"}
+
+            row.setdefault("parameters", {})
+            return outcome_rpc(row, name, args).execute().data
+
+    def rpc(self, name: str, payload: dict[str, Any] | None = None) -> Any:
+        if name == "claim_pending_connector_write":
+            return _MissingPendingClaimRPC()
+        if name in {
+            "merge_workflow_run_parameters",
+            "refresh_workflow_run_projection",
+            "persist_workflow_run_outcome",
+            "checkpoint_workflow_run_outcome",
+        }:
+            return SimpleNamespace(execute=lambda: _Resp(self._run_rpc(name, payload or {})))
+        # Simulate the canonical Postgres claim/bind/finalize lifecycle at the
+        # ledger RPC seam. A generic noop used to return NULL for every RPC,
+        # causing approved Gmail/Asana scenarios to fail before the executor.
+        if name not in {
+            "claim_write_invoke_idempotency",
+            "bind_write_recovery_context",
+            "finalize_write_invoke_idempotency",
+            "claim_approved_autonomous_write",
+        }:
+            return _Noop()
+        args = payload or {}
+        key = (str(args.get("p_org_id")), str(args.get("p_key")))
+        row = self.write_claims.get(key)
+        response: dict[str, Any] = {"outcome": "rejected"}
+        if name in {"claim_write_invoke_idempotency", "claim_approved_autonomous_write"}:
+            if row and row["status"] == "completed":
+                response = {"outcome": "replay", "status": "completed", "result": row["result"]}
+            elif row and row["status"] in {"in_progress", "uncertain"}:
+                response = {"outcome": "blocked", "status": row["status"]}
+            else:
+                token = str(uuid.uuid4())
+                self.write_claims[key] = {
+                    "status": "in_progress", "claim_token": token,
+                    "action": args["p_invoke_action"], "bound": None, "result": {},
+                }
+                response = {"outcome": "claimed", "claim_token": token, "claim_generation": 1}
+        elif name == "bind_write_recovery_context":
+            connector = args.get("p_connector_id")
+            original = args.get("p_original_args")
+            if (row and row["status"] == "in_progress"
+                    and row["claim_token"] == str(args.get("p_claim_token"))
+                    and row["action"] == args.get("p_invoke_action")
+                    and isinstance(original, dict) and connector):
+                bound = (str(connector), copy.deepcopy(original))
+                if row["bound"] in (None, bound):
+                    row["bound"] = bound
+                    response = {"outcome": "bound"}
+        elif name == "finalize_write_invoke_idempotency":
+            if (row and row["status"] == "in_progress"
+                    and row["claim_token"] == str(args.get("p_claim_token"))):
+                row["status"] = args["p_status"]
+                row["result"] = copy.deepcopy(args.get("p_result") or {})
+                row["claim_token"] = None
+                response = {"outcome": "finalized"}
+        class _LedgerRPC:
+            def execute(self) -> _Resp:
+                return _Resp(response)
+        return _LedgerRPC()
 
     def __getattr__(self, name: str) -> Any:
         if name.startswith("__"):
@@ -730,10 +828,22 @@ class ScenarioHarness:
         self.db.tables["organization_members"] = [{"org_id": ORG, "user_id": USER, "role": role}]
         self.brain = Brain()
         self.connectors = Connectors()
-        self.connected = list(CONNECTED)
+        self.connected: list[str] = []
+        self.connect(*CONNECTED)
         self._stack = ExitStack()
         self.settings: Any = None
         self.app: Any = None
+
+    def connect(self, *vendors: str) -> None:
+        rows = self.db.tables.setdefault("connectors", [])
+        for vendor in vendors:
+            if vendor not in self.connected:
+                self.connected.append(vendor)
+            if not any(row.get("type") == vendor for row in rows):
+                rows.append({
+                    "id": f"conn-{vendor}", "org_id": ORG, "vendor": vendor, "type": vendor,
+                    "status": "active", "environment": "production", "config": {},
+                })
 
     # -- lifecycle -------------------------------------------------------
     def __enter__(self) -> ScenarioHarness:
@@ -906,10 +1016,9 @@ class ScenarioHarness:
             except AttributeError:
                 pass
 
-        connectors = self.connectors
         self._p(
             "app.services.tool_service._resolve_tool_executor",
-            lambda action, ctx=None: connectors.executor_for(action),
+            lambda action, _ctx=None: self.connectors.executor_for(action),
         )
         # Background / network edges that are not part of the decision.
         self._p("app.services.mcp_client_service.MCPClientService.get_enabled_tools_for_org", AsyncMock(return_value=[]))

@@ -43,3 +43,66 @@ def test_registered_target_paths_exist_and_retirement_stays_uncertified():
     assert all(report["critical_source_assertions"].values())
     assert report["retirement_certified"] is False
     assert report["unknowns"]
+
+
+def test_rpc_candidates_preserve_line_and_name_without_payload():
+    result = inventory.inspect_text(
+        "backend/app/services/fixture.py",
+        "# client.rpc('comment_only')\n"
+        "client.rpc('claim_write', {'token': 'private-payload'})\n"
+        "client.rpc(fn='settle_write', params={'user': 'private-user'})\n",
+    )
+    assert result["rpc_call_candidates"] == [
+        {"line": 2, "kind": "literal_python_rpc_candidate", "target": "claim_write"},
+        {"line": 3, "kind": "literal_python_rpc_candidate", "target": "settle_write"},
+    ]
+    assert "private-payload" not in repr(result)
+    assert "private-user" not in repr(result)
+    assert "comment_only" not in repr(result)
+
+
+def test_computed_or_non_identifier_rpc_names_remain_unknown():
+    result = inventory.inspect_text(
+        "backend/app/services/fixture.py",
+        "client.rpc(selected_name, payload)\n"
+        "client.rpc('customer@example.invalid', payload)\n"
+        "client.rpc()\n",
+    )
+    assert len(result["rpc_call_candidates"]) == 3
+    assert all(call["target"] is None for call in result["rpc_call_candidates"])
+    assert all(call["kind"] == "unresolved_python_rpc_candidate"
+               for call in result["rpc_call_candidates"])
+    assert "customer@example.invalid" not in repr(result)
+    assert "selected_name" not in repr(result)
+
+
+def test_inventory_covers_governed_callers_without_runtime_certification():
+    report = inventory.collect()
+    owners = {item["candidate_owner"] for item in report["source_files"]}
+    assert {
+        "agent_intelligence", "play_router", "workflow_router",
+        "canvas_write_authority", "workflow_worker", "workflow_recovery",
+    } <= owners
+    assert report["retirement_certified"] is False
+    assert all(item["source_type"] == "static_source_only"
+               for item in report["source_files"])
+
+
+def test_route_and_worker_registration_candidates_do_not_export_arguments():
+    result = inventory.inspect_text("backend/app/fixture.py",
+        "@router.websocket('/ws')\nasync def handler():\n    asyncio.create_task(work('private-payload'))\n"
+        "app.include_router(router)\nclient.enqueue('private-job')\n")
+    assert result["route_registration_candidates"] == [{"line": 1, "method": "WEBSOCKET", "target": "/ws", "handler": "handler"}]
+    assert {item["kind"] for item in result["entrypoint_candidates"]} == {"create_task", "include_router", "enqueue"}
+    assert "private-payload" not in repr(result) and "private-job" not in repr(result)
+
+
+def test_frontend_transport_and_backend_registration_are_inventoried():
+    report = inventory.collect()
+    by_owner = {item["candidate_owner"]: item for item in report["source_files"]}
+    assert any(item["kind"] == "new WebSocket" for item in by_owner["voice_duplex_hook"]["entrypoint_candidates"])
+    assert any(item["kind"] == "include_router" for item in by_owner["backend_router_registration"]["entrypoint_candidates"])
+    assert any(item["method"] == "WEBSOCKET" and item["target"] == "/ws" for item in by_owner["voice_ws_router"]["route_registration_candidates"])
+    assert "agent_job_worker" in by_owner
+    assert report["runtime_dispatch_verified"] is False
+    assert report["retirement_certified"] is False

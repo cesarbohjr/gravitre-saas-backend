@@ -7,6 +7,8 @@ from datetime import datetime, timezone
 from collections.abc import Callable
 from typing import Any
 
+from postgrest.exceptions import APIError
+
 from app.config import Settings, get_settings
 from app.core.io_pool import run_io
 from app.core.logging import get_logger
@@ -574,39 +576,43 @@ class ConversationStateService:
                             "p_claimed_at": claimed_at,
                         },
                     ).execute()
-                    row = resp.data
-                    if row:
-                        return True
-                    if row is None:
-                        pass
-                    else:
+                    return bool(resp.data)
+                except APIError as exc:
+                    if exc.code != "PGRST202":
                         return False
-                except Exception as exc:  # noqa: BLE001
-                    logger.debug("claim_pending_connector_write rpc skipped: %s", exc)
+                except Exception as exc:  # noqa: BLE001 - ambiguous claim outcome
+                    logger.warning("claim_pending_rpc_failed conversation_id=%s error=%s", conversation_id, exc)
+                    return False
             from app.services.execution_plan_adapters import enrich_task_state_patch
 
-            patch = enrich_task_state_patch(updates, current_state=current)
-            merged = deepcopy(current)
-            merged.update(patch)
-            if isinstance(patch.get("pending_task"), dict):
-                merged["pending_task"] = patch["pending_task"]
+            original_plan = current.get("execution_plan")
             try:
-                resp = (
-                    db.table("conversations")
-                    .update({"task_state": merged})
-                    .eq("id", conversation_id)
-                    .eq("org_id", org_id)
-                    .filter("task_state->pending_task->>status", "eq", expected_status)
-                    .execute()
-                )
-                return bool(getattr(resp, "data", None))
+                for attempt in range(5):
+                    if attempt:
+                        current = self._read_task_state_sync(conversation_id, org_id, client)
+                        # Retry unrelated edits only. The original status, actor
+                        # and approved draft must still match the validated task.
+                        if current.get("pending_task") != pending or current.get("execution_plan") != original_plan:
+                            return False
+                    revision = current.get("task_revision")
+                    patch = enrich_task_state_patch(updates, current_state=current)
+                    merged = {**current, **patch, "task_revision": int(revision or 0) + 1}
+                    query = (
+                        db.table("conversations")
+                        .update({"task_state": merged})
+                        .eq("id", conversation_id)
+                        .eq("org_id", org_id)
+                        .filter("task_state->pending_task->>status", "eq", expected_status)
+                    )
+                    if revision is None:
+                        query = query.filter("task_state->>task_revision", "is", "null")
+                    else:
+                        query = query.eq("task_state->>task_revision", str(revision))
+                    if query.execute().data:
+                        return True
             except Exception as exc:  # noqa: BLE001
-                logger.warning(
-                    "cas_pending_status failed conversation_id=%s error=%s",
-                    conversation_id,
-                    exc,
-                )
-                return False
+                logger.warning("cas_pending_status failed conversation_id=%s error=%s", conversation_id, exc)
+            return False
 
     def apply_task_state_change_sync(
         self,
@@ -628,19 +634,26 @@ class ConversationStateService:
         from app.services.turn_cancellation import current_turn_cancelled
 
         with _task_state_lock(conversation_id, org_id):
-            state = self._read_task_state_sync(conversation_id, org_id, client)
-            change(state)
-            if current_turn_cancelled():
-                # Same fence as the save: under the lock, right before the write.
-                logger.info(
-                    "apply_task_state_change_dropped_for_cancelled_turn conversation_id=%s",
-                    conversation_id,
-                )
-                return False
-            self._client(client).table("conversations").update(
-                {"task_state": state, **(extra_columns or {})}
-            ).eq("id", conversation_id).eq("org_id", org_id).execute()
-        return True
+            for _ in range(5):
+                state = self._read_task_state_sync(conversation_id, org_id, client)
+                revision = state.get("task_revision")
+                change(state)
+                if current_turn_cancelled():
+                    return False
+                try:
+                    state["task_revision"] = int(revision or 0) + 1
+                except (TypeError, ValueError):
+                    state["task_revision"] = 1
+                query = self._client(client).table("conversations").update(
+                    {**(extra_columns or {}), "task_state": state}
+                ).eq("id", conversation_id).eq("org_id", org_id)
+                if revision is None:
+                    query = query.filter("task_state->>task_revision", "is", "null")
+                else:
+                    query = query.eq("task_state->>task_revision", str(revision))
+                if query.execute().data:
+                    return True
+        return False
 
     async def ensure_owned_conversation(
         self,

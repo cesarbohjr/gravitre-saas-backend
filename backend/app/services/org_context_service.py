@@ -5,6 +5,7 @@ import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
 from datetime import datetime, timezone
+from threading import Lock
 from typing import Any, Literal
 
 from app.connectors.repository import list_connectors
@@ -55,6 +56,9 @@ def _is_missing_table_error(error: Exception | None) -> bool:
 def _safe_query(loader: Any, default: Any) -> Any:
     try:
         return loader()
+    except PermissionError:
+        # A denied tenant/user scope is never an optional source outage.
+        raise
     except Exception as exc:  # noqa: BLE001
         if _is_missing_table_error(exc):
             logger.debug("org_context_query_skipped error=%s", exc)
@@ -76,19 +80,25 @@ class OrgContextService:
     def __init__(self, *, cache_ttl_seconds: int = _CACHE_TTL_SECONDS) -> None:
         self._cache: dict[str, _CacheEntry] = {}
         self._cache_ttl_seconds = cache_ttl_seconds
+        self._cache_lock = Lock()
+        self._cache_generation = 0
 
     def invalidate(self, org_id: str, *, environment_name: str = "production") -> None:
         prefix = f"{org_id}:{environment_name}:"
-        for key in list(self._cache):
-            if key.startswith(prefix):
-                del self._cache[key]
+        with self._cache_lock:
+            self._cache_generation += 1
+            for key in list(self._cache):
+                if key.startswith(prefix):
+                    del self._cache[key]
 
     def invalidate_org(self, org_id: str) -> None:
         """Drop the org's cached snapshots in every environment."""
         prefix = f"{org_id}:"
-        for key in list(self._cache):
-            if key.startswith(prefix):
-                del self._cache[key]
+        with self._cache_lock:
+            self._cache_generation += 1
+            for key in list(self._cache):
+                if key.startswith(prefix):
+                    del self._cache[key]
 
     def get_snapshot(
         self,
@@ -125,8 +135,14 @@ class OrgContextService:
     ) -> tuple[dict[str, Any], str]:
         return self._load(client, org_id, environment_name, depth, user_id)
 
-    def _cache_key(self, org_id: str, environment_name: str, depth: OrgContextDepth) -> str:
-        return f"{org_id}:{environment_name}:{depth}"
+    def _cache_key(
+        self, org_id: str, environment_name: str, depth: OrgContextDepth,
+        user_id: str | None = None,
+    ) -> str:
+        # Context may be resolved through user-scoped database credentials.
+        # Never reuse an authorized user's snapshot for another actor in the
+        # same organization (or for a service-role request).
+        return f"{org_id}:{environment_name}:{depth}:{user_id or '<service>'}"
 
     def _load(
         self,
@@ -137,11 +153,13 @@ class OrgContextService:
         user_id: str | None,
     ) -> tuple[dict[str, Any], str]:
         normalized_depth = _normalize_depth(depth)
-        cache_key = self._cache_key(org_id, environment_name, normalized_depth)
+        cache_key = self._cache_key(org_id, environment_name, normalized_depth, user_id)
         now = time.monotonic()
-        cached = self._cache.get(cache_key)
-        if cached and cached.expires_at > now:
-            return cached.snapshot, cached.markdown
+        with self._cache_lock:
+            generation = self._cache_generation
+            cached = self._cache.get(cache_key)
+            if cached and cached.expires_at > now:
+                return cached.snapshot, cached.markdown
 
         snapshot = self._fetch_snapshot(
             client,
@@ -151,11 +169,16 @@ class OrgContextService:
             user_id=user_id,
         )
         markdown = self._format_markdown(snapshot, normalized_depth)
-        self._cache[cache_key] = _CacheEntry(
-            snapshot=snapshot,
-            markdown=markdown,
-            expires_at=now + self._cache_ttl_seconds,
-        )
+        with self._cache_lock:
+            # Never repopulate a cache cleared while database work was in flight.
+            # A global generation bounds bookkeeping. Unrelated cached entries
+            # stay valid; unrelated in-flight loads may simply miss one fill.
+            if generation == self._cache_generation:
+                self._cache[cache_key] = _CacheEntry(
+                    snapshot=snapshot,
+                    markdown=markdown,
+                    expires_at=now + self._cache_ttl_seconds,
+                )
         return snapshot, markdown
 
     def _fetch_snapshot(
@@ -291,19 +314,21 @@ class OrgContextService:
         recent_runs: list[dict[str, Any]] = []
         alerts: list[dict[str, Any]] = []
 
-        with ThreadPoolExecutor(max_workers=5) as pool:
-            futures = {
-                pool.submit(load_org_name): "org_name",
-                pool.submit(load_integrations): "integrations",
-                pool.submit(load_agents): "agents",
-                pool.submit(load_workflows): "workflows",
-                pool.submit(load_runs): "runs",
-                pool.submit(load_alerts): "alerts",
-            }
+        loaders = {"org_name": load_org_name, "integrations": load_integrations}
+        for key, loader in (("agents", load_agents), ("workflows", load_workflows),
+                            ("runs", load_runs), ("alerts", load_alerts)):
+            if limits[key]:
+                loaders[key] = loader
+        with ThreadPoolExecutor(max_workers=min(5, len(loaders))) as pool:
+            futures = {pool.submit(loader): key for key, loader in loaders.items()}
             for future in as_completed(futures):
                 key = futures[future]
                 try:
                     result = future.result()
+                except PermissionError:
+                    # Fail closed when any independent scoped source denies
+                    # access; do not cache a partial authorization failure.
+                    raise
                 except Exception as exc:  # noqa: BLE001
                     logger.warning("org_context_parallel_fetch_failed key=%s error=%s", key, exc)
                     continue

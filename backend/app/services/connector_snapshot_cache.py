@@ -62,8 +62,9 @@ def list_connected_integrations_cached(
     action_key: str | None = None,
     ttl_seconds: int = _DEFAULT_TTL_SECONDS,
 ) -> list[str]:
-    """Cached wrapper around connector availability listing."""
-    if not force_live:
+    """Cache vendor discovery only; action readiness always runs its evaluator."""
+    action_specific = action_key is not None
+    if not force_live and not action_specific:
         cached = get_cached_connected(org_id, environment_name)
         if cached is not None:
             return cached
@@ -79,6 +80,11 @@ def list_connected_integrations_cached(
             force_live=force_live,
             action_key=action_key,
         )
+    except PermissionError:
+        # A positive discovery snapshot cannot override an explicit tenant
+        # authorization denial. Remove this org's snapshots, then preserve it.
+        invalidate_org_connected(org_id)
+        raise
     except Exception as exc:  # noqa: BLE001 — never poison assistant stream
         logger.warning(
             "list_connected_integrations_failed org_id=%s force_live=%s error=%s",
@@ -86,8 +92,12 @@ def list_connected_integrations_cached(
             force_live,
             str(exc)[:240],
         )
-        cached = get_cached_connected(org_id, environment_name)
-        return list(cached or [])
+        # Fresh/action-specific callers must not receive a stale positive on
+        # failure. Non-forced discovery already returned any valid cache above.
+        return []
+    if action_specific:
+        # A filtered result must not poison the broader discovery snapshot.
+        return list(connected)
     return set_cached_connected(
         org_id,
         connected,

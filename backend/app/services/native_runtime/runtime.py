@@ -129,6 +129,19 @@ class NativeRuntime:
                   'durations_ms':{name:round(value,3) for name,value in duration_ms.items()},
                   'measurement':'actual_coordinator_wall_clock'})
 
+    def _record_fallback_failure(self, stage: str, failure: Exception) -> None:
+        """Bounded diagnostic only; no task, route, identity or exception text."""
+        sink=getattr(self,'fallback_failure_sink',None)
+        if sink is None:return
+        known={'ConnectionError','TimeoutError','PermissionError','ValueError',
+               'RuntimeError','CalledProcessError','OSError','TypeError','KeyError'}
+        error_class=type(failure).__name__
+        try:
+            sink({'stage':stage,'error_class':error_class if error_class in known else 'OtherError'})
+        except Exception:
+            # An unavailable evidence sink must not change the fenced decision.
+            pass
+
     def _run_verified_playwright_fallback(self, original: dict) -> str:
         """Resume an approved fixture task with a fresh, exclusively fenced lease.
 
@@ -174,18 +187,24 @@ class NativeRuntime:
         def action(sequence, details):
             guard()
             return self.journal.request_action(job,sequence,details)
+        stage='authorization'
         try:
             guard()
             launch_started=time.perf_counter_ns()
+            stage='playwright_execute'
             result=self.runner.execute(job,guard=guard,action_gate=action)
             phases['playwright_execute_through_result']=(time.perf_counter_ns()-launch_started)/1e6
+            stage='post_execution_authorization'
             guard()
+            stage='result_validation'
             if not isinstance(result,dict) or len(json.dumps(result).encode())>240000:
                 raise ValueError('Invalid Playwright result')
             envelope={**result,'schema_version':1,
                 'org_id':scope.org_id,'agent_id':scope.agent_id,'run_id':scope.run_id}
+            stage='review_plan'
             plan=browser_use_review_plan(envelope,scope=scope,
                 allowed_hosts=frozenset(job['payload']['task']['allowed_hosts']))
+            stage='terminal_commit'
             self.journal.update(job,'completed',result={
                 'plan':plan.model_dump(mode='json') if hasattr(plan,'model_dump') else asdict(plan),
                 'verified_execution':False,'requires_review':True})
@@ -196,9 +215,10 @@ class NativeRuntime:
             phases['total_until_blocked']=(time.perf_counter_ns()-handoff_started)/1e6
             self._record_fallback_timing(original['id'],phases,'lease_lost')
             return 'cancelled_or_lease_lost'
-        except Exception:
+        except Exception as failure:
             try:self.journal.update(job,'uncertain',phase='fallback_reconcile',error='recovery_failed')
             except LeaseLost:pass
+            self._record_fallback_failure(stage,failure)
             phases['total_until_blocked']=(time.perf_counter_ns()-handoff_started)/1e6
             self._record_fallback_timing(original['id'],phases,'reconciliation')
             return 'fallback_reconciliation_required'

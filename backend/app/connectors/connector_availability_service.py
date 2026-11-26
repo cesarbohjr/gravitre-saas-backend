@@ -49,9 +49,6 @@ def _hubspot_oauth_configured(settings: Settings, environment_name: str | None) 
 def _hubspot_scopes_valid(tokens: dict[str, Any] | None, action_key: str | None) -> tuple[bool, str | None]:
     if not tokens:
         return False, "missing_scope"
-    scopes = {str(scope) for scope in (tokens.get("scopes") or [])}
-    if not scopes:
-        return True, None
     # Connected-integration listing (no action_key) must not require the full
     # authorize-time scope set. Smoke / partial grants (contacts+deals+lists
     # without companies/tickets/notes) are still a connected HubSpot connector;
@@ -61,10 +58,49 @@ def _hubspot_scopes_valid(tokens: dict[str, Any] | None, action_key: str | None)
     required = HUBSPOT_ACTION_REQUIRED_SCOPES.get(action_key, ())
     if not required:
         return True, None
+    # Account connection is separate from authorization for a specific action.
+    # Missing or malformed grant metadata cannot establish required scopes.
+    granted = tokens.get("scopes")
+    if not isinstance(granted, (list, tuple, set, frozenset)) or not all(
+        isinstance(scope, str) for scope in granted
+    ):
+        return False, "missing_scope"
+    scopes = {scope.strip() for scope in granted if scope.strip()}
     missing = [scope for scope in required if scope not in scopes]
     if missing:
         return False, "missing_scope"
     return True, None
+
+
+def _registered_action_matches_vendor(vendor: str, action_key: str) -> bool:
+    """Registration establishes an executor, not ownership by every connector.
+
+    Retain the canonical catalog's explicit aliases; do not infer ownership
+    from a connected account or a substring in the action name.
+    """
+    if action_key not in set(list_registered_actions()):
+        return False
+    owner = _canonical_executable_vendor(normalize_hubspot_vendor(vendor))
+    namespace, separator, _ = action_key.partition(".")
+    if separator and _canonical_executable_vendor(namespace) == owner:
+        return True
+    from app.connectors.action_catalog.tool_aliases import REGISTRY_VENDOR_PREFIX_ALIASES
+
+    if any(
+        _canonical_executable_vendor(catalog_vendor) == owner
+        and _canonical_executable_vendor(registry_vendor) == _canonical_executable_vendor(namespace)
+        for catalog_vendor, registry_vendor in REGISTRY_VENDOR_PREFIX_ALIASES.items()
+    ):
+        return True
+    # Exact aliases (Outlook -> Microsoft365) and native catalog ownership
+    # cannot be generalized into permission for the entire other namespace.
+    from app.services.connector_execution_matrix import build_connector_execution_matrix
+
+    return any(
+        _canonical_executable_vendor(entry.connector_id) == owner
+        and action_key in {entry.action_key, entry.registry_key}
+        for entry in build_connector_execution_matrix()
+    )
 
 
 def _blocking_details(
@@ -108,7 +144,7 @@ def _blocking_details(
         )
     if action_key and not action_registered:
         return "unsupported_action", (
-            f"{vendor.title()} is connected, but {action_key} is not executable because the action is not registered."
+            f"{vendor.title()} is connected, but {action_key} is not executable because the action is not registered for this connector."
         )
     return None, None
 
@@ -185,7 +221,7 @@ def evaluate_connector_availability(
             recovery_action = f"Activate {vendor} (Gravitre-managed) — no customer credentials required."
             action_registered = True
             if action_key:
-                action_registered = action_key in set(list_registered_actions())
+                action_registered = _registered_action_matches_vendor(vendor, action_key)
             from app.services.connector_certification_scorecard import attach_internal_readiness
 
             return attach_internal_readiness(
@@ -235,7 +271,7 @@ def evaluate_connector_availability(
 
     action_registered = True
     if action_key:
-        action_registered = action_key in set(list_registered_actions())
+        action_registered = _registered_action_matches_vendor(vendor, action_key)
 
     blocking_reason, recovery_action = _blocking_details(
         vendor=vendor,
@@ -396,6 +432,10 @@ def list_connector_availability(
                     action_key=action_key,
                 )
             )
+        except PermissionError:
+            # A tenant authorization denial is not a token refresh problem
+            # and must not be relabelled as an expired OAuth connection.
+            raise
         except Exception as exc:  # noqa: BLE001 — one bad connector must not kill chat/listing
             vendor = str(row.get("vendor") or row.get("type") or "unknown")
             logger.warning(
@@ -422,9 +462,9 @@ def list_connector_availability(
                     "write_available": False,
                     "last_checked_at": _utc_now(),
                     "source_of_truth": SOURCE_OF_TRUTH,
-                    "blocking_reason": "token_expired",
-                    "recovery_action": f"Reconnect {vendor.title()} on the Connectors page.",
-                    "auth_status": "auth_expired",
+                    "blocking_reason": "availability_check_failed",
+                    "recovery_action": f"Unable to verify {vendor.title()} connection readiness. Retry the status check.",
+                    "auth_status": "unknown",
                     "display_status": "error",
                     "status": "error",
                     "connected": False,

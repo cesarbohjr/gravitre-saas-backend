@@ -12,8 +12,9 @@ from app.connectors.action_catalog.registry import get_action_spec
 from app.services.react_write_gate import WRITE_APPROVAL_REQUIRED, block_react_write_execution
 from app.services.tool_registry import get_tool_registry
 from app.services.tool_service import invoke_tool
-from app.services.tool_types import ToolContext, ToolValidationError
+from app.services.tool_types import NormalizedResult, ToolContext, ToolValidationError
 from app.services.write_preflight import compile_write_for_context, preflight_write_action
+from tests.support.provider_write import with_provider_write_ledger
 
 
 def _ctx(**overrides) -> ToolContext:
@@ -124,7 +125,7 @@ def test_read_preflight_still_rejects_writes() -> None:
 
 
 def test_compile_write_for_context_hmac_roundtrip() -> None:
-    ctx = _ctx()
+    ctx = with_provider_write_ledger(_ctx(), "email-conn")
     proof = compile_write_for_context(
         ctx=ctx,
         invoke_action="email.send",
@@ -142,9 +143,12 @@ def test_compile_write_for_context_hmac_roundtrip() -> None:
                     return_value=[{"connector_type": "email", "scopes": ["email:send"], "expires_at": None}],
                 ):
                     with patch("app.services.tool_service._resolve_tool_executor") as mock_exec:
-                        mock_exec.return_value = lambda *_a, **_k: None
+                        provider = MagicMock(return_value=NormalizedResult(
+                            success=True, action="email.send", connector_id="email-conn",
+                        ))
+                        mock_exec.return_value = provider
                         invoke_tool(bound, "email.send", dict(proof.compiled_parameters))
-                        mock_exec.assert_called()
+                        provider.assert_called_once()
 
 
 def test_invoke_write_hmac_runs_before_capability_without_patch() -> None:

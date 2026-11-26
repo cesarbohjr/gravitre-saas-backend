@@ -7,6 +7,8 @@ import httpx
 
 from app.config import Settings
 from app.connectors.repository import get_connector, get_connector_by_type, get_decrypted_secret
+from app.connectors.managed_oauth import ManagedOAuthAccessToken, managed_oauth_tokens
+from app.core.safe_dict import safe_normalize_stored_dict
 
 TIMEOUT_SEC = 30.0
 
@@ -39,10 +41,18 @@ def resolve_bamboohr_credentials(
     if not conn:
         raise BambooHRAPIError("No active BambooHR connector found for org")
     cid = str(conn["id"])
-    config = conn.get("config") or {}
+    config = safe_normalize_stored_dict(conn, key="config")
     subdomain = (config.get("subdomain") or config.get("company_domain") or "").strip()
     if not subdomain:
         raise BambooHRAPIError("BambooHR subdomain missing on connector config")
+    if config.get("auth_provider") == "managed":
+        try:
+            tokens = managed_oauth_tokens(client, org_id, cid, settings, environment_name=environment_name, expected_vendor="bamboohr")
+            if not tokens:
+                raise ValueError("Managed authorization unavailable")
+        except ValueError as exc:
+            raise BambooHRAPIError("BambooHR authorization unavailable; reconnect", status_code=401) from exc
+        return cid, subdomain, ManagedOAuthAccessToken(tokens["access_token"])
     api_key = get_decrypted_secret(client, cid, "api_key", settings, org_id=org_id) or get_decrypted_secret(
         client, cid, "token", settings,
         org_id=org_id,
@@ -55,7 +65,10 @@ def resolve_bamboohr_credentials(
 def _request(method: str, base: str, api_key: str, path: str, *, params: dict[str, Any] | None = None) -> Any:
     url = f"{base.rstrip('/')}/{path.lstrip('/')}"
     with httpx.Client(timeout=TIMEOUT_SEC) as client:
-        response = client.request(method, url, auth=(api_key, "x"), params=params)
+        if isinstance(api_key, ManagedOAuthAccessToken):
+            response = client.request(method, url, headers={"Authorization": f"Bearer {api_key}"}, params=params)
+        else:
+            response = client.request(method, url, auth=(api_key, "x"), params=params)
     if response.status_code >= 400:
         raise BambooHRAPIError(f"BambooHR API {response.status_code}", status_code=response.status_code, details=response.text[:500])
     if not response.text:

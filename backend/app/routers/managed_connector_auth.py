@@ -202,14 +202,25 @@ def create_managed_auth_session(
     config = safe_normalize_stored_dict(dict(stored.data[0]), key="config")
     attempt_id = str(uuid4())
     config["managed_auth_attempt_id"] = attempt_id
-    config.update({"managed_auth_pending": True, "managed_integration_id": spec.integration_id})
-    if not spec.native_fallback or config.get("auth_provider") == "managed":
+    config.update({"managed_auth_pending": True, "managed_auth_pending_integration_id": spec.integration_id,
+                   "managed_auth_pending_connection_config": connection_config})
+    # Running accounts keep their confirmed identity until a matching webhook
+    # commits the replacement. OAuth variants cannot reconnect an old Basic/API
+    # key integration; they must create a new connection through user consent.
+    prior_integration_id = str(config.get("managed_integration_id") or "")
+    prior_connection_id = str(config.get("managed_connection_id") or "").strip() or None
+    connection_id = prior_connection_id if prior_integration_id == spec.integration_id else None
+    if not prior_connection_id:
+        config.setdefault("managed_integration_id", spec.integration_id)
+    if not spec.native_fallback and not prior_connection_id:
         config.update({"auth_type": "oauth", "auth_provider": "managed"})
-    connection_id = str(config.get("managed_connection_id") or "").strip() or None
-    if connection_id:
+    if prior_connection_id:
         from app.connectors.nango_client import scoped_connection
+        prior_spec = get_nango_connector_spec(spec.vendor, integration_id=prior_integration_id)
+        if prior_spec is None:
+            raise HTTPException(status_code=400, detail="Managed integration mismatch")
         try:
-            scoped_connection(settings, connection_id=connection_id, integration_id=spec.integration_id,
+            scoped_connection(settings, connection_id=prior_connection_id, integration_id=prior_spec.integration_id,
                               org_id=str(org_id), connector_id=str(connector_id))
         except (httpx.HTTPError, ValueError) as exc:
             raise HTTPException(status_code=502, detail="Managed account ownership could not be verified") from exc
@@ -341,10 +352,12 @@ async def handle_nango_auth_webhook(
         or config.get("managed_integration_id")
         or ""
     ).strip()
-    spec = get_nango_connector_spec(str(row.get("vendor") or row.get("type") or ""))
+    expected_integration_id = str(config.get("managed_auth_pending_integration_id")
+                                  or config.get("managed_integration_id") or "")
+    spec = get_nango_connector_spec(str(row.get("vendor") or row.get("type") or ""),
+                                    integration_id=expected_integration_id)
     if spec is None or (config.get("auth_provider") != "managed" and not config.get("managed_auth_pending")):
         raise HTTPException(status_code=400, detail="Connector is not managed")
-    expected_integration_id = spec.integration_id
     if integration_id != expected_integration_id:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -363,6 +376,13 @@ async def handle_nango_auth_webhook(
     config["auth_type"] = "oauth"
     config["auth_provider"] = "managed"
     config["managed_auth_pending"] = False
+    config.pop("managed_auth_pending_integration_id", None)
+    if "managed_auth_pending_connection_config" in config:
+        from app.connectors.managed_oauth_inputs import validate_oauth_inputs
+        approved_inputs = validate_oauth_inputs(
+            spec.vendor, safe_normalize_stored_dict(config, key="managed_auth_pending_connection_config"))
+        config.update(approved_inputs)
+        config.pop("managed_auth_pending_connection_config", None)
     config["managed_connection_id"] = connection_id
     if integration_id:
         config["managed_integration_id"] = integration_id

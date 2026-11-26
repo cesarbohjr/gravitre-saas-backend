@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
 import React, { act } from "react"
 import { createRoot, type Root } from "react-dom/client"
-import { readdirSync, readFileSync, statSync } from "node:fs"
+import { mkdtempSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs"
+import { tmpdir } from "node:os"
 import { join, relative, resolve } from "node:path"
 import { afterEach, beforeEach, describe, expect, it } from "vitest"
 import {
@@ -78,13 +79,25 @@ describe("persistent app shell options", () => {
   })
 })
 
-function walk(dir: string, out: string[] = []): string[] {
-  for (const name of readdirSync(dir)) {
-    const full = join(dir, name)
-    if (statSync(full).isDirectory()) walk(full, out)
-    else if (/\.tsx?$/.test(name)) out.push(full)
+function walk(dir: string, excluded: Set<string>, out: string[] = []): string[] {
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    const full = join(dir, entry.name)
+    if (excluded.has(full)) continue
+    if (entry.isDirectory()) walk(full, excluded, out)
+    else if (/\.tsx?$/.test(entry.name)) out.push(full)
   }
   return out
+}
+
+function shellOffenders(appDir: string): string[] {
+  // The old scanner walked every allowed app page before filtering it out,
+  // issuing a stat for every entry. Under CI contention this exceeded 5s.
+  // Prune only the same two root subtrees the original assertion exempted;
+  // a nested marketing/(app) directory remains subject to the guard.
+  return walk(appDir, new Set([join(appDir, "(app)"), join(appDir, "e2e")]))
+    .filter((file) => /<AppShell[\s>]/.test(readFileSync(file, "utf8")))
+    .map((file) => relative(appDir, file))
+    .sort()
 }
 
 describe("route-group shell coverage", () => {
@@ -94,11 +107,23 @@ describe("route-group shell coverage", () => {
   })
 
   it("only renders per-page <AppShell> under the (app) group or the /e2e screenshot harness", () => {
-    const offenders = walk(resolve(webRoot, "app"))
-      .map((file) => relative(webRoot, file))
-      .filter((rel) => !/^app[\\/](\(app\)|e2e)[\\/]/.test(rel))
-      .filter((rel) => /<AppShell[\s>]/.test(readFileSync(resolve(webRoot, rel), "utf8")))
-    expect(offenders).toEqual([])
+    expect(shellOffenders(resolve(webRoot, "app"))).toEqual([])
+  })
+
+  it("still catches forbidden shell routes outside the two allowed root subtrees", () => {
+    const appDir = mkdtempSync(join(tmpdir(), "gravitre-shell-coverage-"))
+    try {
+      for (const route of ["(app)/page.tsx", "e2e/page.tsx", "marketing/page.tsx", "marketing/(app)/nested.tsx"]) {
+        const file = resolve(appDir, route)
+        mkdirSync(resolve(file, ".."), { recursive: true })
+        writeFileSync(file, "export default () => <AppShell />")
+      }
+      expect(shellOffenders(appDir)).toEqual([
+        join("marketing", "(app)", "nested.tsx"), join("marketing", "page.tsx"),
+      ].sort())
+    } finally {
+      rmSync(appDir, { recursive: true, force: true })
+    }
   })
 
   it("keeps marketing, auth, onboarding and welcome routes outside the shell group", () => {

@@ -345,3 +345,100 @@ async def test_invalid_or_wrong_target_metadata_cannot_refresh_approval_cache(in
     browser=SimpleNamespace(agent_focus_target_id='active',cdp_client=SimpleNamespace(send=SimpleNamespace(Target=SimpleNamespace(getTargetInfo=AsyncMock(return_value={'targetInfo':info})))),session_manager=SimpleNamespace(_handle_target_info_changed=update))
     with pytest.raises(PermissionError):await refresh_browser_target(browser)
     update.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_pre_review_capture_transition_can_settle_within_existing_budget(monkeypatch):
+    from app.services.native_runtime import engine
+    before, settled = page(dom='paint pending'), page(dom='settled page')
+    browser = SimpleNamespace(
+        get_browser_state_summary=AsyncMock(side_effect=[before, settled, settled, settled, settled, settled]),
+        take_screenshot=AsyncMock(return_value=base64.b64decode(encoded_pixels())),
+    )
+    monkeypatch.setattr(engine.asyncio, 'sleep', AsyncMock())
+    observed, evidence = await engine.stable_browser_evidence(browser, {'click': {'index': 12}})
+    assert observed.dom_state.llm_representation() == 'settled page'
+    assert evidence == browser_evidence(settled, {'click': {'index': 12}})
+    assert browser.get_browser_state_summary.await_count == 6
+    assert browser.take_screenshot.await_count == 3
+
+
+@pytest.mark.asyncio
+async def test_pre_review_transition_breaks_consecutive_stable_pair(monkeypatch):
+    from app.services.native_runtime import engine
+    settled = page()
+    evidence = browser_evidence(settled, {})
+    captures = AsyncMock(side_effect=[
+        (settled, evidence), engine._BrowserCaptureTransition({'dom': True}),
+        (settled, evidence), (settled, evidence),
+    ])
+    monkeypatch.setattr(engine, 'fresh_browser_evidence', captures)
+    monkeypatch.setattr(engine.asyncio, 'sleep', AsyncMock())
+    assert (await engine.stable_browser_evidence(object(), {}))[1] == evidence
+    assert captures.await_count == 4
+
+
+@pytest.mark.asyncio
+async def test_repeated_mid_capture_changes_exhaust_same_six_capture_budget(monkeypatch):
+    from app.services.native_runtime import engine
+    captures = AsyncMock(side_effect=engine._BrowserCaptureTransition({'dom': True}))
+    sleep = AsyncMock()
+    monkeypatch.setattr(engine, 'fresh_browser_evidence', captures)
+    monkeypatch.setattr(engine.asyncio, 'sleep', sleep)
+    with pytest.raises(PermissionError, match='did not stabilize') as denied:
+        await engine.stable_browser_evidence(object(), {})
+    assert captures.await_count == 6
+    assert sleep.await_count == 5
+    assert engine.browser_evidence_changes(denied.value) == {
+        'stability_budget_exhausted': True, 'capture_transition': True,
+    }
+
+
+@pytest.mark.asyncio
+async def test_unavailable_evidence_is_not_retried_as_a_capture_transition(monkeypatch):
+    from app.services.native_runtime import engine
+    captures = AsyncMock(side_effect=PermissionError('Bounded actual viewport screenshot required'))
+    sleep = AsyncMock()
+    monkeypatch.setattr(engine, 'fresh_browser_evidence', captures)
+    monkeypatch.setattr(engine.asyncio, 'sleep', sleep)
+    with pytest.raises(PermissionError, match='actual viewport'):
+        await engine.stable_browser_evidence(object(), {})
+    captures.assert_awaited_once()
+    sleep.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_cancelled_pre_review_capture_is_not_retried(monkeypatch):
+    from app.services.native_runtime import engine
+    captures = AsyncMock(side_effect=engine.asyncio.CancelledError())
+    monkeypatch.setattr(engine, 'fresh_browser_evidence', captures)
+    monkeypatch.setattr(engine.asyncio, 'sleep', AsyncMock())
+    with pytest.raises(engine.asyncio.CancelledError):
+        await engine.stable_browser_evidence(object(), {})
+    captures.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_after_approval_mid_capture_change_never_retries(monkeypatch):
+    from app.services.native_runtime import engine
+    old, changed = page(dom='reviewed'), page(dom='changed after approval')
+    browser = SimpleNamespace(
+        get_browser_state_summary=AsyncMock(side_effect=[old, changed]),
+        take_screenshot=AsyncMock(return_value=base64.b64decode(encoded_pixels())),
+    )
+    sleep = AsyncMock()
+    monkeypatch.setattr(engine.asyncio, 'sleep', sleep)
+    with pytest.raises(PermissionError, match='changed during') as denied:
+        await engine.fresh_browser_evidence(browser, {'click': {'index': 12}}, 'after_approval')
+    assert browser.get_browser_state_summary.await_count == 2
+    browser.take_screenshot.assert_awaited_once()
+    sleep.assert_not_awaited()
+    assert engine.browser_evidence_changes(denied.value)['capture_transition'] is True
+
+
+def test_capture_diagnostics_export_only_fixed_boolean_flags():
+    from app.services.native_runtime.engine import browser_evidence_changes
+    error = PermissionError('PRIVATE-EXCEPTION-TEXT')
+    error.evidence_changes = {'dom': True, 'url': False, 'targets': 'PRIVATE-PAGE',
+                             'fingerprint': 1, 'PRIVATE-KEY': True}
+    assert browser_evidence_changes(error) == {'dom': True, 'url': False}

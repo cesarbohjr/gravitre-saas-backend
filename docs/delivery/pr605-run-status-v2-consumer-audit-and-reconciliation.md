@@ -56,3 +56,15 @@ An aggregate grouped by `workflow_runs.run_type` shows all 34 mismatched pairs c
 
 ## Important gate limitation
 The current audit lists known readers/writers and their documented contracts, but **complete downstream consumer/runtime certification remains open** pending exact-head CI artifacts, source-graph expansion, production traffic sampling across all execution surfaces, and validation of the connected database as production. The staged v2 migration is not applied and the historical records have not been changed.
+
+
+## Guarded repair implementation checkpoint
+
+A per-run service-only preview/apply/undo API is now staged in
+`20261117060000_guarded_historical_projection_reconciliation.sql`, with actual
+PostgreSQL acceptance under the existing canonical persistence lane. The
+[operator contract](pr605-historical-projection-reconciliation-operator.md)
+documents reviewed fingerprints, scope, concurrency fences, journal and exact
+undo. It is not installed or executed in a hosted database. The original
+consumer-certification, project-binding and explicit data-repair approval gates
+above remain requirements; no historically affected row is certified repaired.

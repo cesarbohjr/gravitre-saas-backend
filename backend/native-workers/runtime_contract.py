@@ -394,7 +394,9 @@ def run():
                 runtime=NativeRuntime(auto_journal,None,None,CoordinatorRunner(),lambda _:route)
                 runtime.authorize=lambda _:route
                 timing=[]
+                failures=[]
                 runtime.fallback_timing_sink=timing.append
+                runtime.fallback_failure_sink=failures.append
                 outcome=runtime.tick('browser_use')
                 terminal_ns=time.perf_counter_ns()
                 if outcome!='fallback_playwright_completed':
@@ -405,7 +407,8 @@ def run():
                         'checkpoint_present':auto_journal.browser_checkpoint(auto_scope,auto_id) is not None,
                         'action_states':[a['state'] for a in auto_journal.actions(auto_scope,auto_id)],
                         'approved_action_count':len(observed['actions']),
-                        'timing_outcomes':[entry['outcome'] for entry in timing]}},
+                        'timing_outcomes':[entry['outcome'] for entry in timing],
+                        'failure_diagnostics':failures}},
                         sort_keys=True),flush=True)
                 assert observed['sigkill'] and outcome=='fallback_playwright_completed',outcome
                 assert observed['actions']==[0,1] and observed['review_ns']

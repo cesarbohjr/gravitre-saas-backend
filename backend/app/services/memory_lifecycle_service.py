@@ -5,6 +5,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 from app.core.logging import get_logger
+from app.services.memory_source_liveness import invalidate_org_retrieval_cache
 
 logger = get_logger(__name__)
 
@@ -47,6 +48,7 @@ def deactivate_memory(
                 "updated_at": _now_iso(),
             }
         ).eq("id", memory_id).eq("org_id", org_id).execute()
+        invalidate_org_retrieval_cache(org_id, reason="memory.deactivated")
         logger.info(
             "memory_deactivated org_id=%s memory_id=%s reason=%s user_id=%s",
             org_id,

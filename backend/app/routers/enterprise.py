@@ -10,6 +10,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
 from supabase import create_client
 from app.core.db import shared_service_client
+from app.audit.consumer_pagination import scan_audit_rows
 
 from app.auth.dependencies import get_current_user, get_org_context, require_admin
 from app.billing.service import get_plan_for_org, require_feature
@@ -239,7 +240,7 @@ def export_soc2_bundle(
         raise HTTPException(status_code=403, detail="Organization context required")
     client = shared_service_client(settings, create_client)
     require_feature(get_plan_for_org(client, org_id), "audit_logs")
-    audit_logs = client.table("audit_logs").select("*").eq("org_id", org_id).execute().data or []
+    audit_logs = scan_audit_rows(client, "audit_logs", org_id)
     audit_logs = _filter_rows_by_window(audit_logs, from_ts, to_ts)
     tool_events = [row for row in audit_logs if str(row.get("action") or "").startswith("tool.invoke")]
     connector_events = [row for row in audit_logs if "connector" in str(row.get("action") or "")]
@@ -377,7 +378,7 @@ def workforce_analytics(
         raise HTTPException(status_code=403, detail="Organization context required")
     client = shared_service_client(settings, create_client)
     jobs = client.table("agent_jobs").select("status,kind,created_at").eq("org_id", org_id).execute().data or []
-    audit_logs = client.table("audit_logs").select("action,details,created_at").eq("org_id", org_id).execute().data or []
+    audit_logs = scan_audit_rows(client, "audit_logs", org_id, columns="action,details,created_at")
     handoffs = [row for row in audit_logs if "handoff" in str(row.get("action") or "")]
     return build_workforce_analytics(agent_jobs=jobs, audit_logs=audit_logs, handoff_events=handoffs)
 

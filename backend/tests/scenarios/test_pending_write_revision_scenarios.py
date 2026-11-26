@@ -60,7 +60,7 @@ async def _staged(conv) -> TurnResult:
 @pytest.mark.parametrize("surface", SURFACES)
 async def test_a_changed_subject_is_what_gets_sent(surface: str) -> None:
     with ScenarioHarness() as h:
-        h.connected.append("gmail")
+        h.connect("gmail")
         conv = h.conversation(surface)
         first = await _staged(conv)
         first_binding = ((first.pending_task or {}).get("params") or {}).get("approval_action_id")
@@ -87,7 +87,7 @@ async def test_a_changed_subject_is_what_gets_sent(surface: str) -> None:
 @pytest.mark.parametrize("surface", SURFACES)
 async def test_changed_message_and_recipient_are_sent(surface: str) -> None:
     with ScenarioHarness() as h:
-        h.connected.append("gmail")
+        h.connect("gmail")
         conv = h.conversation(surface)
         await _staged(conv)
 
@@ -182,3 +182,19 @@ def test_claimed_queued_or_finished_writes_are_not_revised(state: dict[str, Any]
 
 def test_the_same_value_is_not_a_revision() -> None:
     assert revise_pending_write("Make the subject Quick update", _state("awaiting_confirm")) is None
+
+
+@pytest.mark.parametrize("meta", [{}, {"args": {}}, {"args": {"to": "old@example.com"}}])
+def test_revision_updates_canonical_write_without_requiring_old_args(meta) -> None:
+    from app.services.pending_write_revision import execution_plan_with_revised_args
+    unrelated = {"step_id": "other", "kind": "write", "action_key": "slack.chat.post", "meta": {"args": {"text": "Keep"}}}
+    state = {"execution_plan": {"steps": [
+        {"step_id": "react_compose", "kind": "write", "action_key": SEND, "meta": meta},
+        unrelated,
+    ]}}
+    args = {"subject": "Draft awaiting recipient"}
+    revised = execution_plan_with_revised_args(state, invoke_action=SEND, args=args)
+    assert revised is not None
+    assert revised["steps"][0]["meta"]["args"] == args
+    assert revised["steps"][1] == unrelated
+    assert state["execution_plan"]["steps"][0]["meta"] == meta

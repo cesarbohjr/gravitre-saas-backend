@@ -12,6 +12,16 @@ from app.billing.service import DEFAULT_PLANS
 from tests.support.build_insights import authenticate, chain_mock, clear_overrides, client, table_client
 
 
+def _audit_chain(data=None):
+    """Simulate one populated seek page followed by an empty page per scan."""
+    from types import SimpleNamespace
+    chain = chain_mock(data=data)
+    chain.or_.return_value = chain
+    from itertools import cycle
+    chain.execute.side_effect = cycle([SimpleNamespace(data=data or []), SimpleNamespace(data=[])])
+    return chain
+
+
 @pytest.fixture(autouse=True)
 def _reset_deps():
     yield
@@ -22,7 +32,7 @@ def _audit_rows() -> list[dict]:
     now = datetime.now(timezone.utc)
     return [
         {
-            "id": "log-1",
+            "id": "00000000-0000-0000-0000-000000000001",
             "org_id": "org-1",
             "action": "workflow.run.completed",
             "resource_type": "workflow",
@@ -34,7 +44,7 @@ def _audit_rows() -> list[dict]:
             "details": {"recordsProcessed": 10},
         },
         {
-            "id": "log-2",
+            "id": "00000000-0000-0000-0000-000000000002",
             "org_id": "org-1",
             "action": "connector.connected",
             "resource_type": "connector",
@@ -45,7 +55,7 @@ def _audit_rows() -> list[dict]:
             "details": {},
         },
         {
-            "id": "log-3",
+            "id": "00000000-0000-0000-0000-000000000003",
             "org_id": "org-1",
             "action": "workflow.run.failed",
             "resource_type": "workflow",
@@ -60,7 +70,7 @@ def _audit_rows() -> list[dict]:
 @patch("app.routers.audit.get_plan_for_org", return_value=DEFAULT_PLANS["node"])
 def test_audit_list_returns_logs(mock_plan, mock_create):
     mock_create.return_value = table_client(
-        {"audit_logs": chain_mock(data=_audit_rows())}
+        {"audit_logs": _audit_chain(data=_audit_rows())}
     )
     authenticate()
     response = client.get("/api/audit")
@@ -88,7 +98,7 @@ def test_audit_filters_by_action_type(mock_fetch, mock_plan, mock_create):
 @patch("app.routers.audit.create_client")
 @patch("app.routers.audit.get_plan_for_org", return_value=DEFAULT_PLANS["node"])
 def test_audit_filters_by_entity_type(mock_plan, mock_create):
-    mock_create.return_value = table_client({"audit_logs": chain_mock(data=_audit_rows())})
+    mock_create.return_value = table_client({"audit_logs": _audit_chain(data=_audit_rows())})
     authenticate()
     response = client.get("/api/audit?entity_type=connector")
     assert response.status_code == 200
@@ -100,7 +110,7 @@ def test_audit_filters_by_entity_type(mock_plan, mock_create):
 @patch("app.routers.audit.create_client")
 @patch("app.routers.audit.get_plan_for_org", return_value=DEFAULT_PLANS["node"])
 def test_audit_filters_by_date_range(mock_plan, mock_create):
-    mock_create.return_value = table_client({"audit_logs": chain_mock(data=_audit_rows())})
+    mock_create.return_value = table_client({"audit_logs": _audit_chain(data=_audit_rows())})
     authenticate()
     from_ts = (datetime.now(timezone.utc) - timedelta(days=3)).isoformat().replace("+00:00", "Z")
     response = client.get(f"/api/audit?from={quote(from_ts, safe='')}")
@@ -111,7 +121,7 @@ def test_audit_filters_by_date_range(mock_plan, mock_create):
 @patch("app.routers.audit.create_client")
 @patch("app.routers.audit.get_plan_for_org", return_value=DEFAULT_PLANS["node"])
 def test_audit_export_csv(mock_plan, mock_create):
-    mock_create.return_value = table_client({"audit_logs": chain_mock(data=_audit_rows())})
+    mock_create.return_value = table_client({"audit_logs": _audit_chain(data=_audit_rows())})
     authenticate(as_admin=True)  # exporting needs audit_export
     response = client.get("/api/audit/export?format=csv")
     assert response.status_code == 200
@@ -122,7 +132,7 @@ def test_audit_export_csv(mock_plan, mock_create):
 @patch("app.routers.audit.create_client")
 @patch("app.routers.audit.get_plan_for_org", return_value=DEFAULT_PLANS["node"])
 def test_audit_export_json(mock_plan, mock_create):
-    mock_create.return_value = table_client({"audit_logs": chain_mock(data=_audit_rows())})
+    mock_create.return_value = table_client({"audit_logs": _audit_chain(data=_audit_rows())})
     authenticate(as_admin=True)  # exporting needs audit_export
     response = client.get("/api/audit/export?format=json")
     assert response.status_code == 200
@@ -137,7 +147,7 @@ def test_audit_denied_without_entitlement(mock_plan, mock_create):
     plan["features"] = dict(plan["features"])
     plan["features"]["audit_logs"] = False
     mock_plan.return_value = plan
-    mock_create.return_value = table_client({"audit_logs": chain_mock(data=[])})
+    mock_create.return_value = table_client({"audit_logs": _audit_chain(data=[])})
     authenticate()
     response = client.get("/api/audit")
     assert response.status_code == 403
@@ -260,10 +270,11 @@ def test_audit_fetch_rows_without_response_error_attr():
     chain.select.return_value = chain
     chain.eq.return_value = chain
     chain.order.return_value = chain
-    chain.range.return_value = chain
-    chain.execute.return_value = SimpleNamespace(
-        data=[{"id": "log-1", "org_id": "org-1", "action": "test", "created_at": "2026-06-07T00:00:00+00:00"}]
-    )
+    chain.limit.return_value = chain
+    chain.or_.return_value = chain
+    chain.execute.side_effect = [SimpleNamespace(
+        data=[{"id": "00000000-0000-0000-0000-000000000001", "org_id": "org-1", "action": "test", "created_at": "2026-06-07T00:00:00+00:00"}]
+    ), SimpleNamespace(data=[])]
     client = MagicMock()
     client.table.return_value = chain
     rows = _fetch_rows(client, "org-1", None)

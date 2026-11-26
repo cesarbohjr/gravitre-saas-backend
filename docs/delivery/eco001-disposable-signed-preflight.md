@@ -51,5 +51,23 @@ perform broad deletion of preexisting synthetic accounts.
 Full authenticated QA, provider-write/rollback acceptance and the original
 43 findings remain independently gated. This bounded fixture check certifies
 none of those findings by itself. PR #611 remains open and undeployed by this
-change. The temporary standalone registration still retires when consolidated
-QA12 is registered on main.
+change.
+
+## PR #611 integration of main's registration
+
+The registration from main `8fbab752591f3abf7a44de9aa753eab81a9de376`
+is retained in the existing source contract and generated QA12 lane. This keeps
+twelve installed workflows. Its three jobs replace the superseded manual-token
+preflight jobs; the probe and fixture harness are unchanged. The prior manual
+fixture run 44863581946 and independent cleanup evidence remain valid for their
+original harness/runtime SHAs; this merge does not repeat that live check or
+certify the new head.
+
+After a separately approved main merge, the entrypoint is
+`.github/workflows/qa-12-independent-acceptance.yml`, selecting
+`source=eco-001-deployed-ingress` and
+`eco_001_deployed_ingress__confirm_disposable_fixture=true`. The owner,
+main-only ref check, exact runtime pin, acceptance credentials, always-run
+cleanup and sanitized evidence upload remain enforced. PRs select only the
+offline fixture contracts; both authorization and the credentialed job are
+manual-only. No live dispatch is part of conflict reconciliation.

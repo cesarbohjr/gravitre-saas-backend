@@ -20,6 +20,7 @@ import pytest
 from tests.db.pg_harness import PG_BIN, MIGRATIONS, pg_cluster, requires_pg
 from tests.db.test_autonomous_atomic_approval_pg import BOOT, RUN, ORG_A
 from tests.db.test_autonomous_independent_write_pg import IndependentFixture
+from tests.db.write_recovery_context_fixture import AUTH_ROLE_SQL, CONTEXT_SQL
 from app.services.tool_types import NormalizedResult
 
 pytestmark = requires_pg
@@ -44,6 +45,20 @@ class SqlRpc:
         if self.name == "claim_approved_autonomous_write":
             keys = ["p_org_id", "p_run_id", "p_key", "p_invoke_action", "p_logical_action_id", "p_lease_seconds"]
             expr = f"public.claim_approved_autonomous_write({val(keys[0])}::uuid,{val(keys[1])}::uuid,{val(keys[2])},{val(keys[3])},{val(keys[4])},{val(keys[5])}::integer)"
+        elif self.name == "bind_write_recovery_context":
+            # The only simulated part is the Supabase transport. Execute
+            # the actual fenced service-role SQL RPC in the test database.
+            raw_json = json.dumps(a["p_original_args"])
+            safe_json = "'" + raw_json.replace("'", "''") + "'"
+            expr = (
+                "public.bind_write_recovery_context("
+                + val("p_org_id") + "::uuid,"
+                + val("p_key") + ","
+                + val("p_claim_token") + "::uuid,"
+                + val("p_invoke_action") + ","
+                + val("p_connector_id") + ","
+                + safe_json + "::jsonb)"
+            )
         elif self.name == "finalize_write_invoke_idempotency":
             keys = ["p_org_id", "p_key", "p_claim_token", "p_status", "p_result"]
             expr = f"public.finalize_write_invoke_idempotency({val(keys[0])}::uuid,{val(keys[1])},{val(keys[2])}::uuid,{val(keys[3])},{val(keys[4])}::jsonb)"
@@ -53,7 +68,7 @@ class SqlRpc:
             [str(PG_BIN / "psql"), "-h", self.sock, "-p", self.port,
              "-U", "postgres", "-d", "postgres", "-X", "-q", "-At",
              "-v", "ON_ERROR_STOP=1"],
-            input=f"SET ROLE service_role; SELECT {expr}::text;",
+            input=f"SET ROLE service_role; SET request.jwt.claim.role = 'service_role'; SELECT {expr}::text;",
             capture_output=True, text=True, check=True,
         )
         return SimpleNamespace(data=json.loads(proc.stdout.strip()))
@@ -108,7 +123,7 @@ def child_worker(sock: str, port: str, receiver_origin: str, stage: str, marker:
             parameters=kwargs["parameters"], step_outputs={},
             client=kwargs["client"], is_dry_run=False,
         )
-        result = handlers._invoke_canvas_registered_tool(step, ACTION, {"id": "contact-1"})
+        result = handlers._invoke_canvas_registered_tool(step, ACTION, {"id": "contact-1", "connector_id": "qa-hubspot"})
         assert result.success
         return ("completed", [], [], False)
 
@@ -147,7 +162,7 @@ def _start(pg, origin, stage, marker):
 
 @pytest.mark.parametrize("case,expected", [("crash_before_effect", 0), ("crash_after_effect", 1)])
 def test_real_worker_kill_restart_blocks_duplicate_dispatch(tmp_path, case, expected):
-    with pg_cluster(BOOT, MIGRATION.read_text(), GRANTS.read_text(), ATOMIC.read_text()) as pg:
+    with pg_cluster(BOOT, MIGRATION.read_text(), GRANTS.read_text(), ATOMIC.read_text(), AUTH_ROLE_SQL, CONTEXT_SQL) as pg:
         receiver = IndependentFixture(
             tmp_path / (case + ".sqlite3"), b"<h1>isolated</h1>",
             capability="autonomous-full-dispatcher",

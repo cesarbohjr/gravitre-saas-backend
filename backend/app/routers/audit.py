@@ -331,7 +331,8 @@ def _prepare_logs(
     q: str | None,
 ) -> tuple[list[dict], bool]:
     rows = _fetch_rows(client, org_id, action, from_dt=from_dt)
-    truncated = len(rows) >= FETCH_MAX
+    truncated = len(rows) > FETCH_MAX
+    rows = rows[:FETCH_MAX]
     logs = [_annotate(_normalize_log(row)) for row in rows]
     logs = _filter_logs(logs, user_id=user_id, entity_type=entity_type, from_dt=from_dt, to_dt=to_dt)
     _resolve_actor_names(client, logs)
@@ -340,32 +341,56 @@ def _prepare_logs(
 
 
 def _fetch_rows(client, org_id: str, action: str | None, *, from_dt: datetime | None = None):
-    def _query(order_col: str):
-        # Build a fresh query per attempt: postgrest builders mutate in place.
-        query = client.table("audit_logs").select("*").eq("org_id", org_id)
-        if action:
-            query = query.eq("action", action)
-        if from_dt is not None:
-            query = query.gte(order_col, from_dt.isoformat())
-        return query.order(order_col, desc=True).range(0, FETCH_MAX - 1)
+    """Newest FETCH_MAX rows plus one sentinel, with deterministic seek pages.
 
+    A server cap can shorten any page; only an empty page or the sentinel
+    establishes completion. Preserve the legacy timestamp schema fallback.
+    Like other HTTP scans, this is not a transaction snapshot.
+    """
+    if not org_id:
+        raise HTTPException(status_code=403, detail="Organization context required")
     last_error: Exception | None = None
     for order_col in ("created_at", "timestamp"):
+        rows = []
+        cursor = None
         try:
-            response = _query(order_col).execute()
-            return list(response.data or [])
-        except Exception as exc:  # noqa: BLE001 — postgrest APIError on missing columns
+            while len(rows) <= FETCH_MAX:
+                query = client.table("audit_logs").select("*").eq("org_id", org_id)
+                if action:
+                    query = query.eq("action", action)
+                if from_dt is not None:
+                    query = query.gte(order_col, from_dt.isoformat())
+                if cursor is not None:
+                    stamp, identity = cursor
+                    query = query.or_(f"{order_col}.lt.{stamp.isoformat()},and({order_col}.eq.{stamp.isoformat()},id.lt.{identity})")
+                page = query.order(order_col, desc=True).order("id", desc=True).limit(min(500, FETCH_MAX + 1 - len(rows))).execute().data
+                if not isinstance(page, list):
+                    raise ValueError("Invalid audit page")
+                if not page:
+                    return rows
+                for row in page:
+                    if not isinstance(row, dict) or str(row.get("org_id")) != str(org_id):
+                        raise ValueError("Audit page outside tenant scope")
+                    stamp = _parse_iso(str(row.get(order_col) or ""))
+                    identity = UUID(str(row.get("id")))
+                    if stamp is None:
+                        raise ValueError("Invalid audit timestamp")
+                    if cursor is not None and (stamp, identity) >= cursor:
+                        raise ValueError("Audit pagination did not advance")
+                    cursor = (stamp, identity)
+                    rows.append(row)
+                    if len(rows) > FETCH_MAX:
+                        return rows
+            return rows
+        except Exception as exc:  # noqa: BLE001
             last_error = exc
-            message = str(exc).lower()
-            if order_col == "created_at" and (
-                "42703" in str(exc) or "does not exist" in message
+            # Only a missing column on the initial query permits legacy retry.
+            if not rows and order_col == "created_at" and (
+                getattr(exc, "code", None) == "42703" or "42703" in str(exc)
             ):
                 continue
             break
-
-    if last_error is not None:
-        raise HTTPException(status_code=500, detail=str(last_error)) from last_error
-    return []
+    raise HTTPException(status_code=500, detail="Audit retrieval incomplete") from last_error
 
 
 def _filter_logs(
@@ -465,7 +490,7 @@ def list_audit_logs(
         # Totals for the whole filtered result, not just this page.
         "actors": _distinct_actor_count(logs),
         "errors": sum(1 for log in logs if log.get("outcome") == "error"),
-        # True when the scan hit FETCH_MAX rows: totals cover the newest FETCH_MAX events.
+        # True only when an additional matching source row was observed.
         "truncated": truncated,
         "scanLimit": FETCH_MAX,
     }
@@ -484,6 +509,8 @@ def audit_summary(
     require_feature(get_plan_for_org(client, org_id), "audit_logs")
     from_dt = _range_start(range_value)
     rows = _fetch_rows(client, org_id, action=None, from_dt=from_dt)
+    truncated = len(rows) > FETCH_MAX
+    rows = rows[:FETCH_MAX]
     logs = [_annotate(_normalize_log(row)) for row in rows]
     logs = _filter_logs(logs, user_id=None, entity_type=None, from_dt=from_dt, to_dt=None)
     _resolve_actor_names(client, logs)
@@ -518,6 +545,8 @@ def audit_summary(
         "byUser": by_user_list,
         "byEntityType": by_entity_type,
         "byCategory": by_category,
+        "truncated": truncated,
+        "scanLimit": FETCH_MAX,
     }
 
 
@@ -600,7 +629,9 @@ def export_audit(
     return Response(
         content=output.getvalue(),
         media_type="text/csv",
-        headers={"Content-Disposition": 'attachment; filename="audit-export.csv"'},
+        headers={"Content-Disposition": 'attachment; filename="audit-export.csv"',
+                 "X-Audit-Truncated": str(truncated).lower(),
+                 "X-Audit-Scan-Limit": str(FETCH_MAX)},
     )
 
 

@@ -79,3 +79,39 @@ def test_all_pending_approval_states_block_dispatch(pending):
     runtime = _runtime({"pending_action": {}, "pending_task": {"status": pending}})
     with pytest.raises(RuntimeError, match="approval_required"):
         runtime.next_step_id("gmail.send", 0, is_write=True)
+
+
+def test_initial_reasoning_placeholder_admits_first_tool_without_waiving_write_proof():
+    from app.services.react_execution_strategy import (
+        prepare_react_execution_plan, react_observation_from_tool_call,
+        finalize_react_execution_plan,
+    )
+
+    runtime = prepare_react_execution_plan(message="Update the fixture deal stage", task_state={})
+    assert runtime.plan.steps[0].status == "pending"
+    step_id = runtime.next_step_id("hubspot_update_deal", 1, is_write=True)
+    assert runtime.plan.steps[0].step_id == step_id
+    assert runtime.plan.steps[0].kind == "write"
+    react_observation_from_tool_call(
+        runtime, iteration=1, tool_name="hubspot_update_deal",
+        observation={"success": True, "action": "hubspot.deals.update"},
+    )
+    assert runtime.plan.steps[0].action_key == "hubspot.deals.update"
+    assert runtime.plan.steps[0].status == "running"
+    with pytest.raises(RuntimeError, match="steps_not_terminal"):
+        runtime.next_step_id("hubspot_update_deal", 2, is_write=True)
+    final, _ = finalize_react_execution_plan(runtime, react_status="completed", answer="Done")
+    assert final.terminal_status == "verification_inconclusive"
+
+
+@pytest.mark.parametrize("state,reason", [
+    ({"durable_session": {"phase": "CANCELLED"}}, "cancelled"),
+    ({"pending_action": {"status": "awaiting_approval"}}, "approval_required"),
+])
+def test_bootstrap_reasoning_placeholder_does_not_bypass_existing_gates(state, reason):
+    from app.services.react_execution_strategy import prepare_react_execution_plan
+
+    runtime = prepare_react_execution_plan(message="Update the fixture deal stage", task_state=state)
+    with pytest.raises(RuntimeError, match=reason):
+        runtime.next_step_id("hubspot_update_deal", 1, is_write=True)
+    assert not runtime.dispatched_steps

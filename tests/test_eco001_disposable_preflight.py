@@ -210,7 +210,10 @@ def test_recoverable_cleanup_failure_can_be_retried_without_promoting_failed_pro
 
 
 def workflow():
-    return yaml.safe_load((ROOT / ".github/workflows/eco-001-deployed-ingress.yml").read_text())
+    from runpy import run_path
+
+    contract = run_path(str(ROOT / "scripts/workflow_source_contract.py"))
+    return contract["definition"](ROOT, "eco-001-deployed-ingress.yml")
 
 
 @pytest.mark.parametrize("override", [

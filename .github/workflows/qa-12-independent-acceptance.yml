@@ -1,0 +1,1246 @@
+# STAGED: not installed in .github/workflows; automatic trigger cutover pending.
+name: QA 12-independent-acceptance
+'on':
+  workflow_dispatch:
+    inputs:
+      source:
+        description: Original workflow contract to execute
+        required: true
+        type: choice
+        options:
+        - eco-001-deployed-ingress
+        - isolated-acceptance
+        - master-qa-p0-synthetic
+        - master-qa-p27-sandbox-readback
+        - milestone1-live-reverify
+        - plays-datasets-live-proof
+        - plays-production-acceptance
+        - release1-live-memory-liveness
+        - release1-live-public-mcp
+        default: eco-001-deployed-ingress
+      eco_001_deployed_ingress__confirm_disposable_fixture:
+        description: 'eco-001-deployed-ingress: Create and clean up one isolated acceptance user and conversation'
+        type: boolean
+        required: false
+        default: false
+      isolated_acceptance__suite:
+        description: 'isolated-acceptance: Choose isolated acceptance suite'
+        required: false
+        type: choice
+        options:
+        - all
+        - billing
+        - voice
+        default: all
+      master_qa_p27_sandbox_readback__approval:
+        description: 'master-qa-p27-sandbox-readback: Type APPROVE_LIVE_TEST_CONTACT for one disposable record in the existing
+          Gravitre HubSpot portal'
+        required: false
+        type: string
+      milestone1_live_reverify__min_sha:
+        description: 'milestone1-live-reverify: Minimum deployed git sha prefix (Research Manager)'
+        required: false
+        default: 4eb6adbe
+      milestone1_live_reverify__skip_wave67_write:
+        description: 'milestone1-live-reverify: Skip Wave67 write/approve turns (read-only spotcheck)'
+        required: false
+        type: boolean
+        default: false
+      plays_datasets_live_proof__dataset_query:
+        description: 'plays-datasets-live-proof: Public dataset metadata search query'
+        required: false
+        default: customer support
+      plays_datasets_live_proof__backend_url:
+        description: 'plays-datasets-live-proof: Backend base URL'
+        required: false
+        default: https://gravitre-saas-backend-production.up.railway.app
+      plays_production_acceptance__backend_url:
+        description: 'plays-production-acceptance: Backend base URL'
+        required: false
+        default: https://gravitre-saas-backend-production.up.railway.app
+  workflow_call:
+    inputs:
+      source:
+        type: string
+        default: isolated-acceptance
+      suite:
+        type: string
+        required: true
+      _reusable:
+        type: boolean
+        default: true
+  push:
+    branches:
+    - main
+  pull_request:
+    types:
+    - labeled
+    - opened
+    - reopened
+    - synchronize
+  workflow_run:
+    branches:
+    - main
+    types:
+    - completed
+    workflows:
+    - Production release verification
+    - QA 11-release
+concurrency:
+  group: ${{ format('candidate-{0}', (inputs.source == 'eco-001-deployed-ingress' && ('eco001-signed-qa-ingress-readonly'))
+    || (inputs.source == 'isolated-acceptance' && (format('external-acceptance-{0}', github.event.pull_request.number || github.ref)))
+    || (inputs.source == 'master-qa-p0-synthetic' && (format('master-qa-p0-{0}', github.event.pull_request.number || github.ref)))
+    || (inputs.source == 'master-qa-p27-sandbox-readback' && ('p27-existing-live-hubspot-qa')) || (inputs.source == 'milestone1-live-reverify'
+    && ('milestone1-live-reverify')) || github.run_id) }}
+  cancel-in-progress: ${{ (inputs.source == 'eco-001-deployed-ingress' && (false)) || (inputs.source == 'isolated-acceptance'
+    && (true)) || (inputs.source == 'master-qa-p0-synthetic' && (true)) || (inputs.source == 'master-qa-p27-sandbox-readback'
+    && (false)) || (inputs.source == 'milestone1-live-reverify' && (false)) || false }}
+jobs:
+  upstream_contract:
+    name: Read trusted upstream outcome metadata
+    if: ${{ github.event_name == 'workflow_run' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    permissions:
+      contents: read
+      actions: read
+    outputs:
+      evidence: ${{ steps.upstream.outputs.evidence }}
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        ref: ${{ github.sha }}
+        persist-credentials: false
+    - id: upstream
+      run: python scripts/route-workflow-event.py --lane 12-independent-acceptance --fetch-upstream
+      env:
+        GITHUB_TOKEN: ${{ github.token }}
+  dispatch_contract:
+    name: Validate selected source inputs
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    timeout-minutes: 4
+    needs:
+    - upstream_contract
+    if: ${{ always() && (needs.upstream_contract.result == 'success' || needs.upstream_contract.result == 'skipped') }}
+    outputs:
+      selected: ${{ steps.contract.outputs.selected }}
+      derived: ${{ steps.contract.outputs.derived }}
+      context_conclusions: ${{ steps.contract.outputs.context_conclusions }}
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        persist-credentials: false
+        fetch-depth: 0
+    - id: contract
+      name: Validate source contract
+      shell: python
+      env:
+        SOURCE_SCHEMAS: '{"eco-001-deployed-ingress": {"confirm_disposable_fixture": {"description": "Create and clean up
+          one isolated acceptance user and conversation", "type": "boolean", "required": true, "default": false}}, "isolated-acceptance":
+          {"suite": {"description": "Choose isolated acceptance suite", "required": true, "type": "choice", "options": ["all",
+          "billing", "voice"], "default": "all"}}, "master-qa-p0-synthetic": {}, "master-qa-p27-sandbox-readback": {"approval":
+          {"description": "Type APPROVE_LIVE_TEST_CONTACT for one disposable record in the existing Gravitre HubSpot portal",
+          "required": true, "type": "string"}}, "milestone1-live-reverify": {"min_sha": {"description": "Minimum deployed
+          git sha prefix (Research Manager)", "required": false, "default": "4eb6adbe"}, "skip_wave67_write": {"description":
+          "Skip Wave67 write/approve turns (read-only spotcheck)", "required": false, "type": "boolean", "default": false}},
+          "plays-datasets-live-proof": {"dataset_query": {"description": "Public dataset metadata search query", "required":
+          false, "default": "customer support"}, "backend_url": {"description": "Backend base URL", "required": false, "default":
+          "https://gravitre-saas-backend-production.up.railway.app"}}, "plays-production-acceptance": {"backend_url": {"description":
+          "Backend base URL", "required": false, "default": "https://gravitre-saas-backend-production.up.railway.app"}}, "release1-live-memory-liveness":
+          {}, "release1-live-public-mcp": {}}'
+        MANUAL_SOURCES: '["eco-001-deployed-ingress", "isolated-acceptance", "master-qa-p0-synthetic", "master-qa-p27-sandbox-readback",
+          "milestone1-live-reverify", "plays-datasets-live-proof", "plays-production-acceptance", "release1-live-memory-liveness",
+          "release1-live-public-mcp"]'
+        DISPATCH_VALUES: ${{ toJSON(inputs) }}
+        EVENT_NAME: ${{ github.event_name }}
+        CANONICAL_LANE: 12-independent-acceptance
+        UPSTREAM_EVIDENCE: ${{ needs.upstream_contract.outputs.evidence }}
+      run: "import json, os\nschemas = json.loads(os.environ['SOURCE_SCHEMAS'])\nvalues = json.loads(os.environ['DISPATCH_VALUES'])\n\
+        event_name = os.environ['EVENT_NAME']\ncalled = values.get('_reusable', False)\nif not called and event_name not in\
+        \ ('workflow_dispatch', 'workflow_call'):\n    import subprocess\n    subprocess.run(['python', 'scripts/route-workflow-event.py',\
+        \ '--lane', os.environ['CANONICAL_LANE']], check=True)\n    raise SystemExit(0)\nsource = values.get('source')\nif\
+        \ source not in schemas:\n    raise SystemExit('Unknown source workflow')\nif not called and event_name == 'workflow_dispatch'\
+        \ and source not in json.loads(os.environ['MANUAL_SOURCES']):\n    raise SystemExit('Source has no manual trigger')\n\
+        if called and source != 'isolated-acceptance':\n    raise SystemExit('Unsupported reusable source')\nfor key, config\
+        \ in schemas[source].items():\n    value = values.get(source.replace('-', '_') + '__' + key)\n    if called and key\
+        \ == 'suite':\n        value = values.get('suite')\n    if config.get('required') and (value is None or value == ''):\n\
+        \        raise SystemExit('Required selected-source input missing: ' + key)\nprint('Selected source input contract\
+        \ validated; this is not execution acceptance')\nwith open(os.environ['GITHUB_OUTPUT'], 'a') as output:\n    output.write('selected='\
+        \ + json.dumps([source]) + '\\n')\n    output.write('derived=[]\\ncontext_conclusions={}\\n')\n"
+  eco_001_deployed_ingress__fixture-contracts:
+    name: Disposable QA fixture safety contracts (offline)
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        persist-credentials: false
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+    - run: pip install pytest==8.3.5 PyYAML==6.0.2
+    - run: python -m pytest -q tests/test_eco001_disposable_preflight.py
+    needs:
+    - dispatch_contract
+    if: ${{ always() && needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected),
+      'eco-001-deployed-ingress') && ((!cancelled() && (true))) }}
+    env:
+      QA_BACKEND_URL: https://eco001-fastapi-qa.up.railway.app
+      QA_EXPECTED_SHA: c10d8a764f67c428adc408d65429149e7686498f
+      PREFLIGHT_SHA256: 347761a26bc874a0d885b0a463797708661bcb6fac9cbf5fdc047e9dfeb4ae82
+    permissions:
+      contents: read
+    concurrency:
+      group: ${{ format('candidate-{0}-{1}-{2}', 'eco001-signed-qa-ingress-readonly', 'eco_001_deployed_ingress__fixture-contracts',
+        toJSON(matrix)) }}
+      cancel-in-progress: ${{ false }}
+  eco_001_deployed_ingress__authorize:
+    name: Verify signed QA dispatch scope
+    if: ${{ always() && needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected),
+      'eco-001-deployed-ingress') && (!cancelled() && (true) && (github.event_name == 'workflow_dispatch')) }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+    - name: Require the existing owner and explicit fixture opt-in
+      env:
+        EVENT_NAME: ${{ github.event_name }}
+        REPOSITORY: ${{ github.repository }}
+        ACTOR: ${{ github.actor }}
+        DISPATCH_REF: ${{ github.ref }}
+        CONFIRM_DISPOSABLE_FIXTURE: ${{ inputs.eco_001_deployed_ingress__confirm_disposable_fixture }}
+      shell: bash
+      run: 'set -euo pipefail
+
+        test "$EVENT_NAME" = workflow_dispatch
+
+        test "$REPOSITORY" = cesarbohjr/gravitre-saas-backend
+
+        test "$ACTOR" = cesarbohjr
+
+        test "$DISPATCH_REF" = refs/heads/main
+
+        test "$CONFIRM_DISPOSABLE_FIXTURE" = true
+
+        '
+    needs:
+    - dispatch_contract
+    env:
+      QA_BACKEND_URL: https://eco001-fastapi-qa.up.railway.app
+      QA_EXPECTED_SHA: c10d8a764f67c428adc408d65429149e7686498f
+      PREFLIGHT_SHA256: 347761a26bc874a0d885b0a463797708661bcb6fac9cbf5fdc047e9dfeb4ae82
+    permissions:
+      contents: read
+    concurrency:
+      group: ${{ format('candidate-{0}-{1}-{2}', 'eco001-signed-qa-ingress-readonly', 'eco_001_deployed_ingress__authorize',
+        toJSON(matrix)) }}
+      cancel-in-progress: ${{ false }}
+  eco_001_deployed_ingress__signed-qa-ingress-preflight:
+    name: Signed isolated QA ingress (read-only)
+    needs:
+    - dispatch_contract
+    - eco_001_deployed_ingress__authorize
+    - eco_001_deployed_ingress__fixture-contracts
+    if: ${{ always() && needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected),
+      'eco-001-deployed-ingress') && (!cancelled() && (needs.eco_001_deployed_ingress__authorize.result == 'success' && needs.eco_001_deployed_ingress__fixture-contracts.result
+      == 'success') && (github.event_name == 'workflow_dispatch')) }}
+    environment: acceptance
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+    - name: Check out this run's fixture harness
+      uses: actions/checkout@v4
+      with:
+        ref: ${{ github.sha }}
+        persist-credentials: false
+        sparse-checkout: scripts/eco001_disposable_preflight.py
+        sparse-checkout-cone-mode: false
+    - name: Check out the reviewed preflight at the deployed SHA
+      uses: actions/checkout@v4
+      with:
+        ref: ${{ env.QA_EXPECTED_SHA }}
+        path: deployed-probe
+        persist-credentials: false
+        sparse-checkout: backend/scripts/eco001_deployed_ingress_preflight.py
+        sparse-checkout-cone-mode: false
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+    - name: Verify the pinned preflight source
+      shell: bash
+      run: "set -euo pipefail\nprintf '%s  %s\\n' \"$PREFLIGHT_SHA256\" deployed-probe/backend/scripts/eco001_deployed_ingress_preflight.py\
+        \ |\n  sha256sum --check --status\n"
+    - name: Create disposable fixture, verify deployed GET and verify cleanup
+      timeout-minutes: 5
+      env:
+        E2E_SUPABASE_URL: ${{ secrets.E2E_SUPABASE_URL }}
+        E2E_SUPABASE_ALLOWED_URL: ${{ vars.E2E_SUPABASE_ALLOWED_URL }}
+        E2E_SUPABASE_ANON_KEY: ${{ secrets.E2E_SUPABASE_ANON_KEY }}
+        E2E_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.E2E_SUPABASE_SERVICE_ROLE_KEY }}
+      shell: bash
+      run: "set -euo pipefail\npython scripts/eco001_disposable_preflight.py \\\n  --probe deployed-probe/backend/scripts/eco001_deployed_ingress_preflight.py\
+        \ \\\n  --journal \"$RUNNER_TEMP/eco001-private-fixture.json\" \\\n  --output \"$RUNNER_TEMP/eco001-signed-qa-ingress.json\"\
+        \n"
+    - name: Always retry scoped cleanup and verify persisted absence
+      if: always()
+      timeout-minutes: 3
+      env:
+        E2E_SUPABASE_URL: ${{ secrets.E2E_SUPABASE_URL }}
+        E2E_SUPABASE_ALLOWED_URL: ${{ vars.E2E_SUPABASE_ALLOWED_URL }}
+        E2E_SUPABASE_ANON_KEY: ${{ secrets.E2E_SUPABASE_ANON_KEY }}
+        E2E_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.E2E_SUPABASE_SERVICE_ROLE_KEY }}
+      shell: bash
+      run: "set -euo pipefail\npython scripts/eco001_disposable_preflight.py --cleanup-only \\\n  --probe deployed-probe/backend/scripts/eco001_deployed_ingress_preflight.py\
+        \ \\\n  --journal \"$RUNNER_TEMP/eco001-private-fixture.json\" \\\n  --output \"$RUNNER_TEMP/eco001-signed-qa-ingress.json\"\
+        \n"
+    - name: Retain sanitized signed QA evidence
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: eco001-signed-qa-ingress-readonly
+        path: ${{ runner.temp }}/eco001-signed-qa-ingress.json
+        if-no-files-found: error
+        retention-days: 90
+    env:
+      QA_BACKEND_URL: https://eco001-fastapi-qa.up.railway.app
+      QA_EXPECTED_SHA: c10d8a764f67c428adc408d65429149e7686498f
+      PREFLIGHT_SHA256: 347761a26bc874a0d885b0a463797708661bcb6fac9cbf5fdc047e9dfeb4ae82
+    permissions:
+      contents: read
+    concurrency:
+      group: ${{ format('candidate-{0}-{1}-{2}', 'eco001-signed-qa-ingress-readonly', 'eco_001_deployed_ingress__signed-qa-ingress-preflight',
+        toJSON(matrix)) }}
+      cancel-in-progress: ${{ false }}
+  isolated_acceptance__billing-e2e:
+    name: Billing Playwright (isolated test)
+    if: ${{ always() && needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected),
+      'isolated-acceptance') && (!cancelled() && (true) && ((github.event_name == 'workflow_dispatch' || github.event_name
+      == 'workflow_call' || vars.ACCEPTANCE_AUTOMATION_ENABLED == 'true') && ((inputs.isolated_acceptance__suite || inputs.suite)
+      == '' || (inputs.isolated_acceptance__suite || inputs.suite) == 'all' || (inputs.isolated_acceptance__suite || inputs.suite)
+      == 'billing'))) }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    environment: acceptance
+    env:
+      BILLING_ACCEPTANCE_ISOLATED: '1'
+      BILLING_ACCEPTANCE_ALLOWED_URL: ${{ vars.E2E_SUPABASE_ALLOWED_URL }}
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-node@v4
+      with:
+        node-version: '22'
+    - uses: pnpm/action-setup@v4
+      with:
+        version: 10
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+        cache: pip
+        cache-dependency-path: backend/requirements.txt
+    - name: Assert dedicated test credentials (never production)
+      env:
+        E2E_SUPABASE_URL: ${{ secrets.E2E_SUPABASE_URL }}
+        E2E_SUPABASE_ALLOWED_URL: ${{ vars.E2E_SUPABASE_ALLOWED_URL }}
+        E2E_STRIPE_SECRET_KEY: ${{ secrets.E2E_STRIPE_SECRET_KEY }}
+        E2E_STRIPE_PUBLISHABLE_KEY: ${{ secrets.E2E_STRIPE_PUBLISHABLE_KEY }}
+        E2E_STRIPE_PRICE_ID_NODE_MONTHLY: ${{ secrets.E2E_STRIPE_PRICE_ID_NODE_MONTHLY }}
+        E2E_SUPABASE_ANON_KEY: ${{ secrets.E2E_SUPABASE_ANON_KEY }}
+        E2E_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.E2E_SUPABASE_SERVICE_ROLE_KEY }}
+        E2E_SUPABASE_JWT_SECRET: ${{ secrets.E2E_SUPABASE_JWT_SECRET }}
+      run: "python - <<'PY'\nimport os\nfrom urllib.parse import urlsplit\nrequired = ('E2E_SUPABASE_URL', 'E2E_SUPABASE_ALLOWED_URL',\n\
+        \            'E2E_STRIPE_SECRET_KEY', 'E2E_STRIPE_PUBLISHABLE_KEY', 'E2E_STRIPE_PRICE_ID_NODE_MONTHLY',\n        \
+        \    'E2E_SUPABASE_ANON_KEY', 'E2E_SUPABASE_SERVICE_ROLE_KEY',\n            'E2E_SUPABASE_JWT_SECRET')\nmissing =\
+        \ [key for key in required if not os.environ.get(key)]\nif missing:\n    raise SystemExit('Acceptance NOT RUN: missing\
+        \ configuration names: ' + ', '.join(missing))\nurl = os.environ['E2E_SUPABASE_URL'].rstrip('/')\nallowed = os.environ['E2E_SUPABASE_ALLOWED_URL'].rstrip('/')\n\
+        parsed = urlsplit(url)\nchecks = {\n    'dedicated_supabase_target': url == 'https://aadnwmjzrmbvadszroqt.supabase.co',\n\
+        \    'allowed_url_matches_target': url == allowed,\n    'undecorated_https_target': (parsed.scheme == 'https' and\
+        \ bool(parsed.hostname)\n        and parsed.hostname.endswith('.supabase.co')\n        and not any((parsed.username,\
+        \ parsed.password, parsed.query, parsed.fragment))),\n    'stripe_test_mode_key': os.environ['E2E_STRIPE_SECRET_KEY'].startswith('sk_test_'),\n\
+        \    'stripe_test_publishable_key': os.environ['E2E_STRIPE_PUBLISHABLE_KEY'].startswith('pk_test_'),\n}\nfailed =\
+        \ [name for name, passed in checks.items() if not passed]\nif failed:\n    raise SystemExit('Acceptance blocked: failed\
+        \ configuration checks (values redacted): ' + ', '.join(failed))\nprint('Isolated billing target and Stripe test mode\
+        \ verified (values redacted)')\nPY\n"
+    - name: Read-only application schema readiness preflight
+      env:
+        E2E_SUPABASE_URL: ${{ secrets.E2E_SUPABASE_URL }}
+        E2E_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.E2E_SUPABASE_SERVICE_ROLE_KEY }}
+      run: python scripts/check-isolated-acceptance-db.py
+    - name: Install dependencies
+      run: 'pnpm install --frozen-lockfile --ignore-scripts
+
+        pnpm --dir apps/web install --frozen-lockfile
+
+        python -m pip install -r backend/requirements-dev.txt
+
+        npx playwright install --with-deps chromium
+
+        '
+    - name: Validate test price and start signed webhook forwarding
+      env:
+        SUPABASE_URL: ${{ secrets.E2E_SUPABASE_URL }}
+        STRIPE_SECRET_KEY: ${{ secrets.E2E_STRIPE_SECRET_KEY }}
+        STRIPE_PRICE_ID_NODE_MONTHLY: ${{ secrets.E2E_STRIPE_PRICE_ID_NODE_MONTHLY }}
+        NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: ${{ secrets.E2E_STRIPE_PUBLISHABLE_KEY }}
+      run: python scripts/prepare-dedicated-billing-acceptance.py
+    - name: Run authenticated billing E2E
+      env:
+        CI: 'true'
+        APP_ENV: dev
+        SUPABASE_URL: ${{ secrets.E2E_SUPABASE_URL }}
+        SUPABASE_ANON_KEY: ${{ secrets.E2E_SUPABASE_ANON_KEY }}
+        SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.E2E_SUPABASE_SERVICE_ROLE_KEY }}
+        SUPABASE_JWT_SECRET: ${{ secrets.E2E_SUPABASE_JWT_SECRET }}
+        NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.E2E_SUPABASE_URL }}
+        NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.E2E_SUPABASE_ANON_KEY }}
+        STRIPE_SECRET_KEY: ${{ secrets.E2E_STRIPE_SECRET_KEY }}
+        STRIPE_PRICE_ID_NODE_MONTHLY: ${{ secrets.E2E_STRIPE_PRICE_ID_NODE_MONTHLY }}
+        NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: ${{ secrets.E2E_STRIPE_PUBLISHABLE_KEY }}
+        COMMERCIAL_OFFERS_ENABLED: 'true'
+        DISABLE_AI: 'true'
+        BILLING_RECONCILIATION_ENABLED: 'false'
+        USAGE_SYNC_INTERVAL_SECONDS: '0'
+        PUBLIC_APP_URL: http://localhost:3000
+        NEXT_PUBLIC_APP_URL: http://localhost:3000
+        FASTAPI_BASE_URL: http://127.0.0.1:8000
+        PLAYWRIGHT_BASE_URL: http://localhost:3000
+        NEXT_PUBLIC_PLAYWRIGHT_E2E: '1'
+      run: npx playwright test --config playwright.billing.acceptance.config.ts
+    - name: Stop runner-local Stripe test listener
+      if: always()
+      run: "python - <<'PY'\nimport os, pathlib, signal\npath = pathlib.Path(os.environ['RUNNER_TEMP']) / 'dedicated-billing-stripe-listener.pid'\n\
+        if path.exists():\n    try:\n        os.killpg(int(path.read_text()), signal.SIGTERM)\n    except ProcessLookupError:\n\
+        \        pass\nPY\n"
+    - name: Publish billing evidence
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: billing-e2e-${{ github.sha }}
+        path: 'playwright-report/
+
+          test-results/
+
+          '
+        if-no-files-found: ignore
+        retention-days: 7
+    needs:
+    - dispatch_contract
+    permissions:
+      contents: read
+    concurrency:
+      group: ${{ format('candidate-{0}-{1}-{2}', format('external-acceptance-{0}', github.event.pull_request.number || github.ref),
+        'isolated_acceptance__billing-e2e', toJSON(matrix)) }}
+      cancel-in-progress: ${{ true }}
+  isolated_acceptance__live-provider-voice:
+    name: ElevenLabs + Deepgram synthetic live acceptance
+    if: ${{ always() && needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected),
+      'isolated-acceptance') && (!cancelled() && (true) && ((github.event_name == 'workflow_dispatch' || github.event_name
+      == 'workflow_call' || vars.ACCEPTANCE_AUTOMATION_ENABLED == 'true') && ((inputs.isolated_acceptance__suite || inputs.suite)
+      == '' || (inputs.isolated_acceptance__suite || inputs.suite) == 'all' || (inputs.isolated_acceptance__suite || inputs.suite)
+      == 'voice'))) }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    environment: acceptance
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+        cache: pip
+        cache-dependency-path: backend/requirements.txt
+    - name: Install voice dependencies
+      run: python -m pip install -r backend/requirements-dev.txt
+    - name: Validate synthetic provider runner contracts
+      working-directory: backend
+      run: python -m pytest -q tests/scripts/test_voice_provider_roundtrip.py
+      env:
+        APP_ENV: dev
+    - name: Live provider roundtrip and final write-gate check
+      env:
+        APP_ENV: dev
+        DEEPGRAM_API_KEY: ${{ secrets.ACCEPTANCE_DEEPGRAM_API_KEY }}
+        ELEVENLABS_API_KEY: ${{ secrets.ACCEPTANCE_ELEVENLABS_API_KEY }}
+        ELEVENLABS_VOICE_ID: ${{ vars.ACCEPTANCE_ELEVENLABS_VOICE_ID }}
+      run: 'mkdir -p acceptance-results
+
+        python scripts/verify-voice-provider-roundtrip.py --output acceptance-results/provider-roundtrip.json
+
+        '
+    - name: Publish sanitized voice evidence
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: voice-provider-${{ github.sha }}
+        path: acceptance-results/provider-roundtrip.json
+        if-no-files-found: ignore
+        retention-days: 7
+    needs:
+    - dispatch_contract
+    permissions:
+      contents: read
+    concurrency:
+      group: ${{ format('candidate-{0}-{1}-{2}', format('external-acceptance-{0}', github.event.pull_request.number || github.ref),
+        'isolated_acceptance__live-provider-voice', toJSON(matrix)) }}
+      cancel-in-progress: ${{ true }}
+  isolated_acceptance__physical-voice-readiness:
+    name: Physical voice human acceptance reserved
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+        cache: pip
+        cache-dependency-path: backend/requirements.txt
+    - name: Install tests
+      run: python -m pip install -r backend/requirements-dev.txt
+    - name: Verify acceptance schema preflight fail-closed contracts
+      run: python -m pytest -q tests/test_isolated_acceptance_db.py tests/test_acceptance_initialization_preflight.py tests/test_manual_acceptance_workflows.py
+        tests/test_billing_acceptance_setup.py
+    - name: Exercise twenty simulated cancelled turns
+      working-directory: backend
+      run: python -m pytest -q tests/scripts/test_voice_provider_roundtrip.py -k twenty_cancelled
+      env:
+        APP_ENV: dev
+    - name: Declare physical acceptance boundary
+      run: echo 'Physical microphone/speaker and natural full-duplex usability acceptance remain NOT RUN; no synthetic test
+        can certify them.'
+    needs:
+    - dispatch_contract
+    if: ${{ always() && needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected),
+      'isolated-acceptance') && ((!cancelled() && (true))) }}
+    permissions:
+      contents: read
+    concurrency:
+      group: ${{ format('candidate-{0}-{1}-{2}', format('external-acceptance-{0}', github.event.pull_request.number || github.ref),
+        'isolated_acceptance__physical-voice-readiness', toJSON(matrix)) }}
+      cancel-in-progress: ${{ true }}
+  master_qa_p0_synthetic__synthetic-fixtures:
+    name: Master QA synthetic fixture contracts
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        persist-credentials: false
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+    - name: Install minimal offline test runner
+      run: python -m pip install --disable-pip-version-check pytest PyYAML==6.0.3
+    - name: Verify 12 staged workflow replacements without executing source jobs
+      run: 'python ../scripts/build-canonical-workflows.py --root .. --check
+
+        python -m unittest discover -s ../scripts/tests -p ''test_*workflow*.py''
+
+        python -m pytest -q --confcutdir=tests/master_qa tests/master_qa/test_master_qa_workflow_consolidation.py tests/master_qa/test_p27_hubspot_tool_dispatch.py
+        ../tests/test_manual_acceptance_workflows.py
+
+        '
+    - uses: actions/setup-go@v5
+      with:
+        go-version: 1.25.0
+        cache: false
+    - name: Lint staged replacement workflows in an isolated 12-file layout
+      working-directory: .
+      shell: bash
+      run: 'set -euo pipefail
+
+        go install github.com/rhysd/actionlint/cmd/actionlint@v1.7.12
+
+        lane_lint_root="$(mktemp -d)"
+
+        trap ''rm -rf "$lane_lint_root"'' EXIT
+
+        mkdir -p "$lane_lint_root/.github/workflows"
+
+        cp .github/workflow-candidates/*.yml "$lane_lint_root/.github/workflows/"
+
+        git -C "$lane_lint_root" init --quiet
+
+        actionlint_bin="$(go env GOPATH)/bin/actionlint"
+
+        cd "$lane_lint_root"
+
+        "$actionlint_bin" -shellcheck= -pyflakes= .github/workflows/*.yml
+
+        '
+    - name: Run seven fixture tests with zero accepted skips
+      run: "python -m pytest --confcutdir=tests/master_qa -q -rs tests/master_qa/test_synthetic_fixture_factory.py tests/master_qa/test_workflow_source_audit.py\n\
+        python - <<'PY'\nimport subprocess\np = subprocess.run(\n    ['python', '-m', 'pytest', '--collect-only', '-q', '--confcutdir=tests/master_qa',\n\
+        \     'tests/master_qa/test_synthetic_fixture_factory.py'],\n    capture_output=True, text=True, check=True\n)\nassert\
+        \ '7 tests collected' in p.stdout or '7 tests collected' in p.stderr, p.stdout\nPY\n"
+    - name: Verify consolidated workflow coverage and protected manual lanes
+      run: python -m pytest -q --confcutdir=tests/master_qa tests/master_qa/test_master_qa_workflow_consolidation.py
+    - name: Fail closed on missing audit findings, unproven PASS or retirement
+      run: 'python -m pytest -q --confcutdir=tests/master_qa tests/master_qa/test_master_qa_remediation_guard.py
+
+        python scripts/master_qa_remediation_guard.py --output "$RUNNER_TEMP/master-qa-remediation-summary.json"
+
+        python -m pytest -q --confcutdir=tests/master_qa tests/master_qa/test_master_qa_wiring_preflight.py
+
+        python scripts/master_qa_wiring_preflight.py --output "$RUNNER_TEMP/master-qa-wiring-evidence.json"
+
+        python -m pytest -q --confcutdir=tests/master_qa tests/master_qa/test_master_qa_release_certifier.py
+
+        python scripts/master_qa_release_certifier.py --output "$RUNNER_TEMP/master-qa-00-90-release-summary.json"
+
+        '
+    - name: "Upload QA00\u201390 release gate status"
+      uses: actions/upload-artifact@v4
+      with:
+        name: master-qa-00-90-release-status
+        path: ${{ runner.temp }}/master-qa-00-90-release-summary.json
+        retention-days: 14
+        if-no-files-found: error
+    - name: Upload bounded source-wiring evidence
+      uses: actions/upload-artifact@v4
+      with:
+        name: master-qa-wiring-source-evidence
+        path: ${{ runner.temp }}/master-qa-wiring-evidence.json
+        retention-days: 14
+        if-no-files-found: error
+    - name: Upload strict remediation coverage summary
+      uses: actions/upload-artifact@v4
+      with:
+        name: master-qa-audit-remediation-summary
+        path: ${{ runner.temp }}/master-qa-remediation-summary.json
+        retention-days: 14
+        if-no-files-found: error
+    - name: Generate static workflow governance artifact (no secrets or API calls)
+      run: python scripts/master_qa_workflow_audit.py --output "$RUNNER_TEMP/master-qa-workflow-audit.json"
+    - name: Upload workflow governance artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: master-qa-workflow-source-audit
+        path: ${{ runner.temp }}/master-qa-workflow-audit.json
+        retention-days: 5
+        if-no-files-found: error
+    needs:
+    - dispatch_contract
+    if: ${{ always() && needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected),
+      'master-qa-p0-synthetic') && ((!cancelled() && (true))) }}
+    permissions:
+      contents: read
+    concurrency:
+      group: ${{ format('candidate-{0}-{1}-{2}', format('master-qa-p0-{0}', github.event.pull_request.number || github.ref),
+        'master_qa_p0_synthetic__synthetic-fixtures', toJSON(matrix)) }}
+      cancel-in-progress: ${{ true }}
+  master_qa_p0_synthetic__actual-runtime-and-postgres:
+    name: Master QA actual guards and disposable PostgreSQL
+    runs-on: ubuntu-latest
+    timeout-minutes: 28
+    defaults:
+      run:
+        working-directory: backend
+    env:
+      APP_ENV: dev
+      SUPABASE_URL: https://test.supabase.co
+      SUPABASE_ANON_KEY: anon-test
+      SUPABASE_SERVICE_ROLE_KEY: service-role-test
+      SUPABASE_JWT_SECRET: jwt-secret-test
+      OPENAI_API_KEY: sk-test-openai
+      GRAVITRE_REQUIRE_PG: '1'
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        persist-credentials: false
+        ref: ${{ github.event.pull_request.head.sha || github.sha }}
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+    - name: Reclaim unrelated runner SDK caches
+      run: "set -euo pipefail\nfor dir in /usr/local/lib/android /usr/share/dotnet /opt/ghc /usr/local/share/powershell; do\n\
+        \  if [ -d \"$dir\" ]; then sudo rm -rf -- \"$dir\"; fi\ndone\n"
+    - name: Install disposable local PostgreSQL
+      run: 'set -euo pipefail
+
+        sudo env DEBIAN_FRONTEND=noninteractive timeout 120s apt-get -o Acquire::Retries=1 update -qq
+
+        sudo env DEBIAN_FRONTEND=noninteractive timeout 120s apt-get -o Acquire::Retries=1 install -y -qq postgresql postgresql-client
+
+        test -n "$(find /usr/lib/postgresql -name initdb -type f -print -quit)"
+
+        '
+    - name: Install existing backend development dependencies
+      run: 'python -m pip install --no-cache-dir --no-compile -r requirements-dev.txt
+
+        python -m pip check
+
+        '
+    - name: Exercise actual Gravitre execution safety guards
+      run: python -m pytest -q -rs tests/master_qa/test_sandbox_provider_readback_contract.py tests/master_qa/test_hubspot_sandbox_readback_contract.py
+        tests/master_qa/test_p27_hubspot_tool_dispatch.py tests/master_qa/test_connector_connected_filter.py tests/master_qa/test_sales_growth_goal_compiler.py
+        tests/master_qa/test_authenticated_sales_run_diagnosis.py tests/master_qa/test_analytics_metric_evidence.py tests/master_qa/test_cross_source_opportunities.py
+        tests/master_qa/test_opportunity_acceptance.py tests/master_qa/test_sales_growth_from_goal_route.py tests/master_qa/test_business_goal_intelligence.py
+        tests/master_qa/test_objective_execution_truth.py tests/master_qa/test_handoff_state_ownership.py tests/services/test_unified_turn_classical_fallback.py
+        tests/services/test_unified_turn_fallthrough_enum.py tests/services/test_convergence_p0_p6.py tests/services/test_text_voice_task_execution_parity.py
+        tests/master_qa/test_worker_orphan_tick.py tests/master_qa/test_isolated_workflow_supervisor.py tests/master_qa/test_actual_agent_selection.py
+        tests/master_qa/test_runtime_guard_integration.py tests/services/test_gate26_cancellation_and_outbox_contract.py
+    - name: ECO-002 and ECO-003 routing, context and tenant-scope regression contracts
+      run: 'python -m pytest -q -rs tests/master_qa/test_eco002_route_stage_metrics.py tests/master_qa/test_eco003_context_stage_metrics.py
+        tests/master_qa/test_eco003_context_scope_parity.py tests/master_qa/test_eco003_context_stage_latency_report.py tests/master_qa/test_eco002_route_stage_latency_report.py
+
+        '
+    - name: Joined Agent Play PostgreSQL acceptance (14 named cases, zero skips)
+      run: |-
+        set -euo pipefail
+        python -m pytest -vv -rs tests/master_qa/test_joined_agent_play_approval_step_pg.py --junitxml=joined-agent-play.xml
+        python - <<'PY'
+        import xml.etree.ElementTree as ET
+        root=ET.parse("joined-agent-play.xml").getroot()
+        cases=list(root.iter("testcase"))
+        expected={f"test_agent_play_approval_real_step_to_durable_consumer[{decision}-{flag}]" for flag, decisions in (
+            ("False", ("approve","approve_write","reject","forbidden_approver","foreign_tenant","cancel_before_dispatch","cancel_write_before_dispatch","revoke_before_dispatch","cancel_during_finalize","terminal_persistence_failure")),
+            ("True", ("approve_write","cancel_write_before_dispatch","revoke_before_dispatch","foreign_tenant"))) for decision in decisions}
+        assert len(cases)==14 and {c.get("name") for c in cases}==expected
+        assert not any(c.find(k) is not None for c in cases for k in ("failure","error","skipped"))
+        print("Joined Agent Play: 14 named cases passed; zero failures, errors or skips")
+        PY
+    - name: Certify disposable PostgreSQL trigger, relay and idempotency
+      run: "python - <<'PY'\nfrom tests.db.pg_harness import PG_BIN\nif PG_BIN is None:\n    raise SystemExit(\"PostgreSQL\
+        \ unavailable: not certifying skipped tests\")\nPY\npython -m pytest -q -rs tests/db/test_domain_event_outbox_pg.py\
+        \ tests/master_qa/test_real_guard_postgres_consumer_pg.py tests/master_qa/test_canonical_play_outbox_pg.py tests/master_qa/test_actual_workflow_step_pg.py\
+        \ tests/master_qa/test_actual_approval_resume_pg.py tests/master_qa/test_joined_agent_play_approval_step_pg.py tests/master_qa/test_canonical_repository_persistence_pg.py\
+        \ tests/master_qa/test_authenticated_sales_run_diagnosis_pg.py tests/master_qa/test_opportunity_acceptance_pg.py tests/master_qa/test_graph_checkpoint_process_recovery_pg.py\
+        \ tests/master_qa/test_ambiguous_provider_commit_recovery_pg.py tests/master_qa/test_orphan_graph_claim_pg.py tests/master_qa/test_graph_pre_dispatch_journal_pg.py\
+        \ tests/master_qa/test_auto_orphan_reconciliation_pg.py tests/master_qa/test_worker_process_crash_restart_pg.py\n"
+    - name: Install pinned real PostgREST for DEC-008
+      run: 'set -euo pipefail
+
+        mkdir -p "$RUNNER_TEMP/dec008-postgrest"
+
+        curl --fail --location --silent --show-error --retry 3 --max-time 90 https://github.com/PostgREST/postgrest/releases/download/v16.6/postgrest-v16.6-linux-static-x86-64.tar.xz
+        -o "$RUNNER_TEMP/dec008-postgrest/postgrest.tar.xz"
+
+        echo "335ea29f00145705fb569b1268b9c8e53d062f8f6f9188192e92ea3781d2dca1  $RUNNER_TEMP/dec008-postgrest/postgrest.tar.xz"
+        | sha256sum --check
+
+        tar -xJf "$RUNNER_TEMP/dec008-postgrest/postgrest.tar.xz" -C "$RUNNER_TEMP/dec008-postgrest"
+
+        echo "GRAVITRE_POSTGREST_BIN=$RUNNER_TEMP/dec008-postgrest/postgrest" >> "$GITHUB_ENV"
+
+        "$RUNNER_TEMP/dec008-postgrest/postgrest" --version
+
+        '
+    - name: DEC-008 real PostgREST reader and consumer gate (zero skips)
+      env:
+        DEC008_EXPECTED_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+      run: PYTHONPATH=. python scripts/run_dec008_postgrest_gate.py
+    - name: Retain sanitized DEC-008 PostgREST evidence
+      if: ${{ always() }}
+      uses: actions/upload-artifact@v4
+      with:
+        name: dec008-real-postgrest-${{ github.event.pull_request.head.sha || github.sha }}
+        path: backend/dec008-postgrest-evidence.json
+        if-no-files-found: error
+    - name: DEC-011 real PostgREST department reader and consumer gate (zero skips)
+      env:
+        DEC011_EXPECTED_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        DEC011_EXPECTED_PG_VERSION: '18.7'
+      run: 'python -m unittest discover -s ../scripts/tests -p ''test_dec*_postgrest_gate.py''
+
+        PYTHONPATH=. python scripts/run_dec011_postgrest_gate.py
+
+        '
+    - name: Retain sanitized DEC-011 PostgREST evidence
+      if: ${{ always() }}
+      uses: actions/upload-artifact@v4
+      with:
+        name: dec011-real-postgrest-${{ github.event.pull_request.head.sha || github.sha }}
+        path: backend/dec011-postgrest-evidence.json
+        if-no-files-found: error
+    - name: ECO-013 real PostgREST terminal authority gate (zero skips)
+      env:
+        ECO013_EXPECTED_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        ECO013_EXPECTED_PG_VERSION: '18.7'
+      run: 'python -m unittest discover -s ../scripts/tests -p ''test_eco013_postgrest_gate.py''
+
+        PYTHONPATH=. python scripts/run_eco013_postgrest_gate.py
+
+        '
+    - name: Retain sanitized ECO-013 PostgREST evidence
+      if: ${{ always() }}
+      uses: actions/upload-artifact@v4
+      with:
+        name: eco013-real-postgrest-${{ github.event.pull_request.head.sha || github.sha }}
+        path: backend/eco013-postgrest-evidence.json
+        if-no-files-found: error
+    needs:
+    - dispatch_contract
+    if: ${{ always() && needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected),
+      'master-qa-p0-synthetic') && ((!cancelled() && (true))) }}
+    permissions:
+      contents: read
+    concurrency:
+      group: ${{ format('candidate-{0}-{1}-{2}', format('master-qa-p0-{0}', github.event.pull_request.number || github.ref),
+        'master_qa_p0_synthetic__actual-runtime-and-postgres', toJSON(matrix)) }}
+      cancel-in-progress: ${{ true }}
+  master_qa_p27_sandbox_readback__label-preflight:
+    name: Read-only tool label dispatch validation
+    if: "${{ always() && needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected),\
+      \ 'master-qa-p27-sandbox-readback') && (!cancelled() && (true) && (github.event_name == 'pull_request'\n    && github.event.action\
+      \ == 'labeled'\n    && github.event.label.name == 'p27-hubspot-preflight'\n    && github.actor == 'cesarbohjr'\n   \
+      \ && github.event.pull_request.number == 611\n    && github.event.pull_request.head.repo.full_name == github.repository))\
+      \ }}"
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+    - name: Assert source identity without provider credentials
+      env:
+        EXPECTED_REPO: cesarbohjr/gravitre-saas-backend
+        PR_NUMBER: ${{ github.event.pull_request.number }}
+        HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+      run: 'test "$GITHUB_REPOSITORY" = "$EXPECTED_REPO"
+
+        test "$PR_NUMBER" = "611"
+
+        test "${#HEAD_SHA}" -eq 40
+
+        echo "Read-only P27 label routing preflight passed: $HEAD_SHA"
+
+        echo "No HubSpot credential was provided or provider request sent."
+
+        '
+    needs:
+    - dispatch_contract
+    permissions:
+      actions: read
+      contents: read
+      pull-requests: read
+    concurrency:
+      group: ${{ format('candidate-{0}-{1}-{2}', 'p27-existing-live-hubspot-qa', 'master_qa_p27_sandbox_readback__label-preflight',
+        toJSON(matrix)) }}
+      cancel-in-progress: ${{ false }}
+  master_qa_p27_sandbox_readback__provider-readback:
+    name: One scoped QA contact, GET/replay/verified cleanup
+    if: "${{ always() && needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected),\
+      \ 'master-qa-p27-sandbox-readback') && (!cancelled() && (true) && ((github.event_name == 'workflow_dispatch'\n     &&\
+      \ github.event.inputs.master_qa_p27_sandbox_readback__approval == 'APPROVE_LIVE_TEST_CONTACT'\n     && github.ref ==\
+      \ 'refs/heads/main'\n     && github.actor == 'cesarbohjr')\n    || (github.event_name == 'pull_request'\n        &&\
+      \ github.event.action == 'labeled'\n        && github.event.label.name == 'p27-hubspot-live-approved'\n        && github.actor\
+      \ == 'cesarbohjr'\n        && github.event.pull_request.number == 611\n        && github.event.pull_request.head.repo.full_name\
+      \ == github.repository))) }}"
+    environment: p27-provider-sandbox
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    defaults:
+      run:
+        working-directory: backend
+    env:
+      P27_HUBSPOT_EXPECTED_PORTAL_ID: ${{ vars.P27_HUBSPOT_EXPECTED_PORTAL_ID }}
+      P27_HUBSPOT_QA_EMAIL_DOMAIN: ${{ vars.P27_HUBSPOT_QA_EMAIL_DOMAIN }}
+      P27_HUBSPOT_LIVE_TEST_TOKEN: ${{ secrets.P27_HUBSPOT_LIVE_TEST_TOKEN }}
+      GH_TOKEN: ${{ github.token }}
+      EXPECTED_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+      EVENT_PR_NUMBER: ${{ github.event.pull_request.number || '0' }}
+      GITHUB_EVENT_ACTION: ${{ github.event.action || '' }}
+      OWNER_APPROVAL_LABEL: ${{ github.event.label.name || '' }}
+      OWNER_DISPATCH_APPROVAL: ${{ inputs.master_qa_p27_sandbox_readback__approval || '' }}
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        persist-credentials: false
+        ref: ${{ github.event.pull_request.head.sha || github.sha }}
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+    - name: Verify exact repo, caller, immutable checkout and current PR head
+      run: 'set -euo pipefail
+
+        python scripts/p27_hubspot_dispatch_guard.py
+
+        '
+    - name: Require exact existing portal, scoped credential and QA namespace
+      run: 'set -euo pipefail
+
+        test "$P27_HUBSPOT_EXPECTED_PORTAL_ID" = "343328749" || { echo "::error::HubSpot account is not the approved portal";
+        exit 1; }
+
+        test -n "$P27_HUBSPOT_QA_EMAIL_DOMAIN" || { echo "::error::QA domain not configured"; exit 1; }
+
+        test -n "$P27_HUBSPOT_LIVE_TEST_TOKEN" || { echo "::error::Dedicated HubSpot QA token missing"; exit 1; }
+
+        '
+    - name: Run exactly one synthetic write, independent readback, replay, verified cleanup
+      run: 'set -euo pipefail
+
+        umask 077
+
+        python scripts/p27_hubspot_sandbox_readback.py --approve-live-test-contact > "$RUNNER_TEMP/p27-hubspot-result.json"
+
+        python scripts/p27_hubspot_dispatch_guard.py --summarize "$RUNNER_TEMP/p27-hubspot-result.json"
+
+        '
+    - name: Upload successful sanitized acceptance proof
+      if: success()
+      uses: actions/upload-artifact@v4
+      with:
+        name: p27-hubspot-live-verified-${{ github.run_id }}
+        path: ${{ runner.temp }}/p27-hubspot-result.json
+        retention-days: 7
+        if-no-files-found: error
+    needs:
+    - dispatch_contract
+    permissions:
+      actions: read
+      contents: read
+      pull-requests: read
+    concurrency:
+      group: ${{ format('candidate-{0}-{1}-{2}', 'p27-existing-live-hubspot-qa', 'master_qa_p27_sandbox_readback__provider-readback',
+        toJSON(matrix)) }}
+      cancel-in-progress: ${{ false }}
+  milestone1_live_reverify__live-reverify:
+    name: Milestone 1 prod live reverify
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+        cache: pip
+        cache-dependency-path: backend/requirements.txt
+    - name: Install dependencies
+      working-directory: backend
+      run: 'python -m pip install --upgrade pip
+
+        pip install -r requirements-dev.txt
+
+        '
+    - name: Wait for prod deploy (Research Manager sha)
+      env:
+        BACKEND_URL: https://gravitre-saas-backend-production.up.railway.app
+        MIN_SHA: ${{ github.event.inputs.milestone1_live_reverify__min_sha || '4eb6adbe' }}
+      run: "python3 - <<'PY'\nimport json, subprocess, sys, time, urllib.request\nbase = __import__('os').environ['BACKEND_URL'].rstrip('/')\n\
+        minimum = __import__('os').environ['MIN_SHA'].strip().lower()\nfor attempt in range(36):\n    with urllib.request.urlopen(f\"\
+        {base}/health\", timeout=30) as resp:\n        health = json.loads(resp.read().decode())\n    sha = str(health.get('git_sha')\
+        \ or '').lower()\n    ok = sha.startswith(minimum)\n    if not ok:\n        try:\n            subprocess.run(['git',\
+        \ 'merge-base', '--is-ancestor', minimum, sha], check=True, capture_output=True)\n            ok = True\n        except\
+        \ subprocess.CalledProcessError:\n            ok = False\n    print(f\"attempt={attempt+1} git_sha={sha} need>={minimum}\
+        \ ok={ok}\")\n    if ok:\n        sys.exit(0)\n    time.sleep(20)\nprint('Timed out waiting for prod deploy')\nsys.exit(1)\n\
+        PY\n"
+    - name: Run Milestone 1 live reverify (four canonical + A/B)
+      env:
+        BACKEND_URL: https://gravitre-saas-backend-production.up.railway.app
+        SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+        SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        SUPABASE_JWT_SECRET: ${{ secrets.SUPABASE_JWT_SECRET }}
+        CONNECTOR_SECRETS_ENCRYPTION_KEY: ${{ secrets.CONNECTOR_SECRETS_ENCRYPTION_KEY }}
+        OAUTH_SMOKE_USER_ID: ${{ secrets.OAUTH_SMOKE_USER_ID }}
+        OAUTH_SMOKE_ORG_ID: ${{ secrets.OAUTH_SMOKE_ORG_ID }}
+        ROUTING_WAVE_ALLOW_ANY_SHA: '1'
+      run: "EXTRA=\"\"\nif [ \"${{ github.event.inputs.milestone1_live_reverify__skip_wave67_write }}\" = \"true\" ]; then\n\
+        \  EXTRA=\"--skip-wave67-write\"\nfi\npython3 scripts/smoke-milestone1-live-reverify.py \\\n  --base-url \"$BACKEND_URL\"\
+        \ \\\n  --min-sha \"${{ github.event.inputs.milestone1_live_reverify__min_sha || '4eb6adbe' }}\" \\\n  --json docs/delivery/milestone1-live-reverify-latest.json\
+        \ \\\n  $EXTRA\n"
+    - name: Upload live reverify artifacts
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: milestone1-live-reverify
+        path: 'docs/delivery/milestone1-live-reverify-latest.json
+
+          docs/delivery/retrieval-ab-live-latest.json
+
+          docs/delivery/smoke-research-cascade-prod-latest.json
+
+          docs/delivery/react-write-live-milestone1.json
+
+          docs/delivery/canvas-write-governance-milestone1.json
+
+          docs/delivery/wave67-spotcheck-milestone1.json
+
+          docs/delivery/routing-wave-prod-live.json
+
+          '
+        if-no-files-found: ignore
+    needs:
+    - dispatch_contract
+    if: ${{ always() && needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected),
+      'milestone1-live-reverify') && ((!cancelled() && (true))) }}
+    concurrency:
+      group: ${{ format('candidate-{0}-{1}-{2}', 'milestone1-live-reverify', 'milestone1_live_reverify__live-reverify', toJSON(matrix))
+        }}
+      cancel-in-progress: ${{ false }}
+  plays_datasets_live_proof__live-read-proof:
+    name: Authenticated GET-only proof
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: production
+    env:
+      PLATFORM_LIVE_ENVIRONMENT: production
+      DATASET_LIVE_QUERY: ${{ inputs.plays_datasets_live_proof__dataset_query }}
+      BACKEND_URL: ${{ inputs.plays_datasets_live_proof__backend_url }}
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+    - name: Install proof dependencies
+      run: python -m pip install --disable-pip-version-check "httpx>=0.27,<1" "PyJWT>=2.8,<3" python-dotenv supabase
+    - name: Mint short-lived smoke-org session
+      env:
+        SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+        SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        SUPABASE_JWT_SECRET: ${{ secrets.SUPABASE_JWT_SECRET }}
+      run: python scripts/mint_smoke_org_session.py --github-env
+    - name: Run non-destructive live proof
+      run: python scripts/verify-plays-datasets-live.py
+    - name: Clear session and check evidence for token leaks
+      if: always()
+      shell: bash
+      run: "if [ -n \"${PLATFORM_LIVE_BEARER_TOKEN:-}\" ] && [ -f docs/delivery/plays-datasets-live-proof.json ] && grep -qF\
+        \ \"$PLATFORM_LIVE_BEARER_TOKEN\" docs/delivery/plays-datasets-live-proof.json; then\n  echo \"::error::evidence file\
+        \ contains the session token\"; rm -f docs/delivery/plays-datasets-live-proof.json; exit 1\nfi\necho \"PLATFORM_LIVE_BEARER_TOKEN=\"\
+        \ >> \"$GITHUB_ENV\"\n"
+    - name: Upload live proof
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: plays-datasets-live-proof
+        path: docs/delivery/plays-datasets-live-proof.json
+        if-no-files-found: warn
+    needs:
+    - dispatch_contract
+    if: ${{ always() && needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected),
+      'plays-datasets-live-proof') && ((!cancelled() && (true))) }}
+    permissions:
+      contents: read
+  plays_production_acceptance__deterministic-contract:
+    name: Plays architecture + truth contract
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+    - name: Install backend test dependencies
+      run: pip install -r backend/requirements-dev.txt
+    - name: Run Plays regression battery and catalog-wide synthetic audit inventory
+      working-directory: backend
+      env:
+        PLAYS_AUDIT_REPORT_PATH: ../plays-synthetic-audit-inventory.json
+      run: python -m pytest -q tests/test_play_*.py tests/routers/test_plays.py
+    - name: Upload Play-by-Play audit inventory (not E2E certification)
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: plays-synthetic-audit-inventory
+        path: plays-synthetic-audit-inventory.json
+        if-no-files-found: warn
+    needs:
+    - dispatch_contract
+    if: ${{ always() && needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected),
+      'plays-production-acceptance') && ((!cancelled() && (true))) }}
+    permissions:
+      contents: read
+  plays_production_acceptance__authenticated-production-read:
+    name: Authenticated non-destructive production proof
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: production
+    env:
+      PLATFORM_LIVE_ENVIRONMENT: production
+      BACKEND_URL: ${{ inputs.plays_production_acceptance__backend_url }}
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+    - name: Install proof dependencies
+      run: python -m pip install --disable-pip-version-check "httpx>=0.27,<1" "PyJWT>=2.8,<3" python-dotenv supabase
+    - name: Mint short-lived smoke-org session
+      env:
+        SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+        SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        SUPABASE_JWT_SECRET: ${{ secrets.SUPABASE_JWT_SECRET }}
+      run: python scripts/mint_smoke_org_session.py --github-env
+    - name: Verify production without mutation
+      run: python scripts/verify-plays-production.py
+    - name: Clear session and check evidence for token leaks
+      if: always()
+      shell: bash
+      run: "if [ -n \"${PLATFORM_LIVE_BEARER_TOKEN:-}\" ] && [ -f docs/delivery/plays-production-acceptance.json ] && grep\
+        \ -qF \"$PLATFORM_LIVE_BEARER_TOKEN\" docs/delivery/plays-production-acceptance.json; then\n  echo \"::error::evidence\
+        \ file contains the session token\"; rm -f docs/delivery/plays-production-acceptance.json; exit 1\nfi\necho \"PLATFORM_LIVE_BEARER_TOKEN=\"\
+        \ >> \"$GITHUB_ENV\"\n"
+    - name: Upload acceptance evidence
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: plays-production-acceptance
+        path: docs/delivery/plays-production-acceptance.json
+        if-no-files-found: error
+    needs:
+    - dispatch_contract
+    if: ${{ always() && needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected),
+      'plays-production-acceptance') && ((!cancelled() && (true))) }}
+    permissions:
+      contents: read
+  release1_live_memory_liveness__memory-liveness:
+    runs-on: ubuntu-latest
+    environment: production
+    timeout-minutes: 15
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+    - run: pip install -r backend/requirements-dev.txt
+    - name: Mint verified smoke session
+      env:
+        SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+        SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        SUPABASE_JWT_SECRET: ${{ secrets.SUPABASE_JWT_SECRET }}
+      run: python3 scripts/mint_smoke_org_session.py --github-env
+    - name: Prove live and revoked memory behavior across recall readers
+      env:
+        SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+        SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      run: python3 scripts/verify_release1_live_memory_liveness.py
+    - name: Upload safe evidence
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: release1-live-memory-liveness
+        path: docs/delivery/release1-live-memory-liveness.json
+        if-no-files-found: ignore
+    name: memory-liveness
+    needs:
+    - dispatch_contract
+    if: ${{ always() && needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected),
+      'release1-live-memory-liveness') && ((!cancelled() && (true))) }}
+    permissions:
+      contents: read
+  release1_live_public_mcp__public-mcp:
+    if: ${{ always() && needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected),
+      'release1-live-public-mcp') && (!cancelled() && (true) && (github.event_name != 'workflow_run' || (fromJSON(needs.dispatch_contract.outputs.context_conclusions)['release1-live-public-mcp']
+      || github.event.workflow_run.conclusion) == 'success')) }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    environment: production
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+    - name: Install real MCP runtime dependencies
+      run: pip install -r backend/requirements-dev.txt
+    - name: Mint isolated actor
+      env:
+        SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+        SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        SUPABASE_JWT_SECRET: ${{ secrets.SUPABASE_JWT_SECRET }}
+      run: python3 scripts/mint_smoke_org_session.py --github-env
+    - name: Execute authenticated public MCP and SSRF security matrix
+      env:
+        SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+        SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        SUPABASE_JWT_SECRET: ${{ secrets.SUPABASE_JWT_SECRET }}
+      run: python3 scripts/verify_release1_live_public_mcp.py
+    - name: Reject forged approval against live isolated database
+      env:
+        SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+        SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        SUPABASE_JWT_SECRET: ${{ secrets.SUPABASE_JWT_SECRET }}
+      run: python3 scripts/verify_release1_live_forged_mcp_approval.py
+    - name: Upload forged-approval evidence
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: release1-live-forged-approval
+        path: docs/delivery/release1-live-forged-approval.json
+        if-no-files-found: ignore
+    - name: Upload status-only evidence
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: release1-live-public-mcp
+        path: docs/delivery/release1-live-public-mcp.json
+        if-no-files-found: ignore
+    name: public-mcp
+    needs:
+    - dispatch_contract
+    permissions:
+      contents: read
+  source_outcomes:
+    name: Record independent source workflow outcomes
+    if: ${{ always() && needs.dispatch_contract.result == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    permissions: {}
+    needs:
+    - upstream_contract
+    - dispatch_contract
+    - eco_001_deployed_ingress__fixture-contracts
+    - eco_001_deployed_ingress__authorize
+    - eco_001_deployed_ingress__signed-qa-ingress-preflight
+    - isolated_acceptance__billing-e2e
+    - isolated_acceptance__live-provider-voice
+    - isolated_acceptance__physical-voice-readiness
+    - master_qa_p0_synthetic__synthetic-fixtures
+    - master_qa_p0_synthetic__actual-runtime-and-postgres
+    - master_qa_p27_sandbox_readback__label-preflight
+    - master_qa_p27_sandbox_readback__provider-readback
+    - milestone1_live_reverify__live-reverify
+    - plays_datasets_live_proof__live-read-proof
+    - plays_production_acceptance__deterministic-contract
+    - plays_production_acceptance__authenticated-production-read
+    - release1_live_memory_liveness__memory-liveness
+    - release1_live_public_mcp__public-mcp
+    steps:
+    - name: Bind source outcomes to this run
+      shell: python
+      run: "import json, os\nsources = json.loads(os.environ['SOURCE_JOBS'])\nneeds = json.loads(os.environ['JOB_RESULTS'])\n\
+        selected = json.loads(os.environ['SELECTED'])\noutcomes = {}\nfor name, source in sources.items():\n    if name not\
+        \ in selected:\n        continue\n    results = [needs[key]['result'] for key in source['jobs']]\n    outcome = ('failure'\
+        \ if 'failure' in results else 'cancelled' if 'cancelled' in results\n               else 'success' if 'success' in\
+        \ results else 'skipped')\n    outcomes[source['display_name']] = outcome\nevidence = {'run_id': int(os.environ['GITHUB_RUN_ID']),\
+        \ 'head_sha': os.environ['GITHUB_SHA'],\n            'source_outcomes': outcomes}\nwith open('canonical-workflow-outcomes.json',\
+        \ 'w') as output:\n    json.dump(evidence, output)\n"
+      env:
+        SOURCE_JOBS: '{"eco-001-deployed-ingress": {"display_name": "Signed isolated QA ingress preflight", "jobs": ["eco_001_deployed_ingress__fixture-contracts",
+          "eco_001_deployed_ingress__authorize", "eco_001_deployed_ingress__signed-qa-ingress-preflight"]}, "isolated-acceptance":
+          {"display_name": "Isolated billing and live voice acceptance", "jobs": ["isolated_acceptance__billing-e2e", "isolated_acceptance__live-provider-voice",
+          "isolated_acceptance__physical-voice-readiness"]}, "master-qa-p0-synthetic": {"display_name": "Master QA | QA00\u2013QA90
+          Core Evidence & Runtime", "jobs": ["master_qa_p0_synthetic__synthetic-fixtures", "master_qa_p0_synthetic__actual-runtime-and-postgres"]},
+          "master-qa-p27-sandbox-readback": {"display_name": "Master QA | QA50 Authorized HubSpot Provider Readback", "jobs":
+          ["master_qa_p27_sandbox_readback__label-preflight", "master_qa_p27_sandbox_readback__provider-readback"]}, "milestone1-live-reverify":
+          {"display_name": "Milestone 1 Live Reverify", "jobs": ["milestone1_live_reverify__live-reverify"]}, "plays-datasets-live-proof":
+          {"display_name": "Plays + datasets authenticated live proof", "jobs": ["plays_datasets_live_proof__live-read-proof"]},
+          "plays-production-acceptance": {"display_name": "Plays production acceptance", "jobs": ["plays_production_acceptance__deterministic-contract",
+          "plays_production_acceptance__authenticated-production-read"]}, "release1-live-memory-liveness": {"display_name":
+          "Release 1 live memory source revocation", "jobs": ["release1_live_memory_liveness__memory-liveness"]}, "release1-live-public-mcp":
+          {"display_name": "Release 1 public MCP and SSRF live verification", "jobs": ["release1_live_public_mcp__public-mcp"]}}'
+        JOB_RESULTS: '{"eco_001_deployed_ingress__fixture-contracts": {"result": "${{ needs.eco_001_deployed_ingress__fixture-contracts.result
+          }}"}, "eco_001_deployed_ingress__authorize": {"result": "${{ needs.eco_001_deployed_ingress__authorize.result }}"},
+          "eco_001_deployed_ingress__signed-qa-ingress-preflight": {"result": "${{ needs.eco_001_deployed_ingress__signed-qa-ingress-preflight.result
+          }}"}, "isolated_acceptance__billing-e2e": {"result": "${{ needs.isolated_acceptance__billing-e2e.result }}"}, "isolated_acceptance__live-provider-voice":
+          {"result": "${{ needs.isolated_acceptance__live-provider-voice.result }}"}, "isolated_acceptance__physical-voice-readiness":
+          {"result": "${{ needs.isolated_acceptance__physical-voice-readiness.result }}"}, "master_qa_p0_synthetic__synthetic-fixtures":
+          {"result": "${{ needs.master_qa_p0_synthetic__synthetic-fixtures.result }}"}, "master_qa_p0_synthetic__actual-runtime-and-postgres":
+          {"result": "${{ needs.master_qa_p0_synthetic__actual-runtime-and-postgres.result }}"}, "master_qa_p27_sandbox_readback__label-preflight":
+          {"result": "${{ needs.master_qa_p27_sandbox_readback__label-preflight.result }}"}, "master_qa_p27_sandbox_readback__provider-readback":
+          {"result": "${{ needs.master_qa_p27_sandbox_readback__provider-readback.result }}"}, "milestone1_live_reverify__live-reverify":
+          {"result": "${{ needs.milestone1_live_reverify__live-reverify.result }}"}, "plays_datasets_live_proof__live-read-proof":
+          {"result": "${{ needs.plays_datasets_live_proof__live-read-proof.result }}"}, "plays_production_acceptance__deterministic-contract":
+          {"result": "${{ needs.plays_production_acceptance__deterministic-contract.result }}"}, "plays_production_acceptance__authenticated-production-read":
+          {"result": "${{ needs.plays_production_acceptance__authenticated-production-read.result }}"}, "release1_live_memory_liveness__memory-liveness":
+          {"result": "${{ needs.release1_live_memory_liveness__memory-liveness.result }}"}, "release1_live_public_mcp__public-mcp":
+          {"result": "${{ needs.release1_live_public_mcp__public-mcp.result }}"}}'
+        SELECTED: ${{ needs.dispatch_contract.outputs.selected }}
+    - uses: actions/upload-artifact@v4
+      with:
+        name: canonical-workflow-outcomes-12-independent-acceptance
+        path: canonical-workflow-outcomes.json
+        if-no-files-found: error
+        retention-days: 14

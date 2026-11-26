@@ -13,7 +13,6 @@ from app.workflows.repository import (
     create_run,
     create_step,
     patch_workflow_run,
-    update_run,
     update_step,
 )
 
@@ -428,7 +427,7 @@ def finalize_orchestration_run(
         )
     except Exception as exc:  # noqa: BLE001
         logger.error(
-            "MODULE_A_FINALIZE_FAILED_FALLBACK_STATUS_STAMP — investigate "
+            "MODULE_A_FINALIZE_FAILED_FALLBACK_STATUS_STAMP — terminal stamp suppressed; investigate "
             "finalize_execution_outcome failure run_id=%s exc=%s",
             run_id,
             exc,
@@ -454,6 +453,7 @@ def finalize_orchestration_run(
                     "severity": "MODULE_A_FINALIZE_FAILED_FALLBACK_STATUS_STAMP",
                     "error": str(exc)[:500],
                     "intended_status": status,
+                    "terminal_stamp_suppressed": True,
                     "path": "chat_orchestration_runs.finalize_orchestration_run",
                 },
             )
@@ -464,28 +464,10 @@ def finalize_orchestration_run(
                 run_id,
                 alert_exc,
             )
-        try:
-            update_run(
-                client,
-                run_id,
-                status=status,
-                completed_at=_now_iso(),
-                error_message=error_summary,
-                approval_status="approved",
-            )
-        except Exception as stamp_exc:  # noqa: BLE001
-            logger.error(
-                "MODULE_A_FINALIZE_FAILED_FALLBACK_STATUS_STAMP — stamp also failed "
-                "run_id=%s exc=%s",
-                run_id,
-                stamp_exc,
-            )
-            try:
-                import sentry_sdk
-
-                sentry_sdk.capture_exception(stamp_exc)
-            except Exception:  # noqa: BLE001
-                pass
+        # A fallback status write would bypass the canonical transaction's
+        # proof/cancellation/projection guards. Preserve its durable truth;
+        # recovery must retry that authority rather than invent a second writer.
+        return
 
 
 def resolve_orchestration_result_url(

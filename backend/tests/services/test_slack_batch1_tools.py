@@ -6,6 +6,7 @@ from unittest.mock import MagicMock, patch
 
 from app.services.tool_service import invoke_tool, list_registered_actions
 from app.services.tool_types import ToolContext
+from tests.support.provider_write import with_provider_write_ledger
 
 
 def _ctx() -> ToolContext:
@@ -67,7 +68,7 @@ def test_slack_conversations_join(mock_join, mock_conn, _tok, _rate, mock_perms,
     mock_perms.return_value = [{"connector_type": "slack", "scopes": ["slack:*"], "expires_at": None}]
     mock_join.return_value = {"ok": True, "channel": {"id": "C1"}, "_latency_ms": 9}
     result = invoke_tool(
-        _ctx(), "slack.conversations.join", {"channel": "C1", "connector_id": "slack-1"}
+        with_provider_write_ledger(_ctx(), "slack-1"), "slack.conversations.join", {"channel": "C1", "connector_id": "slack-1"}
     )
     assert result.success
     assert result.data["result_url"] == "https://app.slack.com/archives/C1"

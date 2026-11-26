@@ -1,0 +1,684 @@
+{
+  "schema_version": 1,
+  "base_sha": "e263ac859c6d197533be158e3447acf9fe140718",
+  "source_stage": "Prepared DEC011 working tree; line locations include the bounded repair",
+  "selector": "literal table/rpc names containing memor, or named hybrid/entity stores",
+  "runtime_activity_proven": false,
+  "certifies_whole_finding": false,
+  "sites": 109,
+  "files": 26,
+  "counts": {
+    "agent_memories": 42,
+    "agent_memory_history": 2,
+    "agent_memory_promotion_audit": 6,
+    "agent_memory_search": 1,
+    "agent_memory_search_by_department": 1,
+    "match_org_memory_entity_embeddings": 1,
+    "memory_promotion_candidates": 18,
+    "org_entity_relationships": 20,
+    "org_glossary_terms": 8,
+    "org_query_clusters": 9,
+    "purge_org_memory_entity_embeddings": 1
+  },
+  "records": [
+    {
+      "path": "backend/app/ml/intelligence_training.py",
+      "line": 475,
+      "operation": "table",
+      "name": "memory_promotion_candidates"
+    },
+    {
+      "path": "backend/app/ml/model_catalog.py",
+      "line": 295,
+      "operation": "table",
+      "name": "memory_promotion_candidates"
+    },
+    {
+      "path": "backend/app/ml/retrieval_learning.py",
+      "line": 79,
+      "operation": "table",
+      "name": "org_query_clusters"
+    },
+    {
+      "path": "backend/app/ml/retrieval_learning.py",
+      "line": 86,
+      "operation": "table",
+      "name": "agent_memories"
+    },
+    {
+      "path": "backend/app/routers/ops_internal.py",
+      "line": 900,
+      "operation": "table",
+      "name": "agent_memories"
+    },
+    {
+      "path": "backend/app/schedulers/cache_warming_scheduler.py",
+      "line": 25,
+      "operation": "table",
+      "name": "org_query_clusters"
+    },
+    {
+      "path": "backend/app/services/agent_capability_profile_service.py",
+      "line": 125,
+      "operation": "table",
+      "name": "agent_memories"
+    },
+    {
+      "path": "backend/app/services/agent_knowledge_provenance_service.py",
+      "line": 29,
+      "operation": "table",
+      "name": "agent_memories"
+    },
+    {
+      "path": "backend/app/services/agent_knowledge_provenance_service.py",
+      "line": 124,
+      "operation": "table",
+      "name": "agent_memories"
+    },
+    {
+      "path": "backend/app/services/agent_memory_service.py",
+      "line": 405,
+      "operation": "rpc",
+      "name": "agent_memory_search"
+    },
+    {
+      "path": "backend/app/services/agent_memory_service.py",
+      "line": 454,
+      "operation": "rpc",
+      "name": "agent_memory_search_by_department"
+    },
+    {
+      "path": "backend/app/services/agent_memory_service.py",
+      "line": 299,
+      "operation": "table",
+      "name": "agent_memories"
+    },
+    {
+      "path": "backend/app/services/agent_memory_service.py",
+      "line": 307,
+      "operation": "table",
+      "name": "agent_memories"
+    },
+    {
+      "path": "backend/app/services/agent_memory_service.py",
+      "line": 190,
+      "operation": "table",
+      "name": "agent_memories"
+    },
+    {
+      "path": "backend/app/services/agent_memory_service.py",
+      "line": 540,
+      "operation": "table",
+      "name": "agent_memories"
+    },
+    {
+      "path": "backend/app/services/agent_memory_service.py",
+      "line": 362,
+      "operation": "table",
+      "name": "agent_memories"
+    },
+    {
+      "path": "backend/app/services/agent_memory_service.py",
+      "line": 378,
+      "operation": "table",
+      "name": "agent_memories"
+    },
+    {
+      "path": "backend/app/services/agent_memory_service.py",
+      "line": 530,
+      "operation": "table",
+      "name": "agent_memories"
+    },
+    {
+      "path": "backend/app/services/agent_memory_service.py",
+      "line": 207,
+      "operation": "table",
+      "name": "agent_memories"
+    },
+    {
+      "path": "backend/app/services/agent_memory_service.py",
+      "line": 85,
+      "operation": "table",
+      "name": "agent_memories"
+    },
+    {
+      "path": "backend/app/services/agent_memory_service.py",
+      "line": 835,
+      "operation": "table",
+      "name": "agent_memories"
+    },
+    {
+      "path": "backend/app/services/agent_memory_service.py",
+      "line": 853,
+      "operation": "table",
+      "name": "agent_memory_promotion_audit"
+    },
+    {
+      "path": "backend/app/services/agent_memory_service.py",
+      "line": 899,
+      "operation": "table",
+      "name": "agent_memories"
+    },
+    {
+      "path": "backend/app/services/agent_memory_service.py",
+      "line": 467,
+      "operation": "table",
+      "name": "agent_memories"
+    },
+    {
+      "path": "backend/app/services/ai_architecture_status_service.py",
+      "line": 54,
+      "operation": "table",
+      "name": "agent_memory_promotion_audit"
+    },
+    {
+      "path": "backend/app/services/ai_architecture_status_service.py",
+      "line": 102,
+      "operation": "table",
+      "name": "agent_memory_promotion_audit"
+    },
+    {
+      "path": "backend/app/services/cognitive_knowledge_layer.py",
+      "line": 109,
+      "operation": "table",
+      "name": "org_entity_relationships"
+    },
+    {
+      "path": "backend/app/services/company_intelligence_collectors.py",
+      "line": 105,
+      "operation": "table",
+      "name": "agent_memories"
+    },
+    {
+      "path": "backend/app/services/company_intelligence_collectors.py",
+      "line": 59,
+      "operation": "table",
+      "name": "agent_memories"
+    },
+    {
+      "path": "backend/app/services/dependency_impact_service.py",
+      "line": 283,
+      "operation": "table",
+      "name": "org_entity_relationships"
+    },
+    {
+      "path": "backend/app/services/dependency_impact_service.py",
+      "line": 341,
+      "operation": "table",
+      "name": "org_entity_relationships"
+    },
+    {
+      "path": "backend/app/services/dialogue_memory_policy.py",
+      "line": 108,
+      "operation": "table",
+      "name": "agent_memories"
+    },
+    {
+      "path": "backend/app/services/entity_relationship_builder.py",
+      "line": 177,
+      "operation": "table",
+      "name": "org_entity_relationships"
+    },
+    {
+      "path": "backend/app/services/entity_relationship_builder.py",
+      "line": 168,
+      "operation": "table",
+      "name": "org_entity_relationships"
+    },
+    {
+      "path": "backend/app/services/entity_relationship_builder.py",
+      "line": 196,
+      "operation": "table",
+      "name": "org_glossary_terms"
+    },
+    {
+      "path": "backend/app/services/entity_relationship_builder.py",
+      "line": 259,
+      "operation": "table",
+      "name": "agent_memories"
+    },
+    {
+      "path": "backend/app/services/entity_relationship_builder.py",
+      "line": 307,
+      "operation": "table",
+      "name": "org_query_clusters"
+    },
+    {
+      "path": "backend/app/services/entity_relationship_builder.py",
+      "line": 464,
+      "operation": "table",
+      "name": "org_entity_relationships"
+    },
+    {
+      "path": "backend/app/services/entity_relationship_builder.py",
+      "line": 145,
+      "operation": "table",
+      "name": "org_entity_relationships"
+    },
+    {
+      "path": "backend/app/services/entity_relationship_service.py",
+      "line": 334,
+      "operation": "table",
+      "name": "org_entity_relationships"
+    },
+    {
+      "path": "backend/app/services/entity_relationship_service.py",
+      "line": 421,
+      "operation": "table",
+      "name": "org_entity_relationships"
+    },
+    {
+      "path": "backend/app/services/entity_relationship_service.py",
+      "line": 176,
+      "operation": "table",
+      "name": "org_query_clusters"
+    },
+    {
+      "path": "backend/app/services/entity_relationship_service.py",
+      "line": 42,
+      "operation": "table",
+      "name": "org_entity_relationships"
+    },
+    {
+      "path": "backend/app/services/entity_relationship_service.py",
+      "line": 52,
+      "operation": "table",
+      "name": "org_entity_relationships"
+    },
+    {
+      "path": "backend/app/services/hybrid_memory_service.py",
+      "line": 138,
+      "operation": "table",
+      "name": "org_query_clusters"
+    },
+    {
+      "path": "backend/app/services/hybrid_memory_service.py",
+      "line": 86,
+      "operation": "table",
+      "name": "org_entity_relationships"
+    },
+    {
+      "path": "backend/app/services/hybrid_memory_service.py",
+      "line": 117,
+      "operation": "table",
+      "name": "org_glossary_terms"
+    },
+    {
+      "path": "backend/app/services/hybrid_memory_service.py",
+      "line": 48,
+      "operation": "table",
+      "name": "agent_memories"
+    },
+    {
+      "path": "backend/app/services/knowledge_graph_service.py",
+      "line": 542,
+      "operation": "table",
+      "name": "org_entity_relationships"
+    },
+    {
+      "path": "backend/app/services/knowledge_graph_service.py",
+      "line": 598,
+      "operation": "table",
+      "name": "org_entity_relationships"
+    },
+    {
+      "path": "backend/app/services/knowledge_graph_service.py",
+      "line": 333,
+      "operation": "table",
+      "name": "org_entity_relationships"
+    },
+    {
+      "path": "backend/app/services/knowledge_graph_service.py",
+      "line": 344,
+      "operation": "table",
+      "name": "org_entity_relationships"
+    },
+    {
+      "path": "backend/app/services/knowledge_intelligence_service.py",
+      "line": 258,
+      "operation": "table",
+      "name": "org_query_clusters"
+    },
+    {
+      "path": "backend/app/services/knowledge_intelligence_service.py",
+      "line": 305,
+      "operation": "table",
+      "name": "org_glossary_terms"
+    },
+    {
+      "path": "backend/app/services/knowledge_intelligence_service.py",
+      "line": 244,
+      "operation": "table",
+      "name": "org_query_clusters"
+    },
+    {
+      "path": "backend/app/services/knowledge_intelligence_service.py",
+      "line": 373,
+      "operation": "table",
+      "name": "org_query_clusters"
+    },
+    {
+      "path": "backend/app/services/knowledge_intelligence_service.py",
+      "line": 382,
+      "operation": "table",
+      "name": "org_glossary_terms"
+    },
+    {
+      "path": "backend/app/services/knowledge_intelligence_service.py",
+      "line": 120,
+      "operation": "table",
+      "name": "org_query_clusters"
+    },
+    {
+      "path": "backend/app/services/knowledge_intelligence_service.py",
+      "line": 401,
+      "operation": "table",
+      "name": "org_entity_relationships"
+    },
+    {
+      "path": "backend/app/services/memory_entity_embeddings_service.py",
+      "line": 171,
+      "operation": "rpc",
+      "name": "match_org_memory_entity_embeddings"
+    },
+    {
+      "path": "backend/app/services/memory_entity_embeddings_service.py",
+      "line": 190,
+      "operation": "rpc",
+      "name": "purge_org_memory_entity_embeddings"
+    },
+    {
+      "path": "backend/app/services/memory_lifecycle_service.py",
+      "line": 42,
+      "operation": "table",
+      "name": "agent_memories"
+    },
+    {
+      "path": "backend/app/services/memory_lifecycle_service.py",
+      "line": 31,
+      "operation": "table",
+      "name": "agent_memories"
+    },
+    {
+      "path": "backend/app/services/memory_lifecycle_service.py",
+      "line": 77,
+      "operation": "table",
+      "name": "agent_memories"
+    },
+    {
+      "path": "backend/app/services/memory_lifecycle_service.py",
+      "line": 127,
+      "operation": "table",
+      "name": "agent_memories"
+    },
+    {
+      "path": "backend/app/services/memory_promotion_service.py",
+      "line": 209,
+      "operation": "table",
+      "name": "memory_promotion_candidates"
+    },
+    {
+      "path": "backend/app/services/memory_promotion_service.py",
+      "line": 307,
+      "operation": "table",
+      "name": "agent_memory_promotion_audit"
+    },
+    {
+      "path": "backend/app/services/memory_promotion_service.py",
+      "line": 1280,
+      "operation": "table",
+      "name": "memory_promotion_candidates"
+    },
+    {
+      "path": "backend/app/services/memory_promotion_service.py",
+      "line": 1399,
+      "operation": "table",
+      "name": "agent_memory_promotion_audit"
+    },
+    {
+      "path": "backend/app/services/memory_promotion_service.py",
+      "line": 272,
+      "operation": "table",
+      "name": "agent_memories"
+    },
+    {
+      "path": "backend/app/services/memory_promotion_service.py",
+      "line": 855,
+      "operation": "table",
+      "name": "memory_promotion_candidates"
+    },
+    {
+      "path": "backend/app/services/memory_promotion_service.py",
+      "line": 1046,
+      "operation": "table",
+      "name": "memory_promotion_candidates"
+    },
+    {
+      "path": "backend/app/services/memory_promotion_service.py",
+      "line": 1091,
+      "operation": "table",
+      "name": "agent_memories"
+    },
+    {
+      "path": "backend/app/services/memory_promotion_service.py",
+      "line": 202,
+      "operation": "table",
+      "name": "memory_promotion_candidates"
+    },
+    {
+      "path": "backend/app/services/memory_promotion_service.py",
+      "line": 367,
+      "operation": "table",
+      "name": "memory_promotion_candidates"
+    },
+    {
+      "path": "backend/app/services/memory_promotion_service.py",
+      "line": 372,
+      "operation": "table",
+      "name": "org_glossary_terms"
+    },
+    {
+      "path": "backend/app/services/memory_promotion_service.py",
+      "line": 1122,
+      "operation": "table",
+      "name": "memory_promotion_candidates"
+    },
+    {
+      "path": "backend/app/services/memory_promotion_service.py",
+      "line": 927,
+      "operation": "table",
+      "name": "memory_promotion_candidates"
+    },
+    {
+      "path": "backend/app/services/memory_promotion_service.py",
+      "line": 1129,
+      "operation": "table",
+      "name": "org_glossary_terms"
+    },
+    {
+      "path": "backend/app/services/memory_promotion_service.py",
+      "line": 1212,
+      "operation": "table",
+      "name": "agent_memories"
+    },
+    {
+      "path": "backend/app/services/memory_promotion_service.py",
+      "line": 381,
+      "operation": "table",
+      "name": "org_glossary_terms"
+    },
+    {
+      "path": "backend/app/services/memory_promotion_service.py",
+      "line": 1448,
+      "operation": "table",
+      "name": "agent_memories"
+    },
+    {
+      "path": "backend/app/services/memory_promotion_service.py",
+      "line": 1108,
+      "operation": "table",
+      "name": "memory_promotion_candidates"
+    },
+    {
+      "path": "backend/app/services/memory_promotion_service.py",
+      "line": 1199,
+      "operation": "table",
+      "name": "agent_memories"
+    },
+    {
+      "path": "backend/app/services/memory_promotion_service.py",
+      "line": 1340,
+      "operation": "table",
+      "name": "agent_memories"
+    },
+    {
+      "path": "backend/app/services/memory_promotion_service.py",
+      "line": 184,
+      "operation": "table",
+      "name": "memory_promotion_candidates"
+    },
+    {
+      "path": "backend/app/services/memory_promotion_service.py",
+      "line": 811,
+      "operation": "table",
+      "name": "memory_promotion_candidates"
+    },
+    {
+      "path": "backend/app/services/memory_promotion_service.py",
+      "line": 902,
+      "operation": "table",
+      "name": "memory_promotion_candidates"
+    },
+    {
+      "path": "backend/app/services/memory_promotion_service.py",
+      "line": 963,
+      "operation": "table",
+      "name": "memory_promotion_candidates"
+    },
+    {
+      "path": "backend/app/services/memory_promotion_service.py",
+      "line": 1034,
+      "operation": "table",
+      "name": "memory_promotion_candidates"
+    },
+    {
+      "path": "backend/app/services/memory_promotion_service.py",
+      "line": 1079,
+      "operation": "table",
+      "name": "agent_memories"
+    },
+    {
+      "path": "backend/app/services/memory_promotion_service.py",
+      "line": 1096,
+      "operation": "table",
+      "name": "memory_promotion_candidates"
+    },
+    {
+      "path": "backend/app/services/memory_promotion_service.py",
+      "line": 1155,
+      "operation": "table",
+      "name": "agent_memories"
+    },
+    {
+      "path": "backend/app/services/memory_promotion_service.py",
+      "line": 1460,
+      "operation": "table",
+      "name": "agent_memory_promotion_audit"
+    },
+    {
+      "path": "backend/app/services/memory_promotion_service.py",
+      "line": 138,
+      "operation": "table",
+      "name": "memory_promotion_candidates"
+    },
+    {
+      "path": "backend/app/services/memory_promotion_service.py",
+      "line": 1183,
+      "operation": "table",
+      "name": "org_glossary_terms"
+    },
+    {
+      "path": "backend/app/services/memory_source_liveness.py",
+      "line": 113,
+      "operation": "table",
+      "name": "agent_memories"
+    },
+    {
+      "path": "backend/app/services/memory_temporal_service.py",
+      "line": 73,
+      "operation": "table",
+      "name": "agent_memory_history"
+    },
+    {
+      "path": "backend/app/services/memory_temporal_service.py",
+      "line": 105,
+      "operation": "table",
+      "name": "agent_memories"
+    },
+    {
+      "path": "backend/app/services/memory_temporal_service.py",
+      "line": 203,
+      "operation": "table",
+      "name": "agent_memories"
+    },
+    {
+      "path": "backend/app/services/memory_temporal_service.py",
+      "line": 113,
+      "operation": "table",
+      "name": "agent_memories"
+    },
+    {
+      "path": "backend/app/services/memory_temporal_service.py",
+      "line": 140,
+      "operation": "table",
+      "name": "agent_memory_history"
+    },
+    {
+      "path": "backend/app/services/org_knowledge_nodes_service.py",
+      "line": 214,
+      "operation": "table",
+      "name": "org_entity_relationships"
+    },
+    {
+      "path": "backend/app/services/org_knowledge_nodes_service.py",
+      "line": 232,
+      "operation": "table",
+      "name": "org_entity_relationships"
+    },
+    {
+      "path": "backend/app/services/workspace_focus_resolver.py",
+      "line": 226,
+      "operation": "table",
+      "name": "org_entity_relationships"
+    },
+    {
+      "path": "backend/app/services/workspace_memory_service.py",
+      "line": 72,
+      "operation": "table",
+      "name": "agent_memories"
+    },
+    {
+      "path": "backend/app/services/workspace_memory_service.py",
+      "line": 86,
+      "operation": "table",
+      "name": "agent_memories"
+    },
+    {
+      "path": "backend/app/services/workspace_memory_service.py",
+      "line": 316,
+      "operation": "table",
+      "name": "agent_memories"
+    },
+    {
+      "path": "backend/app/services/workspace_memory_service.py",
+      "line": 109,
+      "operation": "table",
+      "name": "agent_memories"
+    }
+  ],
+  "limitations": [
+    "Dynamic table names and wrapper storage not enumerated",
+    "Conversation task_state JSON and caches not included",
+    "Not complete runtime memory-store inventory"
+  ]
+}

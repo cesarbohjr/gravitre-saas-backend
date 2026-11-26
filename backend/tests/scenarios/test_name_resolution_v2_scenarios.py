@@ -48,6 +48,7 @@ MILLER = "Stephanie Miller <smiller@globex.example>"
 
 
 async def _lookup(h: ScenarioHarness, name: str, **kw: Any) -> rr.RecipientResolution:
+    h.connect("gmail")
     return await resolve_email_recipient(
         name,
         org_id=ORG,
@@ -271,7 +272,7 @@ def _age_state(h: ScenarioHarness, key: str, seconds: float) -> None:
 @pytest.mark.parametrize("surface", SURFACES)
 async def test_noisy_mailbox_conversation_asks_once_then_sends_to_the_choice(surface: str) -> None:
     with ScenarioHarness() as h:
-        h.connected.append("gmail")
+        h.connect("gmail")
         h.connectors.mailbox += noisy_mailbox()
         conv = h.conversation(surface)
 
@@ -293,7 +294,7 @@ async def test_noisy_mailbox_conversation_asks_once_then_sends_to_the_choice(sur
 @pytest.mark.parametrize("surface", SURFACES)
 async def test_stale_candidates_are_looked_up_again_before_use(surface: str) -> None:
     with ScenarioHarness() as h:
-        h.connected.append("gmail")
+        h.connect("gmail")
         h.connectors.mailbox += [mail(1, KHAN, ME), mail(2, ME, KHAN, ("SENT",)), mail(3, MILLER, ME)]
         conv = h.conversation(surface)
         await conv.say("Send an email to Stephanie on Gmail", _guessing_model)
@@ -308,7 +309,7 @@ async def test_stale_candidates_are_looked_up_again_before_use(surface: str) -> 
 @pytest.mark.parametrize("surface", SURFACES)
 async def test_a_reconnected_account_invalidates_cached_candidates(surface: str) -> None:
     with ScenarioHarness() as h:
-        h.connected.append("gmail")
+        h.connect("gmail")
         h.db.tables["connectors"] = gmail_rows_for_two_accounts()
         h.connectors.mailbox += [mail(1, KHAN, ME), mail(2, ME, KHAN, ("SENT",)), mail(3, MILLER, ME)]
         conv = h.conversation(surface)
@@ -328,7 +329,7 @@ async def test_a_reconnected_account_invalidates_cached_candidates(surface: str)
 @pytest.mark.parametrize("surface", SURFACES)
 async def test_a_permission_failure_drops_cached_candidates_and_asks_for_the_address(surface: str) -> None:
     with ScenarioHarness() as h:
-        h.connected.append("gmail")
+        h.connect("gmail")
         h.connectors.mailbox += [mail(1, KHAN, ME), mail(2, ME, KHAN, ("SENT",)), mail(3, MILLER, ME)]
         conv = h.conversation(surface)
         await conv.say("Send an email to Stephanie on Gmail", _guessing_model)
@@ -348,7 +349,7 @@ async def test_a_permission_failure_drops_cached_candidates_and_asks_for_the_add
 @pytest.mark.parametrize("surface", SURFACES)
 async def test_stale_file_choices_are_searched_again_by_name_not_the_kind_word(surface: str) -> None:
     with ScenarioHarness() as h:
-        h.connected += ["gmail", "google_drive"]
+        h.connect("gmail", "google_drive")
         h.connectors.mailbox += [mail(1, KHAN, ME), mail(2, ME, KHAN, ("SENT",))]
         h.connectors.files += budget_files()
         conv = h.conversation(surface)
@@ -374,7 +375,7 @@ def _two_budget_files(surface: str) -> str:
 @pytest.mark.parametrize("surface", SURFACES)
 async def test_send_stephanie_the_budget_spreadsheet_end_to_end(surface: str) -> None:
     with ScenarioHarness() as h:
-        h.connected += ["gmail", "google_drive"]
+        h.connect("gmail", "google_drive")
         h.connectors.mailbox += [mail(1, KHAN, ME), mail(2, ME, KHAN, ("SENT",))]
         h.connectors.files += budget_files()
         conv = h.conversation(surface)
@@ -421,7 +422,7 @@ async def test_send_stephanie_the_budget_spreadsheet_end_to_end(surface: str) ->
 @pytest.mark.parametrize("surface", SURFACES)
 async def test_two_ambiguities_get_one_question_each(surface: str) -> None:
     with ScenarioHarness() as h:
-        h.connected += ["gmail", "google_drive"]
+        h.connect("gmail", "google_drive")
         h.connectors.mailbox += [mail(1, KHAN, ME), mail(2, ME, KHAN, ("SENT",)), mail(3, MILLER, ME)]
         h.connectors.files += budget_files()
         conv = h.conversation(surface)
@@ -445,7 +446,7 @@ async def test_two_ambiguities_get_one_question_each(surface: str) -> None:
 @pytest.mark.parametrize("surface", SURFACES)
 async def test_one_file_is_found_checked_and_carried_by_id(surface: str) -> None:
     with ScenarioHarness() as h:
-        h.connected += ["gmail", "google_drive"]
+        h.connect("gmail", "google_drive")
         h.connectors.mailbox += [mail(1, KHAN, ME), mail(2, ME, KHAN, ("SENT",))]
         h.connectors.files += one_budget_file()
         conv = h.conversation(surface)
@@ -464,7 +465,7 @@ async def test_one_file_is_found_checked_and_carried_by_id(surface: str) -> None
 @pytest.mark.parametrize("surface", SURFACES)
 async def test_a_file_that_cannot_be_opened_is_not_carried(surface: str) -> None:
     with ScenarioHarness() as h:
-        h.connected += ["gmail", "google_drive"]
+        h.connect("gmail", "google_drive")
         h.connectors.mailbox += [mail(1, KHAN, ME), mail(2, ME, KHAN, ("SENT",))]
         files = one_budget_file()
         files[0]["denied"] = True
@@ -480,7 +481,7 @@ async def test_a_file_that_cannot_be_opened_is_not_carried(surface: str) -> None
 @pytest.mark.parametrize("surface", SURFACES)
 async def test_no_file_source_says_it_cannot_search_files_yet(surface: str) -> None:
     with ScenarioHarness() as h:
-        h.connected.append("gmail")
+        h.connect("gmail")
         h.connectors.mailbox += [mail(1, KHAN, ME), mail(2, ME, KHAN, ("SENT",))]
         conv = h.conversation(surface)
 
@@ -494,7 +495,7 @@ async def test_no_file_source_says_it_cannot_search_files_yet(surface: str) -> N
 @pytest.mark.parametrize("surface", SURFACES)
 async def test_a_file_access_lost_after_approval_stops_the_send(surface: str) -> None:
     with ScenarioHarness() as h:
-        h.connected += ["gmail", "google_drive"]
+        h.connect("gmail", "google_drive")
         h.connectors.mailbox += [mail(1, KHAN, ME), mail(2, ME, KHAN, ("SENT",))]
         h.connectors.files += one_budget_file()
         conv = h.conversation(surface)

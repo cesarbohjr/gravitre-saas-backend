@@ -22,12 +22,13 @@ import tempfile
 import threading
 import time
 import traceback
-from urllib.error import HTTPError
+from urllib.error import HTTPError, URLError
 from urllib.parse import urlsplit
 from urllib.request import Request, urlopen
 from uuid import uuid4
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
 from broker_process_contract import IndependentFixture
+from private_https_fixture import FixtureRoute, issue_fixture_certificate, probe_private_https, build_fixture_images
 from app.services.native_runtime.docker_runner import DockerRunner, SandboxImages
 from app.services.native_runtime.store import Journal
 from app.services.native_agent_adapters import AdapterScope
@@ -68,6 +69,113 @@ def wait_for(predicate, seconds, category):
     raise TimeoutError(category)
 
 
+def stop_tunnel(process):
+    if process.poll() is not None:
+        return
+    process.terminate()
+    try:
+        process.wait(timeout=10)
+    except subprocess.TimeoutExpired:
+        process.kill()
+        process.wait(timeout=5)
+
+
+def fixture_transport_failure(error):
+    """Fixed diagnostic labels only: exception messages may contain private URLs."""
+    reason = error.reason if isinstance(error, URLError) else error
+    if isinstance(reason, ssl.SSLCertVerificationError):
+        return 'tls_certificate'
+    if isinstance(reason, ssl.SSLError):
+        return 'tls_handshake'
+    if isinstance(reason, socket.gaierror):
+        return 'dns_resolution'
+    if isinstance(reason, TimeoutError):
+        return 'connection_timeout'
+    if isinstance(reason, ConnectionRefusedError):
+        return 'connection_refused'
+    if isinstance(reason, ConnectionResetError):
+        return 'connection_reset'
+    return 'transport_other'
+
+
+def fixture_probe(endpoint, page):
+    """Exact owned-page check; export categories, never URLs or exception text."""
+    try:
+        with urlopen(endpoint, timeout=5) as response:
+            if response.status == 200 and response.geturl() == endpoint and response.read(len(page) + 1) == page:
+                return {'outcome': 'ready'}
+            return {'outcome': 'unexpected_fixture_response'}
+    except HTTPError as error:
+        result = {'outcome': 'origin_http_error', 'http_status': error.code}
+        error.close()
+        return result
+    except OSError as error:
+        return {'outcome': 'origin_unreachable', 'error_category': fixture_transport_failure(error)}
+
+
+def tunnel_diagnostics(log):
+    """Retain only allowlisted facts from the private tunnel log before cleanup."""
+    content = log.read_text(errors='replace')[-65536:]
+    return {
+        'connection_registered': 'Registered tunnel connection' in content,
+        'origin_connection_error': 'Unable to reach the origin service' in content,
+        'edge_connection_error': 'Failed to serve tunnel connection' in content,
+    }
+
+
+def start_fixture_tunnel(root, fixture_origin, page, attempts):
+    local_probe = fixture_probe(fixture_origin + '/page', page)
+    if local_probe['outcome'] != 'ready':
+        attempts.append({'outcome': 'local_fixture_unavailable', 'local_probe': local_probe})
+        raise TimeoutError('local_fixture_unavailable')
+    for attempt in range(2):
+        log = root / f'tunnel-{attempt}-private.log'
+        with log.open('wb') as stream:
+            process = subprocess.Popen(
+                [os.environ['CLOUDFLARED_BIN'], 'tunnel', '--no-autoupdate', '--protocol', 'http2', '--url', fixture_origin],
+                stdin=subprocess.DEVNULL, stdout=stream, stderr=stream, start_new_session=True,
+                env={key: os.environ[key] for key in ('PATH', 'HOME', 'TMPDIR', 'LANG', 'SSL_CERT_FILE', 'SSL_CERT_DIR') if key in os.environ},
+            )
+        evidence = {'outcome': 'origin_not_announced', 'local_probe': local_probe}
+        attempts.append(evidence)
+
+        def origin_ready():
+            code = process.poll()
+            if code is not None:
+                evidence.update(outcome='process_exited', returncode=code)
+                raise TimeoutError('https_fixture_process_exited')
+            matches = re.findall(r'https://[a-z0-9-]+\.trycloudflare\.com', log.read_text(errors='replace'))
+            for origin in reversed(dict.fromkeys(matches)):
+                if urlsplit(origin).hostname in {'api.trycloudflare.com', 'www.trycloudflare.com'}:
+                    continue
+                endpoint = origin + '/page'
+                probe = fixture_probe(endpoint, page)
+                # Replace the previous probe so a successful later request does
+                # not retain a stale transport category or HTTP status.
+                for key in ('error_category', 'http_status'):
+                    evidence.pop(key, None)
+                evidence.update(probe)
+                if probe['outcome'] == 'origin_unreachable':
+                    failures = evidence.setdefault('transport_failures', {})
+                    category = probe['error_category']
+                    failures[category] = failures.get(category, 0) + 1
+                if probe['outcome'] == 'ready':
+                    return origin
+            return None
+
+        try:
+            return process, wait_for(origin_ready, 45, 'https_fixture_unavailable')
+        except TimeoutError:
+            stop_tunnel(process)
+            if attempt == 1:
+                raise
+        except BaseException:
+            stop_tunnel(process)
+            raise
+        finally:
+            evidence['tunnel_diagnostics'] = tunnel_diagnostics(log)
+
+
 def terminal_wait_budget(case):
     """Allow slower CI browser execution without changing worker lease or write gates.
 
@@ -87,6 +195,19 @@ def publish(tag):
 
 
 def worker_main(adapter):
+    # Only this acceptance executable can install the single synthetic route.
+    # Production worker.py, public-address validation and gateway images stay unchanged.
+    if (os.environ.get('APP_ENV')!='dev' or any(os.environ.get(k,'').rstrip('/')!=ACCEPTANCE
+            for k in ('E2E_SUPABASE_URL','E2E_SUPABASE_ALLOWED_URL','SUPABASE_URL'))):
+        raise RuntimeError('Private fixture requires dedicated acceptance configuration')
+    route=FixtureRoute(**json.loads(os.environ['CERT_PRIVATE_FIXTURE_ROUTE']))
+    bridge=DockerRunner.private_ipv4(docker('network','inspect','bridge','--format','{{(index .IPAM.Config 0).Gateway}}'))
+    url=urlsplit(os.environ['CERT_FIXTURE_URL'])
+    if route.address!=bridge or url.scheme!='https' or url.hostname!=route.host or url.port is not None or url.path!='/page' or url.username or url.password:
+        raise RuntimeError('Private fixture route mismatch')
+    from app.services.native_runtime import network, docker_runner
+    network.public_addresses=route.resolve
+    docker_runner.public_addresses=route.resolve
     import uvicorn
     from app.services.native_runtime.worker import build_app
     def factory(images):
@@ -230,8 +351,8 @@ class Worker:
 
 
 def run():
-    stage='acceptance_preflight';rows=[];case_counts=[];private_captures=[];user=None;orgs=[];admin=None;logged=None;fixture=None;tunnel=None;model=None;worker=None
-    temporary=None;stream=None
+    stage='acceptance_preflight';rows=[];case_counts=[];private_captures=[];user=None;orgs=[];admin=None;logged=None;fixture=None;model=None;worker=None
+    temporary=None
     target=Path(os.environ.get('NATIVE_TENANT_EVIDENCE','native-tenant-worker-evidence.json'))
     report={'schema_version':1,'git_sha':os.environ.get('CERT_HEAD_SHA',os.environ.get('GITHUB_SHA','local')),'status':'BLOCKED','scenarios':rows,
             'live_customer_data':False,'external_provider_inference':False,'production_adapter_switch':False}
@@ -272,29 +393,39 @@ def run():
         rows.append({'scenario':'authenticated_actor_and_cross_tenant_rls','passed':True})
         temporary=tempfile.TemporaryDirectory(prefix='native-tenant-')
         root=Path(temporary.name);cap=secrets.token_hex(32)
-        fixture=IndependentFixture(root/'effects.sqlite3',PAGE,capability=cap)
-        tunnel_log=root/'tunnel-private.log';stream=open(tunnel_log,'wb')
-        tunnel=subprocess.Popen([os.environ['CLOUDFLARED_BIN'],'tunnel','--no-autoupdate','--protocol','http2','--url',fixture.origin],
-            stdin=subprocess.DEVNULL,stdout=stream,stderr=stream,start_new_session=True,
-            env={key:os.environ[key] for key in ('PATH','HOME','TMPDIR','LANG','SSL_CERT_FILE','SSL_CERT_DIR') if key in os.environ})
-        def origin_ready():
-            stream.flush();text=tunnel_log.read_text(errors='replace')
-            matches=re.findall(r'https://[a-z0-9-]+\.trycloudflare\.com',text)
-            found=next((u for u in matches if urlsplit(u).hostname not in {'api.trycloudflare.com','www.trycloudflare.com'}),None)
-            if not found:return False
-            try:
-                with urlopen(found+'/page',timeout=5) as response:
-                    return found if response.status==200 else False
-            except OSError:return False
-        stage='owned_https_fixture_readiness';origin=wait_for(origin_ready,90,'https_fixture_unavailable')
-        fixture_url=origin+'/page#'+cap;host=urlsplit(origin).hostname
+        page = PAGE + b'\n<!-- fixture-' + secrets.token_hex(16).encode('ascii') + b' -->'
+        stage='owned_https_fixture_readiness'
+        bridge=DockerRunner.private_ipv4(docker('network','inspect','bridge','--format','{{(index .IPAM.Config 0).Gateway}}'))
+        host='qa-'+uuid4().hex+'.example.invalid'
+        cert_root=root/'fixture-pki';cert_root.mkdir(mode=0o700)
+        ca,cert,key=issue_fixture_certificate(cert_root,host)
+        fixture=IndependentFixture(root/'effects.sqlite3',page,capability=cap,
+            tls={'bind':bridge,'cert':str(cert),'key':str(key)})
+        route=FixtureRoute(host=host,address=bridge,port=fixture.port)
+        report['https_fixture_transport']={'kind':'private_bridge_tls','public_tunnel':False,'public_dns':False,
+            'verified_tls':False,'exact_page':False}
+        probe_private_https(route.address,route.port,route.host,ca,page)
+        # Fail closed on an unexpected hostname or an untrusted issuer.
+        for check_host,check_ca in ((host, None), ('wrong.example.invalid',ca)):
+            try:probe_private_https(route.address,route.port,check_host,check_ca,page)
+            except ssl.SSLCertVerificationError:pass
+            else:raise AssertionError('Private fixture accepted an invalid TLS identity')
+        report['https_fixture_transport'].update(verified_tls=True,exact_page=True,
+            wrong_hostname_rejected=True,untrusted_issuer_rejected=True)
+        origin='https://'+host
+        fixture_url=origin+'/page#'+cap
         model_root=root/'model';model_root.mkdir(mode=0o700);model=Model(model_root,fixture_url)
-        images=SandboxImages(publish('native-openhands'),publish('native-browser'),publish('native-tenant-gateway'),
-                             playwright_comparison=publish('native-playwright-comparison'))
+        stage='acceptance_fixture_images'
+        report['fixture_base_image_ids']={name:docker('image','inspect',name,'--format','{{.Id}}')
+            for name in ('native-browser','native-playwright-comparison','native-tenant-gateway')}
+        build_fixture_images(root,route,ca)
+        images=SandboxImages(publish('native-openhands'),publish('native-fixture-browser'),publish('native-fixture-gateway'),
+                             playwright_comparison=publish('native-fixture-playwright'))
         base_env={**os.environ,'APP_ENV':'dev','PYTHONPATH':str(Path(__file__).resolve().parents[1]),
             'NATIVE_OPENHANDS_IMAGE':images.openhands,'NATIVE_BROWSER_IMAGE':images.browser_use,'NATIVE_GATEWAY_IMAGE':images.gateway,
             'NATIVE_SANDBOX_RUNTIME':'runsc','NATIVE_WORKER_SIGNING_KEY':secrets.token_hex(32),
             'CERT_PLAYWRIGHT_IMAGE':images.playwright_comparison,'CERT_FIXTURE_URL':fixture_url,
+            'CERT_PRIVATE_FIXTURE_ROUTE':json.dumps(asdict(route)),
             'NATIVE_TENANTS_JSON':json.dumps({orgs[0]:{'processing_permission':{'owner':user,'reference':'authorized-disposable-native-certification',
                 'expires_at':(datetime.now(timezone.utc)+timedelta(hours=1)).isoformat()},'model':model.route}})}
         report['images']=asdict(images)
@@ -492,12 +623,6 @@ def run():
                 report.setdefault('cleanup_failures',[]).append(label)
         if worker is not None:cleanup('worker',worker.close)
         if model is not None:cleanup('scripted_model',model.close)
-        if tunnel is not None:
-            def stop_tunnel():
-                tunnel.terminate()
-                try:tunnel.wait(timeout=10)
-                except subprocess.TimeoutExpired:tunnel.kill();tunnel.wait(timeout=5)
-            cleanup('https_fixture_tunnel',stop_tunnel)
         if fixture is not None:
             def stop_receiver():
                 fixture.hold=False;fixture.close()
@@ -507,7 +632,6 @@ def run():
                     if report['status']=='PASS' and total!=report['independent_total_writes']:
                         report.update(status='BLOCKED',failure_stage='late_receiver_effect_after_cleanup')
             cleanup('independent_receiver',stop_receiver)
-        if stream is not None:cleanup('tunnel_capture',stream.close)
         if temporary is not None:cleanup('private_files',temporary.cleanup)
         if logged is not None:cleanup('actor_session',logged.auth.sign_out)
         if admin is not None:

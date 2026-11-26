@@ -6,6 +6,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 from fastapi import HTTPException, status
+from postgrest.exceptions import APIError
 
 from app.config import Settings
 from app.rag.department import resolve_department_id_for_agent
@@ -22,7 +23,10 @@ from app.services.memory_contamination_guard import (
     validate_memory_write,
     LINEAGE_COLUMNS,
 )
-from app.services.memory_source_liveness import drop_memories_from_revoked_sources
+from app.services.memory_source_liveness import (
+    drop_memories_from_revoked_sources,
+    invalidate_org_retrieval_cache,
+)
 
 VALID_CATEGORIES = frozenset(
     {
@@ -306,6 +310,7 @@ def create_agent_memory(
         r = client.table("agent_memories").insert(legacy).execute()
     if not r.data:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to create memory")
+    invalidate_org_retrieval_cache(org_id, reason="memory.created")
     return _serialize_row(r.data[0])
 
 
@@ -367,6 +372,7 @@ def update_agent_memory(
     )
     if not r.data:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Memory not found")
+    invalidate_org_retrieval_cache(org_id, reason="memory.updated")
     return _serialize_row(r.data[0])
 
 
@@ -375,6 +381,7 @@ def delete_agent_memory(client: Any, org_id: str, agent_id: str, memory_id: str)
     if not existing.get("editable"):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Memory is protected and cannot be deleted")
     client.table("agent_memories").delete().eq("org_id", org_id).eq("agent_id", agent_id).eq("id", memory_id).execute()
+    invalidate_org_retrieval_cache(org_id, reason="memory.deleted")
 
 
 def search_agent_memories(
@@ -452,19 +459,30 @@ def search_department_memories(
     try:
         r = client.rpc("agent_memory_search_by_department", payload).execute()
         rows = list(r.data or [])
-    except Exception:  # noqa: BLE001
-        # Fallback when RPC not yet migrated: filter by department_id directly.
-        rows = (
+    except (PermissionError, HTTPException):
+        # Only a missing/unsupported RPC may justify fallback; never use
+        # alternate table access after an explicit authorization denial.
+        raise
+    except APIError as exc:
+        # Only PostgREST's missing-function/schema-cache response permits the
+        # compatibility table reader. Denial, outage and SQL errors must not
+        # silently select an alternate authority path.
+        if exc.code != "PGRST202":
+            raise
+        fallback = (
             client.table("agent_memories")
             .select("id,org_id,agent_id,department_id,content,category,provenance,confidence,usage_count,editable,created_at")
             .eq("org_id", org_id)
             .eq("department_id", department_id)
-            .order("created_at", desc=True)
-            .limit(top_k)
-            .execute()
-            .data
-            or []
+            # Match the retained RPC's COALESCE(boolean, true) semantics for
+            # legacy nulls, while excluding inactive/superseded memories.
+            .not_.is_("is_active", False)
+            .not_.is_("is_current", False)
+            .or_(f"expires_at.is.null,expires_at.gt.{datetime.now(timezone.utc).isoformat()}")
         )
+        if payload["p_category"] is not None:
+            fallback = fallback.eq("category", payload["p_category"])
+        rows = fallback.order("created_at", desc=True).limit(top_k).execute().data or []
         rows = drop_memories_from_revoked_sources(
             client, org_id, rows, settings=settings, surface="department_memory_fallback"
         )
@@ -576,6 +594,10 @@ def build_task_retrieval_context(
                 query=task.strip(),
                 top_k=top_k,
             )
+        except (PermissionError, HTTPException):
+            # An unknown/unowned agent raises HTTP 404; that is not
+            # an empty-memory result and cannot be swallowed.
+            raise
         except Exception:  # noqa: BLE001
             context["memories"] = []
         context["memory_conflicts"] = detect_agent_memory_conflicts(context["memories"])
@@ -601,6 +623,9 @@ def build_task_retrieval_context(
                 }
                 for row in rows
             ]
+        except (PermissionError, HTTPException):
+            # Preserve department/agent assignment denial.
+            raise
         except Exception:  # noqa: BLE001
             context["rag_chunks"] = []
 

@@ -23,7 +23,7 @@ def test_unknown_provider_mapping_is_not_available():
     assert provider_readiness(get_nango_connector_spec("syncro"), []) == (False,"provider_not_supported")
 
 
-@pytest.mark.parametrize("vendor", ["freshservice", "crowdstrike", "sage_intacct"])
+@pytest.mark.parametrize("vendor", ["ashby", "crowdstrike", "sage_intacct"])
 def test_non_interactive_credentials_never_count_as_user_oauth(vendor):
     spec = get_nango_connector_spec(vendor)
     assert provider_readiness(spec, [{"key": spec.integration_id, "provider": spec.provider, "missing_fields": []}]) == (False, "interactive_oauth_unavailable")

@@ -26,11 +26,11 @@ import urllib.request
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 try:
-    from engine import configure_browser_sdk, fresh_browser_evidence, stable_browser_evidence,ensure_rejecting_dialog_handlers,close_dialog_handlers
+    from engine import configure_browser_sdk, fresh_browser_evidence, stable_browser_evidence,ensure_rejecting_dialog_handlers,close_dialog_handlers,browser_evidence_changes
 except ModuleNotFoundError as error:
     if error.name != 'engine':
         raise
-    from app.services.native_runtime.engine import configure_browser_sdk, fresh_browser_evidence, stable_browser_evidence,ensure_rejecting_dialog_handlers,close_dialog_handlers
+    from app.services.native_runtime.engine import configure_browser_sdk, fresh_browser_evidence, stable_browser_evidence,ensure_rejecting_dialog_handlers,close_dialog_handlers,browser_evidence_changes
 
 TRIALS = 5
 ACTION_TIMEOUT = 10
@@ -39,7 +39,11 @@ PAGE = b'''<!doctype html><title>Adapter fixture</title>
 <button id="commit" onclick="fetch('/write',{method:'POST'}).then(()=>document.querySelector('#result').textContent='Written')">Commit synthetic change</button>
 <p id="result">No change</p><p id="revision">Original</p>
 <script>setTimeout(()=>document.querySelector('#ready').textContent='Ready',100);
-setInterval(()=>fetch('/state').then(r=>r.json()).then(s=>document.querySelector('#revision').textContent=s.mutated?'Changed':'Original'),50)</script>'''
+setInterval(()=>fetch('/state').then(r=>r.json()).then(s=>{
+const revision=document.querySelector('#revision');
+const text=s.mutated?'Changed':'Original';
+if(revision.textContent!==text) revision.textContent=text;
+}),50)</script>'''
 
 
 class Fixture:
@@ -343,8 +347,8 @@ async def run():
             except Exception as error:
                 # No SDK exception body, page content or process log is exported.
                 rows.append({'adapter': adapter, 'trial': number, 'passed': False,
-                             'failure_class': type(error).__name__,
-                             'evidence_changes': getattr(error, 'evidence_changes', {}),
+                             'failure_class': 'PermissionError' if isinstance(error, PermissionError) else type(error).__name__,
+                             'evidence_changes': browser_evidence_changes(error),
                              'failure_stage': getattr(error, 'benchmark_stage', 'trial_timeout')})
     summary = {}
     for adapter in ('browser_use', 'playwright'):

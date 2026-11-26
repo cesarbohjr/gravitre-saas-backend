@@ -1,0 +1,884 @@
+# STAGED: not installed in .github/workflows; automatic trigger cutover pending.
+name: QA 10-operations
+'on':
+  workflow_dispatch:
+    inputs:
+      source:
+        description: Original workflow contract to execute
+        required: true
+        type: choice
+        options:
+        - chat-history-hygiene-live
+        - connector-health
+        - knowledge-sync
+        - metrics-rollup
+        - msp-enrichment-workflow-live
+        - native-workers-offline
+        - platform-cs-backfill
+        - probe-gmail-live-bugs-audit
+        - smoke-conversation-pollution-cleanup
+        - unified-turn-ops-gates
+        - usage-sync
+        - workflow-schedules
+        default: chat-history-hygiene-live
+      knowledge_sync__reason:
+        description: 'knowledge-sync: Reason for manual trigger'
+        required: false
+      metrics_rollup__days:
+        description: 'metrics-rollup: Days back to roll up'
+        required: false
+        default: '1'
+      metrics_rollup__purge_days:
+        description: 'metrics-rollup: Purge audit_events older than N days (optional)'
+        required: false
+      msp_enrichment_workflow_live__reason:
+        description: 'msp-enrichment-workflow-live: Reason for manual trigger'
+        required: false
+        default: post-merge verification
+      platform_cs_backfill__reason:
+        description: 'platform-cs-backfill: Reason for manual trigger'
+        required: false
+      probe_gmail_live_bugs_audit__since_hours:
+        description: 'probe-gmail-live-bugs-audit: Lookback window for conversation hunt'
+        required: false
+        default: '96'
+      smoke_conversation_pollution_cleanup__apply:
+        description: 'smoke-conversation-pollution-cleanup: Apply soft-deletes (unchecked = dry run only)'
+        type: boolean
+        default: true
+        required: false
+      usage_sync__reason:
+        description: 'usage-sync: Reason for manual trigger'
+        required: false
+      workflow_schedules__reason:
+        description: 'workflow-schedules: Reason for manual trigger'
+        required: false
+  push:
+    branches:
+    - main
+  pull_request:
+    types:
+    - opened
+    - reopened
+    - synchronize
+  schedule:
+  - cron: '*/5 * * * *'
+  - cron: 0 * * * *
+  - cron: 0 3 * * *
+  - cron: 0 4 * * *
+  - cron: 15 * * * *
+  - cron: 15 2 * * *
+concurrency:
+  group: ${{ format('candidate-{0}', (inputs.source == 'chat-history-hygiene-live' && ('chat-history-hygiene-live')) || (inputs.source
+    == 'connector-health' && ('connector-health')) || (inputs.source == 'knowledge-sync' && ('knowledge-sync')) || (inputs.source
+    == 'metrics-rollup' && ('metrics-rollup')) || (inputs.source == 'msp-enrichment-workflow-live' && ('msp-enrichment-workflow-live'))
+    || (inputs.source == 'native-workers-offline' && (format('native-workers-{0}', github.ref))) || (inputs.source == 'platform-cs-backfill'
+    && ('platform-cs-backfill')) || (inputs.source == 'probe-gmail-live-bugs-audit' && ('probe-gmail-live-bugs-audit')) ||
+    (inputs.source == 'smoke-conversation-pollution-cleanup' && ('smoke-conversation-pollution-cleanup')) || (inputs.source
+    == 'unified-turn-ops-gates' && ('unified-turn-ops-gates')) || (inputs.source == 'usage-sync' && ('usage-sync')) || (inputs.source
+    == 'workflow-schedules' && ('workflow-schedules')) || github.run_id) }}
+  cancel-in-progress: ${{ (inputs.source == 'chat-history-hygiene-live' && (false)) || (inputs.source == 'connector-health'
+    && (false)) || (inputs.source == 'knowledge-sync' && (false)) || (inputs.source == 'metrics-rollup' && (false)) || (inputs.source
+    == 'msp-enrichment-workflow-live' && (false)) || (inputs.source == 'native-workers-offline' && (true)) || (inputs.source
+    == 'platform-cs-backfill' && (false)) || (inputs.source == 'probe-gmail-live-bugs-audit' && (false)) || (inputs.source
+    == 'smoke-conversation-pollution-cleanup' && (false)) || (inputs.source == 'unified-turn-ops-gates' && (false)) || (inputs.source
+    == 'usage-sync' && (false)) || (inputs.source == 'workflow-schedules' && (false)) || false }}
+jobs:
+  upstream_contract:
+    name: Read trusted upstream outcome metadata
+    if: ${{ github.event_name == 'workflow_run' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    permissions:
+      contents: read
+      actions: read
+    outputs:
+      evidence: ${{ steps.upstream.outputs.evidence }}
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        ref: ${{ github.sha }}
+        persist-credentials: false
+    - id: upstream
+      run: python scripts/route-workflow-event.py --lane 10-operations --fetch-upstream
+      env:
+        GITHUB_TOKEN: ${{ github.token }}
+  dispatch_contract:
+    name: Validate selected source inputs
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    timeout-minutes: 4
+    needs:
+    - upstream_contract
+    if: ${{ always() && (needs.upstream_contract.result == 'success' || needs.upstream_contract.result == 'skipped') }}
+    outputs:
+      selected: ${{ steps.contract.outputs.selected }}
+      derived: ${{ steps.contract.outputs.derived }}
+      context_conclusions: ${{ steps.contract.outputs.context_conclusions }}
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        persist-credentials: false
+        fetch-depth: 0
+    - id: contract
+      name: Validate source contract
+      shell: python
+      env:
+        SOURCE_SCHEMAS: '{"chat-history-hygiene-live": {}, "connector-health": {}, "knowledge-sync": {"reason": {"description":
+          "Reason for manual trigger", "required": false}}, "metrics-rollup": {"days": {"description": "Days back to roll
+          up", "required": false, "default": "1"}, "purge_days": {"description": "Purge audit_events older than N days (optional)",
+          "required": false}}, "msp-enrichment-workflow-live": {"reason": {"description": "Reason for manual trigger", "required":
+          false, "default": "post-merge verification"}}, "native-workers-offline": {}, "platform-cs-backfill": {"reason":
+          {"description": "Reason for manual trigger", "required": false}}, "probe-gmail-live-bugs-audit": {"since_hours":
+          {"description": "Lookback window for conversation hunt", "required": false, "default": "96"}}, "smoke-conversation-pollution-cleanup":
+          {"apply": {"description": "Apply soft-deletes (unchecked = dry run only)", "type": "boolean", "default": true}},
+          "unified-turn-ops-gates": {}, "usage-sync": {"reason": {"description": "Reason for manual trigger", "required":
+          false}}, "workflow-schedules": {"reason": {"description": "Reason for manual trigger", "required": false}}}'
+        MANUAL_SOURCES: '["chat-history-hygiene-live", "connector-health", "knowledge-sync", "metrics-rollup", "msp-enrichment-workflow-live",
+          "native-workers-offline", "platform-cs-backfill", "probe-gmail-live-bugs-audit", "smoke-conversation-pollution-cleanup",
+          "unified-turn-ops-gates", "usage-sync", "workflow-schedules"]'
+        DISPATCH_VALUES: ${{ toJSON(inputs) }}
+        EVENT_NAME: ${{ github.event_name }}
+        CANONICAL_LANE: 10-operations
+        UPSTREAM_EVIDENCE: ${{ needs.upstream_contract.outputs.evidence }}
+      run: "import json, os\nschemas = json.loads(os.environ['SOURCE_SCHEMAS'])\nvalues = json.loads(os.environ['DISPATCH_VALUES'])\n\
+        event_name = os.environ['EVENT_NAME']\ncalled = values.get('_reusable', False)\nif not called and event_name not in\
+        \ ('workflow_dispatch', 'workflow_call'):\n    import subprocess\n    subprocess.run(['python', 'scripts/route-workflow-event.py',\
+        \ '--lane', os.environ['CANONICAL_LANE']], check=True)\n    raise SystemExit(0)\nsource = values.get('source')\nif\
+        \ source not in schemas:\n    raise SystemExit('Unknown source workflow')\nif not called and event_name == 'workflow_dispatch'\
+        \ and source not in json.loads(os.environ['MANUAL_SOURCES']):\n    raise SystemExit('Source has no manual trigger')\n\
+        if called and source != 'isolated-acceptance':\n    raise SystemExit('Unsupported reusable source')\nfor key, config\
+        \ in schemas[source].items():\n    value = values.get(source.replace('-', '_') + '__' + key)\n    if called and key\
+        \ == 'suite':\n        value = values.get('suite')\n    if config.get('required') and (value is None or value == ''):\n\
+        \        raise SystemExit('Required selected-source input missing: ' + key)\nprint('Selected source input contract\
+        \ validated; this is not execution acceptance')\nwith open(os.environ['GITHUB_OUTPUT'], 'a') as output:\n    output.write('selected='\
+        \ + json.dumps([source]) + '\\n')\n    output.write('derived=[]\\ncontext_conclusions={}\\n')\n"
+  chat_history_hygiene_live__verify:
+    name: Live history hygiene + list latency
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+    - name: Install dependencies
+      run: pip install httpx PyJWT python-dotenv supabase
+    - name: Run live hygiene probe
+      env:
+        SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+        SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        SUPABASE_JWT_SECRET: ${{ secrets.SUPABASE_JWT_SECRET }}
+        LIVE_API_BASE: https://api.gravitre.app
+        HISTORY_LIST_BUDGET_MS: '2000'
+      run: "set -euo pipefail\nif [ -z \"${SUPABASE_URL:-}\" ] || [ -z \"${SUPABASE_SERVICE_ROLE_KEY:-}\" ] || [ -z \"${SUPABASE_JWT_SECRET:-}\"\
+        \ ]; then\n  echo \"Missing Supabase secrets\" >&2\n  exit 1\nfi\npython3 scripts/verify-chat-history-hygiene-live.py\n"
+    - name: Upload report
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: chat-history-hygiene-live
+        path: docs/delivery/chat-history-hygiene-live.json
+        if-no-files-found: ignore
+    needs:
+    - dispatch_contract
+    if: ${{ always() && needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected),
+      'chat-history-hygiene-live') && ((!cancelled() && (true))) }}
+    concurrency:
+      group: ${{ format('candidate-{0}-{1}-{2}', 'chat-history-hygiene-live', 'chat_history_hygiene_live__verify', toJSON(matrix))
+        }}
+      cancel-in-progress: ${{ false }}
+  connector_health__connector-health:
+    name: Run connector health monitor
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+    - name: Trigger connector health
+      env:
+        INTERNAL_API_SECRET: ${{ secrets.INTERNAL_API_SECRET }}
+      run: "if [ -z \"$INTERNAL_API_SECRET\" ]; then\n  echo \"INTERNAL_API_SECRET secret is not set.\" >&2\n  exit 1\nfi\n\
+        GRAVITRE_BACKEND=\"https://gravitre-saas-backend-production.up.railway.app\"\necho \"Triggering connector health at\
+        \ $(date -u)\"\nRESPONSE=$(curl -sf \\\n  --max-time 90 \\\n  --retry 2 \\\n  --retry-delay 5 \\\n  -X POST \\\n \
+        \ \"${GRAVITRE_BACKEND}/api/internal/ops/connector-health\" \\\n  -H \"X-Internal-Secret: ${INTERNAL_API_SECRET}\"\
+        \ \\\n  -H \"Content-Type: application/json\" \\\n  -w \"\\nHTTP_STATUS:%{http_code}\")\nHTTP_STATUS=$(echo \"$RESPONSE\"\
+        \ | grep \"HTTP_STATUS\" | cut -d: -f2)\nBODY=$(echo \"$RESPONSE\" | grep -v \"HTTP_STATUS\")\necho \"Response: $BODY\"\
+        \necho \"HTTP Status: $HTTP_STATUS\"\nif [ \"$HTTP_STATUS\" != \"200\" ]; then\n  exit 1\nfi\n"
+    needs:
+    - dispatch_contract
+    if: ${{ always() && needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected),
+      'connector-health') && ((!cancelled() && (true))) }}
+    concurrency:
+      group: ${{ format('candidate-{0}-{1}-{2}', 'connector-health', 'connector_health__connector-health', toJSON(matrix))
+        }}
+      cancel-in-progress: ${{ false }}
+  knowledge_sync__sync-due:
+    name: Run due knowledge syncs
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+    - name: Trigger knowledge sync
+      env:
+        INTERNAL_API_SECRET: ${{ secrets.INTERNAL_API_SECRET }}
+      run: "if [ -z \"$INTERNAL_API_SECRET\" ]; then\n  echo \"INTERNAL_API_SECRET secret is not set; add it in repo Settings\
+        \ \u2192 Secrets and variables \u2192 Actions.\" >&2\n  exit 1\nfi\nGRAVITRE_BACKEND=\"https://gravitre-saas-backend-production.up.railway.app\"\
+        \necho \"Triggering knowledge sync at $(date -u)\"\nRESPONSE=$(curl -sf \\\n  --max-time 120 \\\n  --retry 2 \\\n\
+        \  --retry-delay 5 \\\n  -X POST \\\n  \"${GRAVITRE_BACKEND}/api/internal/knowledge/sync-due\" \\\n  -H \"X-Internal-Secret:\
+        \ ${INTERNAL_API_SECRET}\" \\\n  -H \"Content-Type: application/json\" \\\n  -w \"\\nHTTP_STATUS:%{http_code}\")\n\
+        HTTP_STATUS=$(echo \"$RESPONSE\" | grep \"HTTP_STATUS\" | cut -d: -f2)\nBODY=$(echo \"$RESPONSE\" | grep -v \"HTTP_STATUS\"\
+        )\necho \"Response: $BODY\"\necho \"HTTP Status: $HTTP_STATUS\"\nif [ \"$HTTP_STATUS\" != \"200\" ]; then\n  echo\
+        \ \"Knowledge sync failed with status $HTTP_STATUS\"\n  exit 1\nfi\necho \"Knowledge sync completed successfully\"\
+        \n"
+    needs:
+    - dispatch_contract
+    if: ${{ always() && needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected),
+      'knowledge-sync') && ((!cancelled() && (true))) }}
+    concurrency:
+      group: ${{ format('candidate-{0}-{1}-{2}', 'knowledge-sync', 'knowledge_sync__sync-due', toJSON(matrix)) }}
+      cancel-in-progress: ${{ false }}
+  metrics_rollup__rollup-daily:
+    name: Run daily metrics rollups
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+    - name: Trigger rollup
+      env:
+        INTERNAL_API_SECRET: ${{ secrets.INTERNAL_API_SECRET }}
+        ROLLUP_DAYS: ${{ github.event.inputs.metrics_rollup__days || '1' }}
+        PURGE_DAYS: ${{ github.event.inputs.metrics_rollup__purge_days || '' }}
+      run: "if [ -z \"$INTERNAL_API_SECRET\" ]; then\n  echo \"INTERNAL_API_SECRET secret is not set.\" >&2\n  exit 1\nfi\n\
+        GRAVITRE_BACKEND=\"https://gravitre-saas-backend-production.up.railway.app\"\nBODY=\"{\\\"days\\\": ${ROLLUP_DAYS}}\"\
+        \nif [ -n \"$PURGE_DAYS\" ]; then\n  BODY=\"{\\\"days\\\": ${ROLLUP_DAYS}, \\\"purge_days\\\": ${PURGE_DAYS}}\"\n\
+        fi\necho \"Triggering rollup at $(date -u)\"\nRESPONSE=$(curl -sf \\\n  --max-time 120 \\\n  --retry 2 \\\n  --retry-delay\
+        \ 10 \\\n  -X POST \\\n  \"${GRAVITRE_BACKEND}/api/internal/ops/rollup-daily\" \\\n  -H \"X-Internal-Secret: ${INTERNAL_API_SECRET}\"\
+        \ \\\n  -H \"Content-Type: application/json\" \\\n  -d \"$BODY\" \\\n  -w \"\\nHTTP_STATUS:%{http_code}\")\nHTTP_STATUS=$(echo\
+        \ \"$RESPONSE\" | grep \"HTTP_STATUS\" | cut -d: -f2)\nBODY_OUT=$(echo \"$RESPONSE\" | grep -v \"HTTP_STATUS\")\n\
+        echo \"Response: $BODY_OUT\"\necho \"HTTP Status: $HTTP_STATUS\"\nif [ \"$HTTP_STATUS\" != \"200\" ]; then\n  exit\
+        \ 1\nfi\n"
+    needs:
+    - dispatch_contract
+    if: ${{ always() && needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected),
+      'metrics-rollup') && ((!cancelled() && (true))) }}
+    concurrency:
+      group: ${{ format('candidate-{0}-{1}-{2}', 'metrics-rollup', 'metrics_rollup__rollup-daily', toJSON(matrix)) }}
+      cancel-in-progress: ${{ false }}
+  msp_enrichment_workflow_live__msp-enrichment-live:
+    name: MSP enrichment workflow live smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+        cache: pip
+        cache-dependency-path: backend/requirements.txt
+    - name: Install dependencies
+      working-directory: backend
+      run: 'python -m pip install --upgrade pip
+
+        pip install -r requirements-dev.txt
+
+        '
+    - name: Run MSP enrichment workflow live smoke
+      env:
+        BACKEND_URL: https://gravitre-saas-backend-production.up.railway.app
+        SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+        SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        SUPABASE_JWT_SECRET: ${{ secrets.SUPABASE_JWT_SECRET }}
+        CONNECTOR_SECRETS_ENCRYPTION_KEY: ${{ secrets.CONNECTOR_SECRETS_ENCRYPTION_KEY }}
+        OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        INTERNAL_API_SECRET: ${{ secrets.INTERNAL_API_SECRET }}
+      run: "if [ -z \"$SUPABASE_URL\" ] || [ -z \"$SUPABASE_SERVICE_ROLE_KEY\" ] || [ -z \"$SUPABASE_ANON_KEY\" ]; then\n\
+        \  echo \"Missing SUPABASE_URL, SUPABASE_ANON_KEY, or SUPABASE_SERVICE_ROLE_KEY in repo Actions secrets.\" >&2\n \
+        \ exit 1\nfi\nset +e\npython scripts/smoke-msp-enrichment-workflow-live.py\nCODE=$?\nset -e\necho \"smoke_exit=$CODE\"\
+        \n# 0 = PASS, 2 = PARTIAL (seeded but Clay missing) \u2014 both upload artifact\nif [ \"$CODE\" -ne 0 ] && [ \"$CODE\"\
+        \ -ne 2 ]; then\n  exit \"$CODE\"\nfi\nexit 0\n"
+    - name: Upload smoke report
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: msp-enrichment-workflow-live
+        path: docs/delivery/msp-enrichment-workflow-live.json
+        if-no-files-found: ignore
+    needs:
+    - dispatch_contract
+    if: ${{ always() && needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected),
+      'msp-enrichment-workflow-live') && ((!cancelled() && (true))) }}
+    concurrency:
+      group: ${{ format('candidate-{0}-{1}-{2}', 'msp-enrichment-workflow-live', 'msp_enrichment_workflow_live__msp-enrichment-live',
+        toJSON(matrix)) }}
+      cancel-in-progress: ${{ false }}
+  native_workers_offline__pinned-sdk-imports:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        engine:
+        - openhands
+        - browser
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        ref: ${{ github.event.pull_request.head.sha || github.sha }}
+    - name: Build isolated pinned SDK image
+      run: docker build -f backend/native-workers/Dockerfile.${{ matrix.engine }} -t native-sdk:${{ matrix.engine }} backend
+    - name: Verify real SDK call surfaces without network or credentials
+      env:
+        ENGINE: ${{ matrix.engine }}
+      run: 'if [ "$ENGINE" = browser ]; then contract=browser_use; else contract=openhands; fi
+
+        docker run --rm --network none --read-only --cap-drop ALL --security-opt no-new-privileges --pids-limit 128 --memory
+        2g --tmpfs /tmp:rw,noexec,nosuid,size=128m --tmpfs /workspace:rw,nosuid,size=128m,uid=10001,gid=10001 -e HOME=/workspace
+        -e OTEL_SDK_DISABLED=true -e ANONYMIZED_TELEMETRY=false -e DO_NOT_TRACK=1 native-sdk:$ENGINE python /runner/sdk_contract.py
+        "$contract"
+
+        '
+    - name: Export the verified SDK image for execution certification
+      env:
+        ENGINE: ${{ matrix.engine }}
+      run: 'set -euo pipefail
+
+        docker image inspect native-sdk:$ENGINE --format ''{{.Id}}'' > "$RUNNER_TEMP/$ENGINE-image.id"
+
+        docker save native-sdk:$ENGINE | zstd -T0 -1 -o "$RUNNER_TEMP/$ENGINE-image.tar.zst"
+
+        '
+    - uses: actions/upload-artifact@v4
+      with:
+        name: native-sdk-image-${{ matrix.engine }}
+        path: '${{ runner.temp }}/${{ matrix.engine }}-image.tar.zst
+
+          ${{ runner.temp }}/${{ matrix.engine }}-image.id
+
+          '
+        compression-level: 0
+        retention-days: 1
+        if-no-files-found: error
+    name: pinned-sdk-imports
+    needs:
+    - dispatch_contract
+    if: ${{ always() && needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected),
+      'native-workers-offline') && ((!cancelled() && (true))) }}
+    permissions:
+      contents: read
+    concurrency:
+      group: ${{ format('candidate-{0}-{1}-{2}', format('native-workers-{0}', github.ref), 'native_workers_offline__pinned-sdk-imports',
+        toJSON(matrix)) }}
+      cancel-in-progress: ${{ true }}
+  native_workers_offline__playwright-comparison-image:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        ref: ${{ github.event.pull_request.head.sha || github.sha }}
+    - name: Build isolated comparison image (not production)
+      run: docker build -f backend/native-workers/Dockerfile.playwright-comparison -t native-playwright-comparison backend
+    - name: Verify pinned candidate dependencies and fail-closed imports
+      run: 'docker run --rm --network none --read-only --cap-drop ALL --security-opt no-new-privileges --pids-limit 128 --memory
+        2g --tmpfs /tmp:rw,noexec,nosuid,size=128m --tmpfs /workspace:rw,nosuid,size=128m,uid=10001,gid=10001 native-playwright-comparison
+        env PYTHONPATH=/runner python -c "import playwright.async_api, playwright_candidate; from playwright_candidate import
+        validate_url; assert validate_url(''https://www.selenium.dev/selenium/web/web-form.html'', [''www.selenium.dev''])"
+
+        '
+    name: playwright-comparison-image
+    needs:
+    - dispatch_contract
+    if: ${{ always() && needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected),
+      'native-workers-offline') && ((!cancelled() && (true))) }}
+    permissions:
+      contents: read
+    concurrency:
+      group: ${{ format('candidate-{0}-{1}-{2}', format('native-workers-{0}', github.ref), 'native_workers_offline__playwright-comparison-image',
+        toJSON(matrix)) }}
+      cancel-in-progress: ${{ true }}
+  native_workers_offline__gateway-image:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        ref: ${{ github.event.pull_request.head.sha || github.sha }}
+    - run: docker build -f backend/native-workers/Dockerfile.gateway -t native-gateway backend
+    name: gateway-image
+    needs:
+    - dispatch_contract
+    if: ${{ always() && needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected),
+      'native-workers-offline') && ((!cancelled() && (true))) }}
+    permissions:
+      contents: read
+    concurrency:
+      group: ${{ format('candidate-{0}-{1}-{2}', format('native-workers-{0}', github.ref), 'native_workers_offline__gateway-image',
+        toJSON(matrix)) }}
+      cancel-in-progress: ${{ true }}
+  native_workers_offline__runtime-certification:
+    needs:
+    - dispatch_contract
+    - native_workers_offline__pinned-sdk-imports
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        ref: ${{ github.event.pull_request.head.sha || github.sha }}
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+    - name: Install pinned verified gVisor runtime
+      run: 'curl --fail --location --silent --show-error https://github.com/google/gvisor/releases/download/release-20261026.0/gvisor-x86_64.tar.zstd
+        -o /tmp/gvisor.tar.zstd
+
+        echo ''708afc62f2ee82d19930c703e85f9dab4f27a78c0aec40c0f55eb1040107f1a7  /tmp/gvisor.tar.zstd'' | sha256sum --check
+
+        sudo tar --zstd -xf /tmp/gvisor.tar.zstd -C /usr/local/bin
+
+        sudo /usr/local/bin/runsc install
+
+        sudo systemctl reload docker
+
+        runsc --version
+
+        '
+    - uses: actions/download-artifact@v4
+      with:
+        pattern: native-sdk-image-*
+        merge-multiple: true
+        path: ${{ runner.temp }}/native-images
+    - name: Load exactly the images that passed SDK contracts
+      timeout-minutes: 5
+      run: "set -euo pipefail\nfor engine in openhands browser; do\n  zstd --decompress --stdout \"$RUNNER_TEMP/native-images/$engine-image.tar.zst\"\
+        \ | docker load\n  test \"$(docker image inspect native-sdk:$engine --format '{{.Id}}')\" = \"$(cat \"$RUNNER_TEMP/native-images/$engine-image.id\"\
+        )\"\n  docker tag native-sdk:$engine native-$engine\ndone\n"
+    - name: Build actual gateway runtime image
+      timeout-minutes: 3
+      run: docker build -f backend/native-workers/Dockerfile.gateway -t native-gateway backend
+    - name: Build isolated Playwright candidate for real gVisor negative controls
+      timeout-minutes: 12
+      run: docker build -f backend/native-workers/Dockerfile.playwright-comparison -t native-playwright-comparison backend
+    - name: Start immutable local certification registry
+      timeout-minutes: 3
+      run: docker run -d --name native-cert-registry -p 127.0.0.1:5050:5000 mirror.gcr.io/library/registry@sha256:a3d8aaa63ed8681a604f1dea0aa03f100d5895b6a58ace528858a7b332415373
+    - name: Install native coordinator and acceptance dependencies
+      run: python -m pip install -r backend/requirements-dev.txt
+    - name: Certify real isolated SDK execution and failure controls
+      env:
+        NATIVE_CERT_EVIDENCE: native-runtime-evidence.json
+        CERT_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+      run: python backend/native-workers/runtime_contract.py
+    - uses: actions/upload-artifact@v4
+      with:
+        name: native-runtime-certification
+        path: native-runtime-evidence.json
+        if-no-files-found: error
+    - name: Build paired browser adapter comparison image
+      id: browser-comparison-image
+      if: ${{ !cancelled() }}
+      timeout-minutes: 4
+      run: docker build -f backend/native-workers/Dockerfile.browser-benchmark -t native-browser-benchmark backend
+    - name: Compare real browser adapters in the same isolated Chromium image
+      if: ${{ !cancelled() && steps.browser-comparison-image.outcome == 'success' }}
+      timeout-minutes: 17
+      run: 'docker image inspect native-browser-benchmark --format ''{{.Id}}'' > browser-adapter-image.id
+
+        docker run --rm --runtime runsc --network none --read-only --cap-drop ALL --security-opt no-new-privileges --pids-limit
+        256 --memory 2g --cpus 2 --user 10001:10001 --tmpfs /tmp:rw,noexec,nosuid,size=128m,uid=10001,gid=10001 --tmpfs /workspace:rw,nosuid,size=128m,uid=10001,gid=10001
+        -e HOME=/workspace -e BENCHMARK_GIT_SHA="${{ github.event.pull_request.head.sha || github.sha }}" -e ANONYMIZED_TELEMETRY=false
+        -e DO_NOT_TRACK=1 -e OTEL_SDK_DISABLED=true native-browser-benchmark python /runner/browser_adapter_benchmark.py >
+        browser-adapter-evidence.json 2>/dev/null || { python -c "import json; d=json.load(open(''browser-adapter-evidence.json''));
+        print(json.dumps({''failures'':[{k:v for k,v in row.items() if k in (''adapter'',''trial'',''failure_class'',''failure_stage'',''evidence_changes'')}
+        for row in d[''rows''] if not row[''passed'']]},sort_keys=True))"; exit 1; }
+
+        '
+    - uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: browser-adapter-comparison
+        path: 'browser-adapter-evidence.json
+
+          browser-adapter-image.id
+
+          '
+        if-no-files-found: error
+    name: runtime-certification
+    if: ${{ always() && needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected),
+      'native-workers-offline') && ((!cancelled() && (needs.native_workers_offline__pinned-sdk-imports.result == 'success')))
+      }}
+    permissions:
+      contents: read
+    concurrency:
+      group: ${{ format('candidate-{0}-{1}-{2}', format('native-workers-{0}', github.ref), 'native_workers_offline__runtime-certification',
+        toJSON(matrix)) }}
+      cancel-in-progress: ${{ true }}
+  native_workers_offline__tenant-worker-certification:
+    name: Persisted tenant authorization and full worker lifecycle
+    if: ${{ always() && needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected),
+      'native-workers-offline') && (!cancelled() && (needs.native_workers_offline__pinned-sdk-imports.result == 'success')
+      && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)) }}
+    needs:
+    - dispatch_contract
+    - native_workers_offline__pinned-sdk-imports
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    environment: acceptance
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        ref: ${{ github.event.pull_request.head.sha || github.sha }}
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+        cache: pip
+        cache-dependency-path: backend/requirements-dev.txt
+    - name: Refuse absent or non-acceptance credentials
+      env:
+        E2E_SUPABASE_URL: ${{ secrets.E2E_SUPABASE_URL }}
+        E2E_SUPABASE_ALLOWED_URL: ${{ vars.E2E_SUPABASE_ALLOWED_URL }}
+        E2E_SUPABASE_ANON_KEY: ${{ secrets.E2E_SUPABASE_ANON_KEY }}
+        E2E_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.E2E_SUPABASE_SERVICE_ROLE_KEY }}
+        E2E_SUPABASE_JWT_SECRET: ${{ secrets.E2E_SUPABASE_JWT_SECRET }}
+      run: "python - <<'PY'\nimport json,os\nfrom pathlib import Path\nnames=('E2E_SUPABASE_URL','E2E_SUPABASE_ALLOWED_URL','E2E_SUPABASE_ANON_KEY','E2E_SUPABASE_SERVICE_ROLE_KEY','E2E_SUPABASE_JWT_SECRET')\n\
+        missing=[name for name in names if not os.environ.get(name)]\nallowed='https://aadnwmjzrmbvadszroqt.supabase.co'\n\
+        invalid_headers=[name for name in ('E2E_SUPABASE_ANON_KEY','E2E_SUPABASE_SERVICE_ROLE_KEY') if not os.environ.get(name,'').strip()\
+        \ or any(ord(c)<33 or ord(c)>126 for c in os.environ.get(name,'').strip())]\nvalid=not missing and not invalid_headers\
+        \ and os.environ['E2E_SUPABASE_URL'].rstrip('/')==allowed and os.environ['E2E_SUPABASE_ALLOWED_URL'].rstrip('/')==allowed\n\
+        if not valid:\n    Path('native-tenant-worker-evidence.json').write_text(json.dumps({'status':'BLOCKED','failure_stage':'acceptance_configuration','missing_names':missing,'invalid_header_names':invalid_headers})+'\\\
+        n')\n    raise SystemExit('Dedicated acceptance configuration required; no fallback to production')\nPY\n"
+    - name: Install real backend and process-test dependencies
+      run: python -m pip install -r backend/requirements-dev.txt
+    - name: Verify owned receiver and real process contracts
+      working-directory: backend
+      env:
+        APP_ENV: dev
+      run: python -m pytest -q tests/native_runtime/test_broker_process_contract.py tests/native_runtime/test_tenant_worker_contract.py
+    - name: Install pinned verified gVisor runtime
+      run: 'curl --fail --location --silent --show-error https://github.com/google/gvisor/releases/download/release-20261026.0/gvisor-x86_64.tar.zstd
+        -o /tmp/gvisor.tar.zstd
+
+        echo ''708afc62f2ee82d19930c703e85f9dab4f27a78c0aec40c0f55eb1040107f1a7  /tmp/gvisor.tar.zstd'' | sha256sum --check
+
+        sudo tar --zstd -xf /tmp/gvisor.tar.zstd -C /usr/local/bin
+
+        sudo /usr/local/bin/runsc install
+
+        sudo systemctl reload docker
+
+        runsc --version
+
+        '
+    - uses: actions/download-artifact@v4
+      with:
+        pattern: native-sdk-image-*
+        merge-multiple: true
+        path: ${{ runner.temp }}/native-images
+    - name: Load exactly the images that passed SDK contracts
+      timeout-minutes: 5
+      run: "set -euo pipefail\nfor engine in openhands browser; do\n  zstd --decompress --stdout \"$RUNNER_TEMP/native-images/$engine-image.tar.zst\"\
+        \ | docker load\n  test \"$(docker image inspect native-sdk:$engine --format '{{.Id}}')\" = \"$(cat \"$RUNNER_TEMP/native-images/$engine-image.id\"\
+        )\"\n  docker tag native-sdk:$engine native-$engine\ndone\n"
+    - name: Build scoped gateway and comparison images
+      run: 'docker build -f backend/native-workers/Dockerfile.gateway -t native-gateway backend
+
+        docker build -f backend/native-workers/Dockerfile.playwright-comparison -t native-playwright-comparison backend
+
+        '
+    - name: Start immutable local certification registry
+      run: docker run -d --name native-cert-registry -p 127.0.0.1:5050:5000 mirror.gcr.io/library/registry@sha256:a3d8aaa63ed8681a604f1dea0aa03f100d5895b6a58ace528858a7b332415373
+    - name: Execute both real workers through persisted acceptance IAM
+      timeout-minutes: 30
+      env:
+        E2E_SUPABASE_URL: ${{ secrets.E2E_SUPABASE_URL }}
+        E2E_SUPABASE_ALLOWED_URL: ${{ vars.E2E_SUPABASE_ALLOWED_URL }}
+        E2E_SUPABASE_ANON_KEY: ${{ secrets.E2E_SUPABASE_ANON_KEY }}
+        E2E_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.E2E_SUPABASE_SERVICE_ROLE_KEY }}
+        E2E_SUPABASE_JWT_SECRET: ${{ secrets.E2E_SUPABASE_JWT_SECRET }}
+        NATIVE_TENANT_EVIDENCE: native-tenant-worker-evidence.json
+        CERT_HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+      run: python backend/native-workers/tenant_worker_contract.py
+    - name: Preserve blocked evidence if setup did not reach execution
+      if: always()
+      run: "python - <<'PYCODE'\nimport json,os\nfrom pathlib import Path\ntarget=Path('native-tenant-worker-evidence.json')\n\
+        if not target.exists():\n    target.write_text(json.dumps({'schema_version':1,'git_sha':os.environ.get('GITHUB_SHA'),'status':'BLOCKED','failure_stage':'setup_or_contracts_did_not_reach_tenant_execution'})+'\\\
+        n')\nPYCODE\n"
+    - name: Publish sanitized tenant and lifecycle evidence
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: native-tenant-worker-certification
+        path: native-tenant-worker-evidence.json
+        if-no-files-found: error
+    permissions:
+      contents: read
+    concurrency:
+      group: ${{ format('candidate-{0}-{1}-{2}', format('native-workers-{0}', github.ref), 'native_workers_offline__tenant-worker-certification',
+        toJSON(matrix)) }}
+      cancel-in-progress: ${{ true }}
+  platform_cs_backfill__backfill-snapshots:
+    name: Backfill missing integration health snapshots
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+    - name: Trigger platform CS snapshot backfill
+      env:
+        INTERNAL_API_SECRET: ${{ secrets.INTERNAL_API_SECRET }}
+      run: "if [ -z \"$INTERNAL_API_SECRET\" ]; then\n  echo \"INTERNAL_API_SECRET secret is not set; add it in repo Settings\
+        \ \u2192 Secrets and variables \u2192 Actions.\" >&2\n  exit 1\nfi\nGRAVITRE_BACKEND=\"https://gravitre-saas-backend-production.up.railway.app\"\
+        \necho \"Triggering platform CS snapshot backfill at $(date -u)\"\nRESPONSE=$(curl -sf \\\n  --max-time 120 \\\n \
+        \ --retry 2 \\\n  --retry-delay 5 \\\n  -X POST \\\n  \"${GRAVITRE_BACKEND}/api/internal/platform/cs-workspace/snapshots/backfill-due?limit=50&lookbackDays=30\"\
+        \ \\\n  -H \"X-Internal-Secret: ${INTERNAL_API_SECRET}\" \\\n  -H \"Content-Type: application/json\" \\\n  -w \"\\\
+        nHTTP_STATUS:%{http_code}\")\nHTTP_STATUS=$(echo \"$RESPONSE\" | grep \"HTTP_STATUS\" | cut -d: -f2)\nBODY=$(echo\
+        \ \"$RESPONSE\" | grep -v \"HTTP_STATUS\")\necho \"Response: $BODY\"\necho \"HTTP Status: $HTTP_STATUS\"\nif [ \"\
+        $HTTP_STATUS\" != \"200\" ]; then\n  echo \"Platform CS snapshot backfill failed with status $HTTP_STATUS\"\n  exit\
+        \ 1\nfi\necho \"Platform CS snapshot backfill completed successfully\"\n"
+    needs:
+    - dispatch_contract
+    if: ${{ always() && needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected),
+      'platform-cs-backfill') && ((!cancelled() && (true))) }}
+    concurrency:
+      group: ${{ format('candidate-{0}-{1}-{2}', 'platform-cs-backfill', 'platform_cs_backfill__backfill-snapshots', toJSON(matrix))
+        }}
+      cancel-in-progress: ${{ false }}
+  probe_gmail_live_bugs_audit__probe:
+    name: Pull prod audit traces for Gmail bugs
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+        cache: pip
+        cache-dependency-path: backend/requirements.txt
+    - name: Install dependencies
+      working-directory: backend
+      run: 'python -m pip install --upgrade pip
+
+        pip install -r requirements-dev.txt
+
+        '
+    - name: Run Gmail live bugs audit probe
+      env:
+        SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+        SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        SUPABASE_JWT_SECRET: ${{ secrets.SUPABASE_JWT_SECRET }}
+        CONNECTOR_SECRETS_ENCRYPTION_KEY: ${{ secrets.CONNECTOR_SECRETS_ENCRYPTION_KEY }}
+        GMAIL_BUG_SINCE_HOURS: ${{ github.event.inputs.probe_gmail_live_bugs_audit__since_hours || '96' }}
+      run: "if [ -z \"$SUPABASE_URL\" ] || [ -z \"$SUPABASE_SERVICE_ROLE_KEY\" ]; then\n  echo \"Missing SUPABASE secrets\"\
+        \ >&2\n  exit 1\nfi\npython scripts/probe-gmail-live-bugs-audit.py\n"
+    - name: Upload audit artifact
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: gmail-live-bugs-audit
+        path: docs/delivery/gmail-live-bugs-audit.json
+        if-no-files-found: ignore
+    needs:
+    - dispatch_contract
+    if: ${{ always() && needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected),
+      'probe-gmail-live-bugs-audit') && ((!cancelled() && (true))) }}
+    concurrency:
+      group: ${{ format('candidate-{0}-{1}-{2}', 'probe-gmail-live-bugs-audit', 'probe_gmail_live_bugs_audit__probe', toJSON(matrix))
+        }}
+      cancel-in-progress: ${{ false }}
+  smoke_conversation_pollution_cleanup__cleanup:
+    name: Soft-delete probe/smoke conversation rows
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+    - name: Install script dependencies
+      run: pip install python-dotenv supabase
+    - name: Run cleanup
+      env:
+        SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+        SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      run: "set -euo pipefail\nif [ -z \"$SUPABASE_URL\" ] || [ -z \"$SUPABASE_SERVICE_ROLE_KEY\" ]; then\n  echo \"Missing\
+        \ SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY in repo Actions secrets.\" >&2\n  exit 1\nfi\nAPPLY=\"${{ github.event_name\
+        \ == 'workflow_dispatch' && inputs.smoke_conversation_pollution_cleanup__apply || 'true' }}\"\nif [ \"$APPLY\" = \"\
+        true\" ]; then\n  python3 scripts/cleanup-smoke-conversation-pollution.py --apply\nelse\n  python3 scripts/cleanup-smoke-conversation-pollution.py\n\
+        fi\n"
+    - name: Upload cleanup report
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: smoke-conversation-pollution-cleanup
+        path: docs/delivery/smoke-conversation-pollution-cleanup.json
+        if-no-files-found: ignore
+    needs:
+    - dispatch_contract
+    if: ${{ always() && needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected),
+      'smoke-conversation-pollution-cleanup') && ((!cancelled() && (true))) }}
+    concurrency:
+      group: ${{ format('candidate-{0}-{1}-{2}', 'smoke-conversation-pollution-cleanup', 'smoke_conversation_pollution_cleanup__cleanup',
+        toJSON(matrix)) }}
+      cancel-in-progress: ${{ false }}
+  unified_turn_ops_gates__ops-gates:
+    name: Fallthrough alert and R2 gate tracker
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+    - name: Install deps
+      run: pip install python-dotenv supabase
+    - name: Fallthrough threshold alert
+      continue-on-error: true
+      env:
+        SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+        SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      run: python scripts/check-unified-turn-fallthrough-alert.py
+    - name: R2 pipeline removal gate tracker
+      env:
+        SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+        SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      run: python scripts/check-r2-pipeline-removal-gates.py
+    - name: Lambda-closure risk grep
+      run: python scripts/check-lambda-closure-risk.py
+    - name: Upload ops gate reports
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: unified-turn-ops-gates
+        path: 'docs/delivery/unified-turn-fallthrough-alert-latest.json
+
+          docs/delivery/r2-pipeline-removal-gates-latest.json
+
+          docs/delivery/lambda-closure-risk-grep.json
+
+          '
+        if-no-files-found: ignore
+    needs:
+    - dispatch_contract
+    if: ${{ always() && needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected),
+      'unified-turn-ops-gates') && ((!cancelled() && (true))) }}
+    concurrency:
+      group: ${{ format('candidate-{0}-{1}-{2}', 'unified-turn-ops-gates', 'unified_turn_ops_gates__ops-gates', toJSON(matrix))
+        }}
+      cancel-in-progress: ${{ false }}
+  usage_sync__sync-usage:
+    name: Sync AI usage to Stripe
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+    - name: Trigger usage sync
+      env:
+        INTERNAL_API_SECRET: ${{ secrets.INTERNAL_API_SECRET }}
+      run: "if [ -z \"$INTERNAL_API_SECRET\" ]; then\n  echo \"INTERNAL_API_SECRET secret is not set; add it in repo Settings\
+        \ \u2192 Secrets and variables \u2192 Actions.\" >&2\n  exit 1\nfi\nGRAVITRE_BACKEND=\"https://gravitre-saas-backend-production.up.railway.app\"\
+        \necho \"Triggering usage sync at $(date -u)\"\nRESPONSE=$(curl -sf \\\n  --max-time 30 \\\n  --retry 2 \\\n  --retry-delay\
+        \ 5 \\\n  -X POST \\\n  \"${GRAVITRE_BACKEND}/api/internal/billing/sync-usage\" \\\n  -H \"X-Internal-Secret: ${INTERNAL_API_SECRET}\"\
+        \ \\\n  -H \"Content-Type: application/json\" \\\n  -w \"\\nHTTP_STATUS:%{http_code}\")\nHTTP_STATUS=$(echo \"$RESPONSE\"\
+        \ | grep \"HTTP_STATUS\" | cut -d: -f2)\nBODY=$(echo \"$RESPONSE\" | grep -v \"HTTP_STATUS\")\necho \"Response: $BODY\"\
+        \necho \"HTTP Status: $HTTP_STATUS\"\nif [ \"$HTTP_STATUS\" != \"200\" ]; then\n  echo \"Sync failed with status $HTTP_STATUS\"\
+        \n  exit 1\nfi\necho \"Sync completed successfully\"\n"
+    needs:
+    - dispatch_contract
+    if: ${{ always() && needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected),
+      'usage-sync') && ((!cancelled() && (true))) }}
+    concurrency:
+      group: ${{ format('candidate-{0}-{1}-{2}', 'usage-sync', 'usage_sync__sync-usage', toJSON(matrix)) }}
+      cancel-in-progress: ${{ false }}
+  workflow_schedules__dispatch-due:
+    name: Dispatch due workflow schedules
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+    - name: Trigger workflow schedule dispatch
+      env:
+        INTERNAL_API_SECRET: ${{ secrets.INTERNAL_API_SECRET }}
+      run: "if [ -z \"$INTERNAL_API_SECRET\" ]; then\n  echo \"INTERNAL_API_SECRET secret is not set; add it in repo Settings\
+        \ \u2192 Secrets and variables \u2192 Actions.\" >&2\n  exit 1\nfi\nGRAVITRE_BACKEND=\"https://gravitre-saas-backend-production.up.railway.app\"\
+        \necho \"Triggering workflow schedule dispatch at $(date -u)\"\nRESPONSE=$(curl -sf \\\n  --max-time 120 \\\n  --retry\
+        \ 2 \\\n  --retry-delay 5 \\\n  -X POST \\\n  \"${GRAVITRE_BACKEND}/api/internal/workflows/schedules/dispatch-due\"\
+        \ \\\n  -H \"X-Internal-Secret: ${INTERNAL_API_SECRET}\" \\\n  -H \"Content-Type: application/json\" \\\n  -w \"\\\
+        nHTTP_STATUS:%{http_code}\")\nHTTP_STATUS=$(echo \"$RESPONSE\" | grep \"HTTP_STATUS\" | cut -d: -f2)\nBODY=$(echo\
+        \ \"$RESPONSE\" | grep -v \"HTTP_STATUS\")\necho \"Response: $BODY\"\necho \"HTTP Status: $HTTP_STATUS\"\nif [ \"\
+        $HTTP_STATUS\" != \"200\" ]; then\n  echo \"Workflow schedule dispatch failed with status $HTTP_STATUS\"\n  exit 1\n\
+        fi\necho \"Workflow schedule dispatch completed successfully\"\n"
+    needs:
+    - dispatch_contract
+    if: ${{ always() && needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected),
+      'workflow-schedules') && ((!cancelled() && (true))) }}
+    concurrency:
+      group: ${{ format('candidate-{0}-{1}-{2}', 'workflow-schedules', 'workflow_schedules__dispatch-due', toJSON(matrix))
+        }}
+      cancel-in-progress: ${{ false }}
+  source_outcomes:
+    name: Record independent source workflow outcomes
+    if: ${{ always() && needs.dispatch_contract.result == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    permissions: {}
+    needs:
+    - upstream_contract
+    - dispatch_contract
+    - chat_history_hygiene_live__verify
+    - connector_health__connector-health
+    - knowledge_sync__sync-due
+    - metrics_rollup__rollup-daily
+    - msp_enrichment_workflow_live__msp-enrichment-live
+    - native_workers_offline__pinned-sdk-imports
+    - native_workers_offline__playwright-comparison-image
+    - native_workers_offline__gateway-image
+    - native_workers_offline__runtime-certification
+    - native_workers_offline__tenant-worker-certification
+    - platform_cs_backfill__backfill-snapshots
+    - probe_gmail_live_bugs_audit__probe
+    - smoke_conversation_pollution_cleanup__cleanup
+    - unified_turn_ops_gates__ops-gates
+    - usage_sync__sync-usage
+    - workflow_schedules__dispatch-due
+    steps:
+    - name: Bind source outcomes to this run
+      shell: python
+      run: "import json, os\nsources = json.loads(os.environ['SOURCE_JOBS'])\nneeds = json.loads(os.environ['JOB_RESULTS'])\n\
+        selected = json.loads(os.environ['SELECTED'])\noutcomes = {}\nfor name, source in sources.items():\n    if name not\
+        \ in selected:\n        continue\n    results = [needs[key]['result'] for key in source['jobs']]\n    outcome = ('failure'\
+        \ if 'failure' in results else 'cancelled' if 'cancelled' in results\n               else 'success' if 'success' in\
+        \ results else 'skipped')\n    outcomes[source['display_name']] = outcome\nevidence = {'run_id': int(os.environ['GITHUB_RUN_ID']),\
+        \ 'head_sha': os.environ['GITHUB_SHA'],\n            'source_outcomes': outcomes}\nwith open('canonical-workflow-outcomes.json',\
+        \ 'w') as output:\n    json.dump(evidence, output)\n"
+      env:
+        SOURCE_JOBS: '{"chat-history-hygiene-live": {"display_name": "Chat history hygiene live", "jobs": ["chat_history_hygiene_live__verify"]},
+          "connector-health": {"display_name": "Connector Health", "jobs": ["connector_health__connector-health"]}, "knowledge-sync":
+          {"display_name": "Knowledge Sync", "jobs": ["knowledge_sync__sync-due"]}, "metrics-rollup": {"display_name": "Metrics
+          Rollup", "jobs": ["metrics_rollup__rollup-daily"]}, "msp-enrichment-workflow-live": {"display_name": "MSP Enrichment
+          Workflow Live", "jobs": ["msp_enrichment_workflow_live__msp-enrichment-live"]}, "native-workers-offline": {"display_name":
+          "Native worker image contracts", "jobs": ["native_workers_offline__pinned-sdk-imports", "native_workers_offline__playwright-comparison-image",
+          "native_workers_offline__gateway-image", "native_workers_offline__runtime-certification", "native_workers_offline__tenant-worker-certification"]},
+          "platform-cs-backfill": {"display_name": "Platform CS Snapshot Backfill", "jobs": ["platform_cs_backfill__backfill-snapshots"]},
+          "probe-gmail-live-bugs-audit": {"display_name": "Probe Gmail Live Bugs Audit", "jobs": ["probe_gmail_live_bugs_audit__probe"]},
+          "smoke-conversation-pollution-cleanup": {"display_name": "Smoke conversation pollution cleanup", "jobs": ["smoke_conversation_pollution_cleanup__cleanup"]},
+          "unified-turn-ops-gates": {"display_name": "Unified turn ops gates", "jobs": ["unified_turn_ops_gates__ops-gates"]},
+          "usage-sync": {"display_name": "Usage Sync", "jobs": ["usage_sync__sync-usage"]}, "workflow-schedules": {"display_name":
+          "Workflow Schedules", "jobs": ["workflow_schedules__dispatch-due"]}}'
+        JOB_RESULTS: '{"chat_history_hygiene_live__verify": {"result": "${{ needs.chat_history_hygiene_live__verify.result
+          }}"}, "connector_health__connector-health": {"result": "${{ needs.connector_health__connector-health.result }}"},
+          "knowledge_sync__sync-due": {"result": "${{ needs.knowledge_sync__sync-due.result }}"}, "metrics_rollup__rollup-daily":
+          {"result": "${{ needs.metrics_rollup__rollup-daily.result }}"}, "msp_enrichment_workflow_live__msp-enrichment-live":
+          {"result": "${{ needs.msp_enrichment_workflow_live__msp-enrichment-live.result }}"}, "native_workers_offline__pinned-sdk-imports":
+          {"result": "${{ needs.native_workers_offline__pinned-sdk-imports.result }}"}, "native_workers_offline__playwright-comparison-image":
+          {"result": "${{ needs.native_workers_offline__playwright-comparison-image.result }}"}, "native_workers_offline__gateway-image":
+          {"result": "${{ needs.native_workers_offline__gateway-image.result }}"}, "native_workers_offline__runtime-certification":
+          {"result": "${{ needs.native_workers_offline__runtime-certification.result }}"}, "native_workers_offline__tenant-worker-certification":
+          {"result": "${{ needs.native_workers_offline__tenant-worker-certification.result }}"}, "platform_cs_backfill__backfill-snapshots":
+          {"result": "${{ needs.platform_cs_backfill__backfill-snapshots.result }}"}, "probe_gmail_live_bugs_audit__probe":
+          {"result": "${{ needs.probe_gmail_live_bugs_audit__probe.result }}"}, "smoke_conversation_pollution_cleanup__cleanup":
+          {"result": "${{ needs.smoke_conversation_pollution_cleanup__cleanup.result }}"}, "unified_turn_ops_gates__ops-gates":
+          {"result": "${{ needs.unified_turn_ops_gates__ops-gates.result }}"}, "usage_sync__sync-usage": {"result": "${{ needs.usage_sync__sync-usage.result
+          }}"}, "workflow_schedules__dispatch-due": {"result": "${{ needs.workflow_schedules__dispatch-due.result }}"}}'
+        SELECTED: ${{ needs.dispatch_contract.outputs.selected }}
+    - uses: actions/upload-artifact@v4
+      with:
+        name: canonical-workflow-outcomes-10-operations
+        path: canonical-workflow-outcomes.json
+        if-no-files-found: error
+        retention-days: 14

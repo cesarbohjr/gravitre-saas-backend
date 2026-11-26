@@ -28,6 +28,35 @@ USER = "22222222-2222-4222-8222-222222222222"
 pytestmark = requires_pg
 
 
+def test_telemetry_failure_after_sql_effect_does_not_redeliver(pg, monkeypatch):
+    """Real relay/SQL settlement; an unavailable evidence sink is advisory."""
+    from app.services import domain_events as events
+    from app.services import runtime_execution_edge_telemetry as telemetry
+
+    monkeypatch.setenv("PR605_EXECUTION_EDGE_TELEMETRY_ENABLED", "true")
+    monkeypatch.setenv("PR605_EXECUTION_EDGE_HMAC_KEY", "isolated-correlation-key-" * 3)
+    def sink(message, *args):
+        if "completed" in args:
+            raise RuntimeError("log sink unavailable after commit")
+    monkeypatch.setattr(telemetry.logger, "info", sink)
+    run_id = _new_run(pg)
+    pg.psql(f"UPDATE public.workflow_runs SET status='completed' WHERE id='{run_id}'")
+    pg.psql("CREATE TABLE qa_sink_failure_effects (event_id bigint PRIMARY KEY)")
+    def consume(_client, event):
+        pg.psql(f"INSERT INTO qa_sink_failure_effects VALUES ({int(event['id'])})")
+    events.reset_domain_event_handlers_for_tests()
+    events.register_domain_event_handler(events.EVENT_EXECUTION_OUTCOME_FINALIZED, "sql-effect", consume)
+    try:
+        first = events.DomainEventRelay(_PsqlRpcClient(pg), worker_id="first").run_once()
+        second = events.DomainEventRelay(_PsqlRpcClient(pg), worker_id="restarted").run_once()
+    finally:
+        events.reset_domain_event_handlers_for_tests()
+    assert first.delivered == 1 and first.retried == 0
+    assert second.claimed == 0
+    assert pg.value("SELECT count(*) FROM qa_sink_failure_effects") == "1"
+    assert pg.value("SELECT status FROM public.domain_event_outbox") == "delivered"
+
+
 BOOTSTRAP_SQL = f"""
 CREATE ROLE anon NOLOGIN;
 CREATE ROLE authenticated NOLOGIN;

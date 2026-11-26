@@ -59,6 +59,7 @@ const ALLOWED_DUAL_READ = new Set([
   "apps/web/lib/connectors.ts",
   "apps/web/__tests__/lib/connectors-hub-visibility.test.ts",
   ".github/workflows/ci.yml",
+  ".github/workflows/qa-01-core.yml",
   "scripts/smoke-phase4-cisa-sec-followons-live.py",
 ])
 

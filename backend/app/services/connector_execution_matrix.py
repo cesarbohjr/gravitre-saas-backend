@@ -32,10 +32,13 @@ def registry_keyed_cache(fn: Callable[[], _T]) -> Callable[[], _T]:
     reference and compared with ``is`` so a recycled ``id()`` can never alias.
     """
     lock = threading.RLock()
-    # One immutable (registry_obj, registry_len, partner_len, value) tuple, swapped atomically.
-    state: list[tuple[object, int, int, Any] | None] = [None]
+    # Immutable registry-key snapshots detect one-for-one action substitutions.
+    # Object identity also catches a replaced (e.g. monkeypatched) registry.
+    state: list[tuple[object, frozenset[str], frozenset[str], Any] | None] = [None]
 
-    def _hit(fingerprint: tuple[object, int, int]) -> tuple[object, int, int, Any] | None:
+    def _hit(
+        fingerprint: tuple[object, frozenset[str], frozenset[str]],
+    ) -> tuple[object, frozenset[str], frozenset[str], Any] | None:
         cached = state[0]
         if cached is not None and cached[0] is fingerprint[0] and cached[1:3] == fingerprint[1:]:
             return cached
@@ -287,12 +290,16 @@ def chat_executable_entries(
     *,
     connected_integrations: list[str] | None = None,
 ) -> list[ConnectorActionMatrixEntry]:
-    connected = {c.lower() for c in (connected_integrations or [])}
+    # None means catalog/discovery mode (unfiltered); an explicitly empty
+    # set means no connectors are connected and MUST return no executable tools.
+    # Do not accidentally treat [] as public access to the entire matrix.
+    filter_to_connected = connected_integrations is not None
+    connected = {str(c).strip().lower() for c in (connected_integrations or []) if str(c).strip()}
     result: list[ConnectorActionMatrixEntry] = []
     for entry in build_connector_execution_matrix():
         if not entry.chat_executable:
             continue
-        if connected and entry.connector_id not in connected:
+        if filter_to_connected and entry.connector_id.lower() not in connected:
             continue
         result.append(entry)
     return result

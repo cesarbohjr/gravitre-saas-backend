@@ -10,6 +10,7 @@ from app.core.logging import get_logger
 from app.services.consensus_personas import CHAT_CONSENSUS_PERSONAS, build_agent_defs
 from app.services.council_service import AgentCouncilService, DecisionMethod
 from app.services.chat_dialogue_settings import load_chat_dialogue_settings
+from app.services.confidence_honesty import CONFIDENCE_SOURCE_MODEL, label_confidence
 from app.workflows.repository import get_supabase_client
 
 logger = get_logger(__name__)
@@ -70,6 +71,11 @@ class ConversationalConsensusService:
                 ),
                 timeout=self.CONSENSUS_TIMEOUT_SECONDS,
             )
+            # Synthetic/default council votes are not independent model review.
+            # Missing provenance is also unverified and cannot refine the answer.
+            if consensus.get("independent_review_available") is not True:
+                return {"response": primary_response, "consensus_used": False,
+                        "note": "independent_review_unavailable"}
             refined = str(consensus.get("consensus_recommendation") or primary_response)
             summary = str(consensus.get("consensus_explanation") or "")
             if summary and summary not in refined:
@@ -120,13 +126,29 @@ class ConversationalConsensusService:
             }
             for op in session.dissenting_opinions
         ]
+        # Council fallback votes and missing provenance are not independent
+        # assessments. Require two distinct model-backed reviewers; the
+        # displayed score is still an estimate, never outcome-verified.
+        rounds = getattr(session, "debate_rounds", None) or []
+        opinions = next((round_.get("opinions", []) for round_ in reversed(rounds)
+                         if isinstance(round_, dict) and round_.get("opinions")), [])
+        reviewers = {
+            opinion.get("agent_name") for opinion in opinions
+            if isinstance(opinion, dict)
+            and opinion.get("confidence_source") == CONFIDENCE_SOURCE_MODEL
+            and opinion.get("agent_name")
+        }
+        verified_review = (len(reviewers) >= 2 and bool(opinions)
+                           and all(isinstance(op, dict)
+                                   and op.get("confidence_source") == CONFIDENCE_SOURCE_MODEL
+                                   for op in opinions))
         result = {
-            "consensus_recommendation": session.final_recommendation,
-            "confidence": session.final_confidence,
+            "consensus_recommendation": session.final_recommendation if verified_review else recommendation,
+            **label_confidence(session.final_confidence if verified_review else None,
+                               source=CONFIDENCE_SOURCE_MODEL, is_estimate=True),
+            "independent_review_available": verified_review,
             "minority_opinions": minority,
-            "consensus_explanation": (
-                f"Independent review reached {session.final_confidence:.0%} confidence."
-            ),
+            "consensus_explanation": "A second review was completed." if verified_review else "",
         }
         await self._persist_deliberation(org_id, recommendation, result)
         return result
@@ -148,6 +170,9 @@ class ConversationalConsensusService:
                     "metadata": {
                         "source": "conversational_consensus_service",
                         "advisory_only": True,
+                        "independent_review_available": payload.get("independent_review_available", False),
+                        "confidence_source": payload.get("confidence_source"),
+                        "confidence_is_estimate": payload.get("confidence_is_estimate"),
                     },
                 }
             ).execute()

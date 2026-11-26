@@ -1,0 +1,210 @@
+# STAGED: not installed in .github/workflows; automatic trigger cutover pending.
+name: QA 08-billing-marketplace
+'on':
+  workflow_dispatch:
+    inputs:
+      source:
+        description: Original workflow contract to execute
+        required: true
+        type: choice
+        options:
+        - live-signup-billing-http
+        - marketplace-production-smoke
+        - run-acceptance-billing
+        default: live-signup-billing-http
+      marketplace_production_smoke__reason:
+        description: 'marketplace-production-smoke: Reason for manual trigger'
+        required: false
+  push:
+    branches:
+    - main
+  schedule:
+  - cron: 30 4 * * *
+concurrency:
+  group: ${{ format('candidate-{0}', (inputs.source == 'marketplace-production-smoke' && ('marketplace-production-smoke'))
+    || github.run_id) }}
+  cancel-in-progress: ${{ (inputs.source == 'marketplace-production-smoke' && (false)) || false }}
+jobs:
+  upstream_contract:
+    name: Read trusted upstream outcome metadata
+    if: ${{ github.event_name == 'workflow_run' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    permissions:
+      contents: read
+      actions: read
+    outputs:
+      evidence: ${{ steps.upstream.outputs.evidence }}
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        ref: ${{ github.sha }}
+        persist-credentials: false
+    - id: upstream
+      run: python scripts/route-workflow-event.py --lane 08-billing-marketplace --fetch-upstream
+      env:
+        GITHUB_TOKEN: ${{ github.token }}
+  dispatch_contract:
+    name: Validate selected source inputs
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    timeout-minutes: 4
+    needs:
+    - upstream_contract
+    if: ${{ always() && (needs.upstream_contract.result == 'success' || needs.upstream_contract.result == 'skipped') }}
+    outputs:
+      selected: ${{ steps.contract.outputs.selected }}
+      derived: ${{ steps.contract.outputs.derived }}
+      context_conclusions: ${{ steps.contract.outputs.context_conclusions }}
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        persist-credentials: false
+        fetch-depth: 0
+    - id: contract
+      name: Validate source contract
+      shell: python
+      env:
+        SOURCE_SCHEMAS: '{"live-signup-billing-http": {}, "marketplace-production-smoke": {"reason": {"description": "Reason
+          for manual trigger", "required": false}}, "run-acceptance-billing": {}}'
+        MANUAL_SOURCES: '["live-signup-billing-http", "marketplace-production-smoke", "run-acceptance-billing"]'
+        DISPATCH_VALUES: ${{ toJSON(inputs) }}
+        EVENT_NAME: ${{ github.event_name }}
+        CANONICAL_LANE: 08-billing-marketplace
+        UPSTREAM_EVIDENCE: ${{ needs.upstream_contract.outputs.evidence }}
+      run: "import json, os\nschemas = json.loads(os.environ['SOURCE_SCHEMAS'])\nvalues = json.loads(os.environ['DISPATCH_VALUES'])\n\
+        event_name = os.environ['EVENT_NAME']\ncalled = values.get('_reusable', False)\nif not called and event_name not in\
+        \ ('workflow_dispatch', 'workflow_call'):\n    import subprocess\n    subprocess.run(['python', 'scripts/route-workflow-event.py',\
+        \ '--lane', os.environ['CANONICAL_LANE']], check=True)\n    raise SystemExit(0)\nsource = values.get('source')\nif\
+        \ source not in schemas:\n    raise SystemExit('Unknown source workflow')\nif not called and event_name == 'workflow_dispatch'\
+        \ and source not in json.loads(os.environ['MANUAL_SOURCES']):\n    raise SystemExit('Source has no manual trigger')\n\
+        if called and source != 'isolated-acceptance':\n    raise SystemExit('Unsupported reusable source')\nfor key, config\
+        \ in schemas[source].items():\n    value = values.get(source.replace('-', '_') + '__' + key)\n    if called and key\
+        \ == 'suite':\n        value = values.get('suite')\n    if config.get('required') and (value is None or value == ''):\n\
+        \        raise SystemExit('Required selected-source input missing: ' + key)\nprint('Selected source input contract\
+        \ validated; this is not execution acceptance')\nwith open(os.environ['GITHUB_OUTPUT'], 'a') as output:\n    output.write('selected='\
+        \ + json.dumps([source]) + '\\n')\n    output.write('derived=[]\\ncontext_conclusions={}\\n')\n"
+  live_signup_billing_http__production-billing-boundaries:
+    runs-on: ubuntu-latest
+    environment: production
+    timeout-minutes: 8
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+    - run: pip install "PyJWT>=2.8,<3" "supabase>=2,<3"
+    - name: Mint isolated actor
+      env:
+        SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+        SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        SUPABASE_JWT_SECRET: ${{ secrets.SUPABASE_JWT_SECRET }}
+      run: python scripts/mint_smoke_org_session.py --github-env
+    - name: Validate live public and tenant billing boundaries
+      run: python scripts/verify_live_signup_billing_http.py
+    - uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: live-signup-billing-http-evidence
+        path: docs/delivery/live-signup-billing-http-acceptance.json
+        if-no-files-found: ignore
+    name: production-billing-boundaries
+    needs:
+    - dispatch_contract
+    if: ${{ always() && needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected),
+      'live-signup-billing-http') && ((!cancelled() && (true))) }}
+    permissions:
+      contents: read
+  marketplace_production_smoke__marketplace-smoke:
+    name: Marketplace API smoke (STA-229 / STA-239)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-python@v5
+      with:
+        python-version: '3.12'
+        cache: pip
+        cache-dependency-path: backend/requirements.txt
+    - name: Install dependencies
+      working-directory: backend
+      run: 'python -m pip install --upgrade pip
+
+        pip install -r requirements-dev.txt
+
+        '
+    - name: Run marketplace production smoke
+      env:
+        BACKEND_URL: https://gravitre-saas-backend-production.up.railway.app
+        SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+        SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        SUPABASE_JWT_SECRET: ${{ secrets.SUPABASE_JWT_SECRET }}
+      run: "if [ -z \"$SUPABASE_URL\" ] || [ -z \"$SUPABASE_SERVICE_ROLE_KEY\" ] || [ -z \"$SUPABASE_JWT_SECRET\" ]; then\n\
+        \  echo \"Set SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, and SUPABASE_JWT_SECRET in repo Actions secrets.\" >&2\n  exit\
+        \ 1\nfi\npython scripts/smoke-marketplace-production.py \\\n  --json docs/delivery/smoke-marketplace-production-latest.json\n"
+    - name: Upload smoke report
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: smoke-marketplace-production
+        path: docs/delivery/smoke-marketplace-production-latest.json
+        if-no-files-found: ignore
+    needs:
+    - dispatch_contract
+    if: ${{ always() && needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected),
+      'marketplace-production-smoke') && ((!cancelled() && (true))) }}
+    concurrency:
+      group: ${{ format('candidate-{0}-{1}-{2}', 'marketplace-production-smoke', 'marketplace_production_smoke__marketplace-smoke',
+        toJSON(matrix)) }}
+      cancel-in-progress: ${{ false }}
+  run_acceptance_billing__billing:
+    name: Dedicated acceptance-project billing suite
+    uses: ./.github/workflows/qa-12-independent-acceptance.yml
+    with:
+      suite: billing
+    secrets: inherit
+    needs:
+    - dispatch_contract
+    if: ${{ always() && needs.dispatch_contract.result == 'success' && contains(fromJSON(needs.dispatch_contract.outputs.selected),
+      'run-acceptance-billing') && ((!cancelled() && (true))) }}
+    permissions:
+      contents: read
+      actions: read
+      pull-requests: read
+  source_outcomes:
+    name: Record independent source workflow outcomes
+    if: ${{ always() && needs.dispatch_contract.result == 'success' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    permissions: {}
+    needs:
+    - upstream_contract
+    - dispatch_contract
+    - live_signup_billing_http__production-billing-boundaries
+    - marketplace_production_smoke__marketplace-smoke
+    - run_acceptance_billing__billing
+    steps:
+    - name: Bind source outcomes to this run
+      shell: python
+      run: "import json, os\nsources = json.loads(os.environ['SOURCE_JOBS'])\nneeds = json.loads(os.environ['JOB_RESULTS'])\n\
+        selected = json.loads(os.environ['SELECTED'])\noutcomes = {}\nfor name, source in sources.items():\n    if name not\
+        \ in selected:\n        continue\n    results = [needs[key]['result'] for key in source['jobs']]\n    outcome = ('failure'\
+        \ if 'failure' in results else 'cancelled' if 'cancelled' in results\n               else 'success' if 'success' in\
+        \ results else 'skipped')\n    outcomes[source['display_name']] = outcome\nevidence = {'run_id': int(os.environ['GITHUB_RUN_ID']),\
+        \ 'head_sha': os.environ['GITHUB_SHA'],\n            'source_outcomes': outcomes}\nwith open('canonical-workflow-outcomes.json',\
+        \ 'w') as output:\n    json.dump(evidence, output)\n"
+      env:
+        SOURCE_JOBS: '{"live-signup-billing-http": {"display_name": "Live Signup and Billing HTTP Acceptance", "jobs": ["live_signup_billing_http__production-billing-boundaries"]},
+          "marketplace-production-smoke": {"display_name": "Marketplace Production Smoke", "jobs": ["marketplace_production_smoke__marketplace-smoke"]},
+          "run-acceptance-billing": {"display_name": "Run isolated billing Playwright acceptance", "jobs": ["run_acceptance_billing__billing"]}}'
+        JOB_RESULTS: '{"live_signup_billing_http__production-billing-boundaries": {"result": "${{ needs.live_signup_billing_http__production-billing-boundaries.result
+          }}"}, "marketplace_production_smoke__marketplace-smoke": {"result": "${{ needs.marketplace_production_smoke__marketplace-smoke.result
+          }}"}, "run_acceptance_billing__billing": {"result": "${{ needs.run_acceptance_billing__billing.result }}"}}'
+        SELECTED: ${{ needs.dispatch_contract.outputs.selected }}
+    - uses: actions/upload-artifact@v4
+      with:
+        name: canonical-workflow-outcomes-08-billing-marketplace
+        path: canonical-workflow-outcomes.json
+        if-no-files-found: error
+        retention-days: 14

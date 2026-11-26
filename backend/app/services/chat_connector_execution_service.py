@@ -258,6 +258,68 @@ READ_ACTION_HINTS = frozenset(
 )
 
 
+def _bind_approved_write_connector(
+    ctx: ToolContext,
+    *,
+    client: Any,
+    org_id: str,
+    environment_name: str,
+    integration: str,
+    args: dict[str, Any],
+) -> ToolContext:
+    """Bind the provider account selected by a verified native/catalog executor.
+
+    Only enable vendors whose actual executor uses this same tenant-scoped
+    connector repository lookup. Other vendors remain subject to the
+    fail-closed recovery-binding gate until their account selection is traced.
+    This does not create a second connector-selection or credential system.
+    """
+    from app.connectors.repository import get_connector, get_connector_by_type
+    from app.services.tool_types import ToolConnectorNotConnectedError
+
+    connector_types = {
+        "hubspot": "hubspot",  # _hubspot_connector_and_token
+        "gmail": "gmail",      # _google_vendor_token
+        "asana": "asana",      # catalog_http.executor profile
+    }
+    provider = str(integration or "").strip().lower()
+    connector_type = connector_types.get(provider)
+    if connector_type is None:
+        return ctx  # Never infer identity for an unverified executor family.
+
+    explicit_id = str(args.get("connector_id") or "").strip()
+    selected = (
+        get_connector(client, org_id, explicit_id, environment_name=environment_name)
+        if explicit_id else
+        get_connector_by_type(client, org_id, connector_type, environment_name=environment_name)
+    )
+    if not isinstance(selected, dict) or not selected.get("id"):
+        raise ToolConnectorNotConnectedError(
+            f"No tenant-owned {provider} connection is available for this approved write"
+        )
+    selected_vendor = str(selected.get("vendor") or "").strip().lower()
+    selected_type = str(selected.get("type") or "").strip().lower()
+    if (selected_vendor and selected_vendor != provider) or (
+        not selected_vendor and selected_type != connector_type
+    ):
+        raise ToolConnectorNotConnectedError(
+            f"Approved connector does not belong to the {provider} provider"
+        )
+    if selected.get("org_id") and str(selected["org_id"]) != str(org_id):
+        raise ToolConnectorNotConnectedError("Connector tenant mismatch")
+    # An explicit connector row can exist before OAuth has been completed.
+    # The provider's live auth/scopes are still enforced at execution; this
+    # pre-claim check only rejects statuses that unambiguously forbid dispatch.
+    row_status = str(selected.get("status") or "").strip().lower()
+    if row_status in {
+        "needs_connection", "pending_auth", "pending", "disconnected",
+        "inactive", "disabled", "revoked",
+    }:
+        raise ToolConnectorNotConnectedError(
+            f"Selected {provider} account is not connected"
+        )
+    return replace(ctx, connector_id=str(selected["id"]))
+
 class ChatConnectorExecutionService:
     """Maps chat requests to cataloged connector tools with governed execution."""
 
@@ -1441,6 +1503,7 @@ class ChatConnectorExecutionService:
                 conversation_id=conversation_id,
                 plan=plan,
                 result=failed,
+                environment_name=environment_name,
             )
             return self._turn_from_execution(failed, task_state, plan)
 
@@ -2050,6 +2113,10 @@ class ChatConnectorExecutionService:
         Module A fanout here — the orchestration run owns the single terminal
         outcome so Runs/Notifications/Audit do not double-write.
         """
+        # The immutable approval-row ID is the identity of a queued write.
+        # Carry it to the canonical ledger rather than deriving a second
+        # identity solely from a conversation and possibly repeated arguments.
+        queue_approval_id = str((approved_params or {}).get("_approval_queue_id") or "").strip()
         ctx = ToolContext(
             settings=self.settings,
             client=client,
@@ -2057,6 +2124,8 @@ class ChatConnectorExecutionService:
             actor_id=user_id,
             environment_name=environment_name,
             conversation_id=conversation_id or None,
+            turn_id=queue_approval_id or None,
+            write_idempotency_required=bool(queue_approval_id and plan.kind == "write"),
         )
         from app.services.approval_action_binding import (
             ApprovalActionMismatchError,
@@ -2104,6 +2173,7 @@ class ChatConnectorExecutionService:
                         conversation_id=conversation_id,
                         plan=plan,
                         result=blocked,
+                        environment_name=environment_name,
                     )
                 return blocked
             from app.services.sync_back_policy_service import (
@@ -2159,6 +2229,7 @@ class ChatConnectorExecutionService:
                             conversation_id=conversation_id,
                             plan=plan,
                             result=deferred,
+                            environment_name=environment_name,
                         )
                     return deferred
             from app.connectors.action_catalog.f1_write_slice import is_f1_write_action
@@ -2204,6 +2275,7 @@ class ChatConnectorExecutionService:
                             conversation_id=conversation_id,
                             plan=plan,
                             result=failed,
+                            environment_name=environment_name,
                         )
                     return failed
                 ctx = replace(ctx, preflight_result=proof)
@@ -2245,6 +2317,16 @@ class ChatConnectorExecutionService:
                         task_label=plan.label,
                         error_code="WRITE_COMMIT_INTERRUPTED",
                     )
+            # Resolve the exact provider account before consuming the
+            # conversation approval. Otherwise a disconnected/cross-tenant
+            # account can leave the pending task stuck as "executing" even
+            # though no governed write could be claimed or dispatched.
+            if plan.kind == "write" and plan.integration in {"hubspot", "gmail", "asana"}:
+                ctx = _bind_approved_write_connector(
+                    ctx, client=client, org_id=org_id,
+                    environment_name=environment_name,
+                    integration=plan.integration, args=dict(plan.args or {}),
+                )
             if plan.kind == "write" and own_terminal_outcome:
                 claim_gate = await self._claim_write_before_invoke(
                     conversation_id,
@@ -2288,6 +2370,7 @@ class ChatConnectorExecutionService:
                     conversation_id=conversation_id,
                     plan=plan,
                     result=failed,
+                    environment_name=environment_name,
                 )
             await self._persist_recent_connector_invocation(
                 conversation_id=conversation_id,
@@ -2344,6 +2427,7 @@ class ChatConnectorExecutionService:
                     conversation_id=conversation_id,
                     plan=plan,
                     result=failed,
+                    environment_name=environment_name,
                 )
             await self._persist_recent_connector_invocation(
                 conversation_id=conversation_id,
@@ -2417,6 +2501,7 @@ class ChatConnectorExecutionService:
                     conversation_id=conversation_id,
                     plan=plan,
                     result=uncertain_result,
+                    environment_name=environment_name,
                 )
             await self._persist_recent_connector_invocation(
                 conversation_id=conversation_id,
@@ -2461,6 +2546,7 @@ class ChatConnectorExecutionService:
                     conversation_id=conversation_id,
                     plan=plan,
                     result=failed,
+                    environment_name=environment_name,
                 )
             await self._persist_recent_connector_invocation(
                 conversation_id=conversation_id,
@@ -2570,6 +2656,7 @@ class ChatConnectorExecutionService:
                         conversation_id=conversation_id,
                         plan=plan,
                         result=failed,
+                        environment_name=environment_name,
                     )
                 await self._persist_recent_connector_invocation(
                     conversation_id=conversation_id,
@@ -2591,6 +2678,7 @@ class ChatConnectorExecutionService:
                 result=result,
                 tool_ctx=ctx,
                 connector_id=connector_id,
+                environment_name=environment_name,
             )
 
         try:
@@ -2978,7 +3066,10 @@ class ChatConnectorExecutionService:
                 ),
                 pending,
             )
-        if recon.state == "not_applied":
+        if recon.state == "not_applied" and recon.evidence.get("authoritative_absence") is True:
+            # A generic empty search page or mismatched provider formatting
+            # is not proof of absence. Only a scoped, independently verified
+            # negative readback may reopen a potentially executed write.
             reopened = {
                 **pending,
                 "status": "awaiting_confirm",
@@ -3164,6 +3255,7 @@ class ChatConnectorExecutionService:
         result: ExecutionResult,
         tool_ctx: ToolContext | None = None,
         connector_id: str | None = None,
+        environment_name: str | None = None,
     ) -> str | None:
         """Route single-connector chat terminals through finalize_execution_outcome().
 
@@ -3186,6 +3278,7 @@ class ChatConnectorExecutionService:
             result=result,
             tool_ctx=tool_ctx,
             connector_id=connector_id,
+            environment_name=environment_name,
         ):
             # Speculative (unconfirmed) voice run: the run row, audit,
             # notification and learning fan-out happen only if it is adopted.
@@ -3366,7 +3459,13 @@ class ChatConnectorExecutionService:
                 },
                 run_hash=f"chat-connector-{uuid4().hex[:16]}",
                 workflow_id=None,
-                environment_name="production",
+                # Keep the persisted run in the execution context; blocked
+                # paths carry the explicit ingress environment instead.
+                environment_name=(
+                    getattr(tool_ctx, "environment_name", None)
+                    or environment_name
+                    or "production"
+                ),
                 # workflow_runs_trigger_type_check allows manual/schedule/rollback/webhook/api/hubspot
                 trigger_type="api",
                 run_type="execute",

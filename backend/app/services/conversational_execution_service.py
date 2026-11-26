@@ -1048,6 +1048,7 @@ class ConversationalExecutionService:
         )
         job = jobs.create_job(
             client, org_id, kind="operator_task", created_by=user_id,
+            create_tracking_run=True,
             environment=str(clarified.get("environment_name") or "production"),
             payload={"task": brief, "context": {
                 "source": "approved_chat_assignment", "approved_brief": task,

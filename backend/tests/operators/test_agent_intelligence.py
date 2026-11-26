@@ -1231,3 +1231,382 @@ async def test_run_agent_task_delegates_to_intelligence():
             )
     assert output["summary"] == "ok"
     assert output["agent_id"] == "a1"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "approval_status,expected_dispatch",
+    [("pending_approval", False), ("revoked", False), ("approved", True)],
+)
+async def test_dec012_execute_task_real_react_dispatch(
+    agent_row, intelligence, monkeypatch, approval_status, expected_dispatch,
+):
+    """Exercise the non-streaming entrypoint with the real ReAct runtime.
+
+    The SQL transport is disposable; approval classification and scope checks
+    are not patched. The registry dispatch boundary is a spy/stop sentinel,
+    not evidence of a committed provider effect or durable ledger completion.
+    """
+    import json
+    from app.operators.react_engine import ReActEngine
+    from app.services.tool_registry import ToolRegistry
+    from app.services.workflow_approval_scope import seal_approval_scope
+    from tests.db.pg_harness import PG_BIN
+    from tests.master_qa.canonical_pg_repository import (
+        ORG, USER, PgRepositoryClient, canonical_pg_cluster,
+    )
+
+    if PG_BIN is None:
+        pytest.skip("Disposable PostgreSQL binaries unavailable")
+    tool = "hubspot_update_deal"
+    action = "hubspot.deals.update"
+    args = {"deal_id": "fixture-deal", "stage": "qualified"}
+    registry = ToolRegistry()
+    spec = registry.get_spec(tool)
+    assert spec is not None and spec.invoke_action == action
+    definition = {
+        "steps": [{"id": "write-1", "type": "invoke_tool",
+                   "config": {"action": action, "params": args}}]
+    }
+    scope = seal_approval_scope(definition)
+    # Connector discovery is synthetic; retain the actual catalog classifier.
+    monkeypatch.setattr(registry, "list_connected_integrations", lambda *a, **kw: ["hubspot"])
+    monkeypatch.setattr(registry, "enrich_connected_integrations", AsyncMock(return_value=["hubspot"]))
+    monkeypatch.setattr(registry, "get_available_tools", AsyncMock(return_value=[spec.to_openai_tool()]))
+    dispatch = AsyncMock(return_value={
+        "success": False, "action": action, "error": "fixture transport stopped",
+        "error_code": "fixture_transport_stopped", "provider_invoked": False,
+    })
+    monkeypatch.setattr(registry, "execute_tool", dispatch)
+    engine = ReActEngine(settings=intelligence.settings, registry=registry)
+    engine.router = MagicMock()
+    model_call = SimpleNamespace(
+        id="dec012-call",
+        function=SimpleNamespace(name=tool, arguments=json.dumps(args)),
+    )
+    def response(content, calls):
+        return SimpleNamespace(choices=[SimpleNamespace(
+            message=SimpleNamespace(content=content, tool_calls=calls),
+            finish_reason="stop",
+        )])
+    monkeypatch.setattr(engine, "_chat_with_tools", AsyncMock(side_effect=[
+        response("", [model_call]), response("The deal was updated.", []),
+    ]))
+    intelligence.react_engine = engine
+    intelligence.tool_registry = registry
+    monkeypatch.setattr("app.operators.react_engine.moderate_input", AsyncMock())
+    monkeypatch.setattr("app.operators.agent_intelligence.load_agent_task_history", lambda *a, **kw: [])
+    with canonical_pg_cluster() as pg:
+        client = PgRepositoryClient(pg)
+        row = client.table("workflow_runs").insert({
+            "org_id": ORG, "status": "running", "approval_status": approval_status,
+            "required_approvals": 1, "definition_snapshot": definition,
+            "parameters": {"approval_scope": scope},
+        }).execute().data[0]
+        run_id = row["id"]
+        result = await intelligence.execute_task(
+            org_id=ORG, actor_id=USER, agent=agent_row,
+            task="Update the fixture deal stage",
+            run_id=run_id, task_id=run_id, environment_name="synthetic",
+            parameters={"include_task_history": False, "knowledge_assignments": []},
+            client=client, max_iterations=2,
+        )
+        assert len(result.tool_calls) == 1, result.to_handoff_dict()
+        call = result.tool_calls[0]
+        assert call["execution_plan_id"] and call["execution_step_id"]
+        if expected_dispatch:
+            dispatch.assert_awaited_once()
+            ctx = dispatch.await_args.kwargs["ctx"]
+            assert (ctx.org_id, ctx.actor_id, ctx.run_id) == (ORG, USER, run_id)
+            assert ctx.plan_id == call["execution_plan_id"]
+            assert ctx.step_id == call["execution_step_id"]
+        else:
+            dispatch.assert_not_awaited()
+            assert call["result"]["error_code"] == "canvas_write_authority_blocked"
+        assert not result.outcome_verified
+        assert client.table("workflow_runs").select("approval_status").eq(
+            "id", run_id
+        ).eq("org_id", ORG).limit(1).execute().data[0]["approval_status"] == approval_status
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("approval_status", ["pending_approval", "revoked", "approved"])
+async def test_dec012_agent_write_to_durable_outcome(
+    agent_row, intelligence, monkeypatch, tmp_path, request, approval_status,
+):
+    """Real Agent/ReAct/registry/write ledger, HTTP readback and completion hook.
+
+    A persisted job is created through the repository and executed through the
+    agent worker handler. Completion and replay use the persisted job row.
+    This does not certify queue transport or Play ingress.
+    Only model/retrieval inputs, connector discovery/resource metadata, SQL
+    transport and the external vendor transport are disposable fixtures.
+    """
+    import json
+    import os
+    import urllib.request
+
+    from app.operators import agent_jobs
+    from app.operators.react_engine import ReActEngine
+    from app.services import domain_events, tool_service
+    from app.services.connector_resource_resolver import ResourceResolution
+    from app.services.tool_registry import ToolRegistry
+    from app.services.tool_types import NormalizedResult
+    from app.services.workflow_approval_scope import seal_approval_scope
+    from app.workflows import repository
+    from tests.db.pg_harness import MIGRATIONS, PG_BIN
+    from tests.db.test_autonomous_full_dispatcher_pg import PgClient
+    from tests.db.test_autonomous_independent_write_pg import IndependentFixture
+    from tests.db.test_domain_event_outbox_pg import ORG, USER, _PsqlRpcClient
+    from tests.db.write_recovery_context_fixture import AUTH_ROLE_SQL, CONTEXT_SQL
+    from tests.master_qa.canonical_pg_repository import PgRepositoryClient, canonical_pg_cluster
+    from tests.master_qa.test_canonical_repository_persistence_pg import (
+        _core_effect_tables, _disable_optional_delivery,
+    )
+
+    if PG_BIN is None:
+        pytest.skip("Disposable PostgreSQL binaries unavailable")
+    action = "hubspot.contacts.create"
+    tool = "hubspot_create_contact"
+    args = {"email": "fixture@example.invalid", "properties": {"email": "fixture@example.invalid"},
+            "portal_id": "99887", "connector_id": "local-conn"}
+    definition = {"steps": [{"id": "write-1", "type": "invoke_tool", "config": {
+        "action": action, "params": args,
+    }}]}
+    settings = intelligence.settings
+    settings.write_authority_mode = "enforce"
+    settings.connector_secrets_encryption_key = "k" * 32
+    registry = ToolRegistry()
+    spec = registry.get_spec(tool)
+    assert spec is not None and spec.invoke_action == action
+    monkeypatch.setattr(registry, "list_connected_integrations", lambda *a, **kw: ["hubspot"])
+    monkeypatch.setattr(registry, "enrich_connected_integrations", AsyncMock(return_value=["hubspot"]))
+    monkeypatch.setattr(registry, "get_available_tools", AsyncMock(return_value=[spec.to_openai_tool()]))
+    monkeypatch.setattr("app.services.tool_registry.get_tool_registry", lambda: registry)
+    monkeypatch.setattr("app.operators.react_engine.get_model_router", MagicMock())
+    engine = ReActEngine(settings=settings, registry=registry)
+    intelligence.react_engine = engine
+    intelligence.tool_registry = registry
+    monkeypatch.setattr("app.operators.react_engine.moderate_input", AsyncMock())
+    monkeypatch.setattr("app.operators.agent_intelligence.load_agent_task_history", lambda *a, **kw: [])
+    # Deterministic advisory inputs keep this gate offline. Dispatch, approval,
+    # preflight, ledger, verification and terminal persistence stay real.
+    kernel = SimpleNamespace(
+        run_pre_act=AsyncMock(return_value=SimpleNamespace(plan=None, turn_id="qa-dec012")),
+        run_learn=AsyncMock(),
+    )
+    monkeypatch.setattr("app.services.cognitive_turn_kernel.get_cognitive_turn_kernel", lambda *a: kernel)
+    monkeypatch.setattr("app.services.cognitive_turn_kernel.to_prompt_sections", lambda *a: {})
+    monkeypatch.setattr(intelligence, "_knowledge_fabric_section", AsyncMock(return_value=""))
+    monkeypatch.setattr("app.operators.agent_intelligence.get_company_intelligence_orchestrator",
+                        lambda: SimpleNamespace(get_context_for_prompt=AsyncMock(return_value="")))
+    monkeypatch.setattr("app.operators.agent_intelligence.build_entity_context_section", AsyncMock(return_value=""))
+    monkeypatch.setattr("app.services.execution_intelligence_context.collect_execution_intelligence",
+                        AsyncMock(return_value={"capabilities": {}}))
+    resource = ResourceResolution(
+        status="resolved", connector_id="hubspot", connection_id="local-conn",
+        resource_type="portal", resource_id="99887", display_name="99887",
+        confidence=0.98, resolution_reason="linked_config", candidate_count=1,
+    )
+    monkeypatch.setattr("app.services.write_preflight.resolve_resource", lambda **kw: resource)
+    monkeypatch.setattr("app.services.hipaa_service.get_hipaa_status", lambda *a: {"hipaaReady": False})
+    monkeypatch.setattr("app.services.agent_tool_permissions.list_agent_tool_permissions", lambda *a, **kw: [
+        {"connector_type": "hubspot", "scopes": ["hubspot:read", "hubspot:write"], "expires_at": None},
+    ])
+    receiver = IndependentFixture(tmp_path / "agent-write.sqlite3", b"<h1>isolated</h1>", capability="dec012")
+    request.addfinalizer(receiver.close)
+    assert receiver.pid != os.getpid()
+
+    with canonical_pg_cluster() as pg:
+        client = PgRepositoryClient(pg)
+        pg.psql(AUTH_ROLE_SQL)
+        for migration in (
+            "20261016032018_write_invoke_idempotency.sql",
+            "20261016032029_write_invoke_idempotency_grants.sql",
+            "20261102095000_autonomous_atomic_write_claim.sql",
+        ):
+            pg.psql((MIGRATIONS / migration).read_text())
+        pg.psql(CONTEXT_SQL)
+        _core_effect_tables(pg)
+        _disable_optional_delivery(monkeypatch)
+        pg.psql("ALTER TABLE public.audit_logs ALTER COLUMN id SET DEFAULT gen_random_uuid();"
+                "ALTER TABLE public.audit_events ALTER COLUMN id SET DEFAULT gen_random_uuid();"
+                "CREATE TABLE public.agent_jobs (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), "
+                "org_id uuid NOT NULL, created_by text, environment text, kind text, session_id text, "
+                "payload jsonb, status text, max_attempts integer, queued_at timestamptz, "
+                "timeout_at timestamptz, retry_count integer, result jsonb, error text, "
+                "finished_at timestamptz, updated_at timestamptz, started_at timestamptz, attempts integer DEFAULT 0);")
+        pg.psql((MIGRATIONS / "20261125040000_agent_job_run_binding.sql").read_text())
+        pg.psql((MIGRATIONS / "20260606200000_agent_execution_interrupts.sql").read_text())
+        ledger = PgClient(str(pg.sock), pg.port)
+        repository_rpc = client.rpc
+
+        def rpc(name, params):
+            if name not in {"claim_approved_autonomous_write", "bind_write_recovery_context",
+                            "finalize_write_invoke_idempotency"}:
+                return repository_rpc(name, params)
+            if name == "finalize_write_invoke_idempotency":
+                params = {**params, "p_result": json.dumps(params["p_result"])}
+            return ledger.rpc(name, params)
+
+        monkeypatch.setattr(client, "rpc", rpc)
+        run = client.table("workflow_runs").insert({
+            "org_id": ORG, "triggered_by": USER, "status": "running", "approval_status": approval_status,
+            "required_approvals": 1, "definition_snapshot": definition,
+            "parameters": {"approval_scope": seal_approval_scope(definition)},
+        }).execute().data[0]
+        run_id = run["id"]
+        monkeypatch.setattr(agent_jobs, "get_supabase_client", lambda *_: client)
+        monkeypatch.setattr("app.operators.agent_intelligence.get_agent_intelligence", lambda: intelligence)
+        monkeypatch.setattr("app.operators.agent_intelligence.resolve_agent_record", lambda *a, **kw: agent_row)
+        monkeypatch.setattr("app.services.job_workspace_service.get_job_workspace_service",
+                            lambda *_: SimpleNamespace(ensure_workspace=AsyncMock()))
+        monkeypatch.setattr("app.services.agent_activity_notifications.notify_agent_started", lambda *a, **kw: None)
+        job = agent_jobs.create_job(client, ORG, kind="agent_task", environment="synthetic",
+                                    created_by=USER, trusted_run_id=run_id,
+                                    payload={"task": "Create the fixture contact", "agent_id": agent_row["id"],
+                                             "run_id": "untrusted", "context": {"include_task_history": False,
+                                             "knowledge_assignments": []}})
+        assert job["bound_run_id"] == run_id
+
+        def vendor(context, params):
+            assert (context.org_id, context.actor_id, context.run_id) == (ORG, USER, run_id)
+            assert context.plan_id and context.step_id and context.preflight_result.ok
+            assert params["properties"]["email"] == "fixture@example.invalid"
+            assert pg.value("SELECT count(*) FROM public.write_invoke_idempotency "
+                            "WHERE status='in_progress' AND connector_id='local-conn' "
+                            "AND recovery_context_bound_at IS NOT NULL") == "1"
+            post = urllib.request.Request(receiver.origin + "/write",
+                data=json.dumps({"cap": "dec012"}).encode(),
+                headers={"Content-Type": "application/json"}, method="POST")
+            with urllib.request.urlopen(post, timeout=5) as response:
+                assert response.status == 204
+            return NormalizedResult(success=True, action=action, data={"id": "1"}, connector_id="local-conn")
+
+        def readback(context, read_action, params):
+            assert read_action == "hubspot.contacts.get"
+            assert context.org_id == ORG and context.run_id == run_id
+            contact_id = params.get("contact_id") or params.get("id")
+            get = urllib.request.Request(receiver.origin + f"/records/{contact_id}",
+                                         headers={"X-QA-Capability": "dec012"})
+            with urllib.request.urlopen(get, timeout=5) as response:
+                observed = json.load(response)
+            return NormalizedResult(success=True, action=read_action, data=observed)
+
+        monkeypatch.setattr(tool_service, "_resolve_tool_executor", lambda requested, ctx: vendor
+                            if requested == action else None)
+        monkeypatch.setattr("app.services.sealed_read_execution.invoke_compiled_read", readback)
+
+        async def execute_agent(call_args=None):
+            call = SimpleNamespace(id="dec012-write", function=SimpleNamespace(name=tool, arguments=json.dumps(args if call_args is None else call_args)))
+            def reply(calls):
+                return SimpleNamespace(choices=[SimpleNamespace(message=SimpleNamespace(
+                    content="" if calls else "Finished the fixture task.", tool_calls=calls), finish_reason="stop")])
+            monkeypatch.setattr(engine, "_chat_with_tools", AsyncMock(side_effect=[reply([call]), reply([])]))
+            return await intelligence.execute_task(
+                org_id=ORG, actor_id=USER, agent=agent_row, task="Create the fixture contact",
+                run_id=run_id, task_id=run_id, environment_name="synthetic", client=client,
+                parameters={"include_task_history": False, "knowledge_assignments": []}, max_iterations=2,
+            )
+
+        # Capture the actual AgentResult without replacing the worker or execution engine.
+        captured = []
+        original_execute = intelligence.execute_task
+        async def capture(**kwargs):
+            result = await original_execute(**kwargs)
+            captured.append(result)
+            return result
+        monkeypatch.setattr(intelligence, "execute_task", capture)
+        call = SimpleNamespace(id="dec012-write", function=SimpleNamespace(name=tool, arguments=json.dumps(args)))
+        def reply(calls):
+            return SimpleNamespace(choices=[SimpleNamespace(message=SimpleNamespace(
+                content="" if calls else "Finished the fixture task.", tool_calls=calls), finish_reason="stop")])
+        monkeypatch.setattr(engine, "_chat_with_tools", AsyncMock(side_effect=[reply([call]), reply([])]))
+        # Isolate optional swarm and approval-notification adapters; provider and outcome remain real.
+        monkeypatch.setattr(agent_jobs, "_notify_swarm_job_finished", AsyncMock())
+        monkeypatch.setattr("app.services.approval_record_service.maybe_create_agent_job_approval", lambda *a: None)
+        if approval_status == "approved":
+            assert await agent_jobs._process_job_id(settings, job["id"])
+            job = agent_jobs.get_job(client, ORG, job["id"])
+            assert job["status"] == "completed" and job["attempts"] == 1
+            worker_result = job["result"]
+            assert not await agent_jobs._process_job_id(settings, job["id"])
+        else:
+            job = agent_jobs.claim_job_by_id(client, job["id"])
+            assert job and job["status"] == "running"
+            worker_result = await agent_jobs.run_agent_task_job(settings, job)
+        assert len(captured) == 1
+        result = captured[0]
+        assert len(result.tool_calls) == 1, result.to_handoff_dict()
+        observation = result.tool_calls[0]["result"]
+        if approval_status != "approved":
+            assert observation["error_code"] == "canvas_write_authority_blocked"
+            assert not result.outcome_verified
+            assert receiver.writes == 0
+            assert pg.value("SELECT count(*) FROM public.write_invoke_idempotency") == "0"
+            assert pg.value("SELECT count(*) FROM public.domain_event_outbox") == "0"
+            assert pg.value(f"SELECT approval_status FROM public.workflow_runs WHERE id='{run_id}'") == approval_status
+            return
+
+        assert result.outcome_verified, result.to_handoff_dict()
+        assert observation["outcome_verified"] is True
+        assert observation["verification"]["resource_id"] == "1"
+        assert receiver.writes == 1
+        assert result.tool_calls[0]["execution_plan_id"]
+        assert result.tool_calls[0]["execution_step_id"]
+        assert pg.value("SELECT count(*) FROM public.write_invoke_idempotency "
+                        "WHERE status='completed' AND result #>> '{data,id}'='1'") == "1"
+        # Follow the worker's existing completion path with the actual rollup.
+        assert job["status"] == "completed" and job["bound_run_id"] == run_id
+        persisted = repository.get_run_with_steps(PgRepositoryClient(pg), ORG, run_id, "synthetic")
+        assert persisted["status"] == "completed"
+        assert persisted["parameters"]["outcome_finalized"] is True
+        assert pg.value(f"SELECT status FROM public.runs WHERE id='{run_id}'") == "completed"
+        assert pg.value("SELECT count(*) FROM public.domain_event_outbox") == "1"
+        for table in ("notifications", "intelligence_outcome_events"):
+            assert pg.value(f"SELECT count(*) FROM public.{table}") == "1"
+
+        replay = await execute_agent()
+        assert replay.outcome_verified
+        assert replay.tool_calls[0]["result"]["verification"]["resource_id"] == "1"
+        assert receiver.writes == 1
+        changed = {**args, "email": "different@example.invalid",
+                   "properties": {"email": "different@example.invalid"}}
+        rejected = await execute_agent(changed)
+        assert rejected.tool_calls[0]["result"]["error_code"] == "approval_scope_args_mismatch"
+        assert not rejected.outcome_verified
+        assert receiver.writes == 1
+        assert pg.value("SELECT count(*) FROM public.write_invoke_idempotency") == "1"
+        # Separate threads and database connections exercise the completion replay race.
+        def complete_again():
+            asyncio.run(agent_jobs._notify_operator_job_finished(settings, PgRepositoryClient(pg), job, worker_result))
+        await asyncio.gather(*(asyncio.to_thread(complete_again) for _ in range(4)))
+        assert pg.value("SELECT count(*) FROM public.domain_event_outbox") == "1"
+        pg.psql("CREATE TABLE public.qa_dec012_effects (event_id bigint PRIMARY KEY, run_id uuid NOT NULL)")
+
+        def consume(_client, event):
+            assert event["org_id"] == ORG and event["aggregate_id"] == run_id
+            assert event["payload"]["status"] == "completed"
+            pg.psql("INSERT INTO public.qa_dec012_effects VALUES "
+                    f"({int(event['id'])},'{run_id}') ON CONFLICT (event_id) DO NOTHING")
+
+        domain_events.reset_domain_event_handlers_for_tests()
+        domain_events.register_domain_event_handler(domain_events.EVENT_EXECUTION_OUTCOME_FINALIZED,
+                                                     "qa_dec012_consumer", consume)
+        try:
+            relay = domain_events.DomainEventRelay(_PsqlRpcClient(pg), worker_id="qa-dec012")
+            assert relay.run_once().delivered == 1
+            assert relay.run_once().claimed == 0
+            pg.psql("UPDATE public.domain_event_outbox SET status='pending', available_at=now(), "
+                    "delivered_at=NULL, delivered_handlers='{}'::text[]")
+            assert relay.run_once().delivered == 1
+        finally:
+            domain_events.reset_domain_event_handlers_for_tests()
+        assert pg.value("SELECT count(*) FROM public.qa_dec012_effects") == "1"
+        assert receiver.writes == 1
+        for table in ("audit_logs", "audit_events"):
+            assert pg.value(f"SELECT count(*) FROM public.{table} "
+                            f"WHERE resource_id='{run_id}' AND action='workflow.execute.completed'") == "1"
+        for table in ("notifications", "intelligence_outcome_events"):
+            assert pg.value(f"SELECT count(*) FROM public.{table}") == "1"
+        assert pg.value("SELECT count(*) FROM public.domain_event_outbox WHERE status='delivered'") == "1"

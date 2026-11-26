@@ -12,14 +12,14 @@ Do **not** treat merge + green CI as done until production acceptance below is *
 
 ### Required before calling the release complete
 
-1. **Merge gates (already on PR):** full CI — web lint/typecheck/build/tests, backend pytest, integration smoke. See `.github/workflows/ci.yml`.
+1. **Merge gates (already on PR):** full CI — web lint/typecheck/build/tests, backend pytest, integration smoke. See `.github/workflows/qa-01-core.yml`.
 2. **Deploy alignment**
    - Vercel production (`gravitre.app`): hero assets respond, e.g. `/illustrations/hero-plays.svg` → HTTP 200.
-   - Railway: `GET https://gravitre-saas-backend-production.up.railway.app/health` → `git_sha` matches the merged `main` commit (see `.github/workflows/railway-backend-production.yml`).
+   - Railway: `GET https://gravitre-saas-backend-production.up.railway.app/health` → `git_sha` matches the merged `main` commit (see `.github/workflows/qa-11-release.yml`).
    - Supabase: only if the diff includes migrations; follow the repo migration governance runbook — never apply prod migrations without explicit human approval.
 3. **Plays production acceptance (when credentials exist)**
    - Contract: `docs/delivery/plays-production-acceptance.md`.
-   - Workflow: **Plays production acceptance** (`.github/workflows/plays-production-acceptance.yml`) — `workflow_dispatch` on `main`, optional `backend_url` (default Railway prod).
+   - Workflow: **Plays production acceptance** (`.github/workflows/qa-12-independent-acceptance.yml`) — `workflow_dispatch` on `main` with `source=plays-production-acceptance`, optional `plays_production_acceptance__backend_url` (default Railway prod).
    - Needs GitHub **production** environment secrets (`SUPABASE_*`) and a token the workflow mints via `scripts/mint_smoke_org_session.py`; proof script `scripts/verify-plays-production.py` writes `docs/delivery/plays-production-acceptance.json` (artifact upload).
    - Cloud Agent tokens often **cannot** dispatch this workflow; if blocked, record **NOT RUN — no workflow_dispatch / production secrets** and ask a human to run it from Actions.
 4. **Authenticated UI on gravitre.app (roles)**

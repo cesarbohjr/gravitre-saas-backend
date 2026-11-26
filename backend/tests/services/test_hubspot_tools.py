@@ -7,6 +7,7 @@ import pytest
 
 from app.services.tool_service import invoke_tool, list_registered_actions
 from app.services.tool_types import ToolContext, ToolValidationError
+from tests.support.provider_write import with_provider_write_ledger
 
 
 @pytest.fixture
@@ -92,7 +93,7 @@ def test_hubspot_contacts_list_success(tool_ctx: ToolContext):
 
 def test_hubspot_associations_create_success(tool_ctx: ToolContext):
     conn = {"id": "hub-conn", "type": "hubspot", "status": "active", "environment": "production"}
-    with patch("app.services.tool_service.get_connector_by_type", return_value=conn):
+    with patch("app.services.tool_service.get_connector", return_value=conn):
         with patch("app.services.tool_service.enforce_rate_limit"):
             with patch(
                 "app.services.tool_service.ensure_hubspot_access_token",
@@ -114,7 +115,7 @@ def test_hubspot_associations_create_success(tool_ctx: ToolContext):
                             ],
                         ):
                             result = invoke_tool(
-                                tool_ctx,
+                                with_provider_write_ledger(tool_ctx, conn["id"]),
                                 "hubspot.associations.create",
                                 {
                                     "from_type": "contacts",
@@ -130,7 +131,7 @@ def test_hubspot_associations_create_success(tool_ctx: ToolContext):
 
 def test_hubspot_deals_update_stage_success(tool_ctx: ToolContext):
     conn = {"id": "hub-conn", "type": "hubspot", "status": "active", "environment": "production"}
-    with patch("app.services.tool_service.get_connector_by_type", return_value=conn):
+    with patch("app.services.tool_service.get_connector", return_value=conn):
         with patch("app.services.tool_service.enforce_rate_limit"):
             with patch(
                 "app.services.tool_service.ensure_hubspot_access_token",
@@ -152,7 +153,7 @@ def test_hubspot_deals_update_stage_success(tool_ctx: ToolContext):
                             ],
                         ):
                             result = invoke_tool(
-                                tool_ctx,
+                                with_provider_write_ledger(tool_ctx, conn["id"]),
                                 "hubspot.deals.update_stage",
                                 {
                                     "deal_id": "deal-1",
@@ -165,7 +166,7 @@ def test_hubspot_deals_update_stage_success(tool_ctx: ToolContext):
 
 def test_hubspot_companies_create_success(tool_ctx: ToolContext):
     conn = {"id": "hub-conn", "type": "hubspot", "status": "active", "environment": "production"}
-    with patch("app.services.tool_service.get_connector_by_type", return_value=conn):
+    with patch("app.services.tool_service.get_connector", return_value=conn):
         with patch("app.services.tool_service.enforce_rate_limit"):
             with patch(
                 "app.services.tool_service.ensure_hubspot_access_token",
@@ -187,7 +188,7 @@ def test_hubspot_companies_create_success(tool_ctx: ToolContext):
                             ],
                         ):
                             result = invoke_tool(
-                                tool_ctx,
+                                with_provider_write_ledger(tool_ctx, conn["id"]),
                                 "hubspot.companies.create",
                                 {"name": "Acme", "domain": "acme.example.com"},
                             )
@@ -260,7 +261,7 @@ def test_hubspot_tickets_get_success(tool_ctx: ToolContext):
 
 def test_hubspot_contacts_update_requires_properties(tool_ctx: ToolContext):
     conn = {"id": "hub-conn", "type": "hubspot", "status": "active", "environment": "production"}
-    with patch("app.services.tool_service.get_connector_by_type", return_value=conn):
+    with patch("app.services.tool_service.get_connector", return_value=conn):
         with patch("app.services.tool_service.enforce_rate_limit"):
             with patch(
                 "app.services.tool_service.ensure_hubspot_access_token",
@@ -278,7 +279,7 @@ def test_hubspot_contacts_update_requires_properties(tool_ctx: ToolContext):
                         ],
                     ):
                         result = invoke_tool(
-                            tool_ctx,
+                            with_provider_write_ledger(tool_ctx, conn["id"]),
                             "hubspot.contacts.update",
                             {"contact_id": "c1"},
                         )

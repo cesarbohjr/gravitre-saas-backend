@@ -182,7 +182,7 @@ async def test_non_oauth_cannot_create_session_even_with_ready_credentials(flow)
     app, store, _, session = flow
     before = deepcopy(store)
     async with AsyncClient(transport=ASGITransport(app=app), base_url='http://test') as client:
-        response = await client.post('/api/connectors/managed-auth/freshservice/session', json={'name': 'desk'})
+        response = await client.post('/api/connectors/managed-auth/crowdstrike/session', json={'name': 'desk'})
     assert response.status_code == 503 and store == before
     assert 'Sign-in authorization is not available' in response.text
     session.assert_not_called()
@@ -233,3 +233,52 @@ async def test_business_connector_custom_kind_has_exact_vendor_and_scoped_activa
                  'tags':{'organization_id':'o1','connector_id':created['id'],'auth_attempt_id':result.json()['attemptId']}}
         assert (await post_webhook(client,payload)).status_code==200
         assert store[-1]['status']=='active'
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize('vendor,old_id,new_id,inputs', [
+    ('freshservice','freshservice','gravitre-freshservice-oauth',{'subdomain':'acme','orgSubdomain':'acme'}),
+    ('gong','gong','gravitre-gong-oauth',{}),
+    ('hibob','hibob','gravitre-hibob-oauth',{}),
+    ('cal_com','cal-com','gravitre-cal-com-oauth',{}),
+])
+async def test_oauth_upgrade_preserves_confirmed_identity_until_matching_signed_event(flow,vendor,old_id,new_id,inputs):
+    app,store,_,session=flow
+    store[0].update(vendor=vendor,type=vendor)
+    store[0]['config']['managed_integration_id']=old_id
+    async with AsyncClient(transport=ASGITransport(app=app),base_url='http://test') as client:
+        response=await client.post(f'/api/connectors/managed-auth/{vendor}/session',json={
+            'name':'desk','connectorId':'c1','connectionConfig':inputs})
+        assert response.status_code==200,response.text
+        assert store[0]['config']['managed_integration_id']==old_id
+        assert store[0]['config']['managed_connection_id']=='n1'
+        assert session.call_args.kwargs['connection_id'] is None
+        assert response.json()['integrationId']==new_id and not response.json()['reconnect']
+        payload={'type':'auth','success':True,'operation':'creation','connectionId':'new-oauth',
+                 'providerConfigKey':old_id,'tags':{'organization_id':'o1','connector_id':'c1',
+                 'auth_attempt_id':response.json()['attemptId']}}
+        assert (await post_webhook(client,payload)).status_code==400
+        assert store[0]['config']['managed_connection_id']=='n1'
+        payload['providerConfigKey']=new_id
+        assert (await post_webhook(client,payload)).status_code==200
+        assert store[0]['config']['managed_integration_id']==new_id
+        assert store[0]['config']['managed_connection_id']=='new-oauth'
+        for key,value in inputs.items():assert store[0]['config'][key]==value
+
+
+@pytest.mark.asyncio
+async def test_bamboohr_reauthorization_preserves_native_until_webhook_and_saves_reviewed_domain(flow):
+    app,store,_,_=flow
+    store[0].update(vendor='bamboohr',type='bamboohr',config={'subdomain':'old-company'})
+    async with AsyncClient(transport=ASGITransport(app=app),base_url='http://test') as client:
+        response=await client.post('/api/connectors/managed-auth/bamboohr/session',json={
+            'name':'desk','connectorId':'c1','connectionConfig':{'subdomain':'acme'}})
+        assert response.status_code==200
+        assert store[0]['config']['subdomain']=='old-company'
+        assert store[0]['config'].get('auth_provider')!='managed'
+        payload={'type':'auth','success':True,'operation':'creation','connectionId':'new-oauth',
+                 'providerConfigKey':'gravitre-bamboohr','tags':{'organization_id':'o1','connector_id':'c1',
+                 'auth_attempt_id':response.json()['attemptId']}}
+        assert (await post_webhook(client,payload)).status_code==200
+        assert store[0]['config']['subdomain']=='acme'
+        assert store[0]['config']['auth_provider']=='managed'
