@@ -25,6 +25,8 @@ const require = createRequire(import.meta.url)
 const args = process.argv.slice(2)
 const outPath = args.includes("--out") ? args[args.indexOf("--out") + 1] : null
 const quick = args.includes("--quick")
+const enforce = args.includes("--enforce")
+if (enforce && process.env.SCENARIO_FILTER) throw new Error("Enforced matrix cannot be filtered")
 
 const { chromium } = require(process.env.PLAYWRIGHT_MODULE || "@playwright/test")
 function loadEsbuild() {
@@ -174,7 +176,7 @@ for (const pacing of [2, 1])
   for (const ctxRate of [48000, 44100])
     for (const oddSplit of [false, true])
       for (const seed of seeds)
-        for (const impl of ["before", "after"])
+        for (const impl of enforce ? ["after"] : ["before", "after"])
           matrix.push({ impl, ctxRate, seed, oddSplit, pacing, replyS: 6, flushAtS: 3.2, secondReplyDelayS: 0.4, secondReplyS: 2.5, jitterMaxMs: 300 })
 
 const results = []
@@ -193,4 +195,21 @@ for (const sc of matrix) {
 }
 await browser.close()
 server.close()
-if (outPath) await writeFile(outPath, JSON.stringify({ synthetic: true, generatedAt: new Date().toISOString(), results }, null, 2))
+const violations = []
+if (enforce) {
+  for (const { scenario, playerKind, metrics } of results) {
+    const fail = (reason) => violations.push({ scenario, reason })
+    if (playerKind !== "worklet") fail("expected AudioWorklet player")
+    if (metrics.reply1.missing || metrics.reply2.missing) fail("missing audible reply")
+    if (metrics.totals.jumps !== 0) fail("waveform discontinuity")
+    if (metrics.totals.hardGapEdges !== 0) fail("hard silence edge")
+    if (metrics.totals.gapMs > 20) fail("synthetic in-reply silence exceeds 20 ms")
+    if (metrics.flush.jumps !== 0) fail("interruption discontinuity")
+  }
+  if (results.length !== matrix.length || !results.length) violations.push({ reason: "incomplete matrix" })
+}
+if (outPath) await writeFile(outPath, JSON.stringify({ synthetic: true, enforced: enforce, violations, generatedAt: new Date().toISOString(), results }, null, 2))
+if (violations.length) {
+  console.error(JSON.stringify(violations))
+  process.exitCode = 1
+}

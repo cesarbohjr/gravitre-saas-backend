@@ -14,6 +14,8 @@ const venvPython = join(backendCwd, ".venv", isWin ? "Scripts" : "bin", isWin ? 
 const pythonCmd = existsSync(venvPython) ? venvPython : "python"
 
 const skipBackend = process.env.PLAYWRIGHT_SKIP_BACKEND === "1"
+const voiceHarnessURL = process.env.PIPECAT_HARNESS_URL ?? "http://127.0.0.1:8799"
+const voiceHarnessPort = new URL(voiceHarnessURL).port || "8799"
 
 export default defineConfig({
   testDir: "./e2e",
@@ -34,6 +36,14 @@ export default defineConfig({
   },
   projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
   webServer: [
+    {
+      command: `${pythonCmd} -m tests.e2e.pipecat_voice_harness_server --port ${voiceHarnessPort}`,
+      cwd: "backend",
+      url: `${voiceHarnessURL}/health`,
+      timeout: 120_000,
+      reuseExistingServer: process.env.PLAYWRIGHT_REUSE_SERVER === "1",
+      env: { PYTHONPATH: ".", APP_ENV: "dev" },
+    },
     ...(skipBackend
       ? []
       : [

@@ -82,7 +82,12 @@ jobs:
       - name: Install Playwright Chromium
         run: npx playwright install --with-deps chromium
 
+      - name: Enforce synthetic playback continuity
+        working-directory: apps/web
+        run: node scripts/voice-playback-continuity/run.mjs --quick --enforce --out ../../voice-continuity-results.json
+
       - name: Run voice duplex guard
+        if: ${{ !cancelled() }}
         run: npx playwright test --config=playwright.voice.config.ts
         env:
           CI: "true"
@@ -106,3 +111,4 @@ jobs:
           path: |
             test-results/
             playwright-report/
+            voice-continuity-results.json
