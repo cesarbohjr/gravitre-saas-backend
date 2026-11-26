@@ -19,6 +19,8 @@ test.describe("GIBE Learning Loop — technology smoke", () => {
 
     const field = page.getByTestId("gibe-learning-field")
     await expect(field).toBeVisible()
+    await expect(field).toHaveCount(1)
+    await expect(field).toContainText(/Not auto policy rewrite/i)
     const body = await page.locator("body").innerText()
     expect(body).toMatch(/Observe|Recommend|Approve/i)
     expect(body).toMatch(/Not auto policy rewrite/i)
@@ -32,6 +34,7 @@ test.describe("GIBE Learning Loop — technology smoke", () => {
     })
     const field = page.getByTestId("gibe-learning-field")
     await expect(field).toHaveAttribute("data-creative-phase", "approve")
+    await expect(field).toHaveAttribute("data-creative-frozen", "1")
     await expect(field).toHaveAttribute("data-gibe-waiting", "1")
     await expect(field).toHaveAttribute("data-gibe-path-id", "path-gibe-prefer")
     await expect(page.getByTestId("gibe-waiting")).toBeVisible()

@@ -14,6 +14,7 @@ import { Container } from "@/components/marketing/nodus/container"
 import { DivideX } from "@/components/marketing/nodus/divide"
 import { HeroImage } from "@/components/marketing/nodus/hero-image"
 import { ProductScreenshot } from "@/components/marketing/product-screenshot"
+import { VoiceIntentField } from "@/components/marketing/creative"
 import {
   MarketingPageEndCta,
   MarketingPageHero,
@@ -214,13 +215,16 @@ export function FeaturesPage() {
           description="Talk to Gravitre from the desktop app: tap the orb or use the push-to-talk shortcut from any app, and it answers out loud with a live transcript saved to the conversation."
           className="mb-6"
         />
+        <GravitreTrace>
+          <VoiceIntentField />
+        </GravitreTrace>
         <ProductScreenshot
           src="/product/desktop-voice.png"
           alt="Gravitre desktop voice mode: the green orb listening while you speak, with the live transcript beside it"
           width={2360}
           height={1280}
           chromeLabel="Gravitre Desktop · Voice"
-          className="mx-auto max-w-4xl"
+          className="mx-auto mt-8 max-w-4xl"
           overlay={<VoiceOrbOverlay />}
         />
       </GravitreSection>

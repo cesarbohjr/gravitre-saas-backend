@@ -19,6 +19,8 @@ test.describe("Voice Intent Field — features smoke", () => {
 
     const field = page.getByTestId("voice-intent-field")
     await expect(field).toBeVisible()
+    await expect(field).toHaveCount(1)
+    await expect(field).toContainText(/Not proven duplex parity/i)
     const body = await page.locator("body").innerText()
     expect(body).toMatch(/Waveform|Intent|Response/i)
     expect(body).toMatch(/Not proven duplex parity/i)
@@ -32,6 +34,7 @@ test.describe("Voice Intent Field — features smoke", () => {
     })
     const field = page.getByTestId("voice-intent-field")
     await expect(field).toHaveAttribute("data-creative-phase", "action")
+    await expect(field).toHaveAttribute("data-creative-frozen", "1")
     await expect(field).toHaveAttribute("data-voice-path-id", "path-voice-turn")
   })
 })

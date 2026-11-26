@@ -11,7 +11,7 @@ import { Button } from "@/components/marketing/nodus/button"
 import { DivideX } from "@/components/marketing/nodus/divide"
 import { HeroImage } from "@/components/marketing/nodus/hero-image"
 import { MarketingPageEndCta, MarketingPageHero } from "@/components/marketing/nodus/page-shell"
-import { AgentOrchestrationField } from "@/components/marketing/creative"
+import { AgentOrchestrationField, GibeLearningField } from "@/components/marketing/creative"
 import { ProductScreenshot } from "@/components/marketing/product-screenshot"
 import { GravitreReveal, GravitreTrace } from "@/components/marketing/system/motion"
 import { GravitreSection, GravitreSectionHeader } from "@/components/marketing/system/section"
@@ -85,11 +85,14 @@ export function TechnologyPage() {
           description="GIBE watches real work across your stack, explains what it found step by step, and traces every number back to its source. Recommendations stay advisory until a person approves them."
           className="mb-6"
         />
+        <GravitreTrace>
+          <GibeLearningField />
+        </GravitreTrace>
         <ProductScreenshot
           src="/product/app-intelligence-overview.png"
           alt="Gravitre Intelligence overview: data readiness, this week's results, what Gravitre is learning, and what needs attention"
           chromeLabel="Intelligence"
-          className="mx-auto max-w-5xl"
+          className="mx-auto mt-8 max-w-5xl"
         />
         <p className="mt-4 text-center text-[11px] text-[color:var(--g-text-muted)]">
           <Link className="underline underline-offset-2" href="/docs/guides/how-to/org-learning">
