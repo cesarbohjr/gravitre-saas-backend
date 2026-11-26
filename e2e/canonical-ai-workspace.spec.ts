@@ -298,7 +298,28 @@ test.describe("UX Reset 1.0 Phase 1B — canonical AI workspace", () => {
     expect((await readAiDebug(page))?.liveInstanceCount).toBe(1)
   })
 
-  for (const shot of ["agents", "activity", "workflows", "connectors", "approvals", "home"] as const) {
+  test("Home prompt submits once to one compact workspace instance", async ({ page }) => {
+    const prompt = "Summarize the open approvals for today."
+    const reply = "There are two open approvals to review."
+    const posts = await mockCanonicalChat(page, { body: reply })
+    await page.goto("/e2e/shots/home")
+
+    const field = page.getByRole("textbox", { name: "Ask Gravitre", exact: true })
+    await expect(field).toBeVisible({ timeout: 60_000 })
+    await field.fill(prompt)
+    await field.press("Enter")
+
+    await waitForRuntime(page)
+    await expect(page.getByText(reply, { exact: true })).toBeVisible()
+    expect(posts).toHaveLength(1)
+    expect(await readAiDebug(page)).toMatchObject({
+      canonicalPresentation: "compact",
+      liveInstanceCount: 1,
+      chatSubmitCount: 1,
+    })
+  })
+
+  for (const shot of ["agents", "activity", "workflows", "connectors", "approvals"] as const) {
     test(`header Ask Gravitre on ${shot} summons the same compact runtime`, async ({ page }) => {
       await page.goto(`/e2e/shots/${shot}`)
       await expect(page.locator("[data-ask-gravitre-summon]")).toBeVisible({ timeout: 60_000 })
