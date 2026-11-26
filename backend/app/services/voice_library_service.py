@@ -441,6 +441,15 @@ def list_voice_library(
     archetype: str | None = None,
 ) -> dict[str, Any]:
     voices = fetch_elevenlabs_shared_voices(settings)
+    # Filter discovery and recommendations only; saved voice IDs and synthesis
+    # resolution remain compatible throughout the migration. IDs are case sensitive.
+    approved_ids = {
+        value.strip()
+        for value in (getattr(settings, "voice_3_approved_voice_ids", "") or "").split(",")
+        if value.strip()
+    }
+    if approved_ids:
+        voices = [voice for voice in voices if voice.get("voice_id") in approved_ids]
     cat = (category or "").strip().lower() or None
     lang = (language or "").strip().lower() or None
     gen = (gender or "").strip().lower() or None

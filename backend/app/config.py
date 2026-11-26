@@ -901,6 +901,12 @@ class Settings(BaseSettings):
         default="eleven_flash_v2_5",
         validation_alias=AliasChoices("ELEVENLABS_TTS_MODEL", "elevenlabs_tts_model"),
     )
+    # Explicit operator-approved catalog for new Voice 3.0 selections.
+    # Empty preserves existing discovery until replacement voices are validated.
+    voice_3_approved_voice_ids: str = Field(
+        default="",
+        validation_alias=AliasChoices("VOICE_3_APPROVED_VOICE_IDS", "voice_3_approved_voice_ids"),
+    )
     elevenlabs_default_voice: str = Field(
         default="sarah",
         validation_alias=AliasChoices(
