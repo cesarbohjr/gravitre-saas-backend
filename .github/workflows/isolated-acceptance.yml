@@ -189,7 +189,7 @@ jobs:
         working-directory: backend
         env:
           APP_ENV: dev
-        run: python -m pytest -q tests/scripts/test_voice3_catalog_proposal.py
+        run: python -m pytest -q tests/scripts/test_voice3_catalog_proposal.py tests/scripts/test_voice3_acoustic_eval.py
       - name: Discover and propose Voice 3.0 catalog from acceptance account
         env:
           APP_ENV: dev
