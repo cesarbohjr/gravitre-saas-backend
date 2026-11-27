@@ -14,6 +14,8 @@ What is replaced, and why:
   browser capture reaches the server.
 - ElevenLabs TTS → ``ToneTTS``, which synthesizes an audible tone per sentence.
 - The reasoning model → a scripted ``execute_task_streaming``.
+- Canonical prompt and external guardrail/embedding I/O → deterministic fixtures.
+  The cognitive bridge still runs its preparation and output gate.
 - Supabase → ``FakeSupabase`` (filters honoured), so persistence is observable.
 - Auth, org resolution and the production router are not exercised; the
   socket is accepted without a token check.
@@ -23,6 +25,7 @@ Run from ``backend/``: ``python -m tests.e2e.pipecat_voice_harness_server --port
 from __future__ import annotations
 
 import argparse
+import asyncio
 import math
 import os
 import re
@@ -161,7 +164,38 @@ def _install_fakes() -> None:
     import app.operators.agent_intelligence as agent_intelligence
     import app.routers.assistant as assistant_router
     import app.workflows.repository as repository
-    from app.services import chat_turn_cancel_service
+    from app.services import chat_turn_cancel_service, shared_turn_preparation
+    from app.services import unified_turn_tool_retrieval
+    from app.rag import tool_retrieval_embedding
+    from app.services.pipecat_voice import speculative_prefetch
+
+    # Only the harness replaces dependency boundaries. Keep the real bridge,
+    # speculative coordinator, guard sequencing, history and persistence.
+    def synthetic_prompt(*args: Any, **kwargs: Any) -> str:
+        STATE["prompt_calls"] = STATE.get("prompt_calls", 0) + 1
+        return "Answer the caller using the seeded conversation context."
+
+    async def synthetic_guard(*args: Any, **kwargs: Any) -> None:
+        STATE["guard_calls"] = STATE.get("guard_calls", 0) + 1
+        await asyncio.sleep(0)
+        STATE["guard_passes"] = STATE.get("guard_passes", 0) + 1
+
+    def synthetic_query_embedding(*args: Any, **kwargs: Any):
+        STATE["embedding_calls"] = STATE.get("embedding_calls", 0) + 1
+        return [1.0, 0.0], {}
+
+    def synthetic_document_warm(*args: Any, **kwargs: Any) -> int:
+        STATE["document_warm_calls"] = STATE.get("document_warm_calls", 0) + 1
+        return 0
+
+    def synthetic_knowledge_warm(*args: Any, **kwargs: Any) -> None:
+        STATE["knowledge_warm_calls"] = STATE.get("knowledge_warm_calls", 0) + 1
+
+    shared_turn_preparation.build_turn_system_prompt = synthetic_prompt
+    shared_turn_preparation.enforce_turn_guardrails = synthetic_guard
+    tool_retrieval_embedding.embed_tool_retrieval_query_timed = synthetic_query_embedding
+    unified_turn_tool_retrieval.warm_tool_document_embeddings = synthetic_document_warm
+    speculative_prefetch._warm_knowledge_blocking = synthetic_knowledge_warm
 
     repository.get_supabase_client = lambda _settings=None: DB  # type: ignore[assignment]
     assistant_router.get_supabase_client = lambda _settings=None: DB  # type: ignore[assignment]

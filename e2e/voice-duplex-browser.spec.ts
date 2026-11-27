@@ -138,6 +138,8 @@ test.describe("Voice duplex browser pipeline", () => {
       await expect(harness).toHaveAttribute("data-conversation-id", conversationId)
       expect(after.pcm_bytes_in).toBeGreaterThan(0)
       expect(after.llm_queries.length).toBeGreaterThan(before.llm_queries.length)
+      expect(after.prompt_calls).toBeGreaterThan(before.prompt_calls ?? 0)
+      expect(after.guard_passes).toBeGreaterThan(before.guard_passes ?? 0)
       expect(after.durable_history_seen.at(-1)).toEqual([
         "Remember that Acme is the priority account.",
         "Noted, Acme is the priority.",

@@ -26,6 +26,7 @@ from pipecat.frames.frames import (
 )
 from pipecat.processors.frame_processor import FrameDirection
 from pipecat.services.llm_service import LLMService
+from pipecat.services.settings import LLMSettings
 from pipecat.utils.text.base_text_aggregator import AggregationType
 
 from app.core.logging import get_logger
@@ -459,6 +460,14 @@ class GravitreCognitiveLLMService(LLMService):
         speculative_coordinator: SpeculativeGenerationCoordinator | None = None,
         **kwargs: Any,
     ) -> None:
+        # This bridge delegates model selection to One Brain, not a Pipecat
+        # provider adapter. Explicitly initialize all unsupported settings.
+        kwargs.setdefault("settings", LLMSettings(
+            model=None, system_instruction=None, temperature=None,
+            max_tokens=None, top_p=None, top_k=None, frequency_penalty=None,
+            presence_penalty=None, seed=None, filter_incomplete_user_turns=False,
+            user_turn_completion_config=None,
+        ))
         super().__init__(**kwargs)
         # Never assign to self._settings — AIService owns that for Pipecat ServiceSettings.
         self._app_settings = app_settings

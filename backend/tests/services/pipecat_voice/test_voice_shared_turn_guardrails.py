@@ -105,3 +105,18 @@ def test_guardrail_errors_map_to_the_same_kinds_text_chat_reports() -> None:
     assert classify_guardrail_error(AIBudgetExceededError()) == "budget_exceeded"
     assert classify_guardrail_error(AIContentFlaggedError("x")) == "content_flagged"
     assert classify_guardrail_error(RuntimeError("db down")) is None
+
+
+def test_cognitive_bridge_initializes_pipecat_llm_settings() -> None:
+    from pipecat.services.settings import LLMSettings
+
+    service = GravitreCognitiveLLMService(app_settings=object(), org_id=ORG, user_id=USER)
+    assert isinstance(service._settings, LLMSettings)
+    assert service._settings.model is None
+    assert service._settings.filter_incomplete_user_turns is False
+    # Pipecat's sentinel values must never survive initialization.
+    from dataclasses import fields
+    from pipecat.services.settings import NOT_GIVEN
+
+    assert all(getattr(service._settings, f.name) is not NOT_GIVEN
+               for f in fields(LLMSettings))
