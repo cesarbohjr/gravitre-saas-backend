@@ -67,7 +67,10 @@ export default defineConfig({
             cwd: "backend",
             url: `${pipecatHarnessURL}/health`,
             timeout: 120_000,
-            env: { PYTHONPATH: "." },
+            env: { PYTHONPATH: ".", VOICE_BROWSER_LIVE_PROVIDER: process.env.VOICE_BROWSER_LIVE_PROVIDER ?? "0",
+              VOICE_BROWSER_ACCEPTANCE_KEY: process.env.VOICE_BROWSER_ACCEPTANCE_KEY ?? "",
+              VOICE_BROWSER_CANDIDATE_ID: process.env.VOICE_BROWSER_CANDIDATE_ID ?? "",
+              VOICE_BROWSER_MODEL: process.env.VOICE_BROWSER_MODEL ?? "" },
           },
         ],
 })

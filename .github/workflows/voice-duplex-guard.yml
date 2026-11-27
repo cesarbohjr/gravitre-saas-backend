@@ -32,6 +32,16 @@ on:
   schedule:
     - cron: "0 7 * * *" # Daily 07:00 UTC
   workflow_dispatch:
+    inputs:
+      live_candidate:
+        description: "Optional isolated ElevenLabs candidate ID (blank = synthetic only)"
+        type: string
+        required: false
+      live_model:
+        description: "Isolated candidate synthesis model"
+        type: choice
+        options: [eleven_v3, eleven_flash_v2_5]
+        default: eleven_v3
 
 concurrency:
   group: voice-duplex-guard
@@ -118,3 +128,49 @@ jobs:
             test-results/
             playwright-report/
             voice-continuity-results.json
+
+  live-candidate-browser:
+    if: ${{ github.event_name == 'workflow_dispatch' && inputs.live_candidate != '' }}
+    runs-on: ubuntu-latest
+    environment: acceptance
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install isolated harness dependencies
+        run: |
+          sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/hostedtoolcache/CodeQL
+          python -m pip install --no-cache-dir -r backend/requirements.txt
+          npm install
+          cd apps/web && pnpm install --frozen-lockfile
+      - run: npx playwright install --with-deps chromium
+      - name: Verify actual candidate browser journey
+        env:
+          CI: "true"
+          VOICE_BROWSER_LIVE_PROVIDER: "1"
+          VOICE_BROWSER_ACCEPTANCE_KEY: ${{ secrets.ACCEPTANCE_ELEVENLABS_API_KEY }}
+          VOICE_BROWSER_CANDIDATE_ID: ${{ inputs.live_candidate }}
+          VOICE_BROWSER_MODEL: ${{ inputs.live_model }}
+          SUPABASE_URL: https://test.supabase.co
+          SUPABASE_ANON_KEY: anon-test
+          SUPABASE_SERVICE_ROLE_KEY: service-role-test
+          SUPABASE_JWT_SECRET: jwt-secret-test
+          OPENAI_API_KEY: sk-test-openai
+          NEXT_PUBLIC_SUPABASE_URL: https://test.supabase.co
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: anon-test
+        run: npx playwright test --config=playwright.voice.config.ts --grep "live provider: browser PCM"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: live-candidate-browser-${{ github.sha }}
+          path: test-results/
+          if-no-files-found: ignore
+          retention-days: 7

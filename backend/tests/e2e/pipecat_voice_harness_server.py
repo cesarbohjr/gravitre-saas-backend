@@ -25,6 +25,7 @@ from __future__ import annotations
 import argparse
 import math
 import os
+import re
 import struct
 import uuid
 from typing import Any, AsyncGenerator
@@ -67,6 +68,10 @@ ORG_ID = "00000000-0000-4000-8000-0000000000a1"
 USER_ID = "00000000-0000-4000-8000-0000000000c3"
 USER_UTTERANCE = "which account is our priority this quarter"
 ASSISTANT_REPLY = "Acme is the priority account this quarter. Northwind comes next."
+RECOVERY_QUERY = "please give me the recovery status"
+RECOVERY_REPLY = "The recovery response is ready. Thank you for waiting."
+LIVE_REPLY = ASSISTANT_REPLY + " We can review the current account priorities and discuss the next steps." * 5
+LIVE_MODE = os.getenv("VOICE_BROWSER_LIVE_PROVIDER") == "1"
 # 16 kHz mono int16: 32000 bytes per second of captured audio.
 START_AFTER_BYTES = 8_000
 FINAL_AFTER_BYTES = 24_000
@@ -139,10 +144,12 @@ class ScriptedIntelligence:
         STATE["durable_history_seen"].append(
             [m.get("content") for m in (kwargs.get("conversation_history") or [])]
         )
-        for word in ASSISTANT_REPLY.split(" "):
+        query = str(kwargs.get("query") or "").lower()
+        reply = RECOVERY_REPLY if LIVE_MODE and RECOVERY_QUERY in query else (LIVE_REPLY if LIVE_MODE else ASSISTANT_REPLY)
+        for word in reply.split(" "):
             yield AssistantStreamEvent(sse_type="text-delta", payload={"delta": word + " "})
         yield AssistantStreamComplete(
-            full_content=ASSISTANT_REPLY,
+            full_content=reply,
             tool_results=[],
             react_result=None,
             model="harness",
@@ -175,13 +182,15 @@ def _seed() -> str:
 
 
 def build_app() -> FastAPI:
+    if LIVE_MODE and (not os.getenv("VOICE_BROWSER_ACCEPTANCE_KEY") or not re.fullmatch(r"[A-Za-z0-9]{16,64}", os.getenv("VOICE_BROWSER_CANDIDATE_ID","")) or os.getenv("VOICE_BROWSER_MODEL") not in {"eleven_v3","eleven_flash_v2_5"}):
+        raise RuntimeError("Invalid isolated browser provider configuration")
     _install_fakes()
     app = FastAPI()
     app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 
     @app.get("/health")
     async def health() -> dict[str, str]:
-        return {"ok": "true"}
+        return {"ok": "true", "mode": "live" if LIVE_MODE else "synthetic"}
 
     @app.get("/harness/state")
     async def state() -> dict[str, Any]:
@@ -203,6 +212,14 @@ def build_app() -> FastAPI:
         from app.services.pipecat_voice.stt_factory import STT_FLUX
 
         await websocket.accept()
+        tts = ToneTTS(sample_rate=24000)
+        if LIVE_MODE:
+            from app.services.pipecat_voice.tts_factory import build_live_tts_service
+            tts = build_live_tts_service(api_key=os.environ["VOICE_BROWSER_ACCEPTANCE_KEY"],
+                voice_id=os.environ["VOICE_BROWSER_CANDIDATE_ID"], model=os.environ["VOICE_BROWSER_MODEL"], sample_rate=24000)
+            STATE["provider_mode"] = "live"
+            STATE["candidate_id"] = os.environ["VOICE_BROWSER_CANDIDATE_ID"]
+            STATE["candidate_model"] = os.environ["VOICE_BROWSER_MODEL"]
         # Each socket resumes its own freshly seeded conversation, so durable
         # history and persistence can be asserted per session.
         conversation_id = websocket.query_params.get("conversation_id") or _seed()
@@ -215,7 +232,7 @@ def build_app() -> FastAPI:
             conversation_id=conversation_id,
             stt_service=ScriptedFluxSTT(),
             stt_service_info={"stt_provider_key": STT_FLUX, "stt_provider": "harness_scripted_flux"},
-            tts_service=ToneTTS(sample_rate=24000),
+            tts_service=tts,
         )
         await PipelineRunner(handle_sigint=False).run(task)
 

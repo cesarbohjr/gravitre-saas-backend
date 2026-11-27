@@ -29,6 +29,9 @@ type HarnessMetrics = {
   sessionReady: boolean
   audioFramesReceived: number
   turnCompleteMessages: number
+  interruptedReply: number
+  latestAudioReply: number
+  staleAudioFrames: number
 }
 
 declare global {
@@ -49,6 +52,9 @@ const EMPTY_METRICS: HarnessMetrics = {
   sessionReady: false,
   audioFramesReceived: 0,
   turnCompleteMessages: 0,
+  interruptedReply: -1,
+  latestAudioReply: -1,
+  staleAudioFrames: 0,
 }
 
 function readTransport(): { transport: HarnessTransport; wsBase: string } {
@@ -90,6 +96,9 @@ export function VoiceDuplexHarness() {
       sessionReady: false,
       audioFrames: 0,
       turnComplete: 0,
+      interruptedReply: -1,
+      latestAudioReply: -1,
+      staleAudioFrames: 0,
     }
     const NativeWebSocket = window.WebSocket
     const origFetch = window.fetch
@@ -155,9 +164,16 @@ export function VoiceDuplexHarness() {
           })
           this.addEventListener("message", (ev: MessageEvent) => {
             try {
-              const msg = JSON.parse(String(ev.data)) as { type?: string }
+              const msg = JSON.parse(String(ev.data)) as { type?: string; reply_id?: number }
               if (msg.type === "session.ready") pcm.sessionReady = true
-              if (msg.type === "audio") pcm.audioFrames += 1
+              if (msg.type === "speech.interrupted" && typeof msg.reply_id === "number") pcm.interruptedReply = Math.max(pcm.interruptedReply, msg.reply_id)
+              if (msg.type === "audio") {
+                pcm.audioFrames += 1
+                if (typeof msg.reply_id === "number") {
+                  pcm.latestAudioReply = Math.max(pcm.latestAudioReply, msg.reply_id)
+                  if (msg.reply_id <= pcm.interruptedReply) pcm.staleAudioFrames += 1
+                } else if (pcm.interruptedReply >= 0) pcm.staleAudioFrames += 1
+              }
               if (msg.type === "assistant_turn.complete") pcm.turnComplete += 1
             } catch {
               /* non-JSON frames are not part of this protocol */
@@ -311,6 +327,9 @@ export function VoiceDuplexHarness() {
         sessionReady: pcm.sessionReady,
         audioFramesReceived: pcm.audioFrames,
         turnCompleteMessages: pcm.turnComplete,
+        interruptedReply: pcm.interruptedReply,
+        latestAudioReply: pcm.latestAudioReply,
+        staleAudioFrames: pcm.staleAudioFrames,
       }))
     }, 100)
 
@@ -411,6 +430,9 @@ export function VoiceDuplexHarness() {
       data-session-ready={metrics.sessionReady ? "true" : "false"}
       data-audio-frames={metrics.audioFramesReceived}
       data-turn-complete-messages={metrics.turnCompleteMessages}
+      data-interrupted-reply={metrics.interruptedReply}
+      data-latest-audio-reply={metrics.latestAudioReply}
+      data-stale-audio-frames={metrics.staleAudioFrames}
       data-user-text={turn.userText}
       data-assistant-text={turn.assistantText}
       data-conversation-id={turn.conversationId}
@@ -443,6 +465,8 @@ export function VoiceDuplexHarness() {
           <a href={captureArtifacts.manifestUrl} download="gravitre-acoustic-timeline.json">Save timing manifest</a>
         </div>
       )}
+      <button type="button" data-testid="voice-duplex-interrupt" disabled={!duplex.isActive}
+        onClick={() => void duplex.bargeIn()}>Interrupt reply</button>
       <button
         type="button"
         data-testid="voice-duplex-start"
