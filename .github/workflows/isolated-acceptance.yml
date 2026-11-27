@@ -189,11 +189,12 @@ jobs:
         working-directory: backend
         env:
           APP_ENV: dev
-        run: python -m pytest -q tests/scripts/test_voice3_catalog_proposal.py tests/scripts/test_voice3_acoustic_eval.py
+        run: python -m pytest -q tests/scripts/test_voice3_catalog_proposal.py tests/scripts/test_voice3_acoustic_eval.py tests/scripts/test_voice3_provider_quality.py
       - name: Discover and propose Voice 3.0 catalog from acceptance account
         env:
           APP_ENV: dev
           ELEVENLABS_API_KEY: ${{ secrets.ACCEPTANCE_ELEVENLABS_API_KEY }}
+          DEEPGRAM_API_KEY: ${{ secrets.ACCEPTANCE_DEEPGRAM_API_KEY }}
         run: python scripts/propose-voice3-catalog.py --output acceptance-results/voice-catalog-proposal.json
       - name: Publish sanitized voice evidence
         if: always()

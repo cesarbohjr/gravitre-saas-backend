@@ -92,7 +92,7 @@ def propose(env, transport=None, probe_fn=None):
     from app.services.voice_library_service import CURATED_VOICE_META
     result = {"status": "NOT RUN", "source_sha": env.get("GITHUB_SHA", ""),
               "activation_authorized": False, "physical_acceptance": "NOT RUN",
-              "scope": "Account inventory, metadata matching and HTTP Flash synthesis only",
+              "scope": "Metadata proposal and paired Flash/v3 HTTP PCM diagnostics; no activation",
               "mapping": [], "compatibility": []}
     key = env.get("ELEVENLABS_API_KEY")
     if not key:
@@ -120,7 +120,26 @@ def propose(env, transport=None, probe_fn=None):
         result["status"] = ("READY_FOR_REVIEW" if len(rows) == len(CURATED_VOICE_META)
                             and all(r["flash_http_passed"] for r in rows)
                             else "INCOMPLETE")
+        from voice3_provider_quality import evaluate_pair
+        from voice3_acoustic_eval import certification_blockers
+        cache = {}
+        with httpx.Client(timeout=15, follow_redirects=False, transport=transport) as client:
+            for row in rows:
+                quality = evaluate_pair(client, env, row["legacy_id"], row["candidate_id"], cache)
+                row["provider_quality"] = quality
+                gates = quality["gates"]
+                if not row["flash_http_passed"]:
+                    gates["flash_http"] = "FAIL"
+                row["certification_blockers"] = certification_blockers(gates)
+                row["decision"] = "BLOCKED" if row["certification_blockers"] else "REVIEW_REQUIRED"
         result["proposed_ids"] = [r["candidate_id"] for r in rows if r["flash_http_passed"]]
+        result["certifiable_ids"] = [r["candidate_id"] for r in rows
+                                     if r["candidate_id"] and not r["certification_blockers"]]
+        result["certification_status"] = "BLOCKED" if len(result["certifiable_ids"]) != len(rows) else "REVIEW_REQUIRED"
+        result["status"] = "INCOMPLETE" if any(
+            r["provider_quality"]["gates"].get(g) != "PASS" for r in rows
+            for g in ("flash_http", "v3_dialogue", "acoustic_integrity", "intelligibility")
+        ) else "READY_FOR_REVIEW"
     except Exception as exc:
         result["status"] = "FAIL"
         result["error_type"] = type(exc).__name__
