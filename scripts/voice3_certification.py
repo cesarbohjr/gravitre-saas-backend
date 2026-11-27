@@ -4,7 +4,7 @@ import json
 import os
 from pathlib import Path
 from voice3_acoustic_eval import certification_blockers
-from voice3_pipecat_probe import candidate_ids, evaluate_status, MODEL, FLASH, FIXTURE_VERSION
+from voice3_pipecat_probe import candidate_ids, evaluate_status, MODEL, FLASH, FIXTURE_VERSION, TRIALS
 
 def consolidate(proposal, probe, sha):
     ids = candidate_ids(proposal,sha)
@@ -24,15 +24,15 @@ def consolidate(proposal, probe, sha):
         gates = {k:gates[k] for k in ("flash_http","v3_dialogue","acoustic_integrity","intelligibility") if k in gates}
         pair = index.get(voice,{})
         if pair:
-            valid = all(pair.get(label,{}).get("voice_id") == voice and
-                        pair[label].get("model") == model and
-                        pair[label].get("fixture_version") == FIXTURE_VERSION and
-                        pair[label].get("status") == "PASS" and
-                        evaluate_status(pair[label]) == "PASS"
-                        for label,model in (("flash",FLASH),("dialogue",MODEL)))
-            gates["interruption"] = "PASS" if valid else "FAIL"
-            # Adapter sink data does not establish full-duplex latency,
-            # browser playback, physical acceptance or remote cancel ack.
+            valid = all(isinstance(pair.get(label),list) and len(pair[label]) == TRIALS
+                        and all(t.get("trial") == i and t.get("voice_id") == voice
+                                and t.get("model") == model and t.get("fixture_version") == FIXTURE_VERSION
+                                and t.get("status") == "PASS" and evaluate_status(t) == "PASS"
+                                for i,t in enumerate(pair[label]))
+                        for label,model in (("flash_trials",FLASH),("dialogue_trials",MODEL)))
+            # Adapter-local cancellation is useful evidence but remote provider
+            # termination is not established. Never upgrade it to certification.
+            gates["interruption"] = "NOT RUN" if valid else "FAIL"
             gates["live_streaming"] = "NOT RUN" if valid else "FAIL"
         blockers = certification_blockers(gates)
         out.append({"preset":row["preset"],"candidate_id":voice,"gates":gates,

@@ -154,7 +154,7 @@ jobs:
     name: ElevenLabs + Deepgram synthetic live acceptance
     if: ${{ (github.event_name == 'workflow_dispatch' || github.event_name == 'workflow_call' || vars.ACCEPTANCE_AUTOMATION_ENABLED == 'true') && (inputs.suite == '' || inputs.suite == 'all' || inputs.suite == 'voice') }}
     runs-on: ubuntu-latest
-    timeout-minutes: 65
+    timeout-minutes: 125
     environment: acceptance
     steps:
       - uses: actions/checkout@v4

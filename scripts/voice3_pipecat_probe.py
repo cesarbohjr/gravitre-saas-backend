@@ -2,6 +2,8 @@
 import argparse
 import asyncio
 import json
+import math
+import statistics
 import os
 from pathlib import Path
 import re
@@ -13,7 +15,8 @@ sys.path.insert(0, str(ROOT / "backend"))
 RATE = 24000
 MODEL = "eleven_v3"
 FLASH = "eleven_flash_v2_5"
-FIXTURE_VERSION = "interrupt-recovery-v2"
+FIXTURE_VERSION = "interrupt-recovery-v3"
+TRIALS = 3
 LONG = "This is a synthetic voice test. " + "We are checking a continuous spoken response with several separate sentences. " * 6
 RECOVERY = "The second response is ready. Thank you for waiting."
 MAX_VOICES = 12
@@ -26,6 +29,40 @@ def candidate_ids(manifest, sha):
         not isinstance(v,str) or not re.fullmatch(r"[A-Za-z0-9]{16,64}",v) for v in ids):
         raise ValueError("invalid candidate set")
     return ids
+
+def distribution(values):
+    if not values or any(type(v) not in (int,float) or not math.isfinite(v) or v < 0 for v in values):
+        return None
+    ordered = sorted(values)
+    return {"count":len(ordered),"p50":statistics.median(ordered),
+            "p95":ordered[math.ceil(.95*len(ordered))-1],"max":ordered[-1]}
+
+def cadence(events):
+    """Downstream PCM delivery timing, not network packets or audible gaps.
+
+    A virtual real-time consumer starts at the first frame, with no additional
+    startup reserve. Deficits quantify delivery pressure, not browser underruns.
+    """
+    if not events:
+        return {"status":"NOT RUN"}
+    if any(e["rate"] != RATE or e["channels"] != 1 or e["bytes"] <= 0
+           or e["bytes"] % 2 for e in events):
+        return {"status":"FAIL"}
+    arrivals = [(e["at"]-events[0]["at"])*1000 for e in events]
+    gaps = [b-a for a,b in zip(arrivals,arrivals[1:])]
+    if any(not math.isfinite(v) or v < 0 for v in gaps):
+        return {"status":"FAIL"}
+    cursor = 0.0
+    deficit = 0.0
+    starvation_events = 0
+    for at,e in zip(arrivals,events):
+        if at > cursor:
+            deficit += at-cursor
+            starvation_events += 1
+        cursor = max(cursor,at)+e["bytes"]/2/RATE*1000
+    return {"status":"MEASURED","frames":len(events),"interarrival_ms":distribution(gaps),
+            "virtual_zero_reserve_deficit_ms":round(deficit,3),
+            "virtual_starvation_events":starvation_events}
 
 def summarize(events, start, cut, recovery, finished):
     # The sink records actual downstream frames, not elapsed reply span.
@@ -44,6 +81,7 @@ def summarize(events, start, cut, recovery, finished):
             "contexts_disjoint": bool(contexts1 and contexts2 and not contexts1 & contexts2),
             "frame_format_valid": valid,
             "recovery_stop_observed": finished,
+            "initial_cadence":cadence(first),"recovery_cadence":cadence(second),
             "sink_status": "PASS" if first and second and not stale and valid and finished
             and contexts1 and contexts2 and not contexts1 & contexts2 else "FAIL"}
 
@@ -63,6 +101,7 @@ async def probe_voice(key, voice_id, model=MODEL, stt_key=None):
     adapter = build_live_tts_service(api_key=key, voice_id=voice_id, model=model, sample_rate=RATE)
     stamp = ReplyAudioStampProcessor(voice_session=session)
     events = []
+    upstream_audio = []
     first_audio = asyncio.Event()
     interrupted = asyncio.Event()
     recovered = asyncio.Event()
@@ -72,6 +111,16 @@ async def probe_voice(key, voice_id, model=MODEL, stt_key=None):
     recovery_pcm = bytearray()
     recovery_end = asyncio.Event()
     reply2_open = False
+
+    class AdapterTap(FrameProcessor):
+        async def process_frame(self, frame: Frame, direction: FrameDirection):
+            await super().process_frame(frame,direction)
+            if direction == FrameDirection.DOWNSTREAM and isinstance(frame,TTSAudioRawFrame):
+                upstream_audio.append({"context":getattr(frame,"context_id",None),
+                                       "at":time.monotonic(),"bytes":len(frame.audio)})
+            if isinstance(frame,ErrorFrame):
+                errors.append(type(frame).__name__)
+            await self.push_frame(frame,direction)
 
     class Sink(FrameProcessor):
         async def process_frame(self, frame: Frame, direction: FrameDirection):
@@ -106,7 +155,7 @@ async def probe_voice(key, voice_id, model=MODEL, stt_key=None):
                         recovered.set()
             await self.push_frame(frame,direction)
 
-    task = PipelineTask(Pipeline([adapter,stamp,Sink()]),
+    task = PipelineTask(Pipeline([adapter,AdapterTap(),stamp,Sink()]),
         params=PipelineParams(audio_out_sample_rate=RATE, enable_metrics=True))
     runner = asyncio.create_task(PipelineRunner(handle_sigint=False).run(task))
     async def send(text):
@@ -146,6 +195,9 @@ async def probe_voice(key, voice_id, model=MODEL, stt_key=None):
                        "error_count":len(errors),
                        "scope":"actual adapter downstream PCM; not device playback or full conversation"})
         result["cancel_hook_ms"] = cancel_ms
+        result["adapter_old_context_pcm_after_hook"] = sum(e["bytes"]//2 for e in upstream_audio
+            if e["context"] == first_context and e["at"] >= cut + cancel_ms/1000)
+        result["remote_cancel_confirmation"] = "NOT ESTABLISHED"
         result["cancel_context_matches"] = cancel.get("context_id") == first_context
         result["cancel_session_kept"] = cancel.get("session_kept") is True
         result["recovery_all_contexts_stopped"] = bool(recovery_contexts and recovery_contexts <= stops)
@@ -207,6 +259,20 @@ def compare_latency(flash, dialogue):
     return {"status":"MEASURED","delta_ms":{k:dialogue[k]-flash[k] for k in keys},
             "performance_gate":"NOT RUN","reason":"single paired observation; release budget not calibrated"}
 
+def trial_summary(flash, dialogue):
+    keys = ("first_audio_ms","recovery_first_audio_ms","cancel_hook_ms")
+    if len(flash) != TRIALS or len(dialogue) != TRIALS:
+        return {"status":"NOT RUN","performance_gate":"NOT RUN"}
+    metrics = {}
+    for key in keys:
+        a,b = distribution([r.get(key) for r in flash]),distribution([r.get(key) for r in dialogue])
+        if a is None or b is None:
+            return {"status":"NOT RUN","performance_gate":"NOT RUN"}
+        metrics[key] = {"flash":a,"dialogue":b,"p50_delta":b["p50"]-a["p50"],
+                        "p95_delta":b["p95"]-a["p95"]}
+    return {"status":"MEASURED","performance_gate":"NOT RUN","metrics":metrics,
+            "reason":"three paired cold-start trials; nearest-rank p95 is the maximum, not a calibrated tail estimate"}
+
 async def run(env, manifest):
     result = {"source_sha":env.get("GITHUB_SHA",""),"model":MODEL,"fixture_version":FIXTURE_VERSION,
               "status":"NOT RUN","rows":[],"activation_authorized":False}
@@ -218,16 +284,18 @@ async def run(env, manifest):
         result["status"]="FAIL"
         return result
     for voice in ids:
-        pair = {}
-        for model in (FLASH,MODEL):
-            try:
-                row = await asyncio.wait_for(probe_voice(env["ELEVENLABS_API_KEY"],voice,model,env.get("DEEPGRAM_API_KEY")),60)
-            except Exception as exc:
-                row = {"voice_id":voice,"model":model,"status":"FAIL","error_type":type(exc).__name__}
-            pair[model] = row
-        result["rows"].append({"voice_id":voice,"flash":pair[FLASH],"dialogue":pair[MODEL],
-            "comparison":compare_latency(pair[FLASH],pair[MODEL]),
-            "status":"PASS" if all(r["status"]=="PASS" for r in pair.values()) else "FAIL"})
+        pair = {FLASH:[],MODEL:[]}
+        for trial in range(TRIALS):
+            # Alternate order to reduce systematic warm-up/provider load bias.
+            for model in ((FLASH,MODEL) if trial%2 == 0 else (MODEL,FLASH)):
+                try:
+                    row = await asyncio.wait_for(probe_voice(env["ELEVENLABS_API_KEY"],voice,model,env.get("DEEPGRAM_API_KEY")),60)
+                except Exception as exc:
+                    row = {"voice_id":voice,"model":model,"status":"FAIL","error_type":type(exc).__name__}
+                pair[model].append({**row,"trial":trial})
+        result["rows"].append({"voice_id":voice,"flash_trials":pair[FLASH],"dialogue_trials":pair[MODEL],
+            "comparison":trial_summary(pair[FLASH],pair[MODEL]),
+            "status":"PASS" if all(r["status"]=="PASS" for rows in pair.values() for r in rows) else "FAIL"})
     result["status"]="PASS" if all(r["status"]=="PASS" for r in result["rows"]) else "FAIL"
     return result
 

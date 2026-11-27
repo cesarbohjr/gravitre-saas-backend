@@ -60,12 +60,31 @@ def test_consolidation_rejects_stale_and_incomplete_evidence():
     voice="A"*20
     proposal={"source_sha":"head","activation_authorized":False,"mapping":[{"preset":"a","candidate_id":voice}]}
     probe={"source_sha":"head","activation_authorized":False,"model":m.MODEL,"fixture_version":m.FIXTURE_VERSION,
-           "rows":[{"voice_id":voice,"status":"PASS","flash":good_row(voice,m.FLASH),"dialogue":good_row()}]}
+           "rows":[{"voice_id":voice,"status":"PASS","flash_trials":[{**good_row(voice,m.FLASH),"trial":i} for i in range(m.TRIALS)],"dialogue_trials":[{**good_row(),"trial":i} for i in range(m.TRIALS)]}]}
     result=consolidate(proposal,probe,"head")
-    assert result["rows"][0]["gates"]["interruption"]=="PASS"
+    assert result["rows"][0]["gates"]["interruption"]=="NOT RUN"
     assert result["status"]=="BLOCKED"
     assert not result["certifiable_ids"]
     with pytest.raises(ValueError):
         consolidate(proposal,{**probe,"source_sha":"old"},"head")
     with pytest.raises(ValueError):
         consolidate(proposal,{**probe,"rows":[]},"head")
+
+def test_nearest_rank_p95_and_invalid_samples():
+    assert m.distribution([10,20,100]) == {"count":3,"p50":20,"p95":100,"max":100}
+    assert m.distribution([10,float("nan")]) is None
+    assert m.distribution([True]) is None
+
+def test_cadence_reports_virtual_starvation_not_physical_gap():
+    r=m.cadence([event(1,1,"old"),event(1,1.05,"old")])
+    assert r["virtual_zero_reserve_deficit_ms"] == pytest.approx(30)
+    assert r["virtual_starvation_events"]==1
+    assert r["status"]=="MEASURED"
+
+def test_trial_distribution_requires_all_three():
+    a=[good_row() for _ in range(3)]
+    b=[{**good_row(),"first_audio_ms":v} for v in (90,110,200)]
+    r=m.trial_summary(a,b)
+    assert r["metrics"]["first_audio_ms"]["p95_delta"]==100
+    assert r["performance_gate"]=="NOT RUN"
+    assert m.trial_summary(a,b[:2])["status"]=="NOT RUN"
