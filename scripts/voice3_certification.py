@@ -34,6 +34,10 @@ def consolidate(proposal, probe, sha):
             # termination is not established. Never upgrade it to certification.
             gates["interruption"] = "NOT RUN" if valid else "FAIL"
             gates["live_streaming"] = "NOT RUN" if valid else "FAIL"
+        # Listening scores require verified human provenance; an unsigned JSON
+        # file cannot independently authorize subjective gates.
+        gates["paired_quality"] = "NOT RUN"
+        gates["prosody_review"] = "NOT RUN"
         blockers = certification_blockers(gates)
         out.append({"preset":row["preset"],"candidate_id":voice,"gates":gates,
                     "blockers":blockers,"adapter_probe_status":pair.get("status","NOT RUN")})
