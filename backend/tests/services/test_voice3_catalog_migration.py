@@ -74,3 +74,13 @@ def test_pipecat_uses_effective_identity_without_activating_v3():
     agent = {"voiceProfile": {"voice_id": "CustomShort", "voice_key": "adam"}}
     assert resolve_voice_and_tts_model(settings, agent=agent, voice_key="sarah") == (
         "CustomShort", "eleven_flash_v2_5")
+
+
+def test_library_resolves_filtered_key_and_default_without_reintroducing_voice():
+    settings = _settings("ApprovedCaseSensitive123")
+    with patch("app.services.voice_library_service.fetch_elevenlabs_shared_voices", return_value=_catalog()):
+        for key in (None, "sarah"):
+            library = list_voice_library(settings, selected_key=key)
+            assert library["effective_voice"]["voice_id"] == DEFAULT_VOICES["sarah"]["id"]
+            assert library["effective_voice"]["name"] == "Sarah"
+            assert [v["name"] for v in library["voices"]] == ["Approved"]

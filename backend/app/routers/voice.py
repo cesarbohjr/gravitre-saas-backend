@@ -176,6 +176,7 @@ class PreviewRequest(BaseModel):
     )
     voice: str = Field(..., min_length=1)
     model: str | None = "eleven_flash_v2_5"
+    exact_voice_id: bool = False
 
 
 class MeterMinutesRequest(BaseModel):
@@ -345,6 +346,7 @@ def get_voice_library(
     language: str | None = None,
     gender: str | None = None,
     archetype: str | None = None,
+    selected_key: str | None = None,
 ) -> dict[str, Any]:
     from app.services.voice_library_service import list_voice_library
 
@@ -355,6 +357,7 @@ def get_voice_library(
             language=language,
             gender=gender,
             archetype=archetype,
+            selected_key=selected_key,
         )
     except VoiceProviderError as exc:
         raise _http_error(exc) from exc
@@ -493,7 +496,8 @@ def post_voice_preview(
     started = time.perf_counter()
     try:
         audio, content_type, meta = synthesize_speech(
-            settings, text=body.text, voice_key=body.voice, model_id=body.model
+            settings, text=body.text, voice_key=body.voice, model_id=body.model,
+            **({"exact_voice_id": True} if body.exact_voice_id else {})
         )
     except VoiceProviderError as exc:
         raise _http_error(exc) from exc

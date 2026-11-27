@@ -199,3 +199,25 @@ it("does not start playback after the user stops a pending preview", async () =>
   expect(state.play).not.toHaveBeenCalled()
   expect(container.textContent).not.toContain("Playing")
 })
+
+
+it("resolves a key-only legacy selection through backend identity without rewriting it", async () => {
+  state.fetch.mockImplementationOnce(async () => ({
+    ok: true,
+    json: async () => ({
+      voices: [{ voice_id: "new", key: "sarah", name: "New candidate" }],
+      effective_voice: { voice_id: "LegacyCase", name: "Legacy Sarah" },
+    }),
+  }))
+  const changed = vi.fn()
+  await act(async () => root.render(
+    <AgentVoiceAssignment value={{ voice_key: "sarah" }} onChange={changed} />
+  ))
+  expect(state.fetch.mock.calls[0][0]).toBe("/api/voice/library?selected_key=sarah")
+  expect(container.textContent).toContain("Legacy Sarah")
+  expect(container.querySelector('[aria-pressed="true"]')?.textContent).not.toContain("New candidate")
+  await act(async () => click("Play"))
+  const preview = state.fetch.mock.calls.find(([path]) => path === "/api/voice/preview")
+  expect(JSON.parse(preview![1].body)).toMatchObject({ voice: "LegacyCase", exact_voice_id: true })
+  expect(changed).not.toHaveBeenCalled()
+})

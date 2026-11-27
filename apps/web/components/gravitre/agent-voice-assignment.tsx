@@ -71,6 +71,11 @@ export function AgentVoiceAssignment({
   const [generatedDescription, setGeneratedDescription] = useState("")
   const [tab, setTab] = useState<"preset" | "custom">("preset")
   const [voices, setVoices] = useState<LibraryVoice[]>([])
+  const selectedKey = !value.voice_id?.trim() ? value.voice_key?.trim() || "" : ""
+  const [resolved, setResolved] = useState<{
+    key: string
+    voice: { voice_id: string; name?: string | null } | null
+  } | null>(null)
   const [loading, setLoading] = useState(false)
   const [previewing, setPreviewing] = useState<string | null>(null)
   const [description, setDescription] = useState("")
@@ -92,10 +97,17 @@ export function AgentVoiceAssignment({
       setLoading(true)
       setLibraryError(null)
       try {
-        const res = await apiFetch("/api/voice/library", { timeoutMs: 20_000 })
+        const query = selectedKey ? `?selected_key=${encodeURIComponent(selectedKey)}` : ""
+        const res = await apiFetch(`/api/voice/library${query}`, { timeoutMs: 20_000 })
         if (!res.ok) throw new Error("Could not load voice library")
-        const data = (await res.json()) as { voices?: LibraryVoice[] }
-        if (!cancelled) setVoices(data.voices || [])
+        const data = (await res.json()) as {
+          voices?: LibraryVoice[]
+          effective_voice?: { voice_id: string; name?: string | null }
+        }
+        if (!cancelled) {
+          setVoices(data.voices || [])
+          setResolved({ key: selectedKey, voice: data.effective_voice || null })
+        }
       } catch (err) {
         if (!cancelled)
           setLibraryError(
@@ -108,7 +120,7 @@ export function AgentVoiceAssignment({
     return () => {
       cancelled = true
     }
-  }, [libraryAttempt])
+  }, [libraryAttempt, selectedKey])
 
   const stopAudio = useCallback(() => {
     previewRequest.current?.abort()
@@ -178,6 +190,7 @@ export function AgentVoiceAssignment({
           headers: { "content-type": "application/json", accept: "audio/mpeg" },
           body: JSON.stringify({
             voice: voiceId,
+            exact_voice_id: true,
             model: model || value.tts_model || "eleven_flash_v2_5",
           }),
           timeoutMs: 45_000,
@@ -302,15 +315,16 @@ export function AgentVoiceAssignment({
   const isCustom = value.voice_source === "custom_voice_v3"
   // Human-readable identity for the footer. The raw voice_id stays out of the UI
   // — it is an ElevenLabs handle, not information an operator can act on.
+  const assigned = Boolean(value.voice_id?.trim() || selectedKey)
+  const resolvedVoice = resolved?.key === selectedKey ? resolved.voice : null
+  const effectiveId = value.voice_id?.trim() || resolvedVoice?.voice_id || null
   const selectedName = useMemo(() => {
-    if (!value.voice_id) return null
-    if (isCustom) return `Custom ${department || "agent"} voice`
-    return (
-      voices.find((v) => v.voice_id === value.voice_id)?.name ??
-      "Selected voice"
-    )
-  }, [value.voice_id, isCustom, department, voices])
-  const selectedHeard = value.voice_id ? heard.includes(value.voice_id) : false
+    if (isCustom && assigned) return `Custom ${department || "agent"} voice`
+    return voices.find((v) => v.voice_id === effectiveId)?.name ??
+      (!value.voice_id?.trim() ? resolvedVoice?.name : null) ??
+      (assigned ? "Existing assigned voice" : "Configured default voice")
+  }, [effectiveId, isCustom, assigned, department, voices, value.voice_id, resolvedVoice])
+  const selectedHeard = effectiveId ? heard.includes(effectiveId) : false
 
   return (
     <div className={cn("space-y-4", className)}>
@@ -384,7 +398,7 @@ export function AgentVoiceAssignment({
                 ) : null}
                 <div className="grid max-h-80 gap-2 overflow-y-auto pr-0.5 sm:grid-cols-2">
                   {voices.map((v) => {
-                    const selected = value.voice_id === v.voice_id
+                    const selected = assigned && effectiveId === v.voice_id
                     const isPreviewing = previewing === v.voice_id
                     return (
                       <div
@@ -641,7 +655,7 @@ export function AgentVoiceAssignment({
         aria-live="polite"
         className="flex flex-wrap items-center gap-x-2 gap-y-1 rounded-[var(--np-radius-md)] bg-[color:var(--g-surface-1)] px-3 py-2.5"
       >
-        {value.voice_id ? (
+        {effectiveId ? (
           <>
             {selectedHeard ? (
               <Check
@@ -649,11 +663,11 @@ export function AgentVoiceAssignment({
                 aria-hidden
               />
             ) : null}
-            <span className="text-xs text-muted-foreground">Selected</span>
+            <span className="text-xs text-muted-foreground">{assigned ? "Selected" : "Default (not assigned)"}</span>
             <span className="text-[13px] font-medium text-foreground">
               {selectedName}
             </span>
-            <Trait>{isCustom ? "Custom" : "Preset"}</Trait>
+            <Trait>{assigned ? (isCustom ? "Custom" : "Preset") : "Default"}</Trait>
             {selectedHeard ? (
               <span className="text-xs text-muted-foreground">Previewed</span>
             ) : (
@@ -665,7 +679,7 @@ export function AgentVoiceAssignment({
                   type="button"
                   disabled={Boolean(previewing)}
                   className="inline-flex min-h-11 items-center text-xs font-medium text-foreground underline underline-offset-2"
-                  onClick={() => previewVoice(value.voice_id!)}
+                  onClick={() => previewVoice(effectiveId)}
                 >
                   Play
                 </button>
@@ -674,7 +688,7 @@ export function AgentVoiceAssignment({
           </>
         ) : (
           <span className="text-xs text-muted-foreground">
-            No voice selected yet — pick one above and listen before confirming.
+            {assigned ? "Existing voice assigned — identity unavailable until the library loads." : "No voice selected yet — pick one above and listen before confirming."}
           </span>
         )}
       </div>

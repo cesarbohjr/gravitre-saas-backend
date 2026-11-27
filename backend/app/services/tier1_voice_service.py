@@ -354,6 +354,7 @@ def synthesize_speech(
     model_id: str | None = None,
     expression_tier: str | None = None,
     http_client: httpx.Client | None = None,
+    exact_voice_id: bool = False,
 ) -> tuple[bytes, str, dict[str, Any]]:
     api_key = (settings.elevenlabs_api_key or "").strip()
     if not api_key:
@@ -368,7 +369,17 @@ def synthesize_speech(
         raise VoiceProviderError("text is required", status_code=400, error_class="validation")
     if len(clean) > 5000:
         clean = clean[:5000]
-    key, voice_id = resolve_voice_id(settings, voice_key)
+    if exact_voice_id:
+        if not (voice_key or "").strip():
+            raise VoiceProviderError("voice ID is required", status_code=400, error_class="validation")
+        from app.services.voice_agent_profile import resolve_effective_voice
+
+        voice_id = resolve_effective_voice(
+            settings, {"voice_profile": {"voice_id": voice_key}}
+        )["voice_id"]
+        key = voice_id
+    else:
+        key, voice_id = resolve_voice_id(settings, voice_key)
     model = (model_id or settings.elevenlabs_tts_model or "eleven_flash_v2_5").strip()
     # Prefer Flash v2.5 naming; accept legacy turbo alias.
     if model in {"eleven_turbo_v2_5", "eleven_turbo_v2"}:

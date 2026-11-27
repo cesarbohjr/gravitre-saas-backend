@@ -439,8 +439,16 @@ def list_voice_library(
     language: str | None = None,
     gender: str | None = None,
     archetype: str | None = None,
+    selected_key: str | None = None,
 ) -> dict[str, Any]:
+    from app.services.voice_agent_profile import resolve_effective_voice
+
+    identity = resolve_effective_voice(
+        settings, {"voice_profile": {"voice_key": selected_key}} if selected_key else None
+    )
     voices = fetch_elevenlabs_shared_voices(settings)
+    selected = next((v for v in voices if v.get("voice_id") == identity["voice_id"]), None)
+    identity["name"] = selected.get("name") if selected else None
     # Filter discovery and recommendations only; saved voice IDs and synthesis
     # resolution remain compatible throughout the migration. IDs are case sensitive.
     approved_ids = {
@@ -469,6 +477,7 @@ def list_voice_library(
     categories = sorted({c for v in voices for c in (v.get("categories") or [])})
     return {
         "voices": filtered,
+        "effective_voice": identity,
         "count": len(filtered),
         "total_unfiltered": len(voices),
         "categories": [{"id": c, "label": CATEGORY_LABELS.get(c, c.title())} for c in categories],
