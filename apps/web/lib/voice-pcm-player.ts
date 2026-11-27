@@ -51,6 +51,8 @@ export type AcousticTimingEvent = {
 export type VoicePcmPlayerOptions = {
   /** Where audio goes; defaults to ctx.destination. */
   destination?: AudioNode
+  /** Explicit isolated comparison only; default remains fixed control. */
+  acceptanceBufferPolicy?: "baseline" | "fixed" | "adaptive"
   /**
    * Explicit acceptance-test output tap, AFTER overlap ducking. Must be an
    * AudioNode in the same AudioContext (e.g. a MediaStreamDestination).
@@ -124,11 +126,14 @@ export function createWorkletPcmPlayer(
       })
     } catch { /* diagnostic hooks may never interrupt audio */ }
   }
+  const policy = options.acceptanceBufferPolicy ?? "fixed"
+  const initialLeadS = policy === "fixed" ? PCM_WORKLET_CANDIDATE_LEAD_S : 0.12
+  const maxLeadS = policy === "baseline" ? 0.32 : PCM_WORKLET_CANDIDATE_MAX_LEAD_S
   const node = new AudioWorkletNode(ctx, VOICE_PCM_PLAYER_PROCESSOR, {
     numberOfInputs: 0,
     numberOfOutputs: 1,
     outputChannelCount: [1],
-    processorOptions: { flushFadeS: PCM_FLUSH_FADE_S, initialLeadS: PCM_WORKLET_CANDIDATE_LEAD_S, maxLeadS: PCM_WORKLET_CANDIDATE_MAX_LEAD_S },
+    processorOptions: { flushFadeS: PCM_FLUSH_FADE_S, initialLeadS, maxLeadS, adaptiveStartup: policy === "adaptive" },
   })
   // Overlap ducking sits after the player, so it lowers what is already queued.
   const duck = createDuckControl(ctx, options.destination ?? ctx.destination, options.acceptanceOutputTap)
@@ -218,7 +223,7 @@ export function createWorkletPcmPlayer(
       if (!active) {
         active = true
         // Until the worklet reports the real start, assume the initial lead.
-        if (origin == null) origin = ctx.currentTime + PCM_WORKLET_CANDIDATE_LEAD_S
+        if (origin == null) origin = ctx.currentTime + initialLeadS
         options.onActiveChange?.(true)
       }
       posted += 1

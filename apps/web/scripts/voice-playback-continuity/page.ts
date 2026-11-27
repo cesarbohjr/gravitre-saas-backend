@@ -25,6 +25,8 @@ export type Scenario = {
   jitterMaxMs: number
   /** Server send rate relative to real time (Pipecat 1.x: 2; a real-time-bound TTS: 1). */
   pacing: number
+  policy?: "baseline" | "fixed" | "adaptive"
+  jitterProfile?: "uniform" | "burst" | "clean"
 }
 
 const SRC_RATE = 24000
@@ -131,8 +133,8 @@ function beforePlayer(ctx: AudioContext, dest: AudioNode): Player {
   }
 }
 
-async function afterPlayer(ctx: AudioContext, dest: AudioNode): Promise<Player & { kind: string }> {
-  const player = await createVoicePcmPlayer(ctx, { destination: dest })
+async function afterPlayer(ctx: AudioContext, dest: AudioNode, policy?: Scenario["policy"]): Promise<Player & { kind: string }> {
+  const player = await createVoicePcmPlayer(ctx, { destination: dest, acceptanceBufferPolicy: policy })
   const decoder = createPcm16StreamDecoder()
   return {
     kind: player.kind,
@@ -164,7 +166,7 @@ export async function runScenario(sc: Scenario) {
       if (e.data.done) resolve()
     }
   })
-  const player = sc.impl === "before" ? beforePlayer(ctx, bus) : await afterPlayer(ctx, bus)
+  const player = sc.impl === "before" ? beforePlayer(ctx, bus) : await afterPlayer(ctx, bus, sc.policy)
   const rand = rng(sc.seed)
   const t0 = performance.now()
 
@@ -177,7 +179,9 @@ export async function runScenario(sc: Scenario) {
     let sendMs = startMs
     for (const p of packetize(bytes, sc.oddSplit, rand)) {
       if (sendMs >= stopAtMs) break
-      const arrival = Math.max(lastArrival, sendMs + rand() * sc.jitterMaxMs)
+      const draw = rand()
+      const delay = sc.jitterProfile === "clean" ? 0 : sc.jitterProfile === "burst" ? (Math.floor((sendMs - startMs) / 400) % 3 === 1 ? 0.75 + 0.25 * draw : 0.1 * draw) * sc.jitterMaxMs : draw * sc.jitterMaxMs
+      const arrival = Math.max(lastArrival, sendMs + delay)
       lastArrival = arrival
       msgs.push({ at: arrival, b64: toB64(p), reply })
       sendMs += (p.length / 2 / SRC_RATE) * 1000 / sc.pacing

@@ -26,6 +26,8 @@ const args = process.argv.slice(2)
 const outPath = args.includes("--out") ? args[args.indexOf("--out") + 1] : null
 const quick = args.includes("--quick")
 const enforce = args.includes("--enforce")
+const compare = args.includes("--compare-policies")
+if (compare && (enforce || process.env.SCENARIO_FILTER)) throw new Error("Paired comparison must run unfiltered, independently of standing gate")
 if (enforce && process.env.SCENARIO_FILTER) throw new Error("Enforced matrix cannot be filtered")
 
 const { chromium } = require(process.env.PLAYWRIGHT_MODULE || "@playwright/test")
@@ -184,6 +186,17 @@ for (const pacing of [2, 1])
         for (const impl of enforce ? ["after"] : ["before", "after"])
           matrix.push({ impl, ctxRate, seed, oddSplit, pacing, replyS: 6, flushAtS: 3.2, secondReplyDelayS: 0.4, secondReplyS: 2.5, jitterMaxMs: 300 })
 
+if (compare) {
+  matrix.length = 0
+  for (const pacing of [1, 2])
+    for (const ctxRate of [44100, 48000])
+      for (const oddSplit of [false, true])
+        for (const seed of [1, 2, 3])
+          for (const jitterProfile of ["clean", "uniform", "burst"])
+            // Rotate policy order deterministically to reduce systematic runner bias.
+            for (const policy of ["baseline", "fixed", "adaptive"].map((_, i, a) => a[(i + seed) % a.length]))
+              matrix.push({ impl: "after", policy, jitterProfile, pacing, ctxRate, oddSplit, seed, replyS: 6, flushAtS: 3.2, secondReplyDelayS: 0.4, secondReplyS: 2.5, jitterMaxMs: 300 })
+}
 const results = []
 const label = (sc) => `${sc.impl} x${sc.pacing} ${sc.ctxRate} ${sc.oddSplit ? "odd" : "even"} seed=${sc.seed}`
 const filter = process.env.SCENARIO_FILTER ? new RegExp(process.env.SCENARIO_FILTER) : null
@@ -201,7 +214,7 @@ for (const sc of matrix) {
 await browser.close()
 server.close()
 const violations = []
-if (enforce) {
+if (enforce || compare) {
   for (const { scenario, playerKind, metrics } of results) {
     const fail = (reason) => violations.push({ scenario, reason })
     if (playerKind !== "worklet") fail("expected AudioWorklet player")
@@ -215,8 +228,15 @@ if (enforce) {
   }
   if (results.length !== matrix.length || !results.length) violations.push({ reason: "incomplete matrix" })
 }
-if (outPath) await writeFile(outPath, JSON.stringify({ synthetic: true, enforced: enforce, violations, generatedAt: new Date().toISOString(), results }, null, 2))
-if (violations.length) {
+const comparison = compare ? Object.fromEntries(["baseline", "fixed", "adaptive"].map(policy => {
+  const rows = results.filter(r => r.scenario.policy === policy)
+  const startup = rows.flatMap(r => [r.metrics.firstStartupMs, r.metrics.secondStartupMs]).filter(Number.isFinite).sort((a,b) => a-b)
+  const percentile = p => startup.length ? startup[Math.ceil(startup.length*p)-1] : null
+  const failures = violations.filter(v => v.scenario?.policy === policy)
+  return [policy, { scenarios: rows.length, p50StartupMs: percentile(.5), p95StartupMs: percentile(.95), failedScenarios: new Set(failures.map(v => JSON.stringify(v.scenario))).size, totalGapMs: rows.reduce((s,r) => s+r.metrics.totals.gapMs,0), maxResidualMs: Math.max(0,...rows.map(r=>r.metrics.residualMs)) }]
+})) : null
+if (outPath) await writeFile(outPath, JSON.stringify({ synthetic: true, enforced: enforce, comparison, sourceSha: process.env.VOICE_DUPLEX_SOURCE_SHA ?? null, violations, generatedAt: new Date().toISOString(), results }, null, 2))
+if (violations.length && !compare) {
   console.error(JSON.stringify(violations))
   process.exitCode = 1
 }

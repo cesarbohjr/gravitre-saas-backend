@@ -176,7 +176,7 @@ export class StreamingResampler {
  */
 export class PcmPlayoutQueue {
   /**
-   * @param {{ sampleRate: number, initialLeadS?: number, maxLeadS?: number, leadStepS?: number, sameReplyGapS?: number, fadeS?: number, flushFadeS?: number }} options
+   * @param {{ sampleRate: number, initialLeadS?: number, maxLeadS?: number, leadStepS?: number, sameReplyGapS?: number, fadeS?: number, flushFadeS?: number, adaptiveStartup?: boolean }} options
    */
   constructor(options) {
     const rate = options.sampleRate
@@ -188,6 +188,11 @@ export class PcmPlayoutQueue {
     this.fadeFrames = Math.max(1, Math.round((options.fadeS ?? 0.004) * rate))
     this.flushFadeFrames = Math.max(1, Math.round((options.flushFadeS ?? 0.012) * rate))
     this.lead = this.initialLead
+    this.adaptiveStartup = options.adaptiveStartup === true
+    this.arrivalFirst = null
+    this.arrivalFrames = 0
+    this.arrivalDeficit = 0
+    this.arrivalPackets = 0
     /** @type {Float32Array[]} */
     this.chunks = []
     this.readOffset = 0
@@ -221,6 +226,18 @@ export class PcmPlayoutQueue {
     if (!samples.length) return
     const sinceLast = nowFrame - this.lastPushFrame
     this.lastPushFrame = nowFrame
+    if (this.adaptiveStartup) {
+      if (this.arrivalFirst === null || sinceLast > this.sameReplyGap) {
+        this.arrivalFirst = nowFrame
+        this.arrivalFrames = 0
+        this.arrivalDeficit = 0
+        this.arrivalPackets = 0
+      }
+      // Measured against the audio clock before crediting this packet.
+      this.arrivalDeficit = Math.max(this.arrivalDeficit, nowFrame - this.arrivalFirst - this.arrivalFrames)
+      this.arrivalFrames += samples.length
+      this.arrivalPackets += 1
+    }
     this.chunks.push(samples)
     this.buffered += samples.length
     if (this.state === "idle" || this.state === "starved") {
@@ -241,6 +258,14 @@ export class PcmPlayoutQueue {
       this.state = "priming"
       this.primeStart = nowFrame
     }
+    if (this.adaptiveStartup && this.state === "priming") {
+      // Fast start only with observed delivery surplus; otherwise preserve
+      // the continuity-proven reserve. Never insert or discard audio.
+      const elapsed = nowFrame - (this.arrivalFirst ?? nowFrame)
+      const accelerated = this.arrivalPackets >= 4 && elapsed >= this.sampleRate * 0.06 && this.arrivalFrames >= elapsed * 1.7 && this.arrivalDeficit <= this.sampleRate * 0.025
+      const guarded = Math.min(this.maxLead, Math.max(this.initialLead, Math.round(this.sampleRate * 0.26), this.arrivalDeficit + Math.round(this.sampleRate * 0.12)))
+      this.lead = this.recovering ? Math.max(this.lead, guarded) : accelerated ? this.initialLead : guarded
+    }
   }
 
   flush() {
@@ -260,6 +285,10 @@ export class PcmPlayoutQueue {
     this.state = "idle"
     this.lead = this.initialLead
     this.lastPushFrame = -Infinity
+    this.arrivalFirst = null
+    this.arrivalFrames = 0
+    this.arrivalDeficit = 0
+    this.arrivalPackets = 0
     this.starvedAtFrame = null
     this.recovering = false
     this.gain = 0
