@@ -154,7 +154,7 @@ jobs:
     name: ElevenLabs + Deepgram synthetic live acceptance
     if: ${{ (github.event_name == 'workflow_dispatch' || github.event_name == 'workflow_call' || vars.ACCEPTANCE_AUTOMATION_ENABLED == 'true') && (inputs.suite == '' || inputs.suite == 'all' || inputs.suite == 'voice') }}
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 65
     environment: acceptance
     steps:
       - uses: actions/checkout@v4
@@ -201,7 +201,11 @@ jobs:
         env:
           APP_ENV: dev
           ELEVENLABS_API_KEY: ${{ secrets.ACCEPTANCE_ELEVENLABS_API_KEY }}
+          DEEPGRAM_API_KEY: ${{ secrets.ACCEPTANCE_DEEPGRAM_API_KEY }}
         run: python scripts/voice3_pipecat_probe.py --manifest acceptance-results/voice-catalog-proposal.json --output acceptance-results/voice-pipecat-probe.json
+      - name: Consolidate candidate certification evidence
+        if: ${{ !cancelled() }}
+        run: python scripts/voice3_certification.py --proposal acceptance-results/voice-catalog-proposal.json --probe acceptance-results/voice-pipecat-probe.json --output acceptance-results/voice-certification.json
       - name: Publish sanitized voice evidence
         if: always()
         uses: actions/upload-artifact@v4
@@ -212,6 +216,7 @@ jobs:
             acceptance-results/voice-catalog.json
             acceptance-results/voice-catalog-proposal.json
             acceptance-results/voice-pipecat-probe.json
+            acceptance-results/voice-certification.json
           if-no-files-found: ignore
           retention-days: 7
 

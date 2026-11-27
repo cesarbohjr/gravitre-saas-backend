@@ -33,3 +33,39 @@ def test_reused_context_or_missing_stop_fails():
     events=[event(1,1.1,"old"),event(2,2.2,"old")]
     assert m.summarize(events,1,1.5,2,True)["sink_status"]=="FAIL"
     assert m.summarize([events[0],event(2,2.2,"new")],1,1.5,2,False)["sink_status"]=="FAIL"
+
+
+def good_row(voice="A"*20,model=m.MODEL):
+    return dict(voice_id=voice,model=model,fixture_version=m.FIXTURE_VERSION,status="PASS",
+                sink_status="PASS",error_count=0,active_context_at_cut=True,cancel_hook_reported=True,
+                cancel_context_matches=True,cancel_session_kept=True,recovery_all_contexts_stopped=True,
+                recovery_end_observed=True,recovery_wer=0,first_audio_ms=100,recovery_first_audio_ms=120,cancel_hook_ms=10)
+
+@pytest.mark.parametrize("field",["cancel_hook_reported","cancel_context_matches","cancel_session_kept","recovery_all_contexts_stopped","recovery_end_observed"])
+def test_cancellation_and_completion_evidence_mandatory(field):
+    assert m.evaluate_status({**good_row(),field:False})=="FAIL"
+
+def test_recovery_transcript_must_be_complete():
+    assert m.evaluate_status(good_row())=="PASS"
+    assert m.evaluate_status({**good_row(),"recovery_wer":.1})=="FAIL"
+    assert m.evaluate_status({**good_row(),"recovery_wer":None})=="NOT RUN"
+
+def test_latency_comparison_not_certification():
+    result=m.compare_latency(good_row(),{**good_row(),"first_audio_ms":150})
+    assert result["delta_ms"]["first_audio_ms"]==50
+    assert result["performance_gate"]=="NOT RUN"
+
+def test_consolidation_rejects_stale_and_incomplete_evidence():
+    from voice3_certification import consolidate
+    voice="A"*20
+    proposal={"source_sha":"head","activation_authorized":False,"mapping":[{"preset":"a","candidate_id":voice}]}
+    probe={"source_sha":"head","activation_authorized":False,"model":m.MODEL,"fixture_version":m.FIXTURE_VERSION,
+           "rows":[{"voice_id":voice,"status":"PASS","flash":good_row(voice,m.FLASH),"dialogue":good_row()}]}
+    result=consolidate(proposal,probe,"head")
+    assert result["rows"][0]["gates"]["interruption"]=="PASS"
+    assert result["status"]=="BLOCKED"
+    assert not result["certifiable_ids"]
+    with pytest.raises(ValueError):
+        consolidate(proposal,{**probe,"source_sha":"old"},"head")
+    with pytest.raises(ValueError):
+        consolidate(proposal,{**probe,"rows":[]},"head")

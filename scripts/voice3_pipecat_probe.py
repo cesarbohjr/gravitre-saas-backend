@@ -12,6 +12,8 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "backend"))
 RATE = 24000
 MODEL = "eleven_v3"
+FLASH = "eleven_flash_v2_5"
+FIXTURE_VERSION = "interrupt-recovery-v2"
 LONG = "This is a synthetic voice test. " + "We are checking a continuous spoken response with several separate sentences. " * 6
 RECOVERY = "The second response is ready. Thank you for waiting."
 MAX_VOICES = 12
@@ -45,7 +47,7 @@ def summarize(events, start, cut, recovery, finished):
             "sink_status": "PASS" if first and second and not stale and valid and finished
             and contexts1 and contexts2 and not contexts1 & contexts2 else "FAIL"}
 
-async def probe_voice(key, voice_id):
+async def probe_voice(key, voice_id, model=MODEL, stt_key=None):
     from pipecat.frames.frames import (Frame, InterruptionFrame, LLMFullResponseStartFrame,
         LLMFullResponseEndFrame, TextFrame, TTSAudioRawFrame, TTSStoppedFrame, EndFrame, ErrorFrame)
     from pipecat.pipeline.pipeline import Pipeline
@@ -58,7 +60,7 @@ async def probe_voice(key, voice_id):
     from app.services.pipecat_voice.tts_context_cancel import cancel_elevenlabs_tts_context
 
     session = VoicePipelineSession()
-    adapter = build_live_tts_service(api_key=key, voice_id=voice_id, model=MODEL, sample_rate=RATE)
+    adapter = build_live_tts_service(api_key=key, voice_id=voice_id, model=model, sample_rate=RATE)
     stamp = ReplyAudioStampProcessor(voice_session=session)
     events = []
     first_audio = asyncio.Event()
@@ -67,13 +69,21 @@ async def probe_voice(key, voice_id):
     errors = []
     stops = set()
     recovery_contexts = set()
+    recovery_pcm = bytearray()
+    recovery_end = asyncio.Event()
+    reply2_open = False
 
     class Sink(FrameProcessor):
         async def process_frame(self, frame: Frame, direction: FrameDirection):
             await super().process_frame(frame,direction)
             if isinstance(frame, ErrorFrame):
                 errors.append(type(frame).__name__)
+            nonlocal reply2_open
             if direction == FrameDirection.DOWNSTREAM:
+                if isinstance(frame, LLMFullResponseStartFrame) and getattr(frame, REPLY_ID_ATTR, None) == 2:
+                    reply2_open = True
+                if isinstance(frame, LLMFullResponseEndFrame) and reply2_open:
+                    recovery_end.set()
                 if isinstance(frame, InterruptionFrame):
                     interrupted.set()
                 if isinstance(frame, TTSAudioRawFrame):
@@ -85,6 +95,10 @@ async def probe_voice(key, voice_id):
                         first_audio.set()
                     if rid == 2 and context:
                         recovery_contexts.add(context)
+                        if len(recovery_pcm) + len(frame.audio) > RATE * 2 * 30:
+                            errors.append("oversized_recovery")
+                        else:
+                            recovery_pcm.extend(frame.audio)
                 if isinstance(frame,TTSStoppedFrame):
                     ctx = getattr(frame,"context_id",None)
                     stops.add(ctx)
@@ -111,21 +125,38 @@ async def probe_voice(key, voice_id):
         active_at_cut = bool(first_context and first_context not in stops)
         cut = time.monotonic()
         session.cancel_reply_audio(1)
+        # Start the production cancellation hook before queuing the interrupt;
+        # otherwise Pipecat may clear the context before the hook can inspect it.
+        cancel_task = asyncio.create_task(cancel_elevenlabs_tts_context(adapter))
+        await asyncio.sleep(0)
         await task.queue_frame(InterruptionFrame())
-        cancel = await asyncio.wait_for(cancel_elevenlabs_tts_context(adapter),5)
+        cancel = await asyncio.wait_for(cancel_task,5)
+        cancel_ms = round((time.monotonic()-cut)*1000)
         await asyncio.wait_for(interrupted.wait(),5)
         await asyncio.sleep(.25)
         recovery = time.monotonic()
         await send(RECOVERY)
         await asyncio.wait_for(recovered.wait(),20)
+        await asyncio.wait_for(recovery_end.wait(),20)
         await asyncio.sleep(.25)
         result = summarize(events,start,cut,recovery,recovered.is_set())
-        result.update({"voice_id":voice_id,"model":MODEL,"active_context_at_cut":active_at_cut,
+        result.update({"voice_id":voice_id,"model":model,"fixture_version":FIXTURE_VERSION,"active_context_at_cut":active_at_cut,
                        "cancel_hook_reported":cancel.get("cancelled") is True,
                        "cancel_method":cancel.get("method"),"dropped_frames":stamp.dropped_frames,
                        "error_count":len(errors),
                        "scope":"actual adapter downstream PCM; not device playback or full conversation"})
-        result["status"] = "PASS" if result["sink_status"]=="PASS" and active_at_cut and not errors else "FAIL"
+        result["cancel_hook_ms"] = cancel_ms
+        result["cancel_context_matches"] = cancel.get("context_id") == first_context
+        result["cancel_session_kept"] = cancel.get("session_kept") is True
+        result["recovery_all_contexts_stopped"] = bool(recovery_contexts and recovery_contexts <= stops)
+        result["recovery_end_observed"] = recovery_end.is_set()
+        result["recovery_wer"] = None
+        if stt_key and recovery_pcm:
+            try:
+                result["recovery_wer"] = await asyncio.to_thread(recovery_wer, stt_key, bytes(recovery_pcm))
+            except Exception as exc:
+                result["stt_error_type"] = type(exc).__name__
+        result["status"] = evaluate_status(result)
         return result
     finally:
         if not runner.done():
@@ -136,8 +167,48 @@ async def probe_voice(key, voice_id):
                 runner.cancel()
                 await asyncio.gather(runner,return_exceptions=True)
 
+def recovery_wer(key, pcm):
+    import io
+    import wave
+    import httpx
+    from voice3_acoustic_eval import word_error_rate
+    buf = io.BytesIO()
+    with wave.open(buf,"wb") as out:
+        out.setnchannels(1)
+        out.setsampwidth(2)
+        out.setframerate(RATE)
+        out.writeframes(pcm)
+    with httpx.Client(timeout=15,follow_redirects=False) as client:
+        response = client.post("https://api.deepgram.com/v1/listen",
+            params={"model":"nova-3","language":"en"},
+            headers={"Authorization":"Token "+key,"Content-Type":"audio/wav"},
+            content=buf.getvalue())
+        response.raise_for_status()
+        transcript = response.json()["results"]["channels"][0]["alternatives"][0]["transcript"]
+    return word_error_rate(RECOVERY,transcript)
+
+def evaluate_status(row):
+    # Hook acknowledgement is necessary, not proof the remote provider stopped.
+    required = ("active_context_at_cut","cancel_hook_reported","cancel_context_matches",
+                "cancel_session_kept","recovery_all_contexts_stopped","recovery_end_observed")
+    if row.get("sink_status") != "PASS" or row.get("error_count") != 0 or not all(row.get(k) is True for k in required):
+        return "FAIL"
+    wer = row.get("recovery_wer")
+    if wer is None:
+        return "NOT RUN"
+    # Strict synthetic phrase completeness screen, not general speech quality.
+    return "PASS" if type(wer) in (int,float) and wer == 0 else "FAIL"
+
+def compare_latency(flash, dialogue):
+    keys = ("first_audio_ms","recovery_first_audio_ms","cancel_hook_ms")
+    if any(type(row.get(k)) not in (int,float) or not 0 <= row[k] <= 60000
+           for row in (flash,dialogue) for k in keys):
+        return {"status":"NOT RUN"}
+    return {"status":"MEASURED","delta_ms":{k:dialogue[k]-flash[k] for k in keys},
+            "performance_gate":"NOT RUN","reason":"single paired observation; release budget not calibrated"}
+
 async def run(env, manifest):
-    result = {"source_sha":env.get("GITHUB_SHA",""),"model":MODEL,
+    result = {"source_sha":env.get("GITHUB_SHA",""),"model":MODEL,"fixture_version":FIXTURE_VERSION,
               "status":"NOT RUN","rows":[],"activation_authorized":False}
     if not env.get("ELEVENLABS_API_KEY"):
         return result
@@ -147,11 +218,16 @@ async def run(env, manifest):
         result["status"]="FAIL"
         return result
     for voice in ids:
-        try:
-            row = await asyncio.wait_for(probe_voice(env["ELEVENLABS_API_KEY"],voice),60)
-        except Exception as exc:
-            row = {"voice_id":voice,"model":MODEL,"status":"FAIL","error_type":type(exc).__name__}
-        result["rows"].append(row)
+        pair = {}
+        for model in (FLASH,MODEL):
+            try:
+                row = await asyncio.wait_for(probe_voice(env["ELEVENLABS_API_KEY"],voice,model,env.get("DEEPGRAM_API_KEY")),60)
+            except Exception as exc:
+                row = {"voice_id":voice,"model":model,"status":"FAIL","error_type":type(exc).__name__}
+            pair[model] = row
+        result["rows"].append({"voice_id":voice,"flash":pair[FLASH],"dialogue":pair[MODEL],
+            "comparison":compare_latency(pair[FLASH],pair[MODEL]),
+            "status":"PASS" if all(r["status"]=="PASS" for r in pair.values()) else "FAIL"})
     result["status"]="PASS" if all(r["status"]=="PASS" for r in result["rows"]) else "FAIL"
     return result
 
