@@ -20,7 +20,7 @@ from app.core.logging import get_logger
 from app.core.safe_dict import safe_normalize_stored_dict
 from app.services.pipecat_voice.spoken_formatting import split_sentence_chunks
 from app.services.tier1_voice_service import VoiceProviderError, synthesize_speech_stream
-from app.services.voice_agent_profile import normalize_voice_profile, resolve_session_voice
+from app.services.voice_agent_profile import agent_voice_profile, resolve_effective_voice
 from app.services.voice_turn_taking import (
     TurnTakingState,
     maybe_finalize_user_turn,
@@ -68,7 +68,7 @@ def warm_perceive_tts_cache(settings: Settings, *, voice_key: str | None = None)
     texts = sorted(_standing_draft_texts())
     if not texts:
         return False
-    resolved_voice = voice_key or "sarah"
+    resolved_voice = resolve_effective_voice(settings, requested_voice=voice_key)["voice_id"]
     model = "eleven_flash_v2_5"
     fmt = "mp3_44100_128"
     warmed = False
@@ -83,8 +83,10 @@ def warm_perceive_tts_cache(settings: Settings, *, voice_key: str | None = None)
                     settings,
                     text=spoken,
                     voice_key=resolved_voice,
+                    exact_voice_id=True,
                     model_id=model,
                     output_format=fmt,
+                    expression_tier=expression_tier_for_phrase(spoken),
                 )
             )
         except Exception as exc:  # noqa: BLE001 — best-effort warm, never fail startup
@@ -98,7 +100,7 @@ def warm_perceive_tts_cache(settings: Settings, *, voice_key: str | None = None)
 
 def peek_cached_perceive_chunks(
     *,
-    voice_key: str | None = None,
+    voice_id: str,
     model: str = "eleven_flash_v2_5",
     output_format: str = "mp3_44100_128",
 ) -> list[bytes]:
@@ -108,8 +110,9 @@ def peek_cached_perceive_chunks(
     perceive_text = normalize_spoken_text(EARLY_PERCEIVE_DRAFT)
     if not perceive_text:
         return []
-    resolved = (voice_key or "sarah").strip() or "sarah"
-    key = (str(resolved), str(model), str(output_format), perceive_text)
+    if not voice_id or not voice_id.strip():
+        return []
+    key = (voice_id, model, output_format, perceive_text)
     return list(_PERCEIVE_TTS_CACHE.get(key) or [])
 
 
@@ -461,10 +464,12 @@ async def _stream_voice_turn_events(
     )
     from app.services.tier1_voice_service import normalize_elevenlabs_output_format
 
-    profile = normalize_voice_profile((agent or {}).get("voice_profile"))
-    # Agent profile wins over the request voice (same precedence as Pipecat WS).
-    resolved_voice = resolve_session_voice(agent, voice_id)
-    model = tts_model or profile.get("tts_model") or "eleven_flash_v2_5"
+    profile = agent_voice_profile(agent)
+    # Cache and provider share the exact case-sensitive resolved identity.
+    resolved_voice = resolve_effective_voice(settings, agent, voice_id)["voice_id"]
+    model = str(tts_model or profile.get("tts_model") or "eleven_flash_v2_5").strip()
+    if model in {"eleven_turbo_v2_5", "eleven_turbo_v2"}:
+        model = "eleven_flash_v2_5"
     from app.services.pipecat_voice.voice_latency_tuning import resolve_voice_tts_chunk_tuning
 
     chunk_tuning = resolve_voice_tts_chunk_tuning(settings)
@@ -610,6 +615,7 @@ async def _stream_voice_turn_events(
                             settings,
                             text=spoken_chunk,
                             voice_key=resolved_voice,
+                            exact_voice_id=True,
                             model_id=model,
                             output_format=tts_output_format,
                             expression_tier=expression_tier_for_phrase(spoken_chunk),

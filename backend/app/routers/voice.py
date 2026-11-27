@@ -705,7 +705,6 @@ async def post_session_turn(
 ) -> StreamingResponse:
     """Streaming voice turn: unified-turn reasoning + progressive TTS (SSE JSON lines)."""
     from app.services.voice_session_service import (
-        peek_cached_perceive_chunks,
         stream_voice_turn_events,
     )
 
@@ -744,69 +743,9 @@ async def post_session_turn(
             ).encode("utf-8")
 
             import asyncio
-            import base64
-
-            from app.services.voice_slo import EARLY_PERCEIVE_DRAFT
-
-            client_task = asyncio.create_task(
-                asyncio.to_thread(get_supabase_client, settings)
-            )
-            voice_key = (body.voice or "sarah").strip() or "sarah"
-            cached_audio = peek_cached_perceive_chunks(voice_key=voice_key)
-            skipped_perceive = False
-            if cached_audio and (EARLY_PERCEIVE_DRAFT or "").strip():
-                perceive_text = EARLY_PERCEIVE_DRAFT
-                yield (
-                    json.dumps(
-                        {
-                            "type": "voice.text.delta",
-                            "delta": perceive_text,
-                            "turn_id": body.turn_id,
-                        }
-                    )
-                    + "\n"
-                ).encode("utf-8")
-                yield (
-                    json.dumps({"type": "voice.ttft", "ms": 0, "turn_id": body.turn_id})
-                    + "\n"
-                ).encode("utf-8")
-                yield (
-                    json.dumps(
-                        {
-                            "type": "voice.ttfa",
-                            "ms": 0,
-                            "metric": "A",
-                            "turn_id": body.turn_id,
-                        }
-                    )
-                    + "\n"
-                ).encode("utf-8")
-                yield (
-                    json.dumps(
-                        {"type": "voice.agent_speech.start", "turn_id": body.turn_id}
-                    )
-                    + "\n"
-                ).encode("utf-8")
-                first = True
-                for piece in cached_audio:
-                    if not piece:
-                        continue
-                    yield (
-                        json.dumps(
-                            {
-                                "type": "voice.audio.delta",
-                                "content_type": "audio/mpeg",
-                                "audio_base64": base64.b64encode(piece).decode("ascii"),
-                                "text_chunk": perceive_text if first else "",
-                                "turn_id": body.turn_id,
-                            }
-                        )
-                        + "\n"
-                    ).encode("utf-8")
-                    first = False
-                skipped_perceive = True
-
-            client = await client_task
+            # Do not emit cached speech before agent authorization and the shared
+            # turn guard. The service consumes the identity-bound cache after both.
+            client = await asyncio.to_thread(get_supabase_client, settings)
             if not org_id:
                 yield (
                     json.dumps(
@@ -866,9 +805,13 @@ async def post_session_turn(
                         .data
                         or []
                     )
-                    agent = rows[0] if rows else {"id": body.agent_id}
-                except Exception:  # noqa: BLE001
-                    agent = {"id": body.agent_id}
+                    if not rows:
+                        raise VoiceProviderError("Agent voice unavailable", status_code=404, error_class="validation")
+                    agent = rows[0]
+                except VoiceProviderError:
+                    raise
+                except Exception as exc:
+                    raise VoiceProviderError("Agent voice unavailable", status_code=503, error_class="service_failure") from exc
 
             async for event in stream_voice_turn_events(
                 settings=settings,
@@ -882,7 +825,6 @@ async def post_session_turn(
                 tts_model=body.model,
                 turn_id=body.turn_id,
                 should_cancel=_should_cancel,
-                skip_early_perceive=skipped_perceive,
             ):
                 try:
                     if await request.is_disconnected():

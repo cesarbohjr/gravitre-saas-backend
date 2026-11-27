@@ -241,7 +241,7 @@ def test_standing_plan_hold_draft_audio_is_cached(monkeypatch, mock_settings):
     spoken = voice_session_service.normalize_spoken_text(EARLY_PLAN_HOLD_DRAFT)
     assert calls == [spoken]
     assert (
-        "sarah",
+        voice_session_service.resolve_effective_voice(mock_settings)["voice_id"],
         "eleven_flash_v2_5",
         "mp3_44100_128",
         spoken,
@@ -454,3 +454,29 @@ async def test_legacy_http_voice_turn_persist_failure_does_not_break_the_turn(
     ]
     ended = next(e for e in events if e.get("type") == "voice.session.ended")
     assert ended["cancelled"] is False and ended["conversation_id"] == "conv-1"
+
+
+def test_cache_isolated_by_effective_id_model_and_case(monkeypatch, mock_settings):
+    from app.services.voice_slo import EARLY_PLAN_HOLD_DRAFT
+
+    settings = _settings_with_voice(mock_settings)
+    settings.elevenlabs_default_voice = "sarah"
+    settings.elevenlabs_voice_sarah = "OverrideCase"
+    calls = []
+
+    def synth(*args, **kwargs):
+        calls.append(kwargs)
+        yield b"audio"
+
+    monkeypatch.setattr(voice_session_service, "_PERCEIVE_TTS_CACHE", {})
+    monkeypatch.setattr(voice_session_service, "synthesize_speech_stream", synth)
+    assert voice_session_service.warm_perceive_tts_cache(settings)
+    spoken = voice_session_service.normalize_spoken_text(EARLY_PLAN_HOLD_DRAFT)
+    cache = voice_session_service._PERCEIVE_TTS_CACHE
+    assert cache[("OverrideCase", "eleven_flash_v2_5", "mp3_44100_128", spoken)] == [b"audio"]
+    assert ("overridecase", "eleven_flash_v2_5", "mp3_44100_128", spoken) not in cache
+    assert ("OverrideCase", "eleven_v3", "mp3_44100_128", spoken) not in cache
+    assert all(c["exact_voice_id"] and c["voice_key"] == "OverrideCase" for c in calls)
+    settings.elevenlabs_voice_sarah = "NewOverride"
+    assert voice_session_service.warm_perceive_tts_cache(settings)
+    assert ("NewOverride", "eleven_flash_v2_5", "mp3_44100_128", spoken) in cache

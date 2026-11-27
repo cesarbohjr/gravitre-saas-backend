@@ -24,21 +24,9 @@ import {
 } from "@/components/ui/dropdown-menu"
 import type { Agent } from "@/types/api"
 import { voiceProfileIsConfigured } from "@/lib/voice-configure-gate"
+import { effectiveVoiceLabel } from "@/lib/effective-voice-label"
 
 export const AI_VOICE_AGENT_DEFAULT = "default"
-
-function voiceLabel(agent: Agent): string {
-  const profile = agent.voiceProfile
-  const key = profile?.voice_key?.trim()
-  if (key) {
-    return key
-      .replace(/[-_]+/g, " ")
-      .replace(/\b\w/g, (ch) => ch.toUpperCase())
-  }
-  const descriptor = profile?.personality_attributes?.descriptor?.trim()
-  if (descriptor) return descriptor
-  return "Configured voice"
-}
 
 type AiVoiceAgentPickerProps = {
   agents: Agent[]
@@ -63,7 +51,7 @@ export function AiVoiceAgentPicker({
   )
   const selected = voiced.find((agent) => agent.id === value) ?? null
   const triggerLabel = selected
-    ? `${voiceLabel(selected)} · ${selected.name}`
+    ? `${effectiveVoiceLabel(selected.voiceProfile)} · ${selected.name}`
     : "Default spoken voice"
 
   return (
@@ -119,7 +107,7 @@ export function AiVoiceAgentPicker({
                 onClick={() => onChange(agent.id)}
               >
                 <span className="flex min-w-0 flex-1 flex-col">
-                  <span className="truncate font-medium">{voiceLabel(agent)}</span>
+                  <span className="truncate font-medium">{effectiveVoiceLabel(agent.voiceProfile)}</span>
                   <span className="truncate text-[10px] text-muted-foreground">
                     Use {agent.name}&apos;s voice
                     {agent.department ? ` · ${agent.department}` : ""}
