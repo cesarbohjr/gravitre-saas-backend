@@ -239,7 +239,8 @@ jobs:
           OPENAI_API_KEY: sk-test-openai
           NEXT_PUBLIC_SUPABASE_URL: https://test.supabase.co
           NEXT_PUBLIC_SUPABASE_ANON_KEY: anon-test
-        run: npx playwright test --config=playwright.voice.config.ts --grep "live provider: browser PCM"
+        run: |
+          npx playwright test --config=playwright.voice.config.ts --grep "live provider: browser PCM"
       - uses: actions/upload-artifact@v4
         if: always()
         with:
