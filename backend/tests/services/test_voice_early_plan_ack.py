@@ -566,3 +566,59 @@ async def test_tts_overlap_engine_error_still_raises(harness, mock_settings) -> 
     harness["kernel"] = _Boom([])
     with pytest.raises(RuntimeError, match="engine failed"):
         await _run(_settings(mock_settings, overlap=True), text="What changed in my pipeline this week?")
+
+
+@pytest.mark.asyncio
+async def test_voice_identity_synthetic_intro_latency(harness, mock_settings, tmp_path):
+    """Measure first audio at the service event boundary, not real vendor/browser latency."""
+    import json
+    import math
+    import os
+    from pathlib import Path
+
+    settings = _settings(mock_settings, ack=True)
+    settings.elevenlabs_default_voice = "sarah"
+    settings.elevenlabs_voice_sarah = "SyntheticCaseSensitive"
+    harness["guard_delay_s"] = 0.01
+    harness["tts_delay_s"] = 0.04
+    cache = voice_session_service._PERCEIVE_TTS_CACHE
+    rows = []
+    for trial in range(20):
+        for mode in ("cold", "warm"):
+            cache.clear()
+            if mode == "warm":
+                assert voice_session_service.warm_perceive_tts_cache(settings)
+            harness["order"].clear()
+            harness["kernel"] = _Kernel(["Step one reads HubSpot contacts. Nothing has run."])
+            start = time.perf_counter()
+            first_audio_ms = None
+            async for event in voice_session_service.stream_voice_turn_events(
+                settings=settings, org_id=ORG, user_id="user-1",
+                text=PLAN_HOLD, agent={"id": "agent-1"},
+                conversation_id="conv-1", turn_id=f"synthetic-{trial}-{mode}",
+            ):
+                if event.get("type") == "voice.session.started":
+                    assert event["voice_id"] == "SyntheticCaseSensitive"
+                    assert event["tts_model"] == "eleven_flash_v2_5"
+                if event.get("type") == "voice.audio.delta" and first_audio_ms is None:
+                    first_audio_ms = (time.perf_counter() - start) * 1000
+                    assert "guard_done" in harness["order"]
+                    intro_calls = [x for x in harness["order"] if x == f"tts:{EARLY_PLAN_HOLD_DRAFT}"]
+                    assert len(intro_calls) == (1 if mode == "cold" else 0)
+            assert first_audio_ms is not None
+            rows.append({"trial": trial, "mode": mode, "first_audio_ms": first_audio_ms})
+
+    def summarize(mode):
+        values = sorted(r["first_audio_ms"] for r in rows if r["mode"] == mode)
+        return {"count": len(values), "p50_ms": values[math.ceil(len(values) * 0.5) - 1],
+                "p95_ms": values[math.ceil(len(values) * 0.95) - 1]}
+
+    out = Path(os.environ.get("VOICE_IDENTITY_LATENCY_OUT", str(tmp_path / "intro-latency.json")))
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(json.dumps({
+        "source_sha": os.environ.get("VOICE_IDENTITY_SOURCE_SHA", "local-unverified"),
+        "scope": "synthetic HTTP service first audio event; not provider or device latency",
+        "guard_delay_ms": 10, "mock_tts_delay_ms": 40,
+        "percentile_method": "nearest rank", "trials": rows,
+        "cold": summarize("cold"), "warm": summarize("warm"),
+    }, indent=2) + "\n", encoding="utf-8")

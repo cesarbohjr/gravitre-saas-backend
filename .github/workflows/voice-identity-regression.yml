@@ -1,0 +1,142 @@
+name: Voice Identity Regression
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+    paths:
+      - 'backend/**'
+      - 'apps/web/**'
+      - 'e2e/**'
+      - 'playwright.voice.config.ts'
+      - 'package*.json'
+      - '.github/workflows/voice-identity-regression.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: voice-identity-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      CI: "true"
+      VOICE_IDENTITY_SOURCE_SHA: ${{ github.event.pull_request.head.sha }}
+      VOICE_BROWSER_LIVE_PROVIDER: "0"
+      SUPABASE_URL: https://test.supabase.co
+      SUPABASE_ANON_KEY: anon-test
+      SUPABASE_SERVICE_ROLE_KEY: service-role-test
+      SUPABASE_JWT_SECRET: jwt-secret-test
+      OPENAI_API_KEY: sk-test-openai
+      NEXT_PUBLIC_SUPABASE_URL: https://test.supabase.co
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: anon-test
+      NEXT_PUBLIC_PLAYWRIGHT_E2E: "1"
+      PLAYWRIGHT_E2E: "1"
+      PLAYWRIGHT_BASE_URL: http://localhost:3021
+      PIPECAT_HARNESS_URL: http://127.0.0.1:8799
+      PIPECAT_HARNESS_PYTHON: python
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - name: Verify source and create evidence directory
+        run: |
+          test "$(git rev-parse HEAD)" = "$VOICE_IDENTITY_SOURCE_SHA"
+          mkdir -p evidence/voice-identity
+          git rev-parse HEAD > evidence/voice-identity/source-sha.txt
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install backend dependencies
+        id: python_setup
+        run: |
+          sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/hostedtoolcache/CodeQL
+          python -m pip install --no-cache-dir -r backend/requirements-dev.txt
+      - name: Backend regression and synthetic latency
+        id: python_tests
+        if: ${{ !cancelled() && steps.python_setup.outcome == 'success' }}
+        working-directory: backend
+        env:
+          VOICE_IDENTITY_LATENCY_OUT: ${{ github.workspace }}/evidence/voice-identity/intro-latency.json
+        run: |
+          python -m pytest -q \
+            tests/services/test_voice3_catalog_migration.py \
+            tests/services/test_tier1_voice_service.py \
+            tests/services/test_voice_session_service.py \
+            tests/services/test_voice_early_plan_ack.py \
+            tests/services/pipecat_voice/test_pipecat_voice_tts_model_guard.py \
+            --junitxml=../evidence/voice-identity/pytest.xml
+          test -s "$VOICE_IDENTITY_LATENCY_OUT"
+      - name: Install frontend dependencies
+        id: web_setup
+        if: ${{ !cancelled() }}
+        run: |
+          npm install
+          cd apps/web && pnpm install --frozen-lockfile
+      - name: Vitest identity contracts
+        id: vitest
+        if: ${{ !cancelled() && steps.web_setup.outcome == 'success' }}
+        working-directory: apps/web
+        run: |
+          pnpm exec vitest run \
+            __tests__/gravitre/agent-voice-journey.test.tsx \
+            __tests__/lib/effective-voice-label.test.ts \
+            __tests__/lib/voice-agent-scope.test.ts \
+            --reporter=junit --outputFile=../../evidence/voice-identity/vitest.xml
+      - name: Install Chromium
+        id: browser_setup
+        if: ${{ !cancelled() && steps.web_setup.outcome == 'success' }}
+        run: npx playwright install --with-deps chromium
+      - name: Synthetic HTTP and Pipecat browser regression
+        id: playwright
+        if: ${{ !cancelled() && steps.browser_setup.outcome == 'success' && steps.python_setup.outcome == 'success' }}
+        env:
+          PLAYWRIGHT_JUNIT_OUTPUT_FILE: evidence/voice-identity/playwright.xml
+        run: npx playwright test --config=playwright.voice.config.ts --grep-invert "live provider:" --reporter=junit,list
+      - name: Record exact-SHA evidence manifest
+        if: always()
+        env:
+          PYTHON_RESULT: ${{ steps.python_tests.outcome }}
+          VITEST_RESULT: ${{ steps.vitest.outcome }}
+          PLAYWRIGHT_RESULT: ${{ steps.playwright.outcome }}
+        run: |
+          python - <<'PY'
+          import hashlib, json, os, subprocess
+          from pathlib import Path
+          p = Path("evidence/voice-identity")
+          p.mkdir(parents=True, exist_ok=True)
+          sha = subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip()
+          expected = os.environ["VOICE_IDENTITY_SOURCE_SHA"]
+          files = {f.name: hashlib.sha256(f.read_bytes()).hexdigest() for f in p.iterdir() if f.is_file() and f.name != "manifest.json"}
+          results = {k: os.environ.get(k.upper() + "_RESULT", "") for k in ("python", "vitest", "playwright")}
+          required = {"pytest.xml", "vitest.xml", "playwright.xml", "intro-latency.json"}
+          passed = sha == expected and required <= files.keys() and all(v == "success" for v in results.values())
+          if "intro-latency.json" in files:
+              latency = json.loads((p / "intro-latency.json").read_text())
+              passed = passed and latency.get("source_sha") == sha and len(latency.get("trials", [])) == 40
+          (p / "manifest.json").write_text(json.dumps({"source_sha": sha, "expected_sha": expected,
+              "run_id": os.environ["GITHUB_RUN_ID"], "run_attempt": os.environ["GITHUB_RUN_ATTEMPT"],
+              "scope": "synthetic only", "results": results, "sha256": files,
+              "synthetic_regression_passed": passed, "live_certification": "NOT RUN"}, indent=2) + "\n")
+          if not passed:
+              raise SystemExit("Voice identity evidence incomplete or failing")
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: voice-identity-${{ github.event.pull_request.head.sha }}-${{ github.run_attempt }}
+          path: |
+            evidence/voice-identity/
+            test-results/
+          if-no-files-found: error
+          retention-days: 14
