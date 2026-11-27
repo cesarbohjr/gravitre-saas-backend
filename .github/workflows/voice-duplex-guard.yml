@@ -12,6 +12,9 @@ name: Voice duplex browser guard
 # Run on voice-affecting pull requests as well as the standing daily schedule.
 # A voice regression must be visible before merge, not discovered by tomorrow's cron.
 on:
+  push:
+    branches:
+      - feat/qa-master-voice-parity-gates
   pull_request:
     paths:
       - "apps/web/hooks/use-voice-duplex-session.ts"
@@ -19,6 +22,8 @@ on:
       - "apps/web/public/voice-worklets/**"
       - "apps/web/scripts/voice-playback-continuity/**"
       - "apps/web/__tests__/lib/voice-audio-dsp.test.ts"
+      - "apps/web/__tests__/voice-local-cancel*.test.ts"
+      - "apps/web/lib/__tests__/voice-local-cancel*.test.ts"
       - "apps/web/lib/pipecat-voice-client.ts"
       - "apps/web/app/e2e/voice-duplex/**"
       - "apps/web/app/api/voice/**"
@@ -43,17 +48,39 @@ on:
         options: [eleven_v3, eleven_flash_v2_5]
         default: eleven_v3
 
+permissions:
+  contents: read
+
 concurrency:
-  group: voice-duplex-guard
+  group: voice-duplex-guard-${{ github.event.pull_request.head.sha || github.sha }}
   cancel-in-progress: false
 
 jobs:
   voice-duplex:
     name: Voice duplex capture guard
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
+    env:
+      CI: "true"
+      VOICE_DUPLEX_SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+      VOICE_BROWSER_LIVE_PROVIDER: "0"
+      SUPABASE_URL: https://test.supabase.co
+      SUPABASE_ANON_KEY: anon-test
+      SUPABASE_SERVICE_ROLE_KEY: service-role-test
+      SUPABASE_JWT_SECRET: jwt-secret-test
+      OPENAI_API_KEY: sk-test-openai
+      NEXT_PUBLIC_SUPABASE_URL: https://test.supabase.co
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: anon-test
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - name: Verify exact source and create evidence directory
+        run: |
+          test "$(git rev-parse HEAD)" = "$VOICE_DUPLEX_SOURCE_SHA"
+          mkdir -p evidence/voice-duplex
+          git rev-parse HEAD > evidence/voice-duplex/source-sha.txt
 
       - uses: pnpm/action-setup@v4
         with:
@@ -79,7 +106,7 @@ jobs:
         working-directory: backend
         run: |
           python -m pip install --upgrade pip
-          python -m pip install --no-cache-dir -r requirements.txt
+          python -m pip install --no-cache-dir -r requirements-dev.txt
           df -h /
 
       - name: Install root + web dependencies
@@ -88,23 +115,27 @@ jobs:
           cd apps/web && pnpm install --frozen-lockfile
 
       - name: Verify local cancellation candidate remains shadow-only
+        id: cancellation
         working-directory: apps/web
-        run: pnpm exec vitest run __tests__/voice-local-cancel-candidate.test.ts __tests__/voice-local-cancel-shadow-probe.test.ts
+        run: pnpm exec vitest run __tests__/voice-local-cancel-candidate.test.ts __tests__/voice-local-cancel-shadow-probe.test.ts --reporter=junit --outputFile=../../evidence/voice-duplex/cancellation.xml
 
       - name: Install Playwright Chromium
         run: npx playwright install --with-deps chromium
 
       - name: Verify PCM queue regression contracts
+        id: pcm
         working-directory: apps/web
-        run: pnpm exec vitest run __tests__/lib/voice-audio-dsp.test.ts
+        run: pnpm exec vitest run __tests__/lib/voice-audio-dsp.test.ts --reporter=junit --outputFile=../../evidence/voice-duplex/pcm.xml
 
       - name: Enforce synthetic playback continuity
+        id: continuity
         working-directory: apps/web
-        run: node scripts/voice-playback-continuity/run.mjs --quick --enforce --out ../../voice-continuity-results.json
+        run: node scripts/voice-playback-continuity/run.mjs --quick --enforce --out ../../evidence/voice-duplex/continuity.json
 
       - name: Run voice duplex guard
+        id: browser
         if: ${{ !cancelled() }}
-        run: npx playwright test --config=playwright.voice.config.ts
+        run: npx playwright test --config=playwright.voice.config.ts --grep-invert "live provider:" --reporter=junit,list
         env:
           CI: "true"
           PLAYWRIGHT_BASE_URL: http://localhost:3021
@@ -112,22 +143,59 @@ jobs:
           PLAYWRIGHT_E2E: "1"
           PIPECAT_HARNESS_URL: http://127.0.0.1:8799
           PIPECAT_HARNESS_PYTHON: python
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
-          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          PLAYWRIGHT_JUNIT_OUTPUT_FILE: evidence/voice-duplex/browser.xml
+
+      - name: Validate exact-SHA evidence manifest
+        if: always()
+        env:
+          CANCELLATION_RESULT: ${{ steps.cancellation.outcome }}
+          PCM_RESULT: ${{ steps.pcm.outcome }}
+          CONTINUITY_RESULT: ${{ steps.continuity.outcome }}
+          BROWSER_RESULT: ${{ steps.browser.outcome }}
+        run: |
+          python - <<'PY'
+          import hashlib, json, os, subprocess, xml.etree.ElementTree as ET
+          from pathlib import Path
+          p = Path('evidence/voice-duplex')
+          p.mkdir(parents=True, exist_ok=True)
+          sha = subprocess.check_output(['git', 'rev-parse', 'HEAD'], text=True).strip()
+          expected = os.environ['VOICE_DUPLEX_SOURCE_SHA']
+          results = {k: os.environ.get(k.upper() + '_RESULT', '') for k in ('cancellation', 'pcm', 'continuity', 'browser')}
+          files = {f.name: hashlib.sha256(f.read_bytes()).hexdigest() for f in p.iterdir() if f.is_file() and f.name != 'manifest.json'}
+          passed = sha == expected and all(v == 'success' for v in results.values()) and {'source-sha.txt', 'cancellation.xml', 'pcm.xml', 'continuity.json', 'browser.xml'} <= files.keys()
+          counts = {}
+          try:
+              for name in ('cancellation', 'pcm', 'browser'):
+                  cases = list(ET.parse(p / (name + '.xml')).iter('testcase'))
+                  successful = sum(not any(c.find(tag) is not None for tag in ('failure', 'error', 'skipped')) for c in cases)
+                  counts[name] = {'total': len(cases), 'passed': successful}
+                  passed = passed and bool(cases) and successful == len(cases)
+              passed = passed and counts['browser']['total'] == 2
+              c = json.loads((p / 'continuity.json').read_text())
+              rows = c['results']
+              actual = {(r['scenario']['pacing'], r['scenario']['ctxRate'], r['scenario']['oddSplit'], r['scenario']['seed'], r['scenario']['impl']) for r in rows}
+              matrix = {(pace, rate, odd, 1, 'after') for pace in (1, 2) for rate in (44100, 48000) for odd in (False, True)}
+              passed = passed and c['synthetic'] is True and c['enforced'] is True and not c['violations'] and len(rows) == 8 and actual == matrix
+              counts['continuity'] = {'total': len(rows), 'violations': len(c['violations'])}
+          except Exception as exc:
+              passed = False
+              counts['validation_error'] = str(exc)
+          (p / 'manifest.json').write_text(json.dumps({'source_sha': sha, 'expected_sha': expected, 'run_id': os.environ['GITHUB_RUN_ID'], 'run_attempt': os.environ['GITHUB_RUN_ATTEMPT'], 'scope': 'synthetic only', 'results': results, 'counts': counts, 'sha256': files, 'passed': passed, 'live_certification': 'NOT RUN'}, indent=2) + '\n')
+          if not passed:
+              raise SystemExit('Voice duplex evidence incomplete or failing')
+          PY
 
       - name: Upload Playwright artifacts
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: voice-duplex-guard-artifacts
-          if-no-files-found: ignore
+          name: voice-duplex-guard-${{ github.event.pull_request.head.sha || github.sha }}-${{ github.run_attempt }}
+          if-no-files-found: error
           retention-days: 14
           path: |
             test-results/
             playwright-report/
-            voice-continuity-results.json
+            evidence/voice-duplex/
 
   live-candidate-browser:
     if: ${{ github.event_name == 'workflow_dispatch' && inputs.live_candidate != '' }}
@@ -136,6 +204,11 @@ jobs:
     timeout-minutes: 35
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Verify isolated candidate source
+        run: test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
       - uses: pnpm/action-setup@v4
         with:
           version: 10
