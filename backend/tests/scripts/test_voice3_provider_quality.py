@@ -51,3 +51,27 @@ def test_failed_dialogue_does_not_pass():
     with httpx.Client(transport=httpx.MockTransport(handler)) as client:
         result = m.evaluate_pair(client,{"ELEVENLABS_API_KEY":"fixture"},VOICE,VOICE)
     assert result["gates"]["v3_dialogue"] == "FAIL"
+
+def test_envelope_uses_independent_baseline_range_and_fails_missing():
+    base = dict(pitch_median_hz=180,pitch_iqr_hz=20,duration_ms=1000,max_internal_pause_ms=100)
+    takes = [base,{**base,"pitch_median_hz":185},{**base,"pitch_median_hz":175}]
+    assert m.acoustic_envelope(takes,base)["status"] == "WITHIN_OBSERVED_ENVELOPE"
+    assert m.acoustic_envelope(takes,{**base,"pitch_median_hz":220})["status"] == "OUTSIDE_OBSERVED_ENVELOPE"
+    assert m.acoustic_envelope(takes,{})["status"] == "NOT RUN"
+    assert m.acoustic_envelope(takes[:1],base)["status"] == "NOT RUN"
+
+@pytest.mark.parametrize("value,status", [(0,"PASS"),(.1,"FAIL"),(None,"NOT RUN"),(float("nan"),"NOT RUN")])
+def test_comparative_wer_rejects_regression_even_below_absolute_limit(value,status):
+    row = {"baseline_takes":[{"wer":0} for _ in range(3)],"candidate_flash":{"wer":value}}
+    assert m.comparative_wer([row],"candidate_flash")["status"] == status
+
+def test_baseline_takes_are_independent_even_for_retained_voice():
+    calls = []
+    def handler(req):
+        calls.append(req.url.path)
+        return httpx.Response(200,headers={"content-type":"audio/pcm"},content=PCM)
+    with httpx.Client(transport=httpx.MockTransport(handler)) as client:
+        result = m.evaluate_pair(client,{"ELEVENLABS_API_KEY":"fixture"},VOICE,VOICE)
+    assert calls.count("/v1/text-to-speech/"+VOICE) == len(m.FIXTURES)*4
+    assert all(len(r["baseline_takes"]) == 3 for r in result["fixtures"])
+    assert result["subjective_review"]["status"] == "NOT RUN"

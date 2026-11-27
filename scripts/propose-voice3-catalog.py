@@ -132,7 +132,9 @@ def propose(env, transport=None, probe_fn=None):
                     gates["flash_http"] = "FAIL"
                 row["certification_blockers"] = certification_blockers(gates)
                 row["decision"] = "BLOCKED" if row["certification_blockers"] else "REVIEW_REQUIRED"
-        result["proposed_ids"] = [r["candidate_id"] for r in rows if r["flash_http_passed"]]
+        result["proposed_ids"] = [r["candidate_id"] for r in rows if r["candidate_id"] and all(
+            r["provider_quality"]["gates"].get(g) == "PASS" for g in
+            ("flash_http", "v3_dialogue", "acoustic_integrity", "intelligibility"))]
         result["certifiable_ids"] = [r["candidate_id"] for r in rows
                                      if r["candidate_id"] and not r["certification_blockers"]]
         result["certification_status"] = "BLOCKED" if len(result["certifiable_ids"]) != len(rows) else "REVIEW_REQUIRED"
