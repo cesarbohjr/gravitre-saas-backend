@@ -150,6 +150,9 @@ test.describe("Voice duplex browser pipeline", () => {
         "Remember that Acme is the priority account.",
         "Noted, Acme is the priority.",
       ])
+      const state = after.conversation_task_states.find((row: {id: string}) => row.id === conversationId)?.task_state
+      expect(state?.recent_user_messages).toContain("which account is our priority this quarter")
+      expect(state?.task_revision).toBeGreaterThan(0)
       const persisted = (after.conversation_messages as Array<{ conversation_id: string; role: string; content: string }>)
         .filter((row) => row.conversation_id === conversationId)
         .map((row) => [row.role, row.content])

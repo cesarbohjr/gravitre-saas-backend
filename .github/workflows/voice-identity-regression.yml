@@ -80,6 +80,7 @@ jobs:
             tests/services/pipecat_voice/test_pipecat_voice_tts_model_guard.py \
             tests/services/pipecat_voice/test_voice_shared_turn_guardrails.py \
             tests/services/pipecat_voice/test_committed_turn_barrier.py \
+            tests/services/pipecat_voice/test_harness_conversation_state.py \
             --junitxml=../evidence/voice-identity/pytest.xml
           test -s "$VOICE_IDENTITY_LATENCY_OUT"
       - name: Install frontend dependencies

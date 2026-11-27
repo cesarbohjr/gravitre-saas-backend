@@ -164,7 +164,7 @@ def _install_fakes() -> None:
     import app.operators.agent_intelligence as agent_intelligence
     import app.routers.assistant as assistant_router
     import app.workflows.repository as repository
-    from app.services import chat_turn_cancel_service, shared_turn_preparation
+    from app.services import chat_turn_cancel_service, shared_turn_preparation, conversation_state_service
     from app.services import unified_turn_tool_retrieval
     from app.rag import tool_retrieval_embedding
     from app.services.pipecat_voice import speculative_prefetch
@@ -198,6 +198,8 @@ def _install_fakes() -> None:
     speculative_prefetch._warm_knowledge_blocking = synthetic_knowledge_warm
 
     repository.get_supabase_client = lambda _settings=None: DB  # type: ignore[assignment]
+    # This module captures the factory at import time, before repository is patched.
+    conversation_state_service.get_supabase_client = lambda _settings=None: DB  # type: ignore[assignment]
     assistant_router.get_supabase_client = lambda _settings=None: DB  # type: ignore[assignment]
     assistant_router._remember_completed_turn = lambda **_kwargs: None  # type: ignore[assignment]
     chat_turn_cancel_service.get_redis_client = lambda _settings=None: None  # type: ignore[assignment]
@@ -231,6 +233,10 @@ def build_app() -> FastAPI:
         return {
             **STATE,
             "seeded_conversation_id": STATE.get("seeded_conversation_id"),
+            "conversation_task_states": [
+                {"id": row.get("id"), "task_state": row.get("task_state")}
+                for row in DB.tables.get("conversations", [])
+            ],
             "conversation_messages": [
                 {k: row.get(k) for k in ("id", "conversation_id", "role", "content")}
                 for row in DB.tables.get("conversation_messages", [])

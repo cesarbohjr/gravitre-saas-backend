@@ -38,6 +38,8 @@ class FakeQuery:
         self.op = "select"
         self.payload: Any = None
         self.filters: list[tuple[str, Any]] = []
+        self._null_filters: list[str] = []
+        self._gt_filters: list[tuple[str, Any]] = []
         self._order: tuple[str, bool] | None = None
         self._limit: int | None = None
 
@@ -59,6 +61,16 @@ class FakeQuery:
         self.filters.append((column, value))
         return self
 
+    def filter(self, column: str, operator: str, value: Any) -> "FakeQuery":
+        if operator != "is" or value != "null":
+            raise AssertionError(f"unsupported filter {operator} {value}")
+        self._null_filters.append(column)
+        return self
+
+    def gt(self, column: str, value: Any) -> "FakeQuery":
+        self._gt_filters.append((column, value))
+        return self
+
     def order(self, column: str, desc: bool = False) -> "FakeQuery":
         self._order = (column, desc)
         return self
@@ -68,7 +80,17 @@ class FakeQuery:
         return self
 
     def _matches(self, row: dict[str, Any]) -> bool:
-        return all(row.get(col) == val for col, val in self.filters)
+        def read(column: str) -> Any:
+            if "->>" not in column:
+                return row.get(column)
+            root, key = column.split("->>", 1)
+            obj = row.get(root)
+            value = obj.get(key) if isinstance(obj, dict) else None
+            return str(value) if value is not None else None
+
+        return (all(read(col) == val for col, val in self.filters)
+                and all(read(col) is None for col in self._null_filters)
+                and all(read(col) is not None and read(col) > val for col, val in self._gt_filters))
 
     def execute(self) -> FakeResponse:
         for hook in list(self.client.hooks):
