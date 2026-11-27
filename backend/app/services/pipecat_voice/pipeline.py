@@ -62,7 +62,6 @@ from app.services.pipecat_voice.voice_latency_tuning import (
     effective_voice_settings,
     resolve_voice_tts_ab_eval,
 )
-from app.services.tier1_voice_service import resolve_voice_id
 
 logger = get_logger(__name__)
 
@@ -99,14 +98,10 @@ def resolve_voice_and_tts_model(
     safeguard against that regression class recurring silently (Phase 4 of
     the 2026-09-06 investigation).
     """
-    from app.services.voice_agent_profile import resolve_session_voice
+    from app.services.voice_agent_profile import resolve_effective_voice
 
-    # Agent voice_profile (voice_id, then voice_key) wins over the requested voice;
-    # agents without a profile use the requested or default voice.
-    _key, voice_id = resolve_voice_id(settings, resolve_session_voice(agent, voice_key))
+    voice_id = resolve_effective_voice(settings, agent, voice_key)["voice_id"]
     profile = (agent or {}).get("voice_profile") if isinstance(agent, dict) else None
-    if isinstance(profile, dict) and profile.get("voice_id"):
-        voice_id = str(profile.get("voice_id")).strip() or voice_id
     model = (
         (profile.get("tts_model") if isinstance(profile, dict) else None)
         or settings.elevenlabs_tts_model

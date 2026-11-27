@@ -76,6 +76,30 @@ def resolve_session_voice(agent: dict[str, Any] | None, requested_voice: str | N
     )
 
 
+def resolve_effective_voice(
+    settings: Any, agent: dict[str, Any] | None = None,
+    requested_voice: str | None = None,
+) -> dict[str, Any]:
+    """Read-only effective identity; discovery filters never alter saved voices.
+
+    Explicit IDs are opaque, case-sensitive provider handles, not aliases.
+    Resolve keys and defaults through the existing provider mapping only.
+    """
+    from app.services.tier1_voice_service import resolve_voice_id
+
+    profile = agent_voice_profile(agent)
+    explicit = profile.get("voice_id")
+    if explicit:
+        return {"voice_id": explicit, "resolution": "agent_id",
+                "voice_source": profile.get("voice_source")}
+    requested = resolve_session_voice(agent, requested_voice)
+    _, voice_id = resolve_voice_id(settings, requested)
+    return {"voice_id": voice_id,
+            "resolution": "agent_key" if profile.get("voice_key") else
+            ("request" if requested else "default"),
+            "voice_source": profile.get("voice_source")}
+
+
 def agent_self_recognition_section(agent: dict[str, Any]) -> str:
     """Inject assigned name into system context (Module D-style section, not a fork)."""
     name = str(agent.get("name") or "").strip()
