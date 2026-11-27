@@ -237,12 +237,42 @@ describe("PcmPlayoutQueue", () => {
     expect(q.rebufferFrames / RATE).toBeLessThan(0.07)
     // No hard edge anywhere: every transition is a ramp.
     expect(maxJump(out)).toBeLessThan(0.5 / 100)
-    // There is a silent gap, and the restart waited the grown lead (180 ms).
+    // Recovery already has 200 ms of PCM, so do not add a second 180 ms wait.
     const firstEnd = out.findIndex((v, i) => i > RATE * 0.12 && v === 0)
     expect(firstEnd).toBeGreaterThan(RATE * 0.41)
     const restart = out.findIndex((v, i) => i > firstEnd && v !== 0)
-    expect(restart - latePush).toBeGreaterThanOrEqual(Math.round(0.18 * RATE) - Q)
-    expect(restart - latePush).toBeLessThanOrEqual(Math.round(0.18 * RATE) + 2 * Q)
+    expect(restart - latePush).toBeGreaterThanOrEqual(0)
+    expect(restart - latePush).toBeLessThanOrEqual(2 * Q)
+  })
+
+  it("does not start a thin queue merely because 120 ms elapsed", () => {
+    const q = new PcmPlayoutQueue({ sampleRate: 1000 })
+    q.push(new Float32Array(40).fill(0.5), 0)
+    const before = new Float32Array(180)
+    expect(q.process(before, 0).started).toBe(false)
+    expect(q.playedFrames).toBe(0)
+    q.push(new Float32Array(100).fill(0.5), 180)
+    expect(q.process(new Float32Array(10), 180).started).toBe(true)
+  })
+
+  it("plays an isolated short utterance by the bounded startup timeout", () => {
+    const q = new PcmPlayoutQueue({ sampleRate: 1000 })
+    q.push(new Float32Array(20).fill(0.5), 0)
+    expect(q.process(new Float32Array(320), 0).started).toBe(false)
+    expect(q.process(new Float32Array(30), 320).started).toBe(true)
+    expect(q.playedFrames).toBe(20)
+  })
+
+  it("flush during priming discards all queued samples", () => {
+    const q = new PcmPlayoutQueue({ sampleRate: 1000 })
+    q.push(new Float32Array(40).fill(0.5), 0)
+    q.process(new Float32Array(100), 0)
+    q.flush()
+    const out = new Float32Array(400)
+    q.process(out, 100)
+    expect(out.every(v => v === 0)).toBe(true)
+    expect(q.playedFrames).toBe(0)
+    expect(q.isActive()).toBe(false)
   })
 
   it("does not classify a new reply after a long silent gap as recovered starvation", () => {

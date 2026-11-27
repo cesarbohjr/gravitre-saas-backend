@@ -167,8 +167,8 @@ export class StreamingResampler {
  * Playout queue for streamed voice audio at the output sample rate. Runs
  * inside the player AudioWorklet (and in tests); pure, no Web Audio types.
  *
- * - A reply starts after a jitter lead (same policy as lib/voice-pcm-jitter.ts:
- *   120 ms, growing by 60 ms up to 320 ms after an underrun mid-reply).
+ * - Startup requires playable reserve after the initial lead, with a bounded
+ *   timeout for short replies; recovered starvation raises the reserve target.
  * - Underrun: the last frames before the queue runs dry are faded out, the
  *   gap is silence, and playback re-primes and fades back in. No hard edges.
  * - Flush (barge-in): a short fade-out over whatever was playing, then the
@@ -195,6 +195,8 @@ export class PcmPlayoutQueue {
     /** @type {"idle" | "priming" | "playing" | "starved"} */
     this.state = "idle"
     this.primeStart = 0
+    this.recovering = false
+    this.flushGain = 0
     this.lastPushFrame = -Infinity
     this.gain = 0
     /** @type {Float32Array[]} */
@@ -234,6 +236,8 @@ export class PcmPlayoutQueue {
         this.underruns += 1
         this.lead = Math.min(this.maxLead, this.lead + this.leadStep)
       }
+      this.recovering = continuedReply
+      if (!continuedReply) this.lead = this.initialLead
       this.state = "priming"
       this.primeStart = nowFrame
     }
@@ -247,6 +251,7 @@ export class PcmPlayoutQueue {
         this.fadingOffset = this.readOffset
         this.flushLeft = this.flushFadeFrames
         this.flushTotal = this.flushFadeFrames
+        this.flushGain = this.gain
       }
     }
     this.chunks = []
@@ -256,6 +261,7 @@ export class PcmPlayoutQueue {
     this.lead = this.initialLead
     this.lastPushFrame = -Infinity
     this.starvedAtFrame = null
+    this.recovering = false
     this.gain = 0
   }
 
@@ -309,14 +315,22 @@ export class PcmPlayoutQueue {
     for (let i = 0; i < n; i++) {
       let sample = 0
       if (this.flushLeft > 0) {
-        sample += this._readFading() * (this.flushLeft / (this.flushTotal + 1))
+        sample += this._readFading() * this.flushGain * (this.flushLeft / (this.flushTotal + 1))
         this.flushLeft -= 1
         if (this.flushLeft === 0) {
           this.fadingChunks = []
           this.fadingOffset = 0
         }
       }
-      if (this.state === "priming" && nowFrame + i - this.primeStart >= this.lead) {
+      // Startup keeps the existing 120 ms minimum on a healthy stream.
+      // If packets arrive late, wait for actual playable reserve, bounded
+      // by maxLead so isolated short utterances cannot remain queued forever.
+      // Recovery may start immediately once its reserve is present rather
+      // than adding another fixed wall-clock wait after the network gap.
+      const waited = nowFrame + i - this.primeStart
+      if (this.state === "priming" && this.buffered > 0 &&
+          ((this.buffered >= this.lead && (this.recovering || waited >= this.initialLead)) ||
+           waited >= this.maxLead)) {
         this.state = "playing"
         started = true
       }

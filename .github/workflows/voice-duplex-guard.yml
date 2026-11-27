@@ -17,6 +17,8 @@ on:
       - "apps/web/hooks/use-voice-duplex-session.ts"
       - "apps/web/lib/voice-*.ts"
       - "apps/web/public/voice-worklets/**"
+      - "apps/web/scripts/voice-playback-continuity/**"
+      - "apps/web/__tests__/lib/voice-audio-dsp.test.ts"
       - "apps/web/lib/pipecat-voice-client.ts"
       - "apps/web/app/e2e/voice-duplex/**"
       - "apps/web/app/api/voice/**"
@@ -81,6 +83,10 @@ jobs:
 
       - name: Install Playwright Chromium
         run: npx playwright install --with-deps chromium
+
+      - name: Verify PCM queue regression contracts
+        working-directory: apps/web
+        run: pnpm exec vitest run __tests__/lib/voice-audio-dsp.test.ts
 
       - name: Enforce synthetic playback continuity
         working-directory: apps/web

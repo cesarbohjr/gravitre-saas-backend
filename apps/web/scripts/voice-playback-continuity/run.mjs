@@ -93,7 +93,7 @@ function maxSignalStep(rate) {
 /** About -46 dBFS: a step into or out of silence larger than this is audible. */
 const HARD_EDGE = 0.005
 
-function analyse({ samples, sampleRate, flushFrame, secondPushFrame }) {
+function analyse({ samples, sampleRate, firstPushFrame, flushFrame, secondPushFrame }) {
   if (!Number.isInteger(flushFrame) || !Number.isInteger(secondPushFrame) || flushFrame <= 0 || secondPushFrame <= flushFrame || secondPushFrame >= samples.length || samples.some(v => !Number.isFinite(v))) throw new Error("Invalid captured audio or clock bounds")
   const x = Float32Array.from(samples)
   const thr = 2 * maxSignalStep(sampleRate)
@@ -106,7 +106,8 @@ function analyse({ samples, sampleRate, flushFrame, secondPushFrame }) {
   }
   let last = -1
   for (let i = x.length - 1; i >= 0; i--) if (nz(x[i])) { last = i; break }
-  const r1Start = firstFrom(0)
+  if (!Number.isInteger(firstPushFrame) || firstPushFrame < 0 || firstPushFrame >= flushFrame) throw new Error("Invalid first push boundary")
+  const r1Start = firstFrom(firstPushFrame)
   const flushGuard = Math.round(0.35 * sampleRate)
   const r2Start = firstFrom(secondPushFrame)
   let lastResidual = flushFrame - 1
@@ -117,7 +118,7 @@ function analyse({ samples, sampleRate, flushFrame, secondPushFrame }) {
     ["reply2", r2Start, last],
   ]
   const minGap = Math.round(0.001 * sampleRate)
-  const res = { threshold: thr, residualMs, secondReplySpanMs: r2Start < 0 ? 0 : (last - r2Start + 1) * 1000 / sampleRate }
+  const res = { threshold: thr, residualMs, firstStartupMs: r1Start < 0 ? null : (r1Start-firstPushFrame)*1000/sampleRate, secondStartupMs: r2Start < 0 ? null : (r2Start-secondPushFrame)*1000/sampleRate, secondReplySpanMs: r2Start < 0 ? 0 : (last - r2Start + 1) * 1000 / sampleRate }
   let jumpsTotal = 0
   let hardEdgesTotal = 0
   let gapsTotal = 0
@@ -194,7 +195,7 @@ for (const sc of matrix) {
   console.log(
     `${sc.impl.padEnd(6)} x${sc.pacing} ${sc.ctxRate} ${sc.oddSplit ? "odd " : "even"} seed=${sc.seed} [${raw.playerKind}]`,
     `jumps=${metrics.totals.jumps} hardGapEdges=${metrics.totals.hardGapEdges} gaps=${metrics.totals.gaps} gapMs=${metrics.totals.gapMs}`,
-    `flushJumps=${metrics.flush.jumps} flushMax=${metrics.flush.maxJump}`,
+    `flushJumps=${metrics.flush.jumps} flushMax=${metrics.flush.maxJump} startupMs=${metrics.firstStartupMs}/${metrics.secondStartupMs} replyGapMs=${metrics.reply1.gapMs}/${metrics.reply2.gapMs}`,
   )
 }
 await browser.close()

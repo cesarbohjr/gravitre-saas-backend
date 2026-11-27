@@ -194,10 +194,12 @@ export async function runScenario(sc: Scenario) {
   const events: Array<{ at: number; run: () => void }> = msgs.map((m) => ({
     at: m.reply === 0 ? Math.min(m.at, flushMs - 1) : m.at,
     run: () => {
+      if (m.reply === 0 && firstPushFrame < 0) firstPushFrame = Math.round(ctx.currentTime * ctx.sampleRate)
       if (m.reply === 1 && secondPushFrame < 0) secondPushFrame = Math.round(ctx.currentTime * ctx.sampleRate)
       player.push(m.b64)
     },
   }))
+  let firstPushFrame = -1
   let flushCtxFrame = -1
   let secondPushFrame = -1
   events.push({
@@ -226,12 +228,13 @@ export async function runScenario(sc: Scenario) {
     out.set(c, o)
     o += c.length
   }
-  if (recordingFirstFrame === null || flushCtxFrame < recordingFirstFrame || secondPushFrame <= flushCtxFrame) {
+  if (recordingFirstFrame === null || firstPushFrame < recordingFirstFrame || flushCtxFrame <= firstPushFrame || secondPushFrame <= flushCtxFrame) {
     throw new Error("Missing audio-clock recording or interruption boundary")
   }
   return {
     samples: Array.from(out),
     sampleRate: sc.ctxRate,
+    firstPushFrame: firstPushFrame - recordingFirstFrame,
     flushFrame: flushCtxFrame - recordingFirstFrame,
     secondPushFrame: secondPushFrame - recordingFirstFrame,
     playerKind: "kind" in player ? (player as { kind: string }).kind : "before-buffer-source",
