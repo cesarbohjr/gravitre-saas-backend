@@ -1,0 +1,173 @@
+"""Isolated real adapter pipeline probe; never changes live voice selection."""
+import argparse
+import asyncio
+import json
+import os
+from pathlib import Path
+import re
+import sys
+import time
+
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "backend"))
+RATE = 24000
+MODEL = "eleven_v3"
+LONG = "This is a synthetic voice test. " + "We are checking a continuous spoken response with several separate sentences. " * 6
+RECOVERY = "The second response is ready. Thank you for waiting."
+MAX_VOICES = 12
+
+def candidate_ids(manifest, sha):
+    if not sha or manifest.get("source_sha") != sha or manifest.get("activation_authorized") is not False:
+        raise ValueError("manifest identity mismatch")
+    ids = [row["candidate_id"] for row in manifest["mapping"] if row.get("candidate_id")]
+    if not ids or len(ids) > MAX_VOICES or len(set(ids)) != len(ids) or any(
+        not isinstance(v,str) or not re.fullmatch(r"[A-Za-z0-9]{16,64}",v) for v in ids):
+        raise ValueError("invalid candidate set")
+    return ids
+
+def summarize(events, start, cut, recovery, finished):
+    # The sink records actual downstream frames, not elapsed reply span.
+    first = [e for e in events if e["reply"] == 1 and e["at"] < cut]
+    second = [e for e in events if e["reply"] == 2 and e["at"] >= recovery]
+    stale = [e for e in events if e["reply"] != 2 and e["at"] >= cut]
+    valid = all(e["rate"] == RATE and e["channels"] == 1 and e["bytes"] > 0
+                and e["bytes"] % 2 == 0 and e["context"] for e in events)
+    contexts1 = {e["context"] for e in first}
+    contexts2 = {e["context"] for e in second}
+    return {"first_audio_ms": round((first[0]["at"]-start)*1000) if first else None,
+            "recovery_first_audio_ms": round((second[0]["at"]-recovery)*1000) if second else None,
+            "first_pcm_frames": sum(e["bytes"]//2 for e in first),
+            "recovery_pcm_frames": sum(e["bytes"]//2 for e in second),
+            "stale_pcm_frames": sum(e["bytes"]//2 for e in stale),
+            "contexts_disjoint": bool(contexts1 and contexts2 and not contexts1 & contexts2),
+            "frame_format_valid": valid,
+            "recovery_stop_observed": finished,
+            "sink_status": "PASS" if first and second and not stale and valid and finished
+            and contexts1 and contexts2 and not contexts1 & contexts2 else "FAIL"}
+
+async def probe_voice(key, voice_id):
+    from pipecat.frames.frames import (Frame, InterruptionFrame, LLMFullResponseStartFrame,
+        LLMFullResponseEndFrame, TextFrame, TTSAudioRawFrame, TTSStoppedFrame, EndFrame, ErrorFrame)
+    from pipecat.pipeline.pipeline import Pipeline
+    from pipecat.pipeline.task import PipelineTask, PipelineParams
+    from pipecat.pipeline.runner import PipelineRunner
+    from pipecat.processors.frame_processor import FrameProcessor, FrameDirection
+    from app.services.pipecat_voice.tts_factory import build_live_tts_service
+    from app.services.pipecat_voice.voice_audio_origin import VoicePipelineSession
+    from app.services.pipecat_voice.json_audio_serializer import ReplyAudioStampProcessor, REPLY_ID_ATTR
+    from app.services.pipecat_voice.tts_context_cancel import cancel_elevenlabs_tts_context
+
+    session = VoicePipelineSession()
+    adapter = build_live_tts_service(api_key=key, voice_id=voice_id, model=MODEL, sample_rate=RATE)
+    stamp = ReplyAudioStampProcessor(voice_session=session)
+    events = []
+    first_audio = asyncio.Event()
+    interrupted = asyncio.Event()
+    recovered = asyncio.Event()
+    errors = []
+    stops = set()
+    recovery_contexts = set()
+
+    class Sink(FrameProcessor):
+        async def process_frame(self, frame: Frame, direction: FrameDirection):
+            await super().process_frame(frame,direction)
+            if isinstance(frame, ErrorFrame):
+                errors.append(type(frame).__name__)
+            if direction == FrameDirection.DOWNSTREAM:
+                if isinstance(frame, InterruptionFrame):
+                    interrupted.set()
+                if isinstance(frame, TTSAudioRawFrame):
+                    rid = getattr(frame, REPLY_ID_ATTR, None)
+                    context = getattr(frame,"context_id",None)
+                    events.append({"reply":rid,"context":context,"at":time.monotonic(),
+                                   "bytes":len(frame.audio),"rate":frame.sample_rate,"channels":frame.num_channels})
+                    if rid == 1:
+                        first_audio.set()
+                    if rid == 2 and context:
+                        recovery_contexts.add(context)
+                if isinstance(frame,TTSStoppedFrame):
+                    ctx = getattr(frame,"context_id",None)
+                    stops.add(ctx)
+                    if ctx in recovery_contexts:
+                        recovered.set()
+            await self.push_frame(frame,direction)
+
+    task = PipelineTask(Pipeline([adapter,stamp,Sink()]),
+        params=PipelineParams(audio_out_sample_rate=RATE, enable_metrics=True))
+    runner = asyncio.create_task(PipelineRunner(handle_sigint=False).run(task))
+    async def send(text):
+        rid = session.begin_reply()
+        frame = LLMFullResponseStartFrame()
+        setattr(frame,REPLY_ID_ATTR,rid)
+        await task.queue_frames([frame,TextFrame(text),LLMFullResponseEndFrame()])
+
+    try:
+        start = time.monotonic()
+        await send(LONG)
+        await asyncio.wait_for(first_audio.wait(),20)
+        # Do not claim mid-synthesis interruption if the provider already
+        # completed the context before the cut.
+        first_context = events[0]["context"]
+        active_at_cut = bool(first_context and first_context not in stops)
+        cut = time.monotonic()
+        session.cancel_reply_audio(1)
+        await task.queue_frame(InterruptionFrame())
+        cancel = await asyncio.wait_for(cancel_elevenlabs_tts_context(adapter),5)
+        await asyncio.wait_for(interrupted.wait(),5)
+        await asyncio.sleep(.25)
+        recovery = time.monotonic()
+        await send(RECOVERY)
+        await asyncio.wait_for(recovered.wait(),20)
+        await asyncio.sleep(.25)
+        result = summarize(events,start,cut,recovery,recovered.is_set())
+        result.update({"voice_id":voice_id,"model":MODEL,"active_context_at_cut":active_at_cut,
+                       "cancel_hook_reported":cancel.get("cancelled") is True,
+                       "cancel_method":cancel.get("method"),"dropped_frames":stamp.dropped_frames,
+                       "error_count":len(errors),
+                       "scope":"actual adapter downstream PCM; not device playback or full conversation"})
+        result["status"] = "PASS" if result["sink_status"]=="PASS" and active_at_cut and not errors else "FAIL"
+        return result
+    finally:
+        if not runner.done():
+            try:
+                await task.queue_frame(EndFrame())
+                await asyncio.wait_for(runner,5)
+            except Exception:
+                runner.cancel()
+                await asyncio.gather(runner,return_exceptions=True)
+
+async def run(env, manifest):
+    result = {"source_sha":env.get("GITHUB_SHA",""),"model":MODEL,
+              "status":"NOT RUN","rows":[],"activation_authorized":False}
+    if not env.get("ELEVENLABS_API_KEY"):
+        return result
+    try:
+        ids = candidate_ids(manifest,result["source_sha"])
+    except (ValueError,KeyError,TypeError):
+        result["status"]="FAIL"
+        return result
+    for voice in ids:
+        try:
+            row = await asyncio.wait_for(probe_voice(env["ELEVENLABS_API_KEY"],voice),60)
+        except Exception as exc:
+            row = {"voice_id":voice,"model":MODEL,"status":"FAIL","error_type":type(exc).__name__}
+        result["rows"].append(row)
+    result["status"]="PASS" if all(r["status"]=="PASS" for r in result["rows"]) else "FAIL"
+    return result
+
+def main():
+    parser=argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--manifest",type=Path,required=True)
+    parser.add_argument("--output",type=Path,required=True)
+    args=parser.parse_args()
+    try:
+        result=asyncio.run(run(os.environ,json.loads(args.manifest.read_text())))
+    except Exception as exc:
+        result={"status":"FAIL","source_sha":os.getenv("GITHUB_SHA",""),"error_type":type(exc).__name__}
+    args.output.parent.mkdir(parents=True,exist_ok=True)
+    args.output.write_text(json.dumps(result,indent=2)+"\n")
+    print(result["status"])
+    return 0 if result["status"]=="PASS" else 1
+
+if __name__=="__main__":
+    raise SystemExit(main())
