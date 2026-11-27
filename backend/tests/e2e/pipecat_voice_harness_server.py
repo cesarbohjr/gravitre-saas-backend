@@ -258,6 +258,12 @@ def build_app() -> FastAPI:
         # history and persistence can be asserted per session.
         conversation_id = websocket.query_params.get("conversation_id") or _seed()
         STATE["seeded_conversation_id"] = conversation_id
+        STATE["dispatch_events"] = []
+        def record_dispatch(stage: str, meta: dict[str, Any]) -> None:
+            row = {"stage": stage, **meta}
+            STATE["dispatch_events"].append(row)
+            print(f"voice_dispatch {row}", flush=True)
+
         task, _meta = build_pipecat_voice_task(
             websocket=websocket,
             settings=get_settings(),
@@ -267,6 +273,7 @@ def build_app() -> FastAPI:
             stt_service=ScriptedFluxSTT(),
             stt_service_info={"stt_provider_key": STT_FLUX, "stt_provider": "harness_scripted_flux"},
             tts_service=tts,
+            dispatch_diagnostic_sink=record_dispatch,
         )
         await PipelineRunner(handle_sigint=False).run(task)
 

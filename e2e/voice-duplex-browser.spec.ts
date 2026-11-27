@@ -84,7 +84,8 @@ test.describe("Voice duplex browser pipeline", () => {
         captureCtx: await harness.getAttribute("data-capture-ctx-state"),
       })
       const explain = (what: string) => async (err: unknown) => {
-        throw new Error(`${what}. Harness state: ${JSON.stringify(await snapshot())}\n${err instanceof Error ? err.message : String(err)}`)
+        const server = await (await request.get(`${wsBase}/harness/state`)).json()
+        throw new Error(`${what}. Harness state: ${JSON.stringify(await snapshot())}\nDispatch: ${JSON.stringify(server.dispatch_events ?? [])}\n${err instanceof Error ? err.message : String(err)}`)
       }
 
       await expect
@@ -138,6 +139,11 @@ test.describe("Voice duplex browser pipeline", () => {
       await expect(harness).toHaveAttribute("data-conversation-id", conversationId)
       expect(after.pcm_bytes_in).toBeGreaterThan(0)
       expect(after.llm_queries.length).toBeGreaterThan(before.llm_queries.length)
+      const stages = (after.dispatch_events as Array<{stage: string; provisional?: boolean}> )
+      expect(stages.filter(e => e.stage === "context_received" && !e.provisional)).toHaveLength(1)
+      expect(stages.filter(e => e.stage === "context_accepted")).toHaveLength(1)
+      expect(stages.filter(e => e.stage === "final_forwarded")).toHaveLength(1)
+      expect(stages.filter(e => e.stage === "stop_forwarded")).toHaveLength(1)
       expect(after.prompt_calls).toBeGreaterThan(before.prompt_calls ?? 0)
       expect(after.guard_passes).toBeGreaterThan(before.guard_passes ?? 0)
       expect(after.durable_history_seen.at(-1)).toEqual([

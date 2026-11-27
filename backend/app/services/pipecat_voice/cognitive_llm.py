@@ -469,6 +469,7 @@ class GravitreCognitiveLLMService(LLMService):
             user_turn_completion_config=None,
         ))
         super().__init__(**kwargs)
+        self._dispatch_diagnostic_sink = None
         # Never assign to self._settings — AIService owns that for Pipecat ServiceSettings.
         self._app_settings = app_settings
         self._org_id = org_id
@@ -776,7 +777,18 @@ class GravitreCognitiveLLMService(LLMService):
         response = query.order("created_at", desc=False).limit(48).execute()
         return list(getattr(response, "data", None) or [])
 
+    def _dispatch_note(self, stage: str, **meta: Any) -> None:
+        sink = self._dispatch_diagnostic_sink
+        if sink is not None:
+            try:
+                sink(stage, meta)
+            except Exception:
+                logger.debug("voice_dispatch_diagnostic_failed", exc_info=True)
+
     async def process_frame(self, frame: Frame, direction: FrameDirection):
+        if isinstance(frame, LLMContextFrame):
+            self._dispatch_note("context_received", provisional=bool(getattr(frame, "speculation", False)),
+                                direction=direction.name, frame_id=frame.id)
         await super().process_frame(frame, direction)
         if isinstance(frame, InterruptionFrame):
             # A real barge-in cuts an aside off too.
@@ -789,6 +801,7 @@ class GravitreCognitiveLLMService(LLMService):
             logger.info("pipecat_voice_provisional_context_ignored org_id=%s", self._org_id)
             return
         if isinstance(frame, LLMContextFrame):
+            self._dispatch_note("context_accepted", frame_id=frame.id)
             # The reply id is bound here, on the frame that opens this reply's
             # TTS context, so its audio keeps this id however late it arrives.
             start = LLMFullResponseStartFrame()
@@ -1270,6 +1283,7 @@ class GravitreCognitiveLLMService(LLMService):
             raise RuntimeError(VOICE_TURN_FAILURE_MESSAGE)
 
         user_text, history = _messages_from_context(context)
+        self._dispatch_note("context_decoded", has_user_text=bool(user_text), history_count=len(history))
         if not user_text:
             return
         if is_filler_only(user_text):
@@ -1325,11 +1339,15 @@ class GravitreCognitiveLLMService(LLMService):
             await self._interrupt_reporter.settle_barge_in()
             if self._interrupt_reporter.conversation_id:
                 self._conversation_id = self._interrupt_reporter.conversation_id
+        self._dispatch_note("durable_load_start")
         await self._ensure_durable_context()
+        self._dispatch_note("durable_load_done")
         # Same conversation row and ledger ingest text runs before the brain,
         # so the first turn's approvals persist (minted ids get their row now).
         await self._prepare_conversation(user_text)
+        self._dispatch_note("conversation_prepared")
         await self._refresh_durable_tail()
+        self._dispatch_note("durable_tail_done")
         if trace is not None:
             trace.note("durable_ready")
         history = self._merge_durable_and_socket_history(
@@ -1407,7 +1425,9 @@ class GravitreCognitiveLLMService(LLMService):
                     self._app_settings, org_id=self._org_id, conversation_id=self._conversation_id
                 )
             )
+        self._dispatch_note("prompt_start")
         turn_inputs = await self.shared_turn_inputs(user_text)
+        self._dispatch_note("prompt_done")
         if recovered:
             turn_inputs = dict(turn_inputs)
             note = (
@@ -1471,6 +1491,7 @@ class GravitreCognitiveLLMService(LLMService):
             task, guard_task = guard_task, None
             try:
                 await task
+                self._dispatch_note("guard_passed")
             except TurnGuardrailBlocked as blocked:
                 logger.info("pipecat_voice_guardrail_blocked org_id=%s kind=%s", self._org_id, blocked.kind)
                 # The refusal is this turn's answer.

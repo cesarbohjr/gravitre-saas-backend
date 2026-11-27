@@ -34,6 +34,7 @@ class CommittedTurnBarrierProcessor(FrameProcessor):
 
     def __init__(self, *, clock: Callable[[], float] = time.perf_counter,
                  evidence: Any | None = None, voice_session: Any | None = None,
+                 dispatch_diagnostic_sink: Any | None = None,
                  **kwargs):
         super().__init__(**kwargs)
         self._hold_clock = clock
@@ -49,6 +50,7 @@ class CommittedTurnBarrierProcessor(FrameProcessor):
         # timestamp key avoids suppressing two legitimate identical replies.
         self._recent_final_keys: deque[tuple[str, str, str]] = deque(maxlen=32)
         self._suppressed_eager = 0
+        self._dispatch_diagnostic_sink = dispatch_diagnostic_sink
 
     @property
     def suppressed_eager_count(self) -> int:
@@ -58,6 +60,13 @@ class CommittedTurnBarrierProcessor(FrameProcessor):
     def last_stop_hold_ms(self) -> float | None:
         """Measured hold of the last released stop; never contains user text."""
         return self._last_stop_hold_ms
+
+    def _dispatch_note(self, stage: str, frame: Frame) -> None:
+        if self._dispatch_diagnostic_sink is not None:
+            try:
+                self._dispatch_diagnostic_sink(stage, {"frame_id": frame.id, "frame_type": type(frame).__name__})
+            except Exception:
+                pass
 
     async def process_frame(self, frame: Frame, direction: FrameDirection):
         await super().process_frame(frame, direction)
@@ -70,6 +79,7 @@ class CommittedTurnBarrierProcessor(FrameProcessor):
                 self._evidence.eager()
             self._final_seen = False
             self._suppressed_eager += 1
+            self._dispatch_note("eager_suppressed", frame)
             return
 
         if isinstance(frame, EagerEndOfTurnCancelFrame):
@@ -118,10 +128,12 @@ class CommittedTurnBarrierProcessor(FrameProcessor):
                 if self._pending_stop_at is None:
                     self._pending_stop_at = self._hold_clock()
                 self._pending_stop = frame
+                self._dispatch_note("stop_held", frame)
                 return
             self._stop_forwarded = True
             if self._evidence is not None:
                 self._evidence.stop()
+            self._dispatch_note("stop_forwarded", frame)
             await self.push_frame(frame, direction)
             return
 
@@ -140,6 +152,7 @@ class CommittedTurnBarrierProcessor(FrameProcessor):
                         self._evidence.duplicate_final()
                     return
                 self._recent_final_keys.append(key)
+            self._dispatch_note("final_forwarded", frame)
             # Pipecat must receive authoritative words before resolving stop.
             if self._evidence is not None:
                 self._evidence.final()
@@ -152,6 +165,7 @@ class CommittedTurnBarrierProcessor(FrameProcessor):
                         0.0, (self._hold_clock() - self._pending_stop_at) * 1000.0
                     )
                 self._pending_stop_at = None
+                self._dispatch_note("stop_forwarded", pending)
                 await self.push_frame(pending, direction)
                 self._stop_forwarded = True
                 if self._evidence is not None:

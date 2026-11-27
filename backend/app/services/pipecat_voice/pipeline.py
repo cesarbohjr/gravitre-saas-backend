@@ -143,6 +143,7 @@ def build_pipecat_voice_task(
     stt_service: Any | None = None,
     stt_service_info: dict[str, Any] | None = None,
     tts_service: Any | None = None,
+    dispatch_diagnostic_sink: Any | None = None,
 ) -> tuple[PipelineTask, dict[str, Any]]:
     """Construct a PipelineTask for one authenticated browser WebSocket session.
 
@@ -266,6 +267,7 @@ def build_pipecat_voice_task(
         conversation_id=conversation_id,
         speculative_coordinator=speculative_coordinator,
     )
+    llm._dispatch_diagnostic_sink = dispatch_diagnostic_sink
     speculative = SpeculativePrefetchProcessor(
         app_settings=settings,
         org_id=org_id,
@@ -419,6 +421,7 @@ def build_pipecat_voice_task(
             # authoritative user-turn aggregator until a final transcript.
             *([CommittedTurnBarrierProcessor(
                 evidence=boundary_evidence, voice_session=voice_session,
+                dispatch_diagnostic_sink=dispatch_diagnostic_sink,
             )] if use_flux else []),
             # Disabled by default: only opt-in Flux hard-final stabilizes
             # the canonical words + stop together; raw interruption proceeds.
