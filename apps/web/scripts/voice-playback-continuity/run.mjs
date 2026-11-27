@@ -93,7 +93,8 @@ function maxSignalStep(rate) {
 /** About -46 dBFS: a step into or out of silence larger than this is audible. */
 const HARD_EDGE = 0.005
 
-function analyse({ samples, sampleRate, flushFrame }) {
+function analyse({ samples, sampleRate, flushFrame, secondPushFrame }) {
+  if (!Number.isInteger(flushFrame) || !Number.isInteger(secondPushFrame) || flushFrame <= 0 || secondPushFrame <= flushFrame || secondPushFrame >= samples.length || samples.some(v => !Number.isFinite(v))) throw new Error("Invalid captured audio or clock bounds")
   const x = Float32Array.from(samples)
   const thr = 2 * maxSignalStep(sampleRate)
   const nz = (v) => Math.abs(v) > 1e-5
@@ -107,13 +108,16 @@ function analyse({ samples, sampleRate, flushFrame }) {
   for (let i = x.length - 1; i >= 0; i--) if (nz(x[i])) { last = i; break }
   const r1Start = firstFrom(0)
   const flushGuard = Math.round(0.35 * sampleRate)
-  const r2Start = firstFrom(flushFrame + flushGuard)
+  const r2Start = firstFrom(secondPushFrame)
+  let lastResidual = flushFrame - 1
+  for (let i = flushFrame; i < secondPushFrame; i++) if (Math.abs(x[i]) > HARD_EDGE) lastResidual = i
+  const residualMs = Math.max(0, lastResidual - flushFrame + 1) * 1000 / sampleRate
   const windows = [
     ["reply1", r1Start, flushFrame - Math.round(0.02 * sampleRate)],
     ["reply2", r2Start, last],
   ]
   const minGap = Math.round(0.001 * sampleRate)
-  const res = { threshold: thr }
+  const res = { threshold: thr, residualMs, secondReplySpanMs: r2Start < 0 ? 0 : (last - r2Start + 1) * 1000 / sampleRate }
   let jumpsTotal = 0
   let hardEdgesTotal = 0
   let gapsTotal = 0
@@ -205,6 +209,8 @@ if (enforce) {
     if (metrics.totals.hardGapEdges !== 0) fail("hard silence edge")
     if (metrics.totals.gapMs > 20) fail("synthetic in-reply silence exceeds 20 ms")
     if (metrics.flush.jumps !== 0) fail("interruption discontinuity")
+    if (metrics.residualMs > 50) fail("old reply audible more than 50 ms after flush")
+    if (metrics.secondReplySpanMs < scenario.secondReplyS * 1000 - 50) fail("second reply truncated")
   }
   if (results.length !== matrix.length || !results.length) violations.push({ reason: "incomplete matrix" })
 }

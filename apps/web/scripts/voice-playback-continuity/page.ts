@@ -74,10 +74,11 @@ function packetize(bytes: Uint8Array, odd: boolean, rand: () => number): Uint8Ar
 
 const RECORDER = `
 class TapRecorder extends AudioWorkletProcessor {
-  constructor() { super(); this.buf = new Float32Array(8192); this.len = 0; this.on = true;
+  constructor() { super(); this.buf = new Float32Array(8192); this.len = 0; this.on = true; this.firstFrame = null;
     this.port.onmessage = (e) => { if (e.data === 'stop') { this.flush(); this.on = false; this.port.postMessage({ done: true }) } } }
   flush() { if (this.len) { this.port.postMessage({ chunk: this.buf.slice(0, this.len) }); this.len = 0 } }
   process(inputs, outputs) {
+    if (this.firstFrame === null) { this.firstFrame = currentFrame; this.port.postMessage({ firstFrame: currentFrame }) }
     const x = inputs[0] && inputs[0][0]
     const n = outputs[0][0].length
     for (let i = 0; i < n; i++) { const v = x ? x[i] : 0; if (this.on) { this.buf[this.len++] = v; if (this.len === this.buf.length) this.flush() } outputs[0][0][i] = 0 }
@@ -155,8 +156,10 @@ export async function runScenario(sc: Scenario) {
   bus.connect(tap)
   tap.connect(ctx.destination)
   const chunks: Float32Array[] = []
+  let recordingFirstFrame: number | null = null
   const done = new Promise<void>((resolve) => {
     tap.port.onmessage = (e) => {
+      if (typeof e.data.firstFrame === "number") recordingFirstFrame = e.data.firstFrame
       if (e.data.chunk) chunks.push(e.data.chunk)
       if (e.data.done) resolve()
     }
@@ -164,7 +167,6 @@ export async function runScenario(sc: Scenario) {
   const player = sc.impl === "before" ? beforePlayer(ctx, bus) : await afterPlayer(ctx, bus)
   const rand = rng(sc.seed)
   const t0 = performance.now()
-  const recordStartFrame = Math.round(ctx.currentTime * ctx.sampleRate)
 
   // Server pacing: Pipecat 1.x sends each 40 ms chunk every 20 ms (pacing 2).
   // Network/main-thread delay: uniform 0..jitterMaxMs per message, in order.
@@ -191,13 +193,17 @@ export async function runScenario(sc: Scenario) {
   // in flight before the flush is delivered before the interrupt message.
   const events: Array<{ at: number; run: () => void }> = msgs.map((m) => ({
     at: m.reply === 0 ? Math.min(m.at, flushMs - 1) : m.at,
-    run: () => player.push(m.b64),
+    run: () => {
+      if (m.reply === 1 && secondPushFrame < 0) secondPushFrame = Math.round(ctx.currentTime * ctx.sampleRate)
+      player.push(m.b64)
+    },
   }))
   let flushCtxFrame = -1
+  let secondPushFrame = -1
   events.push({
     at: flushMs,
     run: () => {
-      flushCtxFrame = Math.round(ctx.currentTime * ctx.sampleRate) - recordStartFrame
+      flushCtxFrame = Math.round(ctx.currentTime * ctx.sampleRate)
       player.flush()
     },
   })
@@ -207,7 +213,8 @@ export async function runScenario(sc: Scenario) {
     if (wait > 0) await new Promise((r) => setTimeout(r, wait))
     ev.run()
   }
-  const endMs = lastArrival + 1200
+  // The accelerated sender can finish well before playback drains.
+  const endMs = Math.max(lastArrival, secondStart + (sc.secondReplyS + 0.7) * 1000) + 1200
   await new Promise((r) => setTimeout(r, Math.max(0, endMs - (performance.now() - t0))))
   tap.port.postMessage("stop")
   await done
@@ -219,10 +226,14 @@ export async function runScenario(sc: Scenario) {
     out.set(c, o)
     o += c.length
   }
+  if (recordingFirstFrame === null || flushCtxFrame < recordingFirstFrame || secondPushFrame <= flushCtxFrame) {
+    throw new Error("Missing audio-clock recording or interruption boundary")
+  }
   return {
     samples: Array.from(out),
     sampleRate: sc.ctxRate,
-    flushFrame: flushCtxFrame,
+    flushFrame: flushCtxFrame - recordingFirstFrame,
+    secondPushFrame: secondPushFrame - recordingFirstFrame,
     playerKind: "kind" in player ? (player as { kind: string }).kind : "before-buffer-source",
   }
 }
