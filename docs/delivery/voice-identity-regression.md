@@ -13,3 +13,7 @@ The SHA-named artifact contains JUnit reports, raw latency samples and a
 manifest with execution outcomes and SHA-256 file digests. Missing evidence
 or a failed/skipped test step fails the workflow. A successful workflow is
 synthetic regression evidence only, not Voice 3.0 candidate certification.
+
+A branch-scoped push trigger also runs synthetic CI on the Voice 3.0 engineering
+branch independently of PR mergeability. Both triggers pin the actual source
+commit. PR-only API clients may not list push-triggered runs; consult Actions.

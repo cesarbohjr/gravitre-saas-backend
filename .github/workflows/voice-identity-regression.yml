@@ -1,6 +1,9 @@
 name: Voice Identity Regression
 
 on:
+  push:
+    branches:
+      - feat/qa-master-voice-parity-gates
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
     paths:
@@ -15,7 +18,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: voice-identity-${{ github.event.pull_request.number }}
+  group: voice-identity-${{ github.event.pull_request.head.sha || github.sha }}
   cancel-in-progress: true
 
 jobs:
@@ -24,7 +27,7 @@ jobs:
     timeout-minutes: 45
     env:
       CI: "true"
-      VOICE_IDENTITY_SOURCE_SHA: ${{ github.event.pull_request.head.sha }}
+      VOICE_IDENTITY_SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
       VOICE_BROWSER_LIVE_PROVIDER: "0"
       SUPABASE_URL: https://test.supabase.co
       SUPABASE_ANON_KEY: anon-test
@@ -41,7 +44,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.pull_request.head.sha }}
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
           persist-credentials: false
       - name: Verify source and create evidence directory
         run: |
@@ -134,7 +137,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: voice-identity-${{ github.event.pull_request.head.sha }}-${{ github.run_attempt }}
+          name: voice-identity-${{ github.event.pull_request.head.sha || github.sha }}-${{ github.run_attempt }}
           path: |
             evidence/voice-identity/
             test-results/
