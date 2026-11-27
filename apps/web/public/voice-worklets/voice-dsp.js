@@ -262,8 +262,8 @@ export class PcmPlayoutQueue {
       // Fast start only with observed delivery surplus; otherwise preserve
       // the continuity-proven reserve. Never insert or discard audio.
       const elapsed = nowFrame - (this.arrivalFirst ?? nowFrame)
-      const accelerated = this.arrivalPackets >= 4 && elapsed >= this.sampleRate * 0.06 && this.arrivalFrames >= elapsed * 1.7 && this.arrivalDeficit <= this.sampleRate * 0.025
-      const guarded = Math.min(this.maxLead, Math.max(this.initialLead, Math.round(this.sampleRate * 0.26), this.arrivalDeficit + Math.round(this.sampleRate * 0.12)))
+      const accelerated = this.arrivalPackets >= 6 && elapsed >= this.sampleRate * 0.10 && this.arrivalFrames >= elapsed * 1.85 && this.arrivalDeficit <= this.sampleRate * 0.025
+      const guarded = Math.min(this.maxLead, Math.max(this.initialLead, Math.round(this.sampleRate * 0.34), this.arrivalDeficit + Math.round(this.sampleRate * 0.16)))
       this.lead = this.recovering ? Math.max(this.lead, guarded) : accelerated ? this.initialLead : guarded
     }
   }

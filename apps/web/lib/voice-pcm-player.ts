@@ -128,7 +128,7 @@ export function createWorkletPcmPlayer(
   }
   const policy = options.acceptanceBufferPolicy ?? "fixed"
   const initialLeadS = policy === "fixed" ? PCM_WORKLET_CANDIDATE_LEAD_S : 0.12
-  const maxLeadS = policy === "baseline" ? 0.32 : PCM_WORKLET_CANDIDATE_MAX_LEAD_S
+  const maxLeadS = policy === "baseline" ? 0.32 : policy === "adaptive" ? 0.48 : PCM_WORKLET_CANDIDATE_MAX_LEAD_S
   const node = new AudioWorkletNode(ctx, VOICE_PCM_PLAYER_PROCESSOR, {
     numberOfInputs: 0,
     numberOfOutputs: 1,
