@@ -25,6 +25,14 @@ import { createPcmDiagnostics, type PcmPlaybackDiagnostics } from "@/lib/voice-p
 /** Fade applied when playback is cut (barge-in, stop), instead of a hard stop. */
 export const PCM_FLUSH_FADE_S = 0.012
 
+/**
+ * Voice 3.0 branch candidate: the 120 ms baseline starved on 300 ms jitter
+ * at real-time pacing in hosted Chromium. This bounded reserve is provisional
+ * until paired live first-audio and listening gates pass; no production rollout.
+ */
+export const PCM_WORKLET_CANDIDATE_LEAD_S = 0.26
+export const PCM_WORKLET_CANDIDATE_MAX_LEAD_S = 0.40
+
 export type VoicePcmPlayerKind = "worklet" | "buffer-source"
 
 /** Same-clock metadata for consented acceptance sessions; never PCM or text. */
@@ -120,7 +128,7 @@ export function createWorkletPcmPlayer(
     numberOfInputs: 0,
     numberOfOutputs: 1,
     outputChannelCount: [1],
-    processorOptions: { flushFadeS: PCM_FLUSH_FADE_S },
+    processorOptions: { flushFadeS: PCM_FLUSH_FADE_S, initialLeadS: PCM_WORKLET_CANDIDATE_LEAD_S, maxLeadS: PCM_WORKLET_CANDIDATE_MAX_LEAD_S },
   })
   // Overlap ducking sits after the player, so it lowers what is already queued.
   const duck = createDuckControl(ctx, options.destination ?? ctx.destination, options.acceptanceOutputTap)
@@ -210,7 +218,7 @@ export function createWorkletPcmPlayer(
       if (!active) {
         active = true
         // Until the worklet reports the real start, assume the initial lead.
-        if (origin == null) origin = ctx.currentTime + 0.12
+        if (origin == null) origin = ctx.currentTime + PCM_WORKLET_CANDIDATE_LEAD_S
         options.onActiveChange?.(true)
       }
       posted += 1

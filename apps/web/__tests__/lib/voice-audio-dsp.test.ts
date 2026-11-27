@@ -7,6 +7,7 @@ import {
   int16ArrayToFloat,
 } from "@/public/voice-worklets/voice-dsp.js"
 import { base64ToPcm16, createPcm16StreamDecoder, pcm16ToBase64 } from "@/lib/pipecat-voice-client"
+import { PCM_WORKLET_CANDIDATE_LEAD_S, PCM_WORKLET_CANDIDATE_MAX_LEAD_S } from "@/lib/voice-pcm-player"
 
 function tone(freq: number, rate: number, n: number, amp = 0.5, phase0 = 0): Float32Array {
   const out = new Float32Array(n)
@@ -330,6 +331,49 @@ describe("PcmPlayoutQueue", () => {
     expect(baselineDelayed.rebufferEvents).toBeGreaterThan(0)
     expect(alternativeDelayed.rebufferEvents).toBeLessThan(baselineDelayed.rebufferEvents)
     // Do not silently promote a slower first-audio policy based on synthetic data.
+  })
+
+  it("candidate reserve prevents deterministic real-time jitter starvation while bounding startup", () => {
+    const simulate = (initialLeadS: number, maxLeadS: number, odd: boolean, pacing: number) => {
+      let seed = 1
+      const rand = () => {
+        seed ^= seed << 13; seed ^= seed >>> 17; seed ^= seed << 5
+        return (seed >>> 0) / 4294967296
+      }
+      const q = new PcmPlayoutQueue({ sampleRate: 1000, initialLeadS, maxLeadS })
+      const packets: Array<{ at: number; frames: number }> = []
+      let firstArrival = 0
+      let lastArrival = 0
+      let send = 0
+      let remaining = 6 * 48000
+      let bytesReceived = 0
+      while (remaining > 0 && send < 3200) {
+        const bytes = Math.min(remaining, odd ? 2 * Math.floor(150 + rand() * 1350) + 1 : 1920)
+        lastArrival = Math.max(lastArrival, send + rand() * 300)
+        const before = Math.floor(bytesReceived / 48)
+        bytesReceived += bytes
+        packets.push({ at: Math.min(lastArrival, 3199), frames: Math.floor(bytesReceived / 48) - before })
+        send += bytes / 48 / pacing
+        remaining -= bytes
+      }
+      firstArrival = Math.ceil(packets[0].at)
+      let startedAt = -1
+      let next = 0
+      for (let frame = 0; frame < 3200; frame++) {
+        while (next < packets.length && packets[next].at <= frame) {
+          q.push(new Float32Array(packets[next++].frames).fill(0.25), frame)
+        }
+        if (q.process(new Float32Array(1), frame).started && startedAt < 0) startedAt = frame
+      }
+      return { gaps: q.rebufferEvents, startup: startedAt - firstArrival }
+    }
+    expect(simulate(0.12, 0.32, false, 1).gaps).toBeGreaterThan(0)
+    for (const odd of [false, true]) for (const pacing of [1, 2]) {
+      const result = simulate(PCM_WORKLET_CANDIDATE_LEAD_S, PCM_WORKLET_CANDIDATE_MAX_LEAD_S, odd, pacing)
+      expect(result.gaps).toBe(0)
+      expect(result.startup).toBeGreaterThanOrEqual(0)
+      expect(result.startup).toBeLessThanOrEqual(PCM_WORKLET_CANDIDATE_MAX_LEAD_S * 1000)
+    }
   })
 
   it("flush fades out over ~12 ms and drops the rest", () => {
