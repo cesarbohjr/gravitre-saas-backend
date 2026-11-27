@@ -1,0 +1,29 @@
+name: Voice 3 isolated preference migration
+on:
+  pull_request:
+    paths:
+      - 'supabase/migrations/20261127010000_voice3_preference_journal.sql'
+      - 'backend/tests/db/test_voice3_preference_migration_pg.py'
+      - 'backend/tests/db/pg_harness.py'
+      - '.github/workflows/voice3-preference-migration.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  isolated-postgres:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: sudo apt-get update -qq && sudo apt-get install -y postgresql postgresql-client
+      - run: python -m pip install pytest
+      - name: Verify migration and rollback on throwaway PostgreSQL
+        working-directory: backend
+        run: |
+          python -c 'from tests.db.pg_harness import PG_BIN; assert PG_BIN is not None'
+          python -m pytest --noconftest -q tests/db/test_voice3_preference_migration_pg.py
