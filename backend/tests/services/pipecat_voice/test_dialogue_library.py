@@ -240,9 +240,9 @@ def test_runtime_fewshot_counts():
     counts = {tier: len(RUNTIME["tiers"].get(tier, [])) for tier in TIERS}
     # Large enough to cover the situations people actually raise; selection
     # stays lexical and under 1 ms (test_select_fewshots_is_fast).
-    assert counts["light"] >= 40
-    assert counts["medium"] >= 40
-    assert counts["deep"] >= 35
+    assert counts["light"] >= 56
+    assert counts["medium"] >= 55
+    assert counts["deep"] >= 50
     ids = [ex["id"] for _, ex in RUNTIME_EXAMPLES]
     assert len(ids) == len(set(ids))
 
