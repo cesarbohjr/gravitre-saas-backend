@@ -44,12 +44,15 @@ jobs:
           for i in $(seq 1 60); do curl -fsS http://127.0.0.1:8797/ >/dev/null && break; sleep 1; done
           cd ..
           node backend/tests/e2e/run_native_onset_paired.mjs
+      - name: Require raw paired trial evidence even when screening fails
+        if: always()
+        run: test -s native-onset-paired.json
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: native-onset-paired-${{ github.sha }}
           path: |
-            native-sender-paired.json
+            native-onset-paired.json
             native-reference-server.log
             native-reference-sdk.json
           if-no-files-found: error
