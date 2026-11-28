@@ -9,6 +9,7 @@ import json
 import tempfile
 import time
 import unittest
+import os
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -59,13 +60,18 @@ class ActualSdkProtocol(unittest.TestCase):
                     ws.send_json({"type":"init","conversation_id":"local-conversation"})
                     ws.send_json({"type":"ping"})
                     self.assertEqual(ws.receive_json()["type"],"pong")
+                    first_sent=time.monotonic_ns()
                     ws.send_json({"type":"user_transcript","event_id":1,"user_transcript":[{"role":"user","content":"old"}]})
                     first=ws.receive_json()
+                    first_ms=(time.monotonic_ns()-first_sent)/1e6
                     self.assertEqual((first["type"],first["event_id"],first["content"]),("agent_response",1,"old-first"))
+                    interrupt_sent=time.monotonic_ns()
                     ws.send_json({"type":"user_transcript","event_id":2,"user_transcript":[{"role":"user","content":"new"}]})
                     chunks=[]
                     for _ in range(10):
                         msg=ws.receive_json()
+                        if not chunks:
+                            second_ms=(time.monotonic_ns()-interrupt_sent)/1e6
                         self.assertEqual(msg["type"],"agent_response")
                         self.assertEqual(msg["event_id"],2)
                         chunks.append(msg["content"])
@@ -75,6 +81,8 @@ class ActualSdkProtocol(unittest.TestCase):
                     self.assertEqual("".join(chunks),"new-firstnew-last")
                     ws.send_json({"type":"close"})
                 self.assertTrue(cancelled)
+                if os.getenv('SPEECH_REFERENCE_EVIDENCE'):
+                    Path(os.environ['SPEECH_REFERENCE_EVIDENCE']).write_text(json.dumps({'sourceSha':os.getenv('GITHUB_SHA'),'synthetic':True,'scope':'protocol-only','trials':[{'workloadId':'interrupt-recover-v1','repeat':1,'firstTextMs':first_ms,'secondTextMs':second_ms,'firstAudioMs':None,'interruptResidualMs':None,'completed':True,'cancelled':True}]}))
                 with self.assertRaises(WebSocketDisconnect):
                     with client.websocket_connect("/ws",headers={HEADER:token()}):
                         pass

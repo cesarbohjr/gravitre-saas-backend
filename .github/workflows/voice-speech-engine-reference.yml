@@ -28,4 +28,10 @@ jobs:
         working-directory: backend
         run: |
           python -m pip install fastapi httpx
-          timeout 60s python -m unittest tests.e2e.test_speech_engine_sdk_protocol -v
+          SPEECH_REFERENCE_EVIDENCE=../speech-reference-evidence.json timeout 60s python -m unittest tests.e2e.test_speech_engine_sdk_protocol -v
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: speech-reference-${{ github.sha }}
+          path: speech-reference-evidence.json
+          if-no-files-found: error
