@@ -193,3 +193,34 @@ class RouterBridgeTests(unittest.IsolatedAsyncioTestCase):
             await anext(bridge.reason("Do it",kernel=Kernel()))
         self.assertEqual(router.calls,[])
         self.assertEqual(bridge.history,[])
+
+    async def test_cancel_during_kernel_blocks_router_and_history(self):
+        started=asyncio.Event()
+        release=asyncio.Event()
+        class Kernel:
+            async def run_pre_act(self,request):
+                started.set()
+                await release.wait()
+                return SimpleNamespace(skipped=False,verify={"passed":True},govern={"ok":True})
+        router=RouterStub()
+        bridge=ReferenceRouterBridge(router,IDENTITY,enabled=True,_admitted=True)
+        async def collect():
+            return [x async for x in bridge.reason("send this",kernel=Kernel())]
+        task=asyncio.create_task(collect())
+        await started.wait()
+        bridge.cancel()
+        release.set()
+        self.assertEqual(await task,[])
+        self.assertEqual(router.calls,[])
+        self.assertEqual(bridge.history,[])
+
+    async def test_failed_kernel_verification_blocks_stream_and_commit(self):
+        class Kernel:
+            async def run_pre_act(self,request):
+                return SimpleNamespace(skipped=False,verify={"passed":False},govern={"ok":True})
+        router=RouterStub()
+        bridge=ReferenceRouterBridge(router,IDENTITY,enabled=True,_admitted=True)
+        with self.assertRaises(PermissionError):
+            await anext(bridge.reason("send this",kernel=Kernel()))
+        self.assertEqual(router.calls,[])
+        self.assertEqual(bridge.history,[])
