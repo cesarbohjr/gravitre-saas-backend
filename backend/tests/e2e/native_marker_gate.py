@@ -1,7 +1,7 @@
 """Synthetic-only consecutive marker gate; not a speech VAD."""
 class MarkerGate:
     def __init__(self, required=3):
-        if required not in (2,3):
+        if required not in (1,2,3):
             raise ValueError("unsupported confirmation count")
         self.required=required
         self.pending=0
