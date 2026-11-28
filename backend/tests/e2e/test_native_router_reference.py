@@ -123,3 +123,47 @@ class RouterBridgeTests(unittest.IsolatedAsyncioTestCase):
         with self.assertRaises(RuntimeError):
             await admit_reference(RouterStub(),IDENTITY,authenticated_user_id="test-user",
                                   lookup_conversation=unavailable,enabled=True)
+
+    async def test_real_scoped_lookup_query_shape(self):
+        from tests.e2e.native_router_reference import admit_from_authenticated_client
+        class Query:
+            def __init__(self):
+                self.filters=[]
+            def select(self,columns):
+                self.columns=columns
+                return self
+            def eq(self,key,value):
+                self.filters.append((key,value))
+                return self
+            def limit(self,n):
+                assert n == 1
+                return self
+            def execute(self):
+                return SimpleNamespace(data=[{"id":"test-session","org_id":"test-org","user_id":"test-user"}])
+        class Client:
+            def __init__(self):
+                self.query=Query()
+            def table(self,name):
+                assert name == "conversations"
+                return self.query
+        client=Client()
+        bridge=await admit_from_authenticated_client(
+            RouterStub(),IDENTITY,authenticated_user_id="test-user",
+            client=client,enabled=True)
+        self.assertEqual(client.query.filters,[
+            ("id","test-session"),("org_id","test-org"),("user_id","test-user")])
+        self.assertEqual(bridge.identity,IDENTITY)
+
+    async def test_scoped_lookup_rejects_missing_row(self):
+        from tests.e2e.native_router_reference import admit_from_authenticated_client
+        class Query:
+            def select(self,*args): return self
+            def eq(self,*args): return self
+            def limit(self,*args): return self
+            def execute(self): return SimpleNamespace(data=[])
+        class Client:
+            def table(self,*args): return Query()
+        with self.assertRaises(PermissionError):
+            await admit_from_authenticated_client(
+                RouterStub(),IDENTITY,authenticated_user_id="test-user",
+                client=Client(),enabled=True)

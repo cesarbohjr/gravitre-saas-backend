@@ -99,3 +99,28 @@ async def admit_reference(router, identity: ReferenceIdentity, *, authenticated_
     ):
         raise PermissionError("conversation ownership not established")
     return ReferenceRouterBridge(router, identity, enabled=True, _admitted=True)
+
+async def admit_from_authenticated_client(router, identity: ReferenceIdentity, *,
+                                         authenticated_user_id: str, client, enabled=False):
+    """Use the authenticated request's DB client, not service-role credentials.
+
+    The caller must supply the client from its validated server request context.
+    This function does not accept an ownership boolean or client-supplied row.
+    """
+    from app.core.io_pool import run_io
+
+    async def lookup(org_id, conversation_id, user_id):
+        query = (client.table("conversations")
+                 .select("id,org_id,user_id")
+                 .eq("id", conversation_id)
+                 .eq("org_id", org_id)
+                 .eq("user_id", user_id)
+                 .limit(1))
+        response = await run_io(query.execute)
+        rows = response.data or []
+        return rows[0] if len(rows) == 1 else None
+
+    return await admit_reference(
+        router, identity, authenticated_user_id=authenticated_user_id,
+        lookup_conversation=lookup, enabled=enabled,
+    )
