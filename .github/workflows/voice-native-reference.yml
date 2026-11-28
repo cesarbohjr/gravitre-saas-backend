@@ -1,0 +1,27 @@
+name: Voice native reference compatibility
+on:
+  push:
+    branches: [feat/qa-master-voice-parity-gates]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  reference-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      GRAVITRE_REFERENCE_LIVE: "0"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Verify exact source
+        run: test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+      - name: Install isolated SDK
+        run: python -m pip install -r backend/requirements-voice-reference.txt
+      - name: Verify reference contract without provider activation
+        working-directory: backend
+        run: python -m unittest tests.e2e.test_native_voice_reference_contract -v

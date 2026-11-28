@@ -1,0 +1,2 @@
+# Isolated reference only; never included by Railway runtime.
+pipecat-ai[deepgram,elevenlabs,openai,webrtc,runner]==1.12.0
