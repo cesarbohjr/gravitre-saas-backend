@@ -34,7 +34,7 @@ class ScriptedAudio(FrameProcessor):
         self.last = 0
         self.generation = 0
         self.gate = MarkerGate(confirmation_frames)
-        self.early = confirmation_frames in (1,2)
+        self.early = confirmation_frames == 2
         self.pending_marker = 0
         self.marker_count = 0
 
@@ -100,7 +100,7 @@ async def diagnostics():
 
 @app.post("/offer")
 async def offer(body: dict, chunk_ms: int | None = Query(None), sender_clear: bool = Query(False), confirmation_frames: int = Query(3)):
-    if confirmation_frames not in (1,2,3):
+    if confirmation_frames not in (2,3):
         raise HTTPException(400, 'unsupported confirmation count')
     if chunk_ms is not None and chunk_ms not in (10,20,40):
         raise HTTPException(400, 'unsupported native chunk size')

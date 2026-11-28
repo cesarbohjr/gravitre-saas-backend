@@ -44,16 +44,6 @@ jobs:
           for i in $(seq 1 60); do curl -fsS http://127.0.0.1:8797/ >/dev/null && break; sleep 1; done
           cd ..
           node backend/tests/e2e/run_native_onset_paired.mjs
-      - name: Screen isolated one-frame synthetic candidate even if prior gate fails
-        if: always()
-        run: |
-          cd backend
-          python -m uvicorn tests.e2e.native_reference_harness:app --host 127.0.0.1 --port 8797 > ../native-one-frame-server.log 2>&1 &
-          pid=$!
-          trap 'kill "$pid" || true' EXIT
-          for i in $(seq 1 60); do curl -fsS http://127.0.0.1:8797/ >/dev/null && break; sleep 1; done
-          cd ..
-          node backend/tests/e2e/run_native_onset_one_frame_paired.mjs
       - name: Require raw paired trial evidence even when screening fails
         if: always()
         run: test -s native-onset-paired.json
@@ -63,8 +53,6 @@ jobs:
           name: native-onset-paired-${{ github.sha }}
           path: |
             native-onset-paired.json
-            native-onset-one-frame-paired.json
-            native-one-frame-server.log
             native-reference-server.log
             native-reference-sdk.json
           if-no-files-found: error

@@ -16,3 +16,13 @@ class MarkerGateTests(unittest.TestCase):
         for count in (2,3):
             gate=MarkerGate(count)
             self.assertEqual([gate.feed(2) for _ in range(count)],[False]*(count-1)+[True])
+
+    def test_unsafe_single_frame_mode_rejected(self):
+        with self.assertRaises(ValueError):
+            MarkerGate(1)
+
+    def test_no_premature_interruption_with_noise_and_single_frame(self):
+        gate=MarkerGate(2)
+        for marker in [0,2,0,2,99,2,1,2,0,2]:
+            self.assertFalse(gate.feed(marker))
+        self.assertTrue(gate.feed(2))
