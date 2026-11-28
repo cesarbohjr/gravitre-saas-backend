@@ -36,10 +36,12 @@ class RouterBridgeTests(unittest.IsolatedAsyncioTestCase):
         with self.assertRaises(PermissionError):
             ReferenceRouterBridge(RouterStub(),IDENTITY)
         with self.assertRaises(PermissionError):
-            ReferenceRouterBridge(RouterStub(),ReferenceIdentity("","s","u"),enabled=True)
+            ReferenceRouterBridge(RouterStub(),IDENTITY,enabled=True)
+        with self.assertRaises(PermissionError):
+            ReferenceRouterBridge(RouterStub(),ReferenceIdentity("","s","u"),enabled=True,ownership_verified=True)
     async def test_canonical_router_invoked_without_execution_authority(self):
         router=RouterStub()
-        bridge=ReferenceRouterBridge(router,IDENTITY,enabled=True)
+        bridge=ReferenceRouterBridge(router,IDENTITY,enabled=True,ownership_verified=True)
         chunks=[chunk async for chunk in bridge.reason("Hello")]
         self.assertEqual(chunks,["hello ","world"])
         self.assertEqual(len(router.calls),1)
@@ -52,24 +54,24 @@ class RouterBridgeTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(router.cancelled,1)
     async def test_cancel_fences_late_tokens(self):
         router=RouterStub()
-        bridge=ReferenceRouterBridge(router,IDENTITY,enabled=True)
+        bridge=ReferenceRouterBridge(router,IDENTITY,enabled=True,ownership_verified=True)
         it=bridge.reason("first")
         self.assertEqual(await anext(it),"hello ")
         bridge.cancel()
         self.assertEqual([x async for x in it],[])
         self.assertEqual(router.cancelled,1)
     async def test_closed_and_invalid_turns(self):
-        bridge=ReferenceRouterBridge(RouterStub(),IDENTITY,enabled=True)
+        bridge=ReferenceRouterBridge(RouterStub(),IDENTITY,enabled=True,ownership_verified=True)
         bridge.close()
         with self.assertRaises(ValueError):
             await anext(bridge.reason("hello"))
-        fresh=ReferenceRouterBridge(RouterStub(),IDENTITY,enabled=True)
+        fresh=ReferenceRouterBridge(RouterStub(),IDENTITY,enabled=True,ownership_verified=True)
         with self.assertRaises(ValueError):
             await anext(fresh.reason(" "*16001))
 
     async def test_completed_turns_retained_across_followups(self):
         router=RouterStub()
-        bridge=ReferenceRouterBridge(router,IDENTITY,enabled=True)
+        bridge=ReferenceRouterBridge(router,IDENTITY,enabled=True,ownership_verified=True)
         self.assertEqual([x async for x in bridge.reason("What happened?")],["hello ","world"])
         self.assertEqual([x async for x in bridge.reason("Why?")],["hello ","world"])
         self.assertEqual(router.calls[1][2]["context"],[
@@ -78,7 +80,7 @@ class RouterBridgeTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_interrupted_answer_never_commits_to_context(self):
         router=RouterStub()
-        bridge=ReferenceRouterBridge(router,IDENTITY,enabled=True)
+        bridge=ReferenceRouterBridge(router,IDENTITY,enabled=True,ownership_verified=True)
         it=bridge.reason("old question")
         self.assertEqual(await anext(it),"hello ")
         bridge.cancel()
@@ -89,8 +91,8 @@ class RouterBridgeTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_session_isolation_and_close(self):
         router=RouterStub()
-        first=ReferenceRouterBridge(router,IDENTITY,enabled=True)
-        second=ReferenceRouterBridge(router,ReferenceIdentity("test-org","other-session","test-user"),enabled=True)
+        first=ReferenceRouterBridge(router,IDENTITY,enabled=True,ownership_verified=True)
+        second=ReferenceRouterBridge(router,ReferenceIdentity("test-org","other-session","test-user"),enabled=True,ownership_verified=True)
         self.assertEqual([x async for x in first.reason("private")],["hello ","world"])
         self.assertEqual([x async for x in second.reason("separate")],["hello ","world"])
         self.assertEqual(router.calls[-1][2]["context"],[])

@@ -12,9 +12,11 @@ class ReferenceIdentity:
     user_id: str
 
 class ReferenceRouterBridge:
-    def __init__(self, router, identity: ReferenceIdentity, *, enabled=False):
+    def __init__(self, router, identity: ReferenceIdentity, *, enabled=False, ownership_verified=False):
         if not enabled:
             raise PermissionError("reference router is disabled")
+        if not ownership_verified:
+            raise PermissionError("server-side conversation ownership must be verified")
         if not all((identity.org_id, identity.session_id, identity.user_id)):
             raise PermissionError("server-validated reference identity required")
         self.router = router
