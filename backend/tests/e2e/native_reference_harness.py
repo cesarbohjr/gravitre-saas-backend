@@ -4,7 +4,8 @@ import math
 import struct
 from pathlib import Path
 from fastapi import FastAPI
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, FileResponse
+from pipecat.frames.frames import StartFrame
 from pipecat.frames.frames import InputAudioRawFrame, OutputAudioRawFrame, InterruptionFrame
 from pipecat.processors.frame_processor import FrameProcessor, FrameDirection
 from pipecat.pipeline.pipeline import Pipeline
@@ -16,6 +17,7 @@ from pipecat.transports.base_transport import TransportParams
 
 app = FastAPI()
 tasks = set()
+observations = []
 
 class ScriptedAudio(FrameProcessor):
     """Detect synthetic input tones, emit deterministic distinct reply tones."""
@@ -31,6 +33,8 @@ class ScriptedAudio(FrameProcessor):
             if generation != self.generation:
                 return
             pcm = struct.pack("<480h", *(int(8000*math.sin(2*math.pi*freq*(n*480+i)/rate)) for i in range(480)))
+            if n == 0:
+                observations.append({'boundary':'server_output','generation':generation,'frequency':freq})
             await self.push_frame(OutputAudioRawFrame(audio=pcm, sample_rate=rate, num_channels=1))
             await asyncio.sleep(.02)
 
@@ -41,6 +45,7 @@ class ScriptedAudio(FrameProcessor):
             if samples and max(abs(s) for s in samples) > 1000:
                 crossings = sum(a <= 0 < b for a,b in zip(samples,samples[1:]))
                 hz = crossings * frame.sample_rate / len(samples)
+                observations.append({'boundary':'server_input','peak':max(abs(s) for s in samples),'frequency':hz})
                 marker = 1 if 350 < hz < 550 else 2 if 650 < hz < 950 else 0
                 if marker and marker != self.last:
                     self.last = marker
@@ -57,8 +62,17 @@ class ScriptedAudio(FrameProcessor):
 async def index():
     return Path(__file__).with_name("native_reference_browser.html").read_text()
 
+@app.get("/reference-client.js")
+async def client_bundle():
+    return FileResponse(Path(__file__).with_name("reference-client.bundle.js"), media_type="application/javascript")
+
+@app.get("/observations")
+async def diagnostics():
+    return observations[-1000:]
+
 @app.post("/offer")
 async def offer(body: dict):
+    observations.clear()
     connection = SmallWebRTCConnection(ice_servers=[])
     await connection.initialize(body["sdp"], body["type"])
     transport = SmallWebRTCTransport(webrtc_connection=connection, params=TransportParams(audio_in_enabled=True,audio_out_enabled=True))
