@@ -1,5 +1,8 @@
 import asyncio
 import unittest
+import sys
+from enum import Enum
+from unittest.mock import patch
 from types import SimpleNamespace
 from tests.e2e.native_router_reference import ReferenceIdentity, ReferenceRouterBridge
 
@@ -22,6 +25,13 @@ class RouterStub:
             self.cancelled+=1
 
 class RouterBridgeTests(unittest.IsolatedAsyncioTestCase):
+    def setUp(self):
+        class TaskType(str, Enum):
+            CONTENT_GENERATION = 'content_generation'
+        self.module_patch=patch.dict(sys.modules, {'app.services.model_router': SimpleNamespace(TaskType=TaskType)})
+        self.module_patch.start()
+        self.addCleanup(self.module_patch.stop)
+
     async def test_disabled_and_missing_identity(self):
         with self.assertRaises(PermissionError):
             ReferenceRouterBridge(RouterStub(),IDENTITY)

@@ -24,7 +24,7 @@ jobs:
         run: python -m pip install -r backend/requirements-voice-reference.txt
       - name: Verify reference contract without provider activation
         working-directory: backend
-        run: python -m unittest tests.e2e.test_native_voice_reference_contract -v
+        run: python -m unittest tests.e2e.test_native_voice_reference_contract tests.e2e.test_native_router_reference -v
       - uses: actions/setup-node@v4
         with:
           node-version: 22
