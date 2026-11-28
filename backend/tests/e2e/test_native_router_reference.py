@@ -6,6 +6,9 @@ from unittest.mock import patch
 from types import SimpleNamespace
 from tests.e2e.native_router_reference import ReferenceIdentity, ReferenceRouterBridge, admit_reference
 
+async def collect_reference(bridge,prompt):
+    return [chunk async for chunk in bridge.reason(prompt)]
+
 IDENTITY=ReferenceIdentity(org_id="test-org",session_id="test-session",user_id="test-user")
 
 class RouterStub:
@@ -224,3 +227,35 @@ class RouterBridgeTests(unittest.IsolatedAsyncioTestCase):
             await anext(bridge.reason("send this",kernel=Kernel()))
         self.assertEqual(router.calls,[])
         self.assertEqual(bridge.history,[])
+
+    async def test_cancelled_preparation_never_streams_or_commits(self):
+        started=asyncio.Event()
+        release=asyncio.Event()
+        class SlowRouter(RouterStub):
+            async def prepare_stream(self,*args,**kwargs):
+                started.set()
+                await release.wait()
+                return await super().prepare_stream(*args,**kwargs)
+            def stream(self,prepared):
+                raise AssertionError("cancelled turn must never reach provider stream")
+        router=SlowRouter()
+        bridge=ReferenceRouterBridge(router,IDENTITY,enabled=True,_admitted=True)
+        task=asyncio.create_task(collect_reference(bridge,"send email"))
+        await started.wait()
+        bridge.cancel()
+        release.set()
+        self.assertEqual(await task,[])
+        self.assertEqual(bridge.history,[])
+        self.assertIsNone(bridge.kernel_context)
+
+    async def test_replay_of_cancelled_reference_turn_has_no_execution_path(self):
+        router=RouterStub()
+        bridge=ReferenceRouterBridge(router,IDENTITY,enabled=True,_admitted=True)
+        for _ in range(3):
+            it=bridge.reason("send email")
+            self.assertEqual(await anext(it),"hello ")
+            bridge.cancel()
+            self.assertEqual([x async for x in it],[])
+        self.assertEqual(bridge.history,[])
+        self.assertEqual(router.cancelled,3)
+        self.assertFalse(hasattr(bridge,"execute"))

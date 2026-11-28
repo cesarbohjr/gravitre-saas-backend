@@ -30,6 +30,7 @@ class ReferenceRouterBridge:
     def cancel(self):
         self.generation += 1
         self.pending_user = None
+        self.kernel_context = None
 
     def close(self):
         self.cancel()
@@ -39,6 +40,7 @@ class ReferenceRouterBridge:
         if self.closed or not isinstance(prompt, str) or not prompt.strip() or len(prompt) > 16000:
             raise ValueError("invalid reference turn")
         generation = self.generation = self.generation + 1
+        self.kernel_context = None
         self.pending_user = prompt
         completed = False
         assistant_parts = []
