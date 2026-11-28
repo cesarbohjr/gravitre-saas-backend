@@ -33,6 +33,17 @@ def token(key=KEY):
 
 class ActualSdkProtocol(unittest.TestCase):
     def test_signed_init_stream_interrupt_replay(self):
+        rows=[]
+        for repeat in range(1,21):
+            try:
+                rows.append(self.run_trial(repeat))
+            except Exception as exc:
+                rows.append({'workloadId':'interrupt-recover-v1','repeat':repeat,'error':str(exc),'completed':False,'cancelled':False})
+        if os.getenv('SPEECH_REFERENCE_EVIDENCE'):
+            Path(os.environ['SPEECH_REFERENCE_EVIDENCE']).write_text(json.dumps({'sourceSha':os.getenv('GITHUB_SHA'),'synthetic':True,'fixture':'interrupt-recover-v1','scope':'protocol-only','trials':rows}))
+        self.assertTrue(all(r.get('completed') and r.get('cancelled') for r in rows), rows)
+
+    def run_trial(self, repeat):
         with tempfile.TemporaryDirectory() as tmp:
             store=BindingStore(Path(tmp)/"bindings.sqlite")
             binding=Binding("local-conversation","local-session")
@@ -81,8 +92,7 @@ class ActualSdkProtocol(unittest.TestCase):
                     self.assertEqual("".join(chunks),"new-firstnew-last")
                     ws.send_json({"type":"close"})
                 self.assertTrue(cancelled)
-                if os.getenv('SPEECH_REFERENCE_EVIDENCE'):
-                    Path(os.environ['SPEECH_REFERENCE_EVIDENCE']).write_text(json.dumps({'sourceSha':os.getenv('GITHUB_SHA'),'synthetic':True,'scope':'protocol-only','trials':[{'workloadId':'interrupt-recover-v1','repeat':1,'firstTextMs':first_ms,'secondTextMs':second_ms,'firstAudioMs':None,'interruptResidualMs':None,'completed':True,'cancelled':True}]}))
                 with self.assertRaises(WebSocketDisconnect):
                     with client.websocket_connect("/ws",headers={HEADER:token()}):
                         pass
+                return {'workloadId':'interrupt-recover-v1','repeat':repeat,'firstTextMs':first_ms,'secondTextMs':second_ms,'firstAudioMs':None,'interruptResidualMs':None,'completed':True,'cancelled':True}

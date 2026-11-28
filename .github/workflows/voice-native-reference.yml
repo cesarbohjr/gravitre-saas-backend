@@ -8,7 +8,7 @@ permissions:
 jobs:
   reference-contract:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 25
     env:
       GRAVITRE_REFERENCE_LIVE: "0"
     steps:

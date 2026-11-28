@@ -1,0 +1,37 @@
+name: Voice reference paired evidence
+on:
+  workflow_run:
+    workflows: ["Voice native reference compatibility", "Voice Speech Engine reference contracts"]
+    types: [completed]
+    branches: [feat/qa-master-voice-parity-gates]
+permissions:
+  contents: read
+  actions: read
+jobs:
+  aggregate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      GH_TOKEN: ${{ github.token }}
+      SOURCE_SHA: ${{ github.event.workflow_run.head_sha }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+          persist-credentials: false
+      - name: Retrieve exact-source evidence
+        run: |
+          set -euo pipefail
+          for pair in 'native-reference:Voice native reference compatibility' 'speech-reference:Voice Speech Engine reference contracts'; do
+            prefix=${pair%%:*}
+            name=${pair#*:}
+            id=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs?head_sha=$SOURCE_SHA&per_page=100" --jq ".workflow_runs | map(select(.name == \"$name\" and .status == \"completed\")) | first | .id // empty")
+            if [ -z "$id" ]; then echo "Counterpart not complete; no aggregation"; exit 0; fi
+            gh run download "$id" -n "$prefix-$SOURCE_SHA" -D "$prefix"
+          done
+          python backend/tests/e2e/compare_voice_reference_evidence.py native-reference/native-reference-evidence.json speech-reference/speech-reference-evidence.json > paired-reference-evidence.json
+      - uses: actions/upload-artifact@v4
+        if: ${{ always() && hashFiles('paired-reference-evidence.json') != '' }}
+        with:
+          name: paired-reference-${{ env.SOURCE_SHA }}
+          path: paired-reference-evidence.json
