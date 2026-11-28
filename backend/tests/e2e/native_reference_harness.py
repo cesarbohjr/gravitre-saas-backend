@@ -8,6 +8,7 @@ from fastapi import HTTPException, Query
 from fastapi import FastAPI
 from fastapi.responses import HTMLResponse, FileResponse
 from pipecat.frames.frames import StartFrame
+from tests.e2e.native_sender_probe import SenderProbe
 from pipecat.frames.frames import InputAudioRawFrame, OutputAudioRawFrame, InterruptionFrame
 from pipecat.processors.frame_processor import FrameProcessor, FrameDirection
 from pipecat.pipeline.pipeline import Pipeline
@@ -88,7 +89,7 @@ async def diagnostics():
     return observations[-5000:]
 
 @app.post("/offer")
-async def offer(body: dict, chunk_ms: int | None = Query(None)):
+async def offer(body: dict, chunk_ms: int | None = Query(None), sender_clear: bool = Query(False)):
     if chunk_ms is not None and chunk_ms not in (10,20,40):
         raise HTTPException(400, 'unsupported native chunk size')
     if 'audio_out_10ms_chunks' not in TransportParams.model_fields:
@@ -98,6 +99,13 @@ async def offer(body: dict, chunk_ms: int | None = Query(None)):
     await connection.initialize(body["sdp"], body["type"])
     transport = SmallWebRTCTransport(webrtc_connection=connection, params=TransportParams(audio_in_enabled=True,audio_out_enabled=True,**({'audio_out_10ms_chunks':chunk_ms//10} if chunk_ms is not None else {})))
     output = transport.output()
+    probe = None
+    replace_audio_track = connection.replace_audio_track
+    def observed_replace(track):
+        nonlocal probe
+        probe = SenderProbe(track, observe)
+        return replace_audio_track(track)
+    connection.replace_audio_track = observed_replace
     # Observe SDK methods, do not clear or replace their queues. Frame identity may
     # change during native rechunking; residence is reported only for exact matches.
     enqueue = {}
@@ -109,8 +117,15 @@ async def offer(body: dict, chunk_ms: int | None = Query(None)):
             observe(boundary='output_ingress',frameId=frame.id,bytes=len(frame.audio))
         if isinstance(frame, InterruptionFrame):
             observe(boundary='output_interrupt_enter',pendingIngress=len(enqueue))
+            if probe:
+                probe.snapshot('before')
             try:
-                return await original_process(frame,direction)
+                result = await original_process(frame,direction)
+                if probe:
+                    probe.snapshot('after_native')
+                    if sender_clear:
+                        probe.clear_cancelled()
+                return result
             finally:
                 observe(boundary='output_interrupt_exit',pendingIngress=len(enqueue))
         return await original_process(frame,direction)

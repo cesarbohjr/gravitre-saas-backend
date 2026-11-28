@@ -17,7 +17,7 @@ window.runReference=async(config={})=>{
  const wait=ms=>new Promise(r=>setTimeout(r,ms)),now=()=>ctx.currentTime*1000
  let first=null,interrupt=null,error=null,clockSync=null,firstPerfMs=null,interruptPerfMs=null
  try{
-  await Promise.race([client.connect({connection_url:location.origin+"/offer"+(config.chunkMs?`?chunk_ms=${config.chunkMs}`:"")}),wait(15000).then(()=>{throw Error("SDK connection timeout")})])
+  await Promise.race([client.connect({connection_url:location.origin+"/offer?"+new URLSearchParams({...config.chunkMs?{chunk_ms:String(config.chunkMs)}:{},sender_clear:String(config.senderClear===true)})}),wait(15000).then(()=>{throw Error("SDK connection timeout")})])
   await wait(400)
   const receiver=pcs.flatMap(pc=>pc.getReceivers()).find(r=>r.track?.kind==="audio"&&r.track.readyState==="live")
   if(!receiver)throw Error("missing native remote receiver")
