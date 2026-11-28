@@ -9,6 +9,7 @@ from fastapi import FastAPI
 from fastapi.responses import HTMLResponse, FileResponse
 from pipecat.frames.frames import StartFrame
 from tests.e2e.native_sender_probe import SenderProbe
+from tests.e2e.native_marker_gate import MarkerGate
 from pipecat.frames.frames import InputAudioRawFrame, OutputAudioRawFrame, InterruptionFrame
 from pipecat.processors.frame_processor import FrameProcessor, FrameDirection
 from pipecat.pipeline.pipeline import Pipeline
@@ -27,11 +28,13 @@ def observe(**values):
 
 class ScriptedAudio(FrameProcessor):
     """Detect synthetic input tones, emit deterministic distinct reply tones."""
-    def __init__(self):
+    def __init__(self, confirmation_frames=3):
         super().__init__()
         self.active = None
         self.last = 0
         self.generation = 0
+        self.gate = MarkerGate(confirmation_frames)
+        self.early = confirmation_frames == 2
         self.pending_marker = 0
         self.marker_count = 0
 
@@ -57,7 +60,8 @@ class ScriptedAudio(FrameProcessor):
                 marker = 1 if 350 < hz < 550 else 2 if 650 < hz < 950 else 0
                 self.marker_count = self.marker_count + 1 if marker == self.pending_marker else 1
                 self.pending_marker = marker
-                if marker and marker != self.last and self.marker_count >= 3:
+                confirmed = self.gate.feed(marker) if self.early else self.marker_count >= 3
+                if marker and marker != self.last and confirmed:
                     observe(boundary='marker_committed',marker=marker)
                     self.last = marker
                     self.generation += 1
@@ -69,6 +73,8 @@ class ScriptedAudio(FrameProcessor):
                         await self.push_frame(InterruptionFrame())
                         observe(boundary='interrupt_forwarded',generation=self.generation-1)
                     self.active = asyncio.create_task(self.emit(1100 if marker == 1 else 1700, self.generation))
+            else:
+                self.gate.feed(0)
             return
         await self.push_frame(frame, direction)
 
@@ -80,6 +86,10 @@ async def index():
 async def client_bundle():
     return FileResponse(Path(__file__).with_name("reference-client.bundle.js"), media_type="application/javascript")
 
+@app.get("/reference-worklet.js")
+async def measurement_worklet():
+    return FileResponse(Path(__file__).with_name("reference-measurement-worklet.js"), media_type="application/javascript")
+
 @app.get("/clock")
 async def clock():
     return {"monotonicMs":time.monotonic_ns()/1e6}
@@ -89,7 +99,9 @@ async def diagnostics():
     return observations[-5000:]
 
 @app.post("/offer")
-async def offer(body: dict, chunk_ms: int | None = Query(None), sender_clear: bool = Query(False)):
+async def offer(body: dict, chunk_ms: int | None = Query(None), sender_clear: bool = Query(False), confirmation_frames: int = Query(3)):
+    if confirmation_frames not in (2,3):
+        raise HTTPException(400, 'unsupported confirmation count')
     if chunk_ms is not None and chunk_ms not in (10,20,40):
         raise HTTPException(400, 'unsupported native chunk size')
     if 'audio_out_10ms_chunks' not in TransportParams.model_fields:
@@ -140,7 +152,7 @@ async def offer(body: dict, chunk_ms: int | None = Query(None), sender_clear: bo
     output.process_frame = observed_process
     output.write_audio_frame = observed_write
     observe(boundary='configuration',chunkMs=chunk_ms)
-    script = ScriptedAudio()
+    script = ScriptedAudio(confirmation_frames)
     task = PipelineTask(Pipeline([transport.input(),script,output]), params=PipelineParams())
     @transport.event_handler("on_client_disconnected")
     async def disconnected(*_):

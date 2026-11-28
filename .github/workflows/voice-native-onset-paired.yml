@@ -1,0 +1,55 @@
+name: Voice native onset and passive measurement paired
+on:
+  push:
+    branches: [feat/qa-master-voice-parity-gates]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  reference-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      GRAVITRE_REFERENCE_LIVE: "0"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Verify exact source
+        run: test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+      - name: Install isolated SDK
+        run: python -m pip install -r backend/requirements-voice-reference.txt
+      - name: Verify reference contract without provider activation
+        working-directory: backend
+        run: python -m unittest tests.e2e.test_native_voice_reference_contract tests.e2e.test_native_sender_probe tests.e2e.test_native_marker_gate -v
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install browser test dependencies
+        run: |
+          npm install
+          npm install --no-save --package-lock=false @pipecat-ai/client-js@1.18.0 @pipecat-ai/small-webrtc-transport@1.11.4 esbuild
+          npx esbuild backend/tests/e2e/reference-client.mjs --bundle --platform=browser --outfile=backend/tests/e2e/reference-client.bundle.js
+          npm ls @pipecat-ai/client-js @pipecat-ai/small-webrtc-transport --json > native-reference-sdk.json
+          npx playwright install --with-deps chromium
+      - name: Native RTC synthetic browser screening
+        run: |
+          cd backend
+          python -m uvicorn tests.e2e.native_reference_harness:app --host 127.0.0.1 --port 8797 > ../native-reference-server.log 2>&1 &
+          pid=$!
+          trap 'kill "$pid" || true' EXIT
+          for i in $(seq 1 60); do curl -fsS http://127.0.0.1:8797/ >/dev/null && break; sleep 1; done
+          cd ..
+          node backend/tests/e2e/run_native_onset_paired.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: native-onset-paired-${{ github.sha }}
+          path: |
+            native-sender-paired.json
+            native-reference-server.log
+            native-reference-sdk.json
+          if-no-files-found: error
