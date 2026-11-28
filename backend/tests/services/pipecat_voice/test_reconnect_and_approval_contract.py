@@ -661,3 +661,32 @@ def test_a_failed_withdraw_is_said_not_swallowed() -> None:
     report = h.spoken_client_text()
     assert "couldn't clear what was waiting for your approval" in report
     assert h.session.approval_read_back_id is None, "a later yes re-reads before approving"
+
+
+def test_cancelled_voice_approval_replay_cannot_claim_execution_or_completion() -> None:
+    """Cross-service regression: voice approval + durable outcome truth gate."""
+    from app.services.outcome_completion_gate import outcome_claim_from_state, require_verified_completion
+
+    state = _email("awaiting_confirm", "appr-cancelled")
+    assert classify_spoken_write_approval("yes", task_state=state).invoke_allowed is False
+    # Canonical cancellation removes the pending action; late confirmations
+    # and repeated reconnects must not resurrect the original approval.
+    state["pending_task"] = None
+    for _ in range(3):
+        assert classify_spoken_write_approval("yes", task_state=state).invoke_allowed is False
+        claim = outcome_claim_from_state(state)
+        assert claim.may_claim_executed is False
+        assert claim.may_claim_complete is False
+        with pytest.raises(ValueError):
+            require_verified_completion(state)
+
+
+def test_uncertain_recovery_replay_never_promotes_to_success() -> None:
+    """A claimed write after worker interruption is unknown, never done."""
+    from app.services.outcome_completion_gate import outcome_claim_from_state
+    state = _email("outcome_uncertain", "appr-unknown")
+    for _ in range(3):
+        assert recovery.classify_recovery(state).kind == recovery.UNKNOWN
+        claim = outcome_claim_from_state(state)
+        assert claim.may_claim_complete is False
+        assert classify_spoken_write_approval("yes", task_state=state).invoke_allowed is False
