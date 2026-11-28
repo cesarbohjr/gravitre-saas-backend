@@ -27,6 +27,8 @@ const outPath = args.includes("--out") ? args[args.indexOf("--out") + 1] : null
 const quick = args.includes("--quick")
 const enforce = args.includes("--enforce")
 const compare = args.includes("--compare-policies")
+const shardSeed = process.env.VOICE_COMPARISON_SEED === undefined ? null : Number(process.env.VOICE_COMPARISON_SEED)
+if (shardSeed !== null && (!compare || ![1, 2, 3].includes(shardSeed))) throw new Error("Invalid comparison seed shard")
 if (compare && (enforce || process.env.SCENARIO_FILTER)) throw new Error("Paired comparison must run unfiltered, independently of standing gate")
 if (enforce && process.env.SCENARIO_FILTER) throw new Error("Enforced matrix cannot be filtered")
 
@@ -191,14 +193,14 @@ if (compare) {
   for (const pacing of [1, 2])
     for (const ctxRate of [44100, 48000])
       for (const oddSplit of [false, true])
-        for (const seed of [1, 2, 3])
+        for (const seed of (shardSeed === null ? [1, 2, 3] : [shardSeed]))
           for (const jitterProfile of ["clean", "uniform", "burst"])
             // Rotate policy order deterministically to reduce systematic runner bias.
             for (const policy of ["baseline", "fixed", "adaptive"].map((_, i, a) => a[(i + seed) % a.length]))
               matrix.push({ impl: "after", policy, jitterProfile, pacing, ctxRate, oddSplit, seed, replyS: 6, flushAtS: 3.2, secondReplyDelayS: 0.4, secondReplyS: 2.5, jitterMaxMs: 300 })
 }
 const results = []
-const label = (sc) => `${sc.impl} x${sc.pacing} ${sc.ctxRate} ${sc.oddSplit ? "odd" : "even"} seed=${sc.seed}`
+const label = (sc) => `${sc.impl} x${sc.pacing} ${sc.ctxRate} ${sc.oddSplit ? "odd" : "even"} seed=${sc.seed} policy=${sc.policy ?? "default"} jitter=${sc.jitterProfile ?? "uniform"}`
 const filter = process.env.SCENARIO_FILTER ? new RegExp(process.env.SCENARIO_FILTER) : null
 for (const sc of matrix) {
   if (filter && !filter.test(label(sc))) continue
@@ -206,7 +208,7 @@ for (const sc of matrix) {
   const metrics = analyse(raw)
   results.push({ scenario: sc, playerKind: raw.playerKind, recordedS: +(raw.samples.length / raw.sampleRate).toFixed(2), metrics })
   console.log(
-    `${sc.impl.padEnd(6)} x${sc.pacing} ${sc.ctxRate} ${sc.oddSplit ? "odd " : "even"} seed=${sc.seed} [${raw.playerKind}]`,
+    `${label(sc)} [${results.length}/${matrix.length}] [${raw.playerKind}]`,
     `jumps=${metrics.totals.jumps} hardGapEdges=${metrics.totals.hardGapEdges} gaps=${metrics.totals.gaps} gapMs=${metrics.totals.gapMs}`,
     `flushJumps=${metrics.flush.jumps} flushMax=${metrics.flush.maxJump} startupMs=${metrics.firstStartupMs}/${metrics.secondStartupMs} replyGapMs=${metrics.reply1.gapMs}/${metrics.reply2.gapMs}`,
   )
@@ -235,7 +237,7 @@ const comparison = compare ? Object.fromEntries(["baseline", "fixed", "adaptive"
   const failures = violations.filter(v => v.scenario?.policy === policy)
   return [policy, { scenarios: rows.length, p50StartupMs: percentile(.5), p95StartupMs: percentile(.95), failedScenarios: new Set(failures.map(v => JSON.stringify(v.scenario))).size, totalGapMs: rows.reduce((s,r) => s+r.metrics.totals.gapMs,0), maxResidualMs: Math.max(0,...rows.map(r=>r.metrics.residualMs)) }]
 })) : null
-if (outPath) await writeFile(outPath, JSON.stringify({ synthetic: true, enforced: enforce, comparison, sourceSha: process.env.VOICE_DUPLEX_SOURCE_SHA ?? null, violations, generatedAt: new Date().toISOString(), results }, null, 2))
+if (outPath) await writeFile(outPath, JSON.stringify({ synthetic: true, enforced: enforce, comparison, sourceSha: process.env.VOICE_DUPLEX_SOURCE_SHA ?? null, shardSeed, violations, generatedAt: new Date().toISOString(), results }, null, 2))
 if (violations.length && !compare) {
   console.error(JSON.stringify(violations))
   process.exitCode = 1

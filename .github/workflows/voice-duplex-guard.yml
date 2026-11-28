@@ -197,10 +197,15 @@ jobs:
             playwright-report/
             evidence/voice-duplex/
 
-  adaptive-buffer-comparison:
+  adaptive-buffer-shards:
     runs-on: ubuntu-latest
-    timeout-minutes: 100
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        seed: [1, 2, 3]
     env:
+      VOICE_COMPARISON_SEED: ${{ matrix.seed }}
       VOICE_DUPLEX_SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
     steps:
       - uses: actions/checkout@v4
@@ -220,17 +225,37 @@ jobs:
       - run: npx playwright install --with-deps chromium
       - name: Compare isolated buffer policies
         working-directory: apps/web
-        run: node scripts/voice-playback-continuity/run.mjs --compare-policies --out ../../buffer-comparison.json
-      - name: Require complete paired comparison
-        run: |
-          node --input-type=module <<'JS'
-          import { readFileSync } from 'node:fs'
-          const x = JSON.parse(readFileSync('buffer-comparison.json'))
-          if (x.sourceSha !== process.env.VOICE_DUPLEX_SOURCE_SHA || x.results.length !== 216) throw Error('Incomplete exact-SHA matrix')
-          const ids = new Set(x.results.map(r => JSON.stringify([r.scenario.policy,r.scenario.jitterProfile,r.scenario.seed,r.scenario.ctxRate,r.scenario.oddSplit,r.scenario.pacing])))
-          if (ids.size !== 216 || Object.values(x.comparison).some(r=>r.scenarios!==72 || !Number.isFinite(r.p50StartupMs) || !Number.isFinite(r.p95StartupMs))) throw Error('Incomplete paired data')
-          console.log(JSON.stringify(x.comparison,null,2))
-          JS
+        run: node scripts/voice-playback-continuity/run.mjs --compare-policies --out ../../buffer-shard-${{ matrix.seed }}.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: buffer-shard-${{ github.event.pull_request.head.sha || github.sha }}-${{ github.run_attempt }}-${{ matrix.seed }}
+          path: buffer-shard-${{ matrix.seed }}.json
+          if-no-files-found: error
+          retention-days: 14
+
+  adaptive-buffer-comparison:
+    needs: adaptive-buffer-shards
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      VOICE_DUPLEX_SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - run: test "$(git rev-parse HEAD)" = "$VOICE_DUPLEX_SOURCE_SHA"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: buffer-shard-${{ github.event.pull_request.head.sha || github.sha }}-${{ github.run_attempt }}-*
+          path: buffer-shards
+          merge-multiple: true
+      - name: Assemble exact-SHA comparison
+        run: node apps/web/scripts/voice-playback-continuity/merge-shards.mjs buffer-shards buffer-comparison.json
       - name: Mandatory synthetic candidate promotion gate
         run: node apps/web/scripts/voice-playback-continuity/promotion-gate.mjs buffer-comparison.json buffer-promotion.json
       - uses: actions/upload-artifact@v4
