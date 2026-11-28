@@ -1,6 +1,6 @@
 import { PipecatClient } from "@pipecat-ai/client-js"
 import { SmallWebRTCTransport } from "@pipecat-ai/small-webrtc-transport"
-window.runReference=async()=>{
+window.runReference=async(config={})=>{
  const ctx=new AudioContext({sampleRate:48000});await ctx.resume()
  const dst=ctx.createMediaStreamDestination(),osc=ctx.createOscillator(),gain=ctx.createGain()
  osc.frequency.value=440;gain.gain.value=0;osc.connect(gain).connect(dst);osc.start()
@@ -17,11 +17,13 @@ window.runReference=async()=>{
  const wait=ms=>new Promise(r=>setTimeout(r,ms)),now=()=>ctx.currentTime*1000
  let first=null,interrupt=null,error=null,clockSync=null,firstPerfMs=null,interruptPerfMs=null
  try{
-  await Promise.race([client.connect({connection_url:location.origin+"/offer"}),wait(15000).then(()=>{throw Error("SDK connection timeout")})])
+  await Promise.race([client.connect({connection_url:location.origin+"/offer"+(config.chunkMs?`?chunk_ms=${config.chunkMs}`:"")}),wait(15000).then(()=>{throw Error("SDK connection timeout")})])
   await wait(400)
   const receiver=pcs.flatMap(pc=>pc.getReceivers()).find(r=>r.track?.kind==="audio"&&r.track.readyState==="live")
   if(!receiver)throw Error("missing native remote receiver")
   remoteTrack=receiver.track;remote=true
+  if(config.targetMs!=null){if(!('jitterBufferTarget' in receiver))throw Error('native jitterBufferTarget unsupported');receiver.jitterBufferTarget=config.targetMs;if(receiver.jitterBufferTarget!==config.targetMs)throw Error('native jitterBufferTarget not applied')}
+  config={...config,appliedTargetMs:receiver.jitterBufferTarget??null}
   const stream=new MediaStream([remoteTrack]);remoteElement=document.createElement("audio");remoteElement.srcObject=stream;remoteElement.autoplay=true;document.body.append(remoteElement);await remoteElement.play()
   tap(ctx.createMediaStreamSource(stream),samples)
   const sync=[];for(let i=0;i<5;i++){const before=performance.now();const v=await(await fetch('/clock',{cache:'no-store'})).json();const after=performance.now();sync.push({offsetMs:v.monotonicMs-(before+after)/2,rttMs:after-before,uncertaintyMs:(after-before)/2})}clockSync=sync.sort((a,b)=>a.rttMs-b.rttMs)[0];
@@ -31,9 +33,9 @@ window.runReference=async()=>{
   interruptPerfMs=performance.now();interrupt=now();osc.frequency.value=800;gain.gain.value=.3;await wait(180);gain.gain.value=0;await wait(2600)
  }catch(e){error=String(e)}
  try{
- const stats=[];for(const pc of pcs)for(const s of (await pc.getStats()).values())if(["inbound-rtp","outbound-rtp"].includes(s.type)&&s.kind==="audio")stats.push({type:s.type,packetsReceived:s.packetsReceived,packetsSent:s.packetsSent,packetsLost:s.packetsLost,jitter:s.jitter,totalAudioEnergy:s.totalAudioEnergy,totalSamplesDuration:s.totalSamplesDuration,audioLevel:s.audioLevel})
+ const stats=[];for(const pc of pcs)for(const s of (await pc.getStats()).values())if(["inbound-rtp","outbound-rtp"].includes(s.type)&&s.kind==="audio")stats.push({type:s.type,packetsReceived:s.packetsReceived,packetsSent:s.packetsSent,packetsLost:s.packetsLost,jitter:s.jitter,totalAudioEnergy:s.totalAudioEnergy,totalSamplesDuration:s.totalSamplesDuration,audioLevel:s.audioLevel,jitterBufferDelay:s.jitterBufferDelay,jitterBufferTargetDelay:s.jitterBufferTargetDelay,jitterBufferMinimumDelay:s.jitterBufferMinimumDelay,jitterBufferEmittedCount:s.jitterBufferEmittedCount,concealedSamples:s.concealedSamples,totalSamplesReceived:s.totalSamplesReceived})
  const server=await (await fetch("/observations")).json()
  const a=samples.filter(s=>first!==null&&s.t>=first&&s.oldEnergy>.015&&s.oldEnergy>2*s.newEnergy),b=samples.filter(s=>interrupt!==null&&s.t>=interrupt&&s.newEnergy>.015&&s.newEnergy>2*s.oldEnergy)
- return {error,first,interrupt,firstPerfMs,interruptPerfMs,clockSync,firstAudioMs:a.length?a[0].t-first:null,interruptResidualMs:a.length&&interrupt!==null?Math.max(0,a.at(-1).t-interrupt):null,secondAudioMs:b.length?b[0].t-interrupt:null,secondToneSpanMs:b.length?b.at(-1).t-b[0].t:null,oldToneAfterSecond:b.length?a.some(s=>s.t>b[0].t):null,secondGapMs:b.length?Math.max(0,...b.slice(1).map((s,i)=>s.t-b[i].t-1024/ctx.sampleRate*1000)):null,inbound:stats.filter(s=>s.type==="inbound-rtp"),stats,server,samples,localSamples,trackEvents,remoteTrack:remoteTrack?{id:remoteTrack.id,enabled:remoteTrack.enabled,muted:remoteTrack.muted,readyState:remoteTrack.readyState}:null}
+ return {config,error,first,interrupt,firstPerfMs,interruptPerfMs,clockSync,firstAudioMs:a.length?a[0].t-first:null,interruptResidualMs:a.length&&interrupt!==null?Math.max(0,a.at(-1).t-interrupt):null,secondAudioMs:b.length?b[0].t-interrupt:null,secondToneSpanMs:b.length?b.at(-1).t-b[0].t:null,oldToneAfterSecond:b.length?a.some(s=>s.t>b[0].t):null,secondGapMs:b.length?Math.max(0,...b.slice(1).map((s,i)=>s.t-b[i].t-1024/ctx.sampleRate*1000)):null,inbound:stats.filter(s=>s.type==="inbound-rtp"),stats,server,samples,localSamples,trackEvents,remoteTrack:remoteTrack?{id:remoteTrack.id,enabled:remoteTrack.enabled,muted:remoteTrack.muted,readyState:remoteTrack.readyState}:null}
  }finally{remoteElement?.remove();await client.disconnect().catch(()=>{});navigator.mediaDevices.getUserMedia=original;window.RTCPeerConnection=Original;await ctx.close()}
 }

@@ -4,6 +4,7 @@ import math
 import struct
 import time
 from pathlib import Path
+from fastapi import HTTPException, Query
 from fastapi import FastAPI
 from fastapi.responses import HTMLResponse, FileResponse
 from pipecat.frames.frames import StartFrame
@@ -84,16 +85,48 @@ async def clock():
 
 @app.get("/observations")
 async def diagnostics():
-    return observations[-1000:]
+    return observations[-5000:]
 
 @app.post("/offer")
-async def offer(body: dict):
+async def offer(body: dict, chunk_ms: int | None = Query(None)):
+    if chunk_ms is not None and chunk_ms not in (10,20,40):
+        raise HTTPException(400, 'unsupported native chunk size')
+    if 'audio_out_10ms_chunks' not in TransportParams.model_fields:
+        raise RuntimeError('pinned SDK lacks native output chunk parameter')
     observations.clear()
     connection = SmallWebRTCConnection(ice_servers=[])
     await connection.initialize(body["sdp"], body["type"])
-    transport = SmallWebRTCTransport(webrtc_connection=connection, params=TransportParams(audio_in_enabled=True,audio_out_enabled=True))
+    transport = SmallWebRTCTransport(webrtc_connection=connection, params=TransportParams(audio_in_enabled=True,audio_out_enabled=True,**({'audio_out_10ms_chunks':chunk_ms//10} if chunk_ms is not None else {})))
+    output = transport.output()
+    # Observe SDK methods, do not clear or replace their queues. Frame identity may
+    # change during native rechunking; residence is reported only for exact matches.
+    enqueue = {}
+    original_process = output.process_frame
+    original_write = output.write_audio_frame
+    async def observed_process(frame, direction):
+        if isinstance(frame, OutputAudioRawFrame):
+            enqueue[frame.id] = time.monotonic_ns()/1e6
+            observe(boundary='output_ingress',frameId=frame.id,bytes=len(frame.audio))
+        if isinstance(frame, InterruptionFrame):
+            observe(boundary='output_interrupt_enter',pendingIngress=len(enqueue))
+            try:
+                return await original_process(frame,direction)
+            finally:
+                observe(boundary='output_interrupt_exit',pendingIngress=len(enqueue))
+        return await original_process(frame,direction)
+    async def observed_write(frame):
+        entered = time.monotonic_ns()/1e6
+        start = enqueue.pop(frame.id,None)
+        observe(boundary='native_write_enter',frameId=frame.id,bytes=len(frame.audio),residenceMs=entered-start if start is not None else None)
+        try:
+            return await original_write(frame)
+        finally:
+            observe(boundary='native_write_exit',frameId=frame.id)
+    output.process_frame = observed_process
+    output.write_audio_frame = observed_write
+    observe(boundary='configuration',chunkMs=chunk_ms)
     script = ScriptedAudio()
-    task = PipelineTask(Pipeline([transport.input(),script,transport.output()]), params=PipelineParams())
+    task = PipelineTask(Pipeline([transport.input(),script,output]), params=PipelineParams())
     @transport.event_handler("on_client_disconnected")
     async def disconnected(*_):
         if script.active:
