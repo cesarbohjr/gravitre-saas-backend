@@ -1,0 +1,2 @@
+# Experimental time-scale status
+The 7c6094c hosted duplex run 46100203192 failed the local pitch sanity bound. The prototype is offline-only and is not a production or provider-native path. Its acceptance test remains mandatory for any future time-scale promotion, in an independent failing workflow; it is not evidence of transport or identity failure. Existing duplex and adaptive promotion thresholds remain unchanged. No further DSP changes until native architecture comparison establishes necessity.

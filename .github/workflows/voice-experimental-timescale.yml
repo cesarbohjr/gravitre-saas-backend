@@ -1,0 +1,20 @@
+name: Voice experimental time-scale rejection
+on:
+  push:
+    branches: [feat/qa-master-voice-parity-gates]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  experimental-only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Preserve experimental pitch acceptance test
+        run: node apps/web/scripts/voice-playback-continuity/rate-prototype.test.mjs
