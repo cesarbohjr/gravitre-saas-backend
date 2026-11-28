@@ -1,0 +1,5 @@
+# Separate Speech Engine candidate — preparation only
+Official integration: https://elevenlabs.io/docs/eleven-api/guides/how-to/speech-engine/pipecat-integration
+Upstream protocol: https://elevenlabs.io/docs/api-reference/speech-engine/speech-engine-upstream
+Provider owns STT, turn-taking, TTS and media. Gravitre owns the server reasoning seam.
+First candidate is tool-free, no business credentials or production routes. Use the official SDK's authenticated upstream handshake and interruption-aware response streaming; verify exact SDK package/version and cancellation callbacks before implementation. Bind session identity server-side, reject replay and stale generations; never treat provider transcript as execution authority. Compare against native WebRTC and existing baseline using equivalent consented fixtures, exact provider model/voice settings, browser audio-clock latency, interruption, continuity, blinded speech quality, and cost. No engine creation, token minting, paid activation or public listener authorized. Status: design prepared; SDK bridge and live testing outstanding.

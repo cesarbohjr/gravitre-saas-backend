@@ -1,0 +1,36 @@
+<!doctype html><meta charset="utf-8"><title>Native reference synthetic RTC</title>
+<script>
+window.runReference = async () => {
+ const ctx=new AudioContext({sampleRate:48000}); await ctx.resume();
+ const dst=ctx.createMediaStreamDestination(), osc=ctx.createOscillator(), gain=ctx.createGain();
+ osc.frequency.value=440; gain.gain.value=0; osc.connect(gain).connect(dst);osc.start();
+ const pc=new RTCPeerConnection({iceServers:[]});
+ const samples=[]; let remote;
+ const received=new Promise(resolve=>pc.ontrack=e=>{remote=e.track;resolve(e.track)});
+ pc.addTrack(dst.stream.getAudioTracks()[0],dst.stream);
+ try {
+ await pc.setLocalDescription(await pc.createOffer());
+ await new Promise((resolve,reject)=>{if(pc.iceGatheringState==="complete")return resolve(); const timer=setTimeout(()=>reject(Error("ICE gathering timeout")),5000);pc.addEventListener("icegatheringstatechange",()=>{if(pc.iceGatheringState==="complete"){clearTimeout(timer);resolve()}})});
+ const res=await fetch("/offer",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(pc.localDescription)});if(!res.ok)throw Error("offer failed "+res.status);
+ const answer=await res.json();await pc.setRemoteDescription({sdp:answer.sdp,type:answer.type});
+ const track=await Promise.race([received,new Promise((_,reject)=>setTimeout(()=>reject(Error("missing remote track")),10000))]);
+ const src=ctx.createMediaStreamSource(new MediaStream([track]));
+ // Analysis-only branch; native remote audio track is not rebuffered or transformed.
+ const tap=ctx.createScriptProcessor(1024,1,1),silent=ctx.createGain();silent.gain.value=0;
+ src.connect(tap).connect(silent).connect(ctx.destination);
+ tap.onaudioprocess=e=>{const x=e.inputBuffer.getChannelData(0);let sum=0,c=0;for(let i=1;i<x.length;i++){sum+=x[i]*x[i];if(x[i-1]<=0&&x[i]>0)c++}samples.push({t:e.playbackTime*1000,rms:Math.sqrt(sum/x.length),hz:c*ctx.sampleRate/x.length})};
+ const wait=ms=>new Promise(r=>setTimeout(r,ms)), now=()=>ctx.currentTime*1000;
+ for(let i=0;pc.connectionState!=="connected"&&i<100;i++)await wait(100);
+ if(pc.connectionState!=="connected")throw Error("RTC not connected");
+ await wait(300);
+ const first=now();gain.gain.value=.3;await wait(180);gain.gain.value=0;
+ for(let i=0;!samples.some(s=>s.t>=first&&s.rms>.015&&s.hz>950&&s.hz<1300)&&i<100;i++)await wait(20);
+ if(!samples.some(s=>s.t>=first&&s.rms>.015&&s.hz>950&&s.hz<1300))throw Error("first tone not received");
+ const interrupt=now();osc.frequency.value=800;gain.gain.value=.3;await wait(180);gain.gain.value=0;await wait(2600);
+ const a=samples.filter(s=>s.t>=first&&s.rms>.015&&s.hz>950&&s.hz<1300),b=samples.filter(s=>s.t>=interrupt&&s.rms>.015&&s.hz>1500&&s.hz<1900);
+ if(!a.length||!b.length)throw Error("missing reply");
+ const stats=await pc.getStats();const inbound=[...stats.values()].filter(s=>s.type==="inbound-rtp"&&s.kind==="audio").map(s=>({packetsReceived:s.packetsReceived,packetsLost:s.packetsLost,jitter:s.jitter}));
+ return {firstAudioMs:a[0].t-first,interruptResidualMs:Math.max(0,a.at(-1).t-interrupt),secondAudioMs:b[0].t-interrupt,secondToneSpanMs:b.at(-1).t-b[0].t,oldToneAfterSecond:a.some(s=>s.t>b[0].t),secondGapMs:Math.max(0,...b.slice(1).map((s,i)=>s.t-b[i].t-1024/ctx.sampleRate*1000)),inbound,samples};
+ } finally {pc.close();await ctx.close()}
+}
+</script>

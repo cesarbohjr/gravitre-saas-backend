@@ -25,3 +25,27 @@ jobs:
       - name: Verify reference contract without provider activation
         working-directory: backend
         run: python -m unittest tests.e2e.test_native_voice_reference_contract -v
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install browser test dependencies
+        run: |
+          npm install
+          npx playwright install --with-deps chromium
+      - name: Native RTC synthetic browser screening
+        run: |
+          cd backend
+          python -m uvicorn tests.e2e.native_reference_harness:app --host 127.0.0.1 --port 8797 > ../native-reference-server.log 2>&1 &
+          pid=$!
+          trap 'kill "$pid" || true' EXIT
+          for i in $(seq 1 60); do curl -fsS http://127.0.0.1:8797/ >/dev/null && break; sleep 1; done
+          cd ..
+          node backend/tests/e2e/run_native_reference_browser.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: native-reference-${{ github.sha }}
+          path: |
+            native-reference-evidence.json
+            native-reference-server.log
+          if-no-files-found: error
