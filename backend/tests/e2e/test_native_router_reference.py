@@ -37,6 +37,7 @@ class RouterBridgeTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(task.value,"content_generation")
         self.assertEqual(kw["org_id"],"test-org")
         self.assertIs(kw["autonomous_run"],False)
+        self.assertEqual(kw["context"],[])
         self.assertIn("no tools",kw["system_prompt"])
         self.assertEqual(router.cancelled,1)
     async def test_cancel_fences_late_tokens(self):
@@ -55,3 +56,33 @@ class RouterBridgeTests(unittest.IsolatedAsyncioTestCase):
         fresh=ReferenceRouterBridge(RouterStub(),IDENTITY,enabled=True)
         with self.assertRaises(ValueError):
             await anext(fresh.reason(" "*16001))
+
+    async def test_completed_turns_retained_across_followups(self):
+        router=RouterStub()
+        bridge=ReferenceRouterBridge(router,IDENTITY,enabled=True)
+        self.assertEqual([x async for x in bridge.reason("What happened?")],["hello ","world"])
+        self.assertEqual([x async for x in bridge.reason("Why?")],["hello ","world"])
+        self.assertEqual(router.calls[1][2]["context"],[
+            {"role":"user","content":"What happened?"},
+            {"role":"assistant","content":"hello world"}])
+
+    async def test_interrupted_answer_never_commits_to_context(self):
+        router=RouterStub()
+        bridge=ReferenceRouterBridge(router,IDENTITY,enabled=True)
+        it=bridge.reason("old question")
+        self.assertEqual(await anext(it),"hello ")
+        bridge.cancel()
+        self.assertEqual([x async for x in it],[])
+        self.assertEqual(bridge.history,[])
+        self.assertEqual([x async for x in bridge.reason("new question")],["hello ","world"])
+        self.assertEqual(router.calls[-1][2]["context"],[])
+
+    async def test_session_isolation_and_close(self):
+        router=RouterStub()
+        first=ReferenceRouterBridge(router,IDENTITY,enabled=True)
+        second=ReferenceRouterBridge(router,ReferenceIdentity("test-org","other-session","test-user"),enabled=True)
+        self.assertEqual([x async for x in first.reason("private")],["hello ","world"])
+        self.assertEqual([x async for x in second.reason("separate")],["hello ","world"])
+        self.assertEqual(router.calls[-1][2]["context"],[])
+        first.close()
+        self.assertTrue(first.closed)
