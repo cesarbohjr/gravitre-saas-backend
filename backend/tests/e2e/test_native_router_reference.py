@@ -28,7 +28,7 @@ class RouterBridgeTests(unittest.IsolatedAsyncioTestCase):
     def setUp(self):
         class TaskType(str, Enum):
             CONTENT_GENERATION = 'content_generation'
-        self.module_patch=patch.dict(sys.modules, {'app.services.model_router': SimpleNamespace(TaskType=TaskType)})
+        self.module_patch=patch.dict(sys.modules, {'app.services.model_router': SimpleNamespace(TaskType=TaskType), 'app.services.cognitive_turn_kernel': SimpleNamespace(CognitiveTurnRequest=lambda **kwargs: SimpleNamespace(**kwargs))})
         self.module_patch.start()
         self.addCleanup(self.module_patch.stop)
 
@@ -167,3 +167,29 @@ class RouterBridgeTests(unittest.IsolatedAsyncioTestCase):
             await admit_from_authenticated_client(
                 RouterStub(),IDENTITY,authenticated_user_id="test-user",
                 client=Client(),enabled=True)
+
+    async def test_canonical_kernel_receives_bound_full_depth_context(self):
+        class Kernel:
+            def __init__(self): self.requests=[]
+            async def run_pre_act(self,request):
+                self.requests.append(request)
+                return SimpleNamespace(skipped=False,verify={"passed":True},govern={"ok":True})
+        kernel=Kernel()
+        bridge=ReferenceRouterBridge(RouterStub(),IDENTITY,enabled=True,_admitted=True)
+        self.assertEqual([x async for x in bridge.reason("Explain this",kernel=kernel,task_state={"current_plan":"test"})],["hello ","world"])
+        req=kernel.requests[0]
+        self.assertEqual((req.org_id,req.user_id,req.conversation_id),("test-org","test-user","test-session"))
+        self.assertEqual(req.reasoning_depth,"full")
+        self.assertEqual(req.environment_name,"nonproduction")
+        self.assertEqual(req.task_state,{"current_plan":"test"})
+
+    async def test_kernel_rejection_never_starts_model(self):
+        class Kernel:
+            async def run_pre_act(self,request):
+                return SimpleNamespace(skipped=False,verify={"passed":True},govern={"ok":False})
+        router=RouterStub()
+        bridge=ReferenceRouterBridge(router,IDENTITY,enabled=True,_admitted=True)
+        with self.assertRaises(PermissionError):
+            await anext(bridge.reason("Do it",kernel=Kernel()))
+        self.assertEqual(router.calls,[])
+        self.assertEqual(bridge.history,[])

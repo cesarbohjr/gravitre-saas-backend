@@ -25,6 +25,7 @@ class ReferenceRouterBridge:
         self.closed = False
         self.history = []  # session-local, non-durable reference context
         self.pending_user = None
+        self.kernel_context = None
 
     def cancel(self):
         self.generation += 1
@@ -34,13 +35,35 @@ class ReferenceRouterBridge:
         self.cancel()
         self.closed = True
 
-    async def reason(self, prompt: str):
+    async def reason(self, prompt: str, *, kernel=None, task_state=None):
         if self.closed or not isinstance(prompt, str) or not prompt.strip() or len(prompt) > 16000:
             raise ValueError("invalid reference turn")
         generation = self.generation = self.generation + 1
         self.pending_user = prompt
         completed = False
         assistant_parts = []
+        # The canonical kernel owns retrieval, intelligence and governance.
+        # The isolated reference never calls ACT or an execution endpoint.
+        if kernel is not None:
+            from app.services.cognitive_turn_kernel import CognitiveTurnRequest
+            request = CognitiveTurnRequest(
+                org_id=self.identity.org_id, user_id=self.identity.user_id,
+                conversation_id=self.identity.session_id, message=prompt,
+                surface="voice_reference", entry_point="isolated_reference",
+                environment_name="nonproduction", spoken_mode=True,
+                reasoning_depth="full", task_state=task_state,
+                conversation_history=[dict(turn) for turn in self.history],
+            )
+            context = await kernel.run_pre_act(request)
+            if self.closed or generation != self.generation:
+                return
+            if getattr(context, "skipped", False):
+                raise PermissionError("canonical cognition disabled")
+            if not getattr(context, "verify", {}).get("passed", False):
+                raise PermissionError("canonical verification rejected")
+            if not getattr(context, "govern", {}).get("ok", False):
+                raise PermissionError("canonical governance rejected")
+            self.kernel_context = context
         # Import canonical TaskType, not a duplicate model routing policy.
         from app.services.model_router import TaskType
         prepared = await self.router.prepare_stream(
