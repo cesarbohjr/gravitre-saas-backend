@@ -1,8 +1,11 @@
 import asyncio
 import unittest
+import tempfile
+import concurrent.futures
+from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, Mock
-from tests.e2e.speech_engine_reference import Binding, Bridge, attach
+from tests.e2e.speech_engine_reference import Binding, Bridge, attach, BindingStore
 
 class Session:
     def __init__(self, cid):
@@ -81,3 +84,28 @@ class BridgeTest(unittest.IsolatedAsyncioTestCase):
         s2=Session("b")
         await fresh.transcript(message("new"),s2)
         self.assertEqual(s2.chunks,["new"])
+
+    async def test_single_use_binding_persists_and_rejects_races(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            path=Path(tmp)/"bindings.sqlite"
+            store=BindingStore(path)
+            binding=Binding("conversation","session")
+            store.provision(binding)
+            self.assertFalse(store.consume(Binding("other","session")))
+            with concurrent.futures.ThreadPoolExecutor(max_workers=8) as pool:
+                results=list(pool.map(lambda _: BindingStore(path).consume(binding),range(8)))
+            self.assertEqual(sum(results),1)
+            self.assertFalse(BindingStore(path).consume(binding))
+
+    async def test_authenticated_replay_rejected_before_upgrade(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            store=BindingStore(Path(tmp)/"bindings.sqlite")
+            binding=Binding("a","session")
+            store.provision(binding)
+            self.assertTrue(store.consume(binding))
+            engine=Mock()
+            engine.verify_request.return_value=True
+            ws=SimpleNamespace(headers={},close=AsyncMock(),accept=AsyncMock())
+            await attach(engine,ws,binding,None,store)
+            ws.close.assert_awaited_once_with(code=1008)
+            ws.accept.assert_not_awaited()

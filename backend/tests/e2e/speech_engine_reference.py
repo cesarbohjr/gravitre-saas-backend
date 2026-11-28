@@ -3,12 +3,32 @@ The caller supplies an SDK resource and an independently provisioned one-use
 conversation binding. Provider authentication is not tenant authorization.
 """
 import asyncio
+import sqlite3
+import time
 from dataclasses import dataclass
 
 @dataclass(frozen=True)
 class Binding:
     conversation_id: str
     session_id: str
+
+class BindingStore:
+    """Atomic, persistent, one-use reference admission. No production authority."""
+    def __init__(self, path):
+        self.path = path
+        with sqlite3.connect(path) as db:
+            db.execute('CREATE TABLE IF NOT EXISTS bindings (session_id TEXT PRIMARY KEY, conversation_id TEXT UNIQUE NOT NULL, expires REAL NOT NULL, consumed INTEGER NOT NULL DEFAULT 0)')
+
+    def provision(self, binding, ttl=60):
+        if not binding.session_id or not binding.conversation_id or not 0 < ttl <= 300:
+            raise ValueError('invalid binding')
+        with sqlite3.connect(self.path) as db:
+            db.execute('INSERT INTO bindings(session_id,conversation_id,expires) VALUES(?,?,?)',(binding.session_id,binding.conversation_id,time.time()+ttl))
+
+    def consume(self, binding):
+        with sqlite3.connect(self.path) as db:
+            result=db.execute('UPDATE bindings SET consumed=1 WHERE session_id=? AND conversation_id=? AND consumed=0 AND expires>?',(binding.session_id,binding.conversation_id,time.time()))
+            return result.rowcount==1
 
 class Bridge:
     def __init__(self, binding, reason):
@@ -61,9 +81,12 @@ class Bridge:
             if self.active is asyncio.current_task():
                 self.active = None
 
-async def attach(engine, websocket, binding, reason):
+async def attach(engine, websocket, binding, reason, store=None):
     # SDK validates provider JWT before any upgrade; no bypass switch.
     if not engine.verify_request(dict(websocket.headers)):
+        await websocket.close(code=1008)
+        return
+    if store is None or not store.consume(binding):
         await websocket.close(code=1008)
         return
     bridge = Bridge(binding, reason)

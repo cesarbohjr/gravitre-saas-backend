@@ -26,6 +26,8 @@ class ScriptedAudio(FrameProcessor):
         self.active = None
         self.last = 0
         self.generation = 0
+        self.pending_marker = 0
+        self.marker_count = 0
 
     async def emit(self, freq, generation):
         rate = 24000
@@ -47,7 +49,9 @@ class ScriptedAudio(FrameProcessor):
                 hz = crossings * frame.sample_rate / len(samples)
                 observations.append({'boundary':'server_input','peak':max(abs(s) for s in samples),'frequency':hz})
                 marker = 1 if 350 < hz < 550 else 2 if 650 < hz < 950 else 0
-                if marker and marker != self.last:
+                self.marker_count = self.marker_count + 1 if marker == self.pending_marker else 1
+                self.pending_marker = marker
+                if marker and marker != self.last and self.marker_count >= 3:
                     self.last = marker
                     self.generation += 1
                     if self.active:

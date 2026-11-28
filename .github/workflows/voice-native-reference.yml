@@ -31,7 +31,7 @@ jobs:
       - name: Install browser test dependencies
         run: |
           npm install
-          npm install --no-save --package-lock=false @pipecat-ai/client-js @pipecat-ai/small-webrtc-transport esbuild
+          npm install --no-save --package-lock=false @pipecat-ai/client-js@1.18.0 @pipecat-ai/small-webrtc-transport@1.11.4 esbuild
           npx esbuild backend/tests/e2e/reference-client.mjs --bundle --platform=browser --outfile=backend/tests/e2e/reference-client.bundle.js
           npm ls @pipecat-ai/client-js @pipecat-ai/small-webrtc-transport --json > native-reference-sdk.json
           npx playwright install --with-deps chromium
