@@ -12,10 +12,10 @@ class ReferenceIdentity:
     user_id: str
 
 class ReferenceRouterBridge:
-    def __init__(self, router, identity: ReferenceIdentity, *, enabled=False, ownership_verified=False):
+    def __init__(self, router, identity: ReferenceIdentity, *, enabled=False, _admitted=False):
         if not enabled:
             raise PermissionError("reference router is disabled")
-        if not ownership_verified:
+        if not _admitted:
             raise PermissionError("server-side conversation ownership must be verified")
         if not all((identity.org_id, identity.session_id, identity.user_id)):
             raise PermissionError("server-validated reference identity required")
@@ -76,3 +76,26 @@ class ReferenceRouterBridge:
             close = getattr(stream, "aclose", None)
             if close is not None:
                 await close()
+
+async def admit_reference(router, identity: ReferenceIdentity, *, authenticated_user_id: str,
+                          lookup_conversation, enabled=False):
+    """Fail-closed reference admission using a server-owned scoped lookup.
+
+    lookup_conversation must execute an authenticated, org-scoped database query
+    and return the matching row, or None. It must not trust client-supplied rows.
+    """
+    if not enabled:
+        raise PermissionError("reference disabled")
+    if not all((identity.org_id, identity.session_id, identity.user_id)):
+        raise PermissionError("invalid session binding")
+    if authenticated_user_id != identity.user_id:
+        raise PermissionError("authenticated principal mismatch")
+    row = await lookup_conversation(identity.org_id, identity.session_id, authenticated_user_id)
+    if not isinstance(row, dict) or any(
+        row.get(field) != expected for field, expected in (
+            ("id", identity.session_id), ("org_id", identity.org_id),
+            ("user_id", authenticated_user_id)
+        )
+    ):
+        raise PermissionError("conversation ownership not established")
+    return ReferenceRouterBridge(router, identity, enabled=True, _admitted=True)
