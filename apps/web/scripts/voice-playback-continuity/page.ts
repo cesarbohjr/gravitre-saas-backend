@@ -172,7 +172,7 @@ export async function runScenario(sc: Scenario) {
 
   // Server pacing: Pipecat 1.x sends each 40 ms chunk every 20 ms (pacing 2).
   // Network/main-thread delay: uniform 0..jitterMaxMs per message, in order.
-  type Msg = { at: number; b64: string; reply: number }
+  type Msg = { at: number; b64: string; reply: number; byteLength: number }
   const msgs: Msg[] = []
   let lastArrival = 0
   const schedule = (bytes: Uint8Array, startMs: number, reply: number, stopAtMs: number) => {
@@ -183,7 +183,7 @@ export async function runScenario(sc: Scenario) {
       const delay = sc.jitterProfile === "clean" ? 0 : sc.jitterProfile === "burst" ? (Math.floor((sendMs - startMs) / 400) % 3 === 1 ? 0.75 + 0.25 * draw : 0.1 * draw) * sc.jitterMaxMs : draw * sc.jitterMaxMs
       const arrival = Math.max(lastArrival, sendMs + delay)
       lastArrival = arrival
-      msgs.push({ at: arrival, b64: toB64(p), reply })
+      msgs.push({ at: arrival, b64: toB64(p), reply, byteLength: p.length })
       sendMs += (p.length / 2 / SRC_RATE) * 1000 / sc.pacing
     }
   }
@@ -195,11 +195,13 @@ export async function runScenario(sc: Scenario) {
 
   // Barge-in: the server stops sending reply 0 at the flush; anything already
   // in flight before the flush is delivered before the interrupt message.
+  const arrivals: Array<{ frame: number; reply: number; byteLength: number }> = []
   const events: Array<{ at: number; run: () => void }> = msgs.map((m) => ({
     at: m.reply === 0 ? Math.min(m.at, flushMs - 1) : m.at,
     run: () => {
       if (m.reply === 0 && firstPushFrame < 0) firstPushFrame = Math.round(ctx.currentTime * ctx.sampleRate)
       if (m.reply === 1 && secondPushFrame < 0) secondPushFrame = Math.round(ctx.currentTime * ctx.sampleRate)
+      arrivals.push({ frame: Math.round(ctx.currentTime * ctx.sampleRate), reply: m.reply, byteLength: m.byteLength })
       player.push(m.b64)
     },
   }))
@@ -237,6 +239,7 @@ export async function runScenario(sc: Scenario) {
   }
   return {
     samples: Array.from(out),
+    arrivals: arrivals.map(a => ({ ...a, frame: a.frame - recordingFirstFrame! })),
     sampleRate: sc.ctxRate,
     firstPushFrame: firstPushFrame - recordingFirstFrame,
     flushFrame: flushCtxFrame - recordingFirstFrame,

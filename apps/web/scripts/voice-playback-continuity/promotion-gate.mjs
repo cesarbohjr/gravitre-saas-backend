@@ -23,6 +23,8 @@ for (const policy of policies) {
     const values = [m.firstStartupMs,m.secondStartupMs,m.residualMs,m.secondReplySpanMs,m.totals.gapMs,m.totals.jumps,m.totals.hardGapEdges,m.flush.jumps]
     const valid = values.every(v=>Number.isFinite(v)&&v>=0)
     if (!valid) issues.push("invalid measurement "+id(row.scenario))
+    const feasibility = m.rateFeasibility
+    if (!Array.isArray(row.arrivals) || !row.arrivals.length || !Array.isArray(feasibility) || feasibility.length !== 2 || feasibility.some((f,i)=>f.reply!==i || !Number.isSafeInteger(f.packetCount) || f.packetCount<=0 || !Array.isArray(f.bounds) || f.bounds.length!==4 || f.bounds.some((b,j)=>b.rate!==[1,.99,.97,.95][j] || !Number.isFinite(b.maxSupplyDeficitMs) || b.maxSupplyDeficitMs<0))) issues.push("missing or invalid rate feasibility evidence "+id(row.scenario))
     starts.push(m.firstStartupMs,m.secondStartupMs)
     gap += m.totals.gapMs
     maxResidual = Math.max(maxResidual,m.residualMs)

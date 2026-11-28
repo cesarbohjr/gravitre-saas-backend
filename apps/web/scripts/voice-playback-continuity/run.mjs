@@ -97,7 +97,7 @@ function maxSignalStep(rate) {
 /** About -46 dBFS: a step into or out of silence larger than this is audible. */
 const HARD_EDGE = 0.005
 
-function analyse({ samples, sampleRate, firstPushFrame, flushFrame, secondPushFrame }) {
+function analyse({ samples, sampleRate, firstPushFrame, flushFrame, secondPushFrame, arrivals }) {
   if (!Number.isInteger(flushFrame) || !Number.isInteger(secondPushFrame) || flushFrame <= 0 || secondPushFrame <= flushFrame || secondPushFrame >= samples.length || samples.some(v => !Number.isFinite(v))) throw new Error("Invalid captured audio or clock bounds")
   const x = Float32Array.from(samples)
   const thr = 2 * maxSignalStep(sampleRate)
@@ -176,6 +176,32 @@ function analyse({ samples, sampleRate, firstPushFrame, flushFrame, secondPushFr
   }
   res.flush = { jumps: flushJumps, maxJump: +flushMax.toFixed(4) }
   res.totals = { jumps: jumpsTotal + flushJumps, hardGapEdges: hardEdgesTotal, gaps: gapsTotal, gapMs: +gapMsTotal.toFixed(1) }
+  // Optimistic supply-only counterfactual, not a DSP simulation. Actual
+  // main-thread arrival frames include scheduling jitter; worklet dispatch
+  // and FIR lookahead can only reduce the available reserve further.
+  // Compare a constant minimum rate from audible onset, which bounds what
+  // a causal controller constrained to that rate could possibly save.
+  if (!Array.isArray(arrivals) || arrivals.length === 0) throw Error("Missing packet arrival evidence")
+  const startFrames = [r1Start, r2Start]
+  res.rateFeasibility = [0, 1].map(reply => {
+    const packets = arrivals.filter(a => a.reply === reply)
+    if (!packets.length || packets.some((a,i) => !Number.isSafeInteger(a.frame) || a.frame < 0 || !Number.isSafeInteger(a.byteLength) || a.byteLength <= 0 || (i && a.frame < packets[i-1].frame))) throw Error("Invalid packet arrival evidence")
+    const start = startFrames[reply]
+    const end = reply === 0 ? flushFrame : last
+    const bounds = [1, .99, .97, .95].map(rate => {
+      let bytes = 0, maxDeficitFrames = 0
+      for (const a of packets) {
+        if (a.frame > end) break
+        if (start >= 0 && a.frame > start) {
+          const supplied = Math.floor(bytes / 2) * sampleRate / 24000
+          maxDeficitFrames = Math.max(maxDeficitFrames, (a.frame-start)*rate-supplied)
+        }
+        bytes += a.byteLength
+      }
+      return { rate, maxSupplyDeficitMs: maxDeficitFrames * 1000 / sampleRate }
+    })
+    return { reply, audibleStartFrame: start, packetCount: packets.length, bounds }
+  })
   return res
 }
 
@@ -206,7 +232,7 @@ for (const sc of matrix) {
   if (filter && !filter.test(label(sc))) continue
   const raw = await page.evaluate((s) => window.runScenario(s), sc)
   const metrics = analyse(raw)
-  results.push({ scenario: sc, playerKind: raw.playerKind, recordedS: +(raw.samples.length / raw.sampleRate).toFixed(2), metrics })
+  results.push({ scenario: sc, playerKind: raw.playerKind, recordedS: +(raw.samples.length / raw.sampleRate).toFixed(2), metrics, arrivals: raw.arrivals })
   console.log(
     `${label(sc)} [${results.length}/${matrix.length}] [${raw.playerKind}]`,
     `jumps=${metrics.totals.jumps} hardGapEdges=${metrics.totals.hardGapEdges} gaps=${metrics.totals.gaps} gapMs=${metrics.totals.gapMs}`,
