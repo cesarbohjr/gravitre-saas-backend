@@ -376,6 +376,23 @@ describe("PcmPlayoutQueue", () => {
     }
   })
 
+  it("adaptive short starvation recovery does not repeat the full startup reserve", () => {
+    const rate = 48000
+    const q = new PcmPlayoutQueue({ sampleRate: rate, adaptiveStartup: true, maxLeadS: 0.48 })
+    q.push(new Float32Array(Math.round(rate * 0.36)).fill(0.25), 0)
+    for (let f = 0; f < rate * 0.52; f += 128) q.process(new Float32Array(128), f)
+    const arrival = Math.ceil(rate * 0.52 / 128) * 128
+    q.push(new Float32Array(Math.round(rate * 0.06)).fill(0.25), arrival)
+    // If still playing, first drive the queue to a genuine starvation.
+    for (let f = arrival; f < rate * 0.70; f += 128) q.process(new Float32Array(128), f)
+    const resume = Math.ceil(rate * 0.70 / 128) * 128
+    q.push(new Float32Array(Math.round(rate * 0.06)).fill(0.25), resume)
+    expect(q.rebufferEvents).toBeGreaterThan(0)
+    expect(q.process(new Float32Array(128), resume).started).toBe(true)
+    q.flush()
+    expect(q.buffered).toBe(0)
+  })
+
   it("flush fades out over ~12 ms and drops the rest", () => {
     const q = new PcmPlayoutQueue({ sampleRate: RATE })
     q.push(new Float32Array(RATE).fill(0.5), 0)

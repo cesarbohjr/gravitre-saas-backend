@@ -264,7 +264,10 @@ export class PcmPlayoutQueue {
       const elapsed = nowFrame - (this.arrivalFirst ?? nowFrame)
       const accelerated = this.arrivalPackets >= 6 && elapsed >= this.sampleRate * 0.10 && this.arrivalFrames >= elapsed * 1.85 && this.arrivalDeficit <= this.sampleRate * 0.025
       const guarded = Math.min(this.maxLead, Math.max(this.initialLead, Math.round(this.sampleRate * 0.34), this.arrivalDeficit + Math.round(this.sampleRate * 0.16)))
-      this.lead = this.recovering ? Math.max(this.lead, guarded) : accelerated ? this.initialLead : guarded
+      // An established reply need not repeat its full startup guard after a
+      // short starvation. Keep a bounded 40 ms recovery reserve, without
+      // changing fixed/baseline policies or the startup acceptance bounds.
+      this.lead = this.recovering ? Math.min(guarded, Math.round(this.sampleRate * 0.04)) : accelerated ? this.initialLead : guarded
     }
   }
 

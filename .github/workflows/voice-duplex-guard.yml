@@ -122,6 +122,10 @@ jobs:
       - name: Install Playwright Chromium
         run: npx playwright install --with-deps chromium
 
+      - name: Check isolated time-scale prototype
+        working-directory: apps/web
+        run: node scripts/voice-playback-continuity/rate-prototype.test.mjs
+
       - name: Verify PCM queue regression contracts
         id: pcm
         working-directory: apps/web
