@@ -1,0 +1,26 @@
+name: Voice Speech Engine reference contracts
+on:
+  push:
+    branches: [feat/qa-master-voice-parity-gates]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  isolated-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+      - name: Test bridge contracts without provider activation
+        working-directory: backend
+        run: python -m unittest tests.e2e.test_speech_engine_reference -v
+      - name: Check official SDK imports
+        run: |
+          python -m pip install elevenlabs==2.77.0
+          python -c 'from elevenlabs import AsyncElevenLabs; from elevenlabs.speech_engine import SpeechEngineSession; assert callable(AsyncElevenLabs); assert callable(SpeechEngineSession.send_response)'
